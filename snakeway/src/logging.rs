@@ -1,4 +1,4 @@
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 /// Initialize the logging system with JSON formatting and environment-based filtering
 ///
@@ -6,10 +6,9 @@ use tracing_subscriber::{fmt, EnvFilter};
 /// - Uses environment variables for log level filtering (defaults to "info" if not set)
 /// - Configures JSON output format for structured logging
 /// - Flattens event fields for cleaner log output
-/// 
+///
 pub fn init_logging() {
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     fmt()
         .with_env_filter(filter)

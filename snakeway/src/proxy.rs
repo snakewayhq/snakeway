@@ -13,9 +13,7 @@ pub struct SnakewayGateway {
 impl ProxyHttp for SnakewayGateway {
     type CTX = ();
 
-    fn new_ctx(&self) -> Self::CTX {
-        ()
-    }
+    fn new_ctx(&self) -> Self::CTX {}
 
     async fn upstream_peer(
         &self,

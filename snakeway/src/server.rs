@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use pingora::prelude::*;
 use pingora::server::Server;
 
@@ -14,7 +14,7 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
     // Create a gateway from the first route.
     let route = config
         .routes
-        .get(0)
+        .first()
         .ok_or_else(|| anyhow!("Snakeway: at least one route is required"))?;
 
     let (host, port) = parse_upstream(&route.upstream)?;

@@ -1,14 +1,18 @@
 mod config;
-mod server;
-mod proxy;
 mod logging;
+mod proxy;
+mod server;
 
+use crate::logging::init_logging;
 use clap::Parser;
 use config::SnakewayConfig;
-use crate::logging::init_logging;
 
 #[derive(Parser, Debug)]
-#[command(name = "snakeway", version, about = "Snakeway: Pingora-based HTTP proxy")]
+#[command(
+    name = "snakeway",
+    version,
+    about = "Snakeway: Pingora-based HTTP proxy"
+)]
 struct Cli {
     /// Path to the Snakeway config file
     #[arg(long, default_value = "config/snakeway.toml")]
