@@ -5,9 +5,9 @@ use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 
 use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::pipeline::DevicePipeline;
-use crate::device::registry::DeviceRegistry;
-use crate::device::result::DeviceResult;
+use crate::device::core::pipeline::DevicePipeline;
+use crate::device::core::registry::DeviceRegistry;
+use crate::device::core::result::DeviceResult;
 
 /// Simple "one upstream" gateway
 pub struct SnakewayGateway {

@@ -1,5 +1,5 @@
 use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::{Device, result::DeviceResult};
+use crate::device::core::{result::DeviceResult, Device};
 
 pub struct StructuredLoggingDevice;
 

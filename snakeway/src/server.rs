@@ -4,8 +4,8 @@ use pingora::server::Server;
 use std::sync::Arc;
 
 use crate::config::SnakewayConfig;
-use crate::device::registry::DeviceRegistry;
-use crate::device::structured_logging::StructuredLoggingDevice;
+use crate::device::core::registry::DeviceRegistry;
+use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::proxy::SnakewayGateway;
 
 /// Run the Pingora server with the given configuration.
