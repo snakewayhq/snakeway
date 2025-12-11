@@ -7,7 +7,6 @@ use self::errors::DeviceError;
 use self::result::DeviceResult;
 use crate::ctx::{RequestCtx, ResponseCtx};
 
-
 /// A trait representing a processing unit in the HTTP proxy pipeline.
 ///
 /// Devices can intercept and modify requests/responses at different stages

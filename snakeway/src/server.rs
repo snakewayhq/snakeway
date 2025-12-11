@@ -1,8 +1,10 @@
 use anyhow::{Result, anyhow};
 use pingora::prelude::*;
 use pingora::server::Server;
+use std::sync::Arc;
 
 use crate::config::SnakewayConfig;
+use crate::device::registry::DeviceRegistry;
 use crate::proxy::SnakewayGateway;
 
 /// Run the Pingora server with the given configuration.
@@ -19,11 +21,15 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
 
     let (host, port) = parse_upstream(&route.upstream)?;
 
+    let registry = DeviceRegistry::new();
+
     let gateway = SnakewayGateway {
         upstream_host: host,
         upstream_port: port,
         use_tls: false,     // HTTP only
         sni: String::new(), // no SNI (yet)
+
+        devices: Arc::new(registry),
     };
 
     // Build HTTP proxy service from Pingora.

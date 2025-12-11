@@ -1718,9 +1718,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "bytes",
  "clap 4.5.53",
+ "http",
  "log",
  "pingora",
+ "pingora-http",
  "serde",
  "toml",
  "tracing-subscriber",
