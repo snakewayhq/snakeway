@@ -10,14 +10,17 @@ opt-level = 3               # Maximize performance
 lto = "fat"                 # Link-time optimization
 codegen-units = 1           # More aggressive optimization by reducing parallelism
 panic = "abort"             # Reduce panic handling code
-debug = 1               # Disable debug info
-strip = true                # Remove debug symbols
 incremental = false         # Ensure no incremental compilation
 
 
 [workspace.dependencies]
+
+anyhow = "1.0"
+async-trait = "0.1"
+clap = "4.5"
 config = "0.15"
-tracing-subscriber = "0.3"
-tracing = "0.1"
+log = "0.4"
 pingora = "0.6"
-pingora-core = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.9"
+tracing-subscriber = "0.3"

@@ -1,0 +1,21 @@
+[env]
+# Tell libz-ng-sys NOT to build its internal C code
+ZLIBNG_NO_VENDOR = "1"
+ZLIBNG_DISABLE = "1"
+ZLIBNG_SYS_STATIC = "0"
+ZLIBNG_USE_SYSTEM_ZLIB = "1"
+
+# Tell zlib-sys to also not build vendored code
+LIBZ_SYS_STATIC = "0"
+LIBZ_SYS_NO_VENDOR = "1"
+
+# Zig is the compiler for C sources
+CC = "zig cc"
+CXX = "zig c++"
+AR = "zig ar"
+
+[target.aarch64-unknown-linux-musl]
+linker = "zig cc -target aarch64-linux-musl"
+
+[target.x86_64-unknown-linux-musl]
+linker = "zig cc -target x86_64-linux-musl"

@@ -1,0 +1,19 @@
+use tracing_subscriber::{fmt, EnvFilter};
+
+/// Initialize the logging system with JSON formatting and environment-based filtering
+///
+/// This function sets up the logging infrastructure using tracing-subscriber:
+/// - Uses environment variables for log level filtering (defaults to "info" if not set)
+/// - Configures JSON output format for structured logging
+/// - Flattens event fields for cleaner log output
+/// 
+pub fn init_logging() {
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+
+    fmt()
+        .with_env_filter(filter)
+        .json()
+        .flatten_event(true)
+        .init();
+}
