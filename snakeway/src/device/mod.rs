@@ -2,6 +2,7 @@ pub mod errors;
 pub mod pipeline;
 pub mod registry;
 pub mod result;
+pub mod structured_logging;
 
 use self::errors::DeviceError;
 use self::result::DeviceResult;

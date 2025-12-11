@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::config::SnakewayConfig;
 use crate::device::registry::DeviceRegistry;
+use crate::device::structured_logging::StructuredLoggingDevice;
 use crate::proxy::SnakewayGateway;
 
 /// Run the Pingora server with the given configuration.
@@ -21,7 +22,9 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
 
     let (host, port) = parse_upstream(&route.upstream)?;
 
-    let registry = DeviceRegistry::new();
+    let mut registry = DeviceRegistry::new();
+
+    registry.register(Arc::new(StructuredLoggingDevice::new()));
 
     let gateway = SnakewayGateway {
         upstream_host: host,
