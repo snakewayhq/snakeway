@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
@@ -16,7 +14,7 @@ pub struct SnakewayGateway {
     pub use_tls: bool,
     pub sni: String,
 
-    pub devices: Arc<DeviceRegistry>,
+    pub devices: DeviceRegistry,
 }
 
 #[async_trait]
@@ -40,7 +38,11 @@ impl ProxyHttp for SnakewayGateway {
     }
 
     /// Snakeway `on_request` --> Pingora `request_filter`
-    async fn request_filter(&self, session: &mut Session, _ctx: &mut Self::CTX) -> Result<bool> {
+    async fn request_filter(
+        &self,
+        session: &mut Session,
+        _ctx: &mut Self::CTX,
+    ) -> Result<bool> {
         let req = session.req_header();
 
         let mut ctx = RequestCtx::new(
@@ -108,7 +110,7 @@ impl ProxyHttp for SnakewayGateway {
 
         match DevicePipeline::run_after_proxy(self.devices.all(), &mut ctx) {
             DeviceResult::Continue | DeviceResult::ShortCircuit(_) | DeviceResult::Error(_) => {
-                // We can update status; this is supported in 0.6
+                // Can update status: this is supported in Pingora 0.6.x
                 upstream_response.set_status(ctx.status)?;
                 // Headers remain read-only in this phase
                 Ok(())

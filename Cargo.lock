@@ -2300,7 +2300,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "bytes",
  "clap 4.5.53",
  "http",
  "log",
@@ -2811,14 +2810,6 @@ dependencies = [
  "wasm-encoder 0.240.0",
  "wasmparser 0.240.0",
  "wat",
-]
-
-[[package]]
-name = "wasm-devices"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
 ]
 
 [[package]]

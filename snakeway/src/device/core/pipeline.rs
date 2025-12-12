@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use super::{Device, DeviceResult};
 use crate::ctx::{RequestCtx, ResponseCtx};
 
@@ -5,14 +6,13 @@ pub struct DevicePipeline;
 
 impl DevicePipeline {
     pub fn run_on_request(
-        devices: &[impl AsRef<dyn Device>],
+        devices: &[Arc<dyn Device>],
         ctx: &mut RequestCtx,
     ) -> DeviceResult {
         for dev in devices {
-            match dev.as_ref().on_request(ctx) {
+            match dev.on_request(ctx) {
                 DeviceResult::Continue => continue,
-                r @ DeviceResult::ShortCircuit(_) => return r,
-                r @ DeviceResult::Error(_) => return r,
+                r => return r,
             }
         }
         DeviceResult::Continue

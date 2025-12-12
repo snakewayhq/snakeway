@@ -1,0 +1,19 @@
+interface device {
+  record request {
+    path: string,
+  }
+
+  record response {
+    status: u16,
+  }
+
+  enum decision {
+    continue,
+    block,
+  }
+
+  on-request: func(req: request) -> decision;
+  before-proxy: func(req: request) -> decision;
+  after-proxy: func(resp: response) -> decision;
+  on-response: func(resp: response) -> decision;
+}

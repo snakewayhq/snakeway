@@ -1,0 +1,8 @@
+[package]
+name = "snakeway-wit"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]

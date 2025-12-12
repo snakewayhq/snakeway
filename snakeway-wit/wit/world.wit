@@ -1,0 +1,3 @@
+world snakeway {
+  export device;
+}

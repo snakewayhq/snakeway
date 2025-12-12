@@ -1,5 +1,9 @@
 [workspace]
-members = ["snakeway", "wasm-devices"]
+members = ["snakeway"]
+default-members = ["snakeway"]
+exclude = [
+    "snakeway-wit",
+]
 resolver = "2"
 
 [profile.dev]
@@ -29,3 +33,4 @@ serde_json = "1.0.145"
 toml = "0.9"
 tracing-subscriber = "0.3"
 wasmtime = "39.0"
+wit-bindgen = "0.49"

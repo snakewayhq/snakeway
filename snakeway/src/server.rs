@@ -26,7 +26,7 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
     let mut registry = DeviceRegistry::new();
 
     registry.register(Arc::new(StructuredLoggingDevice::new()));
-    match WasmDevice::load("plugins/example_device.wasm") {
+    match WasmDevice::load("plugins/snakeway_wasm_example.wasm") {
         Ok(dev) => registry.register(Arc::new(dev)),
         Err(e) => {
             log::error!("Failed to load Wasm device: {e}");
@@ -47,7 +47,7 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
         use_tls: false,     // HTTP only
         sni: String::new(), // no SNI (yet)
 
-        devices: Arc::new(registry),
+        devices: registry,
     };
 
     // Build HTTP proxy service from Pingora.

@@ -56,7 +56,7 @@ fn main() {
             }
         }
 
-        // No subcommand → behave exactly like before
+        // No subcommand -> run server
         None => {
             let cfg = SnakewayConfig::from_file("config/snakeway.toml")
                 .expect("Failed to load Snakeway config");
