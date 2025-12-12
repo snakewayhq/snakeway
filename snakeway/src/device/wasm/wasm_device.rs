@@ -10,7 +10,7 @@ use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::{Device, result::DeviceResult};
 
 use crate::device::wasm::bindings::{
-    exports::snakeway::device::device::{Decision, Request},
+    exports::snakeway::device::policy::{Decision, Request},
     Snakeway,
 };
 
@@ -52,7 +52,7 @@ impl Device for WasmDevice {
             path: ctx.uri.path().to_string(),
         };
 
-        match instance.snakeway_device_device().call_on_request(&mut store, &req) {
+        match instance.snakeway_device_policy().call_on_request(&mut store, &req) {
             Ok(Decision::Continue) => DeviceResult::Continue,
             Ok(Decision::Block) => DeviceResult::ShortCircuit(block_403()),
             Err(e) => {

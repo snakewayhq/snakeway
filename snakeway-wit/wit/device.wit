@@ -1,4 +1,4 @@
-interface device {
+interface policy {
   record request {
     path: string,
   }
