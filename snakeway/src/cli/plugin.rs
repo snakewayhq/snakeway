@@ -9,7 +9,7 @@ use wasmtime::{
 
 use crate::device::wasm::bindings::{
     Snakeway,
-    exports::snakeway::device::device::{Decision, Request},
+    exports::snakeway::device::policy::{Decision, Request},
 };
 
 #[derive(Subcommand, Debug)]
@@ -63,7 +63,7 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
     };
 
     let decision = instance
-        .snakeway_device_device()
+        .snakeway_device_policy()
         .call_on_request(&mut store, &req)
         .map_err(|e| anyhow!("on_request failed: {e}"))?;
 
