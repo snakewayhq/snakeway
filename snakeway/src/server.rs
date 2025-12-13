@@ -1,8 +1,9 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use pingora::prelude::*;
 use pingora::server::Server;
 
 use crate::config::SnakewayConfig;
+use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::SnakewayGateway;
 
 /// Run the Pingora server with the given configuration.
@@ -19,11 +20,17 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
 
     let (host, port) = parse_upstream(&route.upstream)?;
 
+    let mut registry = DeviceRegistry::new();
+    registry.load_from_config(&config);
+    log::info!("Loaded device count = {}", registry.all().len());
+
     let gateway = SnakewayGateway {
         upstream_host: host,
         upstream_port: port,
         use_tls: false,     // HTTP only
         sni: String::new(), // no SNI (yet)
+
+        devices: registry,
     };
 
     // Build HTTP proxy service from Pingora.

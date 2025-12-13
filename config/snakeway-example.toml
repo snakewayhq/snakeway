@@ -3,3 +3,15 @@ listen = "0.0.0.0:8080"
 
 [[routes]]
 upstream = "127.0.0.1:3000"
+
+# Devices are loaded and executed top to bottom
+[[devices]]
+name = "example"
+type = "wasm"
+path = "plugins/snakeway_wasm_example.wasm"
+enabled = true
+
+[[devices]]
+name = "access-log"
+kind = "builtin"
+builtin = "structured_logging"

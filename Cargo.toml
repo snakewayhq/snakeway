@@ -1,5 +1,9 @@
 [workspace]
 members = ["snakeway"]
+default-members = ["snakeway"]
+exclude = [
+    "snakeway-wit",
+]
 resolver = "2"
 
 [profile.dev]
@@ -17,10 +21,16 @@ incremental = false         # Ensure no incremental compilation
 
 anyhow = "1.0"
 async-trait = "0.1"
+bytes = "1.11"
 clap = "4.5"
 config = "0.15"
+http = "1.4"
 log = "0.4"
 pingora = "0.6"
+pingora-http = "0.6"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.145"
 toml = "0.9"
 tracing-subscriber = "0.3"
+wasmtime = "39.0"
+wit-bindgen = "0.49"
