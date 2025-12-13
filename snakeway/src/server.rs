@@ -1,12 +1,9 @@
 use anyhow::{anyhow, Result};
 use pingora::prelude::*;
 use pingora::server::Server;
-use std::sync::Arc;
 
 use crate::config::SnakewayConfig;
-use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::registry::DeviceRegistry;
-use crate::device::wasm::wasm_device::WasmDevice;
 use crate::proxy::SnakewayGateway;
 
 /// Run the Pingora server with the given configuration.
@@ -24,22 +21,8 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
     let (host, port) = parse_upstream(&route.upstream)?;
 
     let mut registry = DeviceRegistry::new();
-
-    registry.register(Arc::new(StructuredLoggingDevice::new()));
-    match WasmDevice::load("plugins/snakeway_wasm_example.wasm") {
-        Ok(dev) => registry.register(Arc::new(dev)),
-        Err(e) => {
-            log::error!("Failed to load Wasm device: {e}");
-        }
-    }
-
+    registry.load_from_config(&config);
     log::info!("Loaded device count = {}", registry.all().len());
-    for (i, dev) in registry.all().iter().enumerate() {
-        log::info!(
-            "Device {i}: {:?}",
-            std::any::type_name::<String>().to_string()
-        );
-    }
 
     let gateway = SnakewayGateway {
         upstream_host: host,
