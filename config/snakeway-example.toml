@@ -1,17 +1,108 @@
 [server]
+# Address Snakeway listens on
 listen = "0.0.0.0:8080"
 
+
 [[routes]]
+# Upstream service Snakeway proxies to
 upstream = "127.0.0.1:3000"
 
-# Devices are loaded and executed top to bottom
+
+# ---------------------------------------------------------------------
+# Devices are loaded and executed top-to-bottom.
+# Builtin devices run in-process; WASM devices are sandboxed.
+# ---------------------------------------------------------------------
+
 [[devices]]
 name = "example"
-type = "wasm"
+kind = "wasm"
 path = "plugins/snakeway_wasm_example.wasm"
 enabled = true
+
+
+# ---------------------------------------------------------------------
+# Structured Logging Device
+#
+# Emits structured tracing events for request/response lifecycle hooks.
+# Output format (JSON vs pretty) is NOT controlled here — that is handled
+# globally by tracing_subscriber and by the `snakeway logs` CLI.
+# ---------------------------------------------------------------------
 
 [[devices]]
 name = "access-log"
 kind = "builtin"
 builtin = "structured_logging"
+enabled = true
+
+# Log level for events emitted by this device.
+# This is independent of the global log filter.
+#
+# Allowed values:
+#   "trace", "debug", "info", "warn", "error"
+#
+# Typical values:
+#   - "info"  (default, production-safe)
+#   - "debug" (local debugging)
+level = "info"
+
+
+# Whether to include HTTP headers in log events.
+#
+# WARNING:
+#   Headers are often noisy and may contain sensitive data
+#   (Authorization, Cookies, etc).
+#
+# Recommendation:
+#   - false in production
+#   - true only for debugging
+include_headers = false
+
+
+# Header names to redact if headers are included.
+# Matching is case-insensitive.
+#
+# Redacted headers will appear as "<redacted>".
+#
+# This option is ignored unless `include_headers = true`.
+redact_headers = [
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "x-api-token",
+]
+
+
+# Which specific lifecycle events should emit logs.
+#
+# If omitted, ALL events are logged.
+#
+# Allowed values:
+#   - "request"        (on_request)
+#   - "before_proxy"  (before upstream call)
+#   - "after_proxy"   (after upstream response)
+#   - "response"      (before response is sent to client)
+#
+# Common patterns:
+#   - ["request", "response"]  (access-log style)
+#   - ["response"]             (minimal logging)
+events = [
+    "request",
+    "response"
+]
+
+
+# High-level phases to log.
+#
+# This is a coarse filter that groups lifecycle hooks:
+#
+#   "request"  → on_request, before_proxy
+#   "response" → after_proxy, on_response
+#
+# If omitted, ALL phases are enabled.
+#
+# This is useful for quickly reducing log volume without
+# listing individual events.
+phases = [
+    "request",
+    "response"
+]

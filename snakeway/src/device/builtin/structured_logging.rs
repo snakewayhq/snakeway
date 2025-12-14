@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::{result::DeviceResult, Device};
 use anyhow::{Context, Result};
+use http::HeaderMap;
 use serde::Deserialize;
 use tracing::{debug, error, info, trace, warn};
 
@@ -117,12 +119,35 @@ impl StructuredLoggingDevice {
         }
     }
 
-    fn maybe_headers<'a, H>(&self, headers: &'a H) -> Option<&'a H> {
+    fn maybe_headers(&self, headers: &HeaderMap) -> Option<BTreeMap<String, String>> {
         if self.include_headers {
-            Some(headers)
+            Some(self.redact_headers(headers))
         } else {
             None
         }
+    }
+
+    fn redact_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
+        let mut out = BTreeMap::new();
+
+        for (name, value) in headers.iter() {
+            let name_str = name.as_str().to_lowercase();
+
+            let redacted = self.redact_headers.contains(&name_str);
+
+            let val = if redacted {
+                "<redacted>".to_string()
+            } else {
+                match value.to_str() {
+                    Ok(v) => v.to_string(),
+                    Err(_) => "<binary>".to_string(),
+                }
+            };
+
+            out.insert(name_str, val);
+        }
+
+        out
     }
 }
 
