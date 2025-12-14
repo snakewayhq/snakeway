@@ -1,10 +1,29 @@
 interface policy {
+  record header {
+    name: string,
+    value: string,
+  }
+
   record request {
     path: string,
+    headers: list<header>,
   }
 
   record response {
     status: u16,
+    headers: list<header>,
+  }
+
+  record request-patch {
+    set-path: option<string>,
+    set-headers: list<header>,
+    remove-headers: list<string>,
+  }
+
+  record response-patch {
+    set-status: option<u16>,
+    set-headers: list<header>,
+    remove-headers: list<string>,
   }
 
   enum decision {
@@ -12,8 +31,18 @@ interface policy {
     block,
   }
 
-  on-request: func(req: request) -> decision;
-  before-proxy: func(req: request) -> decision;
-  after-proxy: func(resp: response) -> decision;
-  on-response: func(resp: response) -> decision;
+  record request-result {
+    decision: decision,
+    patch: option<request-patch>,
+  }
+
+  record response-result {
+    decision: decision,
+    patch: option<response-patch>,
+  }
+
+  on-request: func(req: request) -> request-result;
+  before-proxy: func(req: request) -> request-result;
+  after-proxy: func(resp: response) -> response-result;
+  on-response: func(resp: response) -> response-result;
 }

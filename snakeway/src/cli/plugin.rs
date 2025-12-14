@@ -1,16 +1,16 @@
+use crate::device::wasm::bindings::{
+    exports::snakeway::device::policy::{Decision, Request},
+    Snakeway,
+};
+use crate::device::wasm::wasm_device::HostState;
 use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
-use serde::Serialize;
+use wasmtime::component::ResourceTable;
 use wasmtime::{
-    Engine,
-    component::{Component, Linker},
+    component::{Component, Linker}, Engine,
     Store,
 };
-
-use crate::device::wasm::bindings::{
-    Snakeway,
-    exports::snakeway::device::policy::{Decision, Request},
-};
+use wasmtime_wasi::{p2, WasiCtxBuilder};
 
 #[derive(Subcommand, Debug)]
 pub enum PluginCmd {
@@ -36,11 +36,6 @@ pub struct PluginTestArgs {
     pub verbose: bool,
 }
 
-#[derive(Serialize)]
-struct RequestCtxDto {
-    path: String,
-}
-
 pub fn run(cmd: PluginCmd) -> Result<()> {
     match cmd {
         PluginCmd::Test(args) => run_test(args),
@@ -52,24 +47,40 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
     let component = Component::from_file(&engine, &args.file)
         .map_err(|e| anyhow!("failed to load component: {e}"))?;
 
-    let linker = Linker::new(&engine);
-    let mut store = Store::new(&engine, ());
+    // Setup linker
+    let mut linker = Linker::new(&engine);
+    p2::add_to_linker_sync(&mut linker)?;
+    let wasi_ctx = WasiCtxBuilder::new().build();
+    let mut store = Store::new(
+        &engine,
+        HostState {
+            table: ResourceTable::new(),
+            wasi: wasi_ctx,
+        },
+    );
 
+    // Setup instance
     let instance = Snakeway::instantiate(&mut store, &component, &linker)
         .map_err(|e| anyhow!("failed to instantiate component: {e}"))?;
 
     let req = Request {
         path: args.path.clone(),
+        headers: vec![
+            // ("host".into(), "example.com".into()),
+        ],
     };
 
-    let decision = instance
-        .snakeway_device_policy()
-        .call_on_request(&mut store, &req)
-        .map_err(|e| anyhow!("on_request failed: {e}"))?;
+    let policy = instance.snakeway_device_policy();
+
+    let result = match args.hook.as_str() {
+        "on_request" => policy.call_on_request(&mut store, &req)?,
+        "before_proxy" => policy.call_before_proxy(&mut store, &req)?,
+        other => return Err(anyhow!("unknown hook: {other}")),
+    };
 
     println!(
         "decision: {}",
-        match decision {
+        match result.decision {
             Decision::Continue => "Continue",
             Decision::Block => "Block",
         }

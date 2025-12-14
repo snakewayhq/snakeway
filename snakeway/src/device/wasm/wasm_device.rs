@@ -1,16 +1,17 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use wasmtime::{
-    component::{Component, Linker},
-    Engine, Store,
+    component::{Component, Linker}, Engine,
+    Store,
 };
 
-use http::{HeaderMap, StatusCode};
-
 use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::{Device, result::DeviceResult};
+use crate::device::core::{result::DeviceResult, Device};
+use http::{HeaderMap, StatusCode};
+use wasmtime::component::ResourceTable;
+use wasmtime_wasi::{p2::add_to_linker_sync, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 use crate::device::wasm::bindings::{
-    exports::snakeway::device::policy::{Decision, Request},
+    exports::snakeway::device::policy::{Decision, Header, Request},
     Snakeway,
 };
 
@@ -30,17 +31,34 @@ impl WasmDevice {
     }
 }
 
+pub(crate) struct HostState {
+    pub(crate) table: ResourceTable,
+    pub(crate) wasi: WasiCtx,
+}
+
+impl WasiView for HostState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            table: &mut self.table,
+            ctx: &mut self.wasi,
+        }
+    }
+}
+
 impl Device for WasmDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        // Per-request execution state
-        let mut store = Store::new(&self.engine, ());
-        let linker = Linker::new(&self.engine);
+        let mut linker = Linker::new(&self.engine);
+        add_to_linker_sync(&mut linker).expect("failed to add WASI to linker");
+        let wasi_ctx = WasiCtxBuilder::new().build();
+        let mut store = Store::new(
+            &self.engine,
+            HostState {
+                table: ResourceTable::new(),
+                wasi: wasi_ctx,
+            },
+        );
 
-        let instance = match Snakeway::instantiate(
-            &mut store,
-            &self.component,
-            &linker,
-        ) {
+        let instance = match Snakeway::instantiate(&mut store, &self.component, &linker) {
             Ok(i) => i,
             Err(e) => {
                 log::error!("WASM instantiate failed: {e}");
@@ -50,16 +68,50 @@ impl Device for WasmDevice {
 
         let req = Request {
             path: ctx.uri.path().to_string(),
+            headers: ctx
+                .headers
+                .iter()
+                .map(|(k, v)| Header {
+                    name: k.to_string(),
+                    value: v.to_str().unwrap_or("").to_string(),
+                })
+                .collect(),
         };
 
-        match instance.snakeway_device_policy().call_on_request(&mut store, &req) {
-            Ok(Decision::Continue) => DeviceResult::Continue,
-            Ok(Decision::Block) => DeviceResult::ShortCircuit(block_403()),
-            Err(e) => {
-                log::error!("WASM device error: {e}");
+        let result = instance
+            .snakeway_device_policy()
+            .call_on_request(&mut store, &req)
+            .map_err(|e| {
+                log::error!("WASM device failed: {e}");
                 DeviceResult::Continue
+            })
+            .expect("on_request failed");
+
+        match result.decision {
+            Decision::Block => {
+                return DeviceResult::ShortCircuit(block_403());
+            }
+            Decision::Continue => {}
+        }
+
+        if let Some(patch) = result.patch {
+            if let Some(new_path) = patch.set_path {
+                ctx.uri = new_path.parse().unwrap();
+            }
+
+            for header in patch.set_headers {
+                ctx.headers.insert(
+                    header.name.parse::<http::HeaderName>().unwrap(),
+                    header.value.parse().unwrap(),
+                );
+            }
+
+            for name in patch.remove_headers {
+                ctx.headers.remove(name.as_str());
             }
         }
+
+        DeviceResult::Continue
     }
 
     fn before_proxy(&self, _ctx: &mut RequestCtx) -> DeviceResult {
