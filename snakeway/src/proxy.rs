@@ -31,7 +31,7 @@ impl ProxyHttp for SnakewayGateway {
     ) -> Result<Box<HttpPeer>> {
         let addr = (self.upstream_host.as_str(), self.upstream_port);
 
-        log::info!("Snakeway: connecting to upstream {:?}", addr);
+        tracing::info!("Snakeway: connecting to upstream {:?}", addr);
 
         let peer = HttpPeer::new(addr, self.use_tls, self.sni.clone());
         Ok(Box::new(peer))
@@ -63,7 +63,7 @@ impl ProxyHttp for SnakewayGateway {
 
             DeviceResult::Error(err) => {
                 // Log and send a 500
-                log::error!("Snakeway device error in on_request: {err}");
+                tracing::error!("Snakeway device error in on_request: {err}");
                 session.respond_error(500).await?;
                 Ok(true)
             }

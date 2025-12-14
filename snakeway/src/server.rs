@@ -22,7 +22,7 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
 
     let mut registry = DeviceRegistry::new();
     registry.load_from_config(&config);
-    log::info!("Loaded device count = {}", registry.all().len());
+    tracing::debug!("Loaded device count = {}", registry.all().len());
 
     let gateway = SnakewayGateway {
         upstream_host: host,

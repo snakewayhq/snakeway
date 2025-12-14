@@ -1,4 +1,5 @@
-use tracing_subscriber::{EnvFilter, fmt};
+use std::io::{self, IsTerminal};
+use tracing_subscriber::{fmt, EnvFilter};
 
 /// Initialize the logging system with JSON formatting and environment-based filtering
 ///
@@ -15,4 +16,18 @@ pub fn init_logging() {
         .json()
         .flatten_event(true)
         .init();
+}
+
+pub fn default_log_mode() -> LogMode {
+    if io::stdout().is_terminal() {
+        LogMode::Pretty
+    } else {
+        LogMode::Raw
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum LogMode {
+    Raw,
+    Pretty,
 }

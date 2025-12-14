@@ -61,7 +61,7 @@ impl Device for WasmDevice {
         let instance = match Snakeway::instantiate(&mut store, &self.component, &linker) {
             Ok(i) => i,
             Err(e) => {
-                log::error!("WASM instantiate failed: {e}");
+                tracing::error!("WASM instantiate failed: {e}");
                 return DeviceResult::Continue;
             }
         };
@@ -82,7 +82,7 @@ impl Device for WasmDevice {
             .snakeway_device_policy()
             .call_on_request(&mut store, &req)
             .map_err(|e| {
-                log::error!("WASM device failed: {e}");
+                tracing::error!("WASM device failed: {e}");
                 DeviceResult::Continue
             })
             .expect("on_request failed");
