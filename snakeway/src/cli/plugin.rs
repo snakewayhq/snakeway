@@ -1,3 +1,4 @@
+use crate::device::wasm::bindings::exports::snakeway::device::policy::Header;
 use crate::device::wasm::bindings::{
     exports::snakeway::device::policy::{Decision, Request},
     Snakeway,
@@ -64,22 +65,29 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
         .map_err(|e| anyhow!("failed to instantiate component: {e}"))?;
 
     let req = Request {
-        // path: args.path.clone(),
-        // original_path: args.path.original_uri.path().to_string(),
-        // route_path: ctx.route_path.clone(),
         route_path: "".to_string(),
         original_path: "".to_string(),
-        headers: vec![
-            // ("host".into(), "example.com".into()),
-        ],
+        headers: vec![Header {
+            name: "foo".to_string(),
+            value: "bar".to_string(),
+        }],
     };
 
     let policy = instance.snakeway_device_policy();
 
     let result = match args.hook.as_str() {
-        "on_request" => policy.call_on_request(&mut store, &req)?,
-        "before_proxy" => policy.call_before_proxy(&mut store, &req)?,
-        other => return Err(anyhow!("unknown hook: {other}")),
+        "on_request" => {
+            println!("calling on_request");
+            policy.call_on_request(&mut store, &req)?
+        }
+        "before_proxy" => {
+            println!("calling before_proxy");
+            policy.call_before_proxy(&mut store, &req)?
+        }
+        other => {
+            println!("unknown hook: {other}");
+            return Err(anyhow!("unknown hook: {other}"));
+        }
     };
 
     println!(
@@ -90,7 +98,14 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
         }
     );
 
-    println!("patch: {}", result.patch.is_some());
+    match result.patch {
+        None => {
+            println!("no patch");
+        }
+        Some(_) => {
+            println!("patch: {:?}", result.patch);
+        }
+    }
 
     Ok(())
 }
