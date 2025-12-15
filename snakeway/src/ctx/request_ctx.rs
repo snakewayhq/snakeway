@@ -1,19 +1,49 @@
 use http::{HeaderMap, Method, Uri};
 
+/// Canonical request context passed through the Snakeway pipeline
 pub struct RequestCtx {
+    /// HTTP method (immutable)
     pub method: Method,
-    pub uri: Uri,
+
+    /// Original URI as received from the client (immutable, for logging/debugging)
+    pub original_uri: Uri,
+
+    /// Path used for routing decisions (mutable by devices before routing)
+    pub route_path: String,
+
+    /// Optional override for the upstream request path
+    pub upstream_path: Option<String>,
+
+    /// Headers (mutable by devices)
     pub headers: HeaderMap,
+
+    /// Request body
     pub body: Vec<u8>,
 }
 
 impl RequestCtx {
     pub fn new(method: Method, uri: Uri, headers: HeaderMap, body: Vec<u8>) -> Self {
+        let route_path = uri.path().to_string();
+
         Self {
             method,
-            uri,
+            original_uri: uri,
+            route_path,
+            upstream_path: None,
             headers,
             body,
         }
+    }
+
+    /// Path used for routing
+    pub fn route_path(&self) -> &str {
+        &self.route_path
+    }
+
+    /// Path used when proxying upstream
+    pub fn upstream_path(&self) -> &str {
+        self.upstream_path
+            .as_deref()
+            .unwrap_or(&self.route_path)
     }
 }

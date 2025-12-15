@@ -12,12 +12,14 @@ CONFIG := "config/snakeway.toml"
 
 
 # -----------------------------------------------------------------------------
-# Tools
+# Tools and docs
 # -----------------------------------------------------------------------------
 
 install-tools:
     cargo install cargo-component cargo-zigbuild wit-bindgen-cli
 
+docs:
+	cd docs && npm run docs:dev
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS

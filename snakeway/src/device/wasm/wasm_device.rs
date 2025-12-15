@@ -1,17 +1,18 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use wasmtime::{
     component::{Component, Linker}, Engine,
     Store,
 };
 
-use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::{result::DeviceResult, Device};
-use http::{HeaderMap, StatusCode};
+use http::{HeaderMap, HeaderName, StatusCode};
 use wasmtime::component::ResourceTable;
 use wasmtime_wasi::{p2::add_to_linker_sync, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
+use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::device::core::{result::DeviceResult, Device};
+
 use crate::device::wasm::bindings::{
-    exports::snakeway::device::policy::{Decision, Header, Request},
+    exports::snakeway::device::policy::{Decision, Header, Request, RequestPatch},
     Snakeway,
 };
 
@@ -22,11 +23,9 @@ pub struct WasmDevice {
 }
 
 impl WasmDevice {
-    /// Load a WASM component from disk
     pub fn load(path: &str) -> Result<Self> {
         let engine = Engine::default();
         let component = Component::from_file(&engine, path)?;
-
         Ok(Self { engine, component })
     }
 }
@@ -49,12 +48,12 @@ impl Device for WasmDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         let mut linker = Linker::new(&self.engine);
         add_to_linker_sync(&mut linker).expect("failed to add WASI to linker");
-        let wasi_ctx = WasiCtxBuilder::new().build();
+
         let mut store = Store::new(
             &self.engine,
             HostState {
                 table: ResourceTable::new(),
-                wasi: wasi_ctx,
+                wasi: WasiCtxBuilder::new().build(),
             },
         );
 
@@ -66,8 +65,10 @@ impl Device for WasmDevice {
             }
         };
 
+        // Build request snapshot for WASM
         let req = Request {
-            path: ctx.uri.path().to_string(),
+            original_path: ctx.original_uri.path().to_string(),
+            route_path: ctx.route_path.clone(),
             headers: ctx
                 .headers
                 .iter()
@@ -78,35 +79,45 @@ impl Device for WasmDevice {
                 .collect(),
         };
 
-        let result = instance
+        let result = match instance
             .snakeway_device_policy()
             .call_on_request(&mut store, &req)
-            .map_err(|e| {
-                tracing::error!("WASM device failed: {e}");
-                DeviceResult::Continue
-            })
-            .expect("on_request failed");
-
-        match result.decision {
-            Decision::Block => {
-                return DeviceResult::ShortCircuit(block_403());
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("WASM on_request failed: {e}");
+                return DeviceResult::Continue;
             }
-            Decision::Continue => {}
+        };
+
+        // Enforce decision
+        if matches!(result.decision, Decision::Block) {
+            return DeviceResult::ShortCircuit(block_403());
         }
 
-        if let Some(patch) = result.patch {
-            if let Some(new_path) = patch.set_path {
-                ctx.uri = new_path.parse().unwrap();
+        // Apply explicit patch intent
+        if let Some(RequestPatch {
+            set_route_path,
+            set_upstream_path,
+            set_headers,
+            remove_headers,
+        }) = result.patch
+        {
+            if let Some(path) = set_route_path {
+                ctx.route_path = path;
             }
 
-            for header in patch.set_headers {
-                ctx.headers.insert(
-                    header.name.parse::<http::HeaderName>().unwrap(),
-                    header.value.parse().unwrap(),
-                );
+            if let Some(path) = set_upstream_path {
+                ctx.upstream_path = Some(path);
             }
 
-            for name in patch.remove_headers {
+            for header in set_headers {
+                if let (Ok(name), Ok(value)) = (header.name.parse::<HeaderName>(), header.value.parse()) {
+                    ctx.headers.insert(name, value);
+                }
+            }
+
+            for name in remove_headers {
                 ctx.headers.remove(name.as_str());
             }
         }

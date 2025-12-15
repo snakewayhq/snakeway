@@ -163,7 +163,7 @@ impl Device for StructuredLoggingDevice {
             self.level,
             event = "request",
             method = %ctx.method,
-            uri = %ctx.uri,
+            uri = %ctx.original_uri,
             headers = ?headers,
         );
 
@@ -181,7 +181,7 @@ impl Device for StructuredLoggingDevice {
             self.level,
             event = "before_proxy",
             method = %ctx.method,
-            uri = %ctx.uri,
+            uri = %ctx.original_uri,
             headers = ?headers,
         );
 

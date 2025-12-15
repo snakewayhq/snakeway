@@ -64,7 +64,11 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
         .map_err(|e| anyhow!("failed to instantiate component: {e}"))?;
 
     let req = Request {
-        path: args.path.clone(),
+        // path: args.path.clone(),
+        // original_path: args.path.original_uri.path().to_string(),
+        // route_path: ctx.route_path.clone(),
+        route_path: "".to_string(),
+        original_path: "".to_string(),
         headers: vec![
             // ("host".into(), "example.com".into()),
         ],
@@ -85,6 +89,8 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
             Decision::Block => "Block",
         }
     );
+
+    println!("patch: {}", result.patch.is_some());
 
     Ok(())
 }

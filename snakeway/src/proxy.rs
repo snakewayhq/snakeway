@@ -7,7 +7,6 @@ use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 
-/// Simple "one upstream" gateway
 pub struct SnakewayGateway {
     pub upstream_host: String,
     pub upstream_port: u16,
@@ -19,9 +18,17 @@ pub struct SnakewayGateway {
 
 #[async_trait]
 impl ProxyHttp for SnakewayGateway {
-    type CTX = ();
+    type CTX = RequestCtx;
 
-    fn new_ctx(&self) -> Self::CTX {}
+    fn new_ctx(&self) -> Self::CTX {
+        // Placeholder; real initialization happens in request_filter
+        RequestCtx::new(
+            http::Method::GET,
+            "/".parse().unwrap(),
+            http::HeaderMap::new(),
+            Vec::new(),
+        )
+    }
 
     /// Simple upstream peer selection
     async fn upstream_peer(
@@ -30,40 +37,36 @@ impl ProxyHttp for SnakewayGateway {
         _ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
         let addr = (self.upstream_host.as_str(), self.upstream_port);
-
-        tracing::info!("Snakeway: connecting to upstream {:?}", addr);
-
         let peer = HttpPeer::new(addr, self.use_tls, self.sni.clone());
         Ok(Box::new(peer))
     }
 
     /// Snakeway `on_request` --> Pingora `request_filter`
+    /// ACCEPT → INSPECT → DECIDE → REWRITE
     async fn request_filter(
         &self,
         session: &mut Session,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> Result<bool> {
         let req = session.req_header();
 
-        let mut ctx = RequestCtx::new(
+        *ctx = RequestCtx::new(
             req.method.clone(),
             req.uri.clone(),
             req.headers.clone(),
-            Vec::new(), // no body handling yet
+            Vec::new(),
         );
 
-        match DevicePipeline::run_on_request(self.devices.all(), &mut ctx) {
+        match DevicePipeline::run_on_request(self.devices.all(), ctx) {
             DeviceResult::Continue => Ok(false),
 
-            DeviceResult::ShortCircuit(_resp_ctx) => {
-                // 403 = "blocked by device" for now
-                session.respond_error(403).await?;
+            DeviceResult::ShortCircuit(resp) => {
+                session.respond_error(resp.status.as_u16()).await?;
                 Ok(true)
             }
 
             DeviceResult::Error(err) => {
-                // Log and send a 500
-                tracing::error!("Snakeway device error in on_request: {err}");
+                tracing::error!("device error in on_request: {err}");
                 session.respond_error(500).await?;
                 Ok(true)
             }
@@ -74,22 +77,17 @@ impl ProxyHttp for SnakewayGateway {
     async fn upstream_request_filter(
         &self,
         _session: &mut Session,
-        upstream_request: &mut RequestHeader,
-        _ctx: &mut Self::CTX,
+        upstream: &mut RequestHeader,
+        ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let mut ctx = RequestCtx::new(
-            upstream_request.method.clone(),
-            upstream_request.uri.clone(),
-            upstream_request.headers.clone(),
-            Vec::new(),
-        );
-
-        match DevicePipeline::run_before_proxy(self.devices.all(), &mut ctx) {
+        match DevicePipeline::run_before_proxy(self.devices.all(), ctx) {
             DeviceResult::Continue | DeviceResult::ShortCircuit(_) | DeviceResult::Error(_) => {
-                // Propagate method/URI changes
-                // Note: Headers are effectively read-only in this hook
-                upstream_request.set_method(ctx.method);
-                upstream_request.set_uri(ctx.uri);
+                // Apply upstream intent explicitly
+                upstream.set_method(ctx.method.clone());
+
+                let path = ctx.upstream_path();
+                upstream.set_uri(path.parse().unwrap());
+
                 Ok(())
             }
         }
@@ -99,20 +97,18 @@ impl ProxyHttp for SnakewayGateway {
     fn upstream_response_filter(
         &self,
         _session: &mut Session,
-        upstream_response: &mut ResponseHeader,
+        upstream: &mut ResponseHeader,
         _ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let mut ctx = ResponseCtx::new(
-            upstream_response.status,
-            upstream_response.headers.clone(),
+        let mut resp_ctx = ResponseCtx::new(
+            upstream.status,
+            upstream.headers.clone(),
             Vec::new(),
         );
 
-        match DevicePipeline::run_after_proxy(self.devices.all(), &mut ctx) {
+        match DevicePipeline::run_after_proxy(self.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue | DeviceResult::ShortCircuit(_) | DeviceResult::Error(_) => {
-                // Can update status: this is supported in Pingora 0.6.x
-                upstream_response.set_status(ctx.status)?;
-                // Headers remain read-only in this phase
+                upstream.set_status(resp_ctx.status)?;
                 Ok(())
             }
         }
@@ -122,18 +118,18 @@ impl ProxyHttp for SnakewayGateway {
     async fn response_filter(
         &self,
         _session: &mut Session,
-        upstream_response: &mut ResponseHeader,
+        upstream: &mut ResponseHeader,
         _ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let mut ctx = ResponseCtx::new(
-            upstream_response.status,
-            upstream_response.headers.clone(),
+        let mut resp_ctx = ResponseCtx::new(
+            upstream.status,
+            upstream.headers.clone(),
             Vec::new(),
         );
 
-        match DevicePipeline::run_on_response(self.devices.all(), &mut ctx) {
+        match DevicePipeline::run_on_response(self.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue | DeviceResult::ShortCircuit(_) | DeviceResult::Error(_) => {
-                upstream_response.set_status(ctx.status)?;
+                upstream.set_status(resp_ctx.status)?;
                 Ok(())
             }
         }
