@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::{result::DeviceResult, Device};
+use crate::http_event::HttpEvent;
 use anyhow::{Context, Result};
 use http::HeaderMap;
 use serde::Deserialize;
+use std::collections::BTreeMap;
 use tracing::{debug, error, info, trace, warn};
-
 // ----------------------------------------------------------------------------
 // Logging level & config enums
 // ----------------------------------------------------------------------------
@@ -119,15 +119,26 @@ impl StructuredLoggingDevice {
         }
     }
 
-    fn maybe_headers(&self, headers: &HeaderMap) -> Option<BTreeMap<String, String>> {
+    fn headers_json(&self, headers: &HeaderMap) -> Option<String> {
+        if !self.include_headers {
+            return None;
+        }
+
+        let headers = self.build_redacted_headers(headers);
+
+        serde_json::to_string(&headers).ok()
+    }
+
+    fn maybe_headers(&self, headers: &HeaderMap) -> String {
         if self.include_headers {
-            Some(self.redact_headers(headers))
+            let headers = self.build_redacted_headers(headers);
+            serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string())
         } else {
-            None
+            "".to_string()
         }
     }
 
-    fn redact_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
+    fn build_redacted_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
 
         for (name, value) in headers.iter() {
@@ -149,6 +160,37 @@ impl StructuredLoggingDevice {
 
         out
     }
+
+    fn emit_http_event(
+        &self,
+        event: HttpEvent,
+        method: Option<&str>,
+        uri: Option<&str>,
+        status: Option<&str>,
+        headers: &HeaderMap,
+    ) {
+        match self.headers_json(headers) {
+            Some(headers) => {
+                emit!(
+                    self.level,
+                    event = %event.as_str(),
+                    method = method,
+                    uri = uri,
+                    status = status,
+                    headers = %headers,
+                );
+            }
+            None => {
+                emit!(
+                    self.level,
+                    event = %event.as_str(),
+                    method = method,
+                    uri = uri,
+                    status = status,
+                );
+            }
+        }
+    }
 }
 
 impl Device for StructuredLoggingDevice {
@@ -157,14 +199,12 @@ impl Device for StructuredLoggingDevice {
             return DeviceResult::Continue;
         }
 
-        let headers = self.maybe_headers(&ctx.headers);
-
-        emit!(
-            self.level,
-            event = "request",
-            method = %ctx.method,
-            uri = %ctx.original_uri,
-            headers = ?headers,
+        self.emit_http_event(
+            HttpEvent::Request,
+            Some(ctx.method.as_str()),
+            Some(&ctx.original_uri.to_string()),
+            None,
+            &ctx.headers,
         );
 
         DeviceResult::Continue
@@ -175,14 +215,12 @@ impl Device for StructuredLoggingDevice {
             return DeviceResult::Continue;
         }
 
-        let headers = self.maybe_headers(&ctx.headers);
-
-        emit!(
-            self.level,
-            event = "before_proxy",
-            method = %ctx.method,
-            uri = %ctx.original_uri,
-            headers = ?headers,
+        self.emit_http_event(
+            HttpEvent::BeforeProxy,
+            Some(ctx.method.as_str()),
+            Some(&ctx.original_uri.to_string()),
+            None,
+            &ctx.headers,
         );
 
         DeviceResult::Continue
@@ -193,13 +231,12 @@ impl Device for StructuredLoggingDevice {
             return DeviceResult::Continue;
         }
 
-        let headers = self.maybe_headers(&ctx.headers);
-
-        emit!(
-            self.level,
-            event = "after_proxy",
-            status = %ctx.status,
-            headers = ?headers,
+        self.emit_http_event(
+            HttpEvent::AfterProxy,
+            None,
+            None,
+            Some(ctx.status.as_str()),
+            &ctx.headers,
         );
 
         DeviceResult::Continue
@@ -217,6 +254,14 @@ impl Device for StructuredLoggingDevice {
             event = "response",
             status = %ctx.status,
             headers = ?headers,
+        );
+
+        self.emit_http_event(
+            HttpEvent::Response,
+            None,
+            None,
+            Some(ctx.status.as_str()),
+            &ctx.headers,
         );
 
         DeviceResult::Continue

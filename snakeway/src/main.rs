@@ -5,6 +5,7 @@ mod device;
 mod logging;
 mod proxy;
 mod server;
+mod http_event;
 
 use crate::cli::logs::run_logs;
 use crate::logging::{init_logging, LogMode};

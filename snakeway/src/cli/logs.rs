@@ -63,8 +63,6 @@ fn render_generic_event(event: &Value, level: &str, mode: LogMode) {
 }
 
 fn render_snakeway_event(event: &Value, level: &str, mode: LogMode) {
-    // let name = event.get("event").and_then(Value::as_str).unwrap_or("event");
-
     let name = event
         .get("event")
         .and_then(Value::as_str)
