@@ -1,6 +1,7 @@
 use http::{HeaderMap, Method, Uri};
 
 /// Canonical request context passed through the Snakeway pipeline
+#[derive(Debug)]
 pub struct RequestCtx {
     /// HTTP method (immutable)
     pub method: Method,

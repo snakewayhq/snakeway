@@ -1,17 +1,8 @@
-use crate::device::wasm::bindings::exports::snakeway::device::policy::Header;
-use crate::device::wasm::bindings::{
-    exports::snakeway::device::policy::{Decision, Request},
-    Snakeway,
-};
-use crate::device::wasm::wasm_device::HostState;
-use anyhow::{anyhow, Result};
+use crate::ctx::RequestCtx;
+use crate::device::core::Device;
+use crate::device::wasm::wasm_device::WasmDevice;
+use anyhow::{anyhow, Context, Result};
 use clap::{Args, Subcommand};
-use wasmtime::component::ResourceTable;
-use wasmtime::{
-    component::{Component, Linker}, Engine,
-    Store,
-};
-use wasmtime_wasi::{p2, WasiCtxBuilder};
 
 #[derive(Subcommand, Debug)]
 pub enum PluginCmd {
@@ -31,10 +22,6 @@ pub struct PluginTestArgs {
     /// Request path to send to the plugin (used by on_request / before_proxy)
     #[arg(long, default_value = "/")]
     pub path: String,
-
-    /// Print verbose info
-    #[arg(long)]
-    pub verbose: bool,
 }
 
 pub fn run(cmd: PluginCmd) -> Result<()> {
@@ -44,68 +31,35 @@ pub fn run(cmd: PluginCmd) -> Result<()> {
 }
 
 fn run_test(args: PluginTestArgs) -> Result<()> {
-    let engine = Engine::default();
-    let component = Component::from_file(&engine, &args.file)
-        .map_err(|e| anyhow!("failed to load component: {e}"))?;
+    println!("Loading WASM device {} with hook {} against path {}", args.file, args.hook, args.path);
+    let device = WasmDevice::load(&args.file)
+        .with_context(|| format!("failed to load WASM device '{}'", args.file))?;
 
-    // Setup linker
-    let mut linker = Linker::new(&engine);
-    p2::add_to_linker_sync(&mut linker)?;
-    let wasi_ctx = WasiCtxBuilder::new().build();
-    let mut store = Store::new(
-        &engine,
-        HostState {
-            table: ResourceTable::new(),
-            wasi: wasi_ctx,
-        },
+    let ctx = &mut RequestCtx::new(
+        http::Method::GET,
+        args.path.parse()?,
+        http::HeaderMap::new(),
+        Vec::new(),
     );
 
-    // Setup instance
-    let instance = Snakeway::instantiate(&mut store, &component, &linker)
-        .map_err(|e| anyhow!("failed to instantiate component: {e}"))?;
-
-    let req = Request {
-        route_path: "".to_string(),
-        original_path: "".to_string(),
-        headers: vec![Header {
-            name: "foo".to_string(),
-            value: "bar".to_string(),
-        }],
-    };
-
-    let policy = instance.snakeway_device_policy();
-
+    println!("Pre-device Request Context: {:#?}", ctx);
+    println!("Running device hook...");
     let result = match args.hook.as_str() {
         "on_request" => {
             println!("calling on_request");
-            policy.call_on_request(&mut store, &req)?
+            device.on_request(ctx)
         }
         "before_proxy" => {
             println!("calling before_proxy");
-            policy.call_before_proxy(&mut store, &req)?
+            device.before_proxy(ctx)
         }
         other => {
             println!("unknown hook: {other}");
             return Err(anyhow!("unknown hook: {other}"));
         }
     };
-
-    println!(
-        "decision: {}",
-        match result.decision {
-            Decision::Continue => "Continue",
-            Decision::Block => "Block",
-        }
-    );
-
-    match result.patch {
-        None => {
-            println!("no patch");
-        }
-        Some(_) => {
-            println!("patch: {:?}", result.patch);
-        }
-    }
-
+    println!("Finished device hook.");
+    println!("Post-device Request Context: {:#?}", ctx);
+    println!("Device Result: {:#?}", result);
     Ok(())
 }
