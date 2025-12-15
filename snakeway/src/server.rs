@@ -21,7 +21,7 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
     let (host, port) = parse_upstream(&route.upstream)?;
 
     let mut registry = DeviceRegistry::new();
-    registry.load_from_config(&config);
+    registry.load_from_config(&config)?;
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
     let gateway = SnakewayGateway {
