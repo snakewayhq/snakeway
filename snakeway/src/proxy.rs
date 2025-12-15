@@ -42,7 +42,7 @@ impl ProxyHttp for SnakewayGateway {
     }
 
     /// Snakeway `on_request` --> Pingora `request_filter`
-    /// ACCEPT → INSPECT → DECIDE → REWRITE
+    /// ACCEPT --> INSPECT --> DECIDE --> REWRITE
     async fn request_filter(
         &self,
         session: &mut Session,
