@@ -19,33 +19,33 @@ pub trait Device: Send + Sync {
     /// Called when a request is first received, before any processing.
     ///
     /// This is the first opportunity to inspect or modify the incoming request.
-    fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+    fn on_request(&self, _ctx: &mut RequestCtx) -> DeviceResult {
         DeviceResult::Continue
     }
 
     /// Called immediately before the request is proxied to the upstream server.
     ///
     /// Last chance to modify the request before it's sent upstream.
-    fn before_proxy(&self, ctx: &mut RequestCtx) -> DeviceResult {
+    fn before_proxy(&self, _ctx: &mut RequestCtx) -> DeviceResult {
         DeviceResult::Continue
     }
 
     /// Called after receiving the response from upstream, but before processing.
     ///
     /// First opportunity to inspect or modify the upstream response.
-    fn after_proxy(&self, ctx: &mut ResponseCtx) -> DeviceResult {
+    fn after_proxy(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
         DeviceResult::Continue
     }
 
     /// Called just before sending the response back to the client.
     ///
     /// Final opportunity to modify the response before it's sent to the client.
-    fn on_response(&self, ctx: &mut ResponseCtx) -> DeviceResult {
+    fn on_response(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
         DeviceResult::Continue
     }
 
     /// Called when an error occurs during request processing.
     ///
-    /// Provides opportunity to handle or log errors in the pipeline.
+    /// Provides an opportunity to handle or log errors in the pipeline.
     fn on_error(&self, _err: &DeviceError) {}
 }

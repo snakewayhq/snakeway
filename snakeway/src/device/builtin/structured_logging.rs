@@ -1,4 +1,5 @@
 use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::device::core::errors::DeviceError;
 use crate::device::core::{result::DeviceResult, Device};
 use crate::http_event::HttpEvent;
 use anyhow::{Context, Result};
@@ -129,15 +130,6 @@ impl StructuredLoggingDevice {
         serde_json::to_string(&headers).ok()
     }
 
-    fn maybe_headers(&self, headers: &HeaderMap) -> String {
-        if self.include_headers {
-            let headers = self.build_redacted_headers(headers);
-            serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string())
-        } else {
-            "".to_string()
-        }
-    }
-
     fn build_redacted_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
 
@@ -247,15 +239,6 @@ impl Device for StructuredLoggingDevice {
             return DeviceResult::Continue;
         }
 
-        let headers = self.maybe_headers(&ctx.headers);
-
-        emit!(
-            self.level,
-            event = "response",
-            status = %ctx.status,
-            headers = ?headers,
-        );
-
         self.emit_http_event(
             HttpEvent::Response,
             None,
@@ -265,5 +248,14 @@ impl Device for StructuredLoggingDevice {
         );
 
         DeviceResult::Continue
+    }
+
+    fn on_error(&self, err: &DeviceError) {
+        emit!(
+            self.level,
+            event = "device_error",
+            fatal = err.fatal,
+            message = %err.message,
+        );
     }
 }
