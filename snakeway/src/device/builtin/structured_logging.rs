@@ -130,15 +130,6 @@ impl StructuredLoggingDevice {
         serde_json::to_string(&headers).ok()
     }
 
-    fn maybe_headers(&self, headers: &HeaderMap) -> String {
-        if self.include_headers {
-            let headers = self.build_redacted_headers(headers);
-            serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string())
-        } else {
-            "".to_string()
-        }
-    }
-
     fn build_redacted_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
 
