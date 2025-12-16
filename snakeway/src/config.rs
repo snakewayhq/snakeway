@@ -53,6 +53,7 @@ fn default_enabled() -> bool {
 pub struct SnakewayConfig {
     pub server: ServerConfig,
     pub routes: Vec<RouteConfig>,
+    #[serde(default)]
     pub devices: Vec<DeviceConfig>,
 }
 
