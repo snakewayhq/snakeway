@@ -31,7 +31,7 @@ pub fn run(cmd: PluginCmd) -> Result<()> {
 }
 
 fn run_test(args: PluginTestArgs) -> Result<()> {
-    println!("Loading WASM device {} with hook {} against path {}", args.file, args.hook, args.path);
+    tracing::info!("Loading WASM device {} with hook {} against path {}", args.file, args.hook, args.path);
     let device = WasmDevice::load(&args.file)
         .with_context(|| format!("failed to load WASM device '{}'", args.file))?;
 
@@ -42,24 +42,24 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
         Vec::new(),
     );
 
-    println!("Pre-device Request Context: {:#?}", ctx);
-    println!("Running device hook...");
+    tracing::info!("Pre-device Request Context: {:#?}", ctx);
+    tracing::info!("Running device hook...");
     let result = match args.hook.as_str() {
         "on_request" => {
-            println!("calling on_request");
+            tracing::info!("calling on_request");
             device.on_request(ctx)
         }
         "before_proxy" => {
-            println!("calling before_proxy");
+            tracing::info!("calling before_proxy");
             device.before_proxy(ctx)
         }
         other => {
-            println!("unknown hook: {other}");
+            tracing::info!("unknown hook: {other}");
             return Err(anyhow!("unknown hook: {other}"));
         }
     };
-    println!("Finished device hook.");
-    println!("Post-device Request Context: {:#?}", ctx);
-    println!("Device Result: {:#?}", result);
+    tracing::info!("Finished device hook.");
+    tracing::info!("Post-device Request Context: {:#?}", ctx);
+    tracing::info!("Device Result: {:#?}", result);
     Ok(())
 }
