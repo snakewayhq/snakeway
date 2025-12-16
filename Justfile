@@ -10,18 +10,37 @@ default: build
 
 CONFIG := "config/snakeway.toml"
 
-
 # -----------------------------------------------------------------------------
-# Tools
+# Tools and docs
 # -----------------------------------------------------------------------------
 
 install-tools:
     cargo install cargo-component cargo-zigbuild wit-bindgen-cli
 
+docs:
+	cd docs && npm run docs:dev
+
+# -----------------------------------------------------------------------------
+# Debugging
+# -----------------------------------------------------------------------------
+
+# Show max vs used file descriptors
+debug-file-descriptors:
+    @echo "Max file descriptors:"
+    @ulimit -n
+    @echo "\nCurrent descriptors in use:"
+    @lsof -p $(pgrep snakeway) | wc -l
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS
 # -----------------------------------------------------------------------------
+
+# Create WIT bindings for example WASM device
+generate-wit-bindings:
+    @echo "Generate bindings for WASM devices"
+    wit-bindgen rust ./snakeway-wit/wit \
+      --world snakeway \
+      --out-dir ./snakeway-wit/src/
 
 # Build debug binary
 build:

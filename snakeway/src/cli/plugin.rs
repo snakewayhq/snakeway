@@ -1,16 +1,8 @@
-use anyhow::{anyhow, Result};
+use crate::ctx::RequestCtx;
+use crate::device::core::Device;
+use crate::device::wasm::wasm_device::WasmDevice;
+use anyhow::{anyhow, Context, Result};
 use clap::{Args, Subcommand};
-use serde::Serialize;
-use wasmtime::{
-    Engine,
-    component::{Component, Linker},
-    Store,
-};
-
-use crate::device::wasm::bindings::{
-    Snakeway,
-    exports::snakeway::device::policy::{Decision, Request},
-};
 
 #[derive(Subcommand, Debug)]
 pub enum PluginCmd {
@@ -30,15 +22,6 @@ pub struct PluginTestArgs {
     /// Request path to send to the plugin (used by on_request / before_proxy)
     #[arg(long, default_value = "/")]
     pub path: String,
-
-    /// Print verbose info
-    #[arg(long)]
-    pub verbose: bool,
-}
-
-#[derive(Serialize)]
-struct RequestCtxDto {
-    path: String,
 }
 
 pub fn run(cmd: PluginCmd) -> Result<()> {
@@ -48,32 +31,35 @@ pub fn run(cmd: PluginCmd) -> Result<()> {
 }
 
 fn run_test(args: PluginTestArgs) -> Result<()> {
-    let engine = Engine::default();
-    let component = Component::from_file(&engine, &args.file)
-        .map_err(|e| anyhow!("failed to load component: {e}"))?;
+    tracing::info!("Loading WASM device {} with hook {} against path {}", args.file, args.hook, args.path);
+    let device = WasmDevice::load(&args.file)
+        .with_context(|| format!("failed to load WASM device '{}'", args.file))?;
 
-    let linker = Linker::new(&engine);
-    let mut store = Store::new(&engine, ());
-
-    let instance = Snakeway::instantiate(&mut store, &component, &linker)
-        .map_err(|e| anyhow!("failed to instantiate component: {e}"))?;
-
-    let req = Request {
-        path: args.path.clone(),
-    };
-
-    let decision = instance
-        .snakeway_device_policy()
-        .call_on_request(&mut store, &req)
-        .map_err(|e| anyhow!("on_request failed: {e}"))?;
-
-    println!(
-        "decision: {}",
-        match decision {
-            Decision::Continue => "Continue",
-            Decision::Block => "Block",
-        }
+    let ctx = &mut RequestCtx::new(
+        http::Method::GET,
+        args.path.parse()?,
+        http::HeaderMap::new(),
+        Vec::new(),
     );
 
+    tracing::info!("Pre-device Request Context: {:#?}", ctx);
+    tracing::info!("Running device hook...");
+    let result = match args.hook.as_str() {
+        "on_request" => {
+            tracing::info!("calling on_request");
+            device.on_request(ctx)
+        }
+        "before_proxy" => {
+            tracing::info!("calling before_proxy");
+            device.before_proxy(ctx)
+        }
+        other => {
+            tracing::info!("unknown hook: {other}");
+            return Err(anyhow!("unknown hook: {other}"));
+        }
+    };
+    tracing::info!("Finished device hook.");
+    tracing::info!("Post-device Request Context: {:#?}", ctx);
+    tracing::info!("Device Result: {:#?}", result);
     Ok(())
 }

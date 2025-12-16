@@ -1,16 +1,18 @@
 use anyhow::Result;
 use wasmtime::{
-    component::{Component, Linker},
-    Engine, Store,
+    component::{Component, Linker}, Engine,
+    Store,
 };
 
-use http::{HeaderMap, StatusCode};
+use http::{HeaderMap, HeaderName, StatusCode};
+use wasmtime::component::ResourceTable;
+use wasmtime_wasi::{p2::add_to_linker_sync, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::{Device, result::DeviceResult};
+use crate::device::core::{result::DeviceResult, Device};
 
 use crate::device::wasm::bindings::{
-    exports::snakeway::device::policy::{Decision, Request},
+    exports::snakeway::device::policy::{Decision, Header, Request, RequestPatch},
     Snakeway,
 };
 
@@ -21,45 +23,106 @@ pub struct WasmDevice {
 }
 
 impl WasmDevice {
-    /// Load a WASM component from disk
     pub fn load(path: &str) -> Result<Self> {
         let engine = Engine::default();
         let component = Component::from_file(&engine, path)?;
-
         Ok(Self { engine, component })
+    }
+}
+
+pub(crate) struct HostState {
+    pub(crate) table: ResourceTable,
+    pub(crate) wasi: WasiCtx,
+}
+
+impl WasiView for HostState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            table: &mut self.table,
+            ctx: &mut self.wasi,
+        }
     }
 }
 
 impl Device for WasmDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        // Per-request execution state
-        let mut store = Store::new(&self.engine, ());
-        let linker = Linker::new(&self.engine);
+        let mut linker = Linker::new(&self.engine);
+        add_to_linker_sync(&mut linker).expect("failed to add WASI to linker");
 
-        let instance = match Snakeway::instantiate(
-            &mut store,
-            &self.component,
-            &linker,
-        ) {
+        let mut store = Store::new(
+            &self.engine,
+            HostState {
+                table: ResourceTable::new(),
+                wasi: WasiCtxBuilder::new().build(),
+            },
+        );
+
+        let instance = match Snakeway::instantiate(&mut store, &self.component, &linker) {
             Ok(i) => i,
             Err(e) => {
-                log::error!("WASM instantiate failed: {e}");
+                tracing::error!("WASM instantiate failed: {e}");
                 return DeviceResult::Continue;
             }
         };
 
+        // Build request snapshot for WASM
         let req = Request {
-            path: ctx.uri.path().to_string(),
+            original_path: ctx.original_uri.path().to_string(),
+            route_path: ctx.route_path.clone(),
+            headers: ctx
+                .headers
+                .iter()
+                .map(|(k, v)| Header {
+                    name: k.to_string(),
+                    value: v.to_str().unwrap_or("").to_string(),
+                })
+                .collect(),
         };
 
-        match instance.snakeway_device_policy().call_on_request(&mut store, &req) {
-            Ok(Decision::Continue) => DeviceResult::Continue,
-            Ok(Decision::Block) => DeviceResult::ShortCircuit(block_403()),
+        let result = match instance
+            .snakeway_device_policy()
+            .call_on_request(&mut store, &req)
+        {
+            Ok(r) => r,
             Err(e) => {
-                log::error!("WASM device error: {e}");
-                DeviceResult::Continue
+                tracing::error!("WASM on_request failed: {e}");
+                return DeviceResult::Continue;
+            }
+        };
+
+        // Enforce decision
+        if matches!(result.decision, Decision::Block) {
+            return DeviceResult::ShortCircuit(block_403());
+        }
+
+        // Apply explicit patch intent
+        if let Some(RequestPatch {
+            set_route_path,
+            set_upstream_path,
+            set_headers,
+            remove_headers,
+        }) = result.patch
+        {
+            if let Some(path) = set_route_path {
+                ctx.route_path = path;
+            }
+
+            if let Some(path) = set_upstream_path {
+                ctx.upstream_path = Some(path);
+            }
+
+            for header in set_headers {
+                if let (Ok(name), Ok(value)) = (header.name.parse::<HeaderName>(), header.value.parse()) {
+                    ctx.headers.insert(name, value);
+                }
+            }
+
+            for name in remove_headers {
+                ctx.headers.remove(name.as_str());
             }
         }
+
+        DeviceResult::Continue
     }
 
     fn before_proxy(&self, _ctx: &mut RequestCtx) -> DeviceResult {
