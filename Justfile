@@ -22,6 +22,17 @@ docs:
 	cd docs && npm run docs:dev
 
 # -----------------------------------------------------------------------------
+# Debugging
+# -----------------------------------------------------------------------------
+
+# Show max vs used file descriptors
+debug-file-descriptors:
+    @echo "Max file descriptors:"
+    @ulimit -n
+    @echo "\nCurrent descriptors in use:"
+    @lsof -p $(pgrep snakeway) | wc -l
+
+# -----------------------------------------------------------------------------
 # BUILD TASKS
 # -----------------------------------------------------------------------------
 
