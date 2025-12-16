@@ -10,5 +10,6 @@ pub enum DeviceResult {
     Respond(ResponseCtx),
 
     /// Error that should invoke on_error handlers
+    #[allow(dead_code)]
     Error(DeviceError),
 }

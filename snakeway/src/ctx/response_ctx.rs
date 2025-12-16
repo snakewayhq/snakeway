@@ -4,6 +4,7 @@ use http::{HeaderMap, StatusCode};
 pub struct ResponseCtx {
     pub status: StatusCode,
     pub headers: HeaderMap,
+    #[allow(dead_code)]
     pub body: Vec<u8>,
 }
 

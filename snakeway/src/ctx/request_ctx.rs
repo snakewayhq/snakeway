@@ -18,6 +18,7 @@ pub struct RequestCtx {
     /// Headers (mutable by devices)
     pub headers: HeaderMap,
 
+    #[allow(dead_code)]
     /// Request body
     pub body: Vec<u8>,
 }
@@ -34,11 +35,6 @@ impl RequestCtx {
             headers,
             body,
         }
-    }
-
-    /// Path used for routing
-    pub fn route_path(&self) -> &str {
-        &self.route_path
     }
 
     /// Path used when proxying upstream
