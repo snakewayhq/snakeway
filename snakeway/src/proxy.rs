@@ -87,7 +87,11 @@ impl ProxyHttp for SnakewayGateway {
     ) -> Result<()> {
         match DevicePipeline::run_before_proxy(self.devices.all(), ctx) {
             DeviceResult::Continue => {
-                apply_upstream(ctx, upstream);
+                // Applies upstream intent derived from the request context
+                upstream.set_method(ctx.method.clone());
+                let path = ctx.upstream_path();
+                upstream.set_uri(path.parse().unwrap());
+
                 Ok(())
             }
 
@@ -171,12 +175,4 @@ impl ProxyHttp for SnakewayGateway {
         upstream.set_status(resp_ctx.status)?;
         Ok(())
     }
-}
-
-/// Applies upstream intent derived from the request context
-fn apply_upstream(ctx: &mut RequestCtx, upstream: &mut RequestHeader) {
-    upstream.set_method(ctx.method.clone());
-
-    let path = ctx.upstream_path();
-    upstream.set_uri(path.parse().unwrap());
 }
