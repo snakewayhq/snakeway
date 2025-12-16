@@ -86,7 +86,7 @@ Not every device needs every phase.
 
 Most devices do one thing well, at one point in the lifecycle.
 
-## Short-Circuiting Is a Feature
+## Short-circuiting (i.e., responding early) Is a Feature
 
 Devices are allowed to **stop the pipeline early**.
 

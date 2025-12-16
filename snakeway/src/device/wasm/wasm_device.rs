@@ -92,7 +92,7 @@ impl Device for WasmDevice {
 
         // Enforce decision
         if matches!(result.decision, Decision::Block) {
-            return DeviceResult::ShortCircuit(block_403());
+            return DeviceResult::Respond(block_403());
         }
 
         // Apply explicit patch intent

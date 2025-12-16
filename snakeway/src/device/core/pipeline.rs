@@ -25,7 +25,7 @@ impl DevicePipeline {
         for dev in devices {
             match dev.as_ref().before_proxy(ctx) {
                 DeviceResult::Continue => continue,
-                r @ DeviceResult::ShortCircuit(_) => return r,
+                r @ DeviceResult::Respond(_) => return r,
                 r @ DeviceResult::Error(_) => return r,
             }
         }
@@ -39,7 +39,7 @@ impl DevicePipeline {
         for dev in devices {
             match dev.as_ref().after_proxy(ctx) {
                 DeviceResult::Continue => continue,
-                r @ DeviceResult::ShortCircuit(_) => return r,
+                r @ DeviceResult::Respond(_) => return r,
                 r @ DeviceResult::Error(_) => return r,
             }
         }
@@ -53,7 +53,7 @@ impl DevicePipeline {
         for dev in devices {
             match dev.as_ref().on_response(ctx) {
                 DeviceResult::Continue => continue,
-                r @ DeviceResult::ShortCircuit(_) => return r,
+                r @ DeviceResult::Respond(_) => return r,
                 r @ DeviceResult::Error(_) => return r,
             }
         }
