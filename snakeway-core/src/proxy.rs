@@ -222,15 +222,8 @@ pub async fn respond_with_static(
 
     // Write body and end the stream
     session
-        .write_response_body(Some(static_resp.body.clone()), true)
+        .write_response_body(Some(static_resp.body), true)
         .await?;
-
-    // Write body (if present)
-    if !static_resp.body.is_empty() {
-        session
-            .write_response_body(Some(static_resp.body), true)
-            .await?;
-    }
 
     // Run on_response devices
     let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());
