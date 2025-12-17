@@ -6,6 +6,8 @@ use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
+use crate::route::{RouteKind, Router};
+use crate::static_files;
 
 pub struct SnakewayGateway {
     pub upstream_host: String,
@@ -14,6 +16,7 @@ pub struct SnakewayGateway {
     pub sni: String,
 
     pub devices: DeviceRegistry,
+    pub router: Router,
 }
 
 #[async_trait]
@@ -55,18 +58,84 @@ impl ProxyHttp for SnakewayGateway {
             Vec::new(),
         );
 
+        // Run on_request devices first (applies to both static and upstream requests).
         match DevicePipeline::run_on_request(self.devices.all(), ctx) {
-            DeviceResult::Continue => Ok(false),
+            DeviceResult::Continue => {}
 
             DeviceResult::Respond(resp) => {
                 session.respond_error(resp.status.as_u16()).await?;
-                Ok(true)
+                return Ok(true);
             }
 
             DeviceResult::Error(err) => {
                 tracing::error!("device error in on_request: {err}");
                 session.respond_error(500).await?;
+                return Ok(true);
+            }
+        }
+
+        // Make a decision about the route.
+        let route = match self.router.match_route(&ctx.route_path) {
+            Ok(r) => r,
+            Err(err) => {
+                tracing::warn!("no route matched: {err}");
+                session.respond_error(404).await?;
+                return Ok(true);
+            }
+        };
+
+        match &route.kind {
+            RouteKind::Static { .. } => {
+
+                let static_resp =
+                    static_files::handle_static_request(&route.kind, &ctx.route_path).await;
+
+                // Build response header
+                let mut resp = ResponseHeader::build(static_resp.status, None)?;
+
+                // Copy headers
+                for (name, value) in static_resp.headers.iter() {
+                    resp.insert_header(name, value)?;
+                }
+
+                // Write headers (not end-of-stream yet)
+                session
+                    .write_response_header(Box::new(resp), false)
+                    .await?;
+
+                // Write body and end the stream
+                session
+                    .write_response_body(Some(static_resp.body.clone()), true)
+                    .await?;
+
+                // Write body (if present)
+                if !static_resp.body.is_empty() {
+                    session
+                        .write_response_body(Some(static_resp.body), true)
+                        .await?;
+                }
+
+                // Run on_response devices
+                let mut resp_ctx = ResponseCtx::new(
+                    static_resp.status,
+                    static_resp.headers,
+                    Vec::new(),
+                );
+
+                match DevicePipeline::run_on_response(self.devices.all(), &mut resp_ctx) {
+                    DeviceResult::Continue => {}
+                    DeviceResult::Respond(_) => {}
+                    DeviceResult::Error(err) => {
+                        tracing::warn!("device error on_response (static): {err}");
+                    }
+                }
+
                 Ok(true)
+            }
+
+            RouteKind::Proxy { .. } => {
+                // Proceed to upstream routing...
+                Ok(false)
             }
         }
     }
