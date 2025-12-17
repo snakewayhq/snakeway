@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
 http = { workspace = true }
 pingora = { workspace = true, features = ["proxy"] }
 pingora-http = { workspace = true }

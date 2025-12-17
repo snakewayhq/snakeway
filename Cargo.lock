@@ -2984,19 +2984,11 @@ name = "snakeway"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "clap 4.5.53",
  "http",
- "pingora",
- "pingora-http",
- "serde",
  "serde_json",
  "snakeway-core",
- "toml",
  "tracing",
- "tracing-subscriber",
- "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]
@@ -3005,7 +2997,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "clap 4.5.53",
  "http",
  "pingora",
  "pingora-http",
