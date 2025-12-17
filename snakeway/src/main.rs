@@ -1,16 +1,10 @@
 mod cli;
-mod config;
-mod ctx;
-mod device;
-mod logging;
-mod proxy;
-mod server;
-mod http_event;
 
 use crate::cli::logs::run_logs;
-use crate::logging::{init_logging, LogMode};
 use clap::{Parser, Subcommand};
-use config::SnakewayConfig;
+use snakeway_core::config::SnakewayConfig;
+use snakeway_core::logging::{LogMode, default_log_mode, init_logging};
+use snakeway_core::server;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -51,16 +45,13 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Command::Logs {
-            pretty,
-            raw,
-        }) => {
+        Some(Command::Logs { pretty, raw }) => {
             let mode = if raw {
                 LogMode::Raw
             } else if pretty {
                 LogMode::Pretty
             } else {
-                logging::default_log_mode()
+                default_log_mode()
             };
             run_logs(mode).expect("Failed to run logs command");
         }

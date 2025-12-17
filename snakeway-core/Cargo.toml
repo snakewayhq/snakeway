@@ -1,11 +1,9 @@
 [package]
-name = "snakeway"
+name = "snakeway-core"
 version = "0.1.0"
 edition = "2024"
 
-
 [dependencies]
-snakeway-core = { version = "*", path = "../snakeway-core" }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
@@ -19,7 +17,3 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
 wasmtime = { workspace = true }
 wasmtime-wasi = { workspace = true, features = ["default"] }
-
-[[bin]]
-name = "snakeway"
-path = "src/main.rs"
