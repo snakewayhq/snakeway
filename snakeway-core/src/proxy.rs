@@ -6,8 +6,7 @@ use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
-use crate::route::{RouteKind, Router};
-use crate::static_files;
+use crate::route::{RouteEntry, RouteKind, Router};
 
 pub struct SnakewayGateway {
     pub upstream_host: String,
@@ -86,51 +85,7 @@ impl ProxyHttp for SnakewayGateway {
 
         match &route.kind {
             RouteKind::Static { .. } => {
-
-                let static_resp =
-                    static_files::handle_static_request(&route.kind, &ctx.route_path).await;
-
-                // Build response header
-                let mut resp = ResponseHeader::build(static_resp.status, None)?;
-
-                // Copy headers
-                for (name, value) in static_resp.headers.iter() {
-                    resp.insert_header(name, value)?;
-                }
-
-                // Write headers (not end-of-stream yet)
-                session
-                    .write_response_header(Box::new(resp), false)
-                    .await?;
-
-                // Write body and end the stream
-                session
-                    .write_response_body(Some(static_resp.body.clone()), true)
-                    .await?;
-
-                // Write body (if present)
-                if !static_resp.body.is_empty() {
-                    session
-                        .write_response_body(Some(static_resp.body), true)
-                        .await?;
-                }
-
-                // Run on_response devices
-                let mut resp_ctx = ResponseCtx::new(
-                    static_resp.status,
-                    static_resp.headers,
-                    Vec::new(),
-                );
-
-                match DevicePipeline::run_on_response(self.devices.all(), &mut resp_ctx) {
-                    DeviceResult::Continue => {}
-                    DeviceResult::Respond(_) => {}
-                    DeviceResult::Error(err) => {
-                        tracing::warn!("device error on_response (static): {err}");
-                    }
-                }
-
-                Ok(true)
+                respond_with_static(session, ctx, route, &self.devices).await
             }
 
             RouteKind::Proxy { .. } => {
@@ -232,4 +187,61 @@ impl ProxyHttp for SnakewayGateway {
         upstream.set_status(resp_ctx.status)?;
         Ok(())
     }
+}
+
+#[cfg(not(feature = "static_files"))]
+pub async fn respond_with_static(
+    _session: &mut Session,
+    _ctx: &RequestCtx,
+    _route: &RouteEntry,
+    _devices: &DeviceRegistry,
+) -> Result<bool> {
+    Err(Error::new(Custom("static files disabled")))
+}
+
+#[cfg(feature = "static_files")]
+pub async fn respond_with_static(
+    session: &mut Session,
+    ctx: &RequestCtx,
+    route: &RouteEntry,
+    devices: &DeviceRegistry,
+) -> Result<bool> {
+    let static_resp =
+        crate::static_files::handle_static_request(&route.kind, &ctx.route_path).await;
+
+    // Build response header
+    let mut resp = ResponseHeader::build(static_resp.status, None)?;
+
+    // Copy headers
+    for (name, value) in static_resp.headers.iter() {
+        resp.insert_header(name, value)?;
+    }
+
+    // Write headers (not end-of-stream yet)
+    session.write_response_header(Box::new(resp), false).await?;
+
+    // Write body and end the stream
+    session
+        .write_response_body(Some(static_resp.body.clone()), true)
+        .await?;
+
+    // Write body (if present)
+    if !static_resp.body.is_empty() {
+        session
+            .write_response_body(Some(static_resp.body), true)
+            .await?;
+    }
+
+    // Run on_response devices
+    let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());
+
+    match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
+        DeviceResult::Continue => {}
+        DeviceResult::Respond(_) => {}
+        DeviceResult::Error(err) => {
+            tracing::warn!("device error on_response (static): {err}");
+        }
+    }
+
+    Ok(true)
 }

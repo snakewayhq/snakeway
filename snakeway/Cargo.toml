@@ -6,6 +6,7 @@ edition = "2024"
 [features]
 default = []
 wasm = ["snakeway-core/wasm"]
+static_files = ["snakeway-core/static_files"]
 
 [dependencies]
 snakeway-core = { version = "*", path = "../snakeway-core" }
