@@ -1,2 +1,2 @@
-pub mod wasm_device;
 pub mod bindings;
+pub mod wasm_device;

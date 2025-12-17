@@ -3,13 +3,13 @@ name = "snakeway"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+wasm = ["snakeway-core/wasm"]
+
 [dependencies]
 snakeway-core = { version = "*", path = "../snakeway-core" }
-anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-http = { workspace = true }
-serde_json = { workspace = true }
-tracing = { workspace = true }
 
 [[bin]]
 name = "snakeway"

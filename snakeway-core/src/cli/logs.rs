@@ -1,4 +1,4 @@
-use snakeway_core::logging::LogMode;
+use crate::logging::LogMode;
 use anyhow::Result;
 use serde_json::Value;
 use std::io::{self, BufRead};

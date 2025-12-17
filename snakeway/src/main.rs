@@ -1,7 +1,5 @@
-mod cli;
-
-use crate::cli::logs::run_logs;
 use clap::{Parser, Subcommand};
+use snakeway_core::cli;
 use snakeway_core::config::SnakewayConfig;
 use snakeway_core::logging::{LogMode, default_log_mode, init_logging};
 use snakeway_core::server;
@@ -53,7 +51,7 @@ fn main() {
             } else {
                 default_log_mode()
             };
-            run_logs(mode).expect("Failed to run logs command");
+            cli::logs::run_logs(mode).expect("Failed to run logs command");
         }
 
         Some(Command::Plugin { cmd }) => {

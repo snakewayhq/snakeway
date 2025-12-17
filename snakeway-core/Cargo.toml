@@ -3,7 +3,15 @@ name = "snakeway-core"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+wasm = [
+    "wasmtime",
+    "wasmtime-wasi",
+]
+
 [dependencies]
+clap = { workspace = true, features = ["derive"] }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 http = { workspace = true }
@@ -14,5 +22,5 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
-wasmtime = { workspace = true }
-wasmtime-wasi = { workspace = true, features = ["default"] }
+wasmtime = { workspace = true, optional = true }
+wasmtime-wasi = { workspace = true, optional = true, features = ["default"] }

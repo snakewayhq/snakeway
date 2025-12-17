@@ -45,11 +45,7 @@ impl ProxyHttp for SnakewayGateway {
     ///
     /// Intent:
     /// ACCEPT → INSPECT → DECIDE → (RESPOND | PROXY)
-    async fn request_filter(
-        &self,
-        session: &mut Session,
-        ctx: &mut Self::CTX,
-    ) -> Result<bool> {
+    async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
 
         *ctx = RequestCtx::new(
@@ -119,11 +115,7 @@ impl ProxyHttp for SnakewayGateway {
         upstream: &mut ResponseHeader,
         _ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let mut resp_ctx = ResponseCtx::new(
-            upstream.status,
-            upstream.headers.clone(),
-            Vec::new(),
-        );
+        let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
 
         match DevicePipeline::run_after_proxy(self.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
@@ -153,11 +145,7 @@ impl ProxyHttp for SnakewayGateway {
         upstream: &mut ResponseHeader,
         _ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let mut resp_ctx = ResponseCtx::new(
-            upstream.status,
-            upstream.headers.clone(),
-            Vec::new(),
-        );
+        let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
 
         match DevicePipeline::run_on_response(self.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}

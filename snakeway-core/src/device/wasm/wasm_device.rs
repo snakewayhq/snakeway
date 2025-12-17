@@ -1,19 +1,19 @@
 use anyhow::Result;
 use wasmtime::{
-    component::{Component, Linker}, Engine,
-    Store,
+    Engine, Store,
+    component::{Component, Linker},
 };
 
 use http::{HeaderMap, HeaderName, StatusCode};
 use wasmtime::component::ResourceTable;
-use wasmtime_wasi::{p2::add_to_linker_sync, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView, p2::add_to_linker_sync};
 
 use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::{result::DeviceResult, Device};
+use crate::device::core::{Device, result::DeviceResult};
 
 use crate::device::wasm::bindings::{
-    exports::snakeway::device::policy::{Decision, Header, Request, RequestPatch},
     Snakeway,
+    exports::snakeway::device::policy::{Decision, Header, Request, RequestPatch},
 };
 
 /// WASM-backed Snakeway device (stateless, per-call execution)
@@ -112,7 +112,9 @@ impl Device for WasmDevice {
             }
 
             for header in set_headers {
-                if let (Ok(name), Ok(value)) = (header.name.parse::<HeaderName>(), header.value.parse()) {
+                if let (Ok(name), Ok(value)) =
+                    (header.name.parse::<HeaderName>(), header.value.parse())
+                {
                     ctx.headers.insert(name, value);
                 }
             }

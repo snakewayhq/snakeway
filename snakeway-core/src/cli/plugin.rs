@@ -1,7 +1,6 @@
-use snakeway_core::device::core::Device;
-use snakeway_core::device::wasm::wasm_device::WasmDevice;
-use snakeway_core::ctx::RequestCtx;
-use anyhow::{anyhow, Context, Result};
+use crate::ctx::RequestCtx;
+use crate::device::load_wasm_device;
+use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
 
 #[derive(Subcommand, Debug)]
@@ -31,9 +30,14 @@ pub fn run(cmd: PluginCmd) -> Result<()> {
 }
 
 fn run_test(args: PluginTestArgs) -> Result<()> {
-    tracing::info!("Loading WASM device {} with hook {} against path {}", args.file, args.hook, args.path);
-    let device = WasmDevice::load(&args.file)
-        .with_context(|| format!("failed to load WASM device '{}'", args.file))?;
+    tracing::info!(
+        "Loading WASM device {} with hook {} against path {}",
+        args.file,
+        args.hook,
+        args.path
+    );
+
+    let device = load_wasm_device(&args.file)?;
 
     let ctx = &mut RequestCtx::new(
         http::Method::GET,

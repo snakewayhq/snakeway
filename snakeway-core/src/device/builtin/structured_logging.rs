@@ -1,6 +1,6 @@
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
-use crate::device::core::{result::DeviceResult, Device};
+use crate::device::core::{Device, result::DeviceResult};
 use crate::http_event::HttpEvent;
 use anyhow::{Context, Result};
 use http::HeaderMap;
