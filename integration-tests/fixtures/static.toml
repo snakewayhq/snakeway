@@ -1,0 +1,11 @@
+[server]
+listen = "127.0.0.1:4041"
+
+[[routes]]
+path = "/"
+file_dir = "./public"
+index = true
+
+[[routes]]
+path = "/api"
+upstream = "127.0.0.1:4000"

@@ -10,8 +10,10 @@ path = "/"
 
 
 [[routes]]
-file_dir = "./public/assets"
-path = "/assets"
+# Serves the contents of ./public from the path /static
+# Requires the "static_files" feature to be enabled
+file_dir = "./public/"
+path = "/static"
 index = false
 
 
@@ -22,9 +24,11 @@ index = false
 
 [[devices]]
 name = "example"
+# WASM required the "wasm" feature.
+# Enabling a WASM device without the feature enabled will cause a runtime error.
 kind = "wasm"
 path = "plugins/snakeway_wasm_example.wasm"
-enabled = true
+enabled = false
 
 
 # ---------------------------------------------------------------------
