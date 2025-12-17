@@ -81,3 +81,22 @@ fn proxy_route_still_works_when_static_is_enabled() {
     assert_eq!(status, 200);
     assert_eq!(body, "hello world");
 }
+
+#[test]
+fn static_path_traversal_is_rejected() {
+    // Arrange
+    let cfg = load_static_config();
+    start_server(cfg);
+
+    // Act
+    let res = reqwest::blocking::get(
+        "http://127.0.0.1:4041/static/../Cargo.toml"
+    ).expect("request failed");
+
+    // Assert
+    assert!(
+        res.status().is_client_error(),
+        "expected client error, got {}",
+        res.status()
+    );
+}
