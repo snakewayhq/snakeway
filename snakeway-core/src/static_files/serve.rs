@@ -5,6 +5,8 @@ use http::{HeaderMap, HeaderValue, StatusCode};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
+const MAX_STATIC_FILE_SIZE: u64 = 10 * 1024 * 1024; // 10 MiB
+
 #[derive(Debug)]
 pub enum ServeError {
     NotFound,
@@ -19,6 +21,20 @@ pub struct StaticResponse {
 }
 
 pub async fn serve_file(path: PathBuf) -> Result<StaticResponse, ServeError> {
+    // Check metadata first (size guard)
+    let metadata = fs::metadata(&path)
+        .await
+        .map_err(|_| ServeError::NotFound)?;
+
+    if !metadata.is_file() {
+        return Err(ServeError::NotFound);
+    }
+
+    if metadata.len() > MAX_STATIC_FILE_SIZE {
+        // Prevent memory exhaustion / abuse.
+        return Err(ServeError::Forbidden);
+    }
+
     // Open file
     let mut file = fs::File::open(&path)
         .await
