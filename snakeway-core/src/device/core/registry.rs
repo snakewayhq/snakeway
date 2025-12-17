@@ -1,8 +1,9 @@
 use crate::config::{BuiltinDeviceKind, DeviceKind, SnakewayConfig};
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
+#[cfg(feature = "wasm")]
 use crate::device::wasm::wasm_device::WasmDevice;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,6 +28,12 @@ pub struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
 }
 
+impl Default for DeviceRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeviceRegistry {
     pub fn new() -> Self {
         Self {
@@ -44,15 +51,7 @@ impl DeviceRegistry {
 
             match cfg.kind {
                 DeviceKind::Wasm => {
-                    let path = cfg
-                        .path
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("WASM device '{}' missing path", cfg.name))?;
-
-                    let device = WasmDevice::load(path)
-                        .with_context(|| format!("failed to load WASM device '{}'", cfg.name))?;
-
-                    self.devices.push(Arc::new(device));
+                    self.load_wasm_device(cfg)?;
                 }
 
                 DeviceKind::Builtin => {
@@ -79,5 +78,31 @@ impl DeviceRegistry {
 
     pub fn all(&self) -> &[Arc<dyn Device>] {
         &self.devices
+    }
+}
+
+#[cfg(feature = "wasm")]
+impl DeviceRegistry {
+    fn load_wasm_device(&mut self, cfg: &crate::config::DeviceConfig) -> Result<()> {
+        let path = cfg
+            .path
+            .as_ref()
+            .ok_or_else(|| anyhow!("WASM device '{}' missing path", cfg.name))?;
+
+        let device = WasmDevice::load(path)
+            .with_context(|| format!("failed to load WASM device '{}'", cfg.name))?;
+
+        self.devices.push(Arc::new(device));
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "wasm"))]
+impl DeviceRegistry {
+    fn load_wasm_device(&mut self, cfg: &crate::config::DeviceConfig) -> Result<()> {
+        Err(anyhow!(
+            "WASM device '{}' requested, but Snakeway was built without the `wasm` feature",
+            cfg.name
+        ))
     }
 }

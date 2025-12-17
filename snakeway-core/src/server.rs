@@ -1,13 +1,19 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Error, Result, anyhow};
 use pingora::prelude::*;
 use pingora::server::Server;
 
-use crate::config::SnakewayConfig;
+pub use crate::config::SnakewayConfig;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::SnakewayGateway;
 
 /// Run the Pingora server with the given configuration.
 pub fn run(config: SnakewayConfig) -> Result<()> {
+    let server = build_pingora_server(config).expect("Failed to build Pingora server");
+    server.run_forever();
+}
+
+/// Run the Pingora server with the given configuration.
+pub fn build_pingora_server(config: SnakewayConfig) -> Result<Server, Error> {
     // Create a basic Pingora server.
     let mut server = Server::new(None)?;
     server.bootstrap();
@@ -39,7 +45,8 @@ pub fn run(config: SnakewayConfig) -> Result<()> {
 
     // Register service and block forever.
     server.add_service(svc);
-    server.run_forever();
+
+    Ok(server)
 }
 
 /// Parse an upstream address of the form "host:port".

@@ -1,5 +1,5 @@
 use std::io::{self, IsTerminal};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 /// Initialize the logging system with JSON formatting and environment-based filtering
 ///

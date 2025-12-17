@@ -1,5 +1,5 @@
 [workspace]
-members = ["snakeway"]
+members = ["integration-tests", "snakeway", "snakeway-core"]
 default-members = ["snakeway"]
 exclude = [
     "snakeway-wit",

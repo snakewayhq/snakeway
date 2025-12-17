@@ -39,8 +39,6 @@ impl RequestCtx {
 
     /// Path used when proxying upstream
     pub fn upstream_path(&self) -> &str {
-        self.upstream_path
-            .as_deref()
-            .unwrap_or(&self.route_path)
+        self.upstream_path.as_deref().unwrap_or(&self.route_path)
     }
 }
