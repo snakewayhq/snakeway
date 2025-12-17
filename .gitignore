@@ -18,7 +18,7 @@ target
 
 # Artifacts
 dist/
-plugins/
+/plugins/
 
 # Config
 config/snakeway.toml

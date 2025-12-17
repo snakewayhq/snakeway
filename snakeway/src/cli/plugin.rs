@@ -1,6 +1,6 @@
-use crate::ctx::RequestCtx;
-use crate::device::core::Device;
-use crate::device::wasm::wasm_device::WasmDevice;
+use snakeway_core::device::core::Device;
+use snakeway_core::device::wasm::wasm_device::WasmDevice;
+use snakeway_core::ctx::RequestCtx;
 use anyhow::{anyhow, Context, Result};
 use clap::{Args, Subcommand};
 

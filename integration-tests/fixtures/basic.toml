@@ -1,0 +1,6 @@
+[server]
+listen = "0.0.0.0:4040"
+
+
+[[routes]]
+upstream = "127.0.0.1:4000"

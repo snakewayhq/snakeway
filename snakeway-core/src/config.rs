@@ -1,5 +1,7 @@
+use anyhow::Context;
 use serde::Deserialize;
 use std::fs;
+use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
 pub struct ServerConfig {
@@ -42,7 +44,7 @@ pub struct DeviceConfig {
     pub enabled: bool,
 
     #[serde(flatten)]
-    pub (crate) options: toml::Value,
+    pub(crate) options: toml::Value,
 }
 
 fn default_enabled() -> bool {
@@ -61,5 +63,15 @@ impl SnakewayConfig {
     pub fn from_file(path: &str) -> anyhow::Result<Self> {
         let contents = fs::read_to_string(path)?;
         Ok(toml::from_str(&contents)?)
+    }
+}
+
+impl FromStr for SnakewayConfig {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        let cfg: Self = toml::from_str(s).context("failed to parse Snakeway config from string")?;
+
+        Ok(cfg)
     }
 }
