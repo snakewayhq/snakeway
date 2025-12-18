@@ -236,7 +236,7 @@ pub async fn respond_with_static(
             use tokio::io::AsyncReadExt;
 
             const CHUNK_SIZE: usize = 32 * 1024;
-            let mut buf = vec![0u8; CHUNK_SIZE];
+            let mut buf = [0u8; CHUNK_SIZE];
 
             loop {
                 let n = file.read(&mut buf).await.map_err(|_| {
