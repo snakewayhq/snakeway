@@ -137,9 +137,3 @@ Snakeway includes several security measures to protect against common attacks:
 - **Path traversal protection**: Requests containing `..` or attempting to escape the `file_dir` are rejected with `403 Forbidden`
 - **File size limit**: Files larger than 10 MiB are rejected to prevent memory exhaustion
 - **Symlink resolution**: Paths are canonicalized to prevent symlink-based escapes
-
-## Limitations
-
-- Compression is only applied to small files (≤ 256 KiB) to maintain streaming capability for large files
-- Directory listing is not supported; only explicit file requests are served
-- Range requests (partial content) are not currently supported
