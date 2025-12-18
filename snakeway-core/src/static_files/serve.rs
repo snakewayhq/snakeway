@@ -6,7 +6,7 @@ use tokio::fs;
 use tokio::io::AsyncReadExt;
 
 const MAX_STATIC_FILE_SIZE: u64 = 10 * 1024 * 1024; // 10 MiB
-const SMALL_FILE_THRESHOLD: u64 = 64 * 1024; // 64 KiB
+const SMALL_FILE_THRESHOLD: u64 = 256 * 1024; // 256 KiB
 
 #[derive(Debug)]
 pub enum ServeError {
