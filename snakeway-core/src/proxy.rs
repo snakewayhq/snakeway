@@ -46,7 +46,7 @@ impl ProxyHttp for SnakewayGateway {
     /// Snakeway `on_request` --> Pingora `request_filter`
     ///
     /// Intent:
-    /// ACCEPT → INSPECT → DECIDE → (RESPOND | PROXY)
+    /// ACCEPT --> INSPECT --> DECIDE --> (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
 
