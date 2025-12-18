@@ -1,5 +1,5 @@
 use crate::route::kind::RouteKind;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 #[derive(Debug)]
 pub struct Router {
@@ -11,7 +11,6 @@ pub struct RouteEntry {
     pub path: String,
     pub kind: RouteKind,
 }
-
 
 impl Default for Router {
     fn default() -> Self {

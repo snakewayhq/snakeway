@@ -227,14 +227,12 @@ pub async fn respond_with_static(
         }
 
         crate::static_files::StaticBody::Bytes(bytes) => {
-            session
-                .write_response_body(Some(bytes), true)
-                .await?;
+            session.write_response_body(Some(bytes), true).await?;
         }
 
         crate::static_files::StaticBody::File(mut file) => {
-            use tokio::io::AsyncReadExt;
             use bytes::{Bytes, BytesMut};
+            use tokio::io::AsyncReadExt;
 
             const CHUNK_SIZE: usize = 32 * 1024;
 
@@ -245,9 +243,10 @@ pub async fn respond_with_static(
                 // Ensure we have space to read into.
                 buf.resize(CHUNK_SIZE, 0);
 
-                let n = file.read(&mut buf[..]).await.map_err(|_| {
-                    Error::new(Custom("static file read error"))
-                })?;
+                let n = file
+                    .read(&mut buf[..])
+                    .await
+                    .map_err(|_| Error::new(Custom("static file read error")))?;
 
                 if n == 0 {
                     break;
@@ -259,17 +258,13 @@ pub async fn respond_with_static(
                 // Split off the filled bytes and freeze them.
                 let chunk: Bytes = buf.split().freeze();
 
-                session
-                    .write_response_body(Some(chunk), false)
-                    .await?;
+                session.write_response_body(Some(chunk), false).await?;
             }
 
             // End-of-stream.
             session.write_response_body(None, true).await?;
         }
-
     }
-
 
     // Run on_response devices
     let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());

@@ -1,19 +1,17 @@
 use http::{HeaderMap, StatusCode};
 
 use crate::route::RouteKind;
-use crate::static_files::resolve::{resolve_static_path, ResolveError};
-use crate::static_files::serve::{serve_file, ServeError, StaticResponse};
 use crate::static_files::StaticBody;
+use crate::static_files::resolve::{ResolveError, resolve_static_path};
+use crate::static_files::serve::{ServeError, StaticResponse, serve_file};
 
-pub async fn handle_static_request(
-    route: &RouteKind,
-    request_path: &str,
-) -> StaticResponse {
+pub async fn handle_static_request(route: &RouteKind, request_path: &str) -> StaticResponse {
     let RouteKind::Static {
         path,
         file_dir,
         index,
-    } = route else {
+    } = route
+    else {
         unreachable!("handle_static_request called with non-static route");
     };
 
@@ -22,7 +20,9 @@ pub async fn handle_static_request(
         Err(e) => return error_response(map_resolve_error(e)),
     };
 
-    serve_file(resolved).await.unwrap_or_else(|e| error_response(map_serve_error(e)))
+    serve_file(resolved)
+        .await
+        .unwrap_or_else(|e| error_response(map_serve_error(e)))
 }
 
 fn map_resolve_error(err: ResolveError) -> StatusCode {
@@ -48,4 +48,3 @@ fn error_response(status: StatusCode) -> StaticResponse {
         body: StaticBody::Empty,
     }
 }
-

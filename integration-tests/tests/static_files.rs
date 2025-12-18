@@ -33,8 +33,7 @@ fn serves_index_html_from_static_dir() {
     start_server(cfg);
 
     // Act
-    let res = reqwest::blocking::get("http://127.0.0.1:4041/")
-        .expect("static request failed");
+    let res = reqwest::blocking::get("http://127.0.0.1:4041/").expect("static request failed");
 
     let status = res.status();
     let body = res.text().expect("failed to read response body");
@@ -55,8 +54,7 @@ fn static_route_does_not_require_upstream() {
     start_server(cfg);
 
     // Act
-    let res = reqwest::blocking::get("http://127.0.0.1:4041/")
-        .expect("static request failed");
+    let res = reqwest::blocking::get("http://127.0.0.1:4041/").expect("static request failed");
 
     // Assert
     assert_eq!(res.status(), 200);
@@ -71,8 +69,7 @@ fn proxy_route_still_works_when_static_is_enabled() {
     start_server(cfg);
 
     // Act
-    let res = reqwest::blocking::get("http://127.0.0.1:4041/api")
-        .expect("proxy request failed");
+    let res = reqwest::blocking::get("http://127.0.0.1:4041/api").expect("proxy request failed");
 
     let status = res.status();
     let body = res.text().expect("failed to read response body");
@@ -89,9 +86,8 @@ fn static_path_traversal_is_rejected() {
     start_server(cfg);
 
     // Act
-    let res = reqwest::blocking::get(
-        "http://127.0.0.1:4041/static/../Cargo.toml"
-    ).expect("request failed");
+    let res = reqwest::blocking::get("http://127.0.0.1:4041/static/../Cargo.toml")
+        .expect("request failed");
 
     // Assert
     assert!(
