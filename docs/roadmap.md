@@ -25,6 +25,8 @@
 
 ## Phase 1: Foundations and Extensibility (v0.2.x)
 
+* Snakeway is now a proof-of-concept reverse proxy. *
+
 ### Goals
 
 * Fully define the **Snakeway Device API** (plugins)
