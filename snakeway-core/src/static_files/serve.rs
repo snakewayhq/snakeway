@@ -43,7 +43,8 @@ pub struct ConditionalHeaders {
 }
 
 /// Minimum size threshold for compression (don't compress tiny files)
-const MIN_COMPRESS_SIZE: u64 = 256; // 256 Bytes
+const MIN_COMPRESS_SIZE: u64 = 1024; // 1 KiB (gzip)
+const MIN_BROTLI_SIZE: u64 = 4 * 1024; // 4 KiB (brotli)
 
 /// Check if a MIME type is compressible (text-based or common web formats)
 fn is_compressible_mime(mime: &mime_guess::Mime) -> bool {
@@ -81,27 +82,52 @@ fn is_compressible_mime(mime: &mime_guess::Mime) -> bool {
     false
 }
 
-/// Check if the client accepts gzip encoding
-fn accepts_gzip(accept_encoding: &str) -> bool {
-    // Parse Accept-Encoding header
-    // Format: gzip, deflate, br or gzip;q=1.0, deflate;q=0.5
-    for part in accept_encoding.split(',') {
-        let encoding = part.split(';').next().unwrap_or("").trim();
-        if encoding.eq_ignore_ascii_case("gzip") || encoding == "*" {
-            // Check for q=0 which means "not acceptable"
-            if let Some(q_part) = part.split(';').nth(1) {
-                if let Some(q_value) = q_part.trim().strip_prefix("q=") {
-                    if let Ok(q) = q_value.parse::<f32>() {
-                        if q == 0.0 {
-                            continue;
-                        }
-                    }
-                }
+/// Parse quality value from Accept-Encoding part (e.g., "gzip;q=0.5" -> 0.5)
+fn parse_quality(part: &str) -> f32 {
+    if let Some(q_part) = part.split(';').nth(1) {
+        if let Some(q_value) = q_part.trim().strip_prefix("q=") {
+            if let Ok(q) = q_value.parse::<f32>() {
+                return q;
             }
-            return true;
         }
     }
-    false
+    1.0 // Default quality is 1.0
+}
+
+/// Check if the client accepts a specific encoding and return its quality value
+fn accepts_encoding(accept_encoding: &str, encoding_name: &str) -> Option<f32> {
+    for part in accept_encoding.split(',') {
+        let encoding = part.split(';').next().unwrap_or("").trim();
+        if encoding.eq_ignore_ascii_case(encoding_name) || encoding == "*" {
+            let q = parse_quality(part);
+            if q == 0.0 {
+                return None; // q=0 means "not acceptable"
+            }
+            return Some(q);
+        }
+    }
+    None
+}
+
+/// Determine the preferred compression encoding based on Accept-Encoding header
+/// Returns "br" for brotli, "gzip" for gzip, or None for no compression
+fn preferred_encoding(accept_encoding: &str) -> Option<&'static str> {
+    let br_quality = accepts_encoding(accept_encoding, "br");
+    let gzip_quality = accepts_encoding(accept_encoding, "gzip");
+
+    match (br_quality, gzip_quality) {
+        (Some(br_q), Some(gzip_q)) => {
+            // Prefer brotli if quality is equal or higher
+            if br_q >= gzip_q {
+                Some("br")
+            } else {
+                Some("gzip")
+            }
+        }
+        (Some(_), None) => Some("br"),
+        (None, Some(_)) => Some("gzip"),
+        (None, None) => None,
+    }
 }
 
 /// Compress data using gzip
@@ -109,6 +135,20 @@ fn gzip_compress(data: &[u8]) -> std::io::Result<Vec<u8>> {
     let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
     encoder.write_all(data)?;
     encoder.finish()
+}
+
+/// Compress data using brotli
+fn brotli_compress(data: &[u8]) -> std::io::Result<Vec<u8>> {
+    let mut output = Vec::new();
+    // Parameters: quality (0-11), lg_window_size (10-24)
+    // Using quality 4 for a good balance between speed and compression
+    let params = brotli::enc::BrotliEncoderParams {
+        quality: 4,
+        lgwin: 22,
+        ..Default::default()
+    };
+    brotli::enc::BrotliCompress(&mut std::io::Cursor::new(data), &mut output, &params)?;
+    Ok(output)
 }
 
 /// Generate an ETag from file size and modification time.
@@ -207,14 +247,25 @@ pub async fn serve_file(
     // Guess MIME type to set the Content-Type header.
     let mime = mime_guess::from_path(&path).first_or_octet_stream();
 
-    // Determine if we should compress this response
-    let should_compress = metadata.len() >= MIN_COMPRESS_SIZE
-        && is_compressible_mime(&mime)
-        && conditional
-            .accept_encoding
-            .as_ref()
-            .map(|ae| accepts_gzip(ae))
-            .unwrap_or(false);
+    // Determine the preferred compression encoding (brotli > gzip)
+    let preferred_enc = if is_compressible_mime(&mime) {
+        conditional.accept_encoding.as_ref().and_then(|ae| {
+            let size = metadata.len();
+
+            // Determine what encodings are allowed based on size
+            let br_allowed = size >= MIN_BROTLI_SIZE;
+            let gzip_allowed = size >= MIN_COMPRESS_SIZE;
+
+            match preferred_encoding(ae) {
+                Some("br") if br_allowed => Some("br"),
+                Some("br") if !br_allowed && gzip_allowed => Some("gzip"),
+                Some("gzip") if gzip_allowed => Some("gzip"),
+                _ => None,
+            }
+        })
+    } else {
+        None
+    };
 
     // Build common headers (sent for both 200 and 304)
     let mut headers = HeaderMap::new();
@@ -264,31 +315,36 @@ pub async fn serve_file(
             .await
             .map_err(|_| ServeError::Io)?;
 
-        // Apply gzip compression if appropriate
-        if should_compress {
-            match gzip_compress(&buf) {
-                Ok(compressed) => {
-                    // Only use compressed version if it's actually smaller
-                    if compressed.len() < buf.len() {
-                        headers.insert(
-                            http::header::CONTENT_ENCODING,
-                            HeaderValue::from_static("gzip"),
-                        );
-                        headers.insert(
-                            http::header::CONTENT_LENGTH,
-                            HeaderValue::from_str(&compressed.len().to_string()).unwrap(),
-                        );
-                        return Ok(StaticResponse {
-                            status: StatusCode::OK,
-                            headers,
-                            body: StaticBody::Bytes(Bytes::from(compressed)),
-                        });
-                    }
-                }
-                Err(_) => {
-                    // Compression failed, fall through to uncompressed response
+        // Apply compression if appropriate (prefer brotli, fallback to gzip).
+        if let Some(encoding) = preferred_enc {
+            let compress_result = match encoding {
+                "br" => brotli_compress(&buf),
+                "gzip" => gzip_compress(&buf),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "unknown encoding",
+                )),
+            };
+
+            if let Ok(compressed) = compress_result {
+                // Only use compressed version if it's actually smaller.
+                if compressed.len() < buf.len() {
+                    headers.insert(
+                        http::header::CONTENT_ENCODING,
+                        HeaderValue::from_static(encoding),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_LENGTH,
+                        HeaderValue::from_str(&compressed.len().to_string()).unwrap(),
+                    );
+                    return Ok(StaticResponse {
+                        status: StatusCode::OK,
+                        headers,
+                        body: StaticBody::Bytes(Bytes::from(compressed)),
+                    });
                 }
             }
+            // Compression failed or didn't reduce size, fall through to uncompressed response...
         }
 
         // Uncompressed response

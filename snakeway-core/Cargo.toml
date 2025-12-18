@@ -11,6 +11,7 @@ wasm = [
 ]
 
 static_files = [
+    "brotli",
     "bytes",
     "flate2",
     "httpdate",
@@ -22,6 +23,7 @@ static_files = [
 [dependencies]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
+brotli = { workspace = true, optional = true }
 bytes = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"] }
 flate2 = { workspace = true, optional = true }

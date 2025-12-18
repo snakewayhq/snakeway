@@ -20,6 +20,15 @@ install-tools:
 docs:
 	cd docs && npm run docs:dev
 
+
+benchmark-static-files:
+    @echo "No compression..."
+    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
+    @echo "Gzip..."
+    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
+    @echo "Brotli..."
+    hey -n 20000 -c 128 -H "Accept-Encoding: br" http://127.0.0.1:8080/static/index.html
+
 # -----------------------------------------------------------------------------
 # Debugging
 # -----------------------------------------------------------------------------

@@ -21,6 +21,7 @@ incremental = false         # Ensure no incremental compilation
 
 anyhow = "1.0"
 async-trait = "0.1"
+brotli = "8"
 bytes = "1.11"
 clap = "4.5"
 config = "0.15"
