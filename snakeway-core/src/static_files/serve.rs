@@ -70,19 +70,27 @@ fn etag_matches(etag: &str, if_none_match: &str) -> bool {
 }
 
 /// Check if the file has been modified since the given date.
-fn modified_since(file_modified: Option<SystemTime>, if_modified_since: &str) -> bool {
+fn modified_since(
+    file_modified: Option<SystemTime>,
+    if_modified_since: &str,
+) -> bool {
     let file_time = match file_modified {
         Some(t) => t,
-        None => return true, // If we can't determine mtime, assume modified
+        None => return true, // Unknown mtime, assume modified
     };
 
     let since_time = match parse_http_date(if_modified_since) {
         Ok(t) => t,
-        Err(_) => return true, // If we can't parse the header, assume modified
+        Err(_) => return true, // Invalid header, assume modified
     };
 
-    // File is considered modified if its mtime is after the If-Modified-Since time
-    file_time > since_time
+    // A simple comparison like file_time > since_time does not work,
+    // because HTTP dates have 1-second resolution.
+    // Treat sub-second differences as NOT modified.
+    match file_time.duration_since(since_time) {
+        Ok(delta) => delta.as_secs() >= 1,
+        Err(_) => false, // file_time <= since_time, not modified
+    }
 }
 
 pub async fn serve_file(
