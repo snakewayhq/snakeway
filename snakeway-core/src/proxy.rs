@@ -221,9 +221,44 @@ pub async fn respond_with_static(
     session.write_response_header(Box::new(resp), false).await?;
 
     // Write body and end the stream
-    session
-        .write_response_body(Some(static_resp.body), true)
-        .await?;
+    match static_resp.body {
+        crate::static_files::StaticBody::Empty => {
+            session.write_response_body(None, true).await?;
+        }
+
+        crate::static_files::StaticBody::Bytes(bytes) => {
+            session
+                .write_response_body(Some(bytes), true)
+                .await?;
+        }
+
+        crate::static_files::StaticBody::File(mut file) => {
+            use tokio::io::AsyncReadExt;
+
+            const CHUNK_SIZE: usize = 32 * 1024;
+            let mut buf = vec![0u8; CHUNK_SIZE];
+
+            loop {
+                let n = file.read(&mut buf).await.map_err(|_| {
+                    Error::new(Custom("static file read error"))
+                })?;
+
+                if n == 0 {
+                    break;
+                }
+
+                session
+                    .write_response_body(
+                        Some(bytes::Bytes::copy_from_slice(&buf[..n])),
+                        false,
+                    )
+                    .await?;
+            }
+
+            session.write_response_body(None, true).await?;
+        }
+    }
+
 
     // Run on_response devices
     let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());

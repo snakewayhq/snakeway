@@ -3,9 +3,10 @@ use http::{HeaderMap, StatusCode};
 use crate::route::RouteKind;
 use crate::static_files::resolve::{resolve_static_path, ResolveError};
 use crate::static_files::serve::{serve_file, ServeError, StaticResponse};
+use crate::static_files::StaticBody;
 
 pub async fn handle_static_request(
-    route: &crate::route::RouteKind,
+    route: &RouteKind,
     request_path: &str,
 ) -> StaticResponse {
     let RouteKind::Static {
@@ -21,10 +22,7 @@ pub async fn handle_static_request(
         Err(e) => return error_response(map_resolve_error(e)),
     };
 
-    match serve_file(resolved).await {
-        Ok(resp) => resp,
-        Err(e) => error_response(map_serve_error(e)),
-    }
+    serve_file(resolved).await.unwrap_or_else(|e| error_response(map_serve_error(e)))
 }
 
 fn map_resolve_error(err: ResolveError) -> StatusCode {
@@ -47,6 +45,7 @@ fn error_response(status: StatusCode) -> StaticResponse {
     StaticResponse {
         status,
         headers: HeaderMap::new(),
-        body: bytes::Bytes::new(),
+        body: StaticBody::Empty,
     }
 }
+
