@@ -3,9 +3,13 @@ use http::{HeaderMap, StatusCode};
 use crate::route::RouteKind;
 use crate::static_files::StaticBody;
 use crate::static_files::resolve::{ResolveError, resolve_static_path};
-use crate::static_files::serve::{ServeError, StaticResponse, serve_file};
+use crate::static_files::serve::{ConditionalHeaders, ServeError, StaticResponse, serve_file};
 
-pub async fn handle_static_request(route: &RouteKind, request_path: &str) -> StaticResponse {
+pub async fn handle_static_request(
+    route: &RouteKind,
+    request_path: &str,
+    conditional: &ConditionalHeaders,
+) -> StaticResponse {
     let RouteKind::Static {
         path,
         file_dir,
@@ -20,7 +24,7 @@ pub async fn handle_static_request(route: &RouteKind, request_path: &str) -> Sta
         Err(e) => return error_response(map_resolve_error(e)),
     };
 
-    serve_file(resolved)
+    serve_file(resolved, conditional)
         .await
         .unwrap_or_else(|e| error_response(map_serve_error(e)))
 }

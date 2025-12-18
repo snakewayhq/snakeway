@@ -12,6 +12,7 @@ wasm = [
 
 static_files = [
     "bytes",
+    "httpdate",
     "mime_guess",
     "tokio",
     "percent-encoding"
@@ -23,6 +24,7 @@ async-trait = { workspace = true }
 bytes = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"] }
 http = { workspace = true }
+httpdate = { workspace = true, optional = true }
 mime_guess = { workspace = true, optional = true }
 pingora = { workspace = true, features = ["proxy"] }
 pingora-http = { workspace = true }

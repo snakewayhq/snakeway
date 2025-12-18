@@ -3006,6 +3006,7 @@ dependencies = [
  "bytes",
  "clap 4.5.53",
  "http",
+ "httpdate",
  "mime_guess",
  "percent-encoding",
  "pingora",
