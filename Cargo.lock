@@ -3005,6 +3005,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "clap 4.5.53",
+ "flate2",
  "http",
  "httpdate",
  "mime_guess",

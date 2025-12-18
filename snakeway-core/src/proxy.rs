@@ -206,7 +206,7 @@ pub async fn respond_with_static(
     route: &RouteEntry,
     devices: &DeviceRegistry,
 ) -> Result<bool> {
-    // Extract conditional headers for cache validation.
+    // Extract conditional headers for cache validation and content negotiation.
     let conditional = crate::static_files::ConditionalHeaders {
         if_none_match: ctx
             .headers
@@ -216,6 +216,11 @@ pub async fn respond_with_static(
         if_modified_since: ctx
             .headers
             .get(http::header::IF_MODIFIED_SINCE)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string()),
+        accept_encoding: ctx
+            .headers
+            .get(http::header::ACCEPT_ENCODING)
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string()),
     };
