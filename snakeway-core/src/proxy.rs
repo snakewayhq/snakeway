@@ -226,7 +226,8 @@ pub async fn respond_with_static(
     };
 
     let static_resp =
-        crate::static_files::handle_static_request(&route.kind, &ctx.route_path, &conditional).await;
+        crate::static_files::handle_static_request(&route.kind, &ctx.route_path, &conditional)
+            .await;
 
     // Build response header
     let mut resp = ResponseHeader::build(static_resp.status, None)?;

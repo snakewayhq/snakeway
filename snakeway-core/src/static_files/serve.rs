@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use bytes::Bytes;
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use httpdate::{fmt_http_date, parse_http_date};
 use tokio::fs;
@@ -43,7 +43,7 @@ pub struct ConditionalHeaders {
 }
 
 /// Minimum size threshold for compression (don't compress tiny files)
-const MIN_COMPRESS_SIZE: u64 = 1024; // 1 KiB (gzip)
+const MIN_COMPRESS_SIZE: u64 = 256; // 256 B (gzip)
 const MIN_BROTLI_SIZE: u64 = 4 * 1024; // 4 KiB (brotli)
 
 /// Check if a MIME type is compressible (text-based or common web formats)
