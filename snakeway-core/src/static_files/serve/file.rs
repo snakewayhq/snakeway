@@ -1,10 +1,14 @@
 use std::path::PathBuf;
 
 use crate::config::{StaticCachePolicy, StaticFileConfig};
-use crate::static_files::serve::headers::{
-    apply_cache_headers, brotli_compress, etag_matches, generate_etag, gzip_compress,
-    is_compressible_mime, modified_since, preferred_encoding, response_varies_by_encoding,
+use crate::static_files::serve::compression::{
+    brotli_compress, gzip_compress, is_compressible_mime, preferred_encoding,
+    response_varies_by_encoding,
 };
+use crate::static_files::serve::etag::{etag_matches, generate_etag, modified_since};
+
+use crate::static_files::serve::cache::apply_cache_headers;
+
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
 use http::{HeaderMap, HeaderValue, StatusCode};
