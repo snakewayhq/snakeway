@@ -11,7 +11,10 @@ wasm = [
 ]
 
 static_files = [
+    "brotli",
     "bytes",
+    "flate2",
+    "httpdate",
     "mime_guess",
     "tokio",
     "percent-encoding"
@@ -20,9 +23,12 @@ static_files = [
 [dependencies]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
+brotli = { workspace = true, optional = true }
 bytes = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"] }
+flate2 = { workspace = true, optional = true }
 http = { workspace = true }
+httpdate = { workspace = true, optional = true }
 mime_guess = { workspace = true, optional = true }
 pingora = { workspace = true, features = ["proxy"] }
 pingora-http = { workspace = true }

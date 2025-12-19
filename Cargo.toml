@@ -21,10 +21,13 @@ incremental = false         # Ensure no incremental compilation
 
 anyhow = "1.0"
 async-trait = "0.1"
+brotli = "8"
 bytes = "1.11"
 clap = "4.5"
 config = "0.15"
+flate2 = "1.0"
 http = "1.4"
+httpdate = "1.0"
 mime_guess = "2.0.5"
 percent-encoding = "2"
 pingora = "0.6"

@@ -46,7 +46,7 @@ impl ProxyHttp for SnakewayGateway {
     /// Snakeway `on_request` --> Pingora `request_filter`
     ///
     /// Intent:
-    /// ACCEPT → INSPECT → DECIDE → (RESPOND | PROXY)
+    /// ACCEPT --> INSPECT --> DECIDE --> (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
 
@@ -206,8 +206,28 @@ pub async fn respond_with_static(
     route: &RouteEntry,
     devices: &DeviceRegistry,
 ) -> Result<bool> {
+    // Extract conditional headers for cache validation and content negotiation.
+    let conditional = crate::static_files::ConditionalHeaders {
+        if_none_match: ctx
+            .headers
+            .get(http::header::IF_NONE_MATCH)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string()),
+        if_modified_since: ctx
+            .headers
+            .get(http::header::IF_MODIFIED_SINCE)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string()),
+        accept_encoding: ctx
+            .headers
+            .get(http::header::ACCEPT_ENCODING)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string()),
+    };
+
     let static_resp =
-        crate::static_files::handle_static_request(&route.kind, &ctx.route_path).await;
+        crate::static_files::handle_static_request(&route.kind, &ctx.route_path, &conditional)
+            .await;
 
     // Build response header
     let mut resp = ResponseHeader::build(static_resp.status, None)?;
@@ -220,10 +240,51 @@ pub async fn respond_with_static(
     // Write headers (not end-of-stream yet)
     session.write_response_header(Box::new(resp), false).await?;
 
-    // Write body and end the stream
-    session
-        .write_response_body(Some(static_resp.body), true)
-        .await?;
+    // Write body and end the stream.
+    match static_resp.body {
+        crate::static_files::StaticBody::Empty => {
+            session.write_response_body(None, true).await?;
+        }
+
+        crate::static_files::StaticBody::Bytes(bytes) => {
+            session.write_response_body(Some(bytes), true).await?;
+        }
+
+        crate::static_files::StaticBody::File(mut file) => {
+            use bytes::{Bytes, BytesMut};
+            use tokio::io::AsyncReadExt;
+
+            const CHUNK_SIZE: usize = 32 * 1024;
+
+            // Allocate once per request.
+            let mut buf = BytesMut::with_capacity(CHUNK_SIZE);
+
+            loop {
+                // Ensure we have space to read into.
+                buf.resize(CHUNK_SIZE, 0);
+
+                let n = file
+                    .read(&mut buf[..])
+                    .await
+                    .map_err(|_| Error::new(Custom("static file read error")))?;
+
+                if n == 0 {
+                    break;
+                }
+
+                // Shrink to actual read size.
+                buf.truncate(n);
+
+                // Split off the filled bytes and freeze them.
+                let chunk: Bytes = buf.split().freeze();
+
+                session.write_response_body(Some(chunk), false).await?;
+            }
+
+            // End-of-stream.
+            session.write_response_body(None, true).await?;
+        }
+    }
 
     // Run on_response devices
     let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());

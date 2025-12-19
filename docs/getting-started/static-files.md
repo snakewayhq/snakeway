@@ -1,0 +1,206 @@
+# Static Files
+
+Snakeway can serve static files directly from the filesystem, making it easy to host frontend assets, images, and other
+static content without needing a separate web server.
+
+## Enabling Static Files
+
+Static file serving is an optional feature. To enable it, compile Snakeway with the `static_files` feature:
+
+```bash
+cargo build --release --features static_files
+```
+
+## Configuration
+
+To serve static files, add a route with `file_dir` instead of `upstream`:
+
+```toml
+[[routes]]
+path = "/"
+file_dir = "./public"
+index = true
+```
+
+### Configuration Options
+
+| Option     | Type    | Required | Description                                                             |
+|------------|---------|----------|-------------------------------------------------------------------------|
+| `path`     | string  | Yes      | The URL path prefix to match                                            |
+| `file_dir` | string  | Yes      | The directory containing static files                                   |
+| `index`    | boolean | No       | Whether to serve `index.html` for directory requests (default: `false`) |
+| `config`   | table   | No       | Advanced static file configuration (see below)                          |
+
+### Advanced Configuration (Per-Route)
+
+Each static route can have an optional `[routes.config]` section to customize compression and file handling behavior.
+All options have sensible defaults.
+
+| Option                 | Type    | Default    | Description                                                                                                 |
+|------------------------|---------|------------|-------------------------------------------------------------------------------------------------------------|
+| `enable_brotli`        | boolean | `true`     | Enable Brotli compression for compressible content                                                          |
+| `enable_gzip`          | boolean | `true`     | Enable gzip compression (fallback when Brotli is unavailable)                                               |
+| `min_brotli_size`      | integer | `4096`     | Minimum file size in bytes to apply Brotli compression (4 KiB)                                              |
+| `min_gzip_size`        | integer | `1024`     | Minimum file size in bytes to apply gzip compression (1 KiB)                                                |
+| `small_file_threshold` | integer | `262144`   | Files smaller than this (in bytes) are read into memory and compressed; larger files are streamed (256 KiB) |
+| `max_file_size`        | integer | `10485760` | Maximum file size in bytes that will be served (10 MiB)                                                     |
+
+**Example with custom compression settings:**
+
+```toml
+[[routes]]
+path = "/"
+file_dir = "./public"
+index = true
+
+[routes.config]
+enable_brotli = true
+enable_gzip = true
+min_brotli_size = 4096
+min_gzip_size = 1024
+```
+
+**Disable compression entirely for a route:**
+
+```toml
+[[routes]]
+path = "/raw"
+file_dir = "./raw-assets"
+index = false
+
+[routes.config]
+enable_brotli = false
+enable_gzip = false
+```
+
+**Increase file size limits for large assets:**
+
+```toml
+[[routes]]
+path = "/downloads"
+file_dir = "./large-files"
+index = false
+
+[routes.config]
+max_file_size = 104857600  # 100 MiB
+small_file_threshold = 1048576  # 1 MiB - stream files larger than this
+```
+
+### Example Configurations
+
+**Serve a single-page application:**
+
+```toml
+[[routes]]
+path = "/"
+file_dir = "./dist"
+index = true
+```
+
+**Serve static assets under a prefix:**
+
+```toml
+[[routes]]
+path = "/static"
+file_dir = "./assets"
+index = false
+```
+
+**Mix static files with API proxy:**
+
+```toml
+# API requests go to upstream
+[[routes]]
+path = "/api"
+upstream = "127.0.0.1:8080"
+
+# Everything else serves static files
+[[routes]]
+path = "/"
+file_dir = "./public"
+index = true
+```
+
+## Features
+
+### Automatic MIME Type Detection
+
+Snakeway automatically detects and sets the correct `Content-Type` header based on file extensions.
+
+Common types include:
+
+- `.html` → `text/html`
+- `.css` → `text/css`
+- `.js` → `application/javascript`
+- `.json` → `application/json`
+- `.png` → `image/png`
+- `.jpg`, `.jpeg` → `image/jpeg`
+- `.svg` → `image/svg+xml`
+- `.wasm` → `application/wasm`
+
+### Caching and Conditional Requests
+
+Snakeway implements HTTP caching headers to reduce bandwidth and improve performance:
+
+- **ETag**: A weak ETag is generated from the file size and modification time
+- **Last-Modified**: The file's modification timestamp is sent as an HTTP date
+
+Clients can use conditional requests to avoid re-downloading unchanged files:
+
+- **If-None-Match**: If the client's cached ETag matches, Snakeway returns `304 Not Modified`
+- **If-Modified-Since**: If the file hasn't changed since the given date, Snakeway returns `304 Not Modified`
+
+### Compression
+
+Snakeway automatically compresses responses for clients that support it, reducing transfer sizes significantly for
+text-based content.
+
+**Supported encodings (in order of preference):**
+
+1. **Brotli** (`br`) - Best compression ratio, preferred when client supports it
+2. **gzip** - Fallback for clients that don't support Brotli
+
+**Compression behavior (default settings):**
+
+- Only compressible MIME types are compressed (text, JSON, JavaScript, XML, SVG, WASM, etc.)
+- Brotli is used for files `≥ 4 KiB` (configurable via `min_brotli_size`)
+- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via `min_gzip_size`)
+- Compression can be disabled per-route using `enable_brotli` and `enable_gzip` options
+- Compression is skipped if the compressed size isn't smaller than the original
+- The `Vary: Accept-Encoding` header is added for proper cache behavior
+
+See [Advanced Configuration (Per-Route)](#advanced-configuration-per-route) for customization options.
+
+**Example request/response:**
+
+```http
+GET /app.js HTTP/1.1
+Accept-Encoding: gzip, deflate, br
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/javascript
+Content-Encoding: br
+Vary: Accept-Encoding
+ETag: W/"1a2b3c-4d5e6f"
+```
+
+### File Streaming
+
+- **Small files** (≤ 256 KiB by default): Read entirely into memory, compressed if applicable
+- **Large files** (> 256 KiB by default): Streamed directly from disk in 32 KiB chunks. Streaming responses are not
+  compressed, since compression currently requires buffering the entire file in memory.
+
+The threshold can be adjusted per-route using the `small_file_threshold` option.
+
+### Security
+
+Snakeway includes several security measures to protect against common attacks:
+
+- **Path traversal protection**: Requests containing `..` or attempting to escape the `file_dir` are rejected with
+  `403 Forbidden`
+- **File size limit**: Files larger than 10 MiB (by default) are rejected to prevent memory exhaustion (configurable
+  per-route).
+- **Symlink resolution**: Paths are canonicalized to prevent symlink-based escapes
+
