@@ -463,7 +463,7 @@ pub fn serve_directory_listing(dir: PathBuf, request_path: &str) -> StaticRespon
         let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
 
         html.push_str("<li><a href=\"");
-        html.push_str(&escape_html(&name));
+        html.push_str(&escape_href(&name));
         if is_dir {
             html.push('/');
         }
@@ -478,6 +478,8 @@ pub fn serve_directory_listing(dir: PathBuf, request_path: &str) -> StaticRespon
     html.push_str("</ul>\n");
     html.push_str("</body>\n</html>\n");
 
+    let body: Bytes = html.into();
+
     let mut headers = HeaderMap::new();
     headers.insert(
         http::header::CONTENT_TYPE,
@@ -487,7 +489,6 @@ pub fn serve_directory_listing(dir: PathBuf, request_path: &str) -> StaticRespon
         http::header::CACHE_CONTROL,
         HeaderValue::from_static("no-store"),
     );
-    let body: Bytes = html.into();
     headers.insert(
         http::header::CONTENT_LENGTH,
         HeaderValue::from_str(&body.len().to_string()).unwrap(),
@@ -500,6 +501,7 @@ pub fn serve_directory_listing(dir: PathBuf, request_path: &str) -> StaticRespon
     }
 }
 
+use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::fs::DirEntry;
 
 /// Hide dotfiles by default
@@ -525,4 +527,22 @@ fn escape_html(input: &str) -> String {
         }
     }
     out
+}
+
+/// Encode a path segment for use in an HTML href attribute.
+/// This is URL encoding, NOT HTML escaping.
+fn escape_href(input: &str) -> String {
+    // RFC 3986 unreserved characters: ALPHA / DIGIT / "-" / "." / "_" / "~"
+    // Everything else gets percent-encoded.
+    const FRAGMENT: &AsciiSet = &CONTROLS
+        .add(b' ')
+        .add(b'"')
+        .add(b'<')
+        .add(b'>')
+        .add(b'`')
+        .add(b'#')
+        .add(b'?')
+        .add(b'%');
+
+    utf8_percent_encode(input, FRAGMENT).to_string()
 }
