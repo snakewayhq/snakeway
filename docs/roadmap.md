@@ -2,17 +2,17 @@
 
 > A modern, extensible reverse proxy built on Pingora 0.6.0
 
-## Phase 0: Foundation (v0.1.0)
+## ✔ Phase 0: Foundation (v0.1.0)
 
 ### Goals
 
 1. Create a functional binary: `snakeway`
-2. Implement a minimal but correct config format (TOML, not KDL)
+2. Implement a minimal config format (TOML)
 3. Integrate Pingora 0.6.0 with:
     * downstream HTTP/1.1 + HTTP/2
     * upstream HTTP/1.1 + HTTP/2
-4. Implement basic reverse proxy routing
-5. Implement blueprint for plugin/device API (do NOT implement yet)
+4. Implement basic reverse proxy routing for 1 upstream
+5. Implement basic plugin/device API
 6. Structured logging (tracing + JSON)
 7. CI + cross-compilation set up
 
@@ -71,26 +71,36 @@ Plugin/device phases:
 
 ### Implementation Order
 
-#### Phase 1A \- Basic Lifecycle Plumbing
+#### ✔ Phase 1A \- Basic Lifecycle Plumbing and Cofnig
 
 1. Device API \+ ctx structures
 2. Device registry \+ execution pipeline
 3. Pipeline integration with Pingora
-4. Built-in devices
+4. Built-in and WASM device API
+5. Config loader (TOML)
 
 #### Phase 1B \- Configuration and Static File Server
 
-1. Config loader (TOML)
-2. Static file server (basics)
-3. Static file server (advanced features)
+1. Static file server (basics)
+2. Static file server (Etag, If-Modified-Since, gzip, brotli)
+3. Static file server (directory listing)
+4. Static file server (caching headers)
+5. Static file server (WASM hooks)
 
-#### Phase 1C \- Observability and Reload
+#### Phase 1C \- Built-in Device(s)
+
+1. Identity device
+
+#### Phase 1D \- Observability and Reload
 
 1. Structured logs (logs command)
 2. Hot reload (SIGHUP \+ admin)
 3. Observability endpoints
 
-#### Phase 1D \- Benchmark and Revisit Lifecycle
+
+## Phase 1.5 \- Benchmark and Revisit Lifecycle
+
+*Confirm that the overall architecture is not accidentally bad.*
 
 Known limitations at this stage:
 
