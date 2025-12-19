@@ -215,6 +215,24 @@ fn apply_cache_headers(headers: &mut HeaderMap, policy: &StaticCachePolicy) {
     );
 }
 
+/// Check if the response should vary based on Accept-Encoding header.
+/// This is an important header for caching proxies.
+fn response_varies_by_encoding(mime: &mime_guess::Mime, size: u64, cfg: &StaticFileConfig) -> bool {
+    if !is_compressible_mime(mime) {
+        return false;
+    }
+
+    if cfg.enable_brotli && size >= cfg.min_brotli_size {
+        return true;
+    }
+
+    if cfg.enable_gzip && size >= cfg.min_gzip_size {
+        return true;
+    }
+
+    false
+}
+
 pub async fn serve_file(
     path: PathBuf,
     conditional: &ConditionalHeaders,
@@ -292,18 +310,15 @@ pub async fn serve_file(
     }
 
     // Add Vary header to indicate response varies based on Accept-Encoding
-    // This is important for caching proxies
-    if is_compressible_mime(&mime) {
+    if response_varies_by_encoding(&mime, metadata.len(), static_config) {
         headers.insert(
             http::header::VARY,
             HeaderValue::from_static("Accept-Encoding"),
         );
     }
 
-
     // Apply cache policy headers
     apply_cache_headers(&mut headers, cache_policy);
-
 
     // Return 304 Not Modified if conditions are met
     if not_modified {
