@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use crate::config::{StaticCachePolicy, StaticFileConfig};
-use crate::static_files::serve::compression::{
+use crate::static_files::render::compression::{
     brotli_compress, gzip_compress, is_compressible_mime, preferred_encoding,
     response_varies_by_encoding,
 };
-use crate::static_files::serve::etag::{etag_matches, generate_etag, modified_since};
+use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
 
-use crate::static_files::serve::cache::apply_cache_headers;
+use crate::static_files::render::cache::apply_cache_headers;
 
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
@@ -16,7 +16,7 @@ use httpdate::fmt_http_date;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
-pub async fn serve_file(
+pub async fn render_file(
     path: PathBuf,
     conditional: &ConditionalHeaders,
     static_config: &StaticFileConfig,

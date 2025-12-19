@@ -1,8 +1,8 @@
 use http::{HeaderMap, HeaderValue, StatusCode};
 
 use crate::route::RouteKind;
+use crate::static_files::render::{render_directory, render_file};
 use crate::static_files::resolve::{ResolveError, ResolvedStatic, resolve_static_path};
-use crate::static_files::serve::{serve_directory_listing, serve_file};
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 
 pub async fn handle_static_request(
@@ -28,7 +28,7 @@ pub async fn handle_static_request(
     };
 
     match resolved {
-        ResolvedStatic::File(path) => serve_file(path, conditional, static_config, cache_policy)
+        ResolvedStatic::File(path) => render_file(path, conditional, static_config, cache_policy)
             .await
             .unwrap_or_else(|e| error_response(map_serve_error(e))),
 
@@ -37,7 +37,7 @@ pub async fn handle_static_request(
                 return error_response(StatusCode::FORBIDDEN);
             }
 
-            serve_directory_listing(dir, request_path)
+            render_directory(dir, request_path)
         }
     }
 }
