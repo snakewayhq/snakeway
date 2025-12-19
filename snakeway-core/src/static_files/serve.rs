@@ -223,17 +223,14 @@ pub async fn serve_file(
     let last_modified = modified.map(fmt_http_date);
 
     // Check conditional headers for 304 Not Modified response
-    let not_modified = conditional
-        .if_none_match
-        .as_deref()
-        .map(|inm| etag_matches(&etag, inm))
-        .or_else(|| {
-            conditional
-                .if_modified_since
-                .as_deref()
-                .map(|ims| !modified_since(modified, ims))
-        })
-        .unwrap_or(false);
+    let not_modified = match (
+        conditional.if_none_match.as_deref(),
+        conditional.if_modified_since.as_deref(),
+    ) {
+        (Some(inm), _) => etag_matches(&etag, inm),
+        (None, Some(ims)) => !modified_since(modified, ims),
+        _ => false,
+    };
 
     // Guess MIME type to set the Content-Type header.
     let mime = mime_guess::from_path(&path).first_or_octet_stream();
