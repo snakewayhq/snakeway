@@ -1,11 +1,9 @@
 use http::{HeaderMap, HeaderValue, StatusCode};
 
 use crate::route::RouteKind;
-use crate::static_files::StaticBody;
 use crate::static_files::resolve::{ResolveError, ResolvedStatic, resolve_static_path};
-use crate::static_files::serve::{
-    ConditionalHeaders, ServeError, StaticResponse, serve_directory_listing, serve_file,
-};
+use crate::static_files::serve::{serve_directory_listing, serve_file};
+use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 
 pub async fn handle_static_request(
     route: &RouteKind,

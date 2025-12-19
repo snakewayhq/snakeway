@@ -1,6 +1,7 @@
 pub mod handler;
 mod resolve;
+mod response;
 mod serve;
 
 pub use handler::handle_static_request;
-pub use serve::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
+pub use response::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
