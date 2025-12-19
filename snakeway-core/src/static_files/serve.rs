@@ -4,8 +4,8 @@ use std::time::SystemTime;
 
 use crate::config::{StaticCachePolicy, StaticFileConfig};
 use bytes::Bytes;
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use httpdate::{fmt_http_date, parse_http_date};
 use tokio::fs;
@@ -322,10 +322,7 @@ pub async fn serve_file(
 
     // Return 304 Not Modified if conditions are met
     if not_modified {
-        headers.insert(
-            http::header::CONTENT_LENGTH,
-            HeaderValue::from_static("0"),
-        );
+        headers.insert(http::header::CONTENT_LENGTH, HeaderValue::from_static("0"));
         return Ok(StaticResponse {
             status: StatusCode::NOT_MODIFIED,
             headers,
@@ -404,7 +401,6 @@ pub async fn serve_file(
     })
 }
 
-
 /// Render a basic HTML directory listing.
 /// Assumes:
 /// - `dir` is already canonicalized and validated
@@ -414,7 +410,7 @@ pub fn serve_directory_listing(dir: PathBuf, request_path: &str) -> StaticRespon
     let mut entries = match std::fs::read_dir(&dir) {
         Ok(rd) => rd
             .filter_map(|e| e.ok())
-            .filter(|e| !is_hidden(&e))
+            .filter(|e| !is_hidden(e))
             .collect::<Vec<_>>(),
         Err(_) => {
             return StaticResponse {

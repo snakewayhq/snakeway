@@ -1,9 +1,11 @@
 use http::{HeaderMap, HeaderValue, StatusCode};
 
 use crate::route::RouteKind;
-use crate::static_files::resolve::{resolve_static_path, ResolveError, ResolvedStatic};
-use crate::static_files::serve::{serve_directory_listing, serve_file, ConditionalHeaders, ServeError, StaticResponse};
 use crate::static_files::StaticBody;
+use crate::static_files::resolve::{ResolveError, ResolvedStatic, resolve_static_path};
+use crate::static_files::serve::{
+    ConditionalHeaders, ServeError, StaticResponse, serve_directory_listing, serve_file,
+};
 
 pub async fn handle_static_request(
     route: &RouteKind,
@@ -28,11 +30,9 @@ pub async fn handle_static_request(
     };
 
     match resolved {
-        ResolvedStatic::File(path) => {
-            serve_file(path, conditional, static_config, cache_policy)
-                .await
-                .unwrap_or_else(|e| error_response(map_serve_error(e)))
-        }
+        ResolvedStatic::File(path) => serve_file(path, conditional, static_config, cache_policy)
+            .await
+            .unwrap_or_else(|e| error_response(map_serve_error(e))),
 
         ResolvedStatic::Directory(dir) => {
             if !directory_listing {
@@ -62,10 +62,7 @@ fn map_serve_error(err: ServeError) -> StatusCode {
 
 fn error_response(status: StatusCode) -> StaticResponse {
     let mut headers = HeaderMap::new();
-    headers.insert(
-        http::header::CONTENT_LENGTH,
-        HeaderValue::from_static("0"),
-    );
+    headers.insert(http::header::CONTENT_LENGTH, HeaderValue::from_static("0"));
 
     StaticResponse {
         status,

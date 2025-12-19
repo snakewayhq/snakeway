@@ -4,7 +4,7 @@ mod server;
 
 use anyhow::Context;
 pub use device::{BuiltinDeviceKind, DeviceConfig, DeviceKind};
-pub use route::{RouteConfig, StaticFileConfig, StaticCachePolicy};
+pub use route::{RouteConfig, StaticCachePolicy, StaticFileConfig};
 use serde::Deserialize;
 use server::ServerConfig;
 use std::fs;
