@@ -16,6 +16,11 @@ file_dir = "./public/"
 path = "/static"
 index = false
 
+# Caching header settings for the above static file route.
+[routes.config]
+cache_max_age = 86400
+cache_public = true
+cache_immutable = true
 
 # ---------------------------------------------------------------------
 # Devices are loaded and executed top-to-bottom.

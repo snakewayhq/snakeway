@@ -1,14 +1,12 @@
 mod device;
 mod route;
 mod server;
-mod static_files;
 
 use anyhow::Context;
 pub use device::{BuiltinDeviceKind, DeviceConfig, DeviceKind};
-pub use route::RouteConfig;
+pub use route::{RouteConfig, StaticFileConfig, StaticCachePolicy};
 use serde::Deserialize;
 use server::ServerConfig;
-pub use static_files::StaticFileConfig;
 use std::fs;
 use std::str::FromStr;
 

@@ -2,10 +2,10 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use crate::config::StaticFileConfig;
+use crate::config::{StaticCachePolicy, StaticFileConfig};
 use bytes::Bytes;
-use flate2::Compression;
 use flate2::write::GzEncoder;
+use flate2::Compression;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use httpdate::{fmt_http_date, parse_http_date};
 use tokio::fs;
@@ -194,10 +194,32 @@ fn modified_since(file_modified: Option<SystemTime>, if_modified_since: &str) ->
     }
 }
 
+fn apply_cache_headers(headers: &mut HeaderMap, policy: &StaticCachePolicy) {
+    let mut value = String::new();
+
+    if policy.public {
+        value.push_str("public");
+    } else {
+        value.push_str("private");
+    }
+
+    value.push_str(&format!(", max-age={}", policy.max_age));
+
+    if policy.immutable {
+        value.push_str(", immutable");
+    }
+
+    headers.insert(
+        http::header::CACHE_CONTROL,
+        HeaderValue::from_str(&value).unwrap(),
+    );
+}
+
 pub async fn serve_file(
     path: PathBuf,
     conditional: &ConditionalHeaders,
-    cfg: &StaticFileConfig,
+    static_config: &StaticFileConfig,
+    cache_policy: &StaticCachePolicy,
 ) -> Result<StaticResponse, ServeError> {
     let metadata = fs::metadata(&path)
         .await
@@ -209,7 +231,7 @@ pub async fn serve_file(
     }
 
     // Guard against memory exhaustion vulnerability.
-    if metadata.len() > cfg.max_file_size {
+    if metadata.len() > static_config.max_file_size {
         return Err(ServeError::Forbidden);
     }
 
@@ -241,8 +263,8 @@ pub async fn serve_file(
             let size = metadata.len();
 
             // Determine what encodings are allowed based on size
-            let br_allowed = cfg.enable_brotli && size >= cfg.min_brotli_size;
-            let gzip_allowed = cfg.enable_gzip && size >= cfg.min_gzip_size;
+            let br_allowed = static_config.enable_brotli && size >= static_config.min_brotli_size;
+            let gzip_allowed = static_config.enable_gzip && size >= static_config.min_gzip_size;
 
             match preferred_encoding(ae) {
                 Some("br") if br_allowed => Some("br"),
@@ -278,6 +300,11 @@ pub async fn serve_file(
         );
     }
 
+
+    // Apply cache policy headers
+    apply_cache_headers(&mut headers, cache_policy);
+
+
     // Return 304 Not Modified if conditions are met
     if not_modified {
         return Ok(StaticResponse {
@@ -297,7 +324,7 @@ pub async fn serve_file(
         })?;
 
     // For small files, read into memory (and optionally compress)
-    if metadata.len() <= cfg.small_file_threshold {
+    if metadata.len() <= static_config.small_file_threshold {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)
             .await
