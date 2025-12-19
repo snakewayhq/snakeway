@@ -4,6 +4,7 @@ use std::sync::Once;
 
 static SERVER: Once = Once::new();
 static CONFIG: &str = "static.toml";
+static NONDEFAULT_CONFIG: &str = "static_nondefault.toml";
 
 #[test]
 fn serves_index_html_from_static_dir() {
@@ -163,5 +164,61 @@ fn if_modified_since_returns_304() {
         res.status(),
         reqwest::StatusCode::NOT_MODIFIED,
         "expected 304 Not Modified"
+    );
+}
+
+#[test]
+fn directory_listing_renders_when_enabled() {
+    // Arrange
+    common::start_server(&SERVER, NONDEFAULT_CONFIG);
+
+    // Act
+    let res = reqwest::blocking::get("http://127.0.0.1:4041/images/")
+        .expect("directory listing request failed");
+
+    let status = res.status();
+    let body = res.text().expect("failed to read body");
+
+    // Assert
+    assert_eq!(status, 200);
+    assert!(
+        body.contains("Index of /"),
+        "expected directory listing title, got: {body}"
+    );
+}
+
+#[test]
+fn directory_listing_includes_expected_file() {
+    // Arrange
+    common::start_server(&SERVER, NONDEFAULT_CONFIG);
+
+    // Act
+    let res = reqwest::blocking::get("http://127.0.0.1:4041/images/")
+        .expect("directory listing request failed");
+
+    let body = res.text().expect("failed to read body");
+
+    // Assert
+    assert!(
+        body.contains("41kb.png"),
+        "expected index.html in directory listing, got: {body}"
+    );
+}
+
+#[test]
+fn directory_listing_hides_dotfiles() {
+    // Arrange
+    common::start_server(&SERVER, NONDEFAULT_CONFIG);
+
+    // Act
+    let res =
+        reqwest::blocking::get("http://127.0.0.1:4041/").expect("directory listing request failed");
+
+    let body = res.text().expect("failed to read body");
+
+    // Assert
+    assert!(
+        !body.contains(".secret"),
+        "dotfiles should not be visible in directory listing"
     );
 }

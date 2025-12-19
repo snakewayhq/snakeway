@@ -4,8 +4,8 @@ listen = "127.0.0.1:4041"
 [[routes]]
 path = "/"
 file_dir = "./fixtures/public"
-index = false
-directory_listing = false
+index = true
+directory_listing = true
 
 [[routes]]
 path = "/api"
