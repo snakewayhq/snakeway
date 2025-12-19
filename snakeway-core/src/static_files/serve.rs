@@ -4,8 +4,8 @@ use std::time::SystemTime;
 
 use crate::config::StaticFileConfig;
 use bytes::Bytes;
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use httpdate::{fmt_http_date, parse_http_date};
 use tokio::fs;
@@ -78,14 +78,11 @@ fn is_compressible_mime(mime: &mime_guess::Mime) -> bool {
 
 /// Parse quality value from Accept-Encoding part (e.g., "gzip;q=0.5" -> 0.5)
 fn parse_quality(part: &str) -> f32 {
-    if let Some(q_part) = part.split(';').nth(1) {
-        if let Some(q_value) = q_part.trim().strip_prefix("q=") {
-            if let Ok(q) = q_value.parse::<f32>() {
-                return q;
-            }
-        }
-    }
-    1.0 // Default quality is 1.0
+    part.split(';')
+        .nth(1)
+        .and_then(|s| s.trim().strip_prefix("q="))
+        .and_then(|s| s.parse::<f32>().ok())
+        .unwrap_or(1.0)
 }
 
 /// Check if the client accepts a specific encoding and return its quality value
@@ -226,18 +223,17 @@ pub async fn serve_file(
     let last_modified = modified.map(fmt_http_date);
 
     // Check conditional headers for 304 Not Modified response
-    let mut not_modified = false;
-
-    // If-None-Match takes precedence over If-Modified-Since (per HTTP spec)
-    if let Some(ref if_none_match) = conditional.if_none_match {
-        if etag_matches(&etag, if_none_match) {
-            not_modified = true;
-        }
-    } else if let Some(ref if_modified_since) = conditional.if_modified_since {
-        if !modified_since(modified, if_modified_since) {
-            not_modified = true;
-        }
-    }
+    let not_modified = conditional
+        .if_none_match
+        .as_deref()
+        .map(|inm| etag_matches(&etag, inm))
+        .or_else(|| {
+            conditional
+                .if_modified_since
+                .as_deref()
+                .map(|ims| !modified_since(modified, ims))
+        })
+        .unwrap_or(false);
 
     // Guess MIME type to set the Content-Type header.
     let mime = mime_guess::from_path(&path).first_or_octet_stream();
@@ -315,10 +311,7 @@ pub async fn serve_file(
             let compress_result = match encoding {
                 "br" => brotli_compress(&buf),
                 "gzip" => gzip_compress(&buf),
-                _ => Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "unknown encoding",
-                )),
+                _ => Err(std::io::Error::other("unknown encoding")),
             };
 
             if let Ok(compressed) = compress_result {
