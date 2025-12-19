@@ -1,40 +1,14 @@
 mod common;
 
-use snakeway_core::config::SnakewayConfig;
-use snakeway_core::server::build_pingora_server;
-
-use std::path::PathBuf;
-
-fn load_static_config() -> SnakewayConfig {
-    let cfg_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("fixtures")
-        .join("static.toml");
-
-    SnakewayConfig::from_file(cfg_path.to_str().unwrap())
-        .expect("failed to load static.toml config")
-}
-
 use std::sync::Once;
 
-static START: Once = Once::new();
-
-fn start_server() {
-    START.call_once(|| {
-        let cfg = load_static_config();
-        let server = build_pingora_server(cfg).unwrap();
-
-        std::thread::spawn(move || {
-            server.run_forever();
-        });
-
-        std::thread::sleep(std::time::Duration::from_millis(200));
-    });
-}
+static SERVER: Once = Once::new();
+static CONFIG: &str = "static.toml";
 
 #[test]
 fn serves_index_html_from_static_dir() {
     // Arrange
-    start_server();
+    common::start_server(&SERVER, CONFIG);
 
     // Act
     let res = reqwest::blocking::get("http://127.0.0.1:4041/").expect("static request failed");
@@ -54,7 +28,7 @@ fn serves_index_html_from_static_dir() {
 fn static_route_does_not_require_upstream() {
     // Arrange
     // NOTE: intentionally NOT spawning upstream
-    start_server();
+    common::start_server(&SERVER, CONFIG);
 
     // Act
     let res = reqwest::blocking::get("http://127.0.0.1:4041/").expect("static request failed");
@@ -66,8 +40,8 @@ fn static_route_does_not_require_upstream() {
 #[test]
 fn proxy_route_still_works_when_static_is_enabled() {
     // Arrange
-    common::spawn_upstream();
-    start_server();
+    common::start_upstream();
+    common::start_server(&SERVER, CONFIG);
 
     // Act
     let res = reqwest::blocking::get("http://127.0.0.1:4041/api").expect("proxy request failed");
@@ -83,7 +57,7 @@ fn proxy_route_still_works_when_static_is_enabled() {
 #[test]
 fn static_path_traversal_is_rejected() {
     // Arrange
-    start_server();
+    common::start_server(&SERVER, CONFIG);
 
     // Act
     let res = reqwest::blocking::get("http://127.0.0.1:4041/static/../Cargo.toml")
@@ -100,7 +74,7 @@ fn static_path_traversal_is_rejected() {
 #[test]
 fn static_response_includes_cache_headers() {
     // Arrange
-    start_server();
+    common::start_server(&SERVER, CONFIG);
 
     // Act
     let res = reqwest::blocking::get("http://127.0.0.1:4041/").expect("static request failed");
@@ -129,7 +103,7 @@ fn static_response_includes_cache_headers() {
 #[test]
 fn if_none_match_returns_304() {
     // Arrange
-    start_server();
+    common::start_server(&SERVER, CONFIG);
 
     let initial = reqwest::blocking::get("http://127.0.0.1:4041/").expect("initial request failed");
 
@@ -164,7 +138,7 @@ fn if_none_match_returns_304() {
 #[test]
 fn if_modified_since_returns_304() {
     // Arrange
-    start_server();
+    common::start_server(&SERVER, CONFIG);
 
     let initial = reqwest::blocking::get("http://127.0.0.1:4041/").expect("initial request failed");
 
