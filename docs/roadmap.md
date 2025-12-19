@@ -83,9 +83,10 @@ Plugin/device phases:
 
 1. Static file server (basics)
 2. Static file server (Etag, If-Modified-Since, gzip, brotli)
-3. Static file server (directory listing)
-4. Static file server (caching headers)
-5. Static file server (WASM hooks)
+3. Static file server (caching headers)
+4. Static file server (directory listing)
+5. Static file server (range requests)
+6. Static file server (WASM hooks)
 
 #### Phase 1C \- Built-in Device(s)
 
