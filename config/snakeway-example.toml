@@ -15,6 +15,7 @@ path = "/"
 file_dir = "./public/"
 path = "/static"
 index = false
+directory_listing = false
 
 # Caching header settings for the above static file route.
 [routes.config]
