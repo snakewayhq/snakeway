@@ -1,4 +1,4 @@
-use anyhow::{Error, Result, anyhow};
+use anyhow::{anyhow, Error, Result};
 use pingora::prelude::*;
 use pingora::server::Server;
 
@@ -75,6 +75,7 @@ fn build_router(routes: &[RouteConfig]) -> Result<Router> {
                 path: route.path.clone(),
                 file_dir: dir.into(),
                 index: route.index,
+                config: route.config.clone(),
             }
         } else {
             unreachable!("route validation should prevent this");

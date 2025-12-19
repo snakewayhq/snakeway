@@ -2,16 +2,14 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use crate::config::StaticFileConfig;
 use bytes::Bytes;
-use flate2::Compression;
 use flate2::write::GzEncoder;
+use flate2::Compression;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use httpdate::{fmt_http_date, parse_http_date};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
-
-const MAX_STATIC_FILE_SIZE: u64 = 10 * 1024 * 1024; // 10 MiB
-const SMALL_FILE_THRESHOLD: u64 = 256 * 1024; // 256 KiB
 
 #[derive(Debug)]
 pub enum ServeError {
@@ -41,10 +39,6 @@ pub struct ConditionalHeaders {
     pub if_modified_since: Option<String>,
     pub accept_encoding: Option<String>,
 }
-
-/// Minimum size threshold for compression (don't compress tiny files)
-const MIN_COMPRESS_SIZE: u64 = 256; // 256 B (gzip)
-const MIN_BROTLI_SIZE: u64 = 4 * 1024; // 4 KiB (brotli)
 
 /// Check if a MIME type is compressible (text-based or common web formats)
 fn is_compressible_mime(mime: &mime_guess::Mime) -> bool {
@@ -206,6 +200,7 @@ fn modified_since(file_modified: Option<SystemTime>, if_modified_since: &str) ->
 pub async fn serve_file(
     path: PathBuf,
     conditional: &ConditionalHeaders,
+    cfg: &StaticFileConfig,
 ) -> Result<StaticResponse, ServeError> {
     let metadata = fs::metadata(&path)
         .await
@@ -217,7 +212,7 @@ pub async fn serve_file(
     }
 
     // Guard against memory exhaustion vulnerability.
-    if metadata.len() > MAX_STATIC_FILE_SIZE {
+    if metadata.len() > cfg.max_file_size {
         return Err(ServeError::Forbidden);
     }
 
@@ -253,8 +248,8 @@ pub async fn serve_file(
             let size = metadata.len();
 
             // Determine what encodings are allowed based on size
-            let br_allowed = size >= MIN_BROTLI_SIZE;
-            let gzip_allowed = size >= MIN_COMPRESS_SIZE;
+            let br_allowed = cfg.enable_brotli && size >= cfg.min_brotli_size;
+            let gzip_allowed = cfg.enable_gzip && size >= cfg.min_gzip_size;
 
             match preferred_encoding(ae) {
                 Some("br") if br_allowed => Some("br"),
@@ -309,7 +304,7 @@ pub async fn serve_file(
         })?;
 
     // For small files, read into memory (and optionally compress)
-    if metadata.len() <= SMALL_FILE_THRESHOLD {
+    if metadata.len() <= cfg.small_file_threshold {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)
             .await

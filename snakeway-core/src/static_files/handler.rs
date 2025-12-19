@@ -14,6 +14,7 @@ pub async fn handle_static_request(
         path,
         file_dir,
         index,
+        config,
     } = route
     else {
         unreachable!("handle_static_request called with non-static route");
@@ -24,7 +25,7 @@ pub async fn handle_static_request(
         Err(e) => return error_response(map_resolve_error(e)),
     };
 
-    serve_file(resolved, conditional)
+    serve_file(resolved, conditional, config)
         .await
         .unwrap_or_else(|e| error_response(map_serve_error(e)))
 }
