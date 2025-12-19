@@ -7,12 +7,18 @@ pub enum ResolveError {
     BadPath,
 }
 
+#[derive(Debug)]
+pub enum ResolvedStatic {
+    File(PathBuf),
+    Directory(PathBuf),
+}
+
 pub fn resolve_static_path(
     base_dir: &Path,
     route_prefix: &str,
     request_path: &str,
     index: bool,
-) -> Result<PathBuf, ResolveError> {
+) -> Result<ResolvedStatic, ResolveError> {
     // Sanity checks
     if !request_path.starts_with('/') || !route_prefix.starts_with('/') {
         return Err(ResolveError::BadPath);
@@ -85,10 +91,10 @@ pub fn resolve_static_path(
         if index {
             let index_path = target_canon.join("index.html");
             if index_path.is_file() {
-                return Ok(index_path);
+                return Ok(ResolvedStatic::File(index_path));
             }
         }
-        return Err(ResolveError::NotFound);
+        return Ok(ResolvedStatic::Directory(target_canon));
     }
 
     // Must be a regular file
@@ -96,5 +102,5 @@ pub fn resolve_static_path(
         return Err(ResolveError::NotFound);
     }
 
-    Ok(target_canon)
+    Ok(ResolvedStatic::File(target_canon))
 }

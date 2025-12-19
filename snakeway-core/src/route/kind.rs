@@ -11,6 +11,7 @@ pub enum RouteKind {
         path: String,
         file_dir: PathBuf,
         index: bool,
+        directory_listing: bool,
         static_config: StaticFileConfig,
         cache_policy: StaticCachePolicy,
     },

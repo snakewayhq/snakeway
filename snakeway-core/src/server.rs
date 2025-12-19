@@ -75,6 +75,7 @@ fn build_router(routes: &[RouteConfig]) -> Result<Router> {
                 path: route.path.clone(),
                 file_dir: dir.into(),
                 index: route.index,
+                directory_listing: route.directory_listing,
                 static_config: route.static_config.clone(),
                 cache_policy: route.cache_policy.clone(),
             }

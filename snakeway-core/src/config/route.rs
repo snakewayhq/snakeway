@@ -15,6 +15,11 @@ pub struct RouteConfig {
     #[serde(default)]
     pub index: bool,
 
+    #[serde(default)]
+    pub directory_listing: bool,
+
+    pub directory_listing_format: Option<String>,
+
     /// Static file streaming and compression configuration
     #[serde(default)]
     pub static_config: StaticFileConfig,
