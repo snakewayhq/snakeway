@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use crate::config::StaticFileConfig;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub enum RouteKind {
