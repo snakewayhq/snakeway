@@ -7,10 +7,11 @@ use crate::static_files::render::compression::{
 };
 use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
 
-use crate::static_files::render::range::{ByteRange, parse_range_header};
+use crate::static_files::render::headers::HeaderBuilder;
+use crate::static_files::render::range::parse_range_header;
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
-use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header};
+use http::StatusCode;
 use httpdate::fmt_http_date;
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
@@ -82,7 +83,7 @@ pub async fn render_file(
     };
 
     // Build common headers (sent for both 200 and 304)
-    let mut headers = HeaderBuilder::new();
+    let mut headers = HeaderBuilder::default();
     headers.accept_ranges();
     headers.content_type(mime.as_ref());
     headers.etag(&etag);
@@ -202,78 +203,4 @@ pub async fn render_file(
         headers: headers.build(),
         body: StaticBody::File(file),
     })
-}
-
-struct HeaderBuilder {
-    headers: HeaderMap,
-}
-
-impl HeaderBuilder {
-    fn new() -> Self {
-        Self {
-            headers: HeaderMap::new(),
-        }
-    }
-
-    fn insert_header(&mut self, header_name: HeaderName, value: &str) {
-        let header_value = HeaderValue::from_str(value).unwrap_or(HeaderValue::from_static(""));
-        self.headers.insert(header_name, header_value);
-    }
-
-    fn accept_ranges(&mut self) {
-        self.insert_header(header::ACCEPT_RANGES, "bytes");
-    }
-
-    fn content_type(&mut self, value: &str) {
-        self.insert_header(header::CONTENT_TYPE, value);
-    }
-
-    fn content_length(&mut self, value: &str) {
-        self.insert_header(header::CONTENT_LENGTH, value);
-    }
-
-    fn content_range(&mut self, range: ByteRange, len: u64) {
-        self.insert_header(
-            header::CONTENT_RANGE,
-            &format!("bytes {}-{}/{}", range.start, range.end, len),
-        );
-    }
-
-    fn content_encoding(&mut self, value: &str) {
-        self.insert_header(header::CONTENT_ENCODING, value);
-    }
-
-    fn etag(&mut self, value: &str) {
-        self.insert_header(header::ETAG, value);
-    }
-
-    fn last_modified(&mut self, value: &str) {
-        self.insert_header(header::LAST_MODIFIED, value);
-    }
-
-    fn vary(&mut self) {
-        self.insert_header(header::VARY, "Accept-Encoding");
-    }
-
-    fn cache_control(&mut self, policy: &StaticCachePolicy) {
-        let mut value = String::new();
-
-        if policy.public {
-            value.push_str("public");
-        } else {
-            value.push_str("private");
-        }
-
-        value.push_str(&format!(", max-age={}", policy.max_age));
-
-        if policy.immutable {
-            value.push_str(", immutable");
-        }
-
-        self.insert_header(header::CACHE_CONTROL, &value);
-    }
-
-    fn build(self) -> HeaderMap {
-        self.headers
-    }
 }
