@@ -15,21 +15,48 @@ CONFIG := "config/snakeway.toml"
 # -----------------------------------------------------------------------------
 
 install-tools:
-    cargo install cargo-component cargo-zigbuild wit-bindgen-cli
+    cargo install cargo-component cargo-zigbuild wit-bindgen-cli samply
 
 docs:
-	cd docs && npm run docs:dev
+    cd docs && npm run docs:dev
 
+# -----------------------------------------------------------------------------
+# Benchmarks and profiling
+# -----------------------------------------------------------------------------
 
+# Run hey to test out various static file request configs.
 benchmark-static-files:
     @echo "No compression..."
     hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
     @echo "Gzip..."
-    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
+    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/1kb.html
     @echo "Brotli..."
-    hey -n 20000 -c 128 -H "Accept-Encoding: br" http://127.0.0.1:8080/static/index.html
+    hey -n 20000 -c 128 -H "Accept-Encoding: br" http://127.0.0.1:8080/static/6kb.html
+    @echo "Range request..."
+    hey -n 5000 -c 128 -H "Range: bytes=0-99" http://127.0.0.1:8080/static/images/1mb.png
 
-# -----------------------------------------------------------------------------
+# Start this profile recipe, then run run-load. When this command exits, the results should be displayed.
+profile-samply:
+    @echo "==> Building Snakeway (release, with symbols)"
+    cargo build --release
+
+    @echo "==> Starting Snakeway in background"
+    ./target/release/snakeway --config snakeway.toml & \
+    PID=$$!; \
+    echo "Snakeway PID: $$PID"; \
+    sleep 2; \
+    \
+    echo "==> Profiling with Samply (Ctrl+C to stop)"; \
+    samply record -p $$PID; \
+    \
+    echo "==> Stopping Snakeway"; \
+    kill $$PID || true
+    ------------------------------------------------------------
+
+# This is run after profile-samply to generate meaningful profiling data.
+run-load:
+    hey -n 300000 -c 256 http://127.0.0.1:8080/static/index.html
+
 # Debugging
 # -----------------------------------------------------------------------------
 
@@ -76,7 +103,6 @@ musl-x86_64:
 
 # Build both
 musl-all: musl-aarch64 musl-x86_64
-
 
 # Run Snakeway locally
 run:

@@ -11,7 +11,8 @@ opt-level = 0
 
 [profile.release]
 opt-level = 3               # Maximize performance
-lto = "fat"                 # Link-time optimization
+debug = true                # Keep debug symbols for profiling
+lto = "thin"                # Link-time optimization
 codegen-units = 1           # More aggressive optimization by reducing parallelism
 panic = "abort"             # Reduce panic handling code
 incremental = false         # Ensure no incremental compilation

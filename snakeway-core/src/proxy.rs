@@ -2,6 +2,9 @@ use async_trait::async_trait;
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 
+#[cfg(feature = "static_files")]
+use tokio::io::AsyncReadExt;
+
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
@@ -223,6 +226,11 @@ pub async fn respond_with_static(
             .get(http::header::ACCEPT_ENCODING)
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string()),
+        range: ctx
+            .headers
+            .get(http::header::RANGE)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string()),
     };
 
     let static_resp =
@@ -282,6 +290,38 @@ pub async fn respond_with_static(
             }
 
             // End-of-stream.
+            session.write_response_body(None, true).await?;
+        }
+
+        crate::static_files::StaticBody::RangedFile {
+            mut file,
+            mut remaining,
+        } => {
+            const CHUNK_SIZE: usize = 32 * 1024;
+            let mut buf = bytes::BytesMut::with_capacity(CHUNK_SIZE);
+
+            while remaining > 0 {
+                let to_read = std::cmp::min(CHUNK_SIZE as u64, remaining) as usize;
+
+                buf.resize(to_read, 0);
+
+                let n = file
+                    .read(&mut buf[..])
+                    .await
+                    .map_err(|_| Error::new(Custom("static file read error")))?;
+
+                if n == 0 {
+                    break;
+                }
+
+                remaining -= n as u64;
+                buf.truncate(n);
+
+                session
+                    .write_response_body(Some(buf.split().freeze()), false)
+                    .await?;
+            }
+
             session.write_response_body(None, true).await?;
         }
     }

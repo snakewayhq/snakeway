@@ -15,6 +15,12 @@ pub enum StaticBody {
     Bytes(Bytes),
     /// Useful for large files that require streaming from disk.
     File(fs::File),
+
+    /// Useful for serving range requests for large (media) files.
+    RangedFile {
+        file: fs::File,
+        remaining: u64,
+    },
 }
 
 pub struct StaticResponse {
@@ -29,4 +35,5 @@ pub struct ConditionalHeaders {
     pub if_none_match: Option<String>,
     pub if_modified_since: Option<String>,
     pub accept_encoding: Option<String>,
+    pub range: Option<String>,
 }

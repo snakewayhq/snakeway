@@ -222,3 +222,29 @@ fn directory_listing_hides_dotfiles() {
         "dotfiles should not be visible in directory listing"
     );
 }
+
+#[test]
+fn supports_range_requests() {
+    // Arrange
+    common::start_server(&SERVER, "static_index_and_directory.toml");
+    let client = reqwest::blocking::Client::new();
+
+    // Act
+    let res = client
+        .get("http://127.0.0.1:4041/images/41kb.png")
+        .header(reqwest::header::RANGE, "bytes=0-99")
+        .send()
+        .expect("range request failed");
+
+    // Assert
+    assert_eq!(res.status(), 206);
+    let content_range = res
+        .headers()
+        .get(reqwest::header::CONTENT_RANGE)
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert!(content_range.starts_with("bytes 0-99/"));
+    let body = res.bytes().unwrap();
+    assert_eq!(body.len(), 100);
+}

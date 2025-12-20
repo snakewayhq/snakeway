@@ -9,12 +9,13 @@ use crate::static_files::render::etag::{etag_matches, generate_etag, modified_si
 
 use crate::static_files::render::cache::apply_cache_headers;
 
+use crate::static_files::render::range::parse_range_header;
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use httpdate::fmt_http_date;
 use tokio::fs;
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 pub async fn render_file(
     path: PathBuf,
@@ -81,6 +82,10 @@ pub async fn render_file(
     // Build common headers (sent for both 200 and 304)
     let mut headers = HeaderMap::new();
     headers.insert(
+        http::header::ACCEPT_RANGES,
+        HeaderValue::from_static("bytes"),
+    );
+    headers.insert(
         http::header::CONTENT_TYPE,
         HeaderValue::from_str(mime.as_ref()).unwrap(),
     );
@@ -111,6 +116,16 @@ pub async fn render_file(
             headers,
             body: StaticBody::Empty,
         });
+    }
+
+    // compute the range header
+    let mut range = conditional
+        .range
+        .as_deref()
+        .and_then(|r| parse_range_header(r, metadata.len()));
+
+    if preferred_enc.is_some() {
+        range = None;
     }
 
     // Grab a file handle.
@@ -158,6 +173,33 @@ pub async fn render_file(
             // Compression failed or didn't reduce size, fall through to uncompressed response...
         }
 
+        // Apply range header, if the content is not compressed and the header exists.
+        if let Some(range) = range {
+            let slice = &buf[range.start as usize..=range.end as usize];
+
+            headers.insert(
+                http::header::CONTENT_RANGE,
+                HeaderValue::from_str(&format!(
+                    "bytes {}-{}/{}",
+                    range.start,
+                    range.end,
+                    metadata.len()
+                ))
+                .unwrap(),
+            );
+
+            headers.insert(
+                http::header::CONTENT_LENGTH,
+                HeaderValue::from_str(&slice.len().to_string()).unwrap(),
+            );
+
+            return Ok(StaticResponse {
+                status: StatusCode::PARTIAL_CONTENT,
+                headers,
+                body: StaticBody::Bytes(Bytes::copy_from_slice(slice)),
+            });
+        }
+
         // Uncompressed response
         headers.insert(
             http::header::CONTENT_LENGTH,
@@ -171,7 +213,37 @@ pub async fn render_file(
     }
 
     // For large files, stream without compression
-    // (streaming compression would require async-compression crate)
+    // todo: streaming compression would require async-compression crate
+    if let Some(range) = range {
+        file.seek(std::io::SeekFrom::Start(range.start))
+            .await
+            .map_err(|_| ServeError::Io)?;
+
+        let remaining = range.end - range.start + 1;
+
+        headers.insert(
+            http::header::CONTENT_RANGE,
+            HeaderValue::from_str(&format!(
+                "bytes {}-{}/{}",
+                range.start,
+                range.end,
+                metadata.len()
+            ))
+            .unwrap(),
+        );
+
+        headers.insert(
+            http::header::CONTENT_LENGTH,
+            HeaderValue::from_str(&remaining.to_string()).unwrap(),
+        );
+
+        return Ok(StaticResponse {
+            status: StatusCode::PARTIAL_CONTENT,
+            headers,
+            body: StaticBody::RangedFile { file, remaining },
+        });
+    }
+
     headers.insert(
         http::header::CONTENT_LENGTH,
         HeaderValue::from_str(&metadata.len().to_string()).unwrap(),
