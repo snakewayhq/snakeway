@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::config::{StaticCachePolicy, StaticFileConfig};
 use crate::static_files::render::compression::{
-    brotli_compress, gzip_compress, is_compressible_mime, preferred_encoding,
+    CompressionEncoding, brotli_compress, gzip_compress, is_compressible_mime, preferred_encoding,
     response_varies_by_encoding,
 };
 use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
@@ -69,9 +69,13 @@ pub async fn render_file(
             let gzip_allowed = static_config.enable_gzip && size >= static_config.min_gzip_size;
 
             match preferred_encoding(ae) {
-                Some("br") if br_allowed => Some("br"),
-                Some("br") if !br_allowed && gzip_allowed => Some("gzip"),
-                Some("gzip") if gzip_allowed => Some("gzip"),
+                Some(CompressionEncoding::Brotli) if br_allowed => {
+                    Some(CompressionEncoding::Brotli)
+                }
+                Some(CompressionEncoding::Brotli) if !br_allowed && gzip_allowed => {
+                    Some(CompressionEncoding::Gzip)
+                }
+                Some(CompressionEncoding::Gzip) if gzip_allowed => Some(CompressionEncoding::Gzip),
                 _ => None,
             }
         })
@@ -147,9 +151,9 @@ pub async fn render_file(
         // Apply compression if appropriate (prefer brotli, fallback to gzip).
         if let Some(encoding) = preferred_enc {
             let compress_result = match encoding {
-                "br" => brotli_compress(&buf),
-                "gzip" => gzip_compress(&buf),
-                _ => Err(std::io::Error::other("unknown encoding")),
+                CompressionEncoding::Brotli => brotli_compress(&buf),
+                CompressionEncoding::Gzip => gzip_compress(&buf),
+                _ => Err(std::io::Error::other(CompressionEncoding::Unknown.as_str())),
             };
 
             if let Ok(compressed) = compress_result {
@@ -157,7 +161,7 @@ pub async fn render_file(
                 if compressed.len() < buf.len() {
                     headers.insert(
                         http::header::CONTENT_ENCODING,
-                        HeaderValue::from_static(encoding),
+                        HeaderValue::from_static(encoding.as_str()),
                     );
                     headers.insert(
                         http::header::CONTENT_LENGTH,

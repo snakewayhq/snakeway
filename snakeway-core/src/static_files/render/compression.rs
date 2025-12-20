@@ -4,6 +4,22 @@ use crate::config::StaticFileConfig;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 
+pub enum CompressionEncoding {
+    Gzip,
+    Brotli,
+    Unknown,
+}
+
+impl CompressionEncoding {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CompressionEncoding::Gzip => "gzip",
+            CompressionEncoding::Brotli => "br",
+            CompressionEncoding::Unknown => "unknown encoding",
+        }
+    }
+}
+
 /// Check if a MIME type is compressible (text-based or common web formats)
 pub(crate) fn is_compressible_mime(mime: &mime_guess::Mime) -> bool {
     let type_ = mime.type_();
@@ -50,10 +66,13 @@ fn parse_quality(part: &str) -> f32 {
 }
 
 /// Check if the client accepts a specific encoding and return its quality value
-pub(crate) fn accepts_encoding(accept_encoding: &str, encoding_name: &str) -> Option<f32> {
+pub(crate) fn accepts_encoding(
+    accept_encoding: &str,
+    encoding_name: CompressionEncoding,
+) -> Option<f32> {
     for part in accept_encoding.split(',') {
         let encoding = part.split(';').next().unwrap_or("").trim();
-        if encoding.eq_ignore_ascii_case(encoding_name) || encoding == "*" {
+        if encoding.eq_ignore_ascii_case(encoding_name.as_str()) || encoding == "*" {
             let q = parse_quality(part);
             if q == 0.0 {
                 return None; // q=0 means "not acceptable"
@@ -66,21 +85,21 @@ pub(crate) fn accepts_encoding(accept_encoding: &str, encoding_name: &str) -> Op
 
 /// Determine the preferred compression encoding based on Accept-Encoding header
 /// Returns "br" for brotli, "gzip" for gzip, or None for no compression
-pub(crate) fn preferred_encoding(accept_encoding: &str) -> Option<&'static str> {
-    let br_quality = accepts_encoding(accept_encoding, "br");
-    let gzip_quality = accepts_encoding(accept_encoding, "gzip");
+pub(crate) fn preferred_encoding(accept_encoding: &str) -> Option<&'static CompressionEncoding> {
+    let br_quality = accepts_encoding(accept_encoding, CompressionEncoding::Brotli);
+    let gzip_quality = accepts_encoding(accept_encoding, CompressionEncoding::Gzip);
 
     match (br_quality, gzip_quality) {
         (Some(br_q), Some(gzip_q)) => {
             // Prefer brotli if quality is equal or higher
             if br_q >= gzip_q {
-                Some("br")
+                Some(&CompressionEncoding::Brotli)
             } else {
-                Some("gzip")
+                Some(&CompressionEncoding::Gzip)
             }
         }
-        (Some(_), None) => Some("br"),
-        (None, Some(_)) => Some("gzip"),
+        (Some(_), None) => Some(&CompressionEncoding::Brotli),
+        (None, Some(_)) => Some(&CompressionEncoding::Gzip),
         (None, None) => None,
     }
 }
