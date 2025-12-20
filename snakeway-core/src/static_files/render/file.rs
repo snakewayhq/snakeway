@@ -177,8 +177,10 @@ pub async fn render_file(
         });
     }
 
-    // For large files, stream without compression
-    // todo: streaming compression would require async-compression crate
+    // For large files, stream without compression.
+    // Streaming compression is possible, but would require async-compression (or spawn_blocking),
+    // would likely use chunked transfer (no Content-Length),
+    // and is incompatible with byte-range responses unless serving precompressed variants.
     if let Some(range) = range {
         file.seek(std::io::SeekFrom::Start(range.start))
             .await

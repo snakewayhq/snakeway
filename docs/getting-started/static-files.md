@@ -132,24 +132,24 @@ file_dir = "./public"
 index = true
 ```
 
-## Features
-
-### Automatic MIME Type Detection
+## MIME Type Detection
 
 Snakeway automatically detects and sets the correct `Content-Type` header based on file extensions.
 
 Common types include:
 
-- `.html` → `text/html`
-- `.css` → `text/css`
-- `.js` → `application/javascript`
-- `.json` → `application/json`
-- `.png` → `image/png`
-- `.jpg`, `.jpeg` → `image/jpeg`
-- `.svg` → `image/svg+xml`
-- `.wasm` → `application/wasm`
+| Extension       | MIME Type                |
+|-----------------|--------------------------|
+| `.html`         | `text/html`              |
+| `.css`          | `text/css`               |
+| `.js`           | `application/javascript` |
+| `.json`         | `application/json`       |
+| `.png`          | `image/png`              |
+| `.jpg`, `.jpeg` | `image/jpeg`             |
+| `.svg`          | `image/svg+xml`          |
+| `.wasm`         | `application/wasm`       |
 
-### Caching and Conditional Requests
+## Caching and Conditional Requests
 
 Snakeway implements HTTP caching headers to reduce bandwidth and improve performance:
 
@@ -161,10 +161,16 @@ Clients can use conditional requests to avoid re-downloading unchanged files:
 - **If-None-Match**: If the client's cached ETag matches, Snakeway returns `304 Not Modified`
 - **If-Modified-Since**: If the file hasn't changed since the given date, Snakeway returns `304 Not Modified`
 
-### Compression
+## Compression
 
 Snakeway automatically compresses responses for clients that support it, reducing transfer sizes significantly for
 text-based content.
+
+::: info Large Files
+Snakeway supports compression for static files when the response size is known in advance.
+Large static files are streamed without compression to preserve range requests and content length semantics.
+Support for precompressed assets is planned.
+:::
 
 **Supported encodings (in order of preference):**
 
@@ -198,7 +204,7 @@ Vary: Accept-Encoding
 ETag: W/"1a2b3c-4d5e6f"
 ```
 
-### File Streaming
+## File Streaming
 
 - **Small files** (≤ 256 KiB by default): Read entirely into memory, compressed if applicable
 - **Large files** (> 256 KiB by default): Streamed directly from disk in 32 KiB chunks. Streaming responses are not
@@ -206,7 +212,7 @@ ETag: W/"1a2b3c-4d5e6f"
 
 The threshold can be adjusted per-route using the `small_file_threshold` option.
 
-### Security
+## Security
 
 Snakeway includes several security measures to protect against common attacks:
 

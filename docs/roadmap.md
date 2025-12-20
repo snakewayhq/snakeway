@@ -86,6 +86,7 @@ Plugin/device phases:
 3. Static file server (caching headers)
 4. Static file server (directory listing)
 5. Static file server (range requests)
+6. Static file server (header only requests - can pingora help with this?)
 
 #### Phase 1C \- Built-in Device(s)
 
@@ -303,4 +304,6 @@ Snakeway becomes
 
 ## Post-v1.0.x
 
-1. Static file server (WASM hooks)
+1. Static file server: WASM hooks
+2. Static file server: For lage files, server precompressed assets (.br/.gz)
+3. 
