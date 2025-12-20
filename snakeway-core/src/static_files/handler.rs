@@ -1,9 +1,9 @@
-use http::{HeaderMap, StatusCode};
+use http::{HeaderMap, HeaderValue, StatusCode};
 
 use crate::route::RouteKind;
-use crate::static_files::StaticBody;
-use crate::static_files::resolve::{ResolveError, resolve_static_path};
-use crate::static_files::serve::{ConditionalHeaders, ServeError, StaticResponse, serve_file};
+use crate::static_files::render::{render_directory, render_file};
+use crate::static_files::resolve::{ResolveError, ResolvedStatic, resolve_static_path};
+use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 
 pub async fn handle_static_request(
     route: &RouteKind,
@@ -14,7 +14,9 @@ pub async fn handle_static_request(
         path,
         file_dir,
         index,
-        config,
+        directory_listing,
+        static_config,
+        cache_policy,
     } = route
     else {
         unreachable!("handle_static_request called with non-static route");
@@ -25,9 +27,19 @@ pub async fn handle_static_request(
         Err(e) => return error_response(map_resolve_error(e)),
     };
 
-    serve_file(resolved, conditional, config)
-        .await
-        .unwrap_or_else(|e| error_response(map_serve_error(e)))
+    match resolved {
+        ResolvedStatic::File(path) => render_file(path, conditional, static_config, cache_policy)
+            .await
+            .unwrap_or_else(|e| error_response(map_serve_error(e))),
+
+        ResolvedStatic::Directory(dir) => {
+            if !directory_listing {
+                return error_response(StatusCode::FORBIDDEN);
+            }
+
+            render_directory(dir, request_path)
+        }
+    }
 }
 
 fn map_resolve_error(err: ResolveError) -> StatusCode {
@@ -47,9 +59,12 @@ fn map_serve_error(err: ServeError) -> StatusCode {
 }
 
 fn error_response(status: StatusCode) -> StaticResponse {
+    let mut headers = HeaderMap::new();
+    headers.insert(http::header::CONTENT_LENGTH, HeaderValue::from_static("0"));
+
     StaticResponse {
         status,
-        headers: HeaderMap::new(),
+        headers,
         body: StaticBody::Empty,
     }
 }

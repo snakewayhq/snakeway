@@ -75,7 +75,9 @@ fn build_router(routes: &[RouteConfig]) -> Result<Router> {
                 path: route.path.clone(),
                 file_dir: dir.into(),
                 index: route.index,
-                config: route.config.clone(),
+                directory_listing: route.directory_listing,
+                static_config: route.static_config.clone(),
+                cache_policy: route.cache_policy.clone(),
             }
         } else {
             unreachable!("route validation should prevent this");
