@@ -1,4 +1,5 @@
 use crate::config::{BuiltinDeviceKind, DeviceKind, SnakewayConfig};
+use crate::device::builtin::identity::IdentityDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
 #[cfg(feature = "wasm")]
@@ -9,12 +10,23 @@ use std::sync::Arc;
 
 type BuiltinBuilder = fn(&toml::Value) -> Result<Arc<dyn Device>>;
 
+fn build_identity(cfg: &toml::Value) -> anyhow::Result<Arc<dyn Device>> {
+    let raw = cfg.get("options").cloned().unwrap_or_else(|| cfg.clone());
+
+    Ok(Arc::new(IdentityDevice::from_config(&raw)?))
+}
+
 fn build_structured_logging(cfg: &toml::Value) -> anyhow::Result<Arc<dyn Device>> {
     Ok(Arc::new(StructuredLoggingDevice::from_config(cfg)?))
 }
 
 fn builtin_builders() -> HashMap<BuiltinDeviceKind, BuiltinBuilder> {
     let mut map = HashMap::new();
+
+    map.insert(
+        BuiltinDeviceKind::Identity,
+        build_identity as BuiltinBuilder,
+    );
 
     map.insert(
         BuiltinDeviceKind::StructuredLogging,
@@ -42,7 +54,7 @@ impl DeviceRegistry {
     }
 
     pub fn load_from_config(&mut self, config: &SnakewayConfig) -> Result<()> {
-        let builtin_builders = builtin_builders();
+        let builders = builtin_builders();
 
         for cfg in &config.devices {
             if !cfg.enabled {
@@ -60,7 +72,7 @@ impl DeviceRegistry {
                         .as_ref()
                         .ok_or_else(|| anyhow!("builtin device '{}' missing type", cfg.name))?;
 
-                    let builder = builtin_builders
+                    let builder = builders
                         .get(kind)
                         .ok_or_else(|| anyhow!("unknown builtin device '{}'", cfg.name))?;
 

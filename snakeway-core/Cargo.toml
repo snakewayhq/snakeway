@@ -29,7 +29,9 @@ clap = { workspace = true, features = ["derive"] }
 flate2 = { workspace = true, optional = true }
 http = { workspace = true }
 httpdate = { workspace = true, optional = true }
+maxminddb = { workspace = true, features = ["mmap"] }
 mime_guess = { workspace = true, optional = true }
+percent-encoding = { workspace = true, optional = true }
 pingora = { workspace = true, features = ["proxy"] }
 pingora-http = { workspace = true }
 serde = { workspace = true }
@@ -38,6 +40,7 @@ toml = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["fs"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
+uaparser = { workspace = true }
 wasmtime = { workspace = true, optional = true }
 wasmtime-wasi = { workspace = true, optional = true, features = ["default"] }
-percent-encoding = { workspace = true, optional = true }
+woothee = "0.13.0"

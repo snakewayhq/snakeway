@@ -1,4 +1,4 @@
-use http::{HeaderMap, Method, Uri};
+use http::{Extensions, HeaderMap, Method, Uri};
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
@@ -18,6 +18,9 @@ pub struct RequestCtx {
     /// Headers (mutable by devices)
     pub headers: HeaderMap,
 
+    /// Request-scoped typed extensions (NOT forwarded, NOT logged by default)
+    pub extensions: Extensions,
+
     #[allow(dead_code)]
     /// Request body
     pub body: Vec<u8>,
@@ -33,6 +36,7 @@ impl RequestCtx {
             route_path,
             upstream_path: None,
             headers,
+            extensions: Extensions::new(),
             body,
         }
     }

@@ -4,7 +4,7 @@ pub mod registry;
 pub mod result;
 
 use self::errors::DeviceError;
-use self::result::DeviceResult;
+pub(crate) use self::result::DeviceResult;
 use crate::ctx::{RequestCtx, ResponseCtx};
 
 /// A trait representing a processing unit in the HTTP proxy pipeline.

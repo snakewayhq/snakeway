@@ -10,3 +10,4 @@ pub mod server;
 
 #[cfg(feature = "static_files")]
 pub mod static_files;
+mod user_agent;

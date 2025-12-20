@@ -1,3 +1,5 @@
+pub mod identity;
+
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -11,6 +13,7 @@ pub enum DeviceKind {
 #[serde(rename_all = "snake_case")]
 pub enum BuiltinDeviceKind {
     StructuredLogging,
+    Identity,
 }
 
 #[derive(Debug, Deserialize)]

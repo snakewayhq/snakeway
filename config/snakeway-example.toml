@@ -24,18 +24,24 @@ cache_public = true
 cache_immutable = true
 
 # ---------------------------------------------------------------------
-# Devices are loaded and executed top-to-bottom.
-# Builtin devices run in-process; WASM devices are sandboxed.
+# Identity
+#
+# Provies device and geo lication information for subseaquent devices.
+# Support for EU compliance is best effort - use at your own risk.
+#
+# Note: Devices are loaded and executed top-to-bottom.
 # ---------------------------------------------------------------------
-
 [[devices]]
-name = "example"
-# WASM required the "wasm" feature.
-# Enabling a WASM device without the feature enabled will cause a runtime error.
-kind = "wasm"
-path = "plugins/snakeway_wasm_example.wasm"
+name = "identity"
+kind = "builtin"
+builtin = "identity"
 enabled = false
 
+[devices.options]
+enable_geoip = false
+geoip_db = "some/path/file.mmdb"
+enable_user_agent = false
+ua_engine = "uaparser"
 
 # ---------------------------------------------------------------------
 # Structured Logging Device
@@ -123,3 +129,16 @@ phases = [
     "request",
     "response"
 ]
+
+
+# ---------------------------------------------------------------------
+# Builtin devices run in-process; WASM devices are sandboxed.
+# ---------------------------------------------------------------------
+
+[[devices]]
+name = "example"
+# WASM required the "wasm" feature.
+# Enabling a WASM device without the feature enabled will cause a runtime error.
+kind = "wasm"
+path = "plugins/snakeway_wasm_example.wasm"
+enabled = false
