@@ -86,7 +86,6 @@ Plugin/device phases:
 3. Static file server (caching headers)
 4. Static file server (directory listing)
 5. Static file server (range requests)
-6. Static file server (WASM hooks)
 
 #### Phase 1C \- Built-in Device(s)
 
@@ -97,7 +96,6 @@ Plugin/device phases:
 1. Structured logs (logs command)
 2. Hot reload (SIGHUP \+ admin)
 3. Observability endpoints
-
 
 ## Phase 1.5 \- Benchmark and Revisit Lifecycle
 
@@ -155,6 +153,7 @@ Todo:
 
 1. Multiple upstreams (ordered failover)
 2. Basic downstream TLS
+3. Websocket support
 
 #### Phase 2B \- Traffic Intelligence
 
@@ -302,3 +301,6 @@ Snakeway becomes
 * Benchmark suite
 * Stabilized plugin API
 
+## Post-v1.0.x
+
+1. Static file server (WASM hooks)
