@@ -20,6 +20,7 @@ target
 dist/
 /plugins/
 /dev/
+profile.json.gz
 
 # Config
 config/snakeway.toml
