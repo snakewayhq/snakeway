@@ -20,7 +20,7 @@ pub struct IdentityConfig {
 }
 
 fn default_ua_engine() -> UaEngineKind {
-    UaEngineKind::UaParser
+    UaEngineKind::Woothee
 }
 
 impl Default for IdentityConfig {
@@ -30,7 +30,7 @@ impl Default for IdentityConfig {
             enable_geoip: true,
             geoip_db: None,
             enable_user_agent: true,
-            ua_engine: UaEngineKind::UaParser,
+            ua_engine: UaEngineKind::Woothee,
         }
     }
 }
