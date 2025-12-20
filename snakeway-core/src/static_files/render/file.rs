@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::config::{StaticCachePolicy, StaticFileConfig};
 use crate::static_files::render::compression::{
-    CompressionEncoding, brotli_compress, gzip_compress, is_compressible_mime, preferred_encoding,
+    CompressionEncoding, apply_compression, is_compressible_mime, preferred_encoding,
     response_varies_by_encoding,
 };
 use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
@@ -152,29 +152,22 @@ pub async fn render_file(
 
         // Apply compression if appropriate (prefer brotli, fallback to gzip).
         if let Some(encoding) = preferred_enc {
-            let compress_result = match encoding {
-                CompressionEncoding::Brotli => brotli_compress(&buf),
-                CompressionEncoding::Gzip => gzip_compress(&buf),
-                _ => Err(std::io::Error::other(CompressionEncoding::Unknown.as_str())),
-            };
-
-            if let Ok(compressed) = compress_result {
+            let (compressed, use_compressed) = apply_compression(&encoding, &buf);
+            if use_compressed {
                 // Only use compressed version if it's actually smaller.
-                if compressed.len() < buf.len() {
-                    headers.insert(
-                        http::header::CONTENT_ENCODING,
-                        HeaderValue::from_static(encoding.as_str()),
-                    );
-                    headers.insert(
-                        http::header::CONTENT_LENGTH,
-                        HeaderValue::from_str(&compressed.len().to_string()).unwrap(),
-                    );
-                    return Ok(StaticResponse {
-                        status: StatusCode::OK,
-                        headers,
-                        body: StaticBody::Bytes(Bytes::from(compressed)),
-                    });
-                }
+                headers.insert(
+                    http::header::CONTENT_ENCODING,
+                    HeaderValue::from_static(encoding.as_str()),
+                );
+                headers.insert(
+                    http::header::CONTENT_LENGTH,
+                    HeaderValue::from_str(&compressed.len().to_string()).unwrap(),
+                );
+                return Ok(StaticResponse {
+                    status: StatusCode::OK,
+                    headers,
+                    body: StaticBody::Bytes(Bytes::from(compressed)),
+                });
             }
             // Compression failed or didn't reduce size, fall through to uncompressed response...
         }

@@ -1,8 +1,7 @@
-use std::io::Write;
-
 use crate::config::StaticFileConfig;
 use flate2::Compression;
 use flate2::write::GzEncoder;
+use std::io::Write;
 
 pub enum CompressionEncoding {
     Gzip,
@@ -18,6 +17,21 @@ impl CompressionEncoding {
             CompressionEncoding::Unknown => "unknown encoding",
         }
     }
+}
+
+pub(crate) fn apply_compression(encoding: &CompressionEncoding, data: &[u8]) -> (Vec<u8>, bool) {
+    let compress_result = match encoding {
+        CompressionEncoding::Brotli => brotli_compress(data),
+        CompressionEncoding::Gzip => gzip_compress(data),
+        _ => Err(std::io::Error::other(CompressionEncoding::Unknown.as_str())),
+    };
+    if let Ok(compressed) = compress_result {
+        // Only use compressed version if it's actually smaller.
+        if compressed.len() < data.len() {
+            return (compressed, true);
+        }
+    }
+    (vec![], false)
 }
 
 /// Check if a MIME type is compressible (text-based or common web formats)
