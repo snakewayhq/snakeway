@@ -7,12 +7,10 @@ use crate::static_files::render::compression::{
 };
 use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
 
-use crate::static_files::render::cache::apply_cache_headers;
-
-use crate::static_files::render::range::parse_range_header;
+use crate::static_files::render::range::{ByteRange, parse_range_header};
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
-use http::{HeaderMap, HeaderValue, StatusCode};
+use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header};
 use httpdate::fmt_http_date;
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
@@ -84,40 +82,28 @@ pub async fn render_file(
     };
 
     // Build common headers (sent for both 200 and 304)
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        http::header::ACCEPT_RANGES,
-        HeaderValue::from_static("bytes"),
-    );
-    headers.insert(
-        http::header::CONTENT_TYPE,
-        HeaderValue::from_str(mime.as_ref()).unwrap(),
-    );
-    headers.insert(http::header::ETAG, HeaderValue::from_str(&etag).unwrap());
+    let mut headers = HeaderBuilder::new();
+    headers.accept_ranges();
+    headers.content_type(mime.as_ref());
+    headers.etag(&etag);
     if let Some(ref lm) = last_modified {
-        headers.insert(
-            http::header::LAST_MODIFIED,
-            HeaderValue::from_str(lm).unwrap(),
-        );
+        headers.last_modified(lm);
     }
 
     // Add Vary header to indicate response varies based on Accept-Encoding
     if response_varies_by_encoding(&mime, metadata.len(), static_config) {
-        headers.insert(
-            http::header::VARY,
-            HeaderValue::from_static("Accept-Encoding"),
-        );
+        headers.vary()
     }
 
     // Apply cache policy headers
-    apply_cache_headers(&mut headers, cache_policy);
+    headers.cache_control(cache_policy);
 
     // Return 304 Not Modified if conditions are met
     if not_modified {
-        headers.insert(http::header::CONTENT_LENGTH, HeaderValue::from_static("0"));
+        headers.content_length("0");
         return Ok(StaticResponse {
             status: StatusCode::NOT_MODIFIED,
-            headers,
+            headers: headers.build(),
             body: StaticBody::Empty,
         });
     }
@@ -155,17 +141,12 @@ pub async fn render_file(
             let (compressed, use_compressed) = apply_compression(&encoding, &buf);
             if use_compressed {
                 // Only use compressed version if it's actually smaller.
-                headers.insert(
-                    http::header::CONTENT_ENCODING,
-                    HeaderValue::from_static(encoding.as_str()),
-                );
-                headers.insert(
-                    http::header::CONTENT_LENGTH,
-                    HeaderValue::from_str(&compressed.len().to_string()).unwrap(),
-                );
+                headers.content_encoding(encoding.as_str());
+                headers.content_length(&compressed.len().to_string());
+
                 return Ok(StaticResponse {
                     status: StatusCode::OK,
-                    headers,
+                    headers: headers.build(),
                     body: StaticBody::Bytes(Bytes::from(compressed)),
                 });
             }
@@ -176,37 +157,21 @@ pub async fn render_file(
         if let Some(range) = range {
             let slice = &buf[range.start as usize..=range.end as usize];
 
-            headers.insert(
-                http::header::CONTENT_RANGE,
-                HeaderValue::from_str(&format!(
-                    "bytes {}-{}/{}",
-                    range.start,
-                    range.end,
-                    metadata.len()
-                ))
-                .unwrap(),
-            );
-
-            headers.insert(
-                http::header::CONTENT_LENGTH,
-                HeaderValue::from_str(&slice.len().to_string()).unwrap(),
-            );
+            headers.content_range(range, metadata.len());
+            headers.content_length(&slice.len().to_string());
 
             return Ok(StaticResponse {
                 status: StatusCode::PARTIAL_CONTENT,
-                headers,
+                headers: headers.build(),
                 body: StaticBody::Bytes(Bytes::copy_from_slice(slice)),
             });
         }
 
         // Uncompressed response
-        headers.insert(
-            http::header::CONTENT_LENGTH,
-            HeaderValue::from_str(&buf.len().to_string()).unwrap(),
-        );
+        headers.content_length(&buf.len().to_string());
         return Ok(StaticResponse {
             status: StatusCode::OK,
-            headers,
+            headers: headers.build(),
             body: StaticBody::Bytes(Bytes::from(buf)),
         });
     }
@@ -220,37 +185,95 @@ pub async fn render_file(
 
         let remaining = range.end - range.start + 1;
 
-        headers.insert(
-            http::header::CONTENT_RANGE,
-            HeaderValue::from_str(&format!(
-                "bytes {}-{}/{}",
-                range.start,
-                range.end,
-                metadata.len()
-            ))
-            .unwrap(),
-        );
-
-        headers.insert(
-            http::header::CONTENT_LENGTH,
-            HeaderValue::from_str(&remaining.to_string()).unwrap(),
-        );
+        headers.content_range(range, metadata.len());
+        headers.content_length(&remaining.to_string());
 
         return Ok(StaticResponse {
             status: StatusCode::PARTIAL_CONTENT,
-            headers,
+            headers: headers.build(),
             body: StaticBody::RangedFile { file, remaining },
         });
     }
 
-    headers.insert(
-        http::header::CONTENT_LENGTH,
-        HeaderValue::from_str(&metadata.len().to_string()).unwrap(),
-    );
+    headers.content_length(&metadata.len().to_string());
 
     Ok(StaticResponse {
         status: StatusCode::OK,
-        headers,
+        headers: headers.build(),
         body: StaticBody::File(file),
     })
+}
+
+struct HeaderBuilder {
+    headers: HeaderMap,
+}
+
+impl HeaderBuilder {
+    fn new() -> Self {
+        Self {
+            headers: HeaderMap::new(),
+        }
+    }
+
+    fn insert_header(&mut self, header_name: HeaderName, value: &str) {
+        let header_value = HeaderValue::from_str(value).unwrap_or(HeaderValue::from_static(""));
+        self.headers.insert(header_name, header_value);
+    }
+
+    fn accept_ranges(&mut self) {
+        self.insert_header(header::ACCEPT_RANGES, "bytes");
+    }
+
+    fn content_type(&mut self, value: &str) {
+        self.insert_header(header::CONTENT_TYPE, value);
+    }
+
+    fn content_length(&mut self, value: &str) {
+        self.insert_header(header::CONTENT_LENGTH, value);
+    }
+
+    fn content_range(&mut self, range: ByteRange, len: u64) {
+        self.insert_header(
+            header::CONTENT_RANGE,
+            &format!("bytes {}-{}/{}", range.start, range.end, len),
+        );
+    }
+
+    fn content_encoding(&mut self, value: &str) {
+        self.insert_header(header::CONTENT_ENCODING, value);
+    }
+
+    fn etag(&mut self, value: &str) {
+        self.insert_header(header::ETAG, value);
+    }
+
+    fn last_modified(&mut self, value: &str) {
+        self.insert_header(header::LAST_MODIFIED, value);
+    }
+
+    fn vary(&mut self) {
+        self.insert_header(header::VARY, "Accept-Encoding");
+    }
+
+    fn cache_control(&mut self, policy: &StaticCachePolicy) {
+        let mut value = String::new();
+
+        if policy.public {
+            value.push_str("public");
+        } else {
+            value.push_str("private");
+        }
+
+        value.push_str(&format!(", max-age={}", policy.max_age));
+
+        if policy.immutable {
+            value.push_str(", immutable");
+        }
+
+        self.insert_header(header::CACHE_CONTROL, &value);
+    }
+
+    fn build(self) -> HeaderMap {
+        self.headers
+    }
 }
