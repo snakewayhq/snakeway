@@ -34,27 +34,22 @@ benchmark-static-files:
     hey -n 20000 -c 128 -H "Accept-Encoding: br" http://127.0.0.1:8080/static/6kb.html
     @echo "Range request..."
     hey -n 5000 -c 128 -H "Range: bytes=0-99" http://127.0.0.1:8080/static/images/1mb.png
+    @echo "Head request..."
+    hey -n 20000 -c 128 -m HEAD -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
 
 # Start this profile recipe, then run run-load. When this command exits, the results should be displayed.
-profile-samply:
-    @echo "==> Building Snakeway (release, with symbols)"
-    cargo build --release
+profile:
+    @echo "Building Snakeway (release, with symbols)"
+    cargo build --release -p snakeway --features static_files
+    @echo "Profiling with Samply (Ctrl+C to stop)"
+    samply record target/release/snakeway > /dev/null
 
-    @echo "==> Starting Snakeway in background"
-    ./target/release/snakeway --config snakeway.toml & \
-    PID=$$!; \
-    echo "Snakeway PID: $$PID"; \
-    sleep 2; \
-    \
-    echo "==> Profiling with Samply (Ctrl+C to stop)"; \
-    samply record -p $$PID; \
-    \
-    echo "==> Stopping Snakeway"; \
-    kill $$PID || true
-    ------------------------------------------------------------
+# Generate meaningful profiling data against an upstream.
+run-load-against-upstream:
+    hey -n 300000 -c 256 http://127.0.0.1:8080/__metrics
 
-# This is run after profile-samply to generate meaningful profiling data.
-run-load:
+# Generate meaningful profiling data against a static file.
+run-load-against-static:
     hey -n 300000 -c 256 http://127.0.0.1:8080/static/index.html
 
 # Debugging
