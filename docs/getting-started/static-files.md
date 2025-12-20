@@ -24,17 +24,28 @@ index = true
 
 ### Configuration Options
 
-| Option     | Type    | Required | Description                                                             |
-|------------|---------|----------|-------------------------------------------------------------------------|
-| `path`     | string  | Yes      | The URL path prefix to match                                            |
-| `file_dir` | string  | Yes      | The directory containing static files                                   |
-| `index`    | boolean | No       | Whether to serve `index.html` for directory requests (default: `false`) |
-| `config`   | table   | No       | Advanced static file configuration (see below)                          |
+| Option              | Type    | Required | Description                                                             |
+|---------------------|---------|----------|-------------------------------------------------------------------------|
+| `path`              | string  | Yes      | The URL path prefix to match                                            |
+| `file_dir`          | string  | Yes      | The directory containing static files                                   |
+| `index`             | boolean | No       | Whether to serve `index.html` for directory requests (default: `false`) |
+| `directory_listing` | boolean | No       | Whether list the contents of directory requests (default: `false`)      |
+| `cache_policy`      | table   | No       | Advanced cache policy configuration (see below)                         |
+| `config`            | table   | No       | Advanced static file configuration (see below)                          |
+
+### Cache Policy (Per-Route)
+
+Each static route can have an optional `[routes.cache_policy]` cache header behavior.
+
+| Option      | Type    | Default | Description                                                                                                                 |
+|-------------|---------|---------|-----------------------------------------------------------------------------------------------------------------------------|
+| `max_age`   | integer | `3600`  | How long a cached response is valid (e.g., `3600 seconds` = `1 hour`).                                                      |
+| `public`    | boolean | `true`  | Indicates a cache can be shared across domains or with third-party services.                                                |
+| `immutable` | boolean | `false` | esponse won't change unless its associated resource changes, allowing caches to return the same result without re-checking. |
 
 ### Advanced Configuration (Per-Route)
 
 Each static route can have an optional `[routes.config]` section to customize compression and file handling behavior.
-All options have sensible defaults.
 
 | Option                 | Type    | Default    | Description                                                                                                 |
 |------------------------|---------|------------|-------------------------------------------------------------------------------------------------------------|
@@ -164,7 +175,8 @@ text-based content.
 
 - Only compressible MIME types are compressed (text, JSON, JavaScript, XML, SVG, WASM, etc.)
 - Brotli is used for files `≥ 4 KiB` (configurable via `min_brotli_size`)
-- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via `min_gzip_size`)
+- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via
+  `min_gzip_size`)
 - Compression can be disabled per-route using `enable_brotli` and `enable_gzip` options
 - Compression is skipped if the compressed size isn't smaller than the original
 - The `Vary: Accept-Encoding` header is added for proper cache behavior
