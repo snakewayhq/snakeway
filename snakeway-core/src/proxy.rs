@@ -248,81 +248,87 @@ pub async fn respond_with_static(
     // Write headers (not end-of-stream yet)
     session.write_response_header(Box::new(resp), false).await?;
 
-    // Write body and end the stream.
-    match static_resp.body {
-        crate::static_files::StaticBody::Empty => {
-            session.write_response_body(None, true).await?;
-        }
-
-        crate::static_files::StaticBody::Bytes(bytes) => {
-            session.write_response_body(Some(bytes), true).await?;
-        }
-
-        crate::static_files::StaticBody::File(mut file) => {
-            use bytes::{Bytes, BytesMut};
-            use tokio::io::AsyncReadExt;
-
-            const CHUNK_SIZE: usize = 32 * 1024;
-
-            // Allocate once per request.
-            let mut buf = BytesMut::with_capacity(CHUNK_SIZE);
-
-            loop {
-                // Ensure we have space to read into.
-                buf.resize(CHUNK_SIZE, 0);
-
-                let n = file
-                    .read(&mut buf[..])
-                    .await
-                    .map_err(|_| Error::new(Custom("static file read error")))?;
-
-                if n == 0 {
-                    break;
-                }
-
-                // Shrink to actual read size.
-                buf.truncate(n);
-
-                // Split off the filled bytes and freeze them.
-                let chunk: Bytes = buf.split().freeze();
-
-                session.write_response_body(Some(chunk), false).await?;
+    let is_head = ctx.method == http::Method::HEAD;
+    if is_head {
+        // SHort-circuit the body write step for HEAD requests.
+        session.write_response_body(None, true).await?;
+    } else {
+        // Write body and end the stream.
+        match static_resp.body {
+            crate::static_files::StaticBody::Empty => {
+                session.write_response_body(None, true).await?;
             }
 
-            // End-of-stream.
-            session.write_response_body(None, true).await?;
-        }
-
-        crate::static_files::StaticBody::RangedFile {
-            mut file,
-            mut remaining,
-        } => {
-            const CHUNK_SIZE: usize = 32 * 1024;
-            let mut buf = bytes::BytesMut::with_capacity(CHUNK_SIZE);
-
-            while remaining > 0 {
-                let to_read = std::cmp::min(CHUNK_SIZE as u64, remaining) as usize;
-
-                buf.resize(to_read, 0);
-
-                let n = file
-                    .read(&mut buf[..])
-                    .await
-                    .map_err(|_| Error::new(Custom("static file read error")))?;
-
-                if n == 0 {
-                    break;
-                }
-
-                remaining -= n as u64;
-                buf.truncate(n);
-
-                session
-                    .write_response_body(Some(buf.split().freeze()), false)
-                    .await?;
+            crate::static_files::StaticBody::Bytes(bytes) => {
+                session.write_response_body(Some(bytes), true).await?;
             }
 
-            session.write_response_body(None, true).await?;
+            crate::static_files::StaticBody::File(mut file) => {
+                use bytes::{Bytes, BytesMut};
+                use tokio::io::AsyncReadExt;
+
+                const CHUNK_SIZE: usize = 32 * 1024;
+
+                // Allocate once per request.
+                let mut buf = BytesMut::with_capacity(CHUNK_SIZE);
+
+                loop {
+                    // Ensure we have space to read into.
+                    buf.resize(CHUNK_SIZE, 0);
+
+                    let n = file
+                        .read(&mut buf[..])
+                        .await
+                        .map_err(|_| Error::new(Custom("static file read error")))?;
+
+                    if n == 0 {
+                        break;
+                    }
+
+                    // Shrink to actual read size.
+                    buf.truncate(n);
+
+                    // Split off the filled bytes and freeze them.
+                    let chunk: Bytes = buf.split().freeze();
+
+                    session.write_response_body(Some(chunk), false).await?;
+                }
+
+                // End-of-stream.
+                session.write_response_body(None, true).await?;
+            }
+
+            crate::static_files::StaticBody::RangedFile {
+                mut file,
+                mut remaining,
+            } => {
+                const CHUNK_SIZE: usize = 32 * 1024;
+                let mut buf = bytes::BytesMut::with_capacity(CHUNK_SIZE);
+
+                while remaining > 0 {
+                    let to_read = std::cmp::min(CHUNK_SIZE as u64, remaining) as usize;
+
+                    buf.resize(to_read, 0);
+
+                    let n = file
+                        .read(&mut buf[..])
+                        .await
+                        .map_err(|_| Error::new(Custom("static file read error")))?;
+
+                    if n == 0 {
+                        break;
+                    }
+
+                    remaining -= n as u64;
+                    buf.truncate(n);
+
+                    session
+                        .write_response_body(Some(buf.split().freeze()), false)
+                        .await?;
+                }
+
+                session.write_response_body(None, true).await?;
+            }
         }
     }
 

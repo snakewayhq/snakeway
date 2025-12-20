@@ -248,3 +248,25 @@ fn supports_range_requests() {
     let body = res.bytes().unwrap();
     assert_eq!(body.len(), 100);
 }
+
+#[test]
+fn head_request_returns_headers_without_body() {
+    // Arrange
+    common::start_server(&SERVER, "static_index_and_directory.toml");
+    let client = reqwest::blocking::Client::new();
+
+    // Act
+    let res = client
+        .head("http://127.0.0.1:4041/images/41kb.png")
+        .send()
+        .expect("HEAD request failed");
+
+    // Assert
+    assert_eq!(res.status(), 200);
+    // But headers must still be present
+    assert!(res.headers().contains_key(reqwest::header::CONTENT_LENGTH));
+    assert!(res.headers().contains_key(reqwest::header::ACCEPT_RANGES));
+    // HEAD must not include a body
+    let body = res.bytes().unwrap();
+    assert!(body.is_empty(), "HEAD response should not include a body");
+}
