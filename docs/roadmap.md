@@ -86,7 +86,7 @@ Plugin/device phases:
 3. Static file server (caching headers)
 4. Static file server (directory listing)
 5. Static file server (range requests)
-6. Static file server (header only requests - can pingora help with this?)
+6. Static file server (head requests)
 
 #### Phase 1C \- Built-in Device(s)
 
