@@ -8,7 +8,6 @@ use maxminddb::PathElement;
 use std::net::IpAddr;
 
 pub struct IdentityDevice {
-    cfg: IdentityConfig,
     geoip: Option<maxminddb::Reader<maxminddb::Mmap>>,
     ua_engine: Option<UaEngine>,
 }
@@ -35,11 +34,7 @@ impl IdentityDevice {
             None
         };
 
-        Ok(Self {
-            cfg,
-            geoip,
-            ua_engine,
-        })
+        Ok(Self { geoip, ua_engine })
     }
 }
 
