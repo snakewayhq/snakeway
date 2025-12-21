@@ -15,6 +15,7 @@ pub struct IdentityDevice {
     trusted_proxies: Vec<IpNet>,
     geoip: Option<maxminddb::Reader<maxminddb::Mmap>>,
     ua_engine: Option<UaEngine>,
+    pub enable_user_agent: bool,
 }
 
 impl IdentityDevice {
@@ -51,6 +52,7 @@ impl IdentityDevice {
             geoip,
             ua_engine,
             trusted_proxies,
+            enable_user_agent: cfg.enable_user_agent,
         })
     }
 }
@@ -91,12 +93,13 @@ impl Device for IdentityDevice {
         }
 
         // User-Agent parsing
-        if let Some(engine) = &self.ua_engine {
-            if let Some(ua) = ctx.headers.get("user-agent").and_then(|v| v.to_str().ok()) {
-                if ua.len() <= MAX_USER_AGENT_LENGTH {
-                    identity.ua = Some(engine.parse(ua));
-                }
-            }
+        if let Some((engine, ua)) = self.ua_engine.as_ref().zip(
+            ctx.headers
+                .get("user-agent")
+                .and_then(|v| v.to_str().ok())
+                .filter(|ua| ua.len() <= MAX_USER_AGENT_LENGTH),
+        ) {
+            identity.ua = Some(engine.parse(ua));
         }
 
         // Identity is authoritative and immutable after insertion.
