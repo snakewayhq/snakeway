@@ -1,4 +1,4 @@
-use crate::user_agent::{DeviceType, UserAgentInfo};
+use crate::enrichment::user_agent::{DeviceType, UserAgentInfo};
 use woothee::parser::Parser;
 
 pub struct WootheeEngine {

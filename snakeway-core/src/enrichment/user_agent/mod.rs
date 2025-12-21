@@ -2,8 +2,8 @@ mod uaparser_engine;
 mod woothee_engine;
 
 use crate::config::device::identity::UaEngineKind;
-use crate::user_agent::uaparser_engine::UaParserEngine;
-use crate::user_agent::woothee_engine::WootheeEngine;
+use crate::enrichment::user_agent::uaparser_engine::UaParserEngine;
+use crate::enrichment::user_agent::woothee_engine::WootheeEngine;
 use std::net::IpAddr;
 
 const REGEXES_YAML: &[u8] = include_bytes!("regexes.yaml");

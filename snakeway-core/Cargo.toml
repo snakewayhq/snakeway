@@ -44,3 +44,4 @@ uaparser = { workspace = true }
 wasmtime = { workspace = true, optional = true }
 wasmtime-wasi = { workspace = true, optional = true, features = ["default"] }
 woothee = "0.13.0"
+ipnet = "2.11.0"

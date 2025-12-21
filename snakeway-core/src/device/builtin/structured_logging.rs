@@ -1,8 +1,8 @@
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
+use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
-use crate::user_agent::ClientIdentity;
 use anyhow::{Context, Result};
 use http::HeaderMap;
 use serde::Deserialize;

@@ -2,19 +2,20 @@ use crate::config::device::identity::IdentityConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, DeviceResult};
-use crate::user_agent::{ClientIdentity, GeoInfo, UaEngine, build_ua_engine};
+use crate::enrichment::user_agent::{ClientIdentity, GeoInfo, UaEngine, build_ua_engine};
+use ipnet::IpNet;
 
+use crate::enrichment::geoip::resolve_client_ip;
 use maxminddb::PathElement;
-use std::net::IpAddr;
 
 pub struct IdentityDevice {
+    trusted_proxies: Vec<IpNet>,
     geoip: Option<maxminddb::Reader<maxminddb::Mmap>>,
     ua_engine: Option<UaEngine>,
 }
 
 impl IdentityDevice {
     pub fn from_config(raw: &toml::Value) -> anyhow::Result<Self> {
-        tracing::info!("identity raw options = {}", raw.to_string());
         let cfg: IdentityConfig = raw.clone().try_into()?;
 
         let geoip = match (cfg.enable_geoip, &cfg.geoip_db) {
@@ -34,35 +35,37 @@ impl IdentityDevice {
             None
         };
 
-        Ok(Self { geoip, ua_engine })
+        let trusted_proxies = cfg
+            .trusted_proxies
+            .iter()
+            .map(|s| s.parse::<IpNet>())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self {
+            geoip,
+            ua_engine,
+            trusted_proxies,
+        })
     }
 }
 
 impl Device for IdentityDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        // TEMPORARY: peer IP resolution placeholder
-        // todo This MUST be replaced with a trusted-proxy-aware resolver later.
-        let peer_ip = ctx
-            .headers
-            .get("x-forwarded-for")
-            .and_then(|h| h.to_str().ok())
-            .and_then(|s| s.split(',').next())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
-            .unwrap_or_else(|| "127.0.0.1".parse().unwrap());
+        let (client_ip, proxy_chain) =
+            resolve_client_ip(&ctx.headers, ctx.peer_ip, &self.trusted_proxies);
 
         let mut identity = ClientIdentity {
-            ip: peer_ip,
-            proxy_chain: Vec::new(),
+            ip: client_ip,
+            proxy_chain,
             geo: None,
             ua: None,
         };
 
         // GeoIP enrichment (country-only, EU-safe)
-
         let country_code = self
             .geoip
             .as_ref()
-            .and_then(|reader| reader.lookup(peer_ip).ok())
+            .and_then(|reader| reader.lookup(client_ip).ok())
             .and_then(|lookup| {
                 lookup
                     .decode_path::<Option<String>>(&[

@@ -1,4 +1,5 @@
 use http::{Extensions, HeaderMap, Method, Uri};
+use std::net::{IpAddr, SocketAddr};
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
@@ -18,6 +19,9 @@ pub struct RequestCtx {
     /// Headers (mutable by devices)
     pub headers: HeaderMap,
 
+    /// Remote IP of the TCP connection (authoritative)
+    pub peer_ip: IpAddr,
+
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default)
     pub extensions: Extensions,
 
@@ -27,7 +31,13 @@ pub struct RequestCtx {
 }
 
 impl RequestCtx {
-    pub fn new(method: Method, uri: Uri, headers: HeaderMap, body: Vec<u8>) -> Self {
+    pub fn new(
+        method: Method,
+        uri: Uri,
+        headers: HeaderMap,
+        peer_ip: IpAddr,
+        body: Vec<u8>,
+    ) -> Self {
         let route_path = uri.path().to_string();
 
         Self {
@@ -36,6 +46,7 @@ impl RequestCtx {
             route_path,
             upstream_path: None,
             headers,
+            peer_ip,
             extensions: Extensions::new(),
             body,
         }
