@@ -8,6 +8,8 @@ use ipnet::IpNet;
 use crate::enrichment::geoip::resolve_client_ip;
 use maxminddb::PathElement;
 
+const MAX_USER_AGENT_LENGTH: usize = 2048;
+
 pub struct IdentityDevice {
     trusted_proxies: Vec<IpNet>,
     geoip: Option<maxminddb::Reader<maxminddb::Mmap>>,
@@ -87,7 +89,9 @@ impl Device for IdentityDevice {
         // User-Agent parsing
         if let Some(engine) = &self.ua_engine {
             if let Some(ua) = ctx.headers.get("user-agent").and_then(|v| v.to_str().ok()) {
-                identity.ua = Some(engine.parse(ua));
+                if ua.len() <= MAX_USER_AGENT_LENGTH {
+                    identity.ua = Some(engine.parse(ua));
+                }
             }
         }
 
