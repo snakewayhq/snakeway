@@ -29,9 +29,12 @@ impl UaEngine {
     }
 }
 
+/// Dead fields aren't really dead - they just might not be used by built-in devices.
 #[derive(Debug, Clone)]
 pub struct ClientIdentity {
+    #[allow(dead_code)]
     pub ip: IpAddr,
+    #[allow(dead_code)]
     /// empty unless trusted proxies enabled/used
     pub proxy_chain: Vec<IpAddr>,
     pub geo: Option<GeoInfo>,

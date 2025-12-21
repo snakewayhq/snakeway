@@ -26,10 +26,12 @@ cache_immutable = true
 # ---------------------------------------------------------------------
 # Identity
 #
-# Provies device and geo lication information for subseaquent devices.
+# Provides device and geo location information for subsequent devices.
 # Support for EU compliance is best effort - use at your own risk.
 #
-# Note: Devices are loaded and executed top-to-bottom.
+# NOTE:
+#   Devices are loaded and executed top-to-bottom.
+#   This device must appear before structured_logging.
 # ---------------------------------------------------------------------
 [[devices]]
 name = "identity"
@@ -37,56 +39,35 @@ kind = "builtin"
 builtin = "identity"
 enabled = false
 
-[devices.options]
 enable_geoip = false
 geoip_db = "some/path/file.mmdb"
+
 enable_user_agent = false
 ua_engine = "uaparser"
 
+# CIDR ranges of trusted proxies for X-Forwarded-For parsing
+trusted_proxies = []
+
+
 # ---------------------------------------------------------------------
 # Structured Logging Device
-#
-# Emits structured tracing events for request/response lifecycle hooks.
-# Output format (JSON vs pretty) is NOT controlled here — that is handled
-# globally by tracing_subscriber and by the `snakeway logs` CLI.
 # ---------------------------------------------------------------------
-
 [[devices]]
 name = "access-log"
 kind = "builtin"
 builtin = "structured_logging"
 enabled = true
 
-# Log level for events emitted by this device.
-# This is independent of the global log filter.
-#
-# Allowed values:
-#   "trace", "debug", "info", "warn", "error"
-#
-# Typical values:
-#   - "info"  (default, production-safe)
-#   - "debug" (local debugging)
 level = "info"
 
-
 # Whether to include HTTP headers in log events.
-#
-# WARNING:
-#   Headers are often noisy and may contain sensitive data
-#   (Authorization, Cookies, etc).
-#
-# Recommendation:
-#   - false in production
-#   - true only for debugging
 include_headers = false
 
+# Header allow-list (case-insensitive).
+# If empty, all headers are eligible.
+allowed_headers = []
 
 # Header names to redact if headers are included.
-# Matching is case-insensitive.
-#
-# Redacted headers will appear as "<redacted>".
-#
-# This option is ignored unless `include_headers = true`.
 redact_headers = [
     "authorization",
     "cookie",
@@ -94,41 +75,15 @@ redact_headers = [
     "x-api-token",
 ]
 
+# Include EU-safe identity information
+include_identity = true
 
-# Which specific lifecycle events should emit logs.
-#
-# If omitted, ALL events are logged.
-#
-# Allowed values:
-#   - "request"        (on_request)
-#   - "before_proxy"  (before upstream call)
-#   - "after_proxy"   (after upstream response)
-#   - "response"      (before response is sent to client)
-#
-# Common patterns:
-#   - ["request", "response"]  (access-log style)
-#   - ["response"]             (minimal logging)
-events = [
-    "request",
-    "response"
-]
+# Allowed values: country, region, device, bot, asn
+identity_fields = ["country", "device"]
 
+events = ["request", "response"]
+phases = ["request", "response"]
 
-# High-level phases to log.
-#
-# This is a coarse filter that groups lifecycle hooks:
-#
-#   "request"  → on_request, before_proxy
-#   "response" → after_proxy, on_response
-#
-# If omitted, ALL phases are enabled.
-#
-# This is useful for quickly reducing log volume without
-# listing individual events.
-phases = [
-    "request",
-    "response"
-]
 
 
 # ---------------------------------------------------------------------
