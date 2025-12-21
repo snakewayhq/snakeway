@@ -1,5 +1,5 @@
 use http::{Extensions, HeaderMap, Method, Uri};
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]

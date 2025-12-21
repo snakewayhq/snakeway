@@ -2,7 +2,7 @@ use crate::ctx::RequestCtx;
 use crate::device::load_wasm_device;
 use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
-use tokio::net::unix::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr};
 
 #[derive(Subcommand, Debug)]
 pub enum PluginCmd {
@@ -44,7 +44,7 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
         http::Method::GET,
         args.path.parse()?,
         http::HeaderMap::new(),
-        SocketAddr::from("127.0.0.1"),
+        IpAddr::V4(Ipv4Addr::LOCALHOST),
         Vec::new(),
     );
 

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
+use std::net::Ipv4Addr;
 
 #[cfg(feature = "static_files")]
 use tokio::io::AsyncReadExt;
@@ -31,6 +32,7 @@ impl ProxyHttp for SnakewayGateway {
             http::Method::GET,
             "/".parse().unwrap(),
             http::HeaderMap::new(),
+            Ipv4Addr::UNSPECIFIED.into(),
             Vec::new(),
         )
     }
@@ -57,6 +59,7 @@ impl ProxyHttp for SnakewayGateway {
             req.method.clone(),
             req.uri.clone(),
             req.headers.clone(),
+            ctx.peer_ip,
             Vec::new(),
         );
 
