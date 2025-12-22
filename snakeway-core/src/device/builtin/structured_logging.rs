@@ -119,11 +119,11 @@ impl StructuredLoggingDevice {
     // ------------------------------------------------------------------------
 
     fn event_enabled(&self, event: LogEvent) -> bool {
-        self.events.as_ref().map_or(true, |e| e.contains(&event))
+        self.events.as_ref().is_none_or(|e| e.contains(&event))
     }
 
     fn phase_enabled(&self, phase: LogPhase) -> bool {
-        self.phases.as_ref().map_or(true, |p| p.contains(&phase))
+        self.phases.as_ref().is_none_or(|p| p.contains(&phase))
     }
 
     // ------------------------------------------------------------------------
