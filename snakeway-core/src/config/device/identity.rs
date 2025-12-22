@@ -23,18 +23,6 @@ fn default_ua_engine() -> UaEngineKind {
     UaEngineKind::Woothee
 }
 
-impl Default for IdentityConfig {
-    fn default() -> Self {
-        Self {
-            trusted_proxies: vec![],
-            enable_geoip: true,
-            geoip_db: None,
-            enable_user_agent: true,
-            ua_engine: UaEngineKind::Woothee,
-        }
-    }
-}
-
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum UaEngineKind {

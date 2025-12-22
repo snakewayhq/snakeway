@@ -3,6 +3,7 @@ use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, DeviceResult};
 use crate::enrichment::user_agent::{ClientIdentity, GeoInfo, UaEngine, build_ua_engine};
+use anyhow::Context;
 use http::HeaderMap;
 use ipnet::IpNet;
 use maxminddb::PathElement;
@@ -16,11 +17,12 @@ pub struct IdentityDevice {
     geoip: Option<maxminddb::Reader<maxminddb::Mmap>>,
     ua_engine: Option<UaEngine>,
     pub enable_user_agent: bool,
+    pub enable_geoip: bool,
 }
 
 impl IdentityDevice {
     pub fn from_config(raw: &toml::Value) -> anyhow::Result<Self> {
-        let cfg: IdentityConfig = raw.clone().try_into()?;
+        let cfg: IdentityConfig = raw.clone().try_into().context("invalid identity config")?;
 
         let geoip = match (cfg.enable_geoip, &cfg.geoip_db) {
             (true, Some(path)) => {
@@ -53,6 +55,7 @@ impl IdentityDevice {
             ua_engine,
             trusted_proxies,
             enable_user_agent: cfg.enable_user_agent,
+            enable_geoip: cfg.enable_geoip,
         })
     }
 }
@@ -69,37 +72,41 @@ impl Device for IdentityDevice {
             ua: None,
         };
 
-        // GeoIP enrichment (country-only, EU-safe)
-        let country_code: Option<String> = self
-            .geoip
-            .as_ref()
-            .and_then(|reader| reader.lookup(client_ip).ok())
-            .and_then(|lookup| {
-                lookup
-                    .decode_path::<String>(&[
-                        PathElement::Key("country"),
-                        PathElement::Key("iso_code"),
-                    ])
-                    .ok()
-                    .flatten()
-            });
+        if self.enable_geoip {
+            // GeoIP enrichment (country-only, EU-safe)
+            let country_code: Option<String> = self
+                .geoip
+                .as_ref()
+                .and_then(|reader| reader.lookup(client_ip).ok())
+                .and_then(|lookup| {
+                    lookup
+                        .decode_path::<String>(&[
+                            PathElement::Key("country"),
+                            PathElement::Key("iso_code"),
+                        ])
+                        .ok()
+                        .flatten()
+                });
 
-        if let Some(country_code) = country_code {
-            identity.geo = Some(GeoInfo {
-                country_code: Some(country_code.to_ascii_uppercase()),
-                region: None,
-                asn: None,
-            });
+            if let Some(country_code) = country_code {
+                identity.geo = Some(GeoInfo {
+                    country_code: Some(country_code.to_ascii_uppercase()),
+                    region: None,
+                    asn: None,
+                });
+            }
         }
 
-        // User-Agent parsing
-        if let Some((engine, ua)) = self.ua_engine.as_ref().zip(
-            ctx.headers
-                .get("user-agent")
-                .and_then(|v| v.to_str().ok())
-                .filter(|ua| ua.len() <= MAX_USER_AGENT_LENGTH),
-        ) {
-            identity.ua = Some(engine.parse(ua));
+        if self.enable_user_agent {
+            // User-Agent parsing
+            if let Some((engine, ua)) = self.ua_engine.as_ref().zip(
+                ctx.headers
+                    .get("user-agent")
+                    .and_then(|v| v.to_str().ok())
+                    .filter(|ua| ua.len() <= MAX_USER_AGENT_LENGTH),
+            ) {
+                identity.ua = Some(engine.parse(ua));
+            }
         }
 
         // Identity is authoritative and immutable after insertion.

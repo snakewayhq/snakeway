@@ -76,14 +76,45 @@ redact_headers = [
 ]
 
 # Include EU-safe identity information
-include_identity = true
+include_identity = false
 
 # Allowed values: country, region, device, bot, asn
 identity_fields = ["country", "device"]
 
-events = ["request", "response"]
-phases = ["request", "response"]
+# Which specific lifecycle events should emit logs.
+#
+# If omitted, ALL events are logged.
+#
+# Allowed values:
+#   - "request"        (on_request)
+#   - "before_proxy"  (before upstream call)
+#   - "after_proxy"   (after upstream response)
+#   - "response"      (before response is sent to client)
+#
+# Common patterns:
+#   - ["request", "response"]  (access-log style)
+#   - ["response"]             (minimal logging)
+events = [
+    "request",
+    "response"
+]
 
+
+# High-level phases to log.
+#
+# This is a coarse filter that groups lifecycle hooks:
+#
+#   "request"  → on_request, before_proxy
+#   "response" → after_proxy, on_response
+#
+# If omitted, ALL phases are enabled.
+#
+# This is useful for quickly reducing log volume without
+# listing individual events.
+phases = [
+    "request",
+    "response"
+]
 
 
 # ---------------------------------------------------------------------

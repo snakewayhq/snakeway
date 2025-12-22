@@ -11,9 +11,7 @@ use std::sync::Arc;
 type BuiltinBuilder = fn(&toml::Value) -> Result<Arc<dyn Device>>;
 
 fn build_identity(cfg: &toml::Value) -> anyhow::Result<Arc<dyn Device>> {
-    let raw = cfg.get("options").cloned().unwrap_or_else(|| cfg.clone());
-
-    Ok(Arc::new(IdentityDevice::from_config(&raw)?))
+    Ok(Arc::new(IdentityDevice::from_config(cfg)?))
 }
 
 fn build_structured_logging(cfg: &toml::Value) -> anyhow::Result<Arc<dyn Device>> {
