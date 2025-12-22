@@ -71,7 +71,7 @@ Plugin/device phases:
 
 ### Implementation Order
 
-#### ✔ Phase 1A \- Basic Lifecycle Plumbing and Cofnig
+#### Phase 1A \- Basic Lifecycle Plumbing and Config
 
 1. Device API \+ ctx structures
 2. Device registry \+ execution pipeline
@@ -271,26 +271,6 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 * Debian \+ RPM builders via cargo-deb \+ cargo-rpm
 * GitHub releases with proper packaging
 
-## Phase 7: Snakeway Scripting (v0.10.x)
-
-Snakeway becomes
-
-### Goals
-
-* WASM scripting engine
-* Write custom logic for:
-    * routing
-    * discovery
-    * health checks
-    * transformations
-    * response shaping
-
-### Deliverables
-
-* WASM API (WasmTime)
-* Example scripts
-* Full WASM sandboxing model
-
 ## Phase 8: Snakeway 1.0 (v1.0.x)
 
 *Stabilize, package, benchmark, document.*
@@ -304,6 +284,6 @@ Snakeway becomes
 
 ## Post-v1.0.x
 
-1. Static file server: WASM hooks
-2. Static file server: For lage files, server precompressed assets (.br/.gz)
-3. 
+1. Static file server: For large files, server precompressed assets (.br/.gz)
+2. Static file server: Use sendfile for zero-copy serving
+3. Static file server: WASM hooks

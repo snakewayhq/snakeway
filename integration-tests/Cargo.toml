@@ -5,4 +5,6 @@ edition = "2024"
 
 [dependencies]
 reqwest = { version = "0.12", features = ["blocking"] }
-snakeway-core = { version = "*", path = "../snakeway-core", features = ["wasm", "static_files"]}
+snakeway-core = { version = "*", path = "../snakeway-core", features = ["wasm", "static_files"] }
+tracing-subscriber = "0.3"
+tracing = "0.1"

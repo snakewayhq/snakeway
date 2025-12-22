@@ -1632,6 +1632,8 @@ version = "0.1.0"
 dependencies = [
  "reqwest",
  "snakeway-core",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

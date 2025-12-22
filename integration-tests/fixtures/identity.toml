@@ -1,0 +1,25 @@
+[server]
+listen = "0.0.0.0:4040"
+
+
+[[routes]]
+upstream = "127.0.0.1:4000"
+path = "/"
+
+[[devices]]
+name = "identity"
+kind = "builtin"
+builtin = "identity"
+enabled = true
+
+[devices.options]
+enable_geoip = true
+geoip_db = "data/geo_lite2_city/GeoLite2-City.mmdb"
+enable_user_agent = true
+ua_engine = "woothee"
+
+[[devices]]
+name = "access-log"
+kind = "builtin"
+builtin = "structured_logging"
+enabled = true
