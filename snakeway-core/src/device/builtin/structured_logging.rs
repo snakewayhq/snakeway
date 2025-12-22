@@ -1,19 +1,22 @@
+use crate::config::device::structured_logging::LoggingConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
+use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
 use anyhow::{Context, Result};
 use http::HeaderMap;
 use serde::Deserialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use tracing::{debug, error, info, trace, warn};
+
 // ----------------------------------------------------------------------------
 // Logging level & config enums
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
-enum LogLevel {
+pub enum LogLevel {
     Trace,
     Debug,
     Info,
@@ -23,7 +26,7 @@ enum LogLevel {
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-enum LogEvent {
+pub enum LogEvent {
     Request,
     BeforeProxy,
     AfterProxy,
@@ -32,33 +35,23 @@ enum LogEvent {
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum LogPhase {
+pub enum LogPhase {
     Request,
     Response,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct LoggingConfig {
-    #[serde(default = "default_level")]
-    level: LogLevel,
-
-    #[serde(default)]
-    include_headers: bool,
-
-    #[serde(default)]
-    redact_headers: Vec<String>,
-
-    events: Option<Vec<LogEvent>>,
-    phases: Option<Vec<LogPhase>>,
-}
-
-fn default_level() -> LogLevel {
-    LogLevel::Info
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum IdentityField {
+    Country,
+    Region,
+    Device,
+    Bot,
+    Asn,
 }
 
 // ----------------------------------------------------------------------------
-// Emit macro (DRY-out logging calls)
+// Emit macro ...to DRY-out logging calls.
 // ----------------------------------------------------------------------------
 
 macro_rules! emit {
@@ -79,8 +72,14 @@ macro_rules! emit {
 
 pub struct StructuredLoggingDevice {
     level: LogLevel,
+
     include_headers: bool,
-    redact_headers: Vec<String>,
+    allowed_headers: HashSet<String>,
+    redact_headers: HashSet<String>,
+
+    include_identity: bool,
+    identity_fields: Vec<IdentityField>,
+
     events: Option<Vec<LogEvent>>,
     phases: Option<Vec<LogPhase>>,
 }
@@ -94,159 +93,205 @@ impl StructuredLoggingDevice {
 
         Ok(Self {
             level: cfg.level,
+
             include_headers: cfg.include_headers,
+            allowed_headers: cfg
+                .allowed_headers
+                .into_iter()
+                .map(|h| h.to_lowercase())
+                .collect(),
             redact_headers: cfg
                 .redact_headers
                 .into_iter()
                 .map(|h| h.to_lowercase())
                 .collect(),
+
+            include_identity: cfg.include_identity,
+            identity_fields: cfg.identity_fields,
+
             events: cfg.events,
             phases: cfg.phases,
         })
     }
 
+    // ------------------------------------------------------------------------
     // Gating helpers
+    // ------------------------------------------------------------------------
+
     fn event_enabled(&self, event: LogEvent) -> bool {
-        match &self.events {
-            Some(events) => events.contains(&event),
-            None => true,
-        }
+        self.events.as_ref().is_none_or(|e| e.contains(&event))
     }
 
     fn phase_enabled(&self, phase: LogPhase) -> bool {
-        match &self.phases {
-            Some(phases) => phases.contains(&phase),
-            None => true,
-        }
+        self.phases.as_ref().is_none_or(|p| p.contains(&phase))
     }
+
+    // ------------------------------------------------------------------------
+    // Header handling
+    // ------------------------------------------------------------------------
 
     fn headers_json(&self, headers: &HeaderMap) -> Option<String> {
         if !self.include_headers {
             return None;
         }
 
-        let headers = self.build_redacted_headers(headers);
-
-        serde_json::to_string(&headers).ok()
+        let map = self.build_headers(headers);
+        serde_json::to_string(&map).ok()
     }
 
-    fn build_redacted_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
+    fn build_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
 
         for (name, value) in headers.iter() {
-            let name_str = name.as_str().to_lowercase();
+            let name_lc = name.as_str().to_lowercase();
 
-            let redacted = self.redact_headers.contains(&name_str);
+            // Allowlist check (if configured)
+            if !self.allowed_headers.is_empty() && !self.allowed_headers.contains(&name_lc) {
+                continue;
+            }
 
-            let val = if redacted {
+            let val = if self.redact_headers.contains(&name_lc) {
                 "<redacted>".to_string()
             } else {
-                match value.to_str() {
-                    Ok(v) => v.to_string(),
-                    Err(_) => "<binary>".to_string(),
-                }
+                value
+                    .to_str()
+                    .map(str::to_string)
+                    .unwrap_or("<binary>".into())
             };
 
-            out.insert(name_str, val);
+            out.insert(name_lc, val);
         }
 
         out
     }
 
-    fn emit_http_event(
+    // ------------------------------------------------------------------------
+    // Identity handling
+    // ------------------------------------------------------------------------
+
+    fn identity_json(&self, identity: &ClientIdentity) -> Option<String> {
+        if !self.include_identity {
+            return None;
+        }
+
+        let geo = identity.geo.as_ref();
+        let ua = identity.ua.as_ref();
+
+        let mut out: BTreeMap<String, _> = BTreeMap::new();
+
+        for field in &self.identity_fields {
+            match field {
+                IdentityField::Country => {
+                    if let Some(cc) = geo.and_then(|g| g.country_code.as_ref()) {
+                        out.insert("country".into(), cc.clone());
+                    }
+                }
+                IdentityField::Region => {
+                    if let Some(r) = geo.and_then(|g| g.region.as_ref()) {
+                        out.insert("region".into(), r.clone());
+                    }
+                }
+                IdentityField::Asn => {
+                    if let Some(asn) = geo.and_then(|g| g.asn) {
+                        out.insert("asn".into(), asn.to_string());
+                    }
+                }
+                IdentityField::Device => {
+                    if let Some(ua) = ua {
+                        out.insert("device".into(), ua.device_type.as_str().to_string());
+                    }
+                }
+                IdentityField::Bot => {
+                    if let Some(ua) = ua {
+                        out.insert("bot".into(), ua.is_bot.to_string());
+                    }
+                }
+            }
+        }
+
+        serde_json::to_string(&out).ok()
+    }
+
+    // ------------------------------------------------------------------------
+    // Emit helpers
+    // ------------------------------------------------------------------------
+
+    fn emit_http_request(
         &self,
+        ctx: &RequestCtx,
         event: HttpEvent,
         method: Option<&str>,
         uri: Option<&str>,
         status: Option<&str>,
-        headers: &HeaderMap,
     ) {
-        match self.headers_json(headers) {
-            Some(headers) => {
-                emit!(
-                    self.level,
-                    event = %event.as_str(),
-                    method = method,
-                    uri = uri,
-                    status = status,
-                    headers = %headers,
-                );
-            }
-            None => {
-                emit!(
-                    self.level,
-                    event = %event.as_str(),
-                    method = method,
-                    uri = uri,
-                    status = status,
-                );
-            }
-        }
+        let headers = self.headers_json(&ctx.headers);
+        let identity = ctx
+            .extensions
+            .get::<ClientIdentity>()
+            .and_then(|i| self.identity_json(i));
+
+        emit!(
+            self.level,
+            event = %event.as_str(),
+            method = method,
+            uri = uri,
+            status = status,
+            headers = headers,
+            identity = identity,
+        );
+    }
+
+    fn emit_http_response(&self, event: HttpEvent, status: Option<&str>) {
+        emit!(
+            self.level,
+            event = %event.as_str(),
+            status = status,
+        );
     }
 }
 
+// ----------------------------------------------------------------------------
+// Device trait
+// ----------------------------------------------------------------------------
+
 impl Device for StructuredLoggingDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        if !self.phase_enabled(LogPhase::Request) || !self.event_enabled(LogEvent::Request) {
-            return DeviceResult::Continue;
+        if self.phase_enabled(LogPhase::Request) && self.event_enabled(LogEvent::Request) {
+            self.emit_http_request(
+                ctx,
+                HttpEvent::Request,
+                Some(ctx.method.as_str()),
+                Some(&ctx.original_uri.to_string()),
+                None,
+            );
         }
-
-        self.emit_http_event(
-            HttpEvent::Request,
-            Some(ctx.method.as_str()),
-            Some(&ctx.original_uri.to_string()),
-            None,
-            &ctx.headers,
-        );
-
         DeviceResult::Continue
     }
 
     fn before_proxy(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        if !self.phase_enabled(LogPhase::Request) || !self.event_enabled(LogEvent::BeforeProxy) {
-            return DeviceResult::Continue;
+        if self.phase_enabled(LogPhase::Request) && self.event_enabled(LogEvent::BeforeProxy) {
+            self.emit_http_request(
+                ctx,
+                HttpEvent::BeforeProxy,
+                Some(ctx.method.as_str()),
+                Some(&ctx.original_uri.to_string()),
+                None,
+            );
         }
-
-        self.emit_http_event(
-            HttpEvent::BeforeProxy,
-            Some(ctx.method.as_str()),
-            Some(&ctx.original_uri.to_string()),
-            None,
-            &ctx.headers,
-        );
-
         DeviceResult::Continue
     }
 
     fn after_proxy(&self, ctx: &mut ResponseCtx) -> DeviceResult {
-        if !self.phase_enabled(LogPhase::Response) || !self.event_enabled(LogEvent::AfterProxy) {
-            return DeviceResult::Continue;
+        if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::AfterProxy) {
+            self.emit_http_response(HttpEvent::AfterProxy, Some(ctx.status.as_str()));
         }
-
-        self.emit_http_event(
-            HttpEvent::AfterProxy,
-            None,
-            None,
-            Some(ctx.status.as_str()),
-            &ctx.headers,
-        );
-
         DeviceResult::Continue
     }
 
     fn on_response(&self, ctx: &mut ResponseCtx) -> DeviceResult {
-        if !self.phase_enabled(LogPhase::Response) || !self.event_enabled(LogEvent::Response) {
-            return DeviceResult::Continue;
+        if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::Response) {
+            self.emit_http_response(HttpEvent::Response, Some(ctx.status.as_str()));
         }
-
-        self.emit_http_event(
-            HttpEvent::Response,
-            None,
-            None,
-            Some(ctx.status.as_str()),
-            &ctx.headers,
-        );
-
         DeviceResult::Continue
     }
 

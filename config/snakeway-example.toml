@@ -24,63 +24,50 @@ cache_public = true
 cache_immutable = true
 
 # ---------------------------------------------------------------------
-# Devices are loaded and executed top-to-bottom.
-# Builtin devices run in-process; WASM devices are sandboxed.
+# Identity
+#
+# Provides device and geo location information for subsequent devices.
+# Support for EU compliance is best effort - use at your own risk.
+#
+# NOTE:
+#   Devices are loaded and executed top-to-bottom.
+#   This device must appear before structured_logging.
 # ---------------------------------------------------------------------
-
 [[devices]]
-name = "example"
-# WASM required the "wasm" feature.
-# Enabling a WASM device without the feature enabled will cause a runtime error.
-kind = "wasm"
-path = "plugins/snakeway_wasm_example.wasm"
+name = "identity"
+kind = "builtin"
+builtin = "identity"
 enabled = false
+
+enable_geoip = false
+geoip_db = "some/path/file.mmdb"
+
+enable_user_agent = false
+ua_engine = "uaparser"
+
+# CIDR ranges of trusted proxies for X-Forwarded-For parsing
+trusted_proxies = []
 
 
 # ---------------------------------------------------------------------
 # Structured Logging Device
-#
-# Emits structured tracing events for request/response lifecycle hooks.
-# Output format (JSON vs pretty) is NOT controlled here — that is handled
-# globally by tracing_subscriber and by the `snakeway logs` CLI.
 # ---------------------------------------------------------------------
-
 [[devices]]
 name = "access-log"
 kind = "builtin"
 builtin = "structured_logging"
 enabled = true
 
-# Log level for events emitted by this device.
-# This is independent of the global log filter.
-#
-# Allowed values:
-#   "trace", "debug", "info", "warn", "error"
-#
-# Typical values:
-#   - "info"  (default, production-safe)
-#   - "debug" (local debugging)
 level = "info"
 
-
 # Whether to include HTTP headers in log events.
-#
-# WARNING:
-#   Headers are often noisy and may contain sensitive data
-#   (Authorization, Cookies, etc).
-#
-# Recommendation:
-#   - false in production
-#   - true only for debugging
 include_headers = false
 
+# Header allow-list (case-insensitive).
+# If empty, all headers are eligible.
+allowed_headers = []
 
 # Header names to redact if headers are included.
-# Matching is case-insensitive.
-#
-# Redacted headers will appear as "<redacted>".
-#
-# This option is ignored unless `include_headers = true`.
 redact_headers = [
     "authorization",
     "cookie",
@@ -88,6 +75,11 @@ redact_headers = [
     "x-api-token",
 ]
 
+# Include EU-safe identity information
+include_identity = false
+
+# Allowed values: country, region, device, bot, asn
+identity_fields = ["country", "device"]
 
 # Which specific lifecycle events should emit logs.
 #
@@ -123,3 +115,16 @@ phases = [
     "request",
     "response"
 ]
+
+
+# ---------------------------------------------------------------------
+# Builtin devices run in-process; WASM devices are sandboxed.
+# ---------------------------------------------------------------------
+
+[[devices]]
+name = "example"
+# WASM required the "wasm" feature.
+# Enabling a WASM device without the feature enabled will cause a runtime error.
+kind = "wasm"
+path = "plugins/snakeway_wasm_example.wasm"
+enabled = false

@@ -1,4 +1,4 @@
-mod device;
+pub mod device;
 mod route;
 mod server;
 
