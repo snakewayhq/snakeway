@@ -4,7 +4,7 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 pub struct IdentityConfig {
     #[serde(default)]
-    pub trusted_proxies: Vec<String>, // CIDR strings (future use)
+    pub trusted_proxies: Vec<String>, // CIDR strings
 
     #[serde(default)]
     pub enable_geoip: bool,
