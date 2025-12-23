@@ -27,6 +27,7 @@ arc-swap = { workspace = true }
 brotli = { workspace = true, optional = true }
 bytes = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"] }
+console-subscriber = { workspace = true }
 ctrlc = { workspace = true }
 flate2 = { workspace = true, optional = true }
 http = { workspace = true }
@@ -45,7 +46,8 @@ tokio = { workspace = true, features = [
     "rt",
     "sync",
     "signal",
-    "macros"
+    "macros",
+    "tracing"
 ] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
