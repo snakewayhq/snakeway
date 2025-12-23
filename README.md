@@ -46,3 +46,7 @@ Actively developed. APIs may shift while foundations are finalized.
 ## License
 
 Apache 2.0
+
+## Geo IP Database
+
+Any MMDB database is supported, but default [IP Geolocation by DB-IP](https://db-ip.com).
