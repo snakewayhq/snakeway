@@ -1,4 +1,5 @@
 use integration_tests::harness::TestServer;
+use reqwest::StatusCode;
 
 /// Baseline: identity device runs when a User-Agent is present
 #[test]
@@ -14,7 +15,7 @@ fn identity_with_user_agent() {
         .send()
         .unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 /// Identity should not break requests without a User-Agent
@@ -24,7 +25,7 @@ fn identity_without_user_agent() {
 
     let res = srv.get("/api").send().unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 /// Oversized User-Agent headers should be ignored safely
@@ -40,7 +41,7 @@ fn oversized_user_agent_is_ignored() {
         .send()
         .unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 /// Mobile User-Agent should not crash identity parsing
@@ -57,7 +58,7 @@ fn mobile_user_agent_is_handled() {
         .send()
         .unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 /// Untrusted X-Forwarded-For headers must not affect request handling
@@ -75,7 +76,7 @@ fn untrusted_xff_is_ignored() {
         .send()
         .unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 /// Trusted proxy config should accept XFF without error
@@ -93,7 +94,7 @@ fn trusted_proxy_allows_xff() {
         .send()
         .unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 /// GeoIP-disabled config must not fail identity processing
@@ -110,5 +111,5 @@ fn geoip_disabled_does_not_break_identity() {
         .send()
         .unwrap();
 
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), StatusCode::OK);
 }
