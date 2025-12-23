@@ -5,6 +5,11 @@ listen = "{LISTEN_ADDR}"
 path = "/api"
 upstream = "{UPSTREAM_ADDR}"
 
+[[routes]]
+path = "/"
+file_dir = "./fixtures/public"
+
+
 [[devices]]
 name = "identity"
 kind = "builtin"
