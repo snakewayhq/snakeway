@@ -1,10 +1,9 @@
 [server]
-listen = "0.0.0.0:4042"
-
+listen = "{LISTEN_ADDR}"
 
 [[routes]]
-upstream = "127.0.0.1:4000"
 path = "/api"
+upstream = "{UPSTREAM_ADDR}"
 
 [[devices]]
 name = "identity"
