@@ -1,0 +1,28 @@
+[server]
+listen = "0.0.0.0:4043"
+
+
+[[routes]]
+upstream = "127.0.0.1:4003"
+path = "/api"
+
+[[devices]]
+name = "identity"
+kind = "builtin"
+builtin = "identity"
+enabled = true
+
+enable_geoip = true
+geoip_db = "fixtures/geoip/dbip-country-lite-2025-12.mmdb"
+enable_user_agent = true
+ua_engine = "woothee"
+trusted_proxies = ["127.0.0.1/32"]
+
+[[devices]]
+name = "access-log"
+kind = "builtin"
+builtin = "structured_logging"
+enabled = true
+
+include_identity = true
+identity_fields = ["country", "region", "asn", "device", "bot"]

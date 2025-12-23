@@ -1,7 +1,7 @@
 [server]
-listen = "0.0.0.0:4040"
+listen = "0.0.0.0:4041"
 
 
 [[routes]]
-upstream = "127.0.0.1:4000"
-path = "/"
+upstream = "127.0.0.1:4001"
+path = "/api"

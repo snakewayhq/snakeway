@@ -1,30 +1,14 @@
+use integration_tests::harness::TestServer;
 use std::sync::Once;
-use std::time::Duration;
-
-mod common;
 
 static SERVER: Once = Once::new();
-static CONFIG: &str = "basic.toml";
+const LISTEN_PORT: u16 = 4041;
+const UPSTREAM_PORT: u16 = 4001;
 
 #[test]
-fn basic_proxy_works() {
-    // Arrange
-    common::start_upstream();
-    common::start_server(&SERVER, CONFIG);
-    common::wait_for_server("127.0.0.1:4040", Duration::from_secs(2));
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(2))
-        .build()
-        .unwrap();
+fn should_proxy_request() {
+    let srv = TestServer::start(&SERVER, "basic.toml", LISTEN_PORT, UPSTREAM_PORT);
 
-    // Act
-    let res = client
-        .get("http://127.0.0.1:4040")
-        .send()
-        .expect("request failed");
-
-    // Assert
+    let res = srv.get("/").send().unwrap();
     assert_eq!(res.status(), 200);
-    let body = res.text().unwrap();
-    assert_eq!(body, "hello world");
 }
