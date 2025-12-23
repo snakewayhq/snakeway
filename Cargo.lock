@@ -1672,7 +1672,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arc-swap",
  "reqwest",
@@ -3144,7 +3144,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap 4.5.53",
  "snakeway-core",
@@ -3152,7 +3152,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
