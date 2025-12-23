@@ -1,16 +1,17 @@
-use async_trait::async_trait;
-use pingora::prelude::*;
-use pingora_http::{RequestHeader, ResponseHeader};
-use std::net::Ipv4Addr;
-
-#[cfg(feature = "static_files")]
-use tokio::io::AsyncReadExt;
-
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
-use crate::route::{RouteEntry, RouteKind, Router};
+use crate::route::{RouteEntry, RouteKind};
+use crate::server::runtime::RuntimeState;
+use arc_swap::ArcSwap;
+use async_trait::async_trait;
+use pingora::prelude::*;
+use pingora_http::{RequestHeader, ResponseHeader};
+use std::net::Ipv4Addr;
+use std::sync::Arc;
+#[cfg(feature = "static_files")]
+use tokio::io::AsyncReadExt;
 
 pub struct SnakewayGateway {
     pub upstream_host: String,
@@ -18,8 +19,8 @@ pub struct SnakewayGateway {
     pub use_tls: bool,
     pub sni: String,
 
-    pub devices: DeviceRegistry,
-    pub router: Router,
+    // Runtime state
+    pub state: Arc<ArcSwap<RuntimeState>>,
 }
 
 #[async_trait]
@@ -63,8 +64,10 @@ impl ProxyHttp for SnakewayGateway {
             Vec::new(),
         );
 
+        let state = self.state.load();
+
         // Run on_request devices first (applies to both static and upstream requests).
-        match DevicePipeline::run_on_request(self.devices.all(), ctx) {
+        match DevicePipeline::run_on_request(state.devices.all(), ctx) {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(resp) => {
@@ -80,7 +83,7 @@ impl ProxyHttp for SnakewayGateway {
         }
 
         // Make a decision about the route.
-        let route = match self.router.match_route(&ctx.route_path) {
+        let route = match state.router.match_route(&ctx.route_path) {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");
@@ -91,7 +94,7 @@ impl ProxyHttp for SnakewayGateway {
 
         match &route.kind {
             RouteKind::Static { .. } => {
-                respond_with_static(session, ctx, route, &self.devices).await
+                respond_with_static(session, ctx, route, &state.devices).await
             }
 
             RouteKind::Proxy { .. } => {
@@ -111,7 +114,9 @@ impl ProxyHttp for SnakewayGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        match DevicePipeline::run_before_proxy(self.devices.all(), ctx) {
+        let state = self.state.load();
+
+        match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context
                 upstream.set_method(ctx.method.clone());
@@ -146,8 +151,8 @@ impl ProxyHttp for SnakewayGateway {
         _ctx: &mut Self::CTX,
     ) -> Result<()> {
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
-
-        match DevicePipeline::run_after_proxy(self.devices.all(), &mut resp_ctx) {
+        let state = self.state.load();
+        match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(_resp) => {
@@ -176,8 +181,8 @@ impl ProxyHttp for SnakewayGateway {
         _ctx: &mut Self::CTX,
     ) -> Result<()> {
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
-
-        match DevicePipeline::run_on_response(self.devices.all(), &mut resp_ctx) {
+        let state = self.state.load();
+        match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(_resp) => {

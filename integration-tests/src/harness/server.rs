@@ -1,9 +1,10 @@
 use crate::harness::config::render_config;
 use crate::harness::upstream::start_upstream;
 use crate::harness::{CapturedEvent, init_test_tracing};
+use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::config::SnakewayConfig;
-use snakeway_core::server::build_pingora_server;
+use snakeway_core::server::{build_pingora_server, build_runtime_state};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -52,8 +53,14 @@ impl TestServer {
         let cfg = SnakewayConfig::from_file(config_file.to_str().expect("invalid config path"))
             .expect("failed to load snakeway config");
 
+        // Build initial runtime state (static for tests)
+        let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
+
+        // Wrap in ArcSwap (matches production shape)
+        let state = Arc::new(ArcSwap::from_pointee(runtime_state));
+
         // Build server
-        let server = build_pingora_server(cfg).expect("failed to build snakeway server");
+        let server = build_pingora_server(cfg, state).expect("failed to build snakeway server");
 
         // Run server in background thread
         thread::spawn(move || {

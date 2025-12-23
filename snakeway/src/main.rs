@@ -31,6 +31,13 @@ enum Command {
         raw: bool,
     },
 
+    /// Reload a running Snakeway instance (SIGHUP)
+    Reload {
+        /// Path to pid file
+        #[arg(long, default_value = "/tmp/snakeway.pid")]
+        pid_file: String,
+    },
+
     /// Run the Snakeway proxy (default)
     Run {
         /// Path to the Snakeway config file
@@ -63,21 +70,31 @@ fn main() {
             }
         }
 
+        Some(Command::Reload { pid_file }) => {
+            init_logging();
+
+            if let Err(e) = cli::reload::run(&pid_file) {
+                eprintln!("reload failed: {e}");
+                std::process::exit(1);
+            }
+        }
+
         Some(Command::Run { config }) => {
             init_logging();
 
-            let cfg = SnakewayConfig::from_file(&config).expect("Failed to load Snakeway config");
-
-            server::run(cfg).expect("Failed to start Snakeway server");
+            let config_path = config.clone();
+            let cfg =
+                SnakewayConfig::from_file(&config_path).expect("Failed to load Snakeway config");
+            server::run(config_path, cfg).expect("Failed to start Snakeway server");
         }
 
         None => {
             init_logging();
 
-            let cfg = SnakewayConfig::from_file("config/snakeway.toml")
-                .expect("Failed to load Snakeway config");
-
-            server::run(cfg).expect("Failed to start Snakeway server");
+            let config_path = "config/snakeway.toml".to_string();
+            let cfg =
+                SnakewayConfig::from_file(&config_path).expect("Failed to load Snakeway config");
+            server::run(config_path, cfg).expect("Failed to start Snakeway server");
         }
     }
 }

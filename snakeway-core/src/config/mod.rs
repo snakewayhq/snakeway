@@ -12,7 +12,7 @@ use std::path::Path;
 use std::str::FromStr;
 use tracing::{debug, trace};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct SnakewayConfig {
     pub server: ServerConfig,
     pub routes: Vec<RouteConfig>,

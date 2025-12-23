@@ -16,28 +16,37 @@ static_files = [
     "flate2",
     "httpdate",
     "mime_guess",
-    "tokio",
+    "tokio/fs",
     "percent-encoding"
 ]
 
 [dependencies]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
+arc-swap = { workspace = true }
 brotli = { workspace = true, optional = true }
 bytes = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"] }
+ctrlc = { workspace = true }
 flate2 = { workspace = true, optional = true }
 http = { workspace = true }
 httpdate = { workspace = true, optional = true }
 maxminddb = { workspace = true, features = ["mmap"] }
 mime_guess = { workspace = true, optional = true }
+nix = { workspace = true, features = ["signal"] }
 percent-encoding = { workspace = true, optional = true }
 pingora = { workspace = true, features = ["proxy"] }
 pingora-http = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
-tokio = { workspace = true, optional = true, features = ["fs"] }
+tokio = { workspace = true, features = [
+    "fs",
+    "rt",
+    "sync",
+    "signal",
+    "macros"
+] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
 uaparser = { workspace = true }

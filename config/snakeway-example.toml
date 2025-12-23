@@ -1,7 +1,7 @@
 [server]
 # Address Snakeway listens on
 listen = "0.0.0.0:8080"
-
+pid_file = "/tmp/snakeway.pid"
 
 [[routes]]
 # Upstream service Snakeway proxies to
