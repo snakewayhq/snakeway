@@ -5,23 +5,11 @@ use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::config::SnakewayConfig;
 use snakeway_core::server::build_pingora_server;
 use std::net::TcpStream;
-use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use std::{fs, thread};
 use tempfile::TempPath;
 use tracing::trace;
-
-/// Global port allocator.
-/// We always allocate ports in pairs:
-///   - listen port
-///   - upstream port
-static NEXT_PORT: AtomicU16 = AtomicU16::new(20_000);
-
-fn next_port_pair() -> (u16, u16) {
-    let base = NEXT_PORT.fetch_add(2, Ordering::SeqCst);
-    (base, base + 1)
-}
 
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
@@ -46,7 +34,8 @@ impl TestServer {
         // Clear events.
         events.lock().unwrap().clear();
 
-        let (listen_port, upstream_port) = next_port_pair();
+        let listen_port = free_port();
+        let upstream_port = free_port();
 
         // Render config template → temp file
         let config_file = render_config(template, listen_port, upstream_port);
@@ -123,4 +112,14 @@ fn events() -> Arc<Mutex<Vec<CapturedEvent>>> {
     EVENTS
         .get_or_init(|| Arc::new(Mutex::new(Vec::new())))
         .clone()
+}
+
+/// Allocate a free port on localhost.
+/// This is required to avoid port collisions when running tests in parallel.
+fn free_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
 }
