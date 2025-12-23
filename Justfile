@@ -14,8 +14,11 @@ CONFIG := "config/snakeway.toml"
 # Tools and docs
 # -----------------------------------------------------------------------------
 
-install-tools:
-    cargo install cargo-component cargo-zigbuild wit-bindgen-cli samply cargo-nextest
+install-tools: install-dev-tools install-build-tools
+    @echo "Finished installing tools"
+
+install-dev-tools:
+    cargo install tokio-console samply cargo-nextest
 
 docs:
     cd docs && npm run docs:dev
@@ -43,6 +46,10 @@ profile:
     cargo build --release -p snakeway --features static_files
     @echo "Profiling with Samply (Ctrl+C to stop)"
     samply record target/release/snakeway > /dev/null
+
+# Start this profile recipe, then run "tokio-console" at the cli
+profile-tokio:
+    RUSTFLAGS="--cfg tokio_unstable" TOKIO_CONSOLE=1 RUST_LOG=error cargo run -r -p snakeway --features static_files > /dev/null
 
 # Generate meaningful profiling data against an upstream.
 run-load-against-upstream:
@@ -89,7 +96,7 @@ release:
 # Install build tools
 install-build-tools:
     @brew install zig
-    @cargo install cargo-zigbuild
+    @cargo install cargo-component cargo-zigbuild wit-bindgen-cli
 
 # MUSL Build: AARCH64 (Linux ARM64)
 musl-aarch64:
