@@ -1633,6 +1633,7 @@ dependencies = [
  "reqwest",
  "snakeway-core",
  "tempfile",
+ "tracing",
  "tracing-subscriber",
 ]
 
