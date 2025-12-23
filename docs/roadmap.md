@@ -278,7 +278,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 * Debian \+ RPM builders via cargo-deb \+ cargo-rpm
 * GitHub releases with proper packaging
 
-## Phase 8: Snakeway 1.0 (v1.0.x)
+## Phase 7: Snakeway 1.0 (v1.0.x)
 
 *Stabilize, package, benchmark, document.*
 
