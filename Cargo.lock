@@ -1641,6 +1641,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "snakeway-core",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
 ]
