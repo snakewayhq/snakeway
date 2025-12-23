@@ -8,6 +8,7 @@ use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;
 use pingora::prelude::*;
 use pingora::server::Server;
+use pingora::server::configuration::ServerConf;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -92,7 +93,20 @@ pub fn build_pingora_server(
     config: SnakewayConfig,
     state: Arc<ArcSwap<RuntimeState>>,
 ) -> Result<Server, Error> {
-    let mut server = Server::new(None)?;
+    let mut server = if let Some(threads) = config.server.threads {
+        tracing::debug!(
+            threads,
+            "Creating Pingora server with overridden worker threads"
+        );
+        let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
+        conf.threads = threads;
+        Server::new_with_opt_and_conf(None, conf)
+    } else {
+        // Create a Pingora server with default settings.
+        // "None" is required here to truly tell Pingora to use its default settings.
+        Server::new(None)?
+    };
+
     server.bootstrap();
 
     // Load devices

@@ -2,6 +2,16 @@
 # Address Snakeway listens on
 listen = "0.0.0.0:8080"
 pid_file = "/tmp/snakeway.pid"
+# Pingora worker threads.
+# If unset, Pingora decides how many threads to use.
+threads = 8
+
+
+[[routes]]
+# Upstream service Snakeway proxies to
+upstream = "127.0.0.1:3000"
+path = "/"
+
 
 [[routes]]
 # Upstream service Snakeway proxies to
