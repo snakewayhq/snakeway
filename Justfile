@@ -15,7 +15,7 @@ CONFIG := "config/snakeway.toml"
 # -----------------------------------------------------------------------------
 
 install-tools:
-    cargo install cargo-component cargo-zigbuild wit-bindgen-cli samply
+    cargo install cargo-component cargo-zigbuild wit-bindgen-cli samply cargo-nextest
 
 docs:
     cd docs && npm run docs:dev
@@ -51,6 +51,10 @@ run-load-against-upstream:
 # Generate meaningful profiling data against a static file.
 run-load-against-static:
     hey -n 300000 -c 256 http://127.0.0.1:8080/static/index.html
+
+# Generate some spoofed traffic for the identity device
+run-spoofed-traffic:
+    k6 run --vus 10 --duration 30s spoof-traffic.js
 
 # -----------------------------------------------------------------------------
 # Debugging
@@ -128,10 +132,10 @@ lint: fmt clippy
 # -----------------------------------------------------------------------------
 
 test:
-    cargo test
+    cargo nextest run
 
 integration-test:
-    cargo test -p integration-tests
+    cargo nextest run -p integration-tests
 
 # -----------------------------------------------------------------------------
 # CLEANUP

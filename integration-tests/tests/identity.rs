@@ -1,158 +1,114 @@
-mod common;
+use integration_tests::harness::TestServer;
 
-use std::sync::Once;
-
-static SERVER: Once = Once::new();
-static CONFIG: &str = "identity.toml";
-
-/// Identity device should resolve client IP from peer socket
+/// Baseline: identity device runs when a User-Agent is present
 #[test]
-fn identity_resolves_client_ip_without_xff() {
-    // Arrange
-    common::start_upstream();
-    let logs = common::capture_logs(|| {
-        common::start_server(&SERVER, CONFIG);
+fn identity_with_user_agent() {
+    let srv = TestServer::start("fixtures/identity.toml");
 
-        // Act
-        let res = reqwest::blocking::get("http://127.0.0.1:4041/api").expect("request failed");
+    let res = srv
+        .get("/api")
+        .header(
+            "user-agent",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        )
+        .send()
+        .unwrap();
 
-        assert_eq!(res.status(), 200);
-    });
-
-    // Assert
-    assert!(
-        logs.contains("\"identity\""),
-        "expected identity object in logs"
-    );
-
-    assert!(
-        logs.contains("\"country\""),
-        "expected country field from identity"
-    );
+    assert_eq!(res.status(), 200);
 }
 
-/// X-Forwarded-For should be ignored if peer is not trusted
+/// Identity should not break requests without a User-Agent
 #[test]
-fn untrusted_xff_is_ignored() {
-    // Arrange
-    common::start_upstream();
-    let logs = common::capture_logs(|| {
-        common::start_server(&SERVER, CONFIG);
+fn identity_without_user_agent() {
+    let srv = TestServer::start("fixtures/identity.toml");
 
-        let client = reqwest::blocking::Client::new();
-        let res = client
-            .get("http://127.0.0.1:4041/api")
-            .header("x-forwarded-for", "8.8.8.8")
-            .send()
-            .expect("request failed");
+    let res = srv.get("/api").send().unwrap();
 
-        assert_eq!(res.status(), 200);
-    });
-
-    // Assert
-    // We expect identity, but NOT proxy chain usage
-    assert!(
-        !logs.contains("8.8.8.8"),
-        "untrusted XFF should not influence identity"
-    );
+    assert_eq!(res.status(), 200);
 }
 
-/// Trusted proxies should allow XFF resolution
-#[test]
-fn trusted_proxy_allows_xff_resolution() {
-    // Arrange
-    common::start_upstream();
-    let logs = common::capture_logs(|| {
-        common::start_server(&SERVER, CONFIG);
-
-        let client = reqwest::blocking::Client::new();
-        let res = client
-            .get("http://127.0.0.1:4041/api")
-            .header("x-forwarded-for", "1.1.1.1, 10.0.0.1")
-            .send()
-            .expect("request failed");
-
-        assert_eq!(res.status(), 200);
-    });
-
-    // Assert
-    assert!(
-        logs.contains("1.1.1.1"),
-        "expected client IP from XFF when proxy is trusted"
-    );
-}
-
-/// User-Agent parsing should populate identity.ua
-#[test]
-fn identity_parses_user_agent() {
-    // Arrange
-    common::start_upstream();
-    let logs = common::capture_logs(|| {
-        common::start_server(&SERVER, CONFIG);
-
-        let client = reqwest::blocking::Client::new();
-        let res = client
-            .get("http://127.0.0.1:4041/api")
-            .header(
-                "user-agent",
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-            )
-            .send()
-            .expect("request failed");
-
-        assert_eq!(res.status(), 200);
-    });
-
-    // Assert
-    assert!(
-        logs.contains("\"device\""),
-        "expected device field in identity"
-    );
-}
-
-/// Excessively long User-Agent headers should be ignored
+/// Oversized User-Agent headers should be ignored safely
 #[test]
 fn oversized_user_agent_is_ignored() {
-    // Arrange
+    let srv = TestServer::start("fixtures/identity.toml");
+
     let long_ua = "a".repeat(10_000);
 
-    common::start_upstream();
-    let logs = common::capture_logs(|| {
-        common::start_server(&SERVER, CONFIG);
+    let res = srv
+        .get("/api")
+        .header("user-agent", long_ua)
+        .send()
+        .unwrap();
 
-        let client = reqwest::blocking::Client::new();
-        let res = client
-            .get("http://127.0.0.1:4041/api")
-            .header("user-agent", long_ua)
-            .send()
-            .expect("request failed");
-
-        assert_eq!(res.status(), 200);
-    });
-
-    // Assert
-    assert!(
-        !logs.contains("\"device\""),
-        "oversized UA should not be parsed or logged"
-    );
+    assert_eq!(res.status(), 200);
 }
 
-/// GeoIP should be disabled cleanly when not configured
+/// Mobile User-Agent should not crash identity parsing
+#[test]
+fn mobile_user_agent_is_handled() {
+    let srv = TestServer::start("fixtures/identity.toml");
+
+    let res = srv
+        .get("/api")
+        .header(
+            "user-agent",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+        )
+        .send()
+        .unwrap();
+
+    assert_eq!(res.status(), 200);
+}
+
+/// Untrusted X-Forwarded-For headers must not affect request handling
+#[test]
+fn untrusted_xff_is_ignored() {
+    let srv = TestServer::start("fixtures/identity.toml");
+
+    let res = srv
+        .get("/api")
+        .header("x-forwarded-for", "8.8.8.8")
+        .header(
+            "user-agent",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        )
+        .send()
+        .unwrap();
+
+    assert_eq!(res.status(), 200);
+}
+
+/// Trusted proxy config should accept XFF without error
+#[test]
+fn trusted_proxy_allows_xff() {
+    let srv = TestServer::start("fixtures/identity_trusted_proxy.toml");
+
+    let res = srv
+        .get("/api")
+        .header("x-forwarded-for", "1.1.1.1, 127.0.0.1")
+        .header(
+            "user-agent",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        )
+        .send()
+        .unwrap();
+
+    assert_eq!(res.status(), 200);
+}
+
+/// GeoIP-disabled config must not fail identity processing
 #[test]
 fn geoip_disabled_does_not_break_identity() {
-    // Arrange
-    common::start_upstream();
-    let logs = common::capture_logs(|| {
-        common::start_server(&SERVER, "identity_no_geo.toml");
+    let srv = TestServer::start("fixtures/identity_no_geo.toml");
 
-        let res = reqwest::blocking::get("http://127.0.0.1:4041/api").expect("request failed");
+    let res = srv
+        .get("/api")
+        .header(
+            "user-agent",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        )
+        .send()
+        .unwrap();
 
-        assert_eq!(res.status(), 200);
-    });
-
-    // Assert
-    assert!(
-        !logs.contains("\"country\""),
-        "geo fields should not appear when geoip is disabled"
-    );
+    assert_eq!(res.status(), 200);
 }

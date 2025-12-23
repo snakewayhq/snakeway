@@ -43,7 +43,7 @@ enable_geoip = false
 geoip_db = "some/path/file.mmdb"
 
 enable_user_agent = false
-ua_engine = "uaparser"
+ua_engine = "woothee"
 
 # CIDR ranges of trusted proxies for X-Forwarded-For parsing
 trusted_proxies = []

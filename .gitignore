@@ -27,3 +27,6 @@ config/snakeway.toml
 
 # Data (not licensed to commit)
 /data/
+
+# Mac
+.DS_Store
