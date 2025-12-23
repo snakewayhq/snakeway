@@ -12,9 +12,13 @@ pub struct RuntimeState {
 }
 
 pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeState>) -> Result<()> {
+    // Parse and validate config.
     let cfg = SnakewayConfig::from_file(config_path.to_str().expect("valid path"))?;
+
+    // Build a new runtime state OFFLINE.
     let new_state = build_runtime_state(&cfg)?;
 
+    // Log comparison against current state.
     let old = state.load();
     tracing::info!(
         old_routes = old.router.route_count(),
@@ -24,6 +28,7 @@ pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeSta
         "runtime state reloaded"
     );
 
+    // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
     Ok(())
