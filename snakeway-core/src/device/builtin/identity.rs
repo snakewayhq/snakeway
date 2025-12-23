@@ -105,6 +105,7 @@ impl Device for IdentityDevice {
                     .and_then(|v| v.to_str().ok())
                     .filter(|ua| ua.len() <= MAX_USER_AGENT_LENGTH),
             ) {
+                tracing::info!("user-agent: {}", ua);
                 identity.ua = Some(engine.parse(ua));
             }
         }

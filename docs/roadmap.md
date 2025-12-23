@@ -45,29 +45,23 @@ Plugin/device phases:
 
 * Hot reload with signal or admin API:
     * `snakeway reload`
-    * `POST /admin/reload`
 
 * Observability:
     * structured logs
-    * request counters
-    * upstream timing histograms
-    * error metrics
+
 * Static file server:
     * basic file serving that preempts upstream
-    * (possible) features:
+    * features:
         * ETag / If-Modified-Since
         * gzip / brotli
         * range requests
         * directory listing
         * per-file caching headers
-        * WASM hooks
 
 ### Deliverables
 
 * Complete plugin API draft
 * Example devices (header rewrite, logging)
-* `/admin/health`
-* `/admin/stats`
 
 ### Implementation Order
 
@@ -92,11 +86,10 @@ Plugin/device phases:
 
 1. Identity device
 
-#### Phase 1D \- Observability and Reload
+#### Phase 1D \- Reload
 
 1. Structured logs (logs command)
 2. Hot reload (SIGHUP \+ admin)
-3. Observability endpoints
 
 ## Phase 1.5 \- Benchmark and Revisit Lifecycle
 
@@ -135,6 +128,12 @@ Todo:
     * per-upstream thresholds
     * circuit breaker
 
+* Observability:
+    * structured logs
+    * request counters
+    * upstream timing histograms
+    * error metrics
+
 * Service discovery:
     * DNS A/AAAA \+ TTL
     * SRV records
@@ -147,6 +146,9 @@ Todo:
 * Health-check worker loop
 * Runtime updating of upstreams
 * Discovery polling with TTL
+* `/admin/health`
+* `/admin/stats`
+* `/admin/reload`
 
 ### Implementation Order
 
@@ -154,7 +156,9 @@ Todo:
 
 1. Multiple upstreams (ordered failover)
 2. Basic downstream TLS
-3. Websocket support
+3. Websocket-proxy support
+4. Grpc-proxy support
+5. Reload upstreams via `snakeway reload` command
 
 #### Phase 2B \- Traffic Intelligence
 
@@ -162,7 +166,11 @@ Todo:
 2. Health checks
 3. Circuit breaking
 
-#### Phase 2C \- Cloud-Native
+#### Phase 2C \- Observability
+
+1. Observability admin endpoints (building on health checks)
+
+#### Phase 2D \- Cloud-Native
 
 1. Service discovery
 2. Upstream TLS
@@ -184,7 +192,6 @@ Todo:
     * query canonicalization
 
 * Blocking features:
-
     * CIDR-based allow/deny
     * method allowlist
     * header allow/deny
@@ -287,3 +294,4 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 1. Static file server: For large files, server precompressed assets (.br/.gz)
 2. Static file server: Use sendfile for zero-copy serving
 3. Static file server: WASM hooks
+4. Static file server: Per-file caching headers

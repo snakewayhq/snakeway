@@ -3,21 +3,21 @@ pub mod structured_logging;
 
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum DeviceKind {
     Wasm,
     Builtin,
 }
 
-#[derive(Debug, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Debug, Deserialize, Eq, Hash, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum BuiltinDeviceKind {
     StructuredLogging,
     Identity,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct DeviceConfig {
     pub name: String,
 
