@@ -12,7 +12,7 @@ builtin = "identity"
 enabled = true
 
 enable_geoip = false
-geoip_db = "data/geo_lite2_city/GeoLite2-City.mmdb"
+geoip_db = ""
 enable_user_agent = true
 ua_engine = "woothee"
 trusted_proxies = []
@@ -22,3 +22,6 @@ name = "access-log"
 kind = "builtin"
 builtin = "structured_logging"
 enabled = true
+
+include_identity = true
+identity_fields = ["country", "region", "asn", "device", "bot"]
