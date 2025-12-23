@@ -5,7 +5,6 @@ permissions:
 
 on:
   push:
-    branches: [ main ]
     tags:
       - "v*"
   pull_request:
@@ -88,10 +87,12 @@ jobs:
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: dist
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            snakeway-x86_64-unknown-linux-musl/snakeway
-            snakeway-aarch64-unknown-linux-musl/snakeway
+            dist/snakeway-x86_64-unknown-linux-musl/snakeway
+            dist/snakeway-aarch64-unknown-linux-musl/snakeway
