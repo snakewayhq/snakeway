@@ -1,103 +1,126 @@
-use std::net::{SocketAddr, TcpStream};
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, Once};
-use std::thread;
-use std::time::{Duration, Instant};
-
+use crate::harness::config::render_config;
+use crate::harness::upstream::start_upstream;
+use crate::harness::{CapturedEvent, init_test_tracing};
 use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::config::SnakewayConfig;
 use snakeway_core::server::build_pingora_server;
+use std::net::TcpStream;
+use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
+use std::{fs, thread};
+use tempfile::TempPath;
+use tracing::trace;
 
-use super::tracing::{CapturedEvent, init_test_tracing};
-use super::upstream::start_upstream;
+/// Global port allocator.
+/// We always allocate ports in pairs:
+///   - listen port
+///   - upstream port
+static NEXT_PORT: AtomicU16 = AtomicU16::new(20_000);
 
+fn next_port_pair() -> (u16, u16) {
+    let base = NEXT_PORT.fetch_add(2, Ordering::SeqCst);
+    (base, base + 1)
+}
+
+/// Handle to a running Snakeway test server.
 pub struct TestServer {
-    pub addr: SocketAddr,
-    pub client: Client,
-    pub events: Arc<Mutex<Vec<CapturedEvent>>>,
+    base_url: String,
+    client: Client,
+
+    // MUST be kept alive or config file is deleted
+    #[allow(dead_code)]
+    config_file: TempPath,
 }
 
 impl TestServer {
-    pub fn start(
-        server_once: &'static Once,
-        config_file: &str,
-        listen_port: u16,
-        upstream_port: u16,
-    ) -> Self {
+    /// Start a Snakeway instance using a TOML *template* fixture.
+    ///
+    /// Ports are allocated dynamically and injected into the config.
+    ///
+    /// This function is fully parallel-safe and nextest-safe.
+    pub fn start(template: &str) -> Self {
+        // Initialize tracing (this must happen first).
+        let events = events();
+        init_test_tracing(events.clone());
+        // Clear events.
+        events.lock().unwrap().clear();
+
+        let (listen_port, upstream_port) = next_port_pair();
+
+        // Render config template → temp file
+        let config_file = render_config(template, listen_port, upstream_port);
+        assert!(config_file.exists(), "rendered config file vanished early");
+        trace!(
+            path = %config_file.display(),
+            contents = %fs::read_to_string(&config_file).unwrap(),
+            "rendered snakeway config"
+        );
+        // Start upstream first
         start_upstream(upstream_port);
 
-        let events = Arc::new(Mutex::new(Vec::new()));
-        init_test_tracing(events.clone());
+        // Load Snakeway config
+        let cfg = SnakewayConfig::from_file(config_file.to_str().expect("invalid config path"))
+            .expect("failed to load snakeway config");
 
-        let addr: SocketAddr = format!("127.0.0.1:{listen_port}").parse().unwrap();
+        // Build server
+        let server = build_pingora_server(cfg).expect("failed to build snakeway server");
 
-        server_once.call_once(|| {
-            let cfg = load_config(config_file);
-            let server = build_pingora_server(cfg).expect("failed to build server");
-
-            thread::spawn(move || {
-                server.run_forever();
-            });
+        // Run server in background thread
+        thread::spawn(move || {
+            server.run_forever();
         });
 
-        wait_for_server(addr, Duration::from_secs(2));
+        let base_url = format!("http://127.0.0.1:{listen_port}");
+
+        // Wait for server to accept connections
+        wait_for_server(&base_url);
 
         let client = Client::builder()
             .timeout(Duration::from_secs(2))
             .build()
-            .unwrap();
+            .expect("failed to build client");
 
         Self {
-            addr,
+            base_url,
             client,
-            events,
+            config_file,
         }
     }
 
+    /// Convenience helper for GET requests.
     pub fn get(&self, path: &str) -> RequestBuilder {
-        let path = path.trim_start_matches('/');
-        self.client
-            .get(format!("http://{}/api/{}", self.addr, path))
+        self.client.get(format!("{}{}", self.base_url, path))
     }
 
-    pub fn events(&self) -> std::sync::MutexGuard<'_, Vec<CapturedEvent>> {
-        self.events.lock().unwrap()
-    }
-
-    pub fn first_identity_json(&self) -> Option<serde_json::Value> {
-        let events = self.events();
-        let event = events
-            .iter()
-            .find(|e| e.fields.iter().any(|(k, _)| k == "identity"))?;
-
-        let identity_str = event
-            .fields
-            .iter()
-            .find(|(k, _)| k == "identity")?
-            .1
-            .clone();
-
-        serde_json::from_str(&identity_str).ok()
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 }
 
-fn load_config(file: &str) -> SnakewayConfig {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("fixtures")
-        .join(file);
+/// Poll until the server responds (or panic).
+fn wait_for_server(listen_addr: &str) {
+    let addr = listen_addr.strip_prefix("http://").unwrap_or(listen_addr);
 
-    SnakewayConfig::from_file(path.to_str().unwrap()).expect("failed to load config")
-}
+    let deadline = Instant::now() + Duration::from_secs(2);
 
-fn wait_for_server(addr: SocketAddr, timeout: Duration) {
-    let start = Instant::now();
     loop {
-        if TcpStream::connect(addr).is_ok() {
-            return;
+        match TcpStream::connect(addr) {
+            Ok(_) => return,
+            Err(_) => {
+                if Instant::now() > deadline {
+                    panic!("server failed to start at {}", listen_addr);
+                }
+                thread::sleep(Duration::from_millis(25));
+            }
         }
-        if start.elapsed() > timeout {
-            panic!("server never became ready");
-        }
-        thread::sleep(Duration::from_millis(50));
     }
+}
+
+static EVENTS: OnceLock<Arc<Mutex<Vec<CapturedEvent>>>> = OnceLock::new();
+
+fn events() -> Arc<Mutex<Vec<CapturedEvent>>> {
+    EVENTS
+        .get_or_init(|| Arc::new(Mutex::new(Vec::new())))
+        .clone()
 }

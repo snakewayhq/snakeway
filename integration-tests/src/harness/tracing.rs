@@ -1,9 +1,11 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 
 use tracing::field::{Field, Visit};
 use tracing::{Event, Subscriber};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{Layer, layer::Context};
+use tracing_subscriber::layer::Context;
+use tracing_subscriber::{EnvFilter, Layer, fmt};
+
+use tracing_subscriber::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct CapturedEvent {
@@ -16,16 +18,19 @@ pub struct TestEventLayer {
     pub events: Arc<Mutex<Vec<CapturedEvent>>>,
 }
 
+static INIT_TRACING: Once = Once::new();
+
 pub fn init_test_tracing(events: Arc<Mutex<Vec<CapturedEvent>>>) {
-    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT_TRACING.call_once(|| {
+        let capture_layer = TestEventLayer { events };
 
-    INIT.call_once(|| {
-        let layer = TestEventLayer { events };
+        tracing_subscriber::registry()
+            .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("trace")))
+            .with(capture_layer)
+            .with(fmt::layer().with_test_writer().with_ansi(false))
+            .init();
 
-        let subscriber = tracing_subscriber::registry().with(layer);
-
-        tracing::subscriber::set_global_default(subscriber)
-            .expect("failed to set global tracing subscriber");
+        tracing::info!("test tracing initialized");
     });
 }
 

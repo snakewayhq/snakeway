@@ -1,3 +1,4 @@
+mod config;
 pub mod server;
 pub mod tracing;
 pub mod upstream;
