@@ -1,6 +1,6 @@
-[[devices]]
+[[device]]
 name = "identity"
-kind = "builtin"
+type = "builtin"
 builtin = "identity"
 enabled = true
 

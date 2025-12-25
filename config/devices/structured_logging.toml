@@ -1,0 +1,9 @@
+[[device]]
+name = "structured_logging"
+type = "builtin"
+builtin = "structured_logging"
+enabled = true
+
+[device.config]
+format = "json"
+include_headers = true

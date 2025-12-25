@@ -1,6 +1,6 @@
 [[device]]
 name = "access-log"
-kind = "builtin"
+type = "builtin"
 builtin = "structured_logging"
 enabled = true
 
