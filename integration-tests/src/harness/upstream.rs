@@ -1,7 +1,3 @@
-use std::io::Write;
-use std::net::TcpListener;
-use std::time::Duration;
-
 pub fn start_upstream(port: u16) {
     use std::io::Write;
     use std::net::TcpListener;
