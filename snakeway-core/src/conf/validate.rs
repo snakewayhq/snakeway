@@ -9,15 +9,18 @@ pub fn validate_routes(
     services: &HashMap<String, ServiceConfig>,
 ) -> Result<(), ConfigError> {
     for route in routes {
-        if let RouteTarget::Service { name } = &route.target {
-            if !services.contains_key(name) {
-                return Err(ConfigError::UnknownService {
-                    route: route.path.clone(),
-                    service: name.clone(),
-                });
-            }
+        let RouteTarget::Service { name } = &route.target else {
+            continue;
+        };
+
+        if !services.contains_key(name) {
+            return Err(ConfigError::UnknownService {
+                route: route.path.clone(),
+                service: name.clone(),
+            });
         }
     }
+
     Ok(())
 }
 
