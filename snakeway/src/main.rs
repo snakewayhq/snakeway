@@ -70,6 +70,9 @@ fn main() {
                     std::process::exit(1);
                 }
             }
+            cli::config::ConfigCmd::Init { path } => {
+                cli::config::init(path).expect("Failed to initialize config directory");
+            }
         },
 
         Some(Command::Logs { pretty, raw }) => {

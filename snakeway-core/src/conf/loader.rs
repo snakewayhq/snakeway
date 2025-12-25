@@ -19,9 +19,13 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
         source: e,
     })?;
 
-    let route_files = discover(&entry.include.routes)?;
-    let service_files = discover(&entry.include.services)?;
-    let device_files = discover(&entry.include.devices)?;
+    fn resolve_glob(root: &Path, pattern: &str) -> String {
+        root.join(pattern).to_string_lossy().into_owned()
+    }
+
+    let route_files = discover(&resolve_glob(root, &entry.include.routes))?;
+    let service_files = discover(&resolve_glob(root, &entry.include.services))?;
+    let device_files = discover(&resolve_glob(root, &entry.include.devices))?;
 
     // Parse routes
     let mut parsed_routes = Vec::new();
