@@ -14,11 +14,6 @@ use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 
 pub struct SnakewayGateway {
-    pub upstream_host: String,
-    pub upstream_port: u16,
-    pub use_tls: bool,
-    pub sni: String,
-
     // Runtime state
     pub state: Arc<ArcSwap<RuntimeState>>,
 }
@@ -30,6 +25,7 @@ impl ProxyHttp for SnakewayGateway {
     fn new_ctx(&self) -> Self::CTX {
         // Placeholder; real initialization happens in request_filter
         RequestCtx::new(
+            Some("".to_string()),
             http::Method::GET,
             "/".parse().unwrap(),
             http::HeaderMap::new(),
@@ -42,10 +38,30 @@ impl ProxyHttp for SnakewayGateway {
     async fn upstream_peer(
         &self,
         _session: &mut Session,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let addr = (self.upstream_host.as_str(), self.upstream_port);
-        let peer = HttpPeer::new(addr, self.use_tls, self.sni.clone());
+        let service_name = ctx
+            .service
+            .as_ref()
+            .ok_or_else(|| Error::new(Custom("no service selected")))?;
+
+        let state = self.state.load();
+
+        let service = state
+            .services
+            .get(service_name)
+            .ok_or_else(|| Error::new(Custom("unknown service")))?;
+
+        let upstream = service
+            .select_upstream()
+            .ok_or_else(|| Error::new(Custom("no upstreams")))?;
+
+        let peer = HttpPeer::new(
+            (upstream.host.clone(), upstream.port),
+            upstream.use_tls,
+            upstream.sni.clone(),
+        );
+
         Ok(Box::new(peer))
     }
 
@@ -57,6 +73,7 @@ impl ProxyHttp for SnakewayGateway {
         let req = session.req_header();
 
         *ctx = RequestCtx::new(
+            Some("".to_string()),
             req.method.clone(),
             req.uri.clone(),
             req.headers.clone(),

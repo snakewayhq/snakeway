@@ -1,4 +1,4 @@
-use crate::config::device::identity::IdentityConfig;
+use crate::conf::types::device::IdentityConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, DeviceResult};

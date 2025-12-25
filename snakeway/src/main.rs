@@ -1,8 +1,9 @@
 use clap::{Parser, Subcommand};
 use snakeway_core::cli;
-use snakeway_core::config::SnakewayConfig;
+use snakeway_core::conf::load_config;
 use snakeway_core::logging::{LogMode, default_log_mode, init_logging};
 use snakeway_core::server;
+use std::path::Path;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -40,8 +41,8 @@ enum Command {
 
     /// Run the Snakeway proxy (default)
     Run {
-        /// Path to the Snakeway config file
-        #[arg(long, default_value = "config/snakeway.toml")]
+        /// Path to the Snakeway config directory
+        #[arg(long, default_value = "config")]
         config: String,
     },
 }
@@ -79,21 +80,21 @@ fn main() {
             }
         }
 
-        Some(Command::Run { config }) => {
+        Some(Command::Run {
+            config: config_path,
+        }) => {
             init_logging();
 
-            let config_path = config.clone();
-            let cfg =
-                SnakewayConfig::from_file(&config_path).expect("Failed to load Snakeway config");
+            let cfg = load_config(Path::new(&config_path)).expect("Failed to load Snakeway config");
             server::run(config_path, cfg).expect("Failed to start Snakeway server");
         }
 
         None => {
             init_logging();
 
-            let config_path = "config/snakeway.toml".to_string();
-            let cfg =
-                SnakewayConfig::from_file(&config_path).expect("Failed to load Snakeway config");
+            let config_path = "config".to_string();
+            let cfg = load_config(Path::new(&config_path))
+                .expect("Failed to load default Snakeway config");
             server::run(config_path, cfg).expect("Failed to start Snakeway server");
         }
     }

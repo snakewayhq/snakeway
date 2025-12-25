@@ -1,4 +1,5 @@
-use crate::config::{BuiltinDeviceKind, DeviceKind, SnakewayConfig};
+use crate::conf::RuntimeConfig;
+use crate::conf::types::{BuiltinDeviceKind, DeviceKind};
 use crate::device::builtin::identity::IdentityDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
@@ -51,31 +52,30 @@ impl DeviceRegistry {
         }
     }
 
-    pub fn load_from_config(&mut self, config: &SnakewayConfig) -> Result<()> {
+    pub fn load_from_config(&mut self, cfg: &RuntimeConfig) -> Result<()> {
         let builders = builtin_builders();
 
-        for cfg in &config.devices {
-            if !cfg.enabled {
+        for device_cfg in &cfg.devices {
+            if !device_cfg.enabled {
                 continue;
             }
 
-            match cfg.kind {
+            match device_cfg.kind {
                 DeviceKind::Wasm => {
-                    self.load_wasm_device(cfg)?;
+                    self.load_wasm_device(device_cfg)?;
                 }
 
                 DeviceKind::Builtin => {
-                    let kind = cfg
-                        .builtin
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("builtin device '{}' missing type", cfg.name))?;
+                    let kind = device_cfg.builtin.as_ref().ok_or_else(|| {
+                        anyhow!("builtin device '{}' missing type", device_cfg.name)
+                    })?;
 
                     let builder = builders
                         .get(kind)
-                        .ok_or_else(|| anyhow!("unknown builtin device '{}'", cfg.name))?;
+                        .ok_or_else(|| anyhow!("unknown builtin device '{}'", device_cfg.name))?;
 
-                    let device = builder(&cfg.options).with_context(|| {
-                        format!("failed to build builtin device '{}'", cfg.name)
+                    let device = builder(&device_cfg.config).with_context(|| {
+                        format!("failed to build builtin device '{}'", device_cfg.name)
                     })?;
 
                     self.devices.push(device);
@@ -93,7 +93,7 @@ impl DeviceRegistry {
 
 #[cfg(feature = "wasm")]
 impl DeviceRegistry {
-    fn load_wasm_device(&mut self, cfg: &crate::config::DeviceConfig) -> Result<()> {
+    fn load_wasm_device(&mut self, cfg: &crate::conf::types::DeviceConfig) -> Result<()> {
         let path = cfg
             .path
             .as_ref()
@@ -109,7 +109,7 @@ impl DeviceRegistry {
 
 #[cfg(not(feature = "wasm"))]
 impl DeviceRegistry {
-    fn load_wasm_device(&mut self, cfg: &crate::config::DeviceConfig) -> Result<()> {
+    fn load_wasm_device(&mut self, cfg: &crate::conf::types::DeviceConfig) -> Result<()> {
         Err(anyhow!(
             "WASM device '{}' requested, but Snakeway was built without the `wasm` feature",
             cfg.name

@@ -4,6 +4,9 @@ use std::net::IpAddr;
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
 pub struct RequestCtx {
+    /// Service name for routing decisions.
+    pub service: Option<String>,
+
     /// HTTP method (immutable)
     pub method: Method,
 
@@ -32,6 +35,7 @@ pub struct RequestCtx {
 
 impl RequestCtx {
     pub fn new(
+        service: Option<String>,
         method: Method,
         uri: Uri,
         headers: HeaderMap,
@@ -41,6 +45,7 @@ impl RequestCtx {
         let route_path = uri.path().to_string();
 
         Self {
+            service,
             method,
             original_uri: uri,
             route_path,

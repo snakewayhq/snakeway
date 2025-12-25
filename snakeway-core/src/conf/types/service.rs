@@ -4,7 +4,7 @@ use serde::Deserialize;
 pub struct ServiceConfig {
     pub name: String,
 
-    /// Load balancing strategy (Phase 2A = "failover")
+    /// Load balancing strategy
     pub strategy: Strategy,
 
     #[serde(default)]
@@ -15,7 +15,6 @@ pub struct ServiceConfig {
 #[serde(rename_all = "snake_case")]
 pub enum Strategy {
     Failover,
-    // Phase 2B+
     RoundRobin,
     LeastConnections,
 }
@@ -25,6 +24,6 @@ pub struct UpstreamConfig {
     /// e.g. "http://10.0.0.1:8080"
     pub url: String,
 
-    /// Optional weight (Phase 2B)
+    /// Optional weight
     pub weight: Option<u32>,
 }

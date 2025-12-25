@@ -1,5 +1,5 @@
 pub mod cli;
-pub mod config;
+pub mod conf;
 pub mod ctx;
 pub mod device;
 pub mod http_event;

@@ -1,4 +1,4 @@
-use crate::config::StaticFileConfig;
+use crate::conf::types::StaticFileConfig;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use std::io::Write;

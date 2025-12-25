@@ -1,4 +1,4 @@
-use crate::config::device::structured_logging::LoggingConfig;
+use crate::conf::types::structured_logging::LoggingConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
