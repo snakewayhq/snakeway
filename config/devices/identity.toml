@@ -5,6 +5,6 @@ builtin = "identity"
 enabled = true
 
 [device.config]
-trusted_proxies = ["10.0.0.0/8"]
-geoip = true
-user_agent = "woothee"
+enable_geoip = false
+trusted_proxies = []
+ua_engine = "woothee"

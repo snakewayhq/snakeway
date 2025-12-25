@@ -3,10 +3,5 @@ name = "api"
 strategy = "round_robin"
 
 [[service.upstream]]
-url = "http://127.0.0.1:9001"
+url = "http://127.0.0.1:3000"
 
-[[service.upstream]]
-url = "http://127.0.0.1:9002"
-
-[[service.upstream]]
-url = "http://127.0.0.1:9003"

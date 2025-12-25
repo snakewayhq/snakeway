@@ -29,9 +29,9 @@ device.
 The Identity device should run **early** in the device pipeline:
 
 ```toml
-[[devices]]
+[[device]]
 name = "identity"
-kind = "builtin"
+type = "builtin"
 builtin = "identity"
 ```
 

@@ -104,27 +104,24 @@ redact_headers = [
 ]
 ```
 
-> ⚠️ Headers often contain personal or sensitive data. Enable this only when necessary.
+> Headers often contain personal or sensitive data. Enable this only when necessary.
 
 ---
 
 ## Configuration Example
 
 ```toml
-[[devices]]
+[[device]]
 name = "access-log"
-kind = "builtin"
+type = "builtin"
 builtin = "structured_logging"
-
 enabled = true
 
+[device.config]
 level = "info"
-
 include_identity = true
 identity_fields = ["country", "device"]
-
 include_headers = false
-
 events = ["request", "response"]
 ```
 
