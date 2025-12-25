@@ -1,6 +1,0 @@
-[server]
-listen = "{LISTEN_ADDR}"
-
-[[routes]]
-path = "/api"
-upstream = "{UPSTREAM_ADDR}"

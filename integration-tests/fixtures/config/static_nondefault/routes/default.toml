@@ -4,6 +4,6 @@ service = "api"
 
 [[route]]
 path = "/"
-file_dir = "./public"
+file_dir = "./fixtures/public"
 index = "index.html"
-directory_listing = false
+directory_listing = true

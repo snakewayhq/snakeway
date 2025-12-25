@@ -1,7 +1,9 @@
 [[device]]
-name = "structured_logging"
-type = "builtin"
+name = "access-log"
+kind = "builtin"
 builtin = "structured_logging"
+enabled = true
 
 [device.config]
-include_headers = true
+include_identity = true
+identity_fields = ["country", "region", "asn", "device", "bot"]

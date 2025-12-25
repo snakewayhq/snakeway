@@ -1,9 +1,12 @@
-[[device]]
+[[devices]]
 name = "identity"
-type = "builtin"
+kind = "builtin"
 builtin = "identity"
+enabled = true
 
 [device.config]
-enable_geoip = false
-trusted_proxies = ["10.0.0.0/8"]
+enable_geoip = true
+geoip_db = "fixtures/geoip/dbip-country-lite-2025-12.mmdb"
+enable_user_agent = true
 ua_engine = "woothee"
+trusted_proxies = []

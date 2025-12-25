@@ -1,9 +1,7 @@
 [server]
 listen = "0.0.0.0:8080"
-threads = 4
-pid_file = "/var/run/snakeway.pid"
 
 [include]
-routes   = "routes/*.toml"
+routes = "routes/*.toml"
 services = "services/*.toml"
-devices  = "devices/*.toml"
+devices = "devices/*.toml"

@@ -2,8 +2,11 @@
 name = "identity"
 type = "builtin"
 builtin = "identity"
+enabled = true
 
 [device.config]
 enable_geoip = false
-trusted_proxies = ["10.0.0.0/8"]
+geoip_db = ""
+enable_user_agent = true
 ua_engine = "woothee"
+trusted_proxies = []

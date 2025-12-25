@@ -2,6 +2,7 @@
 name = "identity"
 type = "builtin"
 builtin = "identity"
+enabled = true
 
 [device.config]
 enable_geoip = false
