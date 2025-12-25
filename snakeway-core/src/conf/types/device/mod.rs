@@ -1,10 +1,10 @@
 pub mod identity;
 pub mod structured_logging;
 pub use identity::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 pub use structured_logging::*;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DeviceConfig {
     pub name: String,
 
@@ -28,14 +28,14 @@ fn default_enabled() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DeviceKind {
     Builtin,
     Wasm,
 }
 
-#[derive(Debug, Deserialize, Eq, Hash, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Eq, Hash, PartialEq, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BuiltinDeviceKind {
     StructuredLogging,

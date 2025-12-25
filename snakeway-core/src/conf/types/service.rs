@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServiceConfig {
     pub name: String,
 
@@ -11,7 +11,7 @@ pub struct ServiceConfig {
     pub upstream: Vec<UpstreamConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Strategy {
     Failover,
@@ -19,7 +19,7 @@ pub enum Strategy {
     LeastConnections,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamConfig {
     /// e.g. "http://10.0.0.1:8080"
     pub url: String,

@@ -18,6 +18,12 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
+    /// Inspect configuration
+    Config {
+        #[command(subcommand)]
+        cmd: cli::config::ConfigCmd,
+    },
+
     /// WASM plugin tooling
     Plugin {
         #[command(subcommand)]
@@ -51,6 +57,21 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
+        Some(Command::Config { cmd }) => match cmd {
+            cli::config::ConfigCmd::Check { path } => {
+                if let Err(e) = cli::config::check(path) {
+                    eprintln!("Invalid configuration\n\n{e}");
+                    std::process::exit(1);
+                }
+            }
+            cli::config::ConfigCmd::Dump { path, json, yaml } => {
+                if let Err(e) = cli::config::dump(path, json, yaml) {
+                    eprintln!("Failed to dump configuration: {e}");
+                    std::process::exit(1);
+                }
+            }
+        },
+
         Some(Command::Logs { pretty, raw }) => {
             let mode = if raw {
                 LogMode::Raw

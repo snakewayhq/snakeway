@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RouteConfig {
     /// Path prefix (longest-prefix match)
     pub path: String,
@@ -9,7 +9,7 @@ pub struct RouteConfig {
     pub target: RouteTarget,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum RouteTarget {
     Service(String),
     Static {
@@ -35,7 +35,7 @@ pub struct ParsedRoute {
     pub directory_listing: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticFileConfig {
     pub max_file_size: u64,
     pub small_file_threshold: u64,
@@ -58,7 +58,7 @@ impl Default for StaticFileConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticCachePolicy {
     pub max_age: u32, // seconds
     pub public: bool,

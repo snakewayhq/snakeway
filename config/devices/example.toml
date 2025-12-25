@@ -1,0 +1,19 @@
+[[routes]]
+# Upstream service Snakeway proxies to
+upstream = "127.0.0.1:3000"
+path = "/"
+
+
+[[routes]]
+# Serves the contents of ./public from the path /static
+# Requires the "static_files" feature to be enabled
+file_dir = "./public/"
+path = "/static"
+index = false
+directory_listing = false
+
+# Caching header settings for the above static file route.
+[routes.config]
+cache_max_age = 86400
+cache_public = true
+cache_immutable = true
