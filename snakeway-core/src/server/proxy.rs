@@ -25,7 +25,7 @@ impl ProxyHttp for SnakewayGateway {
     fn new_ctx(&self) -> Self::CTX {
         // Placeholder; real initialization happens in request_filter
         RequestCtx::new(
-            Some("".to_string()),
+            None,
             http::Method::GET,
             "/".parse().unwrap(),
             http::HeaderMap::new(),
@@ -57,7 +57,7 @@ impl ProxyHttp for SnakewayGateway {
             .ok_or_else(|| Error::new(Custom("no upstreams")))?;
 
         let peer = HttpPeer::new(
-            (upstream.host.clone(), upstream.port),
+            (upstream.host.as_str(), upstream.port),
             upstream.use_tls,
             upstream.sni.clone(),
         );
@@ -73,7 +73,7 @@ impl ProxyHttp for SnakewayGateway {
         let req = session.req_header();
 
         *ctx = RequestCtx::new(
-            Some("".to_string()),
+            None,
             req.method.clone(),
             req.uri.clone(),
             req.headers.clone(),
@@ -114,8 +114,8 @@ impl ProxyHttp for SnakewayGateway {
                 respond_with_static(session, ctx, route, &state.devices).await
             }
 
-            RouteKind::Proxy { .. } => {
-                // Proceed to upstream routing...
+            RouteKind::Proxy { upstream } => {
+                ctx.service = Some(upstream.clone());
                 Ok(false)
             }
         }
