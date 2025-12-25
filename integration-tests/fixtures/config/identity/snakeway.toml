@@ -1,0 +1,7 @@
+[server]
+listen = "{LISTEN_ADDR}"
+
+[include]
+routes = "routes/*.toml"
+services = "services/*.toml"
+devices = "devices/*.toml"

@@ -1,21 +1,32 @@
-use std::fs;
-use std::path::Path;
-use tempfile::{NamedTempFile, TempPath};
+use snakeway_core::conf::RuntimeConfig;
 
-pub fn render_config(template: &str, listen_port: u16, upstream_port: u16) -> TempPath {
-    let template_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(template);
+pub fn patch_ports(
+    mut cfg: RuntimeConfig,
+    listen_port: u16,
+    upstream_ports: &[u16],
+) -> RuntimeConfig {
+    // Patch listen
+    cfg.server.listen = format!("127.0.0.1:{listen_port}");
 
-    let contents = fs::read_to_string(&template_path)
-        .unwrap_or_else(|e| panic!("failed to read config template {:?}: {}", template_path, e));
+    // Patch the upstream URLs for the "api" service (or whichever service your route targets)
+    let svc = cfg
+        .services
+        .get_mut("api")
+        .expect("fixture missing services.api");
 
-    let rendered = contents
-        .replace("{LISTEN_ADDR}", &format!("127.0.0.1:{listen_port}"))
-        .replace("{UPSTREAM_ADDR}", &format!("127.0.0.1:{upstream_port}"));
+    assert!(
+        svc.upstream.len() <= upstream_ports.len(),
+        "fixture defines {} upstreams but only {} ports allocated",
+        svc.upstream.len(),
+        upstream_ports.len()
+    );
 
-    let file = NamedTempFile::new().expect("failed to create temp config file");
+    for (i, up) in svc.upstream.iter_mut().enumerate() {
+        up.url = format!("http://127.0.0.1:{}", upstream_ports[i]);
+    }
 
-    fs::write(file.path(), rendered).expect("failed to write rendered config");
+    // todo to pin strategy for tests:
+    // svc.strategy = Strategy::RoundRobin;
 
-    // IMPORTANT: return TempPath so file lives as long as owner
-    file.into_temp_path()
+    cfg
 }

@@ -1,0 +1,7 @@
+[server]
+listen = "0.0.0.0:8080"
+
+[include]
+routes = "routes/*.toml"
+services = "services/*.toml"
+devices = "devices/*.toml"

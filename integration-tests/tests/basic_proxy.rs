@@ -3,7 +3,7 @@ use reqwest::StatusCode;
 
 #[test]
 fn should_proxy_to_upstream() {
-    let srv = TestServer::start("fixtures/basic.toml");
+    let srv = TestServer::start("basic");
 
     let res = srv.get("/api").send().unwrap();
 

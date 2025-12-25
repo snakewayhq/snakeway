@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 /// Baseline: identity device runs when a User-Agent is present
 #[test]
 fn identity_with_user_agent() {
-    let srv = TestServer::start("fixtures/identity.toml");
+    let srv = TestServer::start("identity");
 
     let res = srv
         .get("/api")
@@ -21,7 +21,7 @@ fn identity_with_user_agent() {
 /// Identity should not break requests without a User-Agent
 #[test]
 fn identity_without_user_agent() {
-    let srv = TestServer::start("fixtures/identity.toml");
+    let srv = TestServer::start("identity");
 
     let res = srv.get("/api").send().unwrap();
 
@@ -31,7 +31,7 @@ fn identity_without_user_agent() {
 /// Oversized User-Agent headers should be ignored safely
 #[test]
 fn oversized_user_agent_is_ignored() {
-    let srv = TestServer::start("fixtures/identity.toml");
+    let srv = TestServer::start("identity");
 
     let long_ua = "a".repeat(10_000);
 
@@ -47,7 +47,7 @@ fn oversized_user_agent_is_ignored() {
 /// Mobile User-Agent should not crash identity parsing
 #[test]
 fn mobile_user_agent_is_handled() {
-    let srv = TestServer::start("fixtures/identity.toml");
+    let srv = TestServer::start("identity");
 
     let res = srv
         .get("/api")
@@ -64,7 +64,7 @@ fn mobile_user_agent_is_handled() {
 /// Untrusted X-Forwarded-For headers must not affect request handling
 #[test]
 fn untrusted_xff_is_ignored() {
-    let srv = TestServer::start("fixtures/identity.toml");
+    let srv = TestServer::start("identity");
 
     let res = srv
         .get("/api")
@@ -82,7 +82,7 @@ fn untrusted_xff_is_ignored() {
 /// Trusted proxy config should accept XFF without error
 #[test]
 fn trusted_proxy_allows_xff() {
-    let srv = TestServer::start("fixtures/identity_trusted_proxy.toml");
+    let srv = TestServer::start("identity_trusted_proxy");
 
     let res = srv
         .get("/api")
@@ -100,7 +100,7 @@ fn trusted_proxy_allows_xff() {
 /// GeoIP-disabled config must not fail identity processing
 #[test]
 fn geoip_disabled_does_not_break_identity() {
-    let srv = TestServer::start("fixtures/identity_no_geo.toml");
+    let srv = TestServer::start("identity_no_geo");
 
     let res = srv
         .get("/api")

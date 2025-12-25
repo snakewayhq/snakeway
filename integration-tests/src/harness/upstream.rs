@@ -1,23 +1,23 @@
 use std::io::Write;
 use std::net::TcpListener;
-use std::sync::Once;
 use std::time::Duration;
 
 pub fn start_upstream(port: u16) {
-    static STARTED: Once = Once::new();
+    use std::io::Write;
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
 
-    STARTED.call_once(|| {
-        let addr = format!("127.0.0.1:{port}");
-        std::thread::spawn(move || {
-            let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+    let addr = format!("127.0.0.1:{port}");
 
-            for stream in listener.incoming() {
-                let mut stream = stream.expect("stream error");
-                let _ =
-                    stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world");
-            }
-        });
-
-        std::thread::sleep(Duration::from_millis(50));
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world");
+        }
     });
+
+    // tiny delay so the listener is actually ready
+    thread::sleep(Duration::from_millis(25));
 }
