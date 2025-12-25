@@ -14,6 +14,7 @@ pub struct DeviceConfig {
     pub builtin: Option<BuiltinDeviceKind>,
 
     /// Required for `kind = "wasm"`
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
 
     /// Device-specific configuration blob

@@ -147,7 +147,7 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
 
     for route in routes {
         let route_kind = match &route.target {
-            RouteTarget::Service(service) => RouteKind::Proxy {
+            RouteTarget::Service { name: service } => RouteKind::Proxy {
                 upstream: service.clone(),
             },
 

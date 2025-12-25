@@ -7,7 +7,7 @@ pub struct LoggingConfig {
     #[serde(default = "default_level")]
     pub level: LogLevel,
 
-    // Headers are excluded by default (EU-safe)
+    /// Headers are excluded by default.
     #[serde(default)]
     pub include_headers: bool,
 
@@ -16,18 +16,22 @@ pub struct LoggingConfig {
     #[serde(default)]
     pub allowed_headers: Vec<String>,
 
-    /// Headers to redact (case-insensitive)
+    /// Headers to redact (case-insensitive).
     #[serde(default)]
     pub redact_headers: Vec<String>,
 
-    // Identity logging (EU-safe)
+    /// Identity logging.
     #[serde(default)]
     pub include_identity: bool,
 
+    /// Identity fields to include in the request context (and possibly log).
     #[serde(default = "default_identity_fields")]
     pub identity_fields: Vec<IdentityField>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub events: Option<Vec<LogEvent>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub phases: Option<Vec<LogPhase>>,
 }
 

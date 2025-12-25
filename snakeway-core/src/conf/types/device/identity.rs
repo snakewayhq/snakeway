@@ -3,13 +3,14 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct IdentityConfig {
+    /// CIDR strings
     #[serde(default)]
-    pub trusted_proxies: Vec<String>, // CIDR strings
+    pub trusted_proxies: Vec<String>,
 
     #[serde(default)]
     pub enable_geoip: bool,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub geoip_db: Option<String>,
 
     #[serde(default)]

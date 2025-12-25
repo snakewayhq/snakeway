@@ -9,7 +9,7 @@ pub fn validate_routes(
     services: &HashMap<String, ServiceConfig>,
 ) -> Result<(), ConfigError> {
     for route in routes {
-        if let RouteTarget::Service(name) = &route.target {
+        if let RouteTarget::Service { name } = &route.target {
             if !services.contains_key(name) {
                 return Err(ConfigError::UnknownService {
                     route: route.path.clone(),
@@ -26,7 +26,7 @@ pub fn compile_routes(routes: Vec<ParsedRoute>) -> Result<Vec<RouteConfig>, Conf
 
     for r in routes {
         let target = match (r.service, r.file_dir) {
-            (Some(service), None) => RouteTarget::Service(service),
+            (Some(service), None) => RouteTarget::Service { name: service },
 
             (None, Some(dir)) => {
                 let static_config = StaticFileConfig::default();

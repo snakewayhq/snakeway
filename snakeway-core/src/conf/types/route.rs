@@ -10,8 +10,11 @@ pub struct RouteConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RouteTarget {
-    Service(String),
+    Service {
+        name: String,
+    },
     Static {
         dir: String,
         index: Option<String>,
@@ -25,12 +28,19 @@ pub enum RouteTarget {
 pub struct ParsedRoute {
     pub path: String,
 
-    // Mutually exclusive (validated later)
+    /// Mutually exclusive with file_dir (validated later)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub service: Option<String>,
+
+    /// Mutually exclusive with service (validated later)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub file_dir: Option<String>,
 
+    /// Only valid for static routes
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<String>,
 
+    /// Only valid for static routes
     #[serde(default)]
     pub directory_listing: bool,
 }
