@@ -1,10 +1,10 @@
-use crate::config::SnakewayConfig;
+use crate::conf::RuntimeConfig;
 use crate::device::core::registry::DeviceRegistry;
 use crate::server::pid;
 use crate::server::proxy::SnakewayGateway;
 use crate::server::reload::ReloadHandle;
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
-use anyhow::{Error, Result, anyhow};
+use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
 use pingora::prelude::*;
 use pingora::server::Server;
@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Run the Pingora server with the given configuration.
-pub fn run(config_path: String, config: SnakewayConfig) -> Result<()> {
+pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     use tokio::runtime::Builder;
 
     let config_path = PathBuf::from(config_path);
@@ -45,7 +45,7 @@ pub fn run(config_path: String, config: SnakewayConfig) -> Result<()> {
     control_rt.spawn({
         let reload = reload.clone();
         async move {
-            reload.install_signal_handler().await;
+            let _ = reload.install_signal_handler().await;
         }
     });
 
@@ -90,7 +90,7 @@ pub fn run(config_path: String, config: SnakewayConfig) -> Result<()> {
 
 /// Build the Pingora server.
 pub fn build_pingora_server(
-    config: SnakewayConfig,
+    config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
 ) -> Result<Server, Error> {
     let mut server = if let Some(threads) = config.server.threads {
@@ -114,26 +114,8 @@ pub fn build_pingora_server(
     registry.load_from_config(&config)?;
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
-    // Extract upstream route (exactly one required)
-    let upstream_route = config
-        .routes
-        .iter()
-        .find(|r| r.upstream.is_some())
-        .ok_or_else(|| anyhow!("Snakeway: exactly one upstream route is required"))?;
-
-    let (host, port) = parse_upstream(
-        upstream_route
-            .upstream
-            .as_ref()
-            .expect("validated upstream"),
-    )?;
-
     // Build gateway
     let gateway = SnakewayGateway {
-        upstream_host: host,
-        upstream_port: port,
-        use_tls: false,
-        sni: String::new(),
         state: state.clone(),
     };
 
@@ -145,18 +127,4 @@ pub fn build_pingora_server(
     server.add_service(svc);
 
     Ok(server)
-}
-
-/// Parse an upstream address of the form "host:port".
-fn parse_upstream(s: &str) -> Result<(String, u16)> {
-    let mut parts = s.split(':');
-    let host = parts
-        .next()
-        .ok_or_else(|| anyhow!("invalid upstream address: {}", s))?;
-    let port = parts
-        .next()
-        .ok_or_else(|| anyhow!("invalid upstream address: {}", s))?
-        .parse::<u16>()?;
-
-    Ok((host.to_string(), port))
 }

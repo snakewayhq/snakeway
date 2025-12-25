@@ -1,0 +1,9 @@
+[[service]]
+name = "api"
+strategy = "round_robin"
+
+[[service.upstream]]
+url = "http://127.0.0.1:9001"
+
+[[service.upstream]]
+url = "http://127.0.0.1:9002"

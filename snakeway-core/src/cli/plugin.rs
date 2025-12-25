@@ -41,6 +41,7 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
     let device = load_wasm_device(&args.file)?;
 
     let ctx = &mut RequestCtx::new(
+        Some("some server".to_string()),
         http::Method::GET,
         args.path.parse()?,
         http::HeaderMap::new(),

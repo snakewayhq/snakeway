@@ -1,0 +1,8 @@
+[[device]]
+name = "structured_logging"
+type = "builtin"
+builtin = "structured_logging"
+enabled = true
+
+[device.config]
+include_headers = true

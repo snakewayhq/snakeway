@@ -30,15 +30,15 @@ docs:
 # Run hey to test out various static file request configs.
 benchmark-static-files:
     @echo "No compression..."
-    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
+    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/assets/
     @echo "Gzip..."
-    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/1kb.html
+    hey -n 20000 -c 128 -H "Accept-Encoding: gzip" http://127.0.0.1:8080/assets/1kb.html
     @echo "Brotli..."
-    hey -n 20000 -c 128 -H "Accept-Encoding: br" http://127.0.0.1:8080/static/6kb.html
+    hey -n 20000 -c 128 -H "Accept-Encoding: br" http://127.0.0.1:8080/assets/6kb.html
     @echo "Range request..."
-    hey -n 5000 -c 128 -H "Range: bytes=0-99" http://127.0.0.1:8080/static/images/1mb.png
+    hey -n 5000 -c 128 -H "Range: bytes=0-99" http://127.0.0.1:8080/assets/images/1mb.png
     @echo "Head request..."
-    hey -n 20000 -c 128 -m HEAD -H "Accept-Encoding: gzip" http://127.0.0.1:8080/static/index.html
+    hey -n 20000 -c 128 -m HEAD -H "Accept-Encoding: gzip" http://127.0.0.1:8080/assets/index.html
 
 # Start this profile recipe, then run run-load. When this command exits, the results should be displayed.
 profile:
@@ -57,7 +57,7 @@ run-load-against-upstream:
 
 # Generate meaningful profiling data against a static file.
 run-load-against-static:
-    hey -n 300000 -c 256 http://127.0.0.1:8080/static/index.html
+    hey -n 300000 -c 256 http://127.0.0.1:8080/assets/index.html
 
 # Generate some spoofed traffic for the identity device
 run-spoofed-traffic:

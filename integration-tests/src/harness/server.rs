@@ -1,25 +1,20 @@
-use crate::harness::config::render_config;
+use crate::harness::config::patch_ports;
 use crate::harness::upstream::start_upstream;
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
-use snakeway_core::config::SnakewayConfig;
+use snakeway_core::conf::load_config;
 use snakeway_core::server::{build_pingora_server, build_runtime_state};
 use std::net::TcpStream;
+use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
+use std::thread;
 use std::time::{Duration, Instant};
-use std::{fs, thread};
-use tempfile::TempPath;
-use tracing::trace;
 
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
     base_url: String,
     client: Client,
-
-    // MUST be kept alive or config file is deleted
-    #[allow(dead_code)]
-    config_file: TempPath,
 }
 
 impl TestServer {
@@ -28,30 +23,40 @@ impl TestServer {
     /// Ports are allocated dynamically and injected into the config.
     ///
     /// This function is fully parallel-safe and nextest-safe.
-    pub fn start(template: &str) -> Self {
+    pub fn start(fixture: &str) -> Self {
         // Initialize tracing (this must happen first).
         let events = events();
         init_test_tracing(events.clone());
         // Clear events.
         events.lock().unwrap().clear();
 
+        // Allocate a free port for the server.
         let listen_port = free_port();
-        let upstream_port = free_port();
 
-        // Render config template → temp file
-        let config_file = render_config(template, listen_port, upstream_port);
-        assert!(config_file.exists(), "rendered config file vanished early");
-        trace!(
-            path = %config_file.display(),
-            contents = %fs::read_to_string(&config_file).unwrap(),
-            "rendered snakeway config"
+        // allocate N upstream ports.
+        let upstream_ports = [free_port(), free_port(), free_port()];
+
+        // Render config template --> temp file
+        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("fixtures")
+            .join("config")
+            .join(fixture);
+
+        assert!(
+            fixture_dir.exists(),
+            "fixture config directory does not exist: {:?}",
+            fixture_dir
         );
-        // Start upstream first
-        start_upstream(upstream_port);
+
+        for p in upstream_ports {
+            start_upstream(p);
+        }
 
         // Load Snakeway config
-        let cfg = SnakewayConfig::from_file(config_file.to_str().expect("invalid config path"))
-            .expect("failed to load snakeway config");
+        let cfg = load_config(&fixture_dir).expect("failed to load fixture config");
+
+        // patch config in memory (no copying, no temp dir)
+        let cfg = patch_ports(cfg, listen_port, &upstream_ports);
 
         // Build initial runtime state (static for tests)
         let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
@@ -77,11 +82,7 @@ impl TestServer {
             .build()
             .expect("failed to build client");
 
-        Self {
-            base_url,
-            client,
-            config_file,
-        }
+        Self { base_url, client }
     }
 
     /// Convenience helper for GET requests.

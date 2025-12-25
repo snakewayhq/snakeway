@@ -1,0 +1,10 @@
+[[device]]
+name = "identity"
+type = "builtin"
+builtin = "identity"
+enabled = true
+
+[device.config]
+enable_geoip = false
+trusted_proxies = ["10.0.0.0/8"]
+ua_engine = "woothee"

@@ -1,4 +1,4 @@
-use crate::config::{StaticCachePolicy, StaticFileConfig};
+use crate::conf::types::{StaticCachePolicy, StaticFileConfig};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]

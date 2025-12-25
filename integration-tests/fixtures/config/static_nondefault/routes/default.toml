@@ -1,0 +1,9 @@
+[[route]]
+path = "/api"
+service = "api"
+
+[[route]]
+path = "/"
+file_dir = "./fixtures/public"
+index = "index.html"
+directory_listing = true

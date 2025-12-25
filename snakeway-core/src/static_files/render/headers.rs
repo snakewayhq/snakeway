@@ -1,4 +1,4 @@
-use crate::config::StaticCachePolicy;
+use crate::conf::types::StaticCachePolicy;
 use crate::static_files::render::range::ByteRange;
 use http::{HeaderMap, HeaderName, HeaderValue, header};
 

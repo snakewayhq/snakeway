@@ -22,9 +22,6 @@ dist/
 /dev/
 profile.json.gz
 
-# Config
-config/snakeway.toml
-
 # Data (not licensed to commit)
 /data/
 

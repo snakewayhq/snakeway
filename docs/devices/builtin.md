@@ -70,16 +70,16 @@ This pattern is central to how builtin devices cooperate.
 
 ## Configuration
 
-Builtin devices are declared under the `[[devices]]` section:
+Builtin devices are declared under the `[[device]]` section:
 
 ```toml
-[[devices]]
+[[device]]
 name = "identity"
-kind = "builtin"
+type = "builtin"
 builtin = "identity"
 enabled = true
 
-[devices.options]
+[device.config]
 enable_geoip = true
 enable_user_agent = true
 ```
