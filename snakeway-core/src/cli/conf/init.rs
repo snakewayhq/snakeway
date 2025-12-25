@@ -110,7 +110,7 @@ builtin = "identity"
 [device.config]
 enable_geoip = false
 trusted_proxies = ["10.0.0.0/8"]
-user_agent = "woothee"
+ua_engine = "woothee"
 "#;
 
 const DEVICE_LOGGING_TOML: &str = r#"
@@ -120,6 +120,5 @@ type = "builtin"
 builtin = "structured_logging"
 
 [device.config]
-format = "json"
 include_headers = true
 "#;

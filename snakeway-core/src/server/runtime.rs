@@ -4,6 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::route::{RouteKind, Router};
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
+use http::Uri;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -117,16 +118,8 @@ fn build_runtime_services(
         let upstreams = svc
             .upstream
             .iter()
-            .map(|u| {
-                let (host, port) = parse_upstream(&u.url).expect("invalid upstream address");
-                UpstreamRuntime {
-                    host,
-                    port,
-                    use_tls: false,
-                    sni: "".to_string(),
-                }
-            })
-            .collect();
+            .map(|u| parse_upstream_url(&u.url))
+            .collect::<Result<Vec<_>>>()?;
 
         out.insert(
             name.clone(),
@@ -174,15 +167,31 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
 }
 
 /// Parse an upstream address of the form "host:port".
-fn parse_upstream(upstream_address: &str) -> Result<(String, u16)> {
-    let mut parts = upstream_address.split(':');
-    let host = parts
-        .next()
-        .ok_or_else(|| anyhow!("invalid upstream address: {}", upstream_address))?;
-    let port = parts
-        .next()
-        .ok_or_else(|| anyhow!("invalid upstream address: {}", upstream_address))?
-        .parse::<u16>()?;
+fn parse_upstream_url(raw: &str) -> Result<UpstreamRuntime> {
+    let uri: Uri = raw
+        .parse()
+        .map_err(|_| anyhow!("invalid upstream URL: {}", raw))?;
 
-    Ok((host.to_string(), port))
+    let scheme = uri.scheme_str().unwrap_or("http");
+
+    let authority = uri
+        .authority()
+        .ok_or_else(|| anyhow!("upstream URL missing authority: {}", raw))?;
+
+    let host = authority.host().to_string();
+
+    let port = authority.port_u16().unwrap_or(match scheme {
+        "https" => 443,
+        _ => 80,
+    });
+
+    let use_tls = scheme == "https";
+    let sni = host.clone();
+
+    Ok(UpstreamRuntime {
+        host,
+        port,
+        use_tls,
+        sni,
+    })
 }

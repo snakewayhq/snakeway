@@ -21,7 +21,7 @@ enum Command {
     /// Inspect configuration
     Config {
         #[command(subcommand)]
-        cmd: cli::config::ConfigCmd,
+        cmd: cli::conf::ConfigCmd,
     },
 
     /// WASM plugin tooling
@@ -58,20 +58,20 @@ fn main() {
 
     match cli.command {
         Some(Command::Config { cmd }) => match cmd {
-            cli::config::ConfigCmd::Check { path } => {
-                if let Err(e) = cli::config::check(path) {
+            cli::conf::ConfigCmd::Check { path } => {
+                if let Err(e) = cli::conf::check(path) {
                     eprintln!("Invalid configuration\n\n{e}");
                     std::process::exit(1);
                 }
             }
-            cli::config::ConfigCmd::Dump { path, json, yaml } => {
-                if let Err(e) = cli::config::dump(path, json, yaml) {
+            cli::conf::ConfigCmd::Dump { path, json, yaml } => {
+                if let Err(e) = cli::conf::dump(path, json, yaml) {
                     eprintln!("Failed to dump configuration: {e}");
                     std::process::exit(1);
                 }
             }
-            cli::config::ConfigCmd::Init { path } => {
-                cli::config::init(path).expect("Failed to initialize config directory");
+            cli::conf::ConfigCmd::Init { path } => {
+                cli::conf::init(path).expect("Failed to initialize config directory");
             }
         },
 
