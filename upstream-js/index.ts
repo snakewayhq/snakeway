@@ -2,7 +2,7 @@ import http from "http";
 import express from "express";
 import {WebSocketServer} from "ws";
 
-const port = parseInt(process.argv[2] || "9000", 10);
+const port = parseInt(process.argv[2] || "3000", 10);
 
 const app = express();
 
