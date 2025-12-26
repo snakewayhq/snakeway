@@ -23,6 +23,16 @@ install-dev-tools:
 docs:
     cd docs && npm run docs:dev
 
+# Install mkcert and nss, then create dev certs.
+setup-tls-dev-cert:
+    {{ if os() == "macos" { "brew install mkcert nss" } else { "" } }}
+    mkdir -p ./data/certs/
+    mkcert -install
+    mkcert \
+      -cert-file ./data/certs/snakeway.pem \
+      -key-file ./data/certs/snakeway.key \
+      localhost 127.0.0.1 ::1
+
 # -----------------------------------------------------------------------------
 # Benchmarks and profiling
 # -----------------------------------------------------------------------------
