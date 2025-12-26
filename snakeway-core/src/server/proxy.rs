@@ -1,4 +1,4 @@
-use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
@@ -218,6 +218,15 @@ impl ProxyHttp for SnakewayGateway {
         upstream.set_status(resp_ctx.status)?;
 
         if ctx.is_upgrade_req && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
+            // WS upgrade completed.
+            // After this point, HTTP response lifecycle hooks (on_response)
+            // must NOT run for this request.
+            ctx.ws_opened = true;
+
+            // Run WS-open hook
+            let ws_ctx = WsCtx::default();
+            DevicePipeline::run_on_ws_open(self.state.load().devices.all(), &ws_ctx);
+
             return Ok(());
         }
 
@@ -232,8 +241,15 @@ impl ProxyHttp for SnakewayGateway {
         &self,
         _session: &mut Session,
         upstream: &mut ResponseHeader,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> Result<()> {
+        if ctx.ws_opened {
+            // Do not run on_response devices for WebSockets.
+            // For WebSockets, this is not a real "response."
+            // It is a protocol switch.
+            return Ok(());
+        }
+
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
         let state = self.state.load();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
@@ -251,6 +267,19 @@ impl ProxyHttp for SnakewayGateway {
 
         upstream.set_status(resp_ctx.status)?;
         Ok(())
+    }
+    async fn logging(&self, _session: &mut Session, _e: Option<&Error>, ctx: &mut Self::CTX)
+    where
+        Self::CTX: Send + Sync,
+    {
+        // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
+        // Pingora guarantees the logging hook is called last, which is the best that can be
+        // done in Pingora 0.6.0.
+        if ctx.ws_opened {
+            // Call device on_ws_close hook for WebSockets.
+            let ws_close_ctx = WsCloseCtx::default();
+            DevicePipeline::run_on_ws_close(self.state.load().devices.all(), &ws_close_ctx);
+        }
     }
 }
 

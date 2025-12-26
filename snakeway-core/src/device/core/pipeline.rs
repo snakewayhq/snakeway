@@ -1,9 +1,25 @@
 use super::{Device, DeviceResult};
-use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use std::sync::Arc;
 
 pub struct DevicePipeline;
 
+/// Device pipeline for WebSocket events
+impl DevicePipeline {
+    pub(crate) fn run_on_ws_open(devices: &[Arc<dyn Device>], ctx: &WsCtx) {
+        for dev in devices {
+            dev.on_ws_open(ctx);
+        }
+    }
+
+    pub(crate) fn run_on_ws_close(devices: &[Arc<dyn Device>], ctx: &WsCloseCtx) {
+        for dev in devices {
+            dev.on_ws_close(ctx);
+        }
+    }
+}
+
+/// Device pipeline for HTTP events
 impl DevicePipeline {
     pub fn run_on_request(devices: &[Arc<dyn Device>], ctx: &mut RequestCtx) -> DeviceResult {
         for dev in devices {

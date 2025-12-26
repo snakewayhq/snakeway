@@ -45,14 +45,10 @@ pub trait Device: Send + Sync {
     }
 
     /// Called when a WebSocket connection is opened.
-    fn on_ws_open(&self, _ctx: &WsCtx) -> DeviceResult {
-        DeviceResult::Continue
-    }
+    fn on_ws_open(&self, _ctx: &WsCtx) {}
 
     /// Called when a WebSocket connection is closed.
-    fn on_ws_close(&self, _ctx: &WsCloseCtx) -> DeviceResult {
-        DeviceResult::Continue
-    }
+    fn on_ws_close(&self, _ctx: &WsCloseCtx) {}
 
     /// Called when an error occurs during request processing.
     ///

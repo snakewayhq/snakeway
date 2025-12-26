@@ -28,6 +28,9 @@ pub struct RequestCtx {
     /// Is it a websocket upgrade request (or not)?
     pub is_upgrade_req: bool,
 
+    /// Was a websocket connection opened?
+    pub ws_opened: bool,
+
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default)
     pub extensions: Extensions,
 
@@ -57,6 +60,7 @@ impl RequestCtx {
             headers,
             peer_ip,
             is_upgrade_req,
+            ws_opened: false,
             extensions: Extensions::new(),
             body,
         }
