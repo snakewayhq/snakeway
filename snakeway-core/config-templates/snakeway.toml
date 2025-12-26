@@ -9,10 +9,10 @@ threads = 8
 [[listener]]
 addr = "127.0.0.1:8080"
 
-[[listener]]
-addr = "127.0.0.1:8443"
-# TLS configuration with paths to certificate and private key files.
-tls = { cert = "./path/to/tls_cert.pem", key = "./path/to/tls_cert.key" }
+# A second listener with a TLS configuration for encryption.
+# [[listener]]
+# addr = "127.0.0.1:8443"
+# tls = { cert = "./path/to/tls_cert.pem", key = "./path/to/tls_cert.key" }
 
 # Modular inclusion for routes, services, and devices.
 [include]
