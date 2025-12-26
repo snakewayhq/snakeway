@@ -1,10 +1,20 @@
 import http from "http";
+import express from "express";
 import {WebSocketServer} from "ws";
 
-const server = http.createServer((req, res) => {
-    res.writeHead(200);
-    res.end("hello http\n");
+const port = parseInt(process.argv[2] || "9000", 10);
+
+const app = express();
+
+app.get("/", (req, res) => {
+    res.send("hello upstream\n");
 });
+
+app.get("/api/users/:id", (req, res) => {
+    res.json({id: req.params.id});
+})
+
+const server = http.createServer(app);
 
 const wss = new WebSocketServer({noServer: true});
 
@@ -18,6 +28,6 @@ server.on("upgrade", (req, socket, head) => {
     });
 });
 
-server.listen(9000, () => {
-    console.log("HTTP + WS upstream on :9000");
+server.listen(port, () => {
+    console.log(`HTTP + WS upstream on :${port}`);
 });
