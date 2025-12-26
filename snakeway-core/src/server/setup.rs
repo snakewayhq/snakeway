@@ -121,7 +121,11 @@ pub fn build_pingora_server(
 
     // Build HTTP proxy service from Pingora.
     let mut svc = http_proxy_service(&server.configuration, gateway);
-    svc.add_tcp(&config.server.listen);
+    if let Some(tls) = &config.server.tls {
+        svc.add_tls(&config.server.listen, &tls.cert, &tls.key)?;
+    } else {
+        svc.add_tcp(&config.server.listen);
+    }
 
     // Register service.
     server.add_service(svc);
