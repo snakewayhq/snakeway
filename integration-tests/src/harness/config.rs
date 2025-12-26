@@ -2,13 +2,23 @@ use snakeway_core::conf::RuntimeConfig;
 
 pub fn patch_ports(
     mut cfg: RuntimeConfig,
-    listen_port: u16,
+    listener_ports: &[u16],
     upstream_ports: &[u16],
 ) -> RuntimeConfig {
-    // Patch listen
-    cfg.listeners[0].addr = format!("127.0.0.1:{listen_port}");
+    assert_eq!(
+        listener_ports.len(),
+        cfg.listeners.len(),
+        "invalid number of ports allocated for listeners {} {}",
+        listener_ports.len(),
+        cfg.listeners.len()
+    );
 
-    // Patch the upstream URLs for the "api" service (or whichever service your route targets)
+    // Patch listener addresses.
+    for (i, port) in listener_ports.iter().enumerate() {
+        cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{}", port);
+    }
+
+    // Patch the upstream URLs.
     let svc = cfg
         .services
         .get_mut("api")

@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
-    base_url: String,
+    base_urls: Vec<String>,
     client: Client,
 }
 
@@ -30,13 +30,10 @@ impl TestServer {
         // Clear events.
         events.lock().unwrap().clear();
 
-        // Allocate a free port for the server.
-        let listen_port = free_port();
+        //---------------------------------------------------------------------
+        // Gather Configs
+        //---------------------------------------------------------------------
 
-        // allocate N upstream ports.
-        let upstream_ports = [free_port(), free_port(), free_port()];
-
-        // Render config template --> temp file
         let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("fixtures")
             .join("config")
@@ -48,55 +45,82 @@ impl TestServer {
             fixture_dir
         );
 
-        for p in upstream_ports {
-            start_upstream(p);
-        }
-
         // Load Snakeway config
         let cfg = load_config(&fixture_dir).expect("failed to load fixture config");
 
-        // patch config in memory (no copying, no temp dir)
-        let cfg = patch_ports(cfg, listen_port, &upstream_ports);
+        //---------------------------------------------------------------------
+        // Setup upstreams and listeners, then patch config in-memory.
+        //---------------------------------------------------------------------
 
-        // Build initial runtime state (static for tests)
+        // Allocate free port(s) for the upstreams(s).
+        let upstream_ports = cfg
+            .services
+            .iter()
+            .flat_map(|(_, c)| c.upstream.iter())
+            .map(|_| free_port())
+            .collect::<Vec<_>>();
+
+        // Start upstream services in background threads.
+        for p in upstream_ports.clone() {
+            start_upstream(p);
+        }
+
+        // Allocate free port(s) for the listener(s).
+        let listener_ports = cfg
+            .listeners
+            .iter()
+            .map(|_| free_port())
+            .collect::<Vec<_>>();
+
+        // Patch config in memory.
+        // This is a bit of magic that ensures all the integration tests can be run in parallel.
+        let cfg = patch_ports(cfg, &listener_ports, &upstream_ports);
+
+        // Build the initial runtime state (static for tests).
         let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
-
-        // Wrap in ArcSwap (matches production shape)
         let state = Arc::new(ArcSwap::from_pointee(runtime_state));
 
-        // Build server
-        let server = build_pingora_server(cfg, state).expect("failed to build snakeway server");
+        // Build server.
+        let server =
+            build_pingora_server(cfg.clone(), state).expect("failed to build snakeway server");
 
-        // Run server in background thread
+        // Run server in a background thread.
         thread::spawn(move || {
             server.run_forever();
         });
 
-        let base_url = format!("http://127.0.0.1:{listen_port}");
+        let base_urls = cfg
+            .listeners
+            .iter()
+            .map(|l| format!("http://{}", l.addr.clone()))
+            .collect::<Vec<_>>();
 
-        // Wait for server to accept connections
-        wait_for_server(&base_url);
+        // Wait for listeners(s) to accept connections.
+        for base_url in &base_urls {
+            wait_for_listener(base_url);
+        }
 
         let client = Client::builder()
             .timeout(Duration::from_secs(2))
             .build()
             .expect("failed to build client");
 
-        Self { base_url, client }
+        Self { base_urls, client }
     }
 
     /// Convenience helper for GET requests.
     pub fn get(&self, path: &str) -> RequestBuilder {
-        self.client.get(format!("{}{}", self.base_url, path))
+        self.client.get(format!("{}{}", self.base_url(), path))
     }
 
+    /// Returns the first configured base URL.
     pub fn base_url(&self) -> &str {
-        &self.base_url
+        self.base_urls.first().expect("no base url")
     }
 }
 
 /// Poll until the server responds (or panic).
-fn wait_for_server(listen_addr: &str) {
+fn wait_for_listener(listen_addr: &str) {
     let addr = listen_addr.strip_prefix("http://").unwrap_or(listen_addr);
 
     let deadline = Instant::now() + Duration::from_secs(2);
