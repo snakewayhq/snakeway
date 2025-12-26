@@ -1,0 +1,5 @@
+[[route]]
+path = "/assets"
+file_dir = "./public"
+index = "index.html"
+directory_listing = false

@@ -36,8 +36,9 @@ maxminddb = { workspace = true, features = ["mmap"] }
 mime_guess = { workspace = true, optional = true }
 nix = { workspace = true, features = ["signal"] }
 percent-encoding = { workspace = true, optional = true }
-pingora = { workspace = true, features = ["proxy"] }
+pingora = { workspace = true, features = ["proxy", "rustls"] }
 pingora-http = { workspace = true }
+rust-embed = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }

@@ -5,7 +5,7 @@ use reqwest::StatusCode;
 fn should_proxy_to_upstream() {
     let srv = TestServer::start("basic");
 
-    let res = srv.get("/api").send().unwrap();
+    let res = srv.get("/api").send().expect("request failed");
 
     assert_eq!(res.status(), StatusCode::OK);
 }

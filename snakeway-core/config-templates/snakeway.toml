@@ -8,7 +8,7 @@ addr = "127.0.0.1:8080"
 
 [[listener]]
 addr = "127.0.0.1:8443"
-tls = { cert = "./data/certs/snakeway.pem", key = "./data/certs/snakeway.key" }
+tls = { cert = "./path/to/tls_cert.pem", key = "./path/to/tls_cert.key" }
 
 [include]
 routes = "routes/*.toml"

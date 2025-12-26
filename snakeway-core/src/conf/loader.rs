@@ -4,7 +4,9 @@ use crate::conf::merge::merge_services;
 use crate::conf::parse::{parse_devices, parse_routes, parse_services};
 use crate::conf::runtime::RuntimeConfig;
 use crate::conf::types::EntrypointConfig;
-use crate::conf::validate::{compile_routes, validate_routes};
+use crate::conf::validate::{
+    compile_routes, validate_listeners, validate_routes, validate_version,
+};
 use std::fs;
 use std::path::Path;
 
@@ -18,6 +20,9 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
         path: root.to_path_buf(),
         source: e,
     })?;
+
+    validate_version(entry.server.version)?;
+    validate_listeners(&entry.listeners)?;
 
     fn resolve_glob(root: &Path, pattern: &str) -> String {
         root.join(pattern).to_string_lossy().into_owned()
@@ -51,5 +56,6 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
         routes,
         services,
         devices: parse_devices(device_files)?,
+        listeners: entry.listeners,
     })
 }

@@ -23,9 +23,32 @@ install-dev-tools:
 docs:
     cd docs && npm run docs:dev
 
+# Install mkcert and nss, then create dev certs.
+setup-tls-dev-cert:
+    {{ if os() == "macos" { "brew install mkcert nss" } else { "" } }}
+    mkdir -p ./data/certs/
+    mkcert -install
+    mkcert \
+      -cert-file ./data/certs/snakeway.pem \
+      -key-file ./data/certs/snakeway.key \
+      localhost 127.0.0.1 ::1
+
 # -----------------------------------------------------------------------------
 # Benchmarks and profiling
 # -----------------------------------------------------------------------------
+
+# Use wrk and hey to test various upstream configurations.
+benchmark-proxy:
+    @echo "No TLS (wrk)"
+    wrk -t4 -c128 -d10s http://localhost:8080/api/users/1
+    @echo "With TLS (wrk)"
+    wrk -t4 -c128 -d10s https://localhost:8443/api/users/1
+    @echo "Raw upstream (wrk)"
+    wrk -t4 -c128 -d10s http://localhost:3000/api/users/1
+    @echo "To TLS (hey)"
+    hey -n 20000 -c 128 http://127.0.0.1:8080/api/users/1
+    @echo "Raw upstream (hey)"
+    hey -n 20000 -c 128 http://127.0.0.1:3000/api/users/1
 
 # Run hey to test out various static file request configs.
 benchmark-static-files:
