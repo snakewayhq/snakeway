@@ -1,7 +1,14 @@
 [[service]]
+# The unique name identifier for this service.
 name = "api"
+# The load balancing strategy to use when distributing requests across upstreams.
 strategy = "round_robin"
 
 [[service.upstream]]
+# The URL of the upstream server to forward requests to.
 url = "http://127.0.0.1:3000"
 
+# Additional upstream server configuration.
+#[[service.upstream]]
+# The URL of an alternative upstream server.
+#url = "http://127.0.0.1:3001"

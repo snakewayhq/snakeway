@@ -1,6 +1,12 @@
 [[device]]
+# The unique name identifier for this device.
 name = "structured_logging"
+# The type of device, indicating it's a builtin device.
 type = "builtin"
+# The specific builtin device implementation to use.
 builtin = "structured_logging"
+# Whether this device is enabled and active.
 enabled = true
+# Device-specific configuration options.
+# include_headers: Whether to include HTTP headers in the structured logs.
 config = { include_headers = false }

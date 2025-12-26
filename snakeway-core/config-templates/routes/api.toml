@@ -1,3 +1,5 @@
 [[route]]
+# The HTTP path prefix that this route will match.
 path = "/api"
+# The name of the service that will handle requests to this route.
 service = "api"
