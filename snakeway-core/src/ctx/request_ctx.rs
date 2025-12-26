@@ -25,6 +25,9 @@ pub struct RequestCtx {
     /// Remote IP of the TCP connection (authoritative)
     pub peer_ip: IpAddr,
 
+    /// Is it a websocket upgrade request (or not)?
+    pub is_upgrade_req: bool,
+
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default)
     pub extensions: Extensions,
 
@@ -40,6 +43,7 @@ impl RequestCtx {
         uri: Uri,
         headers: HeaderMap,
         peer_ip: IpAddr,
+        is_upgrade_req: bool,
         body: Vec<u8>,
     ) -> Self {
         let route_path = uri.path().to_string();
@@ -52,6 +56,7 @@ impl RequestCtx {
             upstream_path: None,
             headers,
             peer_ip,
+            is_upgrade_req,
             extensions: Extensions::new(),
             body,
         }

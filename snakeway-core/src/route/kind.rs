@@ -4,7 +4,10 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub enum RouteKind {
     /// Forward request to upstream
-    Proxy { upstream: String },
+    Proxy {
+        upstream: String,
+        allow_websocket: bool,
+    },
 
     /// Serve files from the local filesystem
     Static {

@@ -36,6 +36,18 @@ pub struct ParsedRoute {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service: Option<String>,
 
+    /// Only valid for upstream services.
+    #[serde(default)]
+    pub allow_websocket: bool,
+
+    /// Only valid for upstream services.
+    #[serde(default)]
+    pub ws_idle_timeout_ms: Option<u64>,
+
+    /// Only valid for upstream services.
+    #[serde(default)]
+    pub ws_max_connections: Option<u64>,
+
     /// Mutually exclusive with service (validated later)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_dir: Option<String>,

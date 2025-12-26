@@ -6,6 +6,7 @@ use crate::route::{RouteEntry, RouteKind};
 use crate::server::runtime::RuntimeState;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
+use http::{StatusCode, Version, header};
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::net::Ipv4Addr;
@@ -30,6 +31,7 @@ impl ProxyHttp for SnakewayGateway {
             "/".parse().unwrap(),
             http::HeaderMap::new(),
             Ipv4Addr::UNSPECIFIED.into(),
+            false,
             Vec::new(),
         )
     }
@@ -71,6 +73,7 @@ impl ProxyHttp for SnakewayGateway {
     /// ACCEPT --> INSPECT --> DECIDE --> (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
+        let is_upgrade_req = session.is_upgrade_req();
 
         *ctx = RequestCtx::new(
             None,
@@ -78,6 +81,7 @@ impl ProxyHttp for SnakewayGateway {
             req.uri.clone(),
             req.headers.clone(),
             ctx.peer_ip,
+            is_upgrade_req,
             Vec::new(),
         );
 
@@ -111,10 +115,28 @@ impl ProxyHttp for SnakewayGateway {
 
         match &route.kind {
             RouteKind::Static { .. } => {
+                if is_upgrade_req {
+                    // Reject websocket upgrade requests for static files.
+                    session
+                        .respond_error(StatusCode::BAD_REQUEST.as_u16())
+                        .await?;
+                    return Ok(true);
+                }
                 respond_with_static(session, ctx, route, &state.devices).await
             }
 
-            RouteKind::Proxy { upstream } => {
+            RouteKind::Proxy {
+                upstream,
+                allow_websocket,
+            } => {
+                // If it is a websocket upgrade request, check if the upstream supports websockets.
+                if is_upgrade_req && !allow_websocket {
+                    session
+                        .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
+                        .await?;
+                    return Ok(true);
+                }
+
                 ctx.service = Some(upstream.clone());
                 Ok(false)
             }
@@ -135,10 +157,20 @@ impl ProxyHttp for SnakewayGateway {
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
-                // Applies upstream intent derived from the request context
+                // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method.clone());
                 let path = ctx.upstream_path();
                 upstream.set_uri(path.parse().unwrap());
+
+                if ctx.is_upgrade_req {
+                    // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
+                    upstream.set_version(Version::HTTP_11);
+
+                    // The headers are explicitly set - upstreams can be picky if they aren't there.
+                    // Note that if the client already set these. they will be replaced.
+                    upstream.insert_header(header::UPGRADE, "websocket")?;
+                    upstream.insert_header(header::CONNECTION, "Upgrade")?;
+                }
 
                 Ok(())
             }
@@ -165,7 +197,7 @@ impl ProxyHttp for SnakewayGateway {
         &self,
         _session: &mut Session,
         upstream: &mut ResponseHeader,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> Result<()> {
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
         let state = self.state.load();
@@ -173,17 +205,22 @@ impl ProxyHttp for SnakewayGateway {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(_resp) => {
-                // Legal here: treat as override of response fields
+                // Legal here: treat as override of response fields.
                 tracing::debug!("response overridden in after_proxy");
             }
 
             DeviceResult::Error(err) => {
-                // Response is already committed; we only record and observe
+                // Response is already committed; we only record and observe.
                 tracing::warn!("device error after_proxy: {err}");
             }
         }
 
         upstream.set_status(resp_ctx.status)?;
+
+        if ctx.is_upgrade_req && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
+            return Ok(());
+        }
+
         Ok(())
     }
 

@@ -142,6 +142,7 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
         let route_kind = match &route.target {
             RouteTarget::Service { name: service } => RouteKind::Proxy {
                 upstream: service.clone(),
+                allow_websocket: route.allow_websocket,
             },
 
             RouteTarget::Static {
