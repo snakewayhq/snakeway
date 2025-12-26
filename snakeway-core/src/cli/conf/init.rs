@@ -1,10 +1,15 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use rust_embed::RustEmbed;
+use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
+#[derive(RustEmbed)]
+#[folder = "config-templates/"]
+pub struct ConfigTemplates;
+
 pub fn init(path: PathBuf) -> Result<()> {
-    use anyhow::{Context, bail};
-    use std::fs;
-    use std::io::Write;
+    use anyhow::bail;
 
     // Refuse to overwrite an existing non-empty directory
     if path.exists() {
@@ -30,22 +35,32 @@ pub fn init(path: PathBuf) -> Result<()> {
     fs::create_dir_all(&services_dir)?;
     fs::create_dir_all(&devices_dir)?;
 
-    // Helper to write a file atomically-ish
-    fn write_file(path: &PathBuf, contents: &str) -> Result<()> {
-        let mut f = fs::File::create(path)
-            .with_context(|| format!("failed to create {}", path.display()))?;
-        f.write_all(contents.trim_start().as_bytes())?;
-        Ok(())
-    }
+    // Write files...
 
-    // Write files
-    write_file(&path.join("snakeway.toml"), ENTRYPOINT_TOML)?;
-    write_file(&routes_dir.join("default.toml"), ROUTES_TOML)?;
-    write_file(&services_dir.join("api.toml"), SERVICES_TOML)?;
-    write_file(&devices_dir.join("identity.toml"), DEVICE_IDENTITY_TOML)?;
+    // Entrypoint
+    write_file(&path.join("snakeway.toml"), &template("snakeway.toml")?)?;
+
+    // Routes
+    write_file(&routes_dir.join("api.toml"), &template("routes/api.toml")?)?;
+    write_file(
+        &routes_dir.join("assets.toml"),
+        &template("routes/assets.toml")?,
+    )?;
+
+    // Services
+    write_file(
+        &services_dir.join("api.toml"),
+        &template("services/api.toml")?,
+    )?;
+
+    // Devices
+    write_file(
+        &devices_dir.join("identity.toml"),
+        &template("devices/identity.toml")?,
+    )?;
     write_file(
         &devices_dir.join("structured_logging.toml"),
-        DEVICE_LOGGING_TOML,
+        &template("devices/structured_logging.toml")?,
     )?;
 
     // User feedback
@@ -56,7 +71,6 @@ pub fn init(path: PathBuf) -> Result<()> {
     println!("  - services/api.toml");
     println!("  - devices/identity.toml");
     println!("  - devices/structured_logging.toml");
-
     println!();
     println!("Next steps:");
     println!("  snakeway config check");
@@ -65,60 +79,21 @@ pub fn init(path: PathBuf) -> Result<()> {
     Ok(())
 }
 
-const ENTRYPOINT_TOML: &str = r#"
-[server]
-listen = "0.0.0.0:8080"
-threads = 4
-pid_file = "/var/run/snakeway.pid"
+/// Fetch an embedded config template as UTF-8 text
+fn template(path: &str) -> Result<String> {
+    let file = ConfigTemplates::get(path)
+        .with_context(|| format!("missing embedded config template: {path}"))?;
 
-[include]
-routes   = "routes/*.toml"
-services = "services/*.toml"
-devices  = "devices/*.toml"
-"#;
+    let s =
+        std::str::from_utf8(file.data.as_ref()).context("config template is not valid UTF-8")?;
 
-const ROUTES_TOML: &str = r#"
-[[route]]
-path = "/api"
-service = "api"
+    Ok(s.to_owned())
+}
 
-[[route]]
-path = "/"
-file_dir = "./public"
-index = "index.html"
-directory_listing = false
-"#;
-
-const SERVICES_TOML: &str = r#"
-[[service]]
-name = "api"
-strategy = "round_robin"
-
-[[service.upstream]]
-url = "http://127.0.0.1:9001"
-
-[[service.upstream]]
-url = "http://127.0.0.1:9002"
-"#;
-
-const DEVICE_IDENTITY_TOML: &str = r#"
-[[device]]
-name = "identity"
-type = "builtin"
-builtin = "identity"
-
-[device.config]
-enable_geoip = false
-trusted_proxies = ["10.0.0.0/8"]
-ua_engine = "woothee"
-"#;
-
-const DEVICE_LOGGING_TOML: &str = r#"
-[[device]]
-name = "structured_logging"
-type = "builtin"
-builtin = "structured_logging"
-
-[device.config]
-include_headers = true
-"#;
+/// Helper to write a file (simple, deterministic, no magic)
+fn write_file(path: &PathBuf, contents: &str) -> Result<()> {
+    let mut f =
+        fs::File::create(path).with_context(|| format!("failed to create {}", path.display()))?;
+    f.write_all(contents.trim_start().as_bytes())?;
+    Ok(())
+}

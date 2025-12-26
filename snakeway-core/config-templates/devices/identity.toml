@@ -1,0 +1,6 @@
+[[device]]
+name = "identity"
+type = "builtin"
+builtin = "identity"
+enabled = true
+config = { enable_geoip = false, trusted_proxies = [], ua_engine = "woothee" }
