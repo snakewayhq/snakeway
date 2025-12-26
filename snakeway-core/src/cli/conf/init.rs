@@ -42,6 +42,7 @@ pub fn init(path: PathBuf) -> Result<()> {
 
     // Routes
     write_file(&routes_dir.join("api.toml"), &template("routes/api.toml")?)?;
+    write_file(&routes_dir.join("ws.toml"), &template("routes/ws.toml")?)?;
     write_file(
         &routes_dir.join("assets.toml"),
         &template("routes/assets.toml")?,

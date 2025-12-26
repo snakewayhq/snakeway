@@ -17,7 +17,12 @@ CONFIG := "config/snakeway.toml"
 install-tools: install-dev-tools install-build-tools
     @echo "Finished installing tools"
 
+# If on a Mac, install packages with homebrew.
+brew-install packages:
+    {{ if os() == "macos" { "brew install " + packages } else { "" } }}
+
 install-dev-tools:
+    just brew-install "websocat"
     cargo install tokio-console samply cargo-nextest
 
 docs:
@@ -25,7 +30,7 @@ docs:
 
 # Install mkcert and nss, then create dev certs.
 setup-tls-dev-cert:
-    {{ if os() == "macos" { "brew install mkcert nss" } else { "" } }}
+    just brew-install "mkcert nss"
     mkdir -p ./data/certs/
     mkcert -install
     mkcert \

@@ -7,6 +7,10 @@ pub struct RouteConfig {
 
     /// Target service (mutually exclusive with file_dir)
     pub target: RouteTarget,
+
+    pub allow_websocket: bool,
+    pub ws_idle_timeout_ms: Option<u64>,
+    pub ws_max_connections: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
