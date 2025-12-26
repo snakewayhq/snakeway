@@ -3,7 +3,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    //-------------------------------------------------------------------------
     // IO / Discovery
+    //-------------------------------------------------------------------------
     #[error("failed to read config file {path}: {source}")]
     ReadFile {
         path: PathBuf,
@@ -18,7 +20,21 @@ pub enum ConfigError {
         source: glob::PatternError,
     },
 
+    //-------------------------------------------------------------------------
+    // Top-level
+    //-------------------------------------------------------------------------
+    #[error("invalid configuration")]
+    InvalidConfig,
+
+    #[error("invalid route '{path}'")]
+    InvalidRoute { path: String },
+
+    #[error("invalid version '{version}'")]
+    InvalidVersion { version: u32 },
+
+    //-------------------------------------------------------------------------
     // Parsing
+    //-------------------------------------------------------------------------
     #[error("failed to parse TOML in {path}: {source}")]
     Parse {
         path: PathBuf,
@@ -26,14 +42,30 @@ pub enum ConfigError {
         source: toml::de::Error,
     },
 
+    //-------------------------------------------------------------------------
     // Merge / Structure
+    //-------------------------------------------------------------------------
     #[error("duplicate service definition: {name}")]
     DuplicateService { name: String },
 
     #[error("duplicate route for path {path}")]
     DuplicateRoute { path: String },
 
+    //-------------------------------------------------------------------------
     // Validation
+    //-------------------------------------------------------------------------
+
+    // Listeners
+    #[error("invalid listener socket address '{addr}'")]
+    InvalidListenerAddr { addr: String },
+
+    #[error("duplicate listener address '{addr}'")]
+    DuplicateListenerAddr { addr: String },
+
+    #[error("cert file does not exist: {path}")]
+    MissingCertFile { path: String },
+
+    // Services
     #[error("route '{route}' references unknown service '{service}'")]
     UnknownService { route: String, service: String },
 
@@ -42,13 +74,6 @@ pub enum ConfigError {
 
     #[error("invalid load balancing strategy '{strategy}' for service '{service}'")]
     InvalidStrategy { service: String, strategy: String },
-
-    // Top-level
-    #[error("invalid configuration")]
-    InvalidConfig,
-
-    #[error("invalid route '{path}'")]
-    InvalidRoute { path: String },
 }
 
 impl ConfigError {

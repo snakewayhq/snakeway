@@ -6,7 +6,7 @@ pub fn patch_ports(
     upstream_ports: &[u16],
 ) -> RuntimeConfig {
     // Patch listen
-    cfg.server.listen = format!("127.0.0.1:{listen_port}");
+    cfg.listeners[0].addr = format!("127.0.0.1:{listen_port}");
 
     // Patch the upstream URLs for the "api" service (or whichever service your route targets)
     let svc = cfg

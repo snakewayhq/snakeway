@@ -1,11 +1,14 @@
 [server]
-listen = "127.0.0.1:8443"
+version = 1
 threads = 4
 pid_file = "/tmp/snakeway.pid"
 
-[server.tls]
-cert = "./snakeway.pem"
-key  = "./snakeway.key"
+[[listener]]
+addr = "127.0.0.1:8080"
+
+[[listener]]
+addr = "127.0.0.1:8443"
+tls = { cert = "./snakeway.pem", key = "./snakeway.key" }
 
 [include]
 routes = "routes/*.toml"
