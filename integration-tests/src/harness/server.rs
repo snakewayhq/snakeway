@@ -18,7 +18,10 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    pub fn start_with_ws_upstream(fixture: &str) -> Self {
+    fn start_with<F>(fixture: &str, start_upstream: F) -> Self
+    where
+        F: Fn(u16),
+    {
         // Initialize tracing (this must happen first).
         let events = events();
         init_test_tracing(events.clone());
@@ -57,7 +60,7 @@ impl TestServer {
 
         // Start upstream services in background threads.
         for p in upstream_ports.clone() {
-            start_ws_upstream(p);
+            start_upstream(p);
         }
 
         // Allocate free port(s) for the listener(s).
@@ -101,176 +104,18 @@ impl TestServer {
             .expect("failed to build client");
 
         Self { base_urls, client }
+    }
+
+    pub fn start_with_ws_upstream(fixture: &str) -> Self {
+        Self::start_with(fixture, start_ws_upstream)
     }
 
     pub fn start_with_grpc_upstream(fixture: &str) -> Self {
-        // Initialize tracing (this must happen first).
-        let events = events();
-        init_test_tracing(events.clone());
-        // Clear events.
-        events.lock().unwrap().clear();
-
-        //---------------------------------------------------------------------
-        // Gather Configs
-        //---------------------------------------------------------------------
-
-        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("fixtures")
-            .join("config")
-            .join(fixture);
-
-        assert!(
-            fixture_dir.exists(),
-            "fixture config directory does not exist: {:?}",
-            fixture_dir
-        );
-
-        // Load Snakeway config
-        let cfg = load_config(&fixture_dir).expect("failed to load fixture config");
-
-        //---------------------------------------------------------------------
-        // Setup upstreams and listeners, then patch config in-memory.
-        //---------------------------------------------------------------------
-
-        // Allocate free port(s) for the upstreams(s).
-        let upstream_ports = cfg
-            .services
-            .iter()
-            .flat_map(|(_, c)| c.upstream.iter())
-            .map(|_| free_port())
-            .collect::<Vec<_>>();
-
-        // Start upstream services in background threads.
-        for p in upstream_ports.clone() {
-            start_grpc_upstream(p);
-        }
-
-        // Allocate free port(s) for the listener(s).
-        let listener_ports = cfg
-            .listeners
-            .iter()
-            .map(|_| free_port())
-            .collect::<Vec<_>>();
-
-        // Patch config in memory.
-        // This is a bit of magic that ensures all the integration tests can be run in parallel.
-        let cfg = patch_ports(cfg, &listener_ports, &upstream_ports);
-
-        // Build the initial runtime state (static for tests).
-        let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
-        let state = Arc::new(ArcSwap::from_pointee(runtime_state));
-
-        // Build server.
-        let server =
-            build_pingora_server(cfg.clone(), state).expect("failed to build snakeway server");
-
-        // Run server in a background thread.
-        thread::spawn(move || {
-            server.run_forever();
-        });
-
-        let base_urls = cfg
-            .listeners
-            .iter()
-            .map(|l| format!("http://{}", l.addr.clone()))
-            .collect::<Vec<_>>();
-
-        // Wait for listeners(s) to accept connections.
-        for base_url in &base_urls {
-            wait_for_listener(base_url);
-        }
-
-        let client = Client::builder()
-            .timeout(Duration::from_secs(2))
-            .build()
-            .expect("failed to build client");
-
-        Self { base_urls, client }
+        Self::start_with(fixture, start_grpc_upstream)
     }
 
-    pub fn start(fixture: &str) -> Self {
-        // Initialize tracing (this must happen first).
-        let events = events();
-        init_test_tracing(events.clone());
-        // Clear events.
-        events.lock().unwrap().clear();
-
-        //---------------------------------------------------------------------
-        // Gather Configs
-        //---------------------------------------------------------------------
-
-        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("fixtures")
-            .join("config")
-            .join(fixture);
-
-        assert!(
-            fixture_dir.exists(),
-            "fixture config directory does not exist: {:?}",
-            fixture_dir
-        );
-
-        // Load Snakeway config
-        let cfg = load_config(&fixture_dir).expect("failed to load fixture config");
-
-        //---------------------------------------------------------------------
-        // Setup upstreams and listeners, then patch config in-memory.
-        //---------------------------------------------------------------------
-
-        // Allocate free port(s) for the upstreams(s).
-        let upstream_ports = cfg
-            .services
-            .iter()
-            .flat_map(|(_, c)| c.upstream.iter())
-            .map(|_| free_port())
-            .collect::<Vec<_>>();
-
-        // Start upstream services in background threads.
-        for p in upstream_ports.clone() {
-            start_http_upstream(p);
-        }
-
-        // Allocate free port(s) for the listener(s).
-        let listener_ports = cfg
-            .listeners
-            .iter()
-            .map(|_| free_port())
-            .collect::<Vec<_>>();
-
-        // Patch config in memory.
-        // This is a bit of magic that ensures all the integration tests can be run in parallel.
-        let cfg = patch_ports(cfg, &listener_ports, &upstream_ports);
-
-        // Build the initial runtime state (static for tests).
-        let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
-        let state = Arc::new(ArcSwap::from_pointee(runtime_state));
-
-        // Build server.
-        let server =
-            build_pingora_server(cfg.clone(), state).expect("failed to build snakeway server");
-
-        // Run server in a background thread.
-        thread::spawn(move || {
-            server.run_forever();
-        });
-
-        let base_urls = cfg
-            .listeners
-            .iter()
-            .map(|l| format!("http://{}", l.addr.clone()))
-            .collect::<Vec<_>>();
-
-        // Wait for listeners(s) to accept connections.
-        for base_url in &base_urls {
-            wait_for_listener(base_url);
-        }
-
-        let client = Client::builder()
-            .timeout(Duration::from_secs(2))
-            .build()
-            .expect("failed to build client");
-
-        Self { base_urls, client }
+    pub fn start_with_http_upstream(fixture: &str) -> Self {
+        Self::start_with(fixture, start_http_upstream)
     }
 
     /// Convenience helper for GET requests.

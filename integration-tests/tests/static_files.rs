@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 /// Serves index.html from the configured static directory
 #[test]
 fn serves_index_html_from_static_dir() {
-    let srv = TestServer::start("static");
+    let srv = TestServer::start_with_http_upstream("static");
 
     let res = srv.get("/index.html").send().unwrap();
 
@@ -21,7 +21,7 @@ fn serves_index_html_from_static_dir() {
 /// Static routes should not require an upstream to be available
 #[test]
 fn static_route_does_not_require_upstream() {
-    let srv = TestServer::start("static");
+    let srv = TestServer::start_with_http_upstream("static");
 
     let res = srv.get("/index.html").send().unwrap();
 
@@ -31,7 +31,7 @@ fn static_route_does_not_require_upstream() {
 /// Proxy routes should still work when static file serving is enabled
 #[test]
 fn proxy_route_still_works_when_static_is_enabled() {
-    let srv = TestServer::start("static");
+    let srv = TestServer::start_with_http_upstream("static");
 
     let res = srv.get("/api").send().unwrap();
 
@@ -44,7 +44,7 @@ fn proxy_route_still_works_when_static_is_enabled() {
 
 #[test]
 fn static_path_traversal_is_rejected() {
-    let srv = TestServer::start("static");
+    let srv = TestServer::start_with_http_upstream("static");
 
     let res = srv.get("/static/../Cargo.toml").send().unwrap();
 
@@ -57,7 +57,7 @@ fn static_path_traversal_is_rejected() {
 
 #[test]
 fn static_response_includes_cache_headers() {
-    let srv = TestServer::start("static");
+    let srv = TestServer::start_with_http_upstream("static");
 
     let res = srv.get("/index.html").send().unwrap();
 
@@ -81,7 +81,7 @@ fn static_response_includes_cache_headers() {
 
 #[test]
 fn if_none_match_returns_304() {
-    let srv = TestServer::start("static");
+    let srv = TestServer::start_with_http_upstream("static");
 
     let initial = srv.get("/index.html").send().unwrap();
 
@@ -106,7 +106,7 @@ fn if_none_match_returns_304() {
 
 #[test]
 fn directory_listing_renders_when_enabled() {
-    let srv = TestServer::start("static_nondefault");
+    let srv = TestServer::start_with_http_upstream("static_nondefault");
 
     let res = srv.get("/images/").send().unwrap();
 
@@ -119,7 +119,7 @@ fn directory_listing_renders_when_enabled() {
 
 #[test]
 fn directory_listing_includes_expected_file() {
-    let srv = TestServer::start("static_nondefault");
+    let srv = TestServer::start_with_http_upstream("static_nondefault");
 
     let body = srv.get("/images/").send().unwrap().text().unwrap();
 
@@ -128,7 +128,7 @@ fn directory_listing_includes_expected_file() {
 
 #[test]
 fn supports_range_requests() {
-    let srv = TestServer::start("static_nondefault");
+    let srv = TestServer::start_with_http_upstream("static_nondefault");
 
     let client = reqwest::blocking::Client::new();
     let res = client
@@ -154,7 +154,7 @@ fn supports_range_requests() {
 
 #[test]
 fn head_request_returns_headers_without_body() {
-    let srv = TestServer::start("static_nondefault");
+    let srv = TestServer::start_with_http_upstream("static_nondefault");
 
     let client = reqwest::blocking::Client::new();
     let res = client

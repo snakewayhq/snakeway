@@ -9,7 +9,7 @@ reqwest = { version = "0.12", features = ["blocking"] }
 snakeway-core = { version = "*", path = "../snakeway-core", features = ["wasm", "static_files"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-tonic = "0.14.2"
+tonic = { version = "0.14.2", features = ["_tls-any"] }
 tokio-tungstenite = "0.28.0"
 futures-util = "0.3.31"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
