@@ -79,15 +79,11 @@ impl RequestCtx {
         self.upstream_path.as_deref().unwrap_or(&self.route_path)
     }
 
+    /// Returns the upstream authority (host:port) to use for HTTP/2 requests.
     ///
-    pub fn upstream_authority(&self) -> &str {
-        if let Some(authority) = self.upstream_authority.as_deref() {
-            authority
-        } else {
-            self.original_uri
-                .authority()
-                .map(|a| a.as_str())
-                .unwrap_or("")
-        }
+    /// This is typically set when proxying to HTTP/2 backends that require
+    /// a specific :authority pseudo-header value.
+    pub fn upstream_authority(&self) -> Option<&str> {
+        self.upstream_authority.as_deref()
     }
 }

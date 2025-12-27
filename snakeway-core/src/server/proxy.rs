@@ -178,15 +178,12 @@ impl ProxyHttp for SnakewayGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let headers = &upstream.headers;
+        if ctx.is_grpc {
+            let authority = ctx
+                .upstream_authority()
+                .ok_or_else(|| Error::new(Custom("missing upstream authority for gRPC")))?;
 
-        // HTTP/2 requires :authority
-        if !headers.contains_key(header::HOST) {
-            let authority = ctx.upstream_authority();
-
-            if !authority.is_empty() {
-                upstream.insert_header(header::HOST, authority)?;
-            }
+            upstream.insert_header(header::HOST, authority)?;
         }
 
         let state = self.state.load();
