@@ -6,7 +6,7 @@ use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 
 #[test]
 fn grpc_unary_call_is_proxied() {
-    let srv = TestServer::start_with_grpc_upstream("tls");
+    let srv = TestServer::start_with_grpc_upstream("minimal_grpc");
 
     let endpoint = format!(
         "https://{}",
