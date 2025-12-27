@@ -77,8 +77,8 @@ pub fn validate_routes(
 pub fn compile_routes(routes: Vec<ParsedRoute>) -> Result<Vec<RouteConfig>, ConfigError> {
     let mut out = Vec::new();
 
-    for r in routes {
-        let target = match (r.service, r.file_dir) {
+    for parsed_route in routes {
+        let target = match (parsed_route.service, parsed_route.file_dir) {
             (Some(service), None) => RouteTarget::Service { name: service },
 
             (None, Some(dir)) => {
@@ -86,21 +86,32 @@ pub fn compile_routes(routes: Vec<ParsedRoute>) -> Result<Vec<RouteConfig>, Conf
                 let cache_policy = StaticCachePolicy::default();
                 RouteTarget::Static {
                     dir,
-                    index: r.index,
-                    directory_listing: r.directory_listing,
+                    index: parsed_route.index,
+                    directory_listing: parsed_route.directory_listing,
                     static_config,
                     cache_policy,
                 }
             }
 
             _ => {
-                return Err(ConfigError::InvalidRoute { path: r.path });
+                return Err(ConfigError::InvalidRoute {
+                    path: parsed_route.path,
+                });
             }
         };
 
+        if let (RouteTarget::Static { .. }, true) = (&target, parsed_route.allow_websocket) {
+            return Err(ConfigError::InvalidRoute {
+                path: parsed_route.path,
+            });
+        }
+
         out.push(RouteConfig {
-            path: r.path,
+            path: parsed_route.path,
             target,
+            allow_websocket: parsed_route.allow_websocket,
+            ws_idle_timeout_ms: parsed_route.ws_idle_timeout_ms,
+            ws_max_connections: parsed_route.ws_max_connections,
         });
     }
 

@@ -18,8 +18,9 @@ target
 
 # Artifacts
 dist/
-/plugins/
+/config/
 /dev/
+/plugins/
 profile.json.gz
 
 # Data (not licensed to commit)

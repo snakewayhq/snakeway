@@ -46,6 +46,7 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
         args.path.parse()?,
         http::HeaderMap::new(),
         IpAddr::V4(Ipv4Addr::LOCALHOST),
+        false,
         Vec::new(),
     );
 

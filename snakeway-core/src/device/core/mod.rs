@@ -5,7 +5,7 @@ pub mod result;
 
 use self::errors::DeviceError;
 pub(crate) use self::result::DeviceResult;
-use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 
 /// A trait representing a processing unit in the HTTP proxy pipeline.
 ///
@@ -43,6 +43,12 @@ pub trait Device: Send + Sync {
     fn on_response(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
         DeviceResult::Continue
     }
+
+    /// Called when a WebSocket connection is opened.
+    fn on_ws_open(&self, _ctx: &WsCtx) {}
+
+    /// Called when a WebSocket connection is closed.
+    fn on_ws_close(&self, _ctx: &WsCloseCtx) {}
 
     /// Called when an error occurs during request processing.
     ///

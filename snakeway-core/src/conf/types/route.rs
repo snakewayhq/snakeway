@@ -7,6 +7,10 @@ pub struct RouteConfig {
 
     /// Target service (mutually exclusive with file_dir)
     pub target: RouteTarget,
+
+    pub allow_websocket: bool,
+    pub ws_idle_timeout_ms: Option<u64>,
+    pub ws_max_connections: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -31,6 +35,18 @@ pub struct ParsedRoute {
     /// Mutually exclusive with file_dir (validated later)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service: Option<String>,
+
+    /// Only valid for upstream services.
+    #[serde(default)]
+    pub allow_websocket: bool,
+
+    /// Only valid for upstream services.
+    #[serde(default)]
+    pub ws_idle_timeout_ms: Option<u64>,
+
+    /// Only valid for upstream services.
+    #[serde(default)]
+    pub ws_max_connections: Option<u64>,
 
     /// Mutually exclusive with service (validated later)
     #[serde(skip_serializing_if = "Option::is_none")]
