@@ -24,7 +24,8 @@ pub mod helloworld {
 
 pub fn start_grpc_upstream(port: u16) {
     use std::thread;
-    use tonic::{Request, Response, Status, transport::Server};
+    use tonic::transport::{Identity, Server, ServerTlsConfig};
+    use tonic::{Request, Response, Status};
 
     use helloworld::greeter_server::{Greeter, GreeterServer};
     use helloworld::{HelloReply, HelloRequest};
@@ -47,16 +48,25 @@ pub fn start_grpc_upstream(port: u16) {
     thread::spawn(move || {
         let addr = format!("127.0.0.1:{port}").parse().unwrap();
 
+        // Load TLS identity (server cert + key)
+        let cert = std::fs::read("certs/server.pem").expect("failed to read server.pem");
+        let key = std::fs::read("certs/server.key").expect("failed to read server.key");
+
+        let identity = Identity::from_pem(cert, key);
+
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             Server::builder()
+                .tls_config(ServerTlsConfig::new().identity(identity))
+                .expect("failed to configure TLS")
                 .add_service(GreeterServer::new(GreeterSvc::default()))
                 .serve(addr)
                 .await
-                .unwrap();
+                .expect("gRPC server failed");
         });
     });
 
+    // Give the server a moment to bind + advertise ALPN
     std::thread::sleep(std::time::Duration::from_millis(50));
 }
 

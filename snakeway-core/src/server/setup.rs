@@ -94,12 +94,14 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
 ) -> Result<Server, Error> {
+    let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
+    conf.ca_file = config.server.ca_file.clone();
+
     let mut server = if let Some(threads) = config.server.threads {
         tracing::debug!(
             threads,
             "Creating Pingora server with overridden worker threads"
         );
-        let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
         conf.threads = threads;
         Server::new_with_opt_and_conf(None, conf)
     } else {
@@ -122,6 +124,7 @@ pub fn build_pingora_server(
 
     // Build HTTP proxy service from Pingora.
     let mut svc = http_proxy_service(&server.configuration, gateway);
+
     for listener in &config.listeners {
         match &listener.tls {
             Some(tls) => {

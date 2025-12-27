@@ -1,4 +1,5 @@
 use snakeway_core::conf::RuntimeConfig;
+use url::Url;
 
 pub fn patch_ports(
     mut cfg: RuntimeConfig,
@@ -15,10 +16,10 @@ pub fn patch_ports(
 
     // Patch listener addresses.
     for (i, port) in listener_ports.iter().enumerate() {
-        cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{}", port);
+        cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{port}");
     }
 
-    // Patch the upstream URLs.
+    // Patch upstream URLs (preserve scheme!)
     let svc = cfg
         .services
         .get_mut("api")
@@ -32,11 +33,13 @@ pub fn patch_ports(
     );
 
     for (i, up) in svc.upstream.iter_mut().enumerate() {
-        up.url = format!("http://127.0.0.1:{}", upstream_ports[i]);
-    }
+        let mut url = Url::parse(&up.url).expect("invalid upstream URL in fixture");
 
-    // todo to pin strategy for tests:
-    // svc.strategy = Strategy::RoundRobin;
+        url.set_port(Some(upstream_ports[i]))
+            .expect("failed to set upstream port");
+
+        up.url = url.to_string();
+    }
 
     cfg
 }

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Test-only certificates for integration-tests.
+# IMPORTANT: NOT for production use.
+
 set -euo pipefail
 
 CERT_DIR="integration-tests/certs"

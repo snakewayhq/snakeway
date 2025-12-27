@@ -11,4 +11,8 @@ pub struct ServerConfig {
     /// Optional pid file path
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid_file: Option<String>,
+
+    /// Optional CA file path. If set, Pingora will use this file to verify upstream certificates.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ca_file: Option<String>,
 }

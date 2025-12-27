@@ -5,6 +5,8 @@ pid_file = "/tmp/snakeway.pid"
 # The number of worker threads for handling requests.
 # If unset, Pingora decides how many threads to use.
 threads = 8
+# Root CA used by Pingora to verify upstream certificates.
+# ca_file = "./certs/ca.pem"
 
 [[listener]]
 addr = "127.0.0.1:8080"

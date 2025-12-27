@@ -31,7 +31,13 @@ pub struct RequestCtx {
     /// Was a websocket connection opened?
     pub ws_opened: bool,
 
-    /// Request-scoped typed extensions (NOT forwarded, NOT logged by default)
+    /// Is it a gRPC request?
+    pub is_grpc: bool,
+
+    /// Upstream authority for HTTP/2 requests.
+    pub upstream_authority: Option<String>,
+
+    /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
     pub extensions: Extensions,
 
     #[allow(dead_code)]
@@ -61,6 +67,8 @@ impl RequestCtx {
             peer_ip,
             is_upgrade_req,
             ws_opened: false,
+            is_grpc: false,
+            upstream_authority: None,
             extensions: Extensions::new(),
             body,
         }
@@ -69,5 +77,17 @@ impl RequestCtx {
     /// Path used when proxying upstream
     pub fn upstream_path(&self) -> &str {
         self.upstream_path.as_deref().unwrap_or(&self.route_path)
+    }
+
+    ///
+    pub fn upstream_authority(&self) -> &str {
+        if let Some(authority) = self.upstream_authority.as_deref() {
+            authority
+        } else {
+            self.original_uri
+                .authority()
+                .map(|a| a.as_str())
+                .unwrap_or("")
+        }
     }
 }
