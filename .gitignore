@@ -20,6 +20,7 @@ target
 dist/
 /config/
 /dev/
+/integration-tests/certs/
 /plugins/
 profile.json.gz
 

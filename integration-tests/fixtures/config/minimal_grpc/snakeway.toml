@@ -1,0 +1,14 @@
+[server]
+version = 1
+threads = 1
+ca_file = "./certs/ca.pem"
+
+[[listener]]
+addr = "127.0.0.1:8443"
+tls = { cert = "./certs/server.pem", key = "./certs/server.key" }
+enable_http2 = true
+
+[include]
+routes = "routes/*.toml"
+services = "services/*.toml"
+devices = "devices/*.toml"

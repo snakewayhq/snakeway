@@ -157,8 +157,9 @@ Todo:
 1. Multiple upstreams (ordered failover)
 2. Basic downstream TLS
 3. Websocket-proxy support
-4. Grpc-proxy support
-5. Reload upstreams via `snakeway reload` command
+4. Reload upstreams via `snakeway reload` command
+5. Upstream TLS
+6. gRPC-proxy support
 
 #### Phase 2B \- Traffic Intelligence
 
@@ -173,7 +174,7 @@ Todo:
 #### Phase 2D \- Cloud-Native
 
 1. Service discovery
-2. Upstream TLS
+2. Upstream TLS (moved to 2A - required for gRPC support)
 3. Dynamic cert management
 
 ## Phase 3: Path Control and Security (v0.6.x)

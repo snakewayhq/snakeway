@@ -5,9 +5,13 @@ pub struct ListenerConfig {
     /// Address to bind, e.g. "0.0.0.0:8080"
     pub addr: String,
 
-    /// Optional TLS config
+    /// Optional TLS config.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<TlsConfig>,
+
+    /// Enable HTTP/2 on this listener.
+    #[serde(default)]
+    pub enable_http2: bool,
 }
 
 /// Paths are validated and resolved during config validation.

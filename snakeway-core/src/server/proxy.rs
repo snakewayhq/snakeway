@@ -11,6 +11,7 @@ use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::net::Ipv4Addr;
 use std::sync::Arc;
+
 #[cfg(feature = "static_files")]
 use tokio::io::AsyncReadExt;
 
@@ -36,7 +37,7 @@ impl ProxyHttp for SnakewayGateway {
         )
     }
 
-    /// Simple upstream peer selection
+    /// Select upstream and enforce protocol rules
     async fn upstream_peer(
         &self,
         _session: &mut Session,
@@ -48,7 +49,6 @@ impl ProxyHttp for SnakewayGateway {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
 
         let state = self.state.load();
-
         let service = state
             .services
             .get(service_name)
@@ -58,22 +58,46 @@ impl ProxyHttp for SnakewayGateway {
             .select_upstream()
             .ok_or_else(|| Error::new(Custom("no upstreams")))?;
 
-        let peer = HttpPeer::new(
+        let mut peer = HttpPeer::new(
             (upstream.host.as_str(), upstream.port),
             upstream.use_tls,
             upstream.sni.clone(),
         );
 
+        /*
+         * PROTOCOL PRECEDENCE (highest to lowest):
+         *
+         * 1. WebSocket: HTTP/1.1 only
+         * 2. gRPC: HTTP/2 only (TLS required)
+         * 3. Default: Pingora defaults
+         */
+
+        if ctx.is_upgrade_req {
+            // WebSockets MUST be HTTP/1.1
+            peer.options.set_http_version(1, 1);
+        } else if ctx.is_grpc {
+            if !upstream.use_tls {
+                return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
+            }
+            peer.options.set_http_version(2, 2);
+        }
+
+        let authority = format!("{}:{}", upstream.host, upstream.port);
+        ctx.upstream_authority = Some(authority);
+
         Ok(Box::new(peer))
     }
 
-    /// Snakeway `on_request` --> Pingora `request_filter`
-    ///
-    /// Intent:
-    /// ACCEPT --> INSPECT --> DECIDE --> (RESPOND | PROXY)
+    /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
         let is_upgrade_req = session.is_upgrade_req();
+
+        let is_grpc = req
+            .headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|ct| ct.starts_with("application/grpc"));
 
         *ctx = RequestCtx::new(
             None,
@@ -84,6 +108,7 @@ impl ProxyHttp for SnakewayGateway {
             is_upgrade_req,
             Vec::new(),
         );
+        ctx.is_grpc = is_grpc;
 
         let state = self.state.load();
 
@@ -153,14 +178,21 @@ impl ProxyHttp for SnakewayGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        if ctx.is_grpc {
+            let authority = ctx
+                .upstream_authority()
+                .ok_or_else(|| Error::new(Custom("missing upstream authority for gRPC")))?;
+
+            upstream.insert_header(header::HOST, authority)?;
+        }
+
         let state = self.state.load();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method.clone());
-                let path = ctx.upstream_path();
-                upstream.set_uri(path.parse().unwrap());
+                upstream.set_uri(ctx.upstream_path().parse().unwrap());
 
                 if ctx.is_upgrade_req {
                     // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
@@ -175,12 +207,7 @@ impl ProxyHttp for SnakewayGateway {
                 Ok(())
             }
 
-            DeviceResult::Respond(_resp) => {
-                // We cannot write a response here; aborting forces Pingora
-                // to unwind and prevents upstream dispatch.
-                tracing::info!("request responded before proxy");
-                Err(Error::new(Custom("respond before proxy")))
-            }
+            DeviceResult::Respond(_resp) => Err(Error::new(Custom("respond before proxy"))),
 
             DeviceResult::Error(err) => {
                 tracing::error!("device error before_proxy: {err}");
@@ -201,14 +228,10 @@ impl ProxyHttp for SnakewayGateway {
     ) -> Result<()> {
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
         let state = self.state.load();
+
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
-
-            DeviceResult::Respond(_resp) => {
-                // Legal here: treat as override of response fields.
-                tracing::debug!("response overridden in after_proxy");
-            }
-
+            DeviceResult::Respond(_) => {}
             DeviceResult::Error(err) => {
                 // Response is already committed; we only record and observe.
                 tracing::warn!("device error after_proxy: {err}");
@@ -223,11 +246,8 @@ impl ProxyHttp for SnakewayGateway {
             // must NOT run for this request.
             ctx.ws_opened = true;
 
-            // Run WS-open hook
-            let ws_ctx = WsCtx::default();
-            DevicePipeline::run_on_ws_open(self.state.load().devices.all(), &ws_ctx);
-
-            return Ok(());
+            // Run WS-open hook.
+            DevicePipeline::run_on_ws_open(self.state.load().devices.all(), &WsCtx::default());
         }
 
         Ok(())
@@ -243,9 +263,9 @@ impl ProxyHttp for SnakewayGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        if ctx.ws_opened {
-            // Do not run on_response devices for WebSockets.
-            // For WebSockets, this is not a real "response."
+        if ctx.ws_opened || ctx.is_grpc {
+            // Do not run on_response devices for WebSockets or gRPC.
+            // For WebSockets and gRPC, this is not a real "response."
             // It is a protocol switch.
             return Ok(());
         }
@@ -254,13 +274,9 @@ impl ProxyHttp for SnakewayGateway {
         let state = self.state.load();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
-
-            DeviceResult::Respond(_resp) => {
-                tracing::debug!("response overridden in on_response");
-            }
-
+            DeviceResult::Respond(_) => {}
             DeviceResult::Error(err) => {
-                // Too late to change anything; log + metric only
+                // Too late to change anything; logs and metrics only allowed here.
                 tracing::warn!("device error on_response: {err}");
             }
         }
@@ -268,6 +284,7 @@ impl ProxyHttp for SnakewayGateway {
         upstream.set_status(resp_ctx.status)?;
         Ok(())
     }
+
     async fn logging(&self, _session: &mut Session, _e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,
@@ -276,9 +293,10 @@ impl ProxyHttp for SnakewayGateway {
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.6.0.
         if ctx.ws_opened {
-            // Call device on_ws_close hook for WebSockets.
-            let ws_close_ctx = WsCloseCtx::default();
-            DevicePipeline::run_on_ws_close(self.state.load().devices.all(), &ws_close_ctx);
+            DevicePipeline::run_on_ws_close(
+                self.state.load().devices.all(),
+                &WsCloseCtx::default(),
+            );
         }
     }
 }

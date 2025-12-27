@@ -5,10 +5,15 @@ pub struct ServiceConfig {
     pub name: String,
 
     /// Load balancing strategy
+    #[serde(default = "default_strategy")]
     pub strategy: Strategy,
 
     #[serde(default)]
     pub upstream: Vec<UpstreamConfig>,
+}
+
+fn default_strategy() -> Strategy {
+    Strategy::Failover
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

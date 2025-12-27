@@ -1,5 +1,5 @@
 use crate::harness::config::patch_ports;
-use crate::harness::upstream::start_upstream;
+use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_ws_upstream};
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
@@ -18,12 +18,10 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    /// Start a Snakeway instance using a TOML *template* fixture.
-    ///
-    /// Ports are allocated dynamically and injected into the config.
-    ///
-    /// This function is fully parallel-safe and nextest-safe.
-    pub fn start(fixture: &str) -> Self {
+    fn start_with<F>(fixture: &str, start_upstream: F) -> Self
+    where
+        F: Fn(u16),
+    {
         // Initialize tracing (this must happen first).
         let events = events();
         init_test_tracing(events.clone());
@@ -106,6 +104,18 @@ impl TestServer {
             .expect("failed to build client");
 
         Self { base_urls, client }
+    }
+
+    pub fn start_with_ws_upstream(fixture: &str) -> Self {
+        Self::start_with(fixture, start_ws_upstream)
+    }
+
+    pub fn start_with_grpc_upstream(fixture: &str) -> Self {
+        Self::start_with(fixture, start_grpc_upstream)
+    }
+
+    pub fn start_with_http_upstream(fixture: &str) -> Self {
+        Self::start_with(fixture, start_http_upstream)
     }
 
     /// Convenience helper for GET requests.

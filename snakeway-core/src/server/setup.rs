@@ -6,6 +6,7 @@ use crate::server::reload::ReloadHandle;
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
+use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::server::Server;
 use pingora::server::configuration::ServerConf;
@@ -93,12 +94,14 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
 ) -> Result<Server, Error> {
+    let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
+    conf.ca_file = config.server.ca_file.clone();
+
     let mut server = if let Some(threads) = config.server.threads {
         tracing::debug!(
             threads,
             "Creating Pingora server with overridden worker threads"
         );
-        let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
         conf.threads = threads;
         Server::new_with_opt_and_conf(None, conf)
     } else {
@@ -121,10 +124,15 @@ pub fn build_pingora_server(
 
     // Build HTTP proxy service from Pingora.
     let mut svc = http_proxy_service(&server.configuration, gateway);
+
     for listener in &config.listeners {
         match &listener.tls {
             Some(tls) => {
-                svc.add_tls(&listener.addr.to_string(), &tls.cert, &tls.key)?;
+                let mut tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
+                if listener.enable_http2 {
+                    tls_settings.enable_h2();
+                }
+                svc.add_tls_with_settings(&listener.addr.to_string(), None, tls_settings);
             }
             None => {
                 svc.add_tcp(&listener.addr.to_string());

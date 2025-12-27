@@ -31,7 +31,13 @@ pub struct RequestCtx {
     /// Was a websocket connection opened?
     pub ws_opened: bool,
 
-    /// Request-scoped typed extensions (NOT forwarded, NOT logged by default)
+    /// Is it a gRPC request?
+    pub is_grpc: bool,
+
+    /// Upstream authority for HTTP/2 requests.
+    pub upstream_authority: Option<String>,
+
+    /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
     pub extensions: Extensions,
 
     #[allow(dead_code)]
@@ -61,6 +67,8 @@ impl RequestCtx {
             peer_ip,
             is_upgrade_req,
             ws_opened: false,
+            is_grpc: false,
+            upstream_authority: None,
             extensions: Extensions::new(),
             body,
         }
@@ -69,5 +77,13 @@ impl RequestCtx {
     /// Path used when proxying upstream
     pub fn upstream_path(&self) -> &str {
         self.upstream_path.as_deref().unwrap_or(&self.route_path)
+    }
+
+    /// Returns the upstream authority (host:port) to use for HTTP/2 requests.
+    ///
+    /// This is typically set when proxying to HTTP/2 backends that require
+    /// a specific :authority pseudo-header value.
+    pub fn upstream_authority(&self) -> Option<&str> {
+        self.upstream_authority.as_deref()
     }
 }
