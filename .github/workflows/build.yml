@@ -21,9 +21,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install just
-        uses: extractions/setup-just@v2
-
       - name: cargo fmt
         run: cargo fmt -- --check
 
@@ -82,17 +79,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
 
+      - name: Verify downloaded artifacts
+        run: |
+          set -e
+          ls -lh dist
+          ls -lh dist/snakeway-x86_64-unknown-linux-musl/snakeway
+          ls -lh dist/snakeway-aarch64-unknown-linux-musl/snakeway
+
+      - name: Rename release binaries
+        run: |
+          set -e
+          TAG="${{ github.ref_name }}"
+          mv dist/snakeway-x86_64-unknown-linux-musl/snakeway \
+             dist/snakeway-${TAG}-x86_64-linux-musl
+          mv dist/snakeway-aarch64-unknown-linux-musl/snakeway \
+             dist/snakeway-${TAG}-aarch64-linux-musl
+
+      - name: Generate SHA256 checksums
+        run: |
+          set -e
+          cd dist
+          shasum -a 256 snakeway-* > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/snakeway-x86_64-unknown-linux-musl/snakeway
-            dist/snakeway-aarch64-unknown-linux-musl/snakeway
+            dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl
+            dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl
+            dist/SHA256SUMS
