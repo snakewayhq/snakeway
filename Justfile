@@ -166,10 +166,13 @@ lint: fmt clippy
 # TESTS
 # -----------------------------------------------------------------------------
 
+generate-integration-test-certs:
+    [ ! -d "integration-tests/certs" ] && ./gen-test-certs.sh || true
+
 test:
     cargo nextest run
 
-integration-test:
+integration-test: generate-integration-test-certs
     cargo nextest run -p integration-tests
 
 # -----------------------------------------------------------------------------
