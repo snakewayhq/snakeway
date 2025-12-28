@@ -3784,7 +3784,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
- "serde_yaml 0.8.26",
+ "serde_yaml 0.9.34+deprecated",
  "thiserror 2.0.17",
  "tokio",
  "toml",
