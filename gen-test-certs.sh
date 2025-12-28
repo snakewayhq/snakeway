@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-
-# Test-only certificates for integration-tests.
-# IMPORTANT: NOT for production use.
-
 set -euo pipefail
 
 CERT_DIR="integration-tests/certs"
@@ -10,61 +6,71 @@ DAYS=3650
 
 mkdir -p "${CERT_DIR}"
 
-echo "→ Generating Snakeway test certificates in ${CERT_DIR}"
+echo "Generating Snakeway test certificates in ${CERT_DIR}"
 
 #------------------------------------------------------------------------------
-# Generate CA key
+# CA config
 #------------------------------------------------------------------------------
+cat > "${CERT_DIR}/ca.cnf" <<'EOF'
+[req]
+prompt = no
+distinguished_name = dn
+x509_extensions = v3_ca
+
+[dn]
+CN = Snakeway Dev Root CA (DO NOT TRUST IN PROD)
+
+[v3_ca]
+basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+EOF
+
+# Generate CA key
 openssl genrsa -out "${CERT_DIR}/ca.key" 4096
 
-#------------------------------------------------------------------------------
 # Generate CA cert
-#------------------------------------------------------------------------------
 openssl req -x509 -new -nodes \
   -key "${CERT_DIR}/ca.key" \
   -sha256 \
   -days "${DAYS}" \
   -out "${CERT_DIR}/ca.pem" \
-  -subj "/CN=Snakeway Test CA"
+  -config "${CERT_DIR}/ca.cnf"
 
 #------------------------------------------------------------------------------
-# Generate server key
-#------------------------------------------------------------------------------
-openssl genrsa -out "${CERT_DIR}/server.key" 4096
-
-#------------------------------------------------------------------------------
-# OpenSSL config for SANs
+# Server (leaf) config
 #------------------------------------------------------------------------------
 cat > "${CERT_DIR}/server.cnf" <<'EOF'
 [req]
-default_bits       = 4096
-prompt             = no
-default_md         = sha256
+prompt = no
 distinguished_name = dn
-req_extensions     = req_ext
+req_extensions = v3_req
 
 [dn]
 CN = localhost
 
-[req_ext]
+[v3_req]
+basicConstraints = critical, CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
+subjectKeyIdentifier = hash
 
 [alt_names]
 DNS.1 = localhost
 IP.1  = 127.0.0.1
 EOF
 
-#------------------------------------------------------------------------------
+# Generate server key
+openssl genrsa -out "${CERT_DIR}/server.key" 4096
+
 # Create CSR
-#------------------------------------------------------------------------------
 openssl req -new \
   -key "${CERT_DIR}/server.key" \
   -out "${CERT_DIR}/server.csr" \
   -config "${CERT_DIR}/server.cnf"
 
-#------------------------------------------------------------------------------
 # Sign server cert with CA
-#------------------------------------------------------------------------------
 openssl x509 -req \
   -in "${CERT_DIR}/server.csr" \
   -CA "${CERT_DIR}/ca.pem" \
@@ -74,16 +80,21 @@ openssl x509 -req \
   -days "${DAYS}" \
   -sha256 \
   -extfile "${CERT_DIR}/server.cnf" \
-  -extensions req_ext
+  -extensions v3_req
 
-#------------------------------------------------------------------------------
+# Verify output exists
+if [[ ! -f "${CERT_DIR}/server.pem" ]]; then
+  echo "❌ ERROR: server.pem was not generated"
+  exit 1
+fi
+
 # Cleanup
-#------------------------------------------------------------------------------
 rm -f \
   "${CERT_DIR}/server.csr" \
   "${CERT_DIR}/server.cnf" \
+  "${CERT_DIR}/ca.cnf" \
   "${CERT_DIR}/ca.srl"
 
-echo "✓ Test certificates generated"
+echo "✔ Test certificates generated"
 echo "  CA:     ${CERT_DIR}/ca.pem"
 echo "  Server: ${CERT_DIR}/server.pem"
