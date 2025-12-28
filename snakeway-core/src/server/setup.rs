@@ -32,7 +32,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     // Build initial runtime state (reloadable)
     let initial_state = build_runtime_state(&config)?;
     let state = Arc::new(ArcSwap::from_pointee(initial_state));
-    let traffic = TrafficManager::new(TrafficSnapshot::default());
+    let traffic = TrafficManager::new(TrafficSnapshot::from_runtime(state.load().as_ref()));
 
     // Control-plane runtime (signals + reload only)
     let control_rt = Builder::new_multi_thread()
