@@ -2,11 +2,11 @@ use crate::conf::types::Strategy;
 use crate::traffic::{algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy};
 use once_cell::sync::Lazy;
 
-static FAILOVER: Lazy<Failover> = Lazy::new(|| Failover::default());
-static HASH: Lazy<Hash> = Lazy::new(|| Hash::default());
-static LEAST_CONNECTIONS: Lazy<LeastConnections> = Lazy::new(|| LeastConnections::default());
-static RANDOM: Lazy<Random> = Lazy::new(|| Random::default());
-static ROUND_ROBIN: Lazy<RoundRobin> = Lazy::new(|| RoundRobin::default());
+static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
+static HASH: Lazy<Hash> = Lazy::new(Hash::default);
+static LEAST_CONNECTIONS: Lazy<LeastConnections> = Lazy::new(LeastConnections::default);
+static RANDOM: Lazy<Random> = Lazy::new(Random::default);
+static ROUND_ROBIN: Lazy<RoundRobin> = Lazy::new(RoundRobin::default);
 
 #[derive(Debug, Default)]
 pub struct TrafficDirector;

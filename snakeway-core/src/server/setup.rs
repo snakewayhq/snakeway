@@ -125,7 +125,7 @@ pub fn build_pingora_server(
     let gateway = SnakewayGateway {
         state: state.clone(),
         traffic_manager: traffic,
-        traffic_director: TrafficDirector::default(),
+        traffic_director: TrafficDirector,
     };
 
     // Build HTTP proxy service from Pingora.

@@ -7,6 +7,7 @@ pub mod http_event;
 pub mod logging;
 pub mod route;
 pub mod server;
+pub mod traffic;
+
 #[cfg(feature = "static_files")]
 pub mod static_files;
-pub(crate) mod traffic;

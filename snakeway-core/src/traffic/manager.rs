@@ -2,8 +2,15 @@ use crate::traffic::snapshot::TrafficSnapshot;
 use arc_swap::ArcSwap;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct TrafficManager {
     snapshot: ArcSwap<TrafficSnapshot>,
+}
+
+impl Default for TrafficManager {
+    fn default() -> Self {
+        Self::new(TrafficSnapshot::default())
+    }
 }
 
 impl TrafficManager {
