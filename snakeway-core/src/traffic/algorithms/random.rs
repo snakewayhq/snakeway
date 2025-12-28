@@ -1,6 +1,6 @@
 use crate::ctx::RequestCtx;
 use crate::traffic::{decision::*, snapshot::*, strategy::TrafficStrategy};
-use rand::{Rng, thread_rng};
+use rand::{Rng, rng};
 
 #[derive(Debug, Default)]
 pub struct Random {}
@@ -11,11 +11,11 @@ impl TrafficStrategy for Random {
             return None;
         }
 
-        let idx = thread_rng().gen_range(0..healthy.len());
-        let upstream = &healthy[idx];
+        let idx = rng().random_range(0..healthy.len());
+        let upstream_snapshot = &healthy[idx];
 
         Some(TrafficDecision {
-            upstream_id: upstream.endpoint.id,
+            upstream_id: upstream_snapshot.endpoint.id,
             reason: DecisionReason::Random,
             protocol: None,
         })

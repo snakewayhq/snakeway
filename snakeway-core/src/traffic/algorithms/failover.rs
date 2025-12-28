@@ -5,7 +5,17 @@ use crate::traffic::{decision::*, snapshot::*, strategy::TrafficStrategy};
 pub struct Failover {}
 
 impl TrafficStrategy for Failover {
-    fn decide(&self, _req: &RequestCtx, _healthy: &[UpstreamSnapshot]) -> Option<TrafficDecision> {
-        todo!("implement failover")
+    fn decide(&self, _req: &RequestCtx, healthy: &[UpstreamSnapshot]) -> Option<TrafficDecision> {
+        if healthy.is_empty() {
+            return None;
+        }
+
+        let healthy = healthy.first()?;
+
+        Some(TrafficDecision {
+            upstream_id: healthy.endpoint.id,
+            reason: DecisionReason::Failover,
+            protocol: None,
+        })
     }
 }

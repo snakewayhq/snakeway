@@ -26,10 +26,10 @@ impl TrafficStrategy for RoundRobin {
         }
 
         let idx = self.counter.fetch_add(1, Ordering::Relaxed) % healthy.len();
-        let upstream = &healthy[idx];
+        let upstream_snapshot = &healthy[idx];
 
         Some(TrafficDecision {
-            upstream_id: upstream.endpoint.id,
+            upstream_id: upstream_snapshot.endpoint.id,
             reason: DecisionReason::RoundRobin,
             protocol: None,
         })
