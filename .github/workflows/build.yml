@@ -104,7 +104,7 @@ jobs:
         run: |
           set -e
           cd dist
-          shasum -a 256 snakeway-* > SHA256SUMS
+          shasum -a 256 snakeway-v*-linux-musl > SHA256SUMS
           cat SHA256SUMS
 
       - name: Publish GitHub Release
