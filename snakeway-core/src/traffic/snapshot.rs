@@ -1,5 +1,5 @@
 use crate::conf::types::Strategy;
-use crate::server::UpstreamRuntime;
+use crate::server::{RuntimeState, UpstreamRuntime};
 use crate::traffic::types::*;
 use std::collections::HashMap;
 
@@ -21,4 +21,34 @@ pub struct ServiceSnapshot {
 #[derive(Debug, Clone, Default)]
 pub struct TrafficSnapshot {
     pub services: HashMap<ServiceId, ServiceSnapshot>,
+}
+
+impl TrafficSnapshot {
+    pub fn from_runtime(state: &RuntimeState) -> Self {
+        let mut services = HashMap::new();
+
+        for (name, svc) in &state.services {
+            let upstreams = svc
+                .upstreams
+                .iter()
+                .map(|u| UpstreamSnapshot {
+                    endpoint: u.clone(),
+                    latency: None,
+                    connections: ConnectionStats { active: 0 },
+                    health: HealthStatus { healthy: true },
+                })
+                .collect();
+
+            services.insert(
+                ServiceId(name.clone()),
+                ServiceSnapshot {
+                    service_id: ServiceId(name.clone()),
+                    strategy: svc.strategy.clone(),
+                    upstreams,
+                },
+            );
+        }
+
+        TrafficSnapshot { services }
+    }
 }
