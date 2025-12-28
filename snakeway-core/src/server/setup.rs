@@ -4,6 +4,7 @@ use crate::server::pid;
 use crate::server::proxy::SnakewayGateway;
 use crate::server::reload::ReloadHandle;
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
+use crate::traffic::{TrafficDirector, TrafficManager, TrafficSnapshot};
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
 use pingora::listeners::tls::TlsSettings;
@@ -31,6 +32,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     // Build initial runtime state (reloadable)
     let initial_state = build_runtime_state(&config)?;
     let state = Arc::new(ArcSwap::from_pointee(initial_state));
+    let traffic = TrafficManager::new(TrafficSnapshot::default());
 
     // Control-plane runtime (signals + reload only)
     let control_rt = Builder::new_multi_thread()
@@ -63,6 +65,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
                 let _ = reload_rx.changed().await;
                 tracing::info!("Reload requested");
 
+                // todo: must also rebuild TrafficSnapshot and call call traffic.update()
                 match reload_runtime_state(&config_path, &state).await {
                     Ok(_) => tracing::info!("reload successful"),
                     Err(e) => tracing::error!(error = %e, "reload failed"),
@@ -72,7 +75,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     });
 
     // Build Pingora server (Pingora owns its own runtimes)
-    let server = build_pingora_server(config.clone(), state)?;
+    let server = build_pingora_server(config.clone(), state, traffic)?;
 
     // Ensure pid file cleanup on shutdown
     if let Some(pid_file) = config.server.pid_file.clone() {
@@ -93,6 +96,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
 pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
+    traffic: TrafficManager,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
     conf.ca_file = config.server.ca_file.clone();
@@ -120,6 +124,8 @@ pub fn build_pingora_server(
     // Build gateway
     let gateway = SnakewayGateway {
         state: state.clone(),
+        traffic_manager: traffic,
+        traffic_director: TrafficDirector::default(),
     };
 
     // Build HTTP proxy service from Pingora.

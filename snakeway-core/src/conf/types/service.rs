@@ -22,6 +22,8 @@ pub enum Strategy {
     Failover,
     RoundRobin,
     LeastConnections,
+    Hash,
+    Random,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

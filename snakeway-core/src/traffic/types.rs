@@ -1,21 +1,12 @@
 use std::time::Duration;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UpstreamId(pub u32);
-
-#[derive(Debug, Clone)]
-pub struct UpstreamEndpoint {
-    pub id: UpstreamId,
-    pub address: String,
-    pub use_tls: bool,
-}
-
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct ServiceId(pub String);
 
 #[derive(Debug, Clone)]
 pub struct LatencyStats {
-    pub exponentially_weighted_moving_average: Duration,
+    /// Exponential weighted moving average of latency
+    pub ewma: Duration,
 }
 
 #[derive(Debug, Clone)]

@@ -4,6 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 use crate::route::{RouteEntry, RouteKind};
 use crate::server::runtime::RuntimeState;
+use crate::traffic::{TrafficDirector, TrafficManager};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -18,6 +19,10 @@ use tokio::io::AsyncReadExt;
 pub struct SnakewayGateway {
     // Runtime state
     pub state: Arc<ArcSwap<RuntimeState>>,
+
+    // Traffic intelligence
+    pub traffic_manager: TrafficManager,
+    pub traffic_director: TrafficDirector,
 }
 
 #[async_trait]
@@ -49,14 +54,32 @@ impl ProxyHttp for SnakewayGateway {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
 
         let state = self.state.load();
+
+        let service_id = crate::traffic::ServiceId(service_name.clone());
+
+        // Get snapshot (cheap, lock-free)
+        let snapshot = self.traffic_manager.snapshot();
+
+        // Ask director for a decision
+        let decision = self
+            .traffic_director
+            .decide(ctx, &snapshot, &service_id)
+            .map_err(|e| {
+                tracing::error!(error = ?e, "traffic decision failed");
+                Error::new(Custom("traffic decision failed"))
+            })?;
+
+        // Resolve decision → concrete upstream
         let service = state
             .services
             .get(service_name)
             .ok_or_else(|| Error::new(Custom("unknown service")))?;
 
         let upstream = service
-            .select_upstream()
-            .ok_or_else(|| Error::new(Custom("no upstreams")))?;
+            .upstreams
+            .iter()
+            .find(|u| u.id == decision.upstream_id)
+            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
 
         let mut peer = HttpPeer::new(
             (upstream.host.as_str(), upstream.port),

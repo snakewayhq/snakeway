@@ -3778,6 +3778,7 @@ dependencies = [
  "maxminddb",
  "mime_guess",
  "nix 0.30.1",
+ "once_cell",
  "percent-encoding",
  "pingora",
  "pingora-http",

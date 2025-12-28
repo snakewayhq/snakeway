@@ -1,5 +1,6 @@
 use crate::conf::types::Strategy;
 use crate::ctx::RequestCtx;
+use crate::server::{UpstreamId, UpstreamRuntime};
 use crate::traffic::{
     decision::{DecisionReason, TrafficDecision},
     director::{TrafficDirector, TrafficError},
@@ -23,12 +24,14 @@ fn dummy_request() -> RequestCtx {
 }
 
 /// Helper: build a healthy upstream snapshot
-fn healthy_upstream(id: u32) -> UpstreamSnapshot {
+fn healthy_upstream(id: u16) -> UpstreamSnapshot {
     UpstreamSnapshot {
-        endpoint: UpstreamEndpoint {
-            id: UpstreamId(id),
-            address: format!("127.0.0.1:{id}"),
+        endpoint: UpstreamRuntime {
+            id: UpstreamId(id as u32),
+            host: "127.0.0.1".to_string(),
+            port: id,
             use_tls: false,
+            sni: "localhost".to_string(),
         },
         latency: Some(LatencyStats {
             ewma: Duration::from_millis(10),
@@ -39,7 +42,7 @@ fn healthy_upstream(id: u32) -> UpstreamSnapshot {
 }
 
 /// Helper: build an unhealthy upstream snapshot
-fn unhealthy_upstream(id: u32) -> UpstreamSnapshot {
+fn unhealthy_upstream(id: u16) -> UpstreamSnapshot {
     let mut u = healthy_upstream(id);
     u.health.healthy = false;
     u
@@ -65,7 +68,7 @@ fn snapshot_with_service(
 
 #[test]
 fn unknown_service_returns_error() {
-    let director = TrafficDirector::default();
+    let director = TrafficDirector;
     let snapshot = TrafficSnapshot {
         services: HashMap::new(),
     };
@@ -77,11 +80,11 @@ fn unknown_service_returns_error() {
 
 #[test]
 fn no_healthy_upstreams_returns_error() {
-    let director = TrafficDirector::default();
-
+    let director = TrafficDirector;
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![unhealthy_upstream(1), unhealthy_upstream(2)],
+        Strategy::RoundRobin,
     );
 
     let result = director.decide(&dummy_request(), &snapshot, &ServiceId("svc".into()));
@@ -91,11 +94,12 @@ fn no_healthy_upstreams_returns_error() {
 
 #[test]
 fn single_healthy_upstream_is_selected() {
-    let director = TrafficDirector::default();
+    let director = TrafficDirector;
 
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![unhealthy_upstream(1), healthy_upstream(2)],
+        Strategy::RoundRobin,
     );
 
     let decision = director
@@ -107,11 +111,12 @@ fn single_healthy_upstream_is_selected() {
 
 #[test]
 fn strategy_decision_is_respected() {
-    let director = TrafficDirector::default();
+    let director = TrafficDirector;
 
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![healthy_upstream(1), healthy_upstream(2)],
+        Strategy::RoundRobin,
     );
 
     let decision = director
@@ -123,23 +128,12 @@ fn strategy_decision_is_respected() {
 
 #[test]
 fn fallback_used_when_strategy_returns_none() {
-    struct NullStrategy;
-
-    impl crate::traffic::strategy::TrafficStrategy for NullStrategy {
-        fn decide(
-            &self,
-            _req: &RequestCtx,
-            _healthy: &[UpstreamSnapshot],
-        ) -> Option<TrafficDecision> {
-            None
-        }
-    }
-
-    let director = TrafficDirector::default();
+    let director = TrafficDirector;
 
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![healthy_upstream(10), healthy_upstream(20)],
+        Strategy::Failover,
     );
 
     let decision = director
