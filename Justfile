@@ -22,7 +22,10 @@ brew-install packages:
     {{ if os() == "macos" { "brew install " + packages } else { "" } }}
 
 install-dev-tools:
-    just brew-install "websocat"
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+    just brew-install "grpcurl go"
+    bun i -g wscat
     cargo install tokio-console samply cargo-nextest
 
 docs:
@@ -90,6 +93,39 @@ run-load-against-static:
 # Generate some spoofed traffic for the identity device
 run-spoofed-traffic:
     k6 run --vus 10 --duration 30s spoof-traffic.js
+
+# Build once, then run (faster restarts)
+build-upstream:
+    @echo "Generate proto code..."
+    cd upstream && ./generate-proto.sh
+    @echo "Starting Go upstream (http, https, ws, wss, grpc)..."
+    cd upstream && go build -o upstream-server .
+
+# Build and run the upstream.
+start-upstream: build-upstream
+    TLS_CERT_FILE=./integration-tests/certs/server.pem TLS_KEY_FILE=./integration-tests/certs/server.key ./upstream/upstream-server
+
+# Check all 5 upstream channels
+sanity-check-upstream:
+    @echo "HTTP:"
+    @curl -s http://localhost:3000/
+
+    @echo "\nHTTPS:"
+    @curl -s --cacert integration-tests/certs/ca.pem https://localhost:3443/
+
+    @echo "\nWS:"
+    @(echo "Hello, websocket." | wscat -c ws://localhost:3000/ws)
+
+    @echo "\nWSS:"
+    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=integration-tests/certs/ca.pem wscat -c wss://localhost:3443/ws)
+
+    @echo "\ngRPC:"
+    @grpcurl \
+      -cacert integration-tests/certs/ca.pem \
+      -proto upstream/users.proto \
+      -d '{"id":"123"}' \
+      localhost:5051 \
+      users.UserService/GetUser
 
 # -----------------------------------------------------------------------------
 # Debugging
@@ -166,13 +202,30 @@ lint: fmt clippy
 # TESTS
 # -----------------------------------------------------------------------------
 
-generate-integration-test-certs:
+# Install Snakeway dev CA into macOS System keychain
+install-dev-ca:
+    @echo "Installing Snakeway dev CA (macOS system trust)…"
+    sudo security add-trusted-cert \
+      -d -r trustRoot \
+      -k /Library/Keychains/System.keychain \
+      integration-tests/certs/ca.pem
+    @echo "✓ Snakeway dev CA installed"
+
+# Remove Snakeway dev CA from macOS System keychain
+uninstall-dev-ca:
+    @echo "Removing Snakeway dev CA from macOS system trust…"
+    sudo security delete-certificate \
+      -c "Snakeway Dev Root CA (DO NOT TRUST IN PROD)" \
+      /Library/Keychains/System.keychain
+    @echo "✓ Snakeway dev CA removed"
+
+generate-dev-certs:
     [ ! -d "integration-tests/certs" ] && ./gen-test-certs.sh || true
 
 test:
     cargo nextest run
 
-integration-test: generate-integration-test-certs
+integration-test: generate-dev-certs
     cargo nextest run -p integration-tests
 
 # -----------------------------------------------------------------------------
