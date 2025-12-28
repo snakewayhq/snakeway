@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package users;
+
+option go_package = "upstream/userspb";
+
+service UserService {
+  rpc GetUser (UserRequest) returns (UserReply);
+}
+
+message UserRequest {
+  string id = 1;
+}
+
+message UserReply {
+  string id = 1;
+}
