@@ -60,7 +60,7 @@ impl ProxyHttp for SnakewayGateway {
         // Get snapshot (cheap, lock-free)
         let snapshot = self.traffic_manager.snapshot();
 
-        // Ask director for a decision
+        // Ask director for a decision.
         let decision = self
             .traffic_director
             .decide(ctx, &snapshot, &service_id)
@@ -69,12 +69,13 @@ impl ProxyHttp for SnakewayGateway {
                 Error::new(Custom("traffic decision failed"))
             })?;
 
-        // Resolve decision → concrete upstream
+        // Grab the service by name.
         let service = state
             .services
             .get(service_name)
             .ok_or_else(|| Error::new(Custom("unknown service")))?;
 
+        // Get the upstream based on the decision from the Traffic Director.
         let upstream = service
             .upstreams
             .iter()
@@ -107,6 +108,11 @@ impl ProxyHttp for SnakewayGateway {
 
         let authority = format!("{}:{}", upstream.host, upstream.port);
         ctx.upstream_authority = Some(authority);
+
+        self.traffic_manager
+            .on_request_start(&service_id, &upstream.id);
+
+        ctx.selected_upstream = Some((service_id, upstream.id));
 
         Ok(Box::new(peer))
     }
@@ -312,6 +318,11 @@ impl ProxyHttp for SnakewayGateway {
     where
         Self::CTX: Send + Sync,
     {
+        if let Some((service_id, upstream_id)) = ctx.selected_upstream.take() {
+            self.traffic_manager
+                .on_request_end(&service_id, &upstream_id);
+        }
+
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.6.0.

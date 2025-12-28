@@ -11,10 +11,12 @@ pub struct LatencyStats {
 
 #[derive(Debug, Clone)]
 pub struct ConnectionStats {
+    /// Active in-flight requests.
     pub active: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct HealthStatus {
+    /// Whether the upstream is considered healthy or not.
     pub healthy: bool,
 }

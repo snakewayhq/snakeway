@@ -1,3 +1,5 @@
+use crate::server::UpstreamId;
+use crate::traffic::ServiceId;
 use http::{Extensions, HeaderMap, Method, Uri};
 use std::net::IpAddr;
 
@@ -40,6 +42,8 @@ pub struct RequestCtx {
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
     pub extensions: Extensions,
 
+    pub selected_upstream: Option<(ServiceId, UpstreamId)>,
+
     #[allow(dead_code)]
     /// Request body
     pub body: Vec<u8>,
@@ -70,6 +74,7 @@ impl RequestCtx {
             is_grpc: false,
             upstream_authority: None,
             extensions: Extensions::new(),
+            selected_upstream: None,
             body,
         }
     }
