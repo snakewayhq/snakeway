@@ -4,7 +4,7 @@ use ahash::RandomState;
 use std::hash::{BuildHasher, Hash, Hasher};
 
 #[derive(Debug, Default)]
-pub struct StickyHash {}
+pub struct StickyHash;
 
 impl StickyHash {
     pub fn hash_to_u64(&self, s: &str) -> u64 {

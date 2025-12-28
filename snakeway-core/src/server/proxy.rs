@@ -4,7 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 use crate::route::{RouteEntry, RouteKind};
 use crate::server::runtime::RuntimeState;
-use crate::traffic::{TrafficDirector, TrafficManager};
+use crate::traffic::{TrafficDirector, TrafficManager, TrafficSnapshot};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -21,7 +21,7 @@ pub struct SnakewayGateway {
     pub state: Arc<ArcSwap<RuntimeState>>,
 
     // Traffic intelligence
-    pub traffic_manager: TrafficManager,
+    pub traffic_manager: Arc<TrafficManager>,
     pub traffic_director: TrafficDirector,
 }
 
@@ -58,6 +58,9 @@ impl ProxyHttp for SnakewayGateway {
         let service_id = crate::traffic::ServiceId(service_name.clone());
 
         // Get snapshot (cheap, lock-free)
+        let base = TrafficSnapshot::from_runtime(state.as_ref());
+        let rebuilt_snapshot = self.traffic_manager.rebuild_snapshot(&base);
+        self.traffic_manager.update(rebuilt_snapshot);
         let snapshot = self.traffic_manager.snapshot();
 
         // Ask director for a decision.

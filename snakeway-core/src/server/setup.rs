@@ -32,7 +32,9 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     // Build initial runtime state (reloadable)
     let initial_state = build_runtime_state(&config)?;
     let state = Arc::new(ArcSwap::from_pointee(initial_state));
-    let traffic = TrafficManager::new(TrafficSnapshot::from_runtime(state.load().as_ref()));
+    let traffic = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
+        state.load().as_ref(),
+    )));
 
     // Control-plane runtime (signals + reload only)
     let control_rt = Builder::new_multi_thread()
@@ -57,6 +59,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
         let mut reload_rx = reload.subscribe();
         let state = state.clone();
         let config_path = config_path.clone();
+        let traffic = Arc::clone(&traffic);
 
         async move {
             tracing::info!("Reload loop started");
@@ -65,9 +68,12 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
                 let _ = reload_rx.changed().await;
                 tracing::info!("Reload requested");
 
-                // todo: must also rebuild TrafficSnapshot and call call traffic.update()
                 match reload_runtime_state(&config_path, &state).await {
-                    Ok(_) => tracing::info!("reload successful"),
+                    Ok(_) => {
+                        tracing::info!("reload successful");
+                        let new_snapshot = TrafficSnapshot::from_runtime(state.load().as_ref());
+                        traffic.update(new_snapshot);
+                    }
                     Err(e) => tracing::error!(error = %e, "reload failed"),
                 }
             }
@@ -75,7 +81,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     });
 
     // Build Pingora server (Pingora owns its own runtimes)
-    let server = build_pingora_server(config.clone(), state, traffic)?;
+    let server = build_pingora_server(config.clone(), state, Arc::clone(&traffic))?;
 
     // Ensure pid file cleanup on shutdown
     if let Some(pid_file) = config.server.pid_file.clone() {
@@ -96,7 +102,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
 pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
-    traffic: TrafficManager,
+    traffic: Arc<TrafficManager>,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
     conf.ca_file = config.server.ca_file.clone();

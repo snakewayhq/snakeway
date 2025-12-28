@@ -78,7 +78,7 @@ impl TestServer {
         // Build the initial runtime state (static for tests).
         let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
         let state = Arc::new(ArcSwap::from_pointee(runtime_state));
-        let traffic_manager = TrafficManager::default();
+        let traffic_manager = Arc::new(TrafficManager::default());
 
         // Build server.
         let server = build_pingora_server(cfg.clone(), state, traffic_manager)
