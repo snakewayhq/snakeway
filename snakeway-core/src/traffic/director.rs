@@ -3,7 +3,7 @@ use crate::traffic::{algorithms::*, decision::*, snapshot::*, strategy::TrafficS
 use once_cell::sync::Lazy;
 
 static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
-static HASH: Lazy<Hash> = Lazy::new(Hash::default);
+static HASH: Lazy<StickyHash> = Lazy::new(StickyHash::default);
 static LEAST_CONNECTIONS: Lazy<LeastConnections> = Lazy::new(LeastConnections::default);
 static RANDOM: Lazy<Random> = Lazy::new(Random::default);
 static ROUND_ROBIN: Lazy<RoundRobin> = Lazy::new(RoundRobin::default);
@@ -40,7 +40,7 @@ impl TrafficDirector {
             Strategy::Failover => &*FAILOVER,
             Strategy::RoundRobin => &*ROUND_ROBIN,
             Strategy::LeastConnections => &*LEAST_CONNECTIONS,
-            Strategy::Hash => &*HASH,
+            Strategy::StickyHash => &*HASH,
             Strategy::Random => &*RANDOM,
         };
 

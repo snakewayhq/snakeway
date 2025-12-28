@@ -2,10 +2,11 @@ use crate::server::UpstreamId;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DecisionReason {
+    Failover,
     RoundRobin,
     LeastConnections,
     Random,
-    Hash,
+    StickyHash,
     ForcedSingle,
 }
 

@@ -22,7 +22,7 @@ pub enum Strategy {
     Failover,
     RoundRobin,
     LeastConnections,
-    Hash,
+    StickyHash,
     Random,
 }
 
