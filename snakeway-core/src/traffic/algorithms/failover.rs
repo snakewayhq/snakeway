@@ -1,11 +1,19 @@
 use crate::ctx::RequestCtx;
-use crate::traffic::{decision::*, snapshot::*, strategy::TrafficStrategy};
+use crate::traffic::{
+    ServiceId, TrafficManager, decision::*, snapshot::*, strategy::TrafficStrategy,
+};
 
 #[derive(Debug, Default)]
 pub struct Failover {}
 
 impl TrafficStrategy for Failover {
-    fn decide(&self, _req: &RequestCtx, healthy: &[UpstreamSnapshot]) -> Option<TrafficDecision> {
+    fn decide(
+        &self,
+        _req: &RequestCtx,
+        _service_id: &ServiceId,
+        healthy: &[UpstreamSnapshot],
+        _traffic_manager: &TrafficManager,
+    ) -> Option<TrafficDecision> {
         if healthy.is_empty() {
             return None;
         }

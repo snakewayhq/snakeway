@@ -4,7 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 use crate::route::{RouteEntry, RouteKind};
 use crate::server::runtime::RuntimeState;
-use crate::traffic::{TrafficDirector, TrafficManager, TrafficSnapshot};
+use crate::traffic::{TrafficDirector, TrafficManager};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -63,7 +63,7 @@ impl ProxyHttp for SnakewayGateway {
         // Ask director for a decision.
         let decision = self
             .traffic_director
-            .decide(ctx, &snapshot, &service_id)
+            .decide(ctx, &snapshot, &service_id, &self.traffic_manager)
             .map_err(|e| {
                 tracing::error!(error = ?e, "traffic decision failed");
                 Error::new(Custom("traffic decision failed"))

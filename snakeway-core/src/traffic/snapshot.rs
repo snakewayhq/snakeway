@@ -7,7 +7,6 @@ use std::collections::HashMap;
 pub struct UpstreamSnapshot {
     pub endpoint: UpstreamRuntime,
     pub latency: Option<LatencyStats>,
-    pub connections: ConnectionStats,
     pub health: HealthStatus,
 }
 
@@ -38,7 +37,6 @@ impl TrafficSnapshot {
                 .map(|u| UpstreamSnapshot {
                     endpoint: u.clone(),
                     latency: None,
-                    connections: ConnectionStats { active: 0 },
                     health: HealthStatus { healthy: true },
                 })
                 .collect();

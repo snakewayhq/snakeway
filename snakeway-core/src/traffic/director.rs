@@ -1,5 +1,7 @@
 use crate::conf::types::LoadBalancingStrategy;
-use crate::traffic::{algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy};
+use crate::traffic::{
+    TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
+};
 use once_cell::sync::Lazy;
 
 static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
@@ -17,6 +19,7 @@ impl TrafficDirector {
         req: &crate::ctx::RequestCtx,
         snapshot: &TrafficSnapshot,
         service_id: &crate::traffic::types::ServiceId,
+        traffic_manager: &TrafficManager,
     ) -> Result<TrafficDecision, TrafficError> {
         let service = snapshot
             .services
@@ -44,7 +47,7 @@ impl TrafficDirector {
             LoadBalancingStrategy::Random => &*RANDOM,
         };
 
-        if let Some(decision) = strategy.decide(req, &healthy) {
+        if let Some(decision) = strategy.decide(req, service_id, &healthy, traffic_manager) {
             return Ok(decision);
         }
 

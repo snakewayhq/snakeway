@@ -1,6 +1,7 @@
 use crate::ctx::RequestCtx;
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::traffic::{
+    ServiceId, TrafficManager,
     decision::{DecisionReason, TrafficDecision},
     snapshot::UpstreamSnapshot,
     strategy::TrafficStrategy,
@@ -63,7 +64,13 @@ impl StickyHash {
 }
 
 impl TrafficStrategy for StickyHash {
-    fn decide(&self, req: &RequestCtx, healthy: &[UpstreamSnapshot]) -> Option<TrafficDecision> {
+    fn decide(
+        &self,
+        req: &RequestCtx,
+        _service_id: &ServiceId,
+        healthy: &[UpstreamSnapshot],
+        _traffic_manager: &TrafficManager,
+    ) -> Option<TrafficDecision> {
         if healthy.is_empty() {
             return None;
         }

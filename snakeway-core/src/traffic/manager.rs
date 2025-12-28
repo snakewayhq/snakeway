@@ -58,4 +58,15 @@ impl TrafficManager {
             }
         }
     }
+
+    /// Helper to get the active requests count for a specific upstream.
+    /// Returns 0 if the upstream is not found.
+    pub fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+        let key = (service_id.clone(), *upstream_id);
+
+        self.active_requests
+            .get(&key)
+            .map(|c| c.load(Ordering::Relaxed))
+            .unwrap_or(0)
+    }
 }
