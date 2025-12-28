@@ -3,8 +3,9 @@ use crate::traffic::ServiceId;
 use crate::traffic::snapshot::TrafficSnapshot;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 
 #[derive(Debug)]
 pub struct TrafficManager {
@@ -12,6 +13,9 @@ pub struct TrafficManager {
 
     /// Live per-upstream counters (hot path)
     active_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
+
+    /// Per-service round-robin cursors
+    rr_cursors: DashMap<ServiceId, AtomicUsize>,
 }
 
 impl Default for TrafficManager {
@@ -25,6 +29,7 @@ impl TrafficManager {
         Self {
             snapshot: ArcSwap::from_pointee(initial),
             active_requests: DashMap::new(),
+            rr_cursors: DashMap::new(),
         }
     }
 
@@ -33,6 +38,26 @@ impl TrafficManager {
     }
 
     pub fn update(&self, new_snapshot: TrafficSnapshot) {
+        // Extract valid service IDs.
+        let valid_services: HashSet<ServiceId> = new_snapshot.services.keys().cloned().collect();
+
+        // Cleanup round-robin cursors.
+        self.rr_cursors
+            .retain(|service_id, _| valid_services.contains(service_id));
+
+        // Clean active request counters.
+        self.active_requests.retain(|(service_id, upstream_id), _| {
+            if let Some(service) = new_snapshot.services.get(service_id) {
+                service
+                    .upstreams
+                    .iter()
+                    .any(|u| u.endpoint.id == *upstream_id)
+            } else {
+                false
+            }
+        });
+
+        // Atomically publish snapshot
         self.snapshot.store(Arc::new(new_snapshot));
     }
 
@@ -68,5 +93,25 @@ impl TrafficManager {
             .get(&key)
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
+    }
+
+    /// Gets the next round-robin index for the specified service.
+    ///
+    /// This method maintains a per-service cursor that increments atomically on each call,
+    /// ensuring fair distribution of requests across upstreams in a round-robin fashion.
+    ///
+    /// # Arguments
+    /// * `service_id` - The service identifier to get the cursor for
+    /// * `modulo` - The number of upstreams to distribute across (returns index % modulo)
+    ///
+    /// # Returns
+    /// The next index in the round-robin sequence, wrapped by the modulo value
+    pub fn next_rr_index(&self, service_id: &ServiceId, modulo: usize) -> usize {
+        let cursor = self
+            .rr_cursors
+            .entry(service_id.clone())
+            .or_insert_with(|| AtomicUsize::new(0));
+
+        cursor.fetch_add(1, Ordering::Relaxed) % modulo
     }
 }
