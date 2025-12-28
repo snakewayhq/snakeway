@@ -24,10 +24,14 @@ pub struct ServiceRuntime {
     pub upstreams: Vec<UpstreamRuntime>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct UpstreamId(pub u32);
 
-pub fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
+// Fixed-seed ahash:
+// - deterministic across restarts
+// - fast
+// - not used for security
+fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 
     let mut hasher = HASHER.build_hasher();

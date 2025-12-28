@@ -14,9 +14,12 @@ impl TrafficStrategy for LeastConnections {
         healthy: &[UpstreamSnapshot],
         traffic_manager: &TrafficManager,
     ) -> Option<TrafficDecision> {
-        let upstream = healthy
-            .iter()
-            .min_by_key(|u| traffic_manager.active_requests(&service_id, &u.endpoint.id))?;
+        let upstream = healthy.iter().min_by_key(|u| {
+            (
+                traffic_manager.active_requests(service_id, &u.endpoint.id),
+                u.endpoint.id, // Deterministic tie-break.
+            )
+        })?;
 
         Some(TrafficDecision {
             upstream_id: upstream.endpoint.id,
