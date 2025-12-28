@@ -2,10 +2,12 @@ use crate::conf::types::{LoadBalancingStrategy, RouteConfig, RouteTarget, Servic
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::{RouteKind, Router};
+use ahash::RandomState;
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
 use std::collections::HashMap;
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -24,6 +26,15 @@ pub struct ServiceRuntime {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UpstreamId(pub u32);
+
+pub fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
+    static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
+
+    let mut hasher = HASHER.build_hasher();
+    (host, port).hash(&mut hasher);
+
+    UpstreamId(hasher.finish() as u32)
+}
 
 #[derive(Debug, Clone)]
 pub struct UpstreamRuntime {
@@ -85,10 +96,8 @@ fn build_runtime_services(
         let upstreams = svc
             .upstream
             .iter()
-            .enumerate()
-            .map(|(idx, u)| {
-                let mut rt = parse_upstream_url(&u.url)?;
-                rt.id = UpstreamId(idx as u32);
+            .map(|u| {
+                let rt = parse_upstream_url(&u.url)?;
                 Ok(rt)
             })
             .collect::<Result<Vec<_>>>()?;
@@ -161,7 +170,7 @@ fn parse_upstream_url(raw: &str) -> Result<UpstreamRuntime> {
     let sni = host.clone();
 
     Ok(UpstreamRuntime {
-        id: UpstreamId(0), // placeholder, overwritten by builder
+        id: make_upstream_id(&host, port),
         host,
         port,
         use_tls,
