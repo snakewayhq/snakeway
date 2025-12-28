@@ -58,9 +58,6 @@ impl ProxyHttp for SnakewayGateway {
         let service_id = crate::traffic::ServiceId(service_name.clone());
 
         // Get snapshot (cheap, lock-free)
-        let base = TrafficSnapshot::from_runtime(state.as_ref());
-        let rebuilt_snapshot = self.traffic_manager.rebuild_snapshot(&base);
-        self.traffic_manager.update(rebuilt_snapshot);
         let snapshot = self.traffic_manager.snapshot();
 
         // Ask director for a decision.

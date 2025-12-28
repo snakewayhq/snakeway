@@ -32,27 +32,6 @@ impl TrafficManager {
         self.snapshot.load_full()
     }
 
-    pub fn rebuild_snapshot(&self, base: &TrafficSnapshot) -> TrafficSnapshot {
-        let mut new = base.clone();
-
-        for entry in self.active_requests.iter() {
-            let (service_id, upstream_id) = entry.key();
-            let counter = entry.value();
-
-            if let Some(service) = new.services.get_mut(service_id) {
-                if let Some(upstream) = service
-                    .upstreams
-                    .iter_mut()
-                    .find(|u| u.endpoint.id == *upstream_id)
-                {
-                    upstream.connections.active = counter.load(Ordering::Relaxed);
-                }
-            }
-        }
-
-        new
-    }
-
     pub fn update(&self, new_snapshot: TrafficSnapshot) {
         self.snapshot.store(Arc::new(new_snapshot));
     }

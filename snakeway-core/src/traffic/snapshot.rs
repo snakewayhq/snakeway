@@ -18,6 +18,10 @@ pub struct ServiceSnapshot {
     pub upstreams: Vec<UpstreamSnapshot>,
 }
 
+/// Immutable, control-plane snapshot of traffic topology and health.
+///
+/// Safe to read from the request hot path.
+/// Updated only by reload, health checks, or discovery.
 #[derive(Debug, Clone, Default)]
 pub struct TrafficSnapshot {
     pub services: HashMap<ServiceId, ServiceSnapshot>,
