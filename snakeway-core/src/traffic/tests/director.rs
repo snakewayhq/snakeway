@@ -1,4 +1,4 @@
-use crate::conf::types::Strategy;
+use crate::conf::types::LoadBalancingStrategy;
 use crate::ctx::RequestCtx;
 use crate::server::{UpstreamId, UpstreamRuntime};
 use crate::traffic::{
@@ -52,7 +52,7 @@ fn unhealthy_upstream(id: u16) -> UpstreamSnapshot {
 fn snapshot_with_service(
     service_id: ServiceId,
     upstreams: Vec<UpstreamSnapshot>,
-    strategy: Strategy,
+    strategy: LoadBalancingStrategy,
 ) -> TrafficSnapshot {
     let service = ServiceSnapshot {
         service_id: service_id.clone(),
@@ -84,7 +84,7 @@ fn no_healthy_upstreams_returns_error() {
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![unhealthy_upstream(1), unhealthy_upstream(2)],
-        Strategy::RoundRobin,
+        LoadBalancingStrategy::RoundRobin,
     );
 
     let result = director.decide(&dummy_request(), &snapshot, &ServiceId("svc".into()));
@@ -99,7 +99,7 @@ fn single_healthy_upstream_is_selected() {
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![unhealthy_upstream(1), healthy_upstream(2)],
-        Strategy::RoundRobin,
+        LoadBalancingStrategy::RoundRobin,
     );
 
     let decision = director
@@ -116,7 +116,7 @@ fn strategy_decision_is_respected() {
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![healthy_upstream(1), healthy_upstream(2)],
-        Strategy::RoundRobin,
+        LoadBalancingStrategy::RoundRobin,
     );
 
     let decision = director
@@ -133,7 +133,7 @@ fn fallback_used_when_strategy_returns_none() {
     let snapshot = snapshot_with_service(
         ServiceId("svc".into()),
         vec![healthy_upstream(10), healthy_upstream(20)],
-        Strategy::Failover,
+        LoadBalancingStrategy::Failover,
     );
 
     let decision = director

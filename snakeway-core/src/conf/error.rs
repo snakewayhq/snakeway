@@ -73,7 +73,7 @@ pub enum ConfigError {
     EmptyService { service: String },
 
     #[error("invalid load balancing strategy '{strategy}' for service '{service}'")]
-    InvalidStrategy { service: String, strategy: String },
+    InvalidLoadBalancingStrategy { service: String, strategy: String },
 }
 
 impl ConfigError {

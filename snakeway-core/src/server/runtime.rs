@@ -1,4 +1,4 @@
-use crate::conf::types::{RouteConfig, RouteTarget, ServiceConfig, Strategy};
+use crate::conf::types::{LoadBalancingStrategy, RouteConfig, RouteTarget, ServiceConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::{RouteKind, Router};
@@ -18,7 +18,7 @@ pub struct RuntimeState {
 /// ServiceRuntime encapsulates the state of a service, including its upstream(s) and load balancing strategy.
 /// It is not just a collection of data, but also a behavioral unit distinct from RuntimeState.
 pub struct ServiceRuntime {
-    pub strategy: Strategy,
+    pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamRuntime>,
 }
 

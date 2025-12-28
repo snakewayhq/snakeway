@@ -1,4 +1,4 @@
-use crate::conf::types::Strategy;
+use crate::conf::types::LoadBalancingStrategy;
 use crate::traffic::{algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy};
 use once_cell::sync::Lazy;
 
@@ -37,11 +37,11 @@ impl TrafficDirector {
 
         // Delegate to strategy
         let strategy: &dyn TrafficStrategy = match service.strategy {
-            Strategy::Failover => &*FAILOVER,
-            Strategy::RoundRobin => &*ROUND_ROBIN,
-            Strategy::LeastConnections => &*LEAST_CONNECTIONS,
-            Strategy::StickyHash => &*HASH,
-            Strategy::Random => &*RANDOM,
+            LoadBalancingStrategy::Failover => &*FAILOVER,
+            LoadBalancingStrategy::RoundRobin => &*ROUND_ROBIN,
+            LoadBalancingStrategy::LeastConnections => &*LEAST_CONNECTIONS,
+            LoadBalancingStrategy::StickyHash => &*HASH,
+            LoadBalancingStrategy::Random => &*RANDOM,
         };
 
         if let Some(decision) = strategy.decide(req, &healthy) {

@@ -1,4 +1,4 @@
-use crate::conf::types::Strategy;
+use crate::conf::types::LoadBalancingStrategy;
 use crate::server::{RuntimeState, UpstreamRuntime};
 use crate::traffic::types::*;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ pub struct UpstreamSnapshot {
 #[derive(Debug, Clone)]
 pub struct ServiceSnapshot {
     pub service_id: ServiceId,
-    pub strategy: Strategy,
+    pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamSnapshot>,
 }
 
