@@ -2,7 +2,7 @@
 
 > A modern, extensible reverse proxy built on Pingora 0.6.0
 
-## ✔ Phase 0: Foundation (v0.1.0)
+## Phase 0: Foundation (v0.1.0)
 
 ### Goals
 
@@ -25,7 +25,7 @@
 
 ## Phase 1: Foundations and Extensibility (v0.2.x)
 
-* Snakeway is now a proof-of-concept reverse proxy. *
+> Snakeway is now a proof-of-concept reverse proxy.
 
 ### Goals
 
@@ -91,7 +91,7 @@ Plugin/device phases:
 1. Structured logs (logs command)
 2. Hot reload (SIGHUP \+ admin)
 
-## Phase 1.5 \- Benchmark and Revisit Lifecycle
+## Phase 1.5: Benchmark and Revisit Lifecycle
 
 *Confirm that the overall architecture is not accidentally bad.*
 
@@ -107,7 +107,7 @@ Todo:
 2. Evaluate possible performance bottlenecks and make/plan improvements
 3. Evaluate sanity of error handling in lifecycle before moving on.
 
-## Phase 2: Load Balancing and Discovery (v0.3.x \- v0.5.x)
+## Phase 2: Load Balancing and Discovery (v0.3.x \- v0.4.x)
 
 ### Goals
 
@@ -171,11 +171,58 @@ Todo:
 
 1. Observability admin endpoints (building on health checks)
 
-#### Phase 2D \- Cloud-Native
+## Phase 2.5: Outstanding and emergent tasks (v0.5.x)
 
-1. Service discovery
-2. Upstream TLS (moved to 2A - required for gRPC support)
-3. Dynamic cert management
+- **Traffic Management: New Weighted Load Balancing**
+    - Add a weighted load balancing strategy.
+    - Support config-defined weights for A/B testing.
+    - Validate weight normalization and edge cases.
+
+- **Traffic Management: Guard against leaky connection metrics**
+    - Add RAII-based request guard.
+    - Add health-driven circuit open as a secondary signal.
+    - Add timeout reaping as a last ditch saveguard.
+
+- **Config Validation**
+    - Audit validation coverage (all sections).
+    - Enforce cross-field and reload safety rules.
+    - Add invalid-config and reload rejection tests.
+
+- **Architecture Review**
+    - Review ownership and lifetimes.
+    - Audit public traits / hook surfaces.
+    - Sanity-check error model.
+    - Identify (document) performance footguns.
+
+- **Device Ordering**
+    - Define explicit device ordering mechanism (across split config files).
+    - Validate ordering conflicts / duplicates.
+    - Document ordering semantics.
+
+- **ALPN (Application-Layer Protocol Negotiation)**
+    - Review current ALPN behavior (downstream + upstream).
+    - Decide explicit policy (http/1.1 vs h2 vs h2c vs grpc).
+    - Validate and document protocol negotiation rules.
+
+- **HttpProxy Refactor**
+    - Audit HttpProxy implementation.
+    - Identify logic to extract into focused components.
+    - Reduce HttpProxy to orchestration + wiring.
+
+- **Active Health Checks (Future)**
+    - Define a background probe model (HTTP / TCP).
+    - Ensure independence from request traffic.
+    - Document need for idle-service detection.
+
+- **Routing**
+    - Evaluate regex-based path matching
+    - Decide support vs non-goal
+    - Document matching precedence rules
+
+- **Docs**
+    - Update architecture overview
+    - Update config reference
+    - Add current phase/status snapshot
 
 ## Phase 3: Path Control and Security (v0.6.x)
 
@@ -292,7 +339,14 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ## Post-v1.0.x
 
-1. Static file server: For large files, server precompressed assets (.br/.gz)
-2. Static file server: Use sendfile for zero-copy serving
-3. Static file server: WASM hooks
-4. Static file server: Per-file caching headers
+### Static file server
+
+1. For large files, server precompressed assets (.br/.gz)
+2. Use sendfile for zero-copy serving
+3. WASM hooks
+4. Per-file caching headers
+
+### Cloud-native integration
+
+1. Service discovery
+2. Dynamic cert management
