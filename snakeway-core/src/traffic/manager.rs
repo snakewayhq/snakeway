@@ -1,11 +1,23 @@
 use crate::server::UpstreamId;
-use crate::traffic::ServiceId;
 use crate::traffic::snapshot::TrafficSnapshot;
+use crate::traffic::{HealthStatus, ServiceId};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+
+use std::time::{Duration, Instant};
+
+const FAILURE_THRESHOLD: u32 = 3;
+const UNHEALTHY_COOLDOWN: Duration = Duration::from_secs(10);
+
+#[derive(Debug)]
+struct HealthState {
+    healthy: bool,
+    consecutive_failures: u32,
+    last_failure: Instant,
+}
 
 #[derive(Debug)]
 pub struct TrafficManager {
@@ -16,6 +28,9 @@ pub struct TrafficManager {
 
     /// Per-service round-robin cursors
     rr_cursors: DashMap<ServiceId, AtomicUsize>,
+
+    /// Per-upstream health state.
+    upstream_health: DashMap<(ServiceId, UpstreamId), HealthState>,
 }
 
 impl Default for TrafficManager {
@@ -30,9 +45,13 @@ impl TrafficManager {
             snapshot: ArcSwap::from_pointee(initial),
             active_requests: DashMap::new(),
             rr_cursors: DashMap::new(),
+            upstream_health: Default::default(),
         }
     }
+}
 
+/// Snapshot API
+impl TrafficManager {
     pub fn snapshot(&self) -> Arc<TrafficSnapshot> {
         self.snapshot.load_full()
     }
@@ -55,6 +74,15 @@ impl TrafficManager {
             } else {
                 false
             }
+        });
+
+        // Cleanup upstream health state.
+        self.upstream_health.retain(|(service_id, upstream_id), _| {
+            new_snapshot
+                .services
+                .get(service_id)
+                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .unwrap_or(false)
         });
 
         // Atomically publish snapshot
@@ -113,5 +141,55 @@ impl TrafficManager {
             .or_insert_with(|| AtomicUsize::new(0));
 
         cursor.fetch_add(1, Ordering::Relaxed) % modulo
+    }
+}
+
+/// Health status API
+impl TrafficManager {
+    pub fn report_failure(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+        let key = (service_id.clone(), *upstream_id);
+
+        let mut entry = self
+            .upstream_health
+            .entry(key)
+            .or_insert_with(|| HealthState {
+                healthy: true,
+                consecutive_failures: 0,
+                last_failure: Instant::now(),
+            });
+
+        entry.consecutive_failures += 1;
+        entry.last_failure = Instant::now();
+
+        if entry.consecutive_failures >= FAILURE_THRESHOLD {
+            entry.healthy = false;
+        }
+    }
+
+    pub fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+        if let Some(mut entry) = self
+            .upstream_health
+            .get_mut(&(service_id.clone(), *upstream_id))
+        {
+            entry.consecutive_failures = 0;
+            entry.healthy = true;
+        }
+    }
+
+    pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
+        let healthy = self
+            .upstream_health
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|h| {
+                if !h.healthy && h.last_failure.elapsed() > UNHEALTHY_COOLDOWN {
+                    // optimistic retry
+                    true
+                } else {
+                    h.healthy
+                }
+            })
+            .unwrap_or(true);
+
+        HealthStatus { healthy }
     }
 }

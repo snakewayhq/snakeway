@@ -170,5 +170,5 @@ fn fallback_used_when_strategy_returns_none() {
         .expect("decision");
 
     assert_eq!(decision.upstream_id, UpstreamId(10));
-    assert_eq!(decision.reason, DecisionReason::ForcedSingle);
+    assert_eq!(decision.reason, DecisionReason::NoStrategyDecision);
 }

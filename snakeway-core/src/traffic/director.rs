@@ -30,7 +30,11 @@ impl TrafficDirector {
         let healthy: Vec<_> = service
             .upstreams
             .iter()
-            .filter(|u| u.health.healthy)
+            .filter(|u| {
+                traffic_manager
+                    .health_status(service_id, &u.endpoint.id)
+                    .healthy
+            })
             .cloned()
             .collect();
 
@@ -54,7 +58,7 @@ impl TrafficDirector {
         // Hard fallback: first healthy
         Ok(TrafficDecision {
             upstream_id: healthy[0].endpoint.id,
-            reason: DecisionReason::ForcedSingle,
+            reason: DecisionReason::NoStrategyDecision,
             protocol: None,
         })
     }

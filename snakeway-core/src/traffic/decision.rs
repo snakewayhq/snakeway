@@ -7,7 +7,7 @@ pub enum DecisionReason {
     LeastConnections,
     Random,
     StickyHash,
-    ForcedSingle,
+    NoStrategyDecision,
 }
 
 #[derive(Debug, Clone)]
