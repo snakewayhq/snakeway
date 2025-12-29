@@ -36,6 +36,7 @@ file_dir = "./public"
 - Conceptual overview: `docs/index.md`
 - Architecture and lifecycle docs: `docs/guide/`
 - Configuration reference: `docs/configuration/`
+    - [Services & Circuit Breaking](docs/configuration/services.md)
 
 ## Status
 

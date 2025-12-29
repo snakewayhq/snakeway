@@ -1,6 +1,7 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::ctx::RequestCtx;
 use crate::server::{UpstreamId, UpstreamRuntime};
+use crate::traffic::circuit::CircuitBreakerParams;
 use crate::traffic::decision::TrafficDecision;
 use crate::traffic::strategy::TrafficStrategy;
 use crate::traffic::{
@@ -56,6 +57,14 @@ fn snapshot_with_service(
             service_id,
             strategy,
             upstreams,
+            circuit: CircuitBreakerParams {
+                enabled: true,
+                failure_threshold: 3,
+                open_duration: Duration::from_secs(10),
+                half_open_max_requests: 1,
+                success_threshold: 2,
+                count_http_5xx_as_failure: true,
+            },
         },
     );
 
@@ -226,4 +235,38 @@ fn fallback_is_used_when_strategy_returns_none() {
     // Assert
     assert_eq!(decision.upstream_id, UpstreamId(10));
     assert_eq!(decision.reason, DecisionReason::NoStrategyDecision);
+}
+
+#[test]
+fn director_respects_circuit_breaker() {
+    // Arrange
+    let service_id = ServiceId("svc".into());
+    let snapshot = snapshot_with_service(
+        service_id.clone(),
+        vec![upstream(1), upstream(2)],
+        LoadBalancingStrategy::RoundRobin,
+    );
+    let manager = TrafficManager::new(snapshot.clone());
+    let director = TrafficDirector;
+
+    // Update manager with circuit params (simulating TrafficManager::update)
+    let svc_snapshot = snapshot.services.get(&service_id).unwrap();
+    manager.circuit_params.insert(
+        service_id.clone(),
+        std::sync::Arc::new(svc_snapshot.circuit.clone()),
+    );
+
+    // Trip circuit for upstream 1
+    manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
+    manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
+    manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
+
+    // Act
+    let decision = director
+        .decide(&dummy_request(), &snapshot, &service_id, &manager)
+        .expect("decision");
+
+    // Assert
+    // Should pick upstream 2 because 1's circuit is open
+    assert_eq!(decision.upstream_id, UpstreamId(2));
 }

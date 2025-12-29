@@ -1,4 +1,5 @@
 pub mod algorithms;
+pub mod circuit;
 mod decision;
 mod director;
 mod manager;
