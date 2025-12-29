@@ -1,8 +1,12 @@
+use crate::server::UpstreamId;
 use crate::traffic::circuit::*;
+use crate::traffic::types::ServiceId;
 use std::time::Duration;
 
 fn params() -> CircuitBreakerParams {
     CircuitBreakerParams {
+        service_id: ServiceId("test".into()),
+        upstream_id: UpstreamId(1),
         enabled: true,
         failure_threshold: 3,
         open_duration: Duration::from_millis(100),

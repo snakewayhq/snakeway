@@ -57,10 +57,10 @@ fn snapshot_with_service(
             service_id,
             strategy,
             upstreams,
-            circuit: CircuitBreakerParams {
+            circuit_breaker_config: crate::conf::types::CircuitBreakerConfig {
                 enabled: true,
                 failure_threshold: 3,
-                open_duration: Duration::from_secs(10),
+                open_duration_ms: 10000,
                 half_open_max_requests: 1,
                 success_threshold: 2,
                 count_http_5xx_as_failure: true,
@@ -251,10 +251,21 @@ fn director_respects_circuit_breaker() {
 
     // Update manager with circuit params (simulating TrafficManager::update)
     let svc_snapshot = snapshot.services.get(&service_id).unwrap();
-    manager.circuit_params.insert(
-        service_id.clone(),
-        std::sync::Arc::new(svc_snapshot.circuit.clone()),
-    );
+    let params = CircuitBreakerParams {
+        service_id: service_id.clone(),
+        upstream_id: UpstreamId(0),
+        enabled: svc_snapshot.circuit_breaker_config.enabled,
+        failure_threshold: svc_snapshot.circuit_breaker_config.failure_threshold,
+        open_duration: Duration::from_millis(svc_snapshot.circuit_breaker_config.open_duration_ms),
+        half_open_max_requests: svc_snapshot.circuit_breaker_config.half_open_max_requests,
+        success_threshold: svc_snapshot.circuit_breaker_config.success_threshold,
+        count_http_5xx_as_failure: svc_snapshot
+            .circuit_breaker_config
+            .count_http_5xx_as_failure,
+    };
+    manager
+        .circuit_params
+        .insert(service_id.clone(), std::sync::Arc::new(params));
 
     // Trip circuit for upstream 1
     manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
