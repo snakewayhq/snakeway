@@ -198,9 +198,11 @@ impl TrafficManager {
 
             Some(HealthState::Unhealthy { last_failure, .. }) => {
                 if last_failure.elapsed() > UNHEALTHY_COOLDOWN {
-                    // Promote to Trial (exactly one request allowed)
-                    self.upstream_health.insert(key, HealthState::Trial);
-                    true
+                    let entry = self
+                        .upstream_health
+                        .entry(key)
+                        .or_insert(HealthState::Trial);
+                    matches!(*entry, HealthState::Trial)
                 } else {
                     false
                 }
