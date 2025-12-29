@@ -11,7 +11,10 @@ use crate::traffic::{
 use std::collections::HashMap;
 use std::time::Duration;
 
-/// Helper: minimal RequestCtx suitable for routing tests
+/// ---------------------------
+/// Helpers
+/// ---------------------------
+
 fn dummy_request() -> RequestCtx {
     RequestCtx::new(
         None,
@@ -24,8 +27,7 @@ fn dummy_request() -> RequestCtx {
     )
 }
 
-/// Helper: build a healthy upstream snapshot
-fn healthy_upstream(id: u16) -> UpstreamSnapshot {
+fn upstream(id: u16) -> UpstreamSnapshot {
     UpstreamSnapshot {
         endpoint: UpstreamRuntime {
             id: UpstreamId(id as u32),
@@ -37,43 +39,39 @@ fn healthy_upstream(id: u16) -> UpstreamSnapshot {
         latency: Some(LatencyStats {
             ewma: Duration::from_millis(10),
         }),
-        health: HealthStatus { healthy: true },
     }
 }
 
-/// Helper: build an unhealthy upstream snapshot
-fn unhealthy_upstream(id: u16) -> UpstreamSnapshot {
-    let mut u = healthy_upstream(id);
-    u.health.healthy = false;
-    u
-}
-
-/// Helper: snapshot with a single service
 fn snapshot_with_service(
     service_id: ServiceId,
     upstreams: Vec<UpstreamSnapshot>,
     strategy: LoadBalancingStrategy,
 ) -> TrafficSnapshot {
-    let service = ServiceSnapshot {
-        service_id: service_id.clone(),
-        strategy,
-        upstreams,
-    };
-
     let mut services = HashMap::new();
-    services.insert(service_id, service);
+    services.insert(
+        service_id.clone(),
+        ServiceSnapshot {
+            service_id,
+            strategy,
+            upstreams,
+        },
+    );
 
     TrafficSnapshot { services }
 }
 
+/// ---------------------------
+/// Tests
+/// ---------------------------
+
 #[test]
 fn unknown_service_returns_error() {
+    // Arrange
     let director = TrafficDirector;
-    let snapshot = TrafficSnapshot {
-        services: HashMap::new(),
-    };
+    let snapshot = TrafficSnapshot::default();
     let manager = TrafficManager::default();
 
+    // Act
     let result = director.decide(
         &dummy_request(),
         &snapshot,
@@ -81,94 +79,103 @@ fn unknown_service_returns_error() {
         &manager,
     );
 
+    // Assert
     assert!(matches!(result, Err(TrafficError::UnknownService)));
 }
 
 #[test]
 fn no_healthy_upstreams_returns_error() {
-    let director = TrafficDirector;
+    // Arrange
+    let service_id = ServiceId("svc".into());
     let snapshot = snapshot_with_service(
-        ServiceId("svc".into()),
-        vec![unhealthy_upstream(1), unhealthy_upstream(2)],
+        service_id.clone(),
+        vec![upstream(1), upstream(2)],
         LoadBalancingStrategy::RoundRobin,
     );
     let manager = TrafficManager::default();
+    let director = TrafficDirector;
 
-    let result = director.decide(
-        &dummy_request(),
-        &snapshot,
-        &ServiceId("svc".into()),
-        &manager,
-    );
+    // Mark all upstreams unhealthy
+    manager.report_failure(&service_id, &UpstreamId(1));
+    manager.report_failure(&service_id, &UpstreamId(1));
+    manager.report_failure(&service_id, &UpstreamId(1));
 
+    manager.report_failure(&service_id, &UpstreamId(2));
+    manager.report_failure(&service_id, &UpstreamId(2));
+    manager.report_failure(&service_id, &UpstreamId(2));
+
+    // Act
+    let result = director.decide(&dummy_request(), &snapshot, &service_id, &manager);
+
+    // Assert
     assert!(matches!(result, Err(TrafficError::NoHealthyUpstreams)));
 }
 
 #[test]
 fn single_healthy_upstream_is_selected() {
-    let director = TrafficDirector;
-
+    // Arrange
+    let service_id = ServiceId("svc".into());
     let snapshot = snapshot_with_service(
-        ServiceId("svc".into()),
-        vec![unhealthy_upstream(1), healthy_upstream(2)],
+        service_id.clone(),
+        vec![upstream(1), upstream(2)],
         LoadBalancingStrategy::RoundRobin,
     );
     let manager = TrafficManager::default();
+    let director = TrafficDirector;
 
+    // Mark upstream 1 unhealthy
+    manager.report_failure(&service_id, &UpstreamId(1));
+    manager.report_failure(&service_id, &UpstreamId(1));
+    manager.report_failure(&service_id, &UpstreamId(1));
+
+    // Act
     let decision = director
-        .decide(
-            &dummy_request(),
-            &snapshot,
-            &ServiceId("svc".into()),
-            &manager,
-        )
+        .decide(&dummy_request(), &snapshot, &service_id, &manager)
         .expect("decision");
 
+    // Assert
     assert_eq!(decision.upstream_id, UpstreamId(2));
 }
 
 #[test]
 fn strategy_decision_is_respected() {
-    let director = TrafficDirector;
-
+    // Arrange
+    let service_id = ServiceId("svc".into());
     let snapshot = snapshot_with_service(
-        ServiceId("svc".into()),
-        vec![healthy_upstream(1), healthy_upstream(2)],
+        service_id.clone(),
+        vec![upstream(1), upstream(2)],
         LoadBalancingStrategy::RoundRobin,
     );
     let manager = TrafficManager::default();
+    let director = TrafficDirector;
 
+    // Act
     let decision = director
-        .decide(
-            &dummy_request(),
-            &snapshot,
-            &ServiceId("svc".into()),
-            &manager,
-        )
+        .decide(&dummy_request(), &snapshot, &service_id, &manager)
         .expect("decision");
 
+    // Assert
     assert_eq!(decision.reason, DecisionReason::RoundRobin);
 }
 
 #[test]
-fn fallback_used_when_strategy_returns_none() {
-    let director = TrafficDirector;
+fn failover_strategy_selects_first_healthy_upstream() {
+    // Arrange
+    let service_id = ServiceId("svc".into());
     let snapshot = snapshot_with_service(
-        ServiceId("svc".into()),
-        vec![healthy_upstream(10), healthy_upstream(20)],
+        service_id.clone(),
+        vec![upstream(10), upstream(20)],
         LoadBalancingStrategy::Failover,
     );
     let manager = TrafficManager::default();
+    let director = TrafficDirector;
 
+    // Act
     let decision = director
-        .decide(
-            &dummy_request(),
-            &snapshot,
-            &ServiceId("svc".into()),
-            &manager,
-        )
+        .decide(&dummy_request(), &snapshot, &service_id, &manager)
         .expect("decision");
 
+    // Assert
     assert_eq!(decision.upstream_id, UpstreamId(10));
-    assert_eq!(decision.reason, DecisionReason::NoStrategyDecision);
+    assert_eq!(decision.reason, DecisionReason::Failover);
 }

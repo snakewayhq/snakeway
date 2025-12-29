@@ -31,7 +31,7 @@ pub struct UpstreamId(pub u32);
 // - deterministic across restarts
 // - fast
 // - not used for security
-fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
+pub fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 
     UpstreamId(HASHER.hash_one((host, port)) as u32)
