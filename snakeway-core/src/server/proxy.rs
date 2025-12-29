@@ -16,6 +16,10 @@ use std::sync::Arc;
 #[cfg(feature = "static_files")]
 use tokio::io::AsyncReadExt;
 
+fn is_admin_path(path: &str) -> bool {
+    path.starts_with("/admin/")
+}
+
 pub struct SnakewayGateway {
     // Runtime state
     pub state: Arc<ArcSwap<RuntimeState>>,
@@ -126,7 +130,9 @@ impl ProxyHttp for SnakewayGateway {
         let req = session.req_header();
 
         // Admin endpoints
-        if req.uri.path().starts_with("/admin/") {
+        // Note: These run on the main listener and currently have no authentication.
+        // In the future, these may be moved to a separate internal listener or have auth applied.
+        if is_admin_path(req.uri.path()) {
             let path = req.uri.path().to_string();
             return self.handle_admin(session, &path).await;
         }
@@ -394,15 +400,18 @@ impl SnakewayGateway {
     async fn handle_admin(&self, session: &mut Session, path: &str) -> Result<bool> {
         match path {
             "/admin/health" | "/admin/upstreams" => {
+                let include_details = path == "/admin/upstreams";
                 let snapshot = self.traffic_manager.snapshot();
                 let mut services = std::collections::HashMap::new();
 
                 for (svc_id, svc_snapshot) in &snapshot.services {
                     let mut upstreams = std::collections::HashMap::new();
                     for u in &svc_snapshot.upstreams {
-                        let view = self
-                            .traffic_manager
-                            .get_upstream_view(svc_id, &u.endpoint.id);
+                        let view = self.traffic_manager.get_upstream_view(
+                            svc_id,
+                            &u.endpoint.id,
+                            include_details,
+                        );
                         let addr = format!("{}:{}", u.endpoint.host, u.endpoint.port);
                         upstreams.insert(addr, view);
                     }

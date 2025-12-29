@@ -142,8 +142,6 @@ impl TrafficManager {
 
         for (svc_id, svc) in new_snapshot.services.iter() {
             let params = CircuitBreakerParams {
-                service_id: svc_id.clone(),
-                upstream_id: UpstreamId(0), // Placeholder, only used for logging in trip_open/reset_closed where we have the real ID
                 enabled: svc.circuit_breaker_config.enabled,
                 failure_threshold: svc.circuit_breaker_config.failure_threshold,
                 open_duration: Duration::from_millis(svc.circuit_breaker_config.open_duration_ms),
@@ -297,13 +295,9 @@ impl TrafficManager {
             None => return true, // fail-open: no config means no circuit
         };
 
-        // Inject the real upstream ID into params for logging
-        let mut params = (*params).clone();
-        params.upstream_id = *upstream_id;
-
         let key = (service_id.clone(), *upstream_id);
         let mut entry = self.circuit.entry(key).or_default();
-        entry.allow_request(&params)
+        entry.allow_request((service_id, upstream_id), &params)
     }
 
     /// Called once per request, after we know whether it succeeded.
@@ -320,13 +314,9 @@ impl TrafficManager {
             None => return,
         };
 
-        // Inject the real upstream ID into params for logging
-        let mut params = (*params).clone();
-        params.upstream_id = *upstream_id;
-
         let key = (service_id.clone(), *upstream_id);
         let mut entry = self.circuit.entry(key).or_default();
-        entry.on_request_end(&params, started, success);
+        entry.on_request_end((service_id, upstream_id), &params, started, success);
     }
 
     pub fn circuit_state(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> CircuitState {
@@ -361,34 +351,46 @@ impl TrafficManager {
         &self,
         service_id: &ServiceId,
         upstream_id: &UpstreamId,
+        include_details: bool,
     ) -> AdminUpstreamView {
         let health = self.health_status(service_id, upstream_id);
         let active_requests = self.active_requests(service_id, upstream_id);
-        let total_requests = self.total_requests(service_id, upstream_id);
-        let total_successes = self.total_successes(service_id, upstream_id);
-        let total_failures = self.total_failures(service_id, upstream_id);
 
-        let circuit_params = self
-            .circuit_params
-            .get(service_id)
-            .map(|p| CircuitBreakerParamsView::from(&**p));
+        let (total_requests, total_successes, total_failures) = if include_details {
+            (
+                self.total_requests(service_id, upstream_id),
+                self.total_successes(service_id, upstream_id),
+                self.total_failures(service_id, upstream_id),
+            )
+        } else {
+            (0, 0, 0)
+        };
+
+        let circuit_params = if include_details {
+            self.circuit_params
+                .get(service_id)
+                .map(|p| CircuitBreakerParamsView::from(&**p))
+        } else {
+            None
+        };
 
         let (circuit_state, circuit_details) = self
             .circuit
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| {
-                let details = CircuitBreakerDetailsView {
-                    consecutive_failures: c.consecutive_failures,
-                    opened_at_rfc3339: c.opened_at.map(|t| {
-                        chrono::DateTime::<chrono::Utc>::from(
-                            std::time::SystemTime::now() - t.elapsed(),
-                        )
-                        .to_rfc3339()
-                    }),
-                    half_open_in_flight: c.half_open_in_flight,
-                    half_open_successes: c.half_open_successes,
+                let details = if include_details {
+                    Some(CircuitBreakerDetailsView {
+                        consecutive_failures: c.consecutive_failures,
+                        opened_at_rfc3339: c
+                            .opened_at_system
+                            .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()),
+                        half_open_in_flight: c.half_open_in_flight,
+                        half_open_successes: c.half_open_successes,
+                    })
+                } else {
+                    None
                 };
-                (c.state(), Some(details))
+                (c.state(), details)
             })
             .unwrap_or((CircuitState::Closed, None));
 

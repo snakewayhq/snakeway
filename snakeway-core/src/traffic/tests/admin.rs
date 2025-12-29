@@ -41,7 +41,7 @@ fn test_admin_view_counters() {
     manager.report_failure(&service_id, &upstream_id);
     manager.on_request_end(&service_id, &upstream_id);
 
-    let view = manager.get_upstream_view(&service_id, &upstream_id);
+    let view = manager.get_upstream_view(&service_id, &upstream_id, true);
 
     assert_eq!(view.total_requests, 2);
     assert_eq!(view.total_successes, 1);
@@ -86,7 +86,7 @@ fn test_admin_view_circuit_details() {
     manager.circuit_on_end(&service_id, &upstream_id, true, false);
     manager.circuit_on_end(&service_id, &upstream_id, true, false);
 
-    let view = manager.get_upstream_view(&service_id, &upstream_id);
+    let view = manager.get_upstream_view(&service_id, &upstream_id, true);
 
     assert_eq!(view.circuit, crate::traffic::circuit::CircuitState::Open);
     let details = view.circuit_details.expect("details");
