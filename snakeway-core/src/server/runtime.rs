@@ -7,7 +7,7 @@ use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
 use std::collections::HashMap;
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::Hash;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -34,10 +34,7 @@ pub struct UpstreamId(pub u32);
 fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 
-    let mut hasher = HASHER.build_hasher();
-    (host, port).hash(&mut hasher);
-
-    UpstreamId(hasher.finish() as u32)
+    UpstreamId(HASHER.hash_one((host, port)) as u32)
 }
 
 #[derive(Debug, Clone)]

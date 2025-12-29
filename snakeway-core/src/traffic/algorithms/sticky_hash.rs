@@ -7,7 +7,7 @@ use crate::traffic::{
     strategy::TrafficStrategy,
 };
 use ahash::RandomState;
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::Hash;
 
 #[derive(Debug, Default)]
 pub struct StickyHash;
@@ -21,10 +21,7 @@ impl StickyHash {
     /// - Not security-sensitive
     fn hash_to_u64<T: Hash>(&self, value: &T) -> u64 {
         static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
-
-        let mut hasher = HASHER.build_hasher();
-        value.hash(&mut hasher);
-        hasher.finish()
+        HASHER.hash_one(value)
     }
 
     /// Resolve a stable stickiness key for the request.
