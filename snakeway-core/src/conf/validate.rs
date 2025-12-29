@@ -71,6 +71,43 @@ pub fn validate_routes(
         }
     }
 
+    // Validate services
+    for (name, service) in services {
+        if service.upstream.is_empty() {
+            return Err(ConfigError::EmptyService {
+                service: name.clone(),
+            });
+        }
+
+        let cb = &service.circuit_breaker;
+        if cb.enabled {
+            if cb.failure_threshold == 0 {
+                return Err(ConfigError::InvalidCircuitBreaker {
+                    service: name.clone(),
+                    reason: "failure_threshold must be >= 1".to_string(),
+                });
+            }
+            if cb.open_duration_ms == 0 {
+                return Err(ConfigError::InvalidCircuitBreaker {
+                    service: name.clone(),
+                    reason: "open_duration_ms must be >= 1".to_string(),
+                });
+            }
+            if cb.half_open_max_requests == 0 {
+                return Err(ConfigError::InvalidCircuitBreaker {
+                    service: name.clone(),
+                    reason: "half_open_max_requests must be >= 1".to_string(),
+                });
+            }
+            if cb.success_threshold == 0 {
+                return Err(ConfigError::InvalidCircuitBreaker {
+                    service: name.clone(),
+                    reason: "success_threshold must be >= 1".to_string(),
+                });
+            }
+        }
+    }
+
     Ok(())
 }
 

@@ -74,6 +74,9 @@ pub enum ConfigError {
 
     #[error("invalid load balancing strategy '{strategy}' for service '{service}'")]
     InvalidLoadBalancingStrategy { service: String, strategy: String },
+
+    #[error("invalid circuit breaker config for service '{service}': {reason}")]
+    InvalidCircuitBreaker { service: String, reason: String },
 }
 
 impl ConfigError {

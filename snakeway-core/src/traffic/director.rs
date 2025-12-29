@@ -26,19 +26,22 @@ impl TrafficDirector {
             .get(service_id)
             .ok_or(TrafficError::UnknownService)?;
 
-        // Filter healthy upstreams first
-        let healthy: Vec<_> = service
+        // Filter eligible upstreams (healthy AND circuit allows)
+        let eligible: Vec<_> = service
             .upstreams
             .iter()
             .filter(|u| {
-                traffic_manager
+                let healthy = traffic_manager
                     .health_status(service_id, &u.endpoint.id)
-                    .healthy
+                    .healthy;
+                let cb_allowed = traffic_manager.circuit_allows(service_id, &u.endpoint.id);
+
+                healthy && cb_allowed
             })
             .cloned()
             .collect();
 
-        if healthy.is_empty() {
+        if eligible.is_empty() {
             return Err(TrafficError::NoHealthyUpstreams);
         }
 
@@ -51,13 +54,13 @@ impl TrafficDirector {
             LoadBalancingStrategy::Random => &*RANDOM,
         };
 
-        if let Some(decision) = strategy.decide(req, service_id, &healthy, traffic_manager) {
+        if let Some(decision) = strategy.decide(req, service_id, &eligible, traffic_manager) {
             return Ok(decision);
         }
 
-        // Hard fallback: first healthy
+        // Hard fallback: first eligible
         Ok(TrafficDecision {
-            upstream_id: healthy[0].endpoint.id,
+            upstream_id: eligible[0].endpoint.id,
             reason: DecisionReason::NoStrategyDecision,
             protocol: None,
         })

@@ -4,7 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 use crate::route::{RouteEntry, RouteKind};
 use crate::server::runtime::RuntimeState;
-use crate::traffic::{TrafficDirector, TrafficManager};
+use crate::traffic::{TrafficDirector, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -108,6 +108,10 @@ impl ProxyHttp for SnakewayGateway {
 
         let authority = format!("{}:{}", upstream.host, upstream.port);
         ctx.upstream_authority = Some(authority);
+
+        // Record that this request was admitted by the circuit breaker.
+        // The TrafficDirector already called `circuit_allows` for selection.
+        ctx.cb_started = true;
 
         self.traffic_manager
             .on_request_start(&service_id, &upstream.id);
@@ -311,6 +315,14 @@ impl ProxyHttp for SnakewayGateway {
         }
 
         upstream.set_status(resp_ctx.status)?;
+
+        let status = upstream.status.as_u16();
+        ctx.upstream_outcome = Some(if status >= 500 {
+            UpstreamOutcome::HttpStatus(status)
+        } else {
+            UpstreamOutcome::Success
+        });
+
         Ok(())
     }
 
@@ -319,13 +331,37 @@ impl ProxyHttp for SnakewayGateway {
         Self::CTX: Send + Sync,
     {
         if let Some((service_id, upstream_id)) = ctx.selected_upstream.as_ref() {
+            // Transport-level failure wins over HTTP status.
             if e.is_some() {
-                // Transport-level failure
-                self.traffic_manager.report_failure(service_id, upstream_id);
-            } else {
-                // Successful upstream response (any status code)
-                self.traffic_manager.report_success(service_id, upstream_id);
+                ctx.upstream_outcome = Some(UpstreamOutcome::TransportError);
             }
+
+            let success = match ctx.upstream_outcome {
+                Some(UpstreamOutcome::TransportError) => false,
+                Some(UpstreamOutcome::HttpStatus(code)) => {
+                    // Decide if this status code is a failure.
+                    // By default, 5xx is failure.
+                    let count_5xx = self
+                        .traffic_manager
+                        .circuit_params
+                        .get(service_id)
+                        .map(|p| p.count_http_5xx_as_failure)
+                        .unwrap_or(true);
+
+                    if count_5xx { code < 500 } else { true }
+                }
+                Some(UpstreamOutcome::Success) | None => true,
+            };
+
+            if success {
+                self.traffic_manager.report_success(service_id, upstream_id);
+            } else {
+                self.traffic_manager.report_failure(service_id, upstream_id);
+            }
+
+            // Circuit breaker state update
+            self.traffic_manager
+                .circuit_on_end(service_id, upstream_id, ctx.cb_started, success);
         }
 
         // Always decrement active request counter

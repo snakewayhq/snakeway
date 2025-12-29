@@ -1,5 +1,5 @@
 use crate::server::UpstreamId;
-use crate::traffic::ServiceId;
+use crate::traffic::{ServiceId, UpstreamOutcome};
 use http::{Extensions, HeaderMap, Method, Uri};
 use std::net::IpAddr;
 
@@ -44,6 +44,9 @@ pub struct RequestCtx {
 
     pub selected_upstream: Option<(ServiceId, UpstreamId)>,
 
+    pub upstream_outcome: Option<UpstreamOutcome>,
+    pub cb_started: bool,
+
     #[allow(dead_code)]
     /// Request body
     pub body: Vec<u8>,
@@ -75,6 +78,8 @@ impl RequestCtx {
             upstream_authority: None,
             extensions: Extensions::new(),
             selected_upstream: None,
+            upstream_outcome: None,
+            cb_started: false,
             body,
         }
     }
