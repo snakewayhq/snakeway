@@ -23,6 +23,7 @@ dist/
 /integration-tests/certs/
 /plugins/
 profile.json.gz
+/.snapshots/
 
 # Data (not licensed to commit)
 /data/
