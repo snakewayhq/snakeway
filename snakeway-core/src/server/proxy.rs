@@ -124,6 +124,13 @@ impl ProxyHttp for SnakewayGateway {
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
+
+        // Admin endpoints
+        if req.uri.path().starts_with("/admin/") {
+            let path = req.uri.path().to_string();
+            return self.handle_admin(session, &path).await;
+        }
+
         let is_upgrade_req = session.is_upgrade_req();
 
         let is_grpc = req
@@ -180,7 +187,8 @@ impl ProxyHttp for SnakewayGateway {
                         .await?;
                     return Ok(true);
                 }
-                respond_with_static(session, ctx, route, &state.devices).await
+                self.respond_with_static(session, ctx, route, &state.devices)
+                    .await
             }
 
             RouteKind::Proxy {
@@ -382,156 +390,265 @@ impl ProxyHttp for SnakewayGateway {
     }
 }
 
-#[cfg(not(feature = "static_files"))]
-pub async fn respond_with_static(
-    _session: &mut Session,
-    _ctx: &RequestCtx,
-    _route: &RouteEntry,
-    _devices: &DeviceRegistry,
-) -> Result<bool> {
-    Err(Error::new(Custom("static files disabled")))
-}
+impl SnakewayGateway {
+    async fn handle_admin(&self, session: &mut Session, path: &str) -> Result<bool> {
+        match path {
+            "/admin/health" | "/admin/upstreams" => {
+                let snapshot = self.traffic_manager.snapshot();
+                let mut services = std::collections::HashMap::new();
 
-#[cfg(feature = "static_files")]
-pub async fn respond_with_static(
-    session: &mut Session,
-    ctx: &RequestCtx,
-    route: &RouteEntry,
-    devices: &DeviceRegistry,
-) -> Result<bool> {
-    // Extract conditional headers for cache validation and content negotiation.
-    let conditional = crate::static_files::ConditionalHeaders {
-        if_none_match: ctx
-            .headers
-            .get(http::header::IF_NONE_MATCH)
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string()),
-        if_modified_since: ctx
-            .headers
-            .get(http::header::IF_MODIFIED_SINCE)
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string()),
-        accept_encoding: ctx
-            .headers
-            .get(http::header::ACCEPT_ENCODING)
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string()),
-        range: ctx
-            .headers
-            .get(http::header::RANGE)
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string()),
-    };
-
-    let static_resp =
-        crate::static_files::handle_static_request(&route.kind, &ctx.route_path, &conditional)
-            .await;
-
-    // Build response header
-    let mut resp = ResponseHeader::build(static_resp.status, None)?;
-
-    // Copy headers
-    for (name, value) in static_resp.headers.iter() {
-        resp.insert_header(name, value)?;
-    }
-
-    // Write headers (not end-of-stream yet)
-    session.write_response_header(Box::new(resp), false).await?;
-
-    let is_head = ctx.method == http::Method::HEAD;
-    if is_head {
-        // SHort-circuit the body write step for HEAD requests.
-        session.write_response_body(None, true).await?;
-    } else {
-        // Write body and end the stream.
-        match static_resp.body {
-            crate::static_files::StaticBody::Empty => {
-                session.write_response_body(None, true).await?;
-            }
-
-            crate::static_files::StaticBody::Bytes(bytes) => {
-                session.write_response_body(Some(bytes), true).await?;
-            }
-
-            crate::static_files::StaticBody::File(mut file) => {
-                use bytes::{Bytes, BytesMut};
-                use tokio::io::AsyncReadExt;
-
-                const CHUNK_SIZE: usize = 32 * 1024;
-
-                // Allocate once per request.
-                let mut buf = BytesMut::with_capacity(CHUNK_SIZE);
-
-                loop {
-                    // Ensure we have space to read into.
-                    buf.resize(CHUNK_SIZE, 0);
-
-                    let n = file
-                        .read(&mut buf[..])
-                        .await
-                        .map_err(|_| Error::new(Custom("static file read error")))?;
-
-                    if n == 0 {
-                        break;
+                for (svc_id, svc_snapshot) in &snapshot.services {
+                    let mut upstreams = std::collections::HashMap::new();
+                    for u in &svc_snapshot.upstreams {
+                        let view = self
+                            .traffic_manager
+                            .get_upstream_view(svc_id, &u.endpoint.id);
+                        let addr = format!("{}:{}", u.endpoint.host, u.endpoint.port);
+                        upstreams.insert(addr, view);
                     }
-
-                    // Shrink to actual read size.
-                    buf.truncate(n);
-
-                    // Split off the filled bytes and freeze them.
-                    let chunk: Bytes = buf.split().freeze();
-
-                    session.write_response_body(Some(chunk), false).await?;
+                    services.insert(svc_id.clone(), upstreams);
                 }
 
-                // End-of-stream.
-                session.write_response_body(None, true).await?;
+                let body = serde_json::to_vec(&serde_json::json!({ "services": services }))
+                    .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
+                self.send_json_response(session, StatusCode::OK, body)
+                    .await?;
+                Ok(true)
             }
 
-            crate::static_files::StaticBody::RangedFile {
-                mut file,
-                mut remaining,
-            } => {
-                const CHUNK_SIZE: usize = 32 * 1024;
-                let mut buf = bytes::BytesMut::with_capacity(CHUNK_SIZE);
+            "/admin/stats" => {
+                let snapshot = self.traffic_manager.snapshot();
+                let mut stats = std::collections::HashMap::new();
 
-                while remaining > 0 {
-                    let to_read = std::cmp::min(CHUNK_SIZE as u64, remaining) as usize;
+                for (svc_id, svc_snapshot) in &snapshot.services {
+                    let mut svc_stats = serde_json::json!({
+                        "total_requests": 0,
+                        "total_successes": 0,
+                        "total_failures": 0,
+                        "active_requests": 0,
+                    });
 
-                    buf.resize(to_read, 0);
+                    for u in &svc_snapshot.upstreams {
+                        let active = self.traffic_manager.active_requests(svc_id, &u.endpoint.id);
+                        let total = self.traffic_manager.total_requests(svc_id, &u.endpoint.id);
+                        let successes =
+                            self.traffic_manager.total_successes(svc_id, &u.endpoint.id);
+                        let failures = self.traffic_manager.total_failures(svc_id, &u.endpoint.id);
 
-                    let n = file
-                        .read(&mut buf[..])
-                        .await
-                        .map_err(|_| Error::new(Custom("static file read error")))?;
-
-                    if n == 0 {
-                        break;
+                        let s = svc_stats.as_object_mut().unwrap();
+                        s["active_requests"] =
+                            (s["active_requests"].as_u64().unwrap() + active as u64).into();
+                        s["total_requests"] =
+                            (s["total_requests"].as_u64().unwrap() + total as u64).into();
+                        s["total_successes"] =
+                            (s["total_successes"].as_u64().unwrap() + successes as u64).into();
+                        s["total_failures"] =
+                            (s["total_failures"].as_u64().unwrap() + failures as u64).into();
                     }
-
-                    remaining -= n as u64;
-                    buf.truncate(n);
-
-                    session
-                        .write_response_body(Some(buf.split().freeze()), false)
-                        .await?;
+                    stats.insert(svc_id.clone(), svc_stats);
                 }
 
-                session.write_response_body(None, true).await?;
+                let body = serde_json::to_vec(&stats)
+                    .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
+                self.send_json_response(session, StatusCode::OK, body)
+                    .await?;
+                Ok(true)
+            }
+
+            "/admin/reload" => {
+                // Future: handle reload via API
+                self.send_json_response(
+                    session,
+                    StatusCode::NOT_IMPLEMENTED,
+                    br#"{"error":"not_implemented"}"#.to_vec(),
+                )
+                .await?;
+                Ok(true)
+            }
+
+            _ => {
+                self.send_json_response(
+                    session,
+                    StatusCode::NOT_FOUND,
+                    br#"{"error":"admin_endpoint_not_found"}"#.to_vec(),
+                )
+                .await?;
+                Ok(true)
             }
         }
     }
 
-    // Run on_response devices
-    let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());
+    async fn send_json_response(
+        &self,
+        session: &mut Session,
+        status: StatusCode,
+        body: Vec<u8>,
+    ) -> Result<()> {
+        let mut resp = ResponseHeader::build(status, None)?;
+        resp.insert_header(header::CONTENT_TYPE, "application/json")?;
+        resp.insert_header(header::CONTENT_LENGTH, body.len().to_string())?;
 
-    match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
-        DeviceResult::Continue => {}
-        DeviceResult::Respond(_) => {}
-        DeviceResult::Error(err) => {
-            tracing::warn!("device error on_response (static): {err}");
-        }
+        session.write_response_header(Box::new(resp), false).await?;
+        session.write_response_body(Some(body.into()), true).await?;
+
+        Ok(())
     }
 
-    Ok(true)
+    #[cfg(not(feature = "static_files"))]
+    pub async fn respond_with_static(
+        &self,
+        _session: &mut Session,
+        _ctx: &RequestCtx,
+        _route: &RouteEntry,
+        _devices: &DeviceRegistry,
+    ) -> Result<bool> {
+        Err(Error::new(Custom("static files disabled")))
+    }
+
+    #[cfg(feature = "static_files")]
+    pub async fn respond_with_static(
+        &self,
+        session: &mut Session,
+        ctx: &RequestCtx,
+        route: &RouteEntry,
+        devices: &DeviceRegistry,
+    ) -> Result<bool> {
+        // Extract conditional headers for cache validation and content negotiation.
+        let conditional = crate::static_files::ConditionalHeaders {
+            if_none_match: ctx
+                .headers
+                .get(http::header::IF_NONE_MATCH)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string()),
+            if_modified_since: ctx
+                .headers
+                .get(http::header::IF_MODIFIED_SINCE)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string()),
+            accept_encoding: ctx
+                .headers
+                .get(http::header::ACCEPT_ENCODING)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string()),
+            range: ctx
+                .headers
+                .get(http::header::RANGE)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string()),
+        };
+
+        let static_resp =
+            crate::static_files::handle_static_request(&route.kind, &ctx.route_path, &conditional)
+                .await;
+
+        // Build response header
+        let mut resp = ResponseHeader::build(static_resp.status, None)?;
+
+        // Copy headers
+        for (name, value) in static_resp.headers.iter() {
+            resp.insert_header(name, value)?;
+        }
+
+        // Write headers (not end-of-stream yet)
+        session.write_response_header(Box::new(resp), false).await?;
+
+        let is_head = ctx.method == http::Method::HEAD;
+        if is_head {
+            // SHort-circuit the body write step for HEAD requests.
+            session.write_response_body(None, true).await?;
+        } else {
+            // Write body and end the stream.
+            match static_resp.body {
+                crate::static_files::StaticBody::Empty => {
+                    session.write_response_body(None, true).await?;
+                }
+
+                crate::static_files::StaticBody::Bytes(bytes) => {
+                    session.write_response_body(Some(bytes), true).await?;
+                }
+
+                crate::static_files::StaticBody::File(mut file) => {
+                    use bytes::{Bytes, BytesMut};
+                    use tokio::io::AsyncReadExt;
+
+                    const CHUNK_SIZE: usize = 32 * 1024;
+
+                    // Allocate once per request.
+                    let mut buf = BytesMut::with_capacity(CHUNK_SIZE);
+
+                    loop {
+                        // Ensure we have space to read into.
+                        buf.resize(CHUNK_SIZE, 0);
+
+                        let n = file
+                            .read(&mut buf[..])
+                            .await
+                            .map_err(|_| Error::new(Custom("static file read error")))?;
+
+                        if n == 0 {
+                            break;
+                        }
+
+                        // Shrink to actual read size.
+                        buf.truncate(n);
+
+                        // Split off the filled bytes and freeze them.
+                        let chunk: Bytes = buf.split().freeze();
+
+                        session.write_response_body(Some(chunk), false).await?;
+                    }
+
+                    // End-of-stream.
+                    session.write_response_body(None, true).await?;
+                }
+
+                crate::static_files::StaticBody::RangedFile {
+                    mut file,
+                    mut remaining,
+                } => {
+                    const CHUNK_SIZE: usize = 32 * 1024;
+                    let mut buf = bytes::BytesMut::with_capacity(CHUNK_SIZE);
+
+                    while remaining > 0 {
+                        let to_read = std::cmp::min(CHUNK_SIZE as u64, remaining) as usize;
+
+                        buf.resize(to_read, 0);
+
+                        let n = file
+                            .read(&mut buf[..])
+                            .await
+                            .map_err(|_| Error::new(Custom("static file read error")))?;
+
+                        if n == 0 {
+                            break;
+                        }
+
+                        remaining -= n as u64;
+                        buf.truncate(n);
+
+                        session
+                            .write_response_body(Some(buf.split().freeze()), false)
+                            .await?;
+                    }
+
+                    session.write_response_body(None, true).await?;
+                }
+            }
+        }
+
+        // Run on_response devices
+        let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());
+
+        match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
+            DeviceResult::Continue => {}
+            DeviceResult::Respond(_) => {}
+            DeviceResult::Error(err) => {
+                tracing::warn!("device error on_response (static): {err}");
+            }
+        }
+
+        Ok(true)
+    }
 }

@@ -1,9 +1,7 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::server::{RuntimeState, UpstreamRuntime};
-use crate::traffic::circuit::CircuitBreakerParams;
 use crate::traffic::types::*;
 use std::collections::HashMap;
-use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct UpstreamSnapshot {
@@ -16,7 +14,7 @@ pub struct ServiceSnapshot {
     pub service_id: ServiceId,
     pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamSnapshot>,
-    pub circuit: CircuitBreakerParams,
+    pub circuit_breaker_config: crate::conf::types::CircuitBreakerConfig,
 }
 
 /// Immutable, control-plane snapshot of traffic topology and health.
@@ -40,7 +38,7 @@ impl TrafficSnapshot {
                     endpoint: u.clone(),
                     latency: None,
                 })
-                .collect();
+                .collect::<Vec<_>>();
 
             services.insert(
                 ServiceId(name.clone()),
@@ -48,14 +46,7 @@ impl TrafficSnapshot {
                     service_id: ServiceId(name.clone()),
                     strategy: svc.strategy.clone(),
                     upstreams,
-                    circuit: CircuitBreakerParams {
-                        enabled: svc.circuit_breaker.enabled,
-                        failure_threshold: svc.circuit_breaker.failure_threshold,
-                        open_duration: Duration::from_millis(svc.circuit_breaker.open_duration_ms),
-                        half_open_max_requests: svc.circuit_breaker.half_open_max_requests,
-                        success_threshold: svc.circuit_breaker.success_threshold,
-                        count_http_5xx_as_failure: svc.circuit_breaker.count_http_5xx_as_failure,
-                    },
+                    circuit_breaker_config: svc.circuit_breaker.clone(),
                 },
             );
         }
