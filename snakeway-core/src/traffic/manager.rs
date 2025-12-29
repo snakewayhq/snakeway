@@ -12,11 +12,15 @@ use std::time::{Duration, Instant};
 const FAILURE_THRESHOLD: u32 = 3;
 const UNHEALTHY_COOLDOWN: Duration = Duration::from_secs(10);
 
-#[derive(Debug)]
-struct HealthState {
-    healthy: bool,
-    consecutive_failures: u32,
-    last_failure: Instant,
+/// Health state of an upstream endpoint
+#[derive(Debug, Clone)]
+enum HealthState {
+    Healthy,
+    Unhealthy {
+        consecutive_failures: u32,
+        last_failure: Instant,
+    },
+    Trial,
 }
 
 #[derive(Debug)]
@@ -152,18 +156,27 @@ impl TrafficManager {
         let mut entry = self
             .upstream_health
             .entry(key)
-            .or_insert_with(|| HealthState {
-                healthy: true,
-                consecutive_failures: 0,
+            .or_insert_with(|| HealthState::Healthy);
+
+        *entry = match *entry {
+            HealthState::Healthy => HealthState::Unhealthy {
+                consecutive_failures: 1,
                 last_failure: Instant::now(),
-            });
+            },
 
-        entry.consecutive_failures += 1;
-        entry.last_failure = Instant::now();
+            HealthState::Unhealthy {
+                consecutive_failures,
+                ..
+            } => HealthState::Unhealthy {
+                consecutive_failures: consecutive_failures + 1,
+                last_failure: Instant::now(),
+            },
 
-        if entry.consecutive_failures >= FAILURE_THRESHOLD {
-            entry.healthy = false;
-        }
+            HealthState::Trial => HealthState::Unhealthy {
+                consecutive_failures: FAILURE_THRESHOLD,
+                last_failure: Instant::now(),
+            },
+        };
     }
 
     pub fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
@@ -171,24 +184,33 @@ impl TrafficManager {
             .upstream_health
             .get_mut(&(service_id.clone(), *upstream_id))
         {
-            entry.consecutive_failures = 0;
-            entry.healthy = true;
+            *entry = HealthState::Healthy;
         }
     }
 
     pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
-        let healthy = self
-            .upstream_health
-            .get(&(service_id.clone(), *upstream_id))
-            .map(|h| {
-                if !h.healthy && h.last_failure.elapsed() > UNHEALTHY_COOLDOWN {
-                    // optimistic retry
+        let key = (service_id.clone(), *upstream_id);
+
+        let healthy = match self.upstream_health.get(&key).map(|h| h.clone()) {
+            None => true, // default optimistic
+
+            Some(HealthState::Healthy) => true,
+
+            Some(HealthState::Unhealthy { last_failure, .. }) => {
+                if last_failure.elapsed() > UNHEALTHY_COOLDOWN {
+                    // Promote to Trial (exactly one request allowed)
+                    self.upstream_health.insert(key, HealthState::Trial);
                     true
                 } else {
-                    h.healthy
+                    false
                 }
-            })
-            .unwrap_or(true);
+            }
+
+            Some(HealthState::Trial) => {
+                // Trial is consumed by the first caller
+                false
+            }
+        };
 
         HealthStatus { healthy }
     }
