@@ -314,10 +314,21 @@ impl ProxyHttp for SnakewayGateway {
         Ok(())
     }
 
-    async fn logging(&self, _session: &mut Session, _e: Option<&Error>, ctx: &mut Self::CTX)
+    async fn logging(&self, _session: &mut Session, e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,
     {
+        if let Some((service_id, upstream_id)) = ctx.selected_upstream.as_ref() {
+            if e.is_some() {
+                // Transport-level failure
+                self.traffic_manager.report_failure(service_id, upstream_id);
+            } else {
+                // Successful upstream response (any status code)
+                self.traffic_manager.report_success(service_id, upstream_id);
+            }
+        }
+
+        // Always decrement active request counter
         if let Some((service_id, upstream_id)) = ctx.selected_upstream.take() {
             self.traffic_manager
                 .on_request_end(&service_id, &upstream_id);
