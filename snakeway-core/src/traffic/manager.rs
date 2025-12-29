@@ -190,7 +190,7 @@ impl TrafficManager {
         };
     }
 
-    /// Any success fully restores health
+    /// Any success will fully restore health
     pub fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
         self.upstream_health
             .insert((service_id.clone(), *upstream_id), HealthState::Healthy);
@@ -236,7 +236,7 @@ impl TrafficManager {
         };
 
         let key = (service_id.clone(), *upstream_id);
-        let mut entry = self.circuit.entry(key).or_insert_with(CircuitBreaker::new);
+        let mut entry = self.circuit.entry(key).or_default();
         entry.allow_request(&params)
     }
 
@@ -255,7 +255,7 @@ impl TrafficManager {
         };
 
         let key = (service_id.clone(), *upstream_id);
-        let mut entry = self.circuit.entry(key).or_insert_with(CircuitBreaker::new);
+        let mut entry = self.circuit.entry(key).or_default();
         entry.on_request_end(&params, started, success);
     }
 
