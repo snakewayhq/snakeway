@@ -35,12 +35,6 @@ pub struct TrafficManager {
     upstream_health: DashMap<(ServiceId, UpstreamId), HealthState>,
 }
 
-impl Default for TrafficManager {
-    fn default() -> Self {
-        Self::new(TrafficSnapshot::default())
-    }
-}
-
 impl TrafficManager {
     pub fn new(initial: TrafficSnapshot) -> Self {
         Self {
