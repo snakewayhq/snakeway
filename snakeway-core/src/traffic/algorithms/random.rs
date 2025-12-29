@@ -19,6 +19,7 @@ impl TrafficStrategy for Random {
             return None;
         }
 
+        // This is per thread, which is ok for a random algorithm.
         let idx = rng().random_range(0..healthy.len());
         let upstream_snapshot = &healthy[idx];
 

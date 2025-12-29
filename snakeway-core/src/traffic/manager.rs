@@ -19,8 +19,6 @@ enum HealthState {
         consecutive_failures: u32,
         last_failure: Instant,
     },
-    /// Exactly one request may pass
-    Trial,
 }
 
 #[derive(Debug)]
@@ -147,7 +145,7 @@ impl TrafficManager {
                 last_failure: Instant::now(),
             },
 
-            // Below threshold → increment only
+            // Below threshold, then increment only
             HealthState::Unhealthy {
                 consecutive_failures,
                 ..
@@ -156,14 +154,8 @@ impl TrafficManager {
                 last_failure: Instant::now(),
             },
 
-            // Threshold reached → fully unhealthy
+            // Threshold reached, then fully unhealthy
             HealthState::Unhealthy { .. } => HealthState::Unhealthy {
-                consecutive_failures: FAILURE_THRESHOLD,
-                last_failure: Instant::now(),
-            },
-
-            // Trial failure → immediate unhealthy
-            HealthState::Trial => HealthState::Unhealthy {
                 consecutive_failures: FAILURE_THRESHOLD,
                 last_failure: Instant::now(),
             },
@@ -188,17 +180,11 @@ impl TrafficManager {
                     if last_failure.elapsed() > UNHEALTHY_COOLDOWN =>
                 {
                     // Atomic promotion to Trial
-                    *entry = HealthState::Trial;
-                    true
-                }
-
-                HealthState::Trial => {
-                    // Trial consumed
                     *entry = HealthState::Unhealthy {
                         consecutive_failures: FAILURE_THRESHOLD,
                         last_failure: Instant::now(),
                     };
-                    false
+                    true
                 }
 
                 _ => false,
