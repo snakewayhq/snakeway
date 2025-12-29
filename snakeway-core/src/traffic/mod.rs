@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod algorithms;
 pub mod circuit;
 mod decision;

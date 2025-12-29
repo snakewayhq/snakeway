@@ -37,6 +37,7 @@ file_dir = "./public"
 - Architecture and lifecycle docs: `docs/guide/`
 - Configuration reference: `docs/configuration/`
     - [Services & Circuit Breaking](docs/configuration/services.md)
+    - [Admin API & Observability](docs/configuration/admin.md)
 
 ## Status
 

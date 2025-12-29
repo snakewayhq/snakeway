@@ -1,7 +1,14 @@
+use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize)]
 pub struct ServiceId(pub String);
+
+impl Display for ServiceId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct LatencyStats {
@@ -15,7 +22,7 @@ pub struct ConnectionStats {
     pub active: u32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct HealthStatus {
     /// Whether the upstream is considered healthy or not.
     pub healthy: bool,

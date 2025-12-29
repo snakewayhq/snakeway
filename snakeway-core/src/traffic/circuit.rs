@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use crate::server::UpstreamId;
+use crate::traffic::ServiceId;
+use std::time::{Duration, Instant, SystemTime};
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct CircuitBreakerParams {
@@ -10,7 +13,8 @@ pub struct CircuitBreakerParams {
     pub count_http_5xx_as_failure: bool,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CircuitState {
     Closed,
     Open,
@@ -20,17 +24,18 @@ pub enum CircuitState {
 #[derive(Debug, Clone)]
 pub struct CircuitBreaker {
     // state machine data
-    state: CircuitState,
+    pub(crate) state: CircuitState,
 
     // Closed
-    consecutive_failures: u32,
+    pub(crate) consecutive_failures: u32,
 
     // Open
-    opened_at: Option<Instant>,
+    pub(crate) opened_at_instant: Option<Instant>,
+    pub(crate) opened_at_system: Option<SystemTime>,
 
     // HalfOpen
-    half_open_in_flight: u32,
-    half_open_successes: u32,
+    pub(crate) half_open_in_flight: u32,
+    pub(crate) half_open_successes: u32,
 }
 
 impl CircuitBreaker {
@@ -38,7 +43,8 @@ impl CircuitBreaker {
         Self {
             state: CircuitState::Closed,
             consecutive_failures: 0,
-            opened_at: None,
+            opened_at_instant: None,
+            opened_at_system: None,
             half_open_in_flight: 0,
             half_open_successes: 0,
         }
@@ -49,7 +55,11 @@ impl CircuitBreaker {
     }
 
     /// Returns whether we should allow *starting* a request to this upstream right now.
-    pub fn allow_request(&mut self, p: &CircuitBreakerParams) -> bool {
+    pub fn allow_request(
+        &mut self,
+        ids: (&ServiceId, &UpstreamId),
+        p: &CircuitBreakerParams,
+    ) -> bool {
         if !p.enabled {
             return true;
         }
@@ -58,7 +68,7 @@ impl CircuitBreaker {
             CircuitState::Closed => true,
 
             CircuitState::Open => {
-                let opened_at = match self.opened_at {
+                let opened_at = match self.opened_at_instant {
                     Some(t) => t,
                     None => {
                         // Shouldn't happen, but fail safe: treat as open.
@@ -68,13 +78,24 @@ impl CircuitBreaker {
 
                 if opened_at.elapsed() >= p.open_duration {
                     // Promote to half-open and allow probes.
+                    let old_state = self.state;
                     self.state = CircuitState::HalfOpen;
-                    self.opened_at = None;
+                    self.opened_at_instant = None;
+                    self.opened_at_system = None;
                     self.half_open_in_flight = 0;
                     self.half_open_successes = 0;
 
+                    info!(
+                        event = "circuit_transition",
+                        service = %ids.0,
+                        upstream = ?ids.1,
+                        from = ?old_state,
+                        to = ?self.state,
+                        reason = "cooldown_expired"
+                    );
+
                     // fall-through to half-open logic
-                    self.allow_request(p)
+                    self.allow_request(ids, p)
                 } else {
                     false
                 }
@@ -93,7 +114,13 @@ impl CircuitBreaker {
 
     /// Called when the request finishes. `started` tells us whether this request was actually
     /// admitted by `allow_request()` (so we can unwind counters safely).
-    pub fn on_request_end(&mut self, p: &CircuitBreakerParams, started: bool, success: bool) {
+    pub fn on_request_end(
+        &mut self,
+        ids: (&ServiceId, &UpstreamId),
+        p: &CircuitBreakerParams,
+        started: bool,
+        success: bool,
+    ) {
         if !p.enabled {
             return;
         }
@@ -105,7 +132,7 @@ impl CircuitBreaker {
                 } else {
                     self.consecutive_failures = self.consecutive_failures.saturating_add(1);
                     if self.consecutive_failures >= p.failure_threshold {
-                        self.trip_open();
+                        self.trip_open(ids, p, "failure_threshold_exceeded");
                     }
                 }
             }
@@ -123,30 +150,59 @@ impl CircuitBreaker {
                 if success {
                     self.half_open_successes = self.half_open_successes.saturating_add(1);
                     if self.half_open_successes >= p.success_threshold {
-                        self.reset_closed();
+                        self.reset_closed(ids, p);
                     }
                 } else {
                     // Any failure while half-open should immediately re-open.
-                    self.trip_open();
+                    self.trip_open(ids, p, "half_open_failure");
                 }
             }
         }
     }
 
-    fn trip_open(&mut self) {
+    fn trip_open(
+        &mut self,
+        ids: (&ServiceId, &UpstreamId),
+        _p: &CircuitBreakerParams,
+        reason: &'static str,
+    ) {
+        let old_state = self.state;
         self.state = CircuitState::Open;
-        self.opened_at = Some(Instant::now());
+        self.opened_at_instant = Some(Instant::now());
+        self.opened_at_system = Some(SystemTime::now());
+        let failures = self.consecutive_failures;
         self.consecutive_failures = 0;
         self.half_open_in_flight = 0;
         self.half_open_successes = 0;
+
+        info!(
+            event = "circuit_transition",
+            service = %ids.0,
+            upstream = ?ids.1,
+            from = ?old_state,
+            to = ?self.state,
+            reason = reason,
+            failures = failures
+        );
     }
 
-    fn reset_closed(&mut self) {
+    fn reset_closed(&mut self, ids: (&ServiceId, &UpstreamId), _p: &CircuitBreakerParams) {
+        let old_state = self.state;
         self.state = CircuitState::Closed;
-        self.opened_at = None;
+        self.opened_at_instant = None;
+        self.opened_at_system = None;
         self.consecutive_failures = 0;
         self.half_open_in_flight = 0;
         self.half_open_successes = 0;
+
+        info!(
+            event = "circuit_transition",
+            service = %ids.0,
+            upstream = ?ids.1,
+            from = ?old_state,
+            to = ?self.state,
+            reason = "success_threshold_reached"
+        );
     }
 }
 

@@ -1,4 +1,7 @@
 use crate::server::UpstreamId;
+use crate::traffic::admin::{
+    AdminUpstreamView, CircuitBreakerDetailsView, CircuitBreakerParamsView,
+};
 use crate::traffic::circuit::{CircuitBreaker, CircuitBreakerParams, CircuitState};
 use crate::traffic::snapshot::TrafficSnapshot;
 use crate::traffic::{HealthStatus, ServiceId};
@@ -42,6 +45,11 @@ pub struct TrafficManager {
     /// Per-upstream health state
     upstream_health: DashMap<(ServiceId, UpstreamId), HealthState>,
 
+    /// Per-upstream counters (Phase 2C)
+    total_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
+    total_successes: DashMap<(ServiceId, UpstreamId), AtomicU32>,
+    total_failures: DashMap<(ServiceId, UpstreamId), AtomicU32>,
+
     /// Per-upstream circuit breaker state machine
     pub circuit: DashMap<(ServiceId, UpstreamId), CircuitBreaker>,
 
@@ -56,6 +64,9 @@ impl TrafficManager {
             active_requests: DashMap::new(),
             rr_cursors: DashMap::new(),
             upstream_health: DashMap::new(),
+            total_requests: DashMap::new(),
+            total_successes: DashMap::new(),
+            total_failures: DashMap::new(),
             circuit: DashMap::new(),
             circuit_params: DashMap::new(),
         }
@@ -93,6 +104,29 @@ impl TrafficManager {
                 .unwrap_or(false)
         });
 
+        // Cleanup total counters
+        self.total_requests.retain(|(service_id, upstream_id), _| {
+            new_snapshot
+                .services
+                .get(service_id)
+                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .unwrap_or(false)
+        });
+        self.total_successes.retain(|(service_id, upstream_id), _| {
+            new_snapshot
+                .services
+                .get(service_id)
+                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .unwrap_or(false)
+        });
+        self.total_failures.retain(|(service_id, upstream_id), _| {
+            new_snapshot
+                .services
+                .get(service_id)
+                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .unwrap_or(false)
+        });
+
         // Cleanup circuit breaker state
         self.circuit.retain(|(service_id, upstream_id), _| {
             new_snapshot
@@ -107,8 +141,15 @@ impl TrafficManager {
             .retain(|service_id, _| valid_services.contains(service_id));
 
         for (svc_id, svc) in new_snapshot.services.iter() {
-            self.circuit_params
-                .insert(svc_id.clone(), Arc::new(svc.circuit.clone()));
+            let params = CircuitBreakerParams {
+                enabled: svc.circuit_breaker_config.enabled,
+                failure_threshold: svc.circuit_breaker_config.failure_threshold,
+                open_duration: Duration::from_millis(svc.circuit_breaker_config.open_duration_ms),
+                half_open_max_requests: svc.circuit_breaker_config.half_open_max_requests,
+                success_threshold: svc.circuit_breaker_config.success_threshold,
+                count_http_5xx_as_failure: svc.circuit_breaker_config.count_http_5xx_as_failure,
+            };
+            self.circuit_params.insert(svc_id.clone(), Arc::new(params));
         }
 
         self.snapshot.store(Arc::new(new_snapshot));
@@ -122,10 +163,16 @@ impl TrafficManager {
 
         let counter = self
             .active_requests
-            .entry(key)
+            .entry(key.clone())
             .or_insert_with(|| AtomicU32::new(0));
 
         counter.fetch_add(1, Ordering::Relaxed);
+
+        let total = self
+            .total_requests
+            .entry(key)
+            .or_insert_with(|| AtomicU32::new(0));
+        total.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn on_request_end(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
@@ -161,6 +208,12 @@ impl TrafficManager {
     pub fn report_failure(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
         let key = (service_id.clone(), *upstream_id);
 
+        let total = self
+            .total_failures
+            .entry(key.clone())
+            .or_insert_with(|| AtomicU32::new(0));
+        total.fetch_add(1, Ordering::Relaxed);
+
         let mut entry = self
             .upstream_health
             .entry(key)
@@ -192,8 +245,15 @@ impl TrafficManager {
 
     /// Any success will fully restore health
     pub fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+        let key = (service_id.clone(), *upstream_id);
         self.upstream_health
-            .insert((service_id.clone(), *upstream_id), HealthState::Healthy);
+            .insert(key.clone(), HealthState::Healthy);
+
+        let total = self
+            .total_successes
+            .entry(key)
+            .or_insert_with(|| AtomicU32::new(0));
+        total.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Determines whether an upstream may receive a request
@@ -237,7 +297,7 @@ impl TrafficManager {
 
         let key = (service_id.clone(), *upstream_id);
         let mut entry = self.circuit.entry(key).or_default();
-        entry.allow_request(&params)
+        entry.allow_request((service_id, upstream_id), &params)
     }
 
     /// Called once per request, after we know whether it succeeded.
@@ -256,7 +316,7 @@ impl TrafficManager {
 
         let key = (service_id.clone(), *upstream_id);
         let mut entry = self.circuit.entry(key).or_default();
-        entry.on_request_end(&params, started, success);
+        entry.on_request_end((service_id, upstream_id), &params, started, success);
     }
 
     pub fn circuit_state(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> CircuitState {
@@ -264,5 +324,85 @@ impl TrafficManager {
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.state())
             .unwrap_or(CircuitState::Closed)
+    }
+
+    pub fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+        self.total_requests
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|c| c.load(Ordering::Relaxed))
+            .unwrap_or(0)
+    }
+
+    pub fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+        self.total_successes
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|c| c.load(Ordering::Relaxed))
+            .unwrap_or(0)
+    }
+
+    pub fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+        self.total_failures
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|c| c.load(Ordering::Relaxed))
+            .unwrap_or(0)
+    }
+
+    pub fn get_upstream_view(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+        include_details: bool,
+    ) -> AdminUpstreamView {
+        let health = self.health_status(service_id, upstream_id);
+        let active_requests = self.active_requests(service_id, upstream_id);
+
+        let (total_requests, total_successes, total_failures) = if include_details {
+            (
+                self.total_requests(service_id, upstream_id),
+                self.total_successes(service_id, upstream_id),
+                self.total_failures(service_id, upstream_id),
+            )
+        } else {
+            (0, 0, 0)
+        };
+
+        let circuit_params = if include_details {
+            self.circuit_params
+                .get(service_id)
+                .map(|p| CircuitBreakerParamsView::from(&**p))
+        } else {
+            None
+        };
+
+        let (circuit_state, circuit_details) = self
+            .circuit
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|c| {
+                let details = if include_details {
+                    Some(CircuitBreakerDetailsView {
+                        consecutive_failures: c.consecutive_failures,
+                        opened_at_rfc3339: c
+                            .opened_at_system
+                            .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()),
+                        half_open_in_flight: c.half_open_in_flight,
+                        half_open_successes: c.half_open_successes,
+                    })
+                } else {
+                    None
+                };
+                (c.state(), details)
+            })
+            .unwrap_or((CircuitState::Closed, None));
+
+        AdminUpstreamView {
+            health,
+            circuit: circuit_state,
+            active_requests,
+            total_requests,
+            total_successes,
+            total_failures,
+            circuit_params,
+            circuit_details,
+        }
     }
 }
