@@ -1,6 +1,8 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::ctx::RequestCtx;
 use crate::server::{UpstreamId, UpstreamRuntime};
+use crate::traffic::decision::TrafficDecision;
+use crate::traffic::strategy::TrafficStrategy;
 use crate::traffic::{
     TrafficManager,
     decision::DecisionReason,
@@ -178,4 +180,50 @@ fn failover_strategy_selects_first_healthy_upstream() {
     // Assert
     assert_eq!(decision.upstream_id, UpstreamId(10));
     assert_eq!(decision.reason, DecisionReason::Failover);
+}
+
+#[test]
+fn fallback_is_used_when_strategy_returns_none() {
+    // Arrange
+    let service_id = ServiceId("svc".into());
+
+    let snapshot = snapshot_with_service(
+        service_id.clone(),
+        vec![upstream(10), upstream(20)],
+        LoadBalancingStrategy::Failover, // irrelevant here
+    );
+
+    let manager = TrafficManager::default();
+    let req = dummy_request();
+
+    // Synthetic strategy that never decides
+    struct NullStrategy;
+    impl TrafficStrategy for NullStrategy {
+        fn decide(
+            &self,
+            _: &RequestCtx,
+            _: &ServiceId,
+            _: &[UpstreamSnapshot],
+            _: &TrafficManager,
+        ) -> Option<TrafficDecision> {
+            None
+        }
+    }
+
+    let service = snapshot.services.get(&service_id).unwrap();
+    let healthy = &service.upstreams;
+    let strategy = NullStrategy;
+
+    // Act
+    let decision = strategy
+        .decide(&req, &service_id, healthy, &manager)
+        .unwrap_or_else(|| TrafficDecision {
+            upstream_id: healthy[0].endpoint.id,
+            reason: DecisionReason::NoStrategyDecision,
+            protocol: None,
+        });
+
+    // Assert
+    assert_eq!(decision.upstream_id, UpstreamId(10));
+    assert_eq!(decision.reason, DecisionReason::NoStrategyDecision);
 }
