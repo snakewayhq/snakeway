@@ -71,7 +71,7 @@ fn unknown_service_returns_error() {
     // Arrange
     let director = TrafficDirector;
     let snapshot = TrafficSnapshot::default();
-    let manager = TrafficManager::default();
+    let manager = TrafficManager::new(snapshot.clone());
 
     // Act
     let result = director.decide(
@@ -94,7 +94,7 @@ fn no_healthy_upstreams_returns_error() {
         vec![upstream(1), upstream(2)],
         LoadBalancingStrategy::RoundRobin,
     );
-    let manager = TrafficManager::default();
+    let manager = TrafficManager::new(snapshot.clone());
     let director = TrafficDirector;
 
     // Mark all upstreams unhealthy
@@ -122,7 +122,7 @@ fn single_healthy_upstream_is_selected() {
         vec![upstream(1), upstream(2)],
         LoadBalancingStrategy::RoundRobin,
     );
-    let manager = TrafficManager::default();
+    let manager = TrafficManager::new(snapshot.clone());
     let director = TrafficDirector;
 
     // Mark upstream 1 unhealthy
@@ -148,7 +148,7 @@ fn strategy_decision_is_respected() {
         vec![upstream(1), upstream(2)],
         LoadBalancingStrategy::RoundRobin,
     );
-    let manager = TrafficManager::default();
+    let manager = TrafficManager::new(snapshot.clone());
     let director = TrafficDirector;
 
     // Act
@@ -169,7 +169,7 @@ fn failover_strategy_selects_first_healthy_upstream() {
         vec![upstream(10), upstream(20)],
         LoadBalancingStrategy::Failover,
     );
-    let manager = TrafficManager::default();
+    let manager = TrafficManager::new(snapshot.clone());
     let director = TrafficDirector;
 
     // Act
@@ -193,7 +193,7 @@ fn fallback_is_used_when_strategy_returns_none() {
         LoadBalancingStrategy::Failover, // irrelevant here
     );
 
-    let manager = TrafficManager::default();
+    let manager = TrafficManager::new(snapshot.clone());
     let req = dummy_request();
 
     // Synthetic strategy that never decides
