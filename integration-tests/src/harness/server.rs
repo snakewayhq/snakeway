@@ -5,6 +5,7 @@ use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::conf::load_config;
 use snakeway_core::server::{build_pingora_server, build_runtime_state};
+use snakeway_core::traffic::{TrafficManager, TrafficSnapshot};
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -77,10 +78,13 @@ impl TestServer {
         // Build the initial runtime state (static for tests).
         let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
         let state = Arc::new(ArcSwap::from_pointee(runtime_state));
+        let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
+            state.load().as_ref(),
+        )));
 
         // Build server.
-        let server =
-            build_pingora_server(cfg.clone(), state).expect("failed to build snakeway server");
+        let server = build_pingora_server(cfg.clone(), state, traffic_manager)
+            .expect("failed to build snakeway server");
 
         // Run server in a background thread.
         thread::spawn(move || {

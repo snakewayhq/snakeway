@@ -60,3 +60,7 @@ ipnet = { workspace = true }
 thiserror = { workspace = true }
 glob = { workspace = true }
 serde_yaml = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }
+ahash = { workspace = true }
+dashmap = { workspace = true }

@@ -1,14 +1,15 @@
-use crate::conf::types::{RouteConfig, RouteTarget, ServiceConfig, Strategy};
+use crate::conf::types::{LoadBalancingStrategy, RouteConfig, RouteTarget, ServiceConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::{RouteKind, Router};
+use ahash::RandomState;
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct RuntimeState {
     pub router: Router,
@@ -19,48 +20,26 @@ pub struct RuntimeState {
 /// ServiceRuntime encapsulates the state of a service, including its upstream(s) and load balancing strategy.
 /// It is not just a collection of data, but also a behavioral unit distinct from RuntimeState.
 pub struct ServiceRuntime {
-    pub strategy: Strategy,
+    pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamRuntime>,
-    pub round_robin_cursor: AtomicUsize,
 }
 
-impl ServiceRuntime {
-    pub fn select_upstream(&self) -> Option<&UpstreamRuntime> {
-        if self.upstreams.is_empty() {
-            return None;
-        }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct UpstreamId(pub u32);
 
-        match self.strategy {
-            Strategy::RoundRobin => self.round_robin(),
-            Strategy::Failover => self.failover(),
-            Strategy::LeastConnections => self.least_connections(),
-        }
-    }
+// Fixed-seed ahash:
+// - deterministic across restarts
+// - fast
+// - not used for security
+pub fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
+    static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
+
+    UpstreamId(HASHER.hash_one((host, port)) as u32)
 }
 
-impl ServiceRuntime {
-    fn round_robin(&self) -> Option<&UpstreamRuntime> {
-        let len = self.upstreams.len();
-
-        let idx = self.round_robin_cursor.fetch_add(1, Ordering::Relaxed) % len;
-
-        self.upstreams.get(idx)
-    }
-
-    fn failover(&self) -> Option<&UpstreamRuntime> {
-        // todo: handle failover strategy, there is no is_healthy yet. Will be something like: self.upstreams.iter().find(|u| u.is_healthy())
-        // Degrade gracefully to first upstream
-        self.upstreams.first()
-    }
-
-    fn least_connections(&self) -> Option<&UpstreamRuntime> {
-        // todo: no connection tracking yet, can't do least connections without them.
-        // Degrade gracefully to round-robin
-        self.round_robin()
-    }
-}
-
+#[derive(Debug, Clone)]
 pub struct UpstreamRuntime {
+    pub id: UpstreamId,
     pub host: String,
     pub port: u16,
     pub use_tls: bool,
@@ -118,7 +97,10 @@ fn build_runtime_services(
         let upstreams = svc
             .upstream
             .iter()
-            .map(|u| parse_upstream_url(&u.url))
+            .map(|u| {
+                let rt = parse_upstream_url(&u.url)?;
+                Ok(rt)
+            })
             .collect::<Result<Vec<_>>>()?;
 
         out.insert(
@@ -126,7 +108,6 @@ fn build_runtime_services(
             ServiceRuntime {
                 strategy: svc.strategy.clone(),
                 upstreams,
-                round_robin_cursor: AtomicUsize::new(0),
             },
         );
     }
@@ -190,6 +171,7 @@ fn parse_upstream_url(raw: &str) -> Result<UpstreamRuntime> {
     let sni = host.clone();
 
     Ok(UpstreamRuntime {
+        id: make_upstream_id(&host, port),
         host,
         port,
         use_tls,

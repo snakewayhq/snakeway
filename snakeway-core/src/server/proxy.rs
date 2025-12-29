@@ -4,6 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 use crate::route::{RouteEntry, RouteKind};
 use crate::server::runtime::RuntimeState;
+use crate::traffic::{TrafficDirector, TrafficManager};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -18,6 +19,10 @@ use tokio::io::AsyncReadExt;
 pub struct SnakewayGateway {
     // Runtime state
     pub state: Arc<ArcSwap<RuntimeState>>,
+
+    // Traffic intelligence
+    pub traffic_manager: Arc<TrafficManager>,
+    pub traffic_director: TrafficDirector,
 }
 
 #[async_trait]
@@ -49,14 +54,33 @@ impl ProxyHttp for SnakewayGateway {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
 
         let state = self.state.load();
+
+        let service_id = crate::traffic::ServiceId(service_name.clone());
+
+        // Get snapshot (cheap, lock-free)
+        let snapshot = self.traffic_manager.snapshot();
+
+        // Ask director for a decision.
+        let decision = self
+            .traffic_director
+            .decide(ctx, &snapshot, &service_id, &self.traffic_manager)
+            .map_err(|e| {
+                tracing::error!(error = ?e, "traffic decision failed");
+                Error::new(Custom("traffic decision failed"))
+            })?;
+
+        // Grab the service by name.
         let service = state
             .services
             .get(service_name)
             .ok_or_else(|| Error::new(Custom("unknown service")))?;
 
+        // Get the upstream based on the decision from the Traffic Director.
         let upstream = service
-            .select_upstream()
-            .ok_or_else(|| Error::new(Custom("no upstreams")))?;
+            .upstreams
+            .iter()
+            .find(|u| u.id == decision.upstream_id)
+            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
 
         let mut peer = HttpPeer::new(
             (upstream.host.as_str(), upstream.port),
@@ -84,6 +108,11 @@ impl ProxyHttp for SnakewayGateway {
 
         let authority = format!("{}:{}", upstream.host, upstream.port);
         ctx.upstream_authority = Some(authority);
+
+        self.traffic_manager
+            .on_request_start(&service_id, &upstream.id);
+
+        ctx.selected_upstream = Some((service_id, upstream.id));
 
         Ok(Box::new(peer))
     }
@@ -285,10 +314,26 @@ impl ProxyHttp for SnakewayGateway {
         Ok(())
     }
 
-    async fn logging(&self, _session: &mut Session, _e: Option<&Error>, ctx: &mut Self::CTX)
+    async fn logging(&self, _session: &mut Session, e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,
     {
+        if let Some((service_id, upstream_id)) = ctx.selected_upstream.as_ref() {
+            if e.is_some() {
+                // Transport-level failure
+                self.traffic_manager.report_failure(service_id, upstream_id);
+            } else {
+                // Successful upstream response (any status code)
+                self.traffic_manager.report_success(service_id, upstream_id);
+            }
+        }
+
+        // Always decrement active request counter
+        if let Some((service_id, upstream_id)) = ctx.selected_upstream.take() {
+            self.traffic_manager
+                .on_request_end(&service_id, &upstream_id);
+        }
+
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.6.0.

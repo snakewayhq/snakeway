@@ -6,22 +6,24 @@ pub struct ServiceConfig {
 
     /// Load balancing strategy
     #[serde(default = "default_strategy")]
-    pub strategy: Strategy,
+    pub strategy: LoadBalancingStrategy,
 
     #[serde(default)]
     pub upstream: Vec<UpstreamConfig>,
 }
 
-fn default_strategy() -> Strategy {
-    Strategy::Failover
+fn default_strategy() -> LoadBalancingStrategy {
+    LoadBalancingStrategy::Failover
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Strategy {
+pub enum LoadBalancingStrategy {
     Failover,
     RoundRobin,
     LeastConnections,
+    StickyHash,
+    Random,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
