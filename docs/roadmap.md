@@ -346,7 +346,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 3. WASM hooks
 4. Per-file caching headers
 
-### Cloud-native integration
+### External Control Planes and Discovery
 
 1. Service discovery
 2. Dynamic cert management
