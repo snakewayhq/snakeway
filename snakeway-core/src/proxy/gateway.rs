@@ -2,8 +2,8 @@ use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::result::DeviceResult;
 use crate::route::RouteKind;
-use crate::server::RuntimeState;
-use crate::traffic::{TrafficDirector, TrafficManager, UpstreamOutcome};
+use crate::server::{RuntimeState, UpstreamRuntime};
+use crate::traffic::{ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -70,39 +70,15 @@ impl ProxyHttp for Gateway {
         _session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
+        let state = self.state.load();
+
         let service_name = ctx
             .service
             .as_ref()
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
+        let service_id = ServiceId(service_name.clone());
 
-        let state = self.state.load();
-
-        let service_id = crate::traffic::ServiceId(service_name.clone());
-
-        // Get snapshot (cheap, lock-free)
-        let snapshot = self.traffic_manager.snapshot();
-
-        // Ask director for a decision.
-        let decision = self
-            .traffic_director
-            .decide(ctx, &snapshot, &service_id, &self.traffic_manager)
-            .map_err(|e| {
-                tracing::error!(error = ?e, "traffic decision failed");
-                Error::new(Custom("traffic decision failed"))
-            })?;
-
-        // Grab the service by name.
-        let service = state
-            .services
-            .get(service_name)
-            .ok_or_else(|| Error::new(Custom("unknown service")))?;
-
-        // Get the upstream based on the decision from the Traffic Director.
-        let upstream = service
-            .upstreams
-            .iter()
-            .find(|u| u.id == decision.upstream_id)
-            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
+        let upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
 
         let mut peer = HttpPeer::new(
             (upstream.host.as_str(), upstream.port),
@@ -110,24 +86,10 @@ impl ProxyHttp for Gateway {
             upstream.sni.clone(),
         );
 
-        /*
-         * PROTOCOL PRECEDENCE (highest to lowest):
-         *
-         * 1. WebSocket: HTTP/1.1 only
-         * 2. gRPC: HTTP/2 only (TLS required)
-         * 3. Default: Pingora defaults
-         */
+        // Enforce protocol rules for this upstream and request.
+        self.enforce_protocol(&mut peer, ctx, upstream)?;
 
-        if ctx.is_upgrade_req {
-            // WebSockets MUST be HTTP/1.1
-            peer.options.set_http_version(1, 1);
-        } else if ctx.is_grpc {
-            if !upstream.use_tls {
-                return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
-            }
-            peer.options.set_http_version(2, 2);
-        }
-
+        // Set upstream authority for gRPC requests.
         let authority = format!("{}:{}", upstream.host, upstream.port);
         ctx.upstream_authority = Some(authority);
 
@@ -416,5 +378,67 @@ impl ProxyHttp for Gateway {
                 &WsCloseCtx::default(),
             );
         }
+    }
+}
+
+impl Gateway {
+    /// Select an upstream for the given request.
+    fn select_upstream<'a>(
+        &self,
+        ctx: &RequestCtx,
+        state: &'a RuntimeState,
+        service_id: &ServiceId,
+        service_name: &str,
+    ) -> std::result::Result<&'a UpstreamRuntime, BError> {
+        // Get a snapshot (cheap, lock-free)
+        let snapshot = self.traffic_manager.snapshot();
+
+        // Ask the director for a decision.
+        let decision = self
+            .traffic_director
+            .decide(ctx, &snapshot, &service_id, &self.traffic_manager)
+            .map_err(|e| {
+                tracing::error!(error = ?e, "traffic decision failed");
+                Error::new(Custom("traffic decision failed"))
+            })?;
+
+        // Grab the service by name.
+        let service = state
+            .services
+            .get(service_name)
+            .ok_or_else(|| Error::new(Custom("unknown service")))?;
+
+        // Get the upstream based on the decision from the Traffic Director.
+        let upstream = service
+            .upstreams
+            .iter()
+            .find(|u| u.id == decision.upstream_id)
+            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
+
+        Ok(upstream)
+    }
+
+    /// Enforces protocol rules for the given upstream and request.
+    ///
+    /// PROTOCOL PRECEDENCE (highest to lowest):
+    /// 1. WebSocket: HTTP/1.1 only
+    /// 2. gRPC: HTTP/2 only (TLS required)
+    /// 3. Default: Pingora defaults
+    pub fn enforce_protocol(
+        &self,
+        peer: &mut HttpPeer,
+        ctx: &RequestCtx,
+        upstream: &UpstreamRuntime,
+    ) -> Result<(), BError> {
+        if ctx.is_upgrade_req {
+            // WebSockets MUST be HTTP/1.1
+            peer.options.set_http_version(1, 1);
+        } else if ctx.is_grpc {
+            if !upstream.use_tls {
+                return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
+            }
+            peer.options.set_http_version(2, 2);
+        }
+        Ok(())
     }
 }
