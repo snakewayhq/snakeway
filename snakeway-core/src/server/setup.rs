@@ -90,7 +90,11 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     });
 
     // Build Pingora server (Pingora owns its own runtimes)
-    let server = build_pingora_server(config.clone(), state, Arc::clone(&traffic))?;
+    let server = build_pingora_server(config.clone(), state, Arc::clone(&traffic), reload.clone())
+        .map_err(|e| {
+            tracing::error!(error = %e, "failed to build Pingora server");
+            e
+        })?;
 
     // Ensure pid file cleanup on shutdown
     if let Some(pid_file) = config.server.pid_file.clone() {
@@ -112,6 +116,7 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
     traffic: Arc<TrafficManager>,
+    reload: ReloadHandle,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
     conf.ca_file = config.server.ca_file.clone();
@@ -141,6 +146,7 @@ pub fn build_pingora_server(
         state: state.clone(),
         traffic_manager: traffic,
         traffic_director: TrafficDirector,
+        reload,
     };
 
     // Build HTTP proxy service from Pingora.

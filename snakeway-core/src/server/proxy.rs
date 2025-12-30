@@ -13,6 +13,7 @@ use pingora_http::{RequestHeader, ResponseHeader};
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
+use crate::server::reload::ReloadHandle;
 #[cfg(feature = "static_files")]
 use tokio::io::AsyncReadExt;
 
@@ -27,6 +28,9 @@ pub struct SnakewayGateway {
     // Traffic intelligence
     pub traffic_manager: Arc<TrafficManager>,
     pub traffic_director: TrafficDirector,
+
+    // Reload handle
+    pub reload: ReloadHandle,
 }
 
 #[async_trait]
@@ -467,11 +471,11 @@ impl SnakewayGateway {
             }
 
             "/admin/reload" => {
-                // Future: handle reload via API
+                self.reload.notify_reload();
                 self.send_json_response(
                     session,
-                    StatusCode::NOT_IMPLEMENTED,
-                    br#"{"error":"not_implemented"}"#.to_vec(),
+                    StatusCode::OK,
+                    br#"{"message":"reload requested"}"#.to_vec(),
                 )
                 .await?;
                 Ok(true)

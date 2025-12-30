@@ -4,6 +4,7 @@ mod reload;
 mod runtime;
 pub mod setup;
 
+pub use reload::ReloadHandle;
 pub use runtime::{
     RuntimeState, UpstreamId, UpstreamRuntime, build_runtime_state, make_upstream_id,
 };
