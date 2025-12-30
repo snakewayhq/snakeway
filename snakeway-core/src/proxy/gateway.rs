@@ -13,6 +13,7 @@ use std::net::Ipv4Addr;
 use std::sync::Arc;
 
 use crate::proxy::handlers::{AdminHandler, StaticFileHandler};
+use crate::proxy::request_classification::{RequestKind, classify_request};
 use crate::server::ReloadHandle;
 
 pub struct Gateway {
@@ -146,12 +147,14 @@ impl ProxyHttp for Gateway {
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         let req = session.req_header();
 
-        // Admin endpoints
-        // Note: These run on the main listener and currently have no authentication.
-        // In the future, these may be moved to a separate internal listener or have auth applied.
-        if self.admin_handler.is_admin_path(req.uri.path()) {
-            let path = req.uri.path().to_string();
-            return self.admin_handler.handle(session, &path).await;
+        match classify_request(req) {
+            RequestKind::Admin { path } => {
+                // Admin endpoints
+                // Note: These run on the main listener and currently have no authentication.
+                // In the future, these may be moved to a separate internal listener or have auth applied.
+                return self.admin_handler.handle(session, &path).await;
+            }
+            RequestKind::Normal => {}
         }
 
         let is_upgrade_req = session.is_upgrade_req();

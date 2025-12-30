@@ -19,10 +19,6 @@ impl AdminHandler {
         }
     }
 
-    pub fn is_admin_path(&self, path: &str) -> bool {
-        path.starts_with("/admin/")
-    }
-
     pub(crate) async fn handle(&self, session: &mut Session, path: &str) -> pingora::Result<bool> {
         match path {
             "/admin/health" | "/admin/upstreams" => {
