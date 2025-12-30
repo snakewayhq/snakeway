@@ -40,15 +40,12 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
 
     let device = load_wasm_device(&args.file)?;
 
-    let ctx = &mut RequestCtx::new(
-        Some("some server".to_string()),
-        http::Method::GET,
-        args.path.parse()?,
-        http::HeaderMap::new(),
-        IpAddr::V4(Ipv4Addr::LOCALHOST),
-        false,
-        Vec::new(),
-    );
+    let ctx = &mut RequestCtx {
+        service: Some("some service".to_string()),
+        route_path: "/some/route".to_string(),
+        peer_ip: IpAddr::V4(Ipv4Addr::LOCALHOST),
+        ..Default::default()
+    };
 
     tracing::info!("Pre-device Request Context: {:#?}", ctx);
     tracing::info!("Running device hook...");

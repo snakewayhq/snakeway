@@ -56,39 +56,13 @@ pub struct RequestCtx {
     pub body: Vec<u8>,
 }
 
-impl RequestCtx {
-    pub fn new(
-        service: Option<String>,
-        method: Method,
-        uri: Uri,
-        headers: HeaderMap,
-        peer_ip: IpAddr,
-        is_upgrade_req: bool,
-        body: Vec<u8>,
-    ) -> Self {
-        let route_path = uri.path().to_string();
-
-        Self {
-            hydrated: false,
-            service,
-            method,
-            original_uri: uri,
-            route_path,
-            upstream_path: None,
-            headers,
-            peer_ip,
-            is_upgrade_req,
-            ws_opened: false,
-            is_grpc: false,
-            upstream_authority: None,
-            extensions: Extensions::new(),
-            selected_upstream: None,
-            upstream_outcome: None,
-            cb_started: false,
-            body,
-        }
+impl Default for RequestCtx {
+    fn default() -> Self {
+        Self::empty()
     }
+}
 
+impl RequestCtx {
     pub fn empty() -> Self {
         Self {
             // Request lifecycle flag.

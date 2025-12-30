@@ -19,15 +19,11 @@ use std::time::Duration;
 /// ---------------------------
 
 fn dummy_request() -> RequestCtx {
-    RequestCtx::new(
-        None,
-        http::Method::GET,
-        "/".parse().unwrap(),
-        http::HeaderMap::new(),
-        std::net::Ipv4Addr::LOCALHOST.into(),
-        false,
-        Vec::new(),
-    )
+    RequestCtx {
+        original_uri: "/".parse().unwrap(),
+        peer_ip: std::net::Ipv4Addr::LOCALHOST.into(),
+        ..Default::default()
+    }
 }
 
 fn upstream(id: u16) -> UpstreamSnapshot {
