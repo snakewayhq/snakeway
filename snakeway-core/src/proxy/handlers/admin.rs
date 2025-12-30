@@ -4,7 +4,30 @@ use http::{StatusCode, header};
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
 use pingora_http::ResponseHeader;
+use std::str::FromStr;
 use std::sync::Arc;
+
+#[derive(Debug, PartialEq)]
+enum AdminEndpoint {
+    Health,
+    Upstreams,
+    Stats,
+    Reload,
+}
+
+impl FromStr for AdminEndpoint {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "/admin/health" => Ok(AdminEndpoint::Health),
+            "/admin/upstreams" => Ok(AdminEndpoint::Upstreams),
+            "/admin/stats" => Ok(AdminEndpoint::Stats),
+            "/admin/reload" => Ok(AdminEndpoint::Reload),
+            _ => Err("invalid admin endpoint"),
+        }
+    }
+}
 
 pub struct AdminHandler {
     traffic_manager: Arc<TrafficManager>,
@@ -20,9 +43,13 @@ impl AdminHandler {
     }
 
     pub(crate) async fn handle(&self, session: &mut Session, path: &str) -> pingora::Result<bool> {
-        match path {
-            "/admin/health" | "/admin/upstreams" => {
-                let include_details = path == "/admin/upstreams";
+        let admin_endpoint = path
+            .parse::<AdminEndpoint>()
+            .map_err(|_| Error::new(Custom("invalid admin endpoint")))?;
+
+        match admin_endpoint {
+            AdminEndpoint::Health | AdminEndpoint::Upstreams => {
+                let include_details = matches!(admin_endpoint, AdminEndpoint::Upstreams);
                 let snapshot = self.traffic_manager.snapshot();
                 let mut services = std::collections::HashMap::new();
 
@@ -48,7 +75,7 @@ impl AdminHandler {
                 Ok(true)
             }
 
-            "/admin/stats" => {
+            AdminEndpoint::Stats => {
                 let snapshot = self.traffic_manager.snapshot();
                 let mut stats = std::collections::HashMap::new();
 
@@ -88,7 +115,7 @@ impl AdminHandler {
                 Ok(true)
             }
 
-            "/admin/reload" => {
+            AdminEndpoint::Reload => {
                 let method = session.req_header().method.clone();
 
                 // Return early when not a POST request.
@@ -110,16 +137,6 @@ impl AdminHandler {
 
                 self.send_json_response(session, StatusCode::OK, body)
                     .await?;
-                Ok(true)
-            }
-
-            _ => {
-                self.send_json_response(
-                    session,
-                    StatusCode::NOT_FOUND,
-                    br#"{"error":"admin_endpoint_not_found"}"#.to_vec(),
-                )
-                .await?;
                 Ok(true)
             }
         }
