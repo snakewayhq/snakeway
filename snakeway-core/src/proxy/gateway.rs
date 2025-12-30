@@ -4,7 +4,7 @@ use crate::device::core::result::DeviceResult;
 use crate::route::RouteKind;
 use crate::server::{RuntimeState, UpstreamRuntime};
 use crate::traffic::{ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, Guard};
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
 use pingora::prelude::*;
@@ -16,12 +16,28 @@ use crate::proxy::handlers::{AdminHandler, StaticFileHandler};
 use crate::proxy::request_classification::{RequestKind, classify_request};
 use crate::server::ReloadHandle;
 
-pub struct Gateway {
-    // Runtime state
+struct GatewayCtx {
     state: Arc<ArcSwap<RuntimeState>>,
+    traffic_manager: Arc<TrafficManager>,
+}
+
+impl GatewayCtx {
+    fn new(state: Arc<ArcSwap<RuntimeState>>, traffic_manager: Arc<TrafficManager>) -> Self {
+        Self {
+            state,
+            traffic_manager,
+        }
+    }
+
+    pub fn state(&self) -> Guard<Arc<RuntimeState>> {
+        self.state.load()
+    }
+}
+
+pub struct Gateway {
+    gw_ctx: GatewayCtx,
 
     // Traffic intelligence
-    traffic_manager: Arc<TrafficManager>,
     traffic_director: TrafficDirector,
 
     // Handlers
@@ -36,10 +52,9 @@ impl Gateway {
         reload: Arc<ReloadHandle>,
     ) -> Self {
         let admin_handler = AdminHandler::new(traffic_manager.clone(), reload);
-
+        let gw_ctx = GatewayCtx::new(state, traffic_manager);
         Self {
-            state,
-            traffic_manager,
+            gw_ctx,
             traffic_director: TrafficDirector,
             admin_handler,
             static_file_handler: StaticFileHandler,
@@ -70,7 +85,7 @@ impl ProxyHttp for Gateway {
         _session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let state = self.state.load();
+        let state = self.gw_ctx.state();
 
         let service_name = ctx
             .service
@@ -97,7 +112,8 @@ impl ProxyHttp for Gateway {
         // The TrafficDirector already called `circuit_allows` for selection.
         ctx.cb_started = true;
 
-        self.traffic_manager
+        self.gw_ctx
+            .traffic_manager
             .on_request_start(&service_id, &upstream.id);
 
         ctx.selected_upstream = Some((service_id, upstream.id));
@@ -140,7 +156,7 @@ impl ProxyHttp for Gateway {
 
         ctx.is_grpc = is_grpc;
 
-        let state = self.state.load();
+        let state = self.gw_ctx.state();
 
         // Run on_request devices first (applies to both static and upstream requests).
         match DevicePipeline::run_on_request(state.devices.all(), ctx) {
@@ -218,7 +234,7 @@ impl ProxyHttp for Gateway {
             upstream.insert_header(header::HOST, authority)?;
         }
 
-        let state = self.state.load();
+        let state = self.gw_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
@@ -259,7 +275,7 @@ impl ProxyHttp for Gateway {
         ctx: &mut Self::CTX,
     ) -> Result<()> {
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
-        let state = self.state.load();
+        let state = self.gw_ctx.state();
 
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
@@ -279,7 +295,7 @@ impl ProxyHttp for Gateway {
             ctx.ws_opened = true;
 
             // Run WS-open hook.
-            DevicePipeline::run_on_ws_open(self.state.load().devices.all(), &WsCtx::default());
+            DevicePipeline::run_on_ws_open(self.gw_ctx.state().devices.all(), &WsCtx::default());
         }
 
         Ok(())
@@ -303,7 +319,7 @@ impl ProxyHttp for Gateway {
         }
 
         let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
-        let state = self.state.load();
+        let state = self.gw_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
@@ -341,6 +357,7 @@ impl ProxyHttp for Gateway {
                     // Decide if this status code is a failure.
                     // By default, 5xx is failure.
                     let count_5xx = self
+                        .gw_ctx
                         .traffic_manager
                         .circuit_params
                         .get(service_id)
@@ -353,19 +370,28 @@ impl ProxyHttp for Gateway {
             };
 
             if success {
-                self.traffic_manager.report_success(service_id, upstream_id);
+                self.gw_ctx
+                    .traffic_manager
+                    .report_success(service_id, upstream_id);
             } else {
-                self.traffic_manager.report_failure(service_id, upstream_id);
+                self.gw_ctx
+                    .traffic_manager
+                    .report_failure(service_id, upstream_id);
             }
 
             // Circuit breaker state update
-            self.traffic_manager
-                .circuit_on_end(service_id, upstream_id, ctx.cb_started, success);
+            self.gw_ctx.traffic_manager.circuit_on_end(
+                service_id,
+                upstream_id,
+                ctx.cb_started,
+                success,
+            );
         }
 
         // Always decrement active request counter
         if let Some((service_id, upstream_id)) = ctx.selected_upstream.take() {
-            self.traffic_manager
+            self.gw_ctx
+                .traffic_manager
                 .on_request_end(&service_id, &upstream_id);
         }
 
@@ -374,7 +400,7 @@ impl ProxyHttp for Gateway {
         // done in Pingora 0.6.0.
         if ctx.ws_opened {
             DevicePipeline::run_on_ws_close(
-                self.state.load().devices.all(),
+                self.gw_ctx.state().devices.all(),
                 &WsCloseCtx::default(),
             );
         }
@@ -391,12 +417,12 @@ impl Gateway {
         service_name: &str,
     ) -> std::result::Result<&'a UpstreamRuntime, BError> {
         // Get a snapshot (cheap, lock-free)
-        let snapshot = self.traffic_manager.snapshot();
+        let snapshot = self.gw_ctx.traffic_manager.snapshot();
 
         // Ask the director for a decision.
         let decision = self
             .traffic_director
-            .decide(ctx, &snapshot, &service_id, &self.traffic_manager)
+            .decide(ctx, &snapshot, &service_id, &self.gw_ctx.traffic_manager)
             .map_err(|e| {
                 tracing::error!(error = ?e, "traffic decision failed");
                 Error::new(Custom("traffic decision failed"))
