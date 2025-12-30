@@ -13,7 +13,6 @@ use async_trait::async_trait;
 use http::{StatusCode, Version, header};
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
-use std::net::Ipv4Addr;
 use std::sync::Arc;
 
 pub struct Gateway {
@@ -47,16 +46,7 @@ impl ProxyHttp for Gateway {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
-        // Placeholder; real initialization happens in request_filter
-        RequestCtx::new(
-            None,
-            http::Method::GET,
-            "/".parse().unwrap(),
-            http::HeaderMap::new(),
-            Ipv4Addr::UNSPECIFIED.into(),
-            false,
-            Vec::new(),
-        )
+        RequestCtx::empty()
     }
 
     /// Select upstream and enforce protocol rules
@@ -103,6 +93,9 @@ impl ProxyHttp for Gateway {
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
+        // The request ctx exists before now, but has no data.
+        ctx.hydrate_from_session(session);
+
         let req = session.req_header();
 
         match classify_request(req) {
@@ -114,27 +107,6 @@ impl ProxyHttp for Gateway {
             }
             RequestKind::Normal => {}
         }
-
-        let is_upgrade_req = session.is_upgrade_req();
-
-        let is_grpc = req
-            .headers
-            .get(header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .is_some_and(|ct| ct.starts_with("application/grpc"));
-
-        // todo make this structural, rather than procedural.
-        *ctx = RequestCtx::new(
-            None,
-            req.method.clone(),
-            req.uri.clone(),
-            req.headers.clone(),
-            ctx.peer_ip,
-            is_upgrade_req,
-            Vec::new(),
-        );
-
-        ctx.is_grpc = is_grpc;
 
         let state = self.gw_ctx.state();
 
@@ -166,7 +138,7 @@ impl ProxyHttp for Gateway {
 
         match &route.kind {
             RouteKind::Static { .. } => {
-                if is_upgrade_req {
+                if ctx.is_upgrade_req {
                     // Reject websocket upgrade requests for static files.
                     session
                         .respond_error(StatusCode::BAD_REQUEST.as_u16())
@@ -183,7 +155,7 @@ impl ProxyHttp for Gateway {
                 allow_websocket,
             } => {
                 // If it is a websocket upgrade request, check if the upstream supports websockets.
-                if is_upgrade_req && !allow_websocket {
+                if ctx.is_upgrade_req && !allow_websocket {
                     session
                         .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
                         .await?;

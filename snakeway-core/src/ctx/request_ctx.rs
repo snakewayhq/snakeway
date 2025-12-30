@@ -1,11 +1,15 @@
 use crate::server::UpstreamId;
 use crate::traffic::{ServiceId, UpstreamOutcome};
 use http::{Extensions, HeaderMap, Method, Uri};
-use std::net::IpAddr;
+use pingora::prelude::Session;
+use std::net::{IpAddr, Ipv4Addr};
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
 pub struct RequestCtx {
+    /// Lifecycle flag to determine if the context has already been hydrated from a session.
+    pub hydrated: bool,
+
     /// Service name for routing decisions.
     pub service: Option<String>,
 
@@ -65,6 +69,7 @@ impl RequestCtx {
         let route_path = uri.path().to_string();
 
         Self {
+            hydrated: false,
             service,
             method,
             original_uri: uri,
@@ -82,6 +87,62 @@ impl RequestCtx {
             cb_started: false,
             body,
         }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            // Request lifecycle flag.
+            hydrated: false,
+
+            // Request identity and content.
+            method: Method::GET,                 // dummy
+            original_uri: Uri::from_static("/"), // dummy
+            headers: HeaderMap::new(),
+            body: vec![],
+
+            // Upstream/routing related.
+            route_path: "/".into(),
+            service: None,
+            selected_upstream: None,
+            upstream_path: None,
+
+            // Protocol flags that help figure out what to do with the request.
+            is_grpc: false,
+            is_upgrade_req: false,
+            ws_opened: false,
+
+            // Required for gRPC.
+            upstream_authority: None,
+
+            // Traffic/Circuit-breaker.
+            cb_started: false,
+            upstream_outcome: None,
+
+            // Peer info - Pingora fills this out later.
+            peer_ip: Ipv4Addr::UNSPECIFIED.into(),
+
+            // Device related data.
+            extensions: Extensions::new(),
+        }
+    }
+
+    pub fn hydrate_from_session(&mut self, session: &Session) {
+        debug_assert!(!self.hydrated, "RequestCtx hydrated twice");
+
+        let req = session.req_header();
+
+        self.method = req.method.clone();
+        self.original_uri = req.uri.clone();
+        self.headers = req.headers.clone();
+        self.route_path = req.uri.path().to_string();
+        self.is_upgrade_req = session.is_upgrade_req();
+        self.is_grpc = req
+            .headers
+            .get(http::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|ct| ct.starts_with("application/grpc"));
+
+        self.hydrated = true;
     }
 
     /// Path used when proxying upstream
