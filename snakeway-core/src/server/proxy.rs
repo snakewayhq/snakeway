@@ -471,13 +471,27 @@ impl SnakewayGateway {
             }
 
             "/admin/reload" => {
-                self.reload.notify_reload();
-                self.send_json_response(
-                    session,
-                    StatusCode::OK,
-                    br#"{"message":"reload requested"}"#.to_vec(),
-                )
-                .await?;
+                let method = session.req_header().method.clone();
+
+                // Return early when not a POST request.
+                if method != http::Method::POST {
+                    let mut resp = ResponseHeader::build(StatusCode::METHOD_NOT_ALLOWED, None)?;
+                    resp.insert_header(header::ALLOW, "POST")?;
+                    resp.insert_header(header::CONTENT_LENGTH, "0")?;
+                    session.write_response_header(Box::new(resp), true).await?;
+                    return Ok(true);
+                }
+
+                let epoch = self.reload.notify_reload();
+
+                let body = serde_json::to_vec(&serde_json::json!({
+                    "message": "reload requested",
+                    "epoch": epoch
+                }))
+                .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
+                self.send_json_response(session, StatusCode::OK, body)
+                    .await?;
                 Ok(true)
             }
 

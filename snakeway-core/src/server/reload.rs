@@ -13,6 +13,12 @@ pub struct ReloadHandle {
     tx: watch::Sender<ReloadEvent>,
 }
 
+impl Default for ReloadHandle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReloadHandle {
     pub fn new() -> Self {
         let (tx, _) = watch::channel(ReloadEvent { epoch: 0 });
@@ -23,10 +29,11 @@ impl ReloadHandle {
         self.tx.subscribe()
     }
 
-    pub fn notify_reload(&self) {
+    pub fn notify_reload(&self) -> u64 {
         let epoch = RELOAD_EPOCH.fetch_add(1, Ordering::Relaxed) + 1;
         let _ = self.tx.send(ReloadEvent { epoch });
         tracing::info!(epoch, "reload signaled");
+        epoch
     }
 
     pub async fn install_signal_handler(&self) -> anyhow::Result<()> {
