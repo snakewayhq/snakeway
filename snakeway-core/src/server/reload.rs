@@ -1,27 +1,39 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::watch;
 
-static RELOAD_GEN: AtomicU64 = AtomicU64::new(0);
+static RELOAD_EPOCH: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone, Copy, Debug)]
+pub struct ReloadEvent {
+    pub epoch: u64,
+}
 
 #[derive(Clone)]
 pub struct ReloadHandle {
-    tx: watch::Sender<()>,
+    tx: watch::Sender<ReloadEvent>,
+}
+
+impl Default for ReloadHandle {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ReloadHandle {
     pub fn new() -> Self {
-        let (tx, _) = watch::channel(());
+        let (tx, _) = watch::channel(ReloadEvent { epoch: 0 });
         Self { tx }
     }
 
-    pub fn subscribe(&self) -> watch::Receiver<()> {
+    pub fn subscribe(&self) -> watch::Receiver<ReloadEvent> {
         self.tx.subscribe()
     }
 
-    pub fn notify_reload(&self) {
-        let _ = self.tx.send(());
-        let c = RELOAD_GEN.fetch_add(1, Ordering::Relaxed);
-        tracing::info!(c, "reload signaled");
+    pub fn notify_reload(&self) -> u64 {
+        let epoch = RELOAD_EPOCH.fetch_add(1, Ordering::Relaxed) + 1;
+        let _ = self.tx.send(ReloadEvent { epoch });
+        tracing::info!(epoch, "reload signaled");
+        epoch
     }
 
     pub async fn install_signal_handler(&self) -> anyhow::Result<()> {

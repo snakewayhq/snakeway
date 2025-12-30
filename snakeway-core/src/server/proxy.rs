@@ -13,6 +13,7 @@ use pingora_http::{RequestHeader, ResponseHeader};
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
+use crate::server::reload::ReloadHandle;
 #[cfg(feature = "static_files")]
 use tokio::io::AsyncReadExt;
 
@@ -27,6 +28,9 @@ pub struct SnakewayGateway {
     // Traffic intelligence
     pub traffic_manager: Arc<TrafficManager>,
     pub traffic_director: TrafficDirector,
+
+    // Reload handle
+    pub reload: ReloadHandle,
 }
 
 #[async_trait]
@@ -467,13 +471,27 @@ impl SnakewayGateway {
             }
 
             "/admin/reload" => {
-                // Future: handle reload via API
-                self.send_json_response(
-                    session,
-                    StatusCode::NOT_IMPLEMENTED,
-                    br#"{"error":"not_implemented"}"#.to_vec(),
-                )
-                .await?;
+                let method = session.req_header().method.clone();
+
+                // Return early when not a POST request.
+                if method != http::Method::POST {
+                    let mut resp = ResponseHeader::build(StatusCode::METHOD_NOT_ALLOWED, None)?;
+                    resp.insert_header(header::ALLOW, "POST")?;
+                    resp.insert_header(header::CONTENT_LENGTH, "0")?;
+                    session.write_response_header(Box::new(resp), true).await?;
+                    return Ok(true);
+                }
+
+                let epoch = self.reload.notify_reload();
+
+                let body = serde_json::to_vec(&serde_json::json!({
+                    "message": "reload requested",
+                    "epoch": epoch
+                }))
+                .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
+                self.send_json_response(session, StatusCode::OK, body)
+                    .await?;
                 Ok(true)
             }
 

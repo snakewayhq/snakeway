@@ -4,7 +4,7 @@ use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::conf::load_config;
-use snakeway_core::server::{build_pingora_server, build_runtime_state};
+use snakeway_core::server::{ReloadHandle, build_pingora_server, build_runtime_state};
 use snakeway_core::traffic::{TrafficManager, TrafficSnapshot};
 use std::net::TcpStream;
 use std::path::Path;
@@ -83,7 +83,8 @@ impl TestServer {
         )));
 
         // Build server.
-        let server = build_pingora_server(cfg.clone(), state, traffic_manager)
+        let reload = ReloadHandle::new();
+        let server = build_pingora_server(cfg.clone(), state, traffic_manager, reload)
             .expect("failed to build snakeway server");
 
         // Run server in a background thread.
