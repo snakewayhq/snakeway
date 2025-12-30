@@ -6,30 +6,15 @@
    ███████║██║ ╚████║██║  ██║██║  ██╗███████╗╚███╔███╔╝██║  ██║   ██║   
    ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   
 
-            A programmable edge proxy built on Pingora
+            A programmable edge proxy built with Rust.
 ```
 
 # Snakeway
 
-**Snakeway** is a modern, extensible **L7 reverse proxy** built on **Pingora**.
+**Snakeway** is a modern, extensible **L7 reverse proxy** built with **Rust**.
 
 It is designed for engineers who want **control**, **performance**, and **composability** without dragging in a bloated
 control plane.
-
-## Example Configuration
-
-```toml
-[server]
-listen = "0.0.0.0:8080"
-
-[[route]]
-path = "/"
-upstream = "http://localhost:3000"
-
-[[route]]
-path = "/assets"
-file_dir = "./public"
-```
 
 ## Documentation
 
@@ -51,4 +36,4 @@ Apache 2.0
 
 ## Geo IP Database
 
-Any MMDB database is supported, but default [IP Geolocation by DB-IP](https://db-ip.com).
+Any MMDB database is supported, but the default for integration tests is [IP Geolocation by DB-IP](https://db-ip.com).
