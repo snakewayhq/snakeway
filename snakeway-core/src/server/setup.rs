@@ -44,7 +44,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
         .expect("failed to build control-plane Tokio runtime");
 
     // Reload wiring
-    let reload = ReloadHandle::new();
+    let reload = Arc::new(ReloadHandle::new());
 
     // Spawn signal handler
     control_rt.spawn({
@@ -116,7 +116,7 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
     traffic: Arc<TrafficManager>,
-    reload: ReloadHandle,
+    reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
     conf.ca_file = config.server.ca_file.clone();

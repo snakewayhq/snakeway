@@ -8,11 +8,11 @@ use std::sync::Arc;
 
 pub struct AdminHandler {
     traffic_manager: Arc<TrafficManager>,
-    reload: ReloadHandle,
+    reload: Arc<ReloadHandle>,
 }
 
 impl AdminHandler {
-    pub fn new(traffic_manager: Arc<TrafficManager>, reload: ReloadHandle) -> Self {
+    pub fn new(traffic_manager: Arc<TrafficManager>, reload: Arc<ReloadHandle>) -> Self {
         Self {
             traffic_manager,
             reload,

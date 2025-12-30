@@ -32,7 +32,7 @@ impl Gateway {
     pub fn new(
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
-        reload: ReloadHandle,
+        reload: Arc<ReloadHandle>,
     ) -> Self {
         let admin_handler = AdminHandler::new(traffic_manager.clone(), reload);
 
