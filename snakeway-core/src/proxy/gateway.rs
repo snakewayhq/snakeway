@@ -19,7 +19,7 @@ fn is_admin_path(path: &str) -> bool {
     path.starts_with("/admin/")
 }
 
-pub struct SnakewayGateway {
+pub struct Gateway {
     // Runtime state
     state: Arc<ArcSwap<RuntimeState>>,
 
@@ -32,7 +32,7 @@ pub struct SnakewayGateway {
     static_file_handler: StaticFileHandler,
 }
 
-impl SnakewayGateway {
+impl Gateway {
     pub fn new(
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
@@ -51,7 +51,7 @@ impl SnakewayGateway {
 }
 
 #[async_trait]
-impl ProxyHttp for SnakewayGateway {
+impl ProxyHttp for Gateway {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {

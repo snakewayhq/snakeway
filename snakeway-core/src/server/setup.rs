@@ -1,6 +1,6 @@
 use crate::conf::RuntimeConfig;
 use crate::device::core::registry::DeviceRegistry;
-use crate::proxy::SnakewayGateway;
+use crate::proxy::Gateway;
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
@@ -142,7 +142,7 @@ pub fn build_pingora_server(
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
     // Build gateway
-    let gateway = SnakewayGateway::new(state, traffic, reload);
+    let gateway = Gateway::new(state, traffic, reload);
 
     // Build HTTP proxy service from Pingora.
     let mut svc = http_proxy_service(&server.configuration, gateway);

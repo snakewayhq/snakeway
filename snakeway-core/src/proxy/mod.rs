@@ -1,4 +1,4 @@
 mod gateway;
 mod handlers;
 
-pub use gateway::SnakewayGateway;
+pub use gateway::Gateway;
