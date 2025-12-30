@@ -105,10 +105,16 @@ Devices communicate by extending this context in a controlled way.
 
 ## Hot Reload Model
 
-Snakeway supports hot reload via `SIGHUP`:
+Snakeway supports hot reload via `SIGHUP` and an admin API:
 
 ```shell
 snakeway reload
+```
+
+or:
+
+```shell
+curl -X POST http://localhost:8080/admin/reload
 ```
 
 On reload:
