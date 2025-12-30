@@ -25,8 +25,6 @@
 
 ## Phase 1: Foundations and Extensibility (v0.2.x)
 
-> Snakeway is now a proof-of-concept reverse proxy.
-
 ### Goals
 
 * Fully define the **Snakeway Device API** (plugins)
@@ -107,7 +105,7 @@ Todo:
 2. Evaluate possible performance bottlenecks and make/plan improvements
 3. Evaluate sanity of error handling in lifecycle before moving on.
 
-## Phase 2: Load Balancing and Discovery (v0.3.x \- v0.4.x)
+## Phase 2: Load Balancing and Observability(v0.3.x \- v0.4.x)
 
 ### Goals
 
@@ -133,12 +131,6 @@ Todo:
     * request counters
     * upstream timing histograms
     * error metrics
-
-* Service discovery:
-    * DNS A/AAAA \+ TTL
-    * SRV records
-    * optional plugin-based discovery
-    * optional file-based watcher
 
 ### Deliverables
 
@@ -255,8 +247,6 @@ Todo:
 
 ## Phase 4: ACME TLS Automation (v0.7.x)
 
-*Modern approach to TLS with zero human intervention.*
-
 ### Goals
 
 * Let’s Encrypt automation
@@ -302,8 +292,6 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ## Phase 6: Packaging and Distributions (v0.9.x)
 
-*Snakeway becomes deployable like nginx.*
-
 ### Goals
 
 * `.deb` packages
@@ -339,6 +327,13 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ## Post-v1.0.x
 
+The following is pushed out past the v1.0.x release, because it is not in the critical path.
+
+The additional static file features range from nice-to-haves to critical for a static file server, but static files are
+only an ancillary feature of Snakeway.
+
+Similarly, the external control plane and discovery features are only important after the core functionality exists.
+
 ### Static file server
 
 1. For large files, server precompressed assets (.br/.gz)
@@ -348,5 +343,10 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ### External Control Planes and Discovery
 
-1. Service discovery
-2. Dynamic cert management
+1. Dynamic cert management
+2. Service discovery:
+
+* DNS A/AAAA \+ TTL
+* SRV records
+* optional plugin-based discovery
+* optional file-based watcher
