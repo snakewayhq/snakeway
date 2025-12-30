@@ -1,7 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::device::core::registry::DeviceRegistry;
+use crate::proxy::SnakewayGateway;
 use crate::server::pid;
-use crate::server::proxy::SnakewayGateway;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::traffic::{TrafficDirector, TrafficManager, TrafficSnapshot};

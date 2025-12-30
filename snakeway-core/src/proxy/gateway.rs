@@ -3,7 +3,7 @@ use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::registry::DeviceRegistry;
 use crate::device::core::result::DeviceResult;
 use crate::route::{RouteEntry, RouteKind};
-use crate::server::runtime::RuntimeState;
+use crate::server::RuntimeState;
 use crate::traffic::{TrafficDirector, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
@@ -13,7 +13,7 @@ use pingora_http::{RequestHeader, ResponseHeader};
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
-use crate::server::reload::ReloadHandle;
+use crate::server::ReloadHandle;
 #[cfg(feature = "static_files")]
 use tokio::io::AsyncReadExt;
 
