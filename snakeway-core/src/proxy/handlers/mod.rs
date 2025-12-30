@@ -1,5 +1,5 @@
 mod admin;
 mod static_file;
 
-pub use admin::AdminHandler;
-pub use static_file::StaticFileHandler;
+pub(crate) use admin::AdminHandler;
+pub(crate) use static_file::StaticFileHandler;
