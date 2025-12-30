@@ -1,6 +1,4 @@
-mod admin;
 mod gateway;
-mod static_files;
-mod types;
+mod handlers;
 
 pub use gateway::SnakewayGateway;
