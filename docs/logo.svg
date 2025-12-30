@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+        width="106.6463mm"
+        height="99.963821mm"
+        viewBox="0 0 106.6463 99.963822"
+        version="1.1"
+        id="svg1"
+        inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+        sodipodi:docname="snakeway_logo.svg"
+        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlns:svg="http://www.w3.org/2000/svg">
+    <sodipodi:namedview
+            id="namedview1"
+            pagecolor="#ffffff"
+            bordercolor="#ffffff"
+            borderopacity="0.25"
+            inkscape:showpageshadow="2"
+            inkscape:pageopacity="0.0"
+            inkscape:pagecheckerboard="0"
+            inkscape:deskcolor="#d1d1d1"
+            inkscape:document-units="mm"
+            showguides="true"
+            inkscape:zoom="1.35"
+            inkscape:cx="201.11111"
+            inkscape:cy="104.07407"
+            inkscape:window-width="2560"
+            inkscape:window-height="1186"
+            inkscape:window-x="0"
+            inkscape:window-y="30"
+            inkscape:window-maximized="0"
+            inkscape:current-layer="layer1">
+        <sodipodi:guide
+                position="158.34973,33.601184"
+                orientation="0,1"
+                id="guide2"
+                inkscape:locked="false"
+                inkscape:label=""
+                inkscape:color="rgb(0,134,229)"/>
+    </sodipodi:namedview>
+    <defs
+            id="defs1">
+        <marker
+                markerWidth="0.52499998"
+                markerHeight="0.99999994"
+                refX="0"
+                refY="0"
+                orient="auto-start-reverse"
+                id="CapTriangle"
+                viewBox="0 0 0.525 1"
+                inkscape:stockid="Triangle cap"
+                style="overflow:visible"
+                preserveAspectRatio="xMidYMid"
+                inkscape:isstock="true"
+                inkscape:collect="always">
+            <path
+                    style="fill:context-stroke;stroke-linecap:butt"
+                    d="M 0,-1 1,0 0,1 -0.05,0 Z"
+                    sodipodi:nodetypes="sssssscsss"
+                    transform="scale(0.5)"
+                    id="path61"/>
+        </marker>
+    </defs>
+    <g
+            inkscape:label="Layer 1"
+            inkscape:groupmode="layer"
+            id="layer1"
+            transform="translate(-51.650273,-89.592985)">
+        <path
+                style="fill:none;stroke:#ffffff;stroke-width:16.199;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#CapTriangle);paint-order:normal"
+                id="path1"
+                sodipodi:type="arc"
+                sodipodi:cx="104.99999"
+                sodipodi:cy="139.56471"
+                sodipodi:rx="45.352974"
+                sodipodi:ry="41.838127"
+                sodipodi:start="5.4305579"
+                sodipodi:end="5.1336163"
+                sodipodi:arc-type="arc"
+                d="m 134.84256,108.06011 a 45.352974,41.838127 0 0 1 6.42804,56.62195 45.352974,41.838127 0 0 1 -60.732998,10.11303 45.352974,41.838127 0 0 1 -15.436834,-55.12185 45.352974,41.838127 0 0 1 58.443182,-18.28949"
+                sodipodi:open="true"/>
+    </g>
+</svg>
