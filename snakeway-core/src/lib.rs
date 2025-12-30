@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod cli;
 pub mod conf;
 pub mod ctx;

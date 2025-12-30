@@ -7,7 +7,7 @@ use crate::proxy::request_classification::{RequestKind, classify_request};
 use crate::route::RouteKind;
 use crate::server::ReloadHandle;
 use crate::server::{RuntimeState, UpstreamRuntime};
-use crate::traffic::{ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
+use crate::traffic::{ServiceId, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -18,9 +18,6 @@ use std::sync::Arc;
 
 pub struct Gateway {
     gw_ctx: GatewayCtx,
-
-    // Traffic intelligence
-    traffic_director: TrafficDirector,
 
     // Handlers
     admin_handler: AdminHandler,
@@ -37,7 +34,6 @@ impl Gateway {
         let gw_ctx = GatewayCtx::new(state, traffic_manager);
         Self {
             gw_ctx,
-            traffic_director: TrafficDirector,
             admin_handler,
             static_file_handler: StaticFileHandler,
         }
@@ -403,8 +399,9 @@ impl Gateway {
 
         // Ask the director for a decision.
         let decision = self
+            .gw_ctx
             .traffic_director
-            .decide(ctx, &snapshot, &service_id, &self.gw_ctx.traffic_manager)
+            .decide(ctx, &snapshot, service_id, &self.gw_ctx.traffic_manager)
             .map_err(|e| {
                 tracing::error!(error = ?e, "traffic decision failed");
                 Error::new(Custom("traffic decision failed"))
