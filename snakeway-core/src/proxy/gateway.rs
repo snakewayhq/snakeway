@@ -15,10 +15,6 @@ use std::sync::Arc;
 use crate::proxy::handlers::{AdminHandler, StaticFileHandler};
 use crate::server::ReloadHandle;
 
-fn is_admin_path(path: &str) -> bool {
-    path.starts_with("/admin/")
-}
-
 pub struct Gateway {
     // Runtime state
     state: Arc<ArcSwap<RuntimeState>>,
@@ -153,7 +149,7 @@ impl ProxyHttp for Gateway {
         // Admin endpoints
         // Note: These run on the main listener and currently have no authentication.
         // In the future, these may be moved to a separate internal listener or have auth applied.
-        if is_admin_path(req.uri.path()) {
+        if self.admin_handler.is_admin_path(req.uri.path()) {
             let path = req.uri.path().to_string();
             return self.admin_handler.handle(session, &path).await;
         }
