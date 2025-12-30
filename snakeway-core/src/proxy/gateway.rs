@@ -1,38 +1,20 @@
 use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::result::DeviceResult;
+use crate::proxy::gateway_ctx::GatewayCtx;
+use crate::proxy::handlers::{AdminHandler, StaticFileHandler};
+use crate::proxy::request_classification::{RequestKind, classify_request};
 use crate::route::RouteKind;
+use crate::server::ReloadHandle;
 use crate::server::{RuntimeState, UpstreamRuntime};
 use crate::traffic::{ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
-use arc_swap::{ArcSwap, Guard};
+use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::net::Ipv4Addr;
 use std::sync::Arc;
-
-use crate::proxy::handlers::{AdminHandler, StaticFileHandler};
-use crate::proxy::request_classification::{RequestKind, classify_request};
-use crate::server::ReloadHandle;
-
-struct GatewayCtx {
-    state: Arc<ArcSwap<RuntimeState>>,
-    traffic_manager: Arc<TrafficManager>,
-}
-
-impl GatewayCtx {
-    fn new(state: Arc<ArcSwap<RuntimeState>>, traffic_manager: Arc<TrafficManager>) -> Self {
-        Self {
-            state,
-            traffic_manager,
-        }
-    }
-
-    pub fn state(&self) -> Guard<Arc<RuntimeState>> {
-        self.state.load()
-    }
-}
 
 pub struct Gateway {
     gw_ctx: GatewayCtx,
