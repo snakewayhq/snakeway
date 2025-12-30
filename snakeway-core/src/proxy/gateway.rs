@@ -15,6 +15,8 @@ use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::sync::Arc;
 
+/// Gateway is the core orchestration abstraction in Snakeway.
+/// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub struct Gateway {
     gw_ctx: GatewayCtx,
     traffic_director: TrafficDirector,
