@@ -165,6 +165,7 @@ impl ProxyHttp for Gateway {
             .and_then(|v| v.to_str().ok())
             .is_some_and(|ct| ct.starts_with("application/grpc"));
 
+        // todo make this structural, rather than procedural.
         *ctx = RequestCtx::new(
             None,
             req.method.clone(),
@@ -174,6 +175,7 @@ impl ProxyHttp for Gateway {
             is_upgrade_req,
             Vec::new(),
         );
+
         ctx.is_grpc = is_grpc;
 
         let state = self.state.load();
