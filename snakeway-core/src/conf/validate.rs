@@ -80,7 +80,7 @@ pub fn validate_routes(
         }
 
         let cb = &service.circuit_breaker;
-        if cb.enabled {
+        if cb.enable_auto_recovery {
             if cb.failure_threshold == 0 {
                 return Err(ConfigError::InvalidCircuitBreaker {
                     service: name.clone(),

@@ -53,14 +53,15 @@ fn snapshot_with_service(
             service_id,
             strategy,
             upstreams,
-            circuit_breaker_config: crate::conf::types::CircuitBreakerConfig {
-                enabled: true,
+            circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig {
+                enable_auto_recovery: true,
                 failure_threshold: 3,
                 open_duration_ms: 10000,
                 half_open_max_requests: 1,
                 success_threshold: 2,
                 count_http_5xx_as_failure: true,
             },
+            health_check_cfg: crate::conf::types::HealthCheckConfig::default(),
         },
     );
 
@@ -248,14 +249,12 @@ fn director_respects_circuit_breaker() {
     // Update manager with circuit params (simulating TrafficManager::update)
     let svc_snapshot = snapshot.services.get(&service_id).unwrap();
     let params = CircuitBreakerParams {
-        enable_auto_recovery: svc_snapshot.circuit_breaker_config.enabled,
-        failure_threshold: svc_snapshot.circuit_breaker_config.failure_threshold,
-        open_duration: Duration::from_millis(svc_snapshot.circuit_breaker_config.open_duration_ms),
-        half_open_max_requests: svc_snapshot.circuit_breaker_config.half_open_max_requests,
-        success_threshold: svc_snapshot.circuit_breaker_config.success_threshold,
-        count_http_5xx_as_failure: svc_snapshot
-            .circuit_breaker_config
-            .count_http_5xx_as_failure,
+        enable_auto_recovery: svc_snapshot.circuit_breaker_cfg.enable_auto_recovery,
+        failure_threshold: svc_snapshot.circuit_breaker_cfg.failure_threshold,
+        open_duration: Duration::from_millis(svc_snapshot.circuit_breaker_cfg.open_duration_ms),
+        half_open_max_requests: svc_snapshot.circuit_breaker_cfg.half_open_max_requests,
+        success_threshold: svc_snapshot.circuit_breaker_cfg.success_threshold,
+        count_http_5xx_as_failure: svc_snapshot.circuit_breaker_cfg.count_http_5xx_as_failure,
     };
     manager
         .circuit_params

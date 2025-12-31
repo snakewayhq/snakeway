@@ -26,7 +26,8 @@ fn test_admin_view_counters() {
                 },
                 latency: None,
             }],
-            circuit_breaker_config: Default::default(),
+            circuit_breaker_cfg: Default::default(),
+            health_check_cfg: Default::default(),
         },
     );
 
@@ -70,11 +71,12 @@ fn test_admin_view_circuit_details() {
                 },
                 latency: None,
             }],
-            circuit_breaker_config: crate::conf::types::CircuitBreakerConfig {
-                enabled: true,
+            circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig {
+                enable_auto_recovery: true,
                 failure_threshold: 2,
                 ..Default::default()
             },
+            health_check_cfg: Default::default(),
         },
     );
 
@@ -119,7 +121,8 @@ fn test_metrics_persistence_on_reload() {
                 },
                 latency: None,
             }],
-            circuit_breaker_config: Default::default(),
+            circuit_breaker_cfg: Default::default(),
+            health_check_cfg: Default::default(),
         },
     );
 
@@ -159,7 +162,8 @@ fn test_metrics_persistence_on_reload() {
                 },
                 latency: None,
             }],
-            circuit_breaker_config: Default::default(),
+            circuit_breaker_cfg: Default::default(),
+            health_check_cfg: Default::default(),
         },
     );
     manager.update(TrafficSnapshot {

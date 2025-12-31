@@ -4,16 +4,13 @@ use crate::traffic::admin::{
 };
 use crate::traffic::circuit::{CircuitBreaker, CircuitBreakerParams, CircuitState};
 use crate::traffic::snapshot::TrafficSnapshot;
-use crate::traffic::{HealthStatus, ServiceId};
+use crate::traffic::{HealthCheckParams, HealthStatus, ServiceId};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
-
-const FAILURE_THRESHOLD: u32 = 3;
-const UNHEALTHY_COOLDOWN: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy)]
 pub enum UpstreamOutcome {
@@ -45,7 +42,7 @@ pub struct TrafficManager {
     /// Per-upstream health state
     upstream_health: DashMap<(ServiceId, UpstreamId), HealthState>,
 
-    /// Per-upstream counters (Phase 2C)
+    /// Per-upstream counters
     total_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
     total_successes: DashMap<(ServiceId, UpstreamId), AtomicU32>,
     total_failures: DashMap<(ServiceId, UpstreamId), AtomicU32>,
@@ -55,6 +52,9 @@ pub struct TrafficManager {
 
     /// Per-service circuit breaker parameters (cloned from snapshot)
     pub circuit_params: DashMap<ServiceId, Arc<CircuitBreakerParams>>,
+
+    /// Per-service health check parameters (cloned from snapshot)
+    pub health_params: DashMap<ServiceId, Arc<HealthCheckParams>>,
 }
 
 impl TrafficManager {
@@ -69,6 +69,7 @@ impl TrafficManager {
             total_failures: DashMap::new(),
             circuit: DashMap::new(),
             circuit_params: DashMap::new(),
+            health_params: DashMap::new(),
         };
 
         tm.update(initial);
@@ -86,7 +87,7 @@ impl TrafficManager {
     pub fn update(&self, new_snapshot: TrafficSnapshot) {
         let valid_services: HashSet<ServiceId> = new_snapshot.services.keys().cloned().collect();
 
-        // Cleanup round-robin cursors
+        // Clean up round-robin cursors
         self.rr_cursors
             .retain(|service_id, _| valid_services.contains(service_id));
 
@@ -140,20 +141,37 @@ impl TrafficManager {
                 .unwrap_or(false)
         });
 
-        // Cleanup and update circuit breaker parameters
+        // Cleanup circuit breaker parameters
         self.circuit_params
             .retain(|service_id, _| valid_services.contains(service_id));
 
+        // Cleanup health check parameters
+        self.health_params
+            .retain(|service_id, _| valid_services.contains(service_id));
+
         for (svc_id, svc) in new_snapshot.services.iter() {
+            // Clone circuit breaker params...
             let params = CircuitBreakerParams {
-                enable_auto_recovery: svc.circuit_breaker_config.enabled,
-                failure_threshold: svc.circuit_breaker_config.failure_threshold,
-                open_duration: Duration::from_millis(svc.circuit_breaker_config.open_duration_ms),
-                half_open_max_requests: svc.circuit_breaker_config.half_open_max_requests,
-                success_threshold: svc.circuit_breaker_config.success_threshold,
-                count_http_5xx_as_failure: svc.circuit_breaker_config.count_http_5xx_as_failure,
+                enable_auto_recovery: svc.circuit_breaker_cfg.enable_auto_recovery,
+                failure_threshold: svc.circuit_breaker_cfg.failure_threshold,
+                open_duration: Duration::from_millis(svc.circuit_breaker_cfg.open_duration_ms),
+                half_open_max_requests: svc.circuit_breaker_cfg.half_open_max_requests,
+                success_threshold: svc.circuit_breaker_cfg.success_threshold,
+                count_http_5xx_as_failure: svc.circuit_breaker_cfg.count_http_5xx_as_failure,
             };
             self.circuit_params.insert(svc_id.clone(), Arc::new(params));
+
+            // And, clone health check params...
+            let health_params = HealthCheckParams {
+                enable: svc.health_check_cfg.enable,
+                failure_threshold: svc.health_check_cfg.failure_threshold,
+                unhealthy_cooldown: Duration::from_secs(
+                    svc.health_check_cfg.unhealthy_cooldown_seconds,
+                ),
+            };
+
+            self.health_params
+                .insert(svc_id.clone(), Arc::new(health_params));
         }
 
         self.snapshot.store(Arc::new(new_snapshot));
@@ -210,6 +228,18 @@ impl TrafficManager {
 /// Health API
 impl TrafficManager {
     pub fn report_failure(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+        let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
+            unreachable!(
+                "health params missing for service {} — invariant violated",
+                service_id
+            )
+        });
+
+        if !health_params.enable {
+            // Health checks are disabled for this service, so we can't report failures.
+            return;
+        }
+
         let key = (service_id.clone(), *upstream_id);
 
         let total = self
@@ -234,14 +264,16 @@ impl TrafficManager {
             HealthState::Unhealthy {
                 consecutive_failures,
                 ..
-            } if consecutive_failures + 1 < FAILURE_THRESHOLD => HealthState::Unhealthy {
-                consecutive_failures: consecutive_failures + 1,
-                last_failure: Instant::now(),
-            },
+            } if consecutive_failures + 1 < health_params.failure_threshold => {
+                HealthState::Unhealthy {
+                    consecutive_failures: consecutive_failures + 1,
+                    last_failure: Instant::now(),
+                }
+            }
 
             // Threshold reached, then fully unhealthy
             HealthState::Unhealthy { .. } => HealthState::Unhealthy {
-                consecutive_failures: FAILURE_THRESHOLD,
+                consecutive_failures: health_params.failure_threshold,
                 last_failure: Instant::now(),
             },
         };
@@ -251,7 +283,7 @@ impl TrafficManager {
             consecutive_failures,
             ..
         } = *entry
-            && consecutive_failures >= FAILURE_THRESHOLD
+            && consecutive_failures >= health_params.failure_threshold
             && let Some(params) = self.circuit_params.get(service_id)
         {
             let mut cb = self
@@ -260,6 +292,9 @@ impl TrafficManager {
                 .or_default();
 
             if cb.state() != CircuitState::Open {
+                // Health failures are allowed to force the circuit open,
+                // even when auto-recovery is disabled. In that case, only
+                // health recovery can close it again.
                 cb.trip_open((service_id, upstream_id), &params, "health_failed");
             }
         }
@@ -280,6 +315,18 @@ impl TrafficManager {
 
     /// Determines whether an upstream may receive a request
     pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
+        let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
+            unreachable!(
+                "health params missing for service {} — invariant violated",
+                service_id
+            )
+        });
+
+        if !health_params.enable {
+            // Assume always healthy if health checks are disabled for this service.
+            return HealthStatus { healthy: true };
+        }
+
         let key = (service_id.clone(), *upstream_id);
 
         let healthy = if let Some(mut entry) = self.upstream_health.get_mut(&key) {
@@ -287,11 +334,11 @@ impl TrafficManager {
                 HealthState::Healthy => true,
 
                 HealthState::Unhealthy { last_failure, .. }
-                    if last_failure.elapsed() > UNHEALTHY_COOLDOWN =>
+                    if last_failure.elapsed() > health_params.unhealthy_cooldown =>
                 {
                     // Atomic promotion to Trial
                     *entry = HealthState::Unhealthy {
-                        consecutive_failures: FAILURE_THRESHOLD,
+                        consecutive_failures: health_params.failure_threshold,
                         last_failure: Instant::now(),
                     };
                     true
