@@ -3,14 +3,14 @@ use crate::traffic::{ServiceId, TrafficManager};
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct RequestGuard {
+pub struct AdmissionGuard {
     tm: Arc<TrafficManager>,
     service_id: ServiceId,
     upstream_id: UpstreamId,
     finished: bool,
 }
 
-impl RequestGuard {
+impl AdmissionGuard {
     pub fn new(tm: Arc<TrafficManager>, service_id: ServiceId, upstream_id: UpstreamId) -> Self {
         tm.on_request_start(&service_id, &upstream_id);
 
@@ -50,7 +50,7 @@ impl RequestGuard {
     }
 }
 
-impl Drop for RequestGuard {
+impl Drop for AdmissionGuard {
     fn drop(&mut self) {
         if !self.finished {
             // This covers a lot of potential faults...

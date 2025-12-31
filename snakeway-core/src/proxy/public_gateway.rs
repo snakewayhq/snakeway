@@ -6,7 +6,10 @@ use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteKind;
 use crate::server::{RuntimeState, UpstreamRuntime};
-use crate::traffic::{RequestGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
+
+use crate::traffic::{
+    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -35,6 +38,46 @@ impl PublicGateway {
     }
 }
 
+/// Pingora hook execution order in ProxyHttp...
+///
+/// This is a giant orchestration traint implementation, so better to lay this out explicitly,
+/// especially because it might change in later Pingora versions.
+///
+/// 1. new_ctx()
+///    - Allocate empty RequestCtx
+///
+/// 2. request_filter()
+///    - Hydrate ctx from Session
+///    - Run on_request devices
+///    - Route match (static vs proxy)
+///    - Static responses end here
+///
+/// 3. upstream_peer()
+///    - Select upstream (TrafficDirector)
+///    - Circuit admission decision
+///    - Create AdmissionGuard if admitted
+///    - Construct HttpPeer
+///
+/// 4. upstream_request_filter()
+///    - Run before_proxy devices
+///    - Finalize upstream request headers/method
+///
+/// 5. [Pingora upstream I/O]
+///    - Connect, TLS, send request, receive response
+///
+/// 6. upstream_response_filter()
+///    - Run after_proxy devices
+///    - Mutate response headers/status
+///    - Detect WS upgrade (on_ws_open)
+///
+/// 7. response_filter()
+///    - Run on_response devices
+///    - Classify HTTP outcome (success / 5xx)
+///
+/// 8. logging()   /// ALWAYS LAST
+///    - Capture transport errors
+///    - Run on_ws_close if needed
+///    - Finalize AdmissionGuard (circuit success/failure)
 #[async_trait]
 impl ProxyHttp for PublicGateway {
     type CTX = RequestCtx;
@@ -57,7 +100,8 @@ impl ProxyHttp for PublicGateway {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
         let service_id = ServiceId(service_name.clone());
 
-        let upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
+        let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
+        let upstream = selected_upstream.upstream;
 
         let mut peer = HttpPeer::new(
             (upstream.host.as_str(), upstream.port),
@@ -74,15 +118,18 @@ impl ProxyHttp for PublicGateway {
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
-        ctx.cb_started = true;
+        ctx.cb_started = selected_upstream.cb_started;
 
-        let guard = RequestGuard::new(
-            self.gw_ctx.traffic_manager.clone(),
-            service_id.clone(),
-            upstream.id,
-        );
+        if ctx.cb_started {
+            let guard = AdmissionGuard::new(
+                self.gw_ctx.traffic_manager.clone(),
+                service_id.clone(),
+                upstream.id,
+            );
 
-        ctx.request_guard = Some(guard);
+            ctx.admission_guard = Some(guard);
+        }
+
         ctx.selected_upstream = Some((service_id, upstream.id));
 
         Ok(Box::new(peer))
@@ -303,7 +350,7 @@ impl ProxyHttp for PublicGateway {
         }
 
         // Finalize request guard...
-        self.finalize_request_guard(ctx);
+        self.finalize_admission_guard(ctx);
     }
 }
 
@@ -315,7 +362,7 @@ impl PublicGateway {
         state: &'a RuntimeState,
         service_id: &ServiceId,
         service_name: &str,
-    ) -> std::result::Result<&'a UpstreamRuntime, BError> {
+    ) -> std::result::Result<SelectedUpstream<'a>, BError> {
         // Get a snapshot (cheap, lock-free)
         let snapshot = self.gw_ctx.traffic_manager.snapshot();
 
@@ -341,7 +388,10 @@ impl PublicGateway {
             .find(|u| u.id == decision.upstream_id)
             .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
 
-        Ok(upstream)
+        Ok(SelectedUpstream {
+            upstream,
+            cb_started: decision.cb_started,
+        })
     }
 
     /// Enforces protocol rules for the given upstream and request.
@@ -380,13 +430,13 @@ impl PublicGateway {
     /// - Any status code (if count_http_5xx_as_failure is false)
     ///
     /// This is called from the logging hook to ensure it runs after all other processing.
-    fn finalize_request_guard(&self, ctx: &mut RequestCtx) {
+    fn finalize_admission_guard(&self, ctx: &mut RequestCtx) {
         let (service_id, _) = match ctx.selected_upstream.as_ref() {
             Some(v) => v,
             None => return,
         };
 
-        let guard = match ctx.request_guard.as_mut() {
+        let guard = match ctx.admission_guard.as_mut() {
             Some(g) => g,
             None => return,
         };

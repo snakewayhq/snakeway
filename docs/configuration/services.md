@@ -37,7 +37,7 @@ count_http_5xx_as_failure = true
 Supported strategies:
 
 - `round_robin`: Distributes requests evenly across upstreams.
-- `least_connections`: Picks the upstream with the fewest active requests.
+- `request_pressure`: Picks the upstream with the lowest recent request pressure (heuristic-based, not transport-level).
 - `random`: Picks a random healthy upstream.
 - `sticky_hash`: Consistent hashing based on request characteristics.
 - `failover`: Always picks the first healthy upstream in the list.

@@ -4,9 +4,9 @@ use crate::traffic::{
 };
 
 #[derive(Debug, Default)]
-pub struct LeastConnections;
+pub struct RequestPressure;
 
-impl TrafficStrategy for LeastConnections {
+impl TrafficStrategy for RequestPressure {
     fn decide(
         &self,
         _req: &RequestCtx,
@@ -23,8 +23,9 @@ impl TrafficStrategy for LeastConnections {
 
         Some(TrafficDecision {
             upstream_id: upstream.endpoint.id,
-            reason: DecisionReason::LeastConnections,
+            reason: DecisionReason::AdmissionPressure,
             protocol: None,
+            cb_started: true,
         })
     }
 }

@@ -8,12 +8,13 @@ mod snapshot;
 mod strategy;
 mod types;
 
-mod request_guard;
+mod admission_guard;
 #[cfg(test)]
 mod tests;
 
+pub use admission_guard::*;
+pub use decision::SelectedUpstream;
 pub use director::*;
 pub use manager::*;
-pub use request_guard::*;
 pub use snapshot::*;
 pub use types::*;

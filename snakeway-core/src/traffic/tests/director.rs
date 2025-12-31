@@ -244,6 +244,7 @@ fn fallback_is_used_when_strategy_returns_none() {
             upstream_id: healthy[0].endpoint.id,
             reason: DecisionReason::NoStrategyDecision,
             protocol: None,
+            cb_started: true,
         });
 
     // Assert
