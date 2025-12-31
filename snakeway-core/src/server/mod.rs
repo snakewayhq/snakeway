@@ -1,5 +1,4 @@
 mod pid;
-mod proxy;
 mod reload;
 mod runtime;
 pub mod setup;

@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod cli;
 pub mod conf;
 pub mod ctx;
@@ -9,5 +11,6 @@ pub mod route;
 pub mod server;
 pub mod traffic;
 
+mod proxy;
 #[cfg(feature = "static_files")]
 pub mod static_files;

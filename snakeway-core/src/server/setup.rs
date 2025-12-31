@@ -1,10 +1,10 @@
 use crate::conf::RuntimeConfig;
 use crate::device::core::registry::DeviceRegistry;
+use crate::proxy::Gateway;
 use crate::server::pid;
-use crate::server::proxy::SnakewayGateway;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
-use crate::traffic::{TrafficDirector, TrafficManager, TrafficSnapshot};
+use crate::traffic::{TrafficManager, TrafficSnapshot};
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
 use pingora::listeners::tls::TlsSettings;
@@ -44,7 +44,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
         .expect("failed to build control-plane Tokio runtime");
 
     // Reload wiring
-    let reload = ReloadHandle::new();
+    let reload = Arc::new(ReloadHandle::new());
 
     // Spawn signal handler
     control_rt.spawn({
@@ -116,7 +116,7 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
     traffic: Arc<TrafficManager>,
-    reload: ReloadHandle,
+    reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
     conf.ca_file = config.server.ca_file.clone();
@@ -142,12 +142,7 @@ pub fn build_pingora_server(
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
     // Build gateway
-    let gateway = SnakewayGateway {
-        state: state.clone(),
-        traffic_manager: traffic,
-        traffic_director: TrafficDirector,
-        reload,
-    };
+    let gateway = Gateway::new(state, traffic, reload);
 
     // Build HTTP proxy service from Pingora.
     let mut svc = http_proxy_service(&server.configuration, gateway);

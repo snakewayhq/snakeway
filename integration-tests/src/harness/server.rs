@@ -83,7 +83,7 @@ impl TestServer {
         )));
 
         // Build server.
-        let reload = ReloadHandle::new();
+        let reload = Arc::new(ReloadHandle::new());
         let server = build_pingora_server(cfg.clone(), state, traffic_manager, reload)
             .expect("failed to build snakeway server");
 
