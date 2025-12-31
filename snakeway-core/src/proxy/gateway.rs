@@ -324,41 +324,7 @@ impl ProxyHttp for Gateway {
         }
 
         // Finalize request guard...
-        let (service_id, _) = match ctx.selected_upstream.as_ref() {
-            Some(v) => v,
-            None => return,
-        };
-
-        let guard = match ctx.request_guard.as_mut() {
-            Some(g) => g,
-            None => return,
-        };
-
-        let success = match ctx.upstream_outcome {
-            Some(UpstreamOutcome::TransportError) => false,
-
-            Some(UpstreamOutcome::HttpStatus(code)) => {
-                let count_5xx = self
-                    .gw_ctx
-                    .traffic_manager
-                    .circuit_params
-                    .get(service_id)
-                    .map(|p| p.count_http_5xx_as_failure)
-                    .unwrap_or(true);
-
-                if count_5xx { code < 500 } else { true }
-            }
-
-            Some(UpstreamOutcome::Success) => true,
-
-            None => true,
-        };
-
-        if success {
-            guard.success();
-        } else {
-            guard.failure();
-        }
+        self.finalize_request_guard(ctx);
     }
 }
 
@@ -421,5 +387,55 @@ impl Gateway {
             peer.options.set_http_version(2, 2);
         }
         Ok(())
+    }
+
+    /// Finalizes the request guard by reporting success or failure to the traffic manager.
+    ///
+    /// This method determines the outcome of the request based on the upstream response
+    /// and circuit breaker configuration. It marks the request as successful or failed,
+    /// which updates the circuit breaker state for the selected upstream.
+    ///
+    /// Success criteria:
+    /// - No transport error occurred
+    /// - HTTP status < 500 (if count_http_5xx_as_failure is true)
+    /// - Any status code (if count_http_5xx_as_failure is false)
+    ///
+    /// This is called from the logging hook to ensure it runs after all other processing.
+    fn finalize_request_guard(&self, ctx: &mut RequestCtx) {
+        let (service_id, _) = match ctx.selected_upstream.as_ref() {
+            Some(v) => v,
+            None => return,
+        };
+
+        let guard = match ctx.request_guard.as_mut() {
+            Some(g) => g,
+            None => return,
+        };
+
+        let success = match ctx.upstream_outcome {
+            Some(UpstreamOutcome::TransportError) => false,
+
+            Some(UpstreamOutcome::HttpStatus(code)) => {
+                let count_5xx = self
+                    .gw_ctx
+                    .traffic_manager
+                    .circuit_params
+                    .get(service_id)
+                    .map(|p| p.count_http_5xx_as_failure)
+                    .unwrap_or(true);
+
+                if count_5xx { code < 500 } else { true }
+            }
+
+            Some(UpstreamOutcome::Success) => true,
+
+            None => true,
+        };
+
+        if success {
+            guard.success();
+        } else {
+            guard.failure();
+        }
     }
 }
