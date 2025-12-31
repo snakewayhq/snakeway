@@ -67,7 +67,11 @@ impl Device for WasmDevice {
 
         // Build request snapshot for WASM
         let req = Request {
-            original_path: ctx.original_uri.path().to_string(),
+            original_path: ctx
+                .original_uri
+                .as_ref()
+                .map(|u| u.path().to_string())
+                .unwrap_or_else(|| "<unset>".into()),
             route_path: ctx.route_path.clone(),
             headers: ctx
                 .headers

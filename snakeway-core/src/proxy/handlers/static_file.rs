@@ -56,12 +56,9 @@ impl StaticFileHandler {
                 .map(|s| s.to_string()),
         };
 
-        let static_resp = crate::static_files::handle_static_request(
-            &route.kind,
-            &ctx.route_path.as_deref().unwrap_or("/"),
-            &conditional,
-        )
-        .await;
+        let static_resp =
+            crate::static_files::handle_static_request(&route.kind, &ctx.route_path, &conditional)
+                .await;
 
         // Build response header
         let mut resp = ResponseHeader::build(static_resp.status, None)?;

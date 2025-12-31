@@ -260,7 +260,7 @@ impl Device for StructuredLoggingDevice {
                 ctx,
                 HttpEvent::Request,
                 ctx.method_str(),
-                ctx.uri_str().as_deref(),
+                ctx.original_uri_str().as_deref(),
                 None,
             );
         }
@@ -273,7 +273,7 @@ impl Device for StructuredLoggingDevice {
                 ctx,
                 HttpEvent::BeforeProxy,
                 ctx.method_str(),
-                ctx.uri_str().as_deref(),
+                ctx.original_uri_str().as_deref(),
                 None,
             );
         }

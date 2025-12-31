@@ -20,7 +20,7 @@ pub struct RequestCtx {
     pub original_uri: Option<Uri>,
 
     /// Path used for routing decisions (mutable by devices before routing)
-    pub route_path: Option<String>,
+    pub route_path: String,
 
     /// Optional override for the upstream request path
     pub upstream_path: Option<String>,
@@ -75,7 +75,7 @@ impl RequestCtx {
             body: vec![],
 
             // Upstream/routing related.
-            route_path: None,
+            route_path: "/".to_string(),
             service: None,
             selected_upstream: None,
             upstream_path: None,
@@ -108,7 +108,7 @@ impl RequestCtx {
         self.method = Some(req.method.clone());
         self.original_uri = Some(req.uri.clone());
         self.headers = req.headers.clone();
-        self.route_path = Some(req.uri.path().to_string());
+        self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
         self.is_grpc = req
             .headers
@@ -123,7 +123,7 @@ impl RequestCtx {
     pub fn upstream_path(&self) -> &str {
         self.upstream_path
             .as_deref()
-            .unwrap_or(self.route_path.as_deref().unwrap_or("/"))
+            .unwrap_or(self.route_path.as_str())
     }
 
     /// Returns the upstream authority (host:port) to use for HTTP/2 requests.
@@ -138,7 +138,7 @@ impl RequestCtx {
         self.method.as_ref().map(|m| m.as_str())
     }
 
-    pub fn uri_str(&self) -> Option<String> {
+    pub fn original_uri_str(&self) -> Option<String> {
         self.original_uri.as_ref().map(|u| u.to_string())
     }
 }

@@ -97,6 +97,8 @@ impl ProxyHttp for Gateway {
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         // The request ctx exists before now, but has no data.
         ctx.hydrate_from_session(session);
+        debug_assert!(ctx.method.is_some());
+        debug_assert!(ctx.original_uri.is_some());
 
         let req = session.req_header();
 
@@ -130,10 +132,7 @@ impl ProxyHttp for Gateway {
         }
 
         // Make a decision about the route.
-        let route = match state
-            .router
-            .match_route(&ctx.route_path.as_ref().unwrap_or(&"".to_string()))
-        {
+        let route = match state.router.match_route(&ctx.route_path) {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");
@@ -197,7 +196,9 @@ impl ProxyHttp for Gateway {
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context.
-                let method = ctx.method.clone().unwrap_or_default();
+                let Some(method) = ctx.method.clone() else {
+                    return Err(Error::new(Custom("request method missing")));
+                };
                 upstream.set_method(method);
                 upstream.set_uri(ctx.upstream_path().parse().unwrap());
 
