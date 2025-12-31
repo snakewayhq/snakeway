@@ -38,6 +38,46 @@ impl PublicGateway {
     }
 }
 
+/// Pingora hook execution order in ProxyHttp...
+///
+/// This is a giant orchestration traint implementation, so better to lay this out explicitly,
+/// especially because it might change in later Pingora versions.
+///
+/// 1. new_ctx()
+///    - Allocate empty RequestCtx
+///
+/// 2. request_filter()
+///    - Hydrate ctx from Session
+///    - Run on_request devices
+///    - Route match (static vs proxy)
+///    - Static responses end here
+///
+/// 3. upstream_peer()
+///    - Select upstream (TrafficDirector)
+///    - Circuit admission decision
+///    - Create AdmissionGuard if admitted
+///    - Construct HttpPeer
+///
+/// 4. upstream_request_filter()
+///    - Run before_proxy devices
+///    - Finalize upstream request headers/method
+///
+/// 5. [Pingora upstream I/O]
+///    - Connect, TLS, send request, receive response
+///
+/// 6. upstream_response_filter()
+///    - Run after_proxy devices
+///    - Mutate response headers/status
+///    - Detect WS upgrade (on_ws_open)
+///
+/// 7. response_filter()
+///    - Run on_response devices
+///    - Classify HTTP outcome (success / 5xx)
+///
+/// 8. logging()   /// ALWAYS LAST
+///    - Capture transport errors
+///    - Run on_ws_close if needed
+///    - Finalize AdmissionGuard (circuit success/failure)
 #[async_trait]
 impl ProxyHttp for PublicGateway {
     type CTX = RequestCtx;
