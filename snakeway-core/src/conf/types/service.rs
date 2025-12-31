@@ -105,8 +105,4 @@ pub enum LoadBalancingStrategy {
 pub struct UpstreamConfig {
     /// e.g. "http://10.0.0.1:8080"
     pub url: String,
-
-    /// Optional weight
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight: Option<u32>,
 }
