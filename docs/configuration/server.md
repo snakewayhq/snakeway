@@ -18,6 +18,7 @@ Summary:
 
 - `pid_file` enables external process control and supervision
 - `threads` is optional and intended for advanced tuning
+- `ca_file` is optional and used to verify upstream certificates
 
 ## pid_file
 
@@ -59,6 +60,22 @@ Controls the number of worker threads used by the proxy runtime to process reque
 pid_file = "/tmp/snakeway.pid"
 threads = 8 # [!code focus]
 ca_file = "./path/to/certs/ca.pem"
+```
+
+## ca_file
+
+**Type:** `string`  
+**Required:** no
+
+Certificate Authority file used to verify upstream certificates.
+
+This is not optional if upstreams are configured with TLS.
+
+```toml
+[server]
+pid_file = "/tmp/snakeway.pid"
+threads = 8
+ca_file = "./path/to/certs/ca.pem" # [!code focus]
 ```
 
 ### Default behavior
