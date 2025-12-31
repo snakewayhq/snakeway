@@ -59,8 +59,8 @@ pub struct TrafficManager {
 
 impl TrafficManager {
     pub fn new(initial: TrafficSnapshot) -> Self {
-        Self {
-            snapshot: ArcSwap::from_pointee(initial),
+        let tm = Self {
+            snapshot: ArcSwap::from_pointee(initial.clone()),
             active_requests: DashMap::new(),
             rr_cursors: DashMap::new(),
             upstream_health: DashMap::new(),
@@ -69,7 +69,11 @@ impl TrafficManager {
             total_failures: DashMap::new(),
             circuit: DashMap::new(),
             circuit_params: DashMap::new(),
-        }
+        };
+
+        tm.update(initial);
+
+        tm
     }
 }
 
@@ -242,24 +246,31 @@ impl TrafficManager {
             },
         };
 
-        // If we just crossed into unhealthy, force circuit open
-        if let HealthState::Unhealthy {
-            consecutive_failures,
-            ..
-        } = *entry
-        {
-            if consecutive_failures >= FAILURE_THRESHOLD {
-                if let Some(params) = self.circuit_params.get(service_id) {
-                    let mut cb = self
-                        .circuit
-                        .entry((service_id.clone(), *upstream_id))
-                        .or_default();
+        // If we just crossed into unhealthy, check if we need to force the circuit open...
+        let consecutive_failures = match *entry {
+            HealthState::Unhealthy {
+                consecutive_failures,
+                ..
+            } => consecutive_failures,
+            _ => return,
+        };
 
-                    if cb.state() != CircuitState::Open {
-                        cb.trip_open((service_id, upstream_id), &params, "health_failed");
-                    }
-                }
-            }
+        if consecutive_failures < FAILURE_THRESHOLD {
+            return;
+        }
+
+        let params = match self.circuit_params.get(service_id) {
+            Some(p) => p,
+            None => return,
+        };
+
+        let mut cb = self
+            .circuit
+            .entry((service_id.clone(), *upstream_id))
+            .or_default();
+
+        if cb.state() != CircuitState::Open {
+            cb.trip_open((service_id, upstream_id), &params, "health_failed");
         }
     }
 
