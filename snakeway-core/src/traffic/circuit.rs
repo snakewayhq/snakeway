@@ -160,7 +160,7 @@ impl CircuitBreaker {
         }
     }
 
-    fn trip_open(
+    pub(crate) fn trip_open(
         &mut self,
         ids: (&ServiceId, &UpstreamId),
         _p: &CircuitBreakerParams,
