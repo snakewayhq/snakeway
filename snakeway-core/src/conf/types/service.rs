@@ -44,7 +44,7 @@ pub struct CircuitBreakerConfig {
 }
 
 fn cb_default_enabled() -> bool {
-    true
+    false
 }
 fn cb_default_failure_threshold() -> u32 {
     5

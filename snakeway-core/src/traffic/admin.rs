@@ -27,7 +27,7 @@ pub struct CircuitBreakerParamsView {
 impl From<&CircuitBreakerParams> for CircuitBreakerParamsView {
     fn from(p: &CircuitBreakerParams) -> Self {
         Self {
-            enabled: p.enabled,
+            enabled: p.enable_auto_recovery,
             failure_threshold: p.failure_threshold,
             open_duration_ms: p.open_duration.as_millis() as u64,
             half_open_max_requests: p.half_open_max_requests,

@@ -146,7 +146,7 @@ impl TrafficManager {
 
         for (svc_id, svc) in new_snapshot.services.iter() {
             let params = CircuitBreakerParams {
-                enabled: svc.circuit_breaker_config.enabled,
+                enable_auto_recovery: svc.circuit_breaker_config.enabled,
                 failure_threshold: svc.circuit_breaker_config.failure_threshold,
                 open_duration: Duration::from_millis(svc.circuit_breaker_config.open_duration_ms),
                 half_open_max_requests: svc.circuit_breaker_config.half_open_max_requests,

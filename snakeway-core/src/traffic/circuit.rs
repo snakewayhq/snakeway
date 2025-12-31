@@ -5,7 +5,7 @@ use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct CircuitBreakerParams {
-    pub enabled: bool,
+    pub enable_auto_recovery: bool,
     pub failure_threshold: u32,
     pub open_duration: Duration,
     pub half_open_max_requests: u32,
@@ -60,10 +60,6 @@ impl CircuitBreaker {
         ids: (&ServiceId, &UpstreamId),
         p: &CircuitBreakerParams,
     ) -> bool {
-        if !p.enabled {
-            return true;
-        }
-
         match self.state {
             CircuitState::Closed => true,
 
@@ -71,12 +67,18 @@ impl CircuitBreaker {
                 let opened_at = match self.opened_at_instant {
                     Some(t) => t,
                     None => {
-                        // Shouldn't happen, but fail safe: treat as open.
+                        // Shouldn't happen, but failsafe: treat as open.
                         return false;
                     }
                 };
 
                 if opened_at.elapsed() >= p.open_duration {
+                    // Circuit disabled = no auto recovery
+                    if !p.enable_auto_recovery {
+                        // remain open until external reset (health)
+                        return false;
+                    }
+
                     // Promote to half-open and allow probes.
                     let old_state = self.state;
                     self.state = CircuitState::HalfOpen;
@@ -121,7 +123,7 @@ impl CircuitBreaker {
         started: bool,
         success: bool,
     ) {
-        if !p.enabled {
+        if !p.enable_auto_recovery {
             return;
         }
 
