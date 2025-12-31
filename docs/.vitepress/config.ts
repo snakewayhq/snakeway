@@ -45,6 +45,8 @@ export default defineConfig({
                     items: [
                         {text: "Overview", link: "/configuration/overview"},
                         {text: "Server", link: "/configuration/server"},
+                        {text: "Listeners", link: "/configuration/listeners"},
+                        {text: "Services", link: "/configuration/services"},
                         {text: "Routes", link: "/configuration/routes"},
                         {text: "Devices", link: "/configuration/devices"},
                         {text: "Formats", link: "/configuration/formats"}

@@ -65,6 +65,15 @@ pub enum ConfigError {
     #[error("cert file does not exist: {path}")]
     MissingCertFile { path: String },
 
+    #[error("HTTP/2 is not supported on admin listeners")]
+    AdminListenerHttp2NotSupported,
+
+    #[error("admin listener must use TLS")]
+    AdminListenerMissingTls,
+
+    #[error("HTTP/2 requires TLS to be configured on the listener")]
+    Http2RequiresTls,
+
     // Services
     #[error("route '{route}' references unknown service '{service}'")]
     UnknownService { route: String, service: String },

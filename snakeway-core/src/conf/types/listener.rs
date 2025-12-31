@@ -12,6 +12,10 @@ pub struct ListenerConfig {
     /// Enable HTTP/2 on this listener.
     #[serde(default)]
     pub enable_http2: bool,
+
+    /// Whether a listener serves admin endpoints or not.
+    #[serde(default)]
+    pub enable_admin: bool,
 }
 
 /// Paths are validated and resolved during config validation.

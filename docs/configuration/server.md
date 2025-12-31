@@ -1,50 +1,24 @@
 # Server Configuration
 
-The `server` configuration block controls how Snakeway runs as a process and how it listens for incoming traffic.
+The `server` configuration block controls how Snakeway runs as a process.
 
 This section focuses on **process-level behavior** and **runtime characteristics**, not routing or request handling. It
-defines how Snakeway starts, listens, and manages its execution environment.
+defines how Snakeway starts, and manages its execution environment.
 
 ## Overview
 
 ```toml
 [server]
-listen = "0.0.0.0:8080"
 pid_file = "/tmp/snakeway.pid"
 threads = 8
+ca_file = "./path/to/certs/ca.pem"
 ```
 
 Summary:
 
-- `listen` defines where Snakeway accepts incoming traffic
 - `pid_file` enables external process control and supervision
 - `threads` is optional and intended for advanced tuning
-
-## listen
-
-**Type:** `string`  
-**Required:** yes
-
-The address Snakeway listens on for incoming connections.
-
-```toml
-[server]
-listen = "0.0.0.0:8080" # [!code focus]
-pid_file = "/tmp/snakeway.pid"
-threads = 8
-```
-
-This value is passed directly to the underlying listener. Both IP-based and hostname-based bindings are supported.
-
-Common examples:
-
-```toml
-listen = "127.0.0.1:8080"   # Local development
-```
-
-```toml
-listen = "127.0.0.1:443"    # Production
-```
+- `ca_file` is optional and used to verify upstream certificates
 
 ## pid_file
 
@@ -55,9 +29,9 @@ If set, Snakeway will write its process ID (PID) to the specified file on startu
 
 ```toml
 [server]
-listen = "0.0.0.0:8080"
 pid_file = "/tmp/snakeway.pid"  # [!code focus]
 threads = 8
+ca_file = "./path/to/certs/ca.pem"
 ```
 
 :::
@@ -83,9 +57,25 @@ Controls the number of worker threads used by the proxy runtime to process reque
 
 ```toml
 [server]
-listen = "0.0.0.0:8080"
 pid_file = "/tmp/snakeway.pid"
 threads = 8 # [!code focus]
+ca_file = "./path/to/certs/ca.pem"
+```
+
+## ca_file
+
+**Type:** `string`  
+**Required:** no
+
+Certificate Authority file used to verify upstream certificates.
+
+This is not optional if upstreams are configured with TLS.
+
+```toml
+[server]
+pid_file = "/tmp/snakeway.pid"
+threads = 8
+ca_file = "./path/to/certs/ca.pem" # [!code focus]
 ```
 
 ### Default behavior

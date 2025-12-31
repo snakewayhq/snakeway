@@ -2,10 +2,8 @@ use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::result::DeviceResult;
 use crate::proxy::gateway_ctx::GatewayCtx;
-use crate::proxy::handlers::{AdminHandler, StaticFileHandler};
-use crate::proxy::request_classification::{RequestKind, classify_request};
+use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteKind;
-use crate::server::ReloadHandle;
 use crate::server::{RuntimeState, UpstreamRuntime};
 use crate::traffic::{RequestGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
@@ -15,36 +13,29 @@ use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::sync::Arc;
 
-/// Gateway is the core orchestration abstraction in Snakeway.
+/// PublicGateway is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
-pub struct Gateway {
+pub struct PublicGateway {
     gw_ctx: GatewayCtx,
     traffic_director: TrafficDirector,
 
-    // Handlers
-    admin_handler: AdminHandler,
+    // Handler(s)
     static_file_handler: StaticFileHandler,
 }
 
-impl Gateway {
-    pub fn new(
-        state: Arc<ArcSwap<RuntimeState>>,
-        traffic_manager: Arc<TrafficManager>,
-        reload: Arc<ReloadHandle>,
-    ) -> Self {
-        let admin_handler = AdminHandler::new(traffic_manager.clone(), reload);
-        let gw_ctx = GatewayCtx::new(state, traffic_manager);
+impl PublicGateway {
+    pub fn new(state: Arc<ArcSwap<RuntimeState>>, traffic_manager: Arc<TrafficManager>) -> Self {
+        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone());
         Self {
             gw_ctx,
             traffic_director: TrafficDirector,
-            admin_handler,
             static_file_handler: StaticFileHandler,
         }
     }
 }
 
 #[async_trait]
-impl ProxyHttp for Gateway {
+impl ProxyHttp for PublicGateway {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
@@ -98,23 +89,10 @@ impl ProxyHttp for Gateway {
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
-        // The request ctx exists before now, but has no data.
+        // The request ctx existed before now but had no data.
         ctx.hydrate_from_session(session);
         debug_assert!(ctx.method.is_some());
         debug_assert!(ctx.original_uri.is_some());
-
-        let req = session.req_header();
-
-        match classify_request(req) {
-            RequestKind::Admin { path } => {
-                // Admin endpoints...
-                // These intentionally circumvent devices.
-                // Note: These run on the main listener and currently have no authentication.
-                // In the future, these may be moved to a separate internal listener or have auth applied.
-                return self.admin_handler.handle(session, &path).await;
-            }
-            RequestKind::Normal => {}
-        }
 
         let state = self.gw_ctx.state();
 
@@ -328,7 +306,7 @@ impl ProxyHttp for Gateway {
     }
 }
 
-impl Gateway {
+impl PublicGateway {
     /// Select an upstream for the given request.
     fn select_upstream<'a>(
         &self,

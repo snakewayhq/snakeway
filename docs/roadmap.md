@@ -158,6 +158,9 @@ Todo:
 1. Load balancing strategies
 2. Health checks
 3. Circuit breaking
+4. Guard against leaky connection metrics
+    - Add RAII-based request guard.
+    - Add health-driven circuit open as a secondary signal.
 
 #### Phase 2C \- Observability
 
@@ -170,15 +173,13 @@ Todo:
     - Support config-defined weights for A/B testing.
     - Validate weight normalization and edge cases.
 
-- **Traffic Management: Guard against leaky connection metrics**
-    - Add RAII-based request guard.
-    - Add health-driven circuit open as a secondary signal.
-    - Add timeout reaping as a last ditch saveguard.
-
 - **Config Validation**
     - Audit validation coverage (all sections).
     - Enforce cross-field and reload safety rules.
     - Add invalid-config and reload rejection tests.
+
+- **Config Observability**
+    - Add an option to the `config dump` command to format the config hierarchically to better show relationships.
 
 - **Architecture Review**
     - Review ownership and lifetimes.
@@ -307,6 +308,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 ```shell
 /etc/snakeway/snakeway.toml
 /etc/snakeway/routes.d\*.toml
+/etc/snakeway/services.d\*.toml
 /etc/snakeway/devices.d\*.toml  
 ```
 
