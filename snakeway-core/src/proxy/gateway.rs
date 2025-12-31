@@ -102,7 +102,8 @@ impl ProxyHttp for Gateway {
 
         match classify_request(req) {
             RequestKind::Admin { path } => {
-                // Admin endpoints
+                // Admin endpoints...
+                // These intentionally circumvent devices.
                 // Note: These run on the main listener and currently have no authentication.
                 // In the future, these may be moved to a separate internal listener or have auth applied.
                 return self.admin_handler.handle(session, &path).await;
