@@ -1,5 +1,5 @@
 use crate::server::UpstreamId;
-use crate::traffic::{RequestGuard, ServiceId, UpstreamOutcome};
+use crate::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use http::{Extensions, HeaderMap, Method, Uri};
 use pingora::prelude::Session;
 use std::net::{IpAddr, Ipv4Addr};
@@ -8,7 +8,7 @@ use std::net::{IpAddr, Ipv4Addr};
 #[derive(Debug)]
 pub struct RequestCtx {
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
-    pub request_guard: Option<RequestGuard>,
+    pub admission_guard: Option<AdmissionGuard>,
 
     /// Lifecycle flag to determine if the context has already been hydrated from a session.
     pub hydrated: bool,
@@ -70,7 +70,7 @@ impl RequestCtx {
         Self {
             // Request lifecycle-related.
             hydrated: false,
-            request_guard: None,
+            admission_guard: None,
 
             // Request identity and content.
             method: None,

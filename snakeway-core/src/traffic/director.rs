@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 
 static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
 static HASH: Lazy<StickyHash> = Lazy::new(StickyHash::default);
-static LEAST_CONNECTIONS: Lazy<LeastConnections> = Lazy::new(LeastConnections::default);
+static LEAST_CONNECTIONS: Lazy<RequestPressure> = Lazy::new(RequestPressure::default);
 static RANDOM: Lazy<Random> = Lazy::new(Random::default);
 static ROUND_ROBIN: Lazy<RoundRobin> = Lazy::new(RoundRobin::default);
 
@@ -57,7 +57,7 @@ impl TrafficDirector {
         let strategy: &dyn TrafficStrategy = match service.strategy {
             LoadBalancingStrategy::Failover => &*FAILOVER,
             LoadBalancingStrategy::RoundRobin => &*ROUND_ROBIN,
-            LoadBalancingStrategy::LeastConnections => &*LEAST_CONNECTIONS,
+            LoadBalancingStrategy::RequestPressure => &*LEAST_CONNECTIONS,
             LoadBalancingStrategy::StickyHash => &*HASH,
             LoadBalancingStrategy::Random => &*RANDOM,
         };

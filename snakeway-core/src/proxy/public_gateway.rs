@@ -6,7 +6,7 @@ use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteKind;
 use crate::server::{RuntimeState, UpstreamRuntime};
-use crate::traffic::{RequestGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
+use crate::traffic::{AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -76,13 +76,13 @@ impl ProxyHttp for PublicGateway {
         // The TrafficDirector already called `circuit_allows` for selection.
         ctx.cb_started = true;
 
-        let guard = RequestGuard::new(
+        let guard = AdmissionGuard::new(
             self.gw_ctx.traffic_manager.clone(),
             service_id.clone(),
             upstream.id,
         );
 
-        ctx.request_guard = Some(guard);
+        ctx.admission_guard = Some(guard);
         ctx.selected_upstream = Some((service_id, upstream.id));
 
         Ok(Box::new(peer))
@@ -303,7 +303,7 @@ impl ProxyHttp for PublicGateway {
         }
 
         // Finalize request guard...
-        self.finalize_request_guard(ctx);
+        self.finalize_admission_guard(ctx);
     }
 }
 
@@ -380,13 +380,13 @@ impl PublicGateway {
     /// - Any status code (if count_http_5xx_as_failure is false)
     ///
     /// This is called from the logging hook to ensure it runs after all other processing.
-    fn finalize_request_guard(&self, ctx: &mut RequestCtx) {
+    fn finalize_admission_guard(&self, ctx: &mut RequestCtx) {
         let (service_id, _) = match ctx.selected_upstream.as_ref() {
             Some(v) => v,
             None => return,
         };
 
-        let guard = match ctx.request_guard.as_mut() {
+        let guard = match ctx.admission_guard.as_mut() {
             Some(g) => g,
             None => return,
         };

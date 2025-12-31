@@ -96,7 +96,7 @@ fn default_strategy() -> LoadBalancingStrategy {
 pub enum LoadBalancingStrategy {
     Failover,
     RoundRobin,
-    LeastConnections,
+    RequestPressure,
     StickyHash,
     Random,
 }

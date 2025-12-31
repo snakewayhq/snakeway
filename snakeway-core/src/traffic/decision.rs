@@ -4,7 +4,7 @@ use crate::server::UpstreamId;
 pub enum DecisionReason {
     Failover,
     RoundRobin,
-    LeastConnections,
+    AdmissionPressure,
     Random,
     StickyHash,
     NoStrategyDecision,
