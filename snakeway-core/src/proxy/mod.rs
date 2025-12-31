@@ -1,4 +1,5 @@
 mod admin_gateway;
+mod error_classification;
 mod gateway_ctx;
 mod handlers;
 mod public_gateway;

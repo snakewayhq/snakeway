@@ -14,9 +14,20 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
 pub enum UpstreamOutcome {
-    TransportError,
+    Transport(TransportFailure),
     HttpStatus(u16),
     Success,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TransportFailure {
+    Connect,
+    Timeout,
+    Reset,
+    Protocol,
+    Tls,
+    Io,
+    Unknown,
 }
 
 /// Health state of an upstream endpoint

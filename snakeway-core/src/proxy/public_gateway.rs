@@ -1,6 +1,7 @@
 use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::result::DeviceResult;
+use crate::proxy::error_classification::classify_pingora_error;
 use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteKind;
@@ -297,8 +298,8 @@ impl ProxyHttp for PublicGateway {
         }
 
         // Capture transport-level failure.
-        if e.is_some() {
-            ctx.upstream_outcome = Some(UpstreamOutcome::TransportError);
+        if let Some(err) = e {
+            ctx.upstream_outcome = Some(UpstreamOutcome::Transport(classify_pingora_error(err)));
         }
 
         // Finalize request guard...
@@ -391,7 +392,7 @@ impl PublicGateway {
         };
 
         let success = match ctx.upstream_outcome {
-            Some(UpstreamOutcome::TransportError) => false,
+            Some(UpstreamOutcome::Transport(_)) => false,
 
             Some(UpstreamOutcome::HttpStatus(code)) => {
                 let count_5xx = self
