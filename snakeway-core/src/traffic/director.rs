@@ -1,5 +1,4 @@
 use crate::conf::types::LoadBalancingStrategy;
-use crate::traffic::circuit::CircuitState;
 use crate::traffic::{
     TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
@@ -27,33 +26,23 @@ impl TrafficDirector {
             .get(service_id)
             .ok_or(TrafficError::UnknownService)?;
 
-        // Filter eligible upstreams (healthy AND circuit allows)
-        let eligible: Vec<_> = service
+        // Purely filter on health status.
+        let mut healthy_candidates: Vec<_> = service
             .upstreams
             .iter()
             .filter(|u| {
-                // Health gate (purely time-based).
-                if !traffic_manager
+                traffic_manager
                     .health_status(service_id, &u.endpoint.id)
                     .healthy
-                {
-                    return false;
-                }
-
-                // Circuit gate (state-only, no mutation).
-                match traffic_manager.circuit_state(service_id, &u.endpoint.id) {
-                    CircuitState::Open => false,
-                    CircuitState::Closed | CircuitState::HalfOpen => true,
-                }
             })
             .cloned()
             .collect();
 
-        if eligible.is_empty() {
+        if healthy_candidates.is_empty() {
             return Err(TrafficError::NoHealthyUpstreams);
         }
 
-        // Delegate to strategy
+        // Select strategy.
         let strategy: &dyn TrafficStrategy = match service.strategy {
             LoadBalancingStrategy::Failover => &*FAILOVER,
             LoadBalancingStrategy::RoundRobin => &*ROUND_ROBIN,
@@ -62,16 +51,25 @@ impl TrafficDirector {
             LoadBalancingStrategy::Random => &*RANDOM,
         };
 
-        if let Some(decision) = strategy.decide(req, service_id, &eligible, traffic_manager) {
-            return Ok(decision);
+        // Pick upstream and circuit admission
+        while !healthy_candidates.is_empty() {
+            let decision = strategy
+                .decide(req, service_id, &healthy_candidates, traffic_manager)
+                .unwrap_or_else(|| TrafficDecision {
+                    upstream_id: healthy_candidates[0].endpoint.id,
+                    reason: DecisionReason::NoStrategyDecision,
+                    protocol: None,
+                });
+
+            if traffic_manager.circuit_allows(service_id, &decision.upstream_id) {
+                return Ok(decision);
+            }
+
+            // Circuit denied: remove and retry.
+            healthy_candidates.retain(|u| u.endpoint.id != decision.upstream_id);
         }
 
-        // Hard fallback: first eligible
-        Ok(TrafficDecision {
-            upstream_id: eligible[0].endpoint.id,
-            reason: DecisionReason::NoStrategyDecision,
-            protocol: None,
-        })
+        Err(TrafficError::NoHealthyUpstreams)
     }
 }
 
