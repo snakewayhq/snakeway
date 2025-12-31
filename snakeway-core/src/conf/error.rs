@@ -77,6 +77,10 @@ pub enum ConfigError {
 
     #[error("invalid circuit breaker config for service '{service}': {reason}")]
     InvalidCircuitBreaker { service: String, reason: String },
+    #[error("HTTP/2 is not supported on admin listeners")]
+    AdminListenerHttp2NotSupported,
+    #[error("admin listener must use TLS")]
+    AdminListenerMissingTls,
 }
 
 impl ConfigError {
