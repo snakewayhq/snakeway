@@ -12,6 +12,7 @@ use crate::traffic::{
     types::*,
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 // ---------------------------
@@ -101,6 +102,14 @@ fn no_healthy_upstreams_returns_error() {
         LoadBalancingStrategy::RoundRobin,
     );
     let manager = TrafficManager::new(snapshot.clone());
+    manager.health_params.insert(
+        service_id.clone(),
+        Arc::new(HealthCheckParams {
+            enable: true,
+            failure_threshold: 3,
+            unhealthy_cooldown: Duration::from_secs(10),
+        }),
+    );
     let director = TrafficDirector;
 
     // Mark all upstreams unhealthy
@@ -129,6 +138,14 @@ fn single_healthy_upstream_is_selected() {
         LoadBalancingStrategy::RoundRobin,
     );
     let manager = TrafficManager::new(snapshot.clone());
+    manager.health_params.insert(
+        service_id.clone(),
+        Arc::new(HealthCheckParams {
+            enable: true,
+            failure_threshold: 3,
+            unhealthy_cooldown: Duration::from_secs(10),
+        }),
+    );
     let director = TrafficDirector;
 
     // Mark upstream 1 unhealthy

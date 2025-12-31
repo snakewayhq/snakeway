@@ -1,4 +1,4 @@
-use crate::conf::types::LoadBalancingStrategy;
+use crate::conf::types::{HealthCheckConfig, LoadBalancingStrategy};
 use crate::server::UpstreamId;
 use crate::server::UpstreamRuntime;
 use crate::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
@@ -27,7 +27,10 @@ fn test_admin_view_counters() {
                 latency: None,
             }],
             circuit_breaker_cfg: Default::default(),
-            health_check_cfg: Default::default(),
+            health_check_cfg: HealthCheckConfig {
+                enable: true,
+                ..Default::default()
+            },
         },
     );
 
