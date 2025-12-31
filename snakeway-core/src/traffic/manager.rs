@@ -4,12 +4,12 @@ use crate::traffic::admin::{
 };
 use crate::traffic::circuit::{CircuitBreaker, CircuitBreakerParams, CircuitState};
 use crate::traffic::snapshot::TrafficSnapshot;
-use crate::traffic::{HealthCheckParams, HealthStatus, ServiceId};
+use crate::traffic::{HealthCheckParams, HealthStatus, ServiceId, UpstreamSnapshot};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -39,6 +39,17 @@ enum HealthState {
     },
 }
 
+/// Weighted Round Robin state.
+#[derive(Debug, Clone)]
+struct WrrState {
+    // Smooth WRR "current" accumulator per upstream slot.
+    current_weights: Vec<i64>,
+
+    // Detect when the healthy set has changed (health flaps, reload, reorder, etc.)
+    upstream_ids: Vec<UpstreamId>,
+    total_weight: i64,
+}
+
 #[derive(Debug)]
 pub struct TrafficManager {
     snapshot: ArcSwap<TrafficSnapshot>,
@@ -46,8 +57,8 @@ pub struct TrafficManager {
     /// Live per-upstream counters (hot path)
     active_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
 
-    /// Per-service round-robin cursors
-    rr_cursors: DashMap<ServiceId, AtomicUsize>,
+    /// Per-upstream weighted round-robin state
+    wrr_state: DashMap<ServiceId, WrrState>,
 
     /// Per-upstream health state
     upstream_health: DashMap<(ServiceId, UpstreamId), HealthState>,
@@ -72,7 +83,7 @@ impl TrafficManager {
         let tm = Self {
             snapshot: ArcSwap::from_pointee(initial.clone()),
             active_requests: DashMap::new(),
-            rr_cursors: DashMap::new(),
+            wrr_state: DashMap::new(),
             upstream_health: DashMap::new(),
             total_requests: DashMap::new(),
             total_successes: DashMap::new(),
@@ -97,8 +108,8 @@ impl TrafficManager {
     pub fn update(&self, new_snapshot: TrafficSnapshot) {
         let valid_services: HashSet<ServiceId> = new_snapshot.services.keys().cloned().collect();
 
-        // Clean up round-robin cursors
-        self.rr_cursors
+        // Clean up weighted round-robin cursors
+        self.wrr_state
             .retain(|service_id, _| valid_services.contains(service_id));
 
         // Cleanup active request counters
@@ -225,13 +236,58 @@ impl TrafficManager {
             .unwrap_or(0)
     }
 
-    pub fn next_rr_index(&self, service_id: &ServiceId, modulo: usize) -> usize {
-        let cursor = self
-            .rr_cursors
-            .entry(service_id.clone())
-            .or_insert_with(|| AtomicUsize::new(0));
+    pub fn next_wrr_index(&self, service_id: &ServiceId, healthy: &[UpstreamSnapshot]) -> usize {
+        debug_assert!(!healthy.is_empty());
 
-        cursor.fetch_add(1, Ordering::Relaxed) % modulo
+        // Build signature inputs (ids + weights)
+        // NOTE: This allocates a Vec each call. If you want to go harder later,
+        // we can avoid allocations by hashing instead.
+        let upstream_ids: Vec<UpstreamId> = healthy.iter().map(|u| u.endpoint.id).collect();
+
+        let total_weight: i64 = healthy
+            .iter()
+            .map(|u| u.weight as i64) // assumes UpstreamSnapshot has `weight: u32`
+            .sum();
+
+        // Safety net: weight is enforced in config validation.
+        debug_assert!(total_weight > 0);
+
+        let mut entry = self
+            .wrr_state
+            .entry(service_id.clone())
+            .or_insert_with(|| WrrState {
+                current_weights: vec![0; healthy.len()],
+                upstream_ids: upstream_ids.clone(),
+                total_weight,
+            });
+
+        // Reset if upstream set/order or weights changed
+        if entry.current_weights.len() != healthy.len()
+            || entry.total_weight != total_weight
+            || entry.upstream_ids != upstream_ids
+        {
+            entry.current_weights = vec![0; healthy.len()];
+            entry.upstream_ids = upstream_ids;
+            entry.total_weight = total_weight;
+        }
+
+        // Smooth Weighted Round Robin
+        let mut best_idx = 0usize;
+        let mut best_val = i64::MIN;
+
+        for (i, u) in healthy.iter().enumerate() {
+            let w = u.weight as i64;
+            entry.current_weights[i] += w;
+
+            if entry.current_weights[i] > best_val {
+                best_val = entry.current_weights[i];
+                best_idx = i;
+            }
+        }
+
+        entry.current_weights[best_idx] -= entry.total_weight;
+
+        best_idx
     }
 }
 

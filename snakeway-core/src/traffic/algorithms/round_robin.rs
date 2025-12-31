@@ -21,12 +21,12 @@ impl TrafficStrategy for RoundRobin {
             return None;
         }
 
-        let idx = traffic_manager.next_rr_index(service_id, healthy.len());
+        let idx = traffic_manager.next_wrr_index(service_id, healthy);
 
-        let upstream_snapshot = &healthy[idx];
+        let upstream = &healthy[idx];
 
         Some(TrafficDecision {
-            upstream_id: upstream_snapshot.endpoint.id,
+            upstream_id: upstream.endpoint.id,
             reason: DecisionReason::RoundRobin,
             protocol: None,
             cb_started: true,

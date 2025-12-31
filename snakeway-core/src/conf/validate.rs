@@ -92,6 +92,16 @@ pub fn validate_routes(
             });
         }
 
+        for upstream in &service.upstream {
+            if upstream.weight == 0 {
+                return Err(ConfigError::InvalidUpstream {
+                    service: name.clone(),
+                    upstream: upstream.url.clone(),
+                    reason: "weight must be > 0".to_string(),
+                });
+            }
+        }
+
         let cb = &service.circuit_breaker;
         if cb.enable_auto_recovery {
             if cb.failure_threshold == 0 {
