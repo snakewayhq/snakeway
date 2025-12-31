@@ -26,7 +26,6 @@ pub enum TransportFailure {
     Reset,
     Protocol,
     Tls,
-    Io,
     Unknown,
 }
 

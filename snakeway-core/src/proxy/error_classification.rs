@@ -1,8 +1,14 @@
 use crate::traffic::TransportFailure;
 
 pub fn classify_pingora_error(err: &pingora::Error) -> TransportFailure {
-    use pingora::ErrorType::*;
+    use pingora::{ErrorSource, ErrorType::*};
 
+    // Return unknown for downstream and internal errors (without penalizing upstream(s)).
+    if err.esource() != &ErrorSource::Upstream {
+        return TransportFailure::Unknown;
+    }
+
+    // Classify specific upstream errors from Pingora.
     match err.etype() {
         // Connect phase.
         ConnectTimedout | ConnectRefused | ConnectNoRoute | ConnectProxyFailure | ConnectError => {
