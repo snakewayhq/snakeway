@@ -30,6 +30,7 @@ jobs:
   build:
     name: Build static Linux binaries
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
