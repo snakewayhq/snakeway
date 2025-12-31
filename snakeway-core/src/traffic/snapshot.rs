@@ -7,6 +7,7 @@ use std::collections::HashMap;
 pub struct UpstreamSnapshot {
     pub endpoint: UpstreamRuntime,
     pub latency: Option<LatencyStats>,
+    pub weight: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,7 @@ impl TrafficSnapshot {
                 .map(|u| UpstreamSnapshot {
                     endpoint: u.clone(),
                     latency: None,
+                    weight: u.weight,
                 })
                 .collect::<Vec<_>>();
 

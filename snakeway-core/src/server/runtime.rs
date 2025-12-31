@@ -49,6 +49,7 @@ pub struct UpstreamRuntime {
     pub port: u16,
     pub use_tls: bool,
     pub sni: String,
+    pub weight: u32,
 }
 
 pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeState>) -> Result<()> {
@@ -103,7 +104,7 @@ fn build_runtime_services(
             .upstream
             .iter()
             .map(|u| {
-                let rt = parse_upstream_url(&u.url)?;
+                let rt = make_upstream_runtime(&u.url, u.weight)?;
                 Ok(rt)
             })
             .collect::<Result<Vec<_>>>()?;
@@ -156,7 +157,7 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
 }
 
 /// Parse an upstream address of the form "host:port".
-fn parse_upstream_url(raw: &str) -> Result<UpstreamRuntime> {
+fn make_upstream_runtime(raw: &str, weight: Option<u32>) -> Result<UpstreamRuntime> {
     let uri: Uri = raw
         .parse()
         .map_err(|_| anyhow!("invalid upstream URL: {}", raw))?;
@@ -183,5 +184,6 @@ fn parse_upstream_url(raw: &str) -> Result<UpstreamRuntime> {
         port,
         use_tls,
         sni,
+        weight: weight.unwrap_or(1),
     })
 }
