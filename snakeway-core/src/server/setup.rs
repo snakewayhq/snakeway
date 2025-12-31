@@ -1,6 +1,6 @@
 use crate::conf::RuntimeConfig;
 use crate::device::core::registry::DeviceRegistry;
-use crate::proxy::Gateway;
+use crate::proxy::{AdminGateway, PublicGateway};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
@@ -141,29 +141,51 @@ pub fn build_pingora_server(
     registry.load_from_config(&config)?;
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
-    // Build gateway
-    let gateway = Gateway::new(state, traffic, reload);
-
-    // Build HTTP proxy service from Pingora.
-    let mut svc = http_proxy_service(&server.configuration, gateway);
-
-    for listener in &config.listeners {
+    // Build the public HTTP proxy service from Pingora.
+    let public_gateway = PublicGateway::new(state.clone(), traffic.clone());
+    let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
+    for listener in &config
+        .listeners
+        .iter()
+        .filter(|l| !l.enable_admin)
+        .collect::<Vec<_>>()
+    {
         match &listener.tls {
             Some(tls) => {
                 let mut tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
                 if listener.enable_http2 {
                     tls_settings.enable_h2();
                 }
-                svc.add_tls_with_settings(&listener.addr.to_string(), None, tls_settings);
+                public_svc.add_tls_with_settings(&listener.addr.to_string(), None, tls_settings);
             }
             None => {
-                svc.add_tcp(&listener.addr.to_string());
+                public_svc.add_tcp(&listener.addr.to_string());
+            }
+        }
+    }
+
+    // Build the admin HTTP proxy service from Pingora.
+    let admin_gateway = AdminGateway::new(traffic, reload);
+    let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
+    for listener in &config
+        .listeners
+        .iter()
+        .filter(|l| l.enable_admin)
+        .collect::<Vec<_>>()
+    {
+        match &listener.tls {
+            Some(tls) => {
+                let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
+                admin_svc.add_tls_with_settings(&listener.addr, None, tls_settings);
+            }
+            None => {
+                admin_svc.add_tcp(&listener.addr);
             }
         }
     }
 
     // Register service.
-    server.add_service(svc);
+    server.add_service(public_svc);
 
     Ok(server)
 }
