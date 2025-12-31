@@ -18,7 +18,7 @@ url = "http://10.0.0.2:8080"
 weight = 1
 
 [services.circuit_breaker]
-enabled = true
+enable_auto_recovery = true
 failure_threshold = 5
 open_duration_ms = 10000
 half_open_max_requests = 1
