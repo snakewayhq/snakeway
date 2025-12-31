@@ -164,6 +164,9 @@ pub fn build_pingora_server(
         }
     }
 
+    // Register public service.
+    server.add_service(public_svc);
+
     // Build the admin HTTP proxy service from Pingora.
     let admin_gateway = AdminGateway::new(traffic, reload);
     let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
@@ -184,8 +187,8 @@ pub fn build_pingora_server(
         }
     }
 
-    // Register service.
-    server.add_service(public_svc);
+    // Register admin service.
+    server.add_service(admin_svc);
 
     Ok(server)
 }
