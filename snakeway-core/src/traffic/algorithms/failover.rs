@@ -24,6 +24,8 @@ impl TrafficStrategy for Failover {
             upstream_id: healthy.endpoint.id,
             reason: DecisionReason::Failover,
             protocol: None,
+
+            cb_started: true,
         })
     }
 }

@@ -6,7 +6,10 @@ use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteKind;
 use crate::server::{RuntimeState, UpstreamRuntime};
-use crate::traffic::{AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
+
+use crate::traffic::{
+    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -57,7 +60,8 @@ impl ProxyHttp for PublicGateway {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
         let service_id = ServiceId(service_name.clone());
 
-        let upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
+        let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
+        let upstream = selected_upstream.upstream;
 
         let mut peer = HttpPeer::new(
             (upstream.host.as_str(), upstream.port),
@@ -74,15 +78,18 @@ impl ProxyHttp for PublicGateway {
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
-        ctx.cb_started = true;
+        ctx.cb_started = selected_upstream.cb_started;
 
-        let guard = AdmissionGuard::new(
-            self.gw_ctx.traffic_manager.clone(),
-            service_id.clone(),
-            upstream.id,
-        );
+        if ctx.cb_started {
+            let guard = AdmissionGuard::new(
+                self.gw_ctx.traffic_manager.clone(),
+                service_id.clone(),
+                upstream.id,
+            );
 
-        ctx.admission_guard = Some(guard);
+            ctx.admission_guard = Some(guard);
+        }
+
         ctx.selected_upstream = Some((service_id, upstream.id));
 
         Ok(Box::new(peer))
@@ -315,7 +322,7 @@ impl PublicGateway {
         state: &'a RuntimeState,
         service_id: &ServiceId,
         service_name: &str,
-    ) -> std::result::Result<&'a UpstreamRuntime, BError> {
+    ) -> std::result::Result<SelectedUpstream<'a>, BError> {
         // Get a snapshot (cheap, lock-free)
         let snapshot = self.gw_ctx.traffic_manager.snapshot();
 
@@ -341,7 +348,10 @@ impl PublicGateway {
             .find(|u| u.id == decision.upstream_id)
             .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
 
-        Ok(upstream)
+        Ok(SelectedUpstream {
+            upstream,
+            cb_started: decision.cb_started,
+        })
     }
 
     /// Enforces protocol rules for the given upstream and request.

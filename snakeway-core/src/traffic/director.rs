@@ -59,6 +59,7 @@ impl TrafficDirector {
                     upstream_id: healthy_candidates[0].endpoint.id,
                     reason: DecisionReason::NoStrategyDecision,
                     protocol: None,
+                    cb_started: true,
                 });
 
             if traffic_manager.circuit_allows(service_id, &decision.upstream_id) {

@@ -13,6 +13,7 @@ mod admission_guard;
 mod tests;
 
 pub use admission_guard::*;
+pub use decision::SelectedUpstream;
 pub use director::*;
 pub use manager::*;
 pub use snapshot::*;

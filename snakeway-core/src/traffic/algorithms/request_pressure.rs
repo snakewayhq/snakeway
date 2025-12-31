@@ -25,6 +25,7 @@ impl TrafficStrategy for RequestPressure {
             upstream_id: upstream.endpoint.id,
             reason: DecisionReason::AdmissionPressure,
             protocol: None,
+            cb_started: true,
         })
     }
 }

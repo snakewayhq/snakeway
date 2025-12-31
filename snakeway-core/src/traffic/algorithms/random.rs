@@ -27,6 +27,7 @@ impl TrafficStrategy for Random {
             upstream_id: upstream_snapshot.endpoint.id,
             reason: DecisionReason::Random,
             protocol: None,
+            cb_started: true,
         })
     }
 }
