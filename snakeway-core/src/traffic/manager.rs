@@ -9,7 +9,7 @@ use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -57,9 +57,6 @@ pub struct TrafficManager {
     /// Live per-upstream counters (hot path)
     active_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
 
-    /// Per-service round-robin cursors
-    rr_cursors: DashMap<ServiceId, AtomicUsize>,
-
     /// Per-upstream weighted round-robin state
     wrr_state: DashMap<ServiceId, WrrState>,
 
@@ -86,7 +83,6 @@ impl TrafficManager {
         let tm = Self {
             snapshot: ArcSwap::from_pointee(initial.clone()),
             active_requests: DashMap::new(),
-            rr_cursors: DashMap::new(),
             wrr_state: DashMap::new(),
             upstream_health: DashMap::new(),
             total_requests: DashMap::new(),
@@ -111,10 +107,6 @@ impl TrafficManager {
 
     pub fn update(&self, new_snapshot: TrafficSnapshot) {
         let valid_services: HashSet<ServiceId> = new_snapshot.services.keys().cloned().collect();
-
-        // Clean up round-robin cursors
-        self.rr_cursors
-            .retain(|service_id, _| valid_services.contains(service_id));
 
         // Clean up weighted round-robin cursors
         self.wrr_state
@@ -257,8 +249,7 @@ impl TrafficManager {
             .map(|u| u.weight as i64) // assumes UpstreamSnapshot has `weight: u32`
             .sum();
 
-        // Safety net: if you allow weight=0, you must decide semantics.
-        // My recommendation: reject weight=0 in config validation.
+        // Safety net: weight is enforced in config validation.
         debug_assert!(total_weight > 0);
 
         let mut entry = self

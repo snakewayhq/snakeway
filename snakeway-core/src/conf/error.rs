@@ -86,6 +86,13 @@ pub enum ConfigError {
 
     #[error("invalid circuit breaker config for service '{service}': {reason}")]
     InvalidCircuitBreaker { service: String, reason: String },
+
+    #[error("invalid upstream '{upstream}' for service '{service}': {reason}")]
+    InvalidUpstream {
+        service: String,
+        upstream: String,
+        reason: String,
+    },
 }
 
 impl ConfigError {

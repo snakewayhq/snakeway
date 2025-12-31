@@ -5,22 +5,24 @@ Services define how groups of upstreams are managed, including load balancing an
 ## Overview
 
 ```toml
-[[services]]
+[[service]]
 name = "api"
 strategy = "round_robin"
 
-[[services.upstream]]
+[[service.upstream]]
 url = "http://10.0.0.1:8080"
+weight = 1
 
-[[services.upstream]]
+[[service.upstream]]
 url = "http://10.0.0.2:8080"
+weight = 10
 
 [services.health_check]
 enable = true
 failure_threshold = 3
 unhealthy_cooldown_seconds = 10
 
-[services.circuit_breaker]
+[service.circuit_breaker]
 enable_auto_recovery = true
 failure_threshold = 5
 open_duration_ms = 10000
@@ -28,6 +30,27 @@ half_open_max_requests = 1
 success_threshold = 2
 count_http_5xx_as_failure = true
 ```
+
+## Upstream Configuration
+
+Each service can have one or more upstream servers defined. Upstreams represent the backend servers that will handle the
+proxied requests.
+
+### url
+
+**Type:** `string`  
+**Required:** `true`
+
+The full URL of the upstream server, including protocol, host, and port (e.g., `http://10.0.0.1:8080`).
+
+### weight
+
+**Type:** `integer`  
+**Default:** `1`
+
+The weight of this upstream for load balancing strategies that support weighted distribution (i.e., `round_robin`).
+Higher weights receive proportionally more traffic. A weight of `10` will receive approximately 10 times more requests
+than a weight of `1`.
 
 ## Load Balancing Strategy
 

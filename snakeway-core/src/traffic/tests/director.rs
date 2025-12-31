@@ -35,10 +35,12 @@ fn upstream(id: u16) -> UpstreamSnapshot {
             port: id,
             use_tls: false,
             sni: "localhost".to_string(),
+            weight: 1,
         },
         latency: Some(LatencyStats {
             ewma: Duration::from_millis(10),
         }),
+        weight: 1,
     }
 }
 

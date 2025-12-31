@@ -157,7 +157,7 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
 }
 
 /// Parse an upstream address of the form "host:port".
-fn make_upstream_runtime(raw: &str, weight: Option<u32>) -> Result<UpstreamRuntime> {
+fn make_upstream_runtime(raw: &str, weight: u32) -> Result<UpstreamRuntime> {
     let uri: Uri = raw
         .parse()
         .map_err(|_| anyhow!("invalid upstream URL: {}", raw))?;
@@ -184,6 +184,6 @@ fn make_upstream_runtime(raw: &str, weight: Option<u32>) -> Result<UpstreamRunti
         port,
         use_tls,
         sni,
-        weight: weight.unwrap_or(1),
+        weight,
     })
 }

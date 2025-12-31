@@ -107,9 +107,9 @@ pub struct UpstreamConfig {
     pub url: String,
 
     #[serde(default = "default_weight")]
-    pub weight: Option<u32>,
+    pub weight: u32,
 }
 
-fn default_weight() -> Option<u32> {
-    Some(1)
+fn default_weight() -> u32 {
+    1
 }
