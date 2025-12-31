@@ -37,3 +37,8 @@ Apache 2.0
 ## Geo IP Database
 
 Any MMDB database is supported, but the default for integration tests is [IP Geolocation by DB-IP](https://db-ip.com).
+
+## User Agent Parsing
+
+Uses [ua-parser](https://github.com/ua-parser/uap-core).
+
