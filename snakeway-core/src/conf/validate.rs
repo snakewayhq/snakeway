@@ -50,6 +50,10 @@ pub fn validate_listeners(listeners: &[ListenerConfig]) -> Result<(), ConfigErro
             }
         }
 
+        if listener.enable_http2 && listener.tls.is_none() {
+            return Err(ConfigError::Http2RequiresTls);
+        }
+
         if listener.enable_admin {
             if listener.enable_http2 {
                 return Err(ConfigError::AdminListenerHttp2NotSupported);
