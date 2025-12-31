@@ -1,4 +1,5 @@
 use crate::conf::types::LoadBalancingStrategy;
+use crate::traffic::circuit::CircuitState;
 use crate::traffic::{
     TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
@@ -31,12 +32,19 @@ impl TrafficDirector {
             .upstreams
             .iter()
             .filter(|u| {
-                let healthy = traffic_manager
+                // Health gate (purely time-based).
+                if !traffic_manager
                     .health_status(service_id, &u.endpoint.id)
-                    .healthy;
-                let cb_allowed = traffic_manager.circuit_allows(service_id, &u.endpoint.id);
+                    .healthy
+                {
+                    return false;
+                }
 
-                healthy && cb_allowed
+                // Circuit gate (state-only, no mutation).
+                match traffic_manager.circuit_state(service_id, &u.endpoint.id) {
+                    CircuitState::Open => false,
+                    CircuitState::Closed | CircuitState::HalfOpen => true,
+                }
             })
             .cloned()
             .collect();

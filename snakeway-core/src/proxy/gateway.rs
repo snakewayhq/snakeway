@@ -7,7 +7,7 @@ use crate::proxy::request_classification::{RequestKind, classify_request};
 use crate::route::RouteKind;
 use crate::server::ReloadHandle;
 use crate::server::{RuntimeState, UpstreamRuntime};
-use crate::traffic::{ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
+use crate::traffic::{RequestGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -84,10 +84,13 @@ impl ProxyHttp for Gateway {
         // The TrafficDirector already called `circuit_allows` for selection.
         ctx.cb_started = true;
 
-        self.gw_ctx
-            .traffic_manager
-            .on_request_start(&service_id, &upstream.id);
+        let guard = RequestGuard::new(
+            self.gw_ctx.traffic_manager.clone(),
+            service_id.clone(),
+            upstream.id,
+        );
 
+        ctx.request_guard = Some(guard);
         ctx.selected_upstream = Some((service_id, upstream.id));
 
         Ok(Box::new(peer))
@@ -305,56 +308,6 @@ impl ProxyHttp for Gateway {
     where
         Self::CTX: Send + Sync,
     {
-        if let Some((service_id, upstream_id)) = ctx.selected_upstream.as_ref() {
-            // Transport-level failure wins over HTTP status.
-            if e.is_some() {
-                ctx.upstream_outcome = Some(UpstreamOutcome::TransportError);
-            }
-
-            let success = match ctx.upstream_outcome {
-                Some(UpstreamOutcome::TransportError) => false,
-                Some(UpstreamOutcome::HttpStatus(code)) => {
-                    // Decide if this status code is a failure.
-                    // By default, 5xx is failure.
-                    let count_5xx = self
-                        .gw_ctx
-                        .traffic_manager
-                        .circuit_params
-                        .get(service_id)
-                        .map(|p| p.count_http_5xx_as_failure)
-                        .unwrap_or(true);
-
-                    if count_5xx { code < 500 } else { true }
-                }
-                Some(UpstreamOutcome::Success) | None => true,
-            };
-
-            if success {
-                self.gw_ctx
-                    .traffic_manager
-                    .report_success(service_id, upstream_id);
-            } else {
-                self.gw_ctx
-                    .traffic_manager
-                    .report_failure(service_id, upstream_id);
-            }
-
-            // Circuit breaker state update
-            self.gw_ctx.traffic_manager.circuit_on_end(
-                service_id,
-                upstream_id,
-                ctx.cb_started,
-                success,
-            );
-        }
-
-        // Always decrement active request counter
-        if let Some((service_id, upstream_id)) = ctx.selected_upstream.take() {
-            self.gw_ctx
-                .traffic_manager
-                .on_request_end(&service_id, &upstream_id);
-        }
-
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.6.0.
@@ -364,6 +317,14 @@ impl ProxyHttp for Gateway {
                 &WsCloseCtx::default(),
             );
         }
+
+        // Capture transport-level failure.
+        if e.is_some() {
+            ctx.upstream_outcome = Some(UpstreamOutcome::TransportError);
+        }
+
+        // Finalize request guard...
+        self.finalize_request_guard(ctx);
     }
 }
 
@@ -426,5 +387,55 @@ impl Gateway {
             peer.options.set_http_version(2, 2);
         }
         Ok(())
+    }
+
+    /// Finalizes the request guard by reporting success or failure to the traffic manager.
+    ///
+    /// This method determines the outcome of the request based on the upstream response
+    /// and circuit breaker configuration. It marks the request as successful or failed,
+    /// which updates the circuit breaker state for the selected upstream.
+    ///
+    /// Success criteria:
+    /// - No transport error occurred
+    /// - HTTP status < 500 (if count_http_5xx_as_failure is true)
+    /// - Any status code (if count_http_5xx_as_failure is false)
+    ///
+    /// This is called from the logging hook to ensure it runs after all other processing.
+    fn finalize_request_guard(&self, ctx: &mut RequestCtx) {
+        let (service_id, _) = match ctx.selected_upstream.as_ref() {
+            Some(v) => v,
+            None => return,
+        };
+
+        let guard = match ctx.request_guard.as_mut() {
+            Some(g) => g,
+            None => return,
+        };
+
+        let success = match ctx.upstream_outcome {
+            Some(UpstreamOutcome::TransportError) => false,
+
+            Some(UpstreamOutcome::HttpStatus(code)) => {
+                let count_5xx = self
+                    .gw_ctx
+                    .traffic_manager
+                    .circuit_params
+                    .get(service_id)
+                    .map(|p| p.count_http_5xx_as_failure)
+                    .unwrap_or(true);
+
+                if count_5xx { code < 500 } else { true }
+            }
+
+            Some(UpstreamOutcome::Success) => true,
+
+            None => true,
+        };
+
+        if success {
+            guard.success();
+        } else {
+            guard.failure();
+        }
     }
 }

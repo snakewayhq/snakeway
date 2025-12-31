@@ -13,13 +13,38 @@ pub struct ServiceConfig {
 
     #[serde(default)]
     pub circuit_breaker: CircuitBreakerConfig,
+
+    #[serde(default)]
+    pub health_check: HealthCheckConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct HealthCheckConfig {
+    #[serde(default = "hc_default_enable")]
+    pub enable: bool,
+    #[serde(default = "hc_default_threshold")]
+    pub failure_threshold: u32,
+    #[serde(default = "hc_default_unhealthy_cooldown_seconds")]
+    pub unhealthy_cooldown_seconds: u64,
+}
+
+fn hc_default_enable() -> bool {
+    true
+}
+
+fn hc_default_threshold() -> u32 {
+    3
+}
+
+fn hc_default_unhealthy_cooldown_seconds() -> u64 {
+    10
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct CircuitBreakerConfig {
-    /// Enable circuit breaking for this service.
-    #[serde(default = "cb_default_enabled")]
-    pub enabled: bool,
+    /// Enable circuit breaking auto recovery for this service.
+    #[serde(default = "cb_default_enable_auto_recovery")]
+    pub enable_auto_recovery: bool,
 
     /// Failures in the "closed" state before opening the circuit.
     #[serde(default = "cb_default_failure_threshold")]
@@ -43,8 +68,8 @@ pub struct CircuitBreakerConfig {
     pub count_http_5xx_as_failure: bool,
 }
 
-fn cb_default_enabled() -> bool {
-    true
+fn cb_default_enable_auto_recovery() -> bool {
+    false
 }
 fn cb_default_failure_threshold() -> u32 {
     5
@@ -80,8 +105,4 @@ pub enum LoadBalancingStrategy {
 pub struct UpstreamConfig {
     /// e.g. "http://10.0.0.1:8080"
     pub url: String,
-
-    /// Optional weight
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight: Option<u32>,
 }

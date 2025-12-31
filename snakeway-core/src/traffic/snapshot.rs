@@ -14,7 +14,8 @@ pub struct ServiceSnapshot {
     pub service_id: ServiceId,
     pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamSnapshot>,
-    pub circuit_breaker_config: crate::conf::types::CircuitBreakerConfig,
+    pub circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig,
+    pub health_check_cfg: crate::conf::types::HealthCheckConfig,
 }
 
 /// Immutable, control-plane snapshot of traffic topology and health.
@@ -46,7 +47,8 @@ impl TrafficSnapshot {
                     service_id: ServiceId(name.clone()),
                     strategy: svc.strategy.clone(),
                     upstreams,
-                    circuit_breaker_config: svc.circuit_breaker.clone(),
+                    circuit_breaker_cfg: svc.circuit_breaker_cfg.clone(),
+                    health_check_cfg: svc.health_check_cfg.clone(),
                 },
             );
         }

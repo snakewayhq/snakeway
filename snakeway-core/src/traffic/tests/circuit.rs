@@ -5,7 +5,7 @@ use std::time::Duration;
 
 fn params() -> CircuitBreakerParams {
     CircuitBreakerParams {
-        enabled: true,
+        enable_auto_recovery: true,
         failure_threshold: 3,
         open_duration: Duration::from_millis(100),
         half_open_max_requests: 1,
@@ -117,7 +117,7 @@ fn test_cb_half_open_failure_reopens() {
 fn test_cb_disabled() {
     let mut cb = CircuitBreaker::new();
     let mut p = params();
-    p.enabled = false;
+    p.enable_auto_recovery = false;
     let ids = ids();
     let ids_ref = (&ids.0, &ids.1);
 

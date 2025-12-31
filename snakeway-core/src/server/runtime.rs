@@ -1,5 +1,6 @@
 use crate::conf::types::{
-    CircuitBreakerConfig, LoadBalancingStrategy, RouteConfig, RouteTarget, ServiceConfig,
+    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, RouteConfig, RouteTarget,
+    ServiceConfig,
 };
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
@@ -24,7 +25,8 @@ pub struct RuntimeState {
 pub struct ServiceRuntime {
     pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamRuntime>,
-    pub circuit_breaker: CircuitBreakerConfig,
+    pub circuit_breaker_cfg: CircuitBreakerConfig,
+    pub health_check_cfg: HealthCheckConfig,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -111,7 +113,8 @@ fn build_runtime_services(
             ServiceRuntime {
                 strategy: svc.strategy.clone(),
                 upstreams,
-                circuit_breaker: svc.circuit_breaker.clone(),
+                circuit_breaker_cfg: svc.circuit_breaker.clone(),
+                health_check_cfg: svc.health_check.clone(),
             },
         );
     }

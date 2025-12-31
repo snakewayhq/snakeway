@@ -11,14 +11,17 @@ strategy = "round_robin"
 
 [[services.upstream]]
 url = "http://10.0.0.1:8080"
-weight = 1
 
 [[services.upstream]]
 url = "http://10.0.0.2:8080"
-weight = 1
+
+[services.health_check]
+enable = true
+failure_threshold = 3
+unhealthy_cooldown_seconds = 10
 
 [services.circuit_breaker]
-enabled = true
+enable_auto_recovery = true
 failure_threshold = 5
 open_duration_ms = 10000
 half_open_max_requests = 1

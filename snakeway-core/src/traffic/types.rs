@@ -27,3 +27,10 @@ pub struct HealthStatus {
     /// Whether the upstream is considered healthy or not.
     pub healthy: bool,
 }
+
+#[derive(Debug, Clone)]
+pub struct HealthCheckParams {
+    pub enable: bool,
+    pub failure_threshold: u32,
+    pub unhealthy_cooldown: Duration,
+}
