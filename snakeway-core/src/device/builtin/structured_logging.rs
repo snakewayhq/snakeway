@@ -253,15 +253,14 @@ impl StructuredLoggingDevice {
 // ----------------------------------------------------------------------------
 // Device trait
 // ----------------------------------------------------------------------------
-
 impl Device for StructuredLoggingDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         if self.phase_enabled(LogPhase::Request) && self.event_enabled(LogEvent::Request) {
             self.emit_http_request(
                 ctx,
                 HttpEvent::Request,
-                Some(ctx.method.as_str()),
-                Some(&ctx.original_uri.to_string()),
+                ctx.method_str(),
+                ctx.uri_str().as_deref(),
                 None,
             );
         }
@@ -273,8 +272,8 @@ impl Device for StructuredLoggingDevice {
             self.emit_http_request(
                 ctx,
                 HttpEvent::BeforeProxy,
-                Some(ctx.method.as_str()),
-                Some(&ctx.original_uri.to_string()),
+                ctx.method_str(),
+                ctx.uri_str().as_deref(),
                 None,
             );
         }

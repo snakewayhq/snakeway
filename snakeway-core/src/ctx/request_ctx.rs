@@ -14,13 +14,13 @@ pub struct RequestCtx {
     pub service: Option<String>,
 
     /// HTTP method (immutable)
-    pub method: Method,
+    pub method: Option<Method>,
 
     /// Original URI as received from the client (immutable, for logging/debugging)
-    pub original_uri: Uri,
+    pub original_uri: Option<Uri>,
 
     /// Path used for routing decisions (mutable by devices before routing)
-    pub route_path: String,
+    pub route_path: Option<String>,
 
     /// Optional override for the upstream request path
     pub upstream_path: Option<String>,
@@ -69,13 +69,13 @@ impl RequestCtx {
             hydrated: false,
 
             // Request identity and content.
-            method: Method::GET,                 // dummy
-            original_uri: Uri::from_static("/"), // dummy
+            method: None,
+            original_uri: None,
             headers: HeaderMap::new(),
             body: vec![],
 
             // Upstream/routing related.
-            route_path: "/".into(),
+            route_path: None,
             service: None,
             selected_upstream: None,
             upstream_path: None,
@@ -105,10 +105,10 @@ impl RequestCtx {
 
         let req = session.req_header();
 
-        self.method = req.method.clone();
-        self.original_uri = req.uri.clone();
+        self.method = Some(req.method.clone());
+        self.original_uri = Some(req.uri.clone());
         self.headers = req.headers.clone();
-        self.route_path = req.uri.path().to_string();
+        self.route_path = Some(req.uri.path().to_string());
         self.is_upgrade_req = session.is_upgrade_req();
         self.is_grpc = req
             .headers
@@ -121,7 +121,9 @@ impl RequestCtx {
 
     /// Path used when proxying upstream
     pub fn upstream_path(&self) -> &str {
-        self.upstream_path.as_deref().unwrap_or(&self.route_path)
+        self.upstream_path
+            .as_deref()
+            .unwrap_or(self.route_path.as_deref().unwrap_or("/"))
     }
 
     /// Returns the upstream authority (host:port) to use for HTTP/2 requests.
@@ -130,5 +132,13 @@ impl RequestCtx {
     /// a specific :authority pseudo-header value.
     pub fn upstream_authority(&self) -> Option<&str> {
         self.upstream_authority.as_deref()
+    }
+
+    pub fn method_str(&self) -> Option<&str> {
+        self.method.as_ref().map(|m| m.as_str())
+    }
+
+    pub fn uri_str(&self) -> Option<String> {
+        self.original_uri.as_ref().map(|u| u.to_string())
     }
 }

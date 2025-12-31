@@ -42,7 +42,7 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
 
     let ctx = &mut RequestCtx {
         service: Some("some service".to_string()),
-        route_path: "/some/route".to_string(),
+        route_path: Some("/some/route".to_string()),
         peer_ip: IpAddr::V4(Ipv4Addr::LOCALHOST),
         ..Default::default()
     };

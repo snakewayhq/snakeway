@@ -130,7 +130,10 @@ impl ProxyHttp for Gateway {
         }
 
         // Make a decision about the route.
-        let route = match state.router.match_route(&ctx.route_path) {
+        let route = match state
+            .router
+            .match_route(&ctx.route_path.as_ref().unwrap_or(&"".to_string()))
+        {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");
@@ -194,7 +197,8 @@ impl ProxyHttp for Gateway {
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context.
-                upstream.set_method(ctx.method.clone());
+                let method = ctx.method.clone().unwrap_or_default();
+                upstream.set_method(method);
                 upstream.set_uri(ctx.upstream_path().parse().unwrap());
 
                 if ctx.is_upgrade_req {
