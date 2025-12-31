@@ -247,30 +247,21 @@ impl TrafficManager {
         };
 
         // If we just crossed into unhealthy, check if we need to force the circuit open...
-        let consecutive_failures = match *entry {
-            HealthState::Unhealthy {
-                consecutive_failures,
-                ..
-            } => consecutive_failures,
-            _ => return,
-        };
+        if let HealthState::Unhealthy {
+            consecutive_failures,
+            ..
+        } = *entry
+            && consecutive_failures >= FAILURE_THRESHOLD
+            && let Some(params) = self.circuit_params.get(service_id)
+        {
+            let mut cb = self
+                .circuit
+                .entry((service_id.clone(), *upstream_id))
+                .or_default();
 
-        if consecutive_failures < FAILURE_THRESHOLD {
-            return;
-        }
-
-        let params = match self.circuit_params.get(service_id) {
-            Some(p) => p,
-            None => return,
-        };
-
-        let mut cb = self
-            .circuit
-            .entry((service_id.clone(), *upstream_id))
-            .or_default();
-
-        if cb.state() != CircuitState::Open {
-            cb.trip_open((service_id, upstream_id), &params, "health_failed");
+            if cb.state() != CircuitState::Open {
+                cb.trip_open((service_id, upstream_id), &params, "health_failed");
+            }
         }
     }
 
