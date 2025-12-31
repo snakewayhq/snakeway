@@ -71,7 +71,7 @@ impl StaticFileHandler {
         // Write headers (not end-of-stream yet)
         session.write_response_header(Box::new(resp), false).await?;
 
-        let is_head = ctx.method == http::Method::HEAD;
+        let is_head = ctx.method == Some(http::Method::HEAD);
         if is_head {
             // SHort-circuit the body write step for HEAD requests.
             session.write_response_body(None, true).await?;

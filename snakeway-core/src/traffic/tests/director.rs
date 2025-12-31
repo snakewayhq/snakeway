@@ -14,13 +14,13 @@ use crate::traffic::{
 use std::collections::HashMap;
 use std::time::Duration;
 
-/// ---------------------------
-/// Helpers
-/// ---------------------------
+// ---------------------------
+// Helpers
+// ---------------------------
 
 fn dummy_request() -> RequestCtx {
     RequestCtx {
-        original_uri: "/".parse().unwrap(),
+        original_uri: Some("/".parse().unwrap()),
         peer_ip: std::net::Ipv4Addr::LOCALHOST.into(),
         ..Default::default()
     }
