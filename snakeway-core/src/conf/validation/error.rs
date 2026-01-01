@@ -31,6 +31,9 @@ pub enum ConfigError {
     #[error("invalid pid file path '{pid_file}': {reason}")]
     InvalidPidFile { pid_file: PathBuf, reason: String },
 
+    #[error("invalid ca file path '{ca_file}': {reason}")]
+    InvalidRootCaFile { ca_file: PathBuf, reason: String },
+
     #[error("invalid threads '{threads}': {reason}")]
     InvalidThreads { threads: usize, reason: String },
 

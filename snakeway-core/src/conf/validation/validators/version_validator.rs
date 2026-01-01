@@ -35,6 +35,21 @@ pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
         }
     }
 
+    if let Some(ca_file) = cfg.ca_file.clone() {
+        if !std::path::Path::new(&ca_file).exists() {
+            ctx.push(ConfigError::InvalidRootCaFile {
+                ca_file: ca_file.clone(),
+                reason: "file does not exist".to_string(),
+            });
+        }
+        if !std::path::Path::new(&ca_file).is_file() {
+            ctx.push(ConfigError::InvalidRootCaFile {
+                ca_file: ca_file.clone(),
+                reason: "path exists but is not a file".to_string(),
+            });
+        }
+    }
+
     if let Some(t) = cfg.threads
         && (t == 0 || t > 1024)
     {
