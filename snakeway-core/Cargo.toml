@@ -65,3 +65,4 @@ rand = { workspace = true }
 ahash = { workspace = true }
 dashmap = { workspace = true }
 chrono = { workspace = true }
+url = { workspace = true }

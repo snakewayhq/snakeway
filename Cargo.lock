@@ -3815,6 +3815,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uaparser",
+ "url",
  "wasmtime",
  "wasmtime-wasi",
  "woothee",
