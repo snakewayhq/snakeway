@@ -18,17 +18,19 @@ pub fn validate_version(version: u32) -> Result<(), ConfigError> {
 /// Version validation fails fast, because it invalidates the entire config model.
 pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
     if let Some(pid_file) = cfg.pid_file.clone() {
-        if !pid_file.exists() {
-            ctx.push(ConfigError::InvalidPidFile {
-                pid_file: pid_file.clone(),
-                reason: "file does not exist".to_string(),
-            });
-        }
+        let Some(parent) = pid_file.parent() else {
+            return;
+        };
 
-        if !pid_file.is_file() {
+        if !parent.exists() {
             ctx.push(ConfigError::InvalidPidFile {
                 pid_file: pid_file.clone(),
-                reason: "it exists, but is not a file".to_string(),
+                reason: "parent directory does not exist".to_string(),
+            });
+        } else if !parent.is_dir() {
+            ctx.push(ConfigError::InvalidPidFile {
+                pid_file: pid_file.clone(),
+                reason: "parent path exists but is not a directory".to_string(),
             });
         }
     }
