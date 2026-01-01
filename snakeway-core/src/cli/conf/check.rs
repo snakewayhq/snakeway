@@ -8,20 +8,36 @@ use std::str::FromStr;
 pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> anyhow::Result<()> {
     match load_config(&path) {
         Ok(cfg) => {
-            println!("✔ Config loaded successfully");
-            println!("✔ {} routes", cfg.routes.len());
-            println!("✔ {} services", cfg.services.len());
-            println!(
-                "✔ {} upstreams",
-                cfg.services
-                    .values()
-                    .map(|s| s.upstream.len())
-                    .sum::<usize>()
-            );
-            println!(
-                "✔ {} devices enabled",
-                cfg.devices.iter().filter(|d| d.enabled).count()
-            );
+            if quiet {
+                // Print nothing.
+            } else if matches!(format, ConfigCheckOutputFormat::Json) {
+                let success_info = serde_json::json!({
+                    "status": "success",
+                    "routes": cfg.routes.len(),
+                    "services": cfg.services.len(),
+                    "upstreams": cfg.services
+                        .values()
+                        .map(|s| s.upstream.len())
+                        .sum::<usize>(),
+                    "devices_enabled": cfg.devices.iter().filter(|d| d.enabled).count()
+                });
+                println!("{}", serde_json::to_string_pretty(&success_info).unwrap());
+            } else {
+                println!("✔ Config loaded successfully");
+                println!("✔ {} routes", cfg.routes.len());
+                println!("✔ {} services", cfg.services.len());
+                println!(
+                    "✔ {} upstreams",
+                    cfg.services
+                        .values()
+                        .map(|s| s.upstream.len())
+                        .sum::<usize>()
+                );
+                println!(
+                    "✔ {} devices enabled",
+                    cfg.devices.iter().filter(|d| d.enabled).count()
+                );
+            }
             Ok(())
         }
         Err(err) => {
