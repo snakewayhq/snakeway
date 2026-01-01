@@ -16,9 +16,17 @@ pub enum ConfigCmd {
         #[arg(default_value = "config")]
         path: PathBuf,
 
-        /// Print resolved configuration
-        #[arg(short, long, default_value = "false")]
+        /// Print plain error messages
+        #[arg(short, long)]
         plain: bool,
+
+        /// Suppresses all diagnostic
+        #[arg(short, long)]
+        quiet: bool,
+
+        /// Emit machine readable diagnostics
+        #[arg(short, long)]
+        json: bool,
     },
 
     /// Print resolved configuration

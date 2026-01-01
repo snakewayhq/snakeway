@@ -58,8 +58,13 @@ fn main() {
 
     match cli.command {
         Some(Command::Config { cmd }) => match cmd {
-            cli::conf::ConfigCmd::Check { path, plain } => {
-                if let Err(e) = cli::conf::check(path, plain) {
+            cli::conf::ConfigCmd::Check {
+                path,
+                plain,
+                quiet,
+                json,
+            } => {
+                if let Err(e) = cli::conf::check(path, plain, quiet, json) {
                     eprintln!("Invalid configuration\n\n{e}");
                     std::process::exit(1);
                 }

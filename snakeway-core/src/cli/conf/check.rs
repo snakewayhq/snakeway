@@ -1,9 +1,12 @@
 use crate::conf::error::ConfigError;
 use crate::conf::load_config;
-use miette::Report;
+use miette::{JSONReportHandler, Report};
+use std::io::{self, Write};
 use std::path::PathBuf;
 
-pub fn check(path: PathBuf, plain: bool) -> anyhow::Result<()> {
+pub fn check(path: PathBuf, plain: bool, quiet: bool, json: bool) -> anyhow::Result<()> {
+    let mode = output_mode(plain, quiet, json);
+
     match load_config(&path) {
         Ok(cfg) => {
             println!("✔ Config loaded successfully");
@@ -23,23 +26,63 @@ pub fn check(path: PathBuf, plain: bool) -> anyhow::Result<()> {
             Ok(())
         }
         Err(err) => {
-            print_config_error(err, plain);
+            print_config_error(err, mode);
             std::process::exit(1);
         }
     }
 }
 
-fn print_config_error(err: ConfigError, plain: bool) {
-    let hint = config_error_hint(&err);
-    if plain {
-        eprintln!("{}", err);
-    } else {
-        eprintln!();
-        eprintln!("{:?}", Report::new(err));
+fn print_config_error(err: ConfigError, mode: OutputMode) {
+    match mode {
+        OutputMode::Pretty => {
+            let hint = config_error_hint(&err);
+
+            eprintln!("{:?}", Report::new(err));
+
+            if let Some(hint) = hint {
+                eprintln!("\nHint:\n{hint}");
+            }
+        }
+
+        OutputMode::Plain => {
+            eprintln!("{}", err);
+        }
+
+        OutputMode::Json => {
+            let mut out = String::new();
+
+            let handler = JSONReportHandler::new();
+            handler
+                .render_report(&mut out, &err)
+                .expect("failed to render JSON diagnostic");
+
+            let mut stdout = io::stdout();
+            stdout.write_all(out.as_bytes()).unwrap();
+            stdout.write_all(b"\n").unwrap();
+        }
+
+        OutputMode::Quiet => {
+            // Intentionally do nothing.
+        }
     }
-    if let Some(hint) = hint {
-        eprintln!();
-        eprintln!("{}", hint);
+}
+
+enum OutputMode {
+    Pretty,
+    Plain,
+    Quiet,
+    Json,
+}
+
+fn output_mode(plain: bool, quiet: bool, json: bool) -> OutputMode {
+    if plain {
+        OutputMode::Plain
+    } else if json {
+        OutputMode::Json
+    } else if quiet {
+        OutputMode::Quiet
+    } else {
+        OutputMode::Pretty
     }
 }
 
