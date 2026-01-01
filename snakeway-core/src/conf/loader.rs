@@ -4,7 +4,7 @@ use crate::conf::parse::{parse_devices, parse_routes, parse_services};
 use crate::conf::runtime::RuntimeConfig;
 use crate::conf::types::EntrypointConfig;
 use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validators::{compile_routes, validate_runtime_config};
+use crate::conf::validation::validation::{compile_routes, validate_runtime_config};
 use std::fs;
 use std::path::Path;
 
