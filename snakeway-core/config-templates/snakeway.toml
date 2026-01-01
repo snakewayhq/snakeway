@@ -18,6 +18,7 @@ addr = "127.0.0.1:8080"
 
 # Modular inclusion for routes, services, and devices.
 [include]
-routes = "routes/*.toml"
+routes_service = "routes_service/*.toml"
+routes_static = "routes_static/*.toml"
 services = "services/*.toml"
 devices = "devices/*.toml"

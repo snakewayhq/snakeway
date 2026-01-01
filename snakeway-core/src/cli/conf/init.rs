@@ -27,11 +27,13 @@ pub fn init(path: PathBuf) -> Result<()> {
     }
 
     // Create directory structure
-    let routes_dir = path.join("routes");
+    let static_routes_dir = path.join("routes_static");
+    let service_routes_dir = path.join("routes_service");
     let services_dir = path.join("services");
     let devices_dir = path.join("devices");
 
-    fs::create_dir_all(&routes_dir)?;
+    fs::create_dir_all(&static_routes_dir)?;
+    fs::create_dir_all(&service_routes_dir)?;
     fs::create_dir_all(&services_dir)?;
     fs::create_dir_all(&devices_dir)?;
 
@@ -41,11 +43,17 @@ pub fn init(path: PathBuf) -> Result<()> {
     write_file(&path.join("snakeway.toml"), &template("snakeway.toml")?)?;
 
     // Routes
-    write_file(&routes_dir.join("api.toml"), &template("routes/api.toml")?)?;
-    write_file(&routes_dir.join("ws.toml"), &template("routes/ws.toml")?)?;
     write_file(
-        &routes_dir.join("assets.toml"),
-        &template("routes/assets.toml")?,
+        &services_dir.join("api.toml"),
+        &template("routes_service/api.toml")?,
+    )?;
+    write_file(
+        &services_dir.join("ws.toml"),
+        &template("routes_service/ws.toml")?,
+    )?;
+    write_file(
+        &static_routes_dir.join("assets.toml"),
+        &template("routes_static/assets.toml")?,
     )?;
 
     // Services

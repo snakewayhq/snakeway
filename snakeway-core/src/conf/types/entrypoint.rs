@@ -15,7 +15,9 @@ pub struct EntrypointConfig {
 /// The members are directory paths where sub-configuration files are located.
 #[derive(Debug, Deserialize)]
 pub struct IncludeConfig {
+    #[serde(rename = "routes_static")]
     pub static_routes: String,
+    #[serde(rename = "routes_service")]
     pub service_routes: String,
     pub services: String,
     pub devices: String,
