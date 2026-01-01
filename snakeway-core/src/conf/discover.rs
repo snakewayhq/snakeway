@@ -18,7 +18,8 @@ use std::path::{Path, PathBuf};
 /// # Errors
 ///
 /// Returns `ConfigError::Glob` if the pattern is malformed or cannot be parsed.
-pub fn discover(pattern: &str) -> Result<Vec<PathBuf>, ConfigError> {
+pub fn discover(root: &Path, glob_pattern: &str) -> Result<Vec<PathBuf>, ConfigError> {
+    let pattern = &resolve_glob(root, glob_pattern);
     let mut paths: Vec<_> = glob(pattern)
         .map_err(|e| ConfigError::Glob {
             pattern: pattern.to_string(),
