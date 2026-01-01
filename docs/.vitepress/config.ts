@@ -1,6 +1,8 @@
 import {defineConfig} from "vitepress";
 
 export default defineConfig({
+    srcDir: "content",
+
     title: "Snakeway",
     description: "Programmable proxy built on top of Pingora.",
 

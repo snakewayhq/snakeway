@@ -10,7 +10,7 @@ snakeway reload
 ```
 
 ::: info
-Reloads via the CLI require Snakeway to be started with a PID file (specified in `snakeway.toml`).
+Reloads via the CLI require Snakeway to be started with a PID file (set in `snakeway.toml`).
 :::
 
 ## via the Admin API
