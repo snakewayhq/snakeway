@@ -3,10 +3,9 @@ use crate::conf::load_config;
 use miette::{JSONReportHandler, Report};
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 
-pub fn check(path: PathBuf, plain: bool, quiet: bool, json: bool) -> anyhow::Result<()> {
-    let mode = output_mode(plain, quiet, json);
-
+pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> anyhow::Result<()> {
     match load_config(&path) {
         Ok(cfg) => {
             println!("✔ Config loaded successfully");
@@ -26,15 +25,18 @@ pub fn check(path: PathBuf, plain: bool, quiet: bool, json: bool) -> anyhow::Res
             Ok(())
         }
         Err(err) => {
-            print_config_error(err, mode);
+            if !quiet {
+                print_config_error(err, format);
+            }
+
             std::process::exit(1);
         }
     }
 }
 
-fn print_config_error(err: ConfigError, mode: OutputMode) {
-    match mode {
-        OutputMode::Pretty => {
+fn print_config_error(err: ConfigError, format: ConfigCheckOutputFormat) {
+    match format {
+        ConfigCheckOutputFormat::Pretty => {
             let hint = config_error_hint(&err);
 
             eprintln!("{:?}", Report::new(err));
@@ -44,11 +46,11 @@ fn print_config_error(err: ConfigError, mode: OutputMode) {
             }
         }
 
-        OutputMode::Plain => {
+        ConfigCheckOutputFormat::Plain => {
             eprintln!("{}", err);
         }
 
-        OutputMode::Json => {
+        ConfigCheckOutputFormat::Json => {
             let mut out = String::new();
 
             let handler = JSONReportHandler::new();
@@ -60,29 +62,26 @@ fn print_config_error(err: ConfigError, mode: OutputMode) {
             stdout.write_all(out.as_bytes()).unwrap();
             stdout.write_all(b"\n").unwrap();
         }
-
-        OutputMode::Quiet => {
-            // Intentionally do nothing.
-        }
     }
 }
 
-enum OutputMode {
+#[derive(Clone, Debug)]
+pub enum ConfigCheckOutputFormat {
     Pretty,
     Plain,
-    Quiet,
     Json,
 }
 
-fn output_mode(plain: bool, quiet: bool, json: bool) -> OutputMode {
-    if plain {
-        OutputMode::Plain
-    } else if json {
-        OutputMode::Json
-    } else if quiet {
-        OutputMode::Quiet
-    } else {
-        OutputMode::Pretty
+impl FromStr for ConfigCheckOutputFormat {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pretty" => Ok(Self::Pretty),
+            "plain" => Ok(Self::Plain),
+            "json" => Ok(Self::Json),
+            _ => Err(anyhow::anyhow!("invalid output format: {}", s)),
+        }
     }
 }
 
