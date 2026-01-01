@@ -1,6 +1,7 @@
 use miette::Diagnostic;
 use std::path::PathBuf;
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum ConfigError {
@@ -24,9 +25,6 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Top-level
     //-------------------------------------------------------------------------
-    #[error("invalid configuration")]
-    InvalidConfig,
-
     #[error("invalid version '{version}'")]
     InvalidVersion { version: u32 },
 

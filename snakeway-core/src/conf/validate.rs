@@ -1,8 +1,8 @@
 use crate::conf::error::ConfigError;
 use crate::conf::types::listener::ListenerConfig;
 use crate::conf::types::{
-    ParsedRoute, ParsedRouteType, RouteConfig, RouteKind, ServiceConfig, StaticCachePolicy,
-    StaticFileConfig,
+    LoadBalancingStrategy, ParsedRoute, ParsedRouteType, RouteConfig, RouteKind, ServiceConfig,
+    StaticCachePolicy, StaticFileConfig,
 };
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -189,7 +189,10 @@ pub fn compile_routes(routes: Vec<ParsedRoute>) -> Result<Vec<RouteConfig>, Conf
     let mut out = Vec::new();
 
     for parsed in routes {
-        let path = parsed.path.trim_end_matches('/').to_string();
+        let path = match parsed.path.trim_end_matches('/') {
+            "" => "/".to_string(),
+            p => p.to_string(),
+        };
 
         let kind = match parsed.r#type {
             ParsedRouteType::Service => {
