@@ -15,6 +15,10 @@ pub enum ConfigCmd {
         /// Path to config directory
         #[arg(default_value = "config")]
         path: PathBuf,
+
+        /// Print resolved configuration
+        #[arg(short, long, default_value = "false")]
+        plain: bool,
     },
 
     /// Print resolved configuration

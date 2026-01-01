@@ -1,7 +1,8 @@
+use miette::Diagnostic;
 use std::path::PathBuf;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum ConfigError {
     //-------------------------------------------------------------------------
     // IO / Discovery

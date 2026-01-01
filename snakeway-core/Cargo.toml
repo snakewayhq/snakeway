@@ -66,3 +66,4 @@ ahash = { workspace = true }
 dashmap = { workspace = true }
 chrono = { workspace = true }
 url = { workspace = true }
+miette = { workspace = true, features = ["fancy"] }
