@@ -28,7 +28,7 @@ pub enum ConfigError {
     #[error("invalid version '{version}'")]
     InvalidVersion { version: u32 },
 
-    #[error("config validation failed")]
+    #[error("config validation failed  {validation_errors:?}")]
     Validation { validation_errors: ValidationErrors },
 
     //-------------------------------------------------------------------------
