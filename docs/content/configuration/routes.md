@@ -15,14 +15,14 @@ Routes are defined using one or more `[[route]]` blocks.
 
 ```toml
 [[route]]
-type = "service"
 path = "/api"
+type = "service"
 service = "api"
 
 [[route]]
-type = "static"
 path = "/static"
-dir  = "/var/www"
+type = "static"
+file_dir = "/var/www"
 ```
 
 Each route must explicitly declare its `type` to avoid ambiguity and enable strict validation.
@@ -33,14 +33,14 @@ Each route must explicitly declare its `type` to avoid ambiguity and enable stri
 
 ### type = "service"
 
-A **service route** forwards traffic to a named service defined in the service configuration.
+A **service route** forwards traffic to a named service defined in a service configuration file.
 
 #### Example
 
 ```toml
 [[route]]
-type = "service"
 path = "/api"
+type = "service"
 service = "api"
 ```
 
@@ -67,6 +67,7 @@ The URL path prefix to match. Must:
 - be unique across all routes
 
 Examples:
+
 - `/api`
 - `/ws`
 - `/`
@@ -124,7 +125,7 @@ A **static route** serves files directly from the local filesystem.
 [[route]]
 type = "static"
 path = "/static"
-dir  = "/var/www"
+file_dir = "/var/www"
 ```
 
 #### Fields
@@ -186,8 +187,6 @@ index = "index.html"
 
 Whether to enable directory listings when no index file is present.
 
----
-
 ## Static File Configuration
 
 Static routes include a file handling configuration block with sane defaults.
@@ -205,8 +204,6 @@ enable_gzip          = true
 enable_brotli        = true
 ```
 
----
-
 ## Static Cache Policy
 
 Static routes also include a cache policy with defaults optimized for typical web assets.
@@ -218,30 +215,3 @@ max_age   = 3600 seconds
 public    = true
 immutable = false
 ```
-
----
-
-## Validation Rules
-
-Snakeway enforces strict validation at startup:
-
-- Route paths must be unique and absolute
-- `type` must be explicitly declared
-- `type = "service"` routes:
-  - must define `service`
-  - must not define `dir`
-- `type = "static"` routes:
-  - must define `dir`
-  - must not define `service`
-  - must not enable WebSockets
-- Static directories must exist and be safe to serve
-
-Invalid configurations will fail fast with clear diagnostics.
-
----
-
-## Notes
-
-- Route matching is prefix-based, not regex-based
-- WebSocket support is opt-in per route
-- gRPC traffic should use `type = "service"` routes with HTTP/2 enabled at the listener level

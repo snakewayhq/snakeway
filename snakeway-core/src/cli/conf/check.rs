@@ -98,7 +98,7 @@ pub fn config_error_hint(err: &ConfigError) -> Option<&'static str> {
              [[route]]\n\
              type = \"static\"\n\
              path = \"/static\"\n\
-             dir  = \"/var/www\"",
+             file_dir  = \"/var/www\"",
         ),
 
         ConfigError::MissingServiceForServiceRoute { .. } => Some(

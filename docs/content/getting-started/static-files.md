@@ -16,9 +16,10 @@ cargo build --release --features static_files
 To serve static files, add a route with `file_dir` instead of `upstream`:
 
 ```toml
-[[routes]]
+[[route]]
 path = "/"
-file_dir = "./public"
+type = "static"
+file_dir = "/var/www/public"
 index = true
 ```
 
@@ -59,9 +60,10 @@ Each static route can have an optional `[routes.config]` section to customize co
 **Example with custom compression settings:**
 
 ```toml
-[[routes]]
+[[route]]
 path = "/"
-file_dir = "./public"
+type = "static"
+file_dir = "/var/www/public"
 index = true
 
 [routes.config]
@@ -74,9 +76,10 @@ min_gzip_size = 1024
 **Disable compression entirely for a route:**
 
 ```toml
-[[routes]]
+[[route]]
 path = "/raw"
-file_dir = "./raw-assets"
+type = "static"
+file_dir = "/var/www/raw-assets"
 index = false
 
 [routes.config]
@@ -87,9 +90,10 @@ enable_gzip = false
 **Increase file size limits for large assets:**
 
 ```toml
-[[routes]]
+[[route]]
 path = "/downloads"
-file_dir = "./large-files"
+type = "static"
+file_dir = "/var/www/large-files"
 index = false
 
 [routes.config]
@@ -102,18 +106,20 @@ small_file_threshold = 1048576  # 1 MiB - stream files larger than this
 **Serve a single-page application:**
 
 ```toml
-[[routes]]
+[[route]]
 path = "/"
-file_dir = "./dist"
+type = "static"
+file_dir = "/var/www/dist"
 index = true
 ```
 
 **Serve static assets under a prefix:**
 
 ```toml
-[[routes]]
+[[route]]
 path = "/static"
-file_dir = "./assets"
+type = "static"
+file_dir = "/var/www/assets"
 index = false
 ```
 
@@ -121,14 +127,16 @@ index = false
 
 ```toml
 # API requests go to upstream
-[[routes]]
+[[route]]
 path = "/api"
-upstream = "127.0.0.1:8080"
+type = "service"
+service = "127.0.0.1:8080"
 
 # Everything else serves static files
-[[routes]]
+[[route]]
 path = "/"
-file_dir = "./public"
+type = "static"
+file_dir = "/var/www/public"
 index = true
 ```
 
