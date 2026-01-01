@@ -1,5 +1,5 @@
-use crate::conf::error::ConfigError;
 use crate::conf::load_config;
+use crate::conf::validation::error::ConfigError;
 use miette::{JSONReportHandler, Report};
 use std::io::{self, Write};
 use std::path::PathBuf;

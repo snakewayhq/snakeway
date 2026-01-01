@@ -1,7 +1,7 @@
+use crate::conf::validation::validation_ctx::ValidationErrors;
 use miette::Diagnostic;
 use std::path::PathBuf;
 use thiserror::Error;
-use tracing::error;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum ConfigError {
@@ -27,6 +27,9 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     #[error("invalid version '{version}'")]
     InvalidVersion { version: u32 },
+
+    #[error("config validation failed")]
+    Validation { validation_errors: ValidationErrors },
 
     //-------------------------------------------------------------------------
     // Parsing

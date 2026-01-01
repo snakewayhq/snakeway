@@ -1,14 +1,36 @@
-use crate::conf::error::ConfigError;
 use crate::conf::types::listener::ListenerConfig;
 use crate::conf::types::{
-    LoadBalancingStrategy, ParsedRoute, ParsedRouteType, RouteConfig, RouteKind, ServiceConfig,
+    EntrypointConfig, ParsedRoute, ParsedRouteType, RouteConfig, RouteKind, ServiceConfig,
     StaticCachePolicy, StaticFileConfig,
 };
+use crate::conf::validation::error::ConfigError;
+use crate::conf::validation::validation_ctx::{ValidationCtx, ValidationErrors};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
+/// Validate everything that exists in a fully parsed config.
+pub fn validate_runtime_config(
+    entry: &EntrypointConfig,
+    routes: &[RouteConfig],
+    services: &HashMap<String, ServiceConfig>,
+) -> Result<(), ValidationErrors> {
+    let mut ctx = ValidationCtx::default();
+
+    if let Err(e) = validate_version(entry.server.version) {
+        ctx.push(e);
+    }
+
+    validate_listeners(&entry.listeners, &mut ctx);
+    validate_routes(routes, services, &mut ctx);
+    validate_services(services, &mut ctx);
+
+    ctx.into_result()
+}
+
 /// Validate top-level config version.
+///
+/// Fail-fast: invalid versions invalidate the entire config model.
 pub fn validate_version(version: u32) -> Result<(), ConfigError> {
     if version == 1 {
         Ok(())
@@ -18,82 +40,85 @@ pub fn validate_version(version: u32) -> Result<(), ConfigError> {
 }
 
 /// Validate listener definitions.
-pub fn validate_listeners(listeners: &[ListenerConfig]) -> Result<(), ConfigError> {
+///
+/// Structural errors here are aggregated, not fail-fast.
+pub fn validate_listeners(listeners: &[ListenerConfig], ctx: &mut ValidationCtx) {
     let mut seen_addrs = HashSet::new();
     let mut admin_seen = false;
 
     for listener in listeners {
-        let addr: SocketAddr =
-            listener
-                .addr
-                .parse()
-                .map_err(|_| ConfigError::InvalidListenerAddr {
+        let addr: SocketAddr = match listener.addr.parse() {
+            Ok(a) => a,
+            Err(_) => {
+                ctx.push(ConfigError::InvalidListenerAddr {
                     addr: listener.addr.clone(),
-                })?;
+                });
+                continue;
+            }
+        };
 
         if !seen_addrs.insert(addr) {
-            return Err(ConfigError::DuplicateListenerAddr {
+            ctx.push(ConfigError::DuplicateListenerAddr {
                 addr: listener.addr.clone(),
             });
         }
 
         if let Some(tls) = &listener.tls {
             if !Path::new(&tls.cert).is_file() {
-                return Err(ConfigError::MissingCertFile {
+                ctx.push(ConfigError::MissingCertFile {
                     path: tls.cert.clone(),
                 });
             }
             if !Path::new(&tls.key).is_file() {
-                return Err(ConfigError::MissingKeyFile {
+                ctx.push(ConfigError::MissingKeyFile {
                     path: tls.key.clone(),
                 });
             }
         }
 
         if listener.enable_http2 && listener.tls.is_none() {
-            return Err(ConfigError::Http2RequiresTls);
+            ctx.push(ConfigError::Http2RequiresTls);
         }
 
         if listener.enable_admin {
             if admin_seen {
-                return Err(ConfigError::MultipleAdminListeners);
+                ctx.push(ConfigError::MultipleAdminListeners);
             }
             admin_seen = true;
 
             if listener.enable_http2 {
-                return Err(ConfigError::AdminListenerHttp2NotSupported);
+                ctx.push(ConfigError::AdminListenerHttp2NotSupported);
             }
             if listener.tls.is_none() {
-                return Err(ConfigError::AdminListenerMissingTls);
+                ctx.push(ConfigError::AdminListenerMissingTls);
             }
             if addr.ip().is_unspecified() {
-                return Err(ConfigError::InvalidListenerAddr {
+                ctx.push(ConfigError::InvalidListenerAddr {
                     addr: listener.addr.clone(),
                 });
             }
         }
     }
-
-    Ok(())
 }
 
 /// Validate routes and referenced services.
 pub fn validate_routes(
     routes: &[RouteConfig],
     services: &HashMap<String, ServiceConfig>,
-) -> Result<(), ConfigError> {
+    ctx: &mut ValidationCtx,
+) {
     let mut seen_paths = HashSet::new();
 
     for route in routes {
         if !route.path.starts_with('/') {
-            return Err(ConfigError::InvalidRoutePath {
+            ctx.push(ConfigError::InvalidRoutePath {
                 path: route.path.clone(),
                 reason: "route path must start with '/'".into(),
             });
         }
 
         if !seen_paths.insert(route.path.clone()) {
-            return Err(ConfigError::DuplicateRoute {
+            ctx.push(ConfigError::DuplicateRoute {
                 path: route.path.clone(),
             });
         }
@@ -101,7 +126,7 @@ pub fn validate_routes(
         match &route.kind {
             RouteKind::Service { name } => {
                 if !services.contains_key(name) {
-                    return Err(ConfigError::UnknownService {
+                    ctx.push(ConfigError::UnknownService {
                         route: route.path.clone(),
                         service: name.clone(),
                     });
@@ -110,14 +135,14 @@ pub fn validate_routes(
 
             RouteKind::Static { dir, .. } => {
                 if route.allow_websocket {
-                    return Err(ConfigError::WebSocketNotAllowedOnStaticRoute {
+                    ctx.push(ConfigError::WebSocketNotAllowedOnStaticRoute {
                         path: route.path.clone(),
                     });
                 }
 
                 let dir_path = Path::new(dir);
                 if dir_path.is_relative() || !dir_path.is_dir() || dir_path == Path::new("/") {
-                    return Err(ConfigError::InvalidStaticDir {
+                    ctx.push(ConfigError::InvalidStaticDir {
                         path: PathBuf::from(dir),
                         reason: "static routes must point to an absolute, non-root directory"
                             .into(),
@@ -126,40 +151,41 @@ pub fn validate_routes(
             }
         }
     }
-
-    validate_services(services)
 }
 
 /// Validate service definitions.
-fn validate_services(services: &HashMap<String, ServiceConfig>) -> Result<(), ConfigError> {
+pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut ValidationCtx) {
     for (name, service) in services {
         if service.upstream.is_empty() {
-            return Err(ConfigError::EmptyService {
+            ctx.push(ConfigError::EmptyService {
                 service: name.clone(),
             });
+            continue;
         }
 
         for upstream in &service.upstream {
             if upstream.weight == 0 {
-                return Err(ConfigError::InvalidUpstream {
+                ctx.push(ConfigError::InvalidUpstream {
                     service: name.clone(),
                     upstream: upstream.url.clone(),
                     reason: "weight must be > 0".into(),
                 });
             }
 
-            let url =
-                upstream
-                    .url
-                    .parse::<url::Url>()
-                    .map_err(|_| ConfigError::InvalidUpstream {
+            let url = match upstream.url.parse::<url::Url>() {
+                Ok(u) => u,
+                Err(_) => {
+                    ctx.push(ConfigError::InvalidUpstream {
                         service: name.clone(),
                         upstream: upstream.url.clone(),
                         reason: "invalid URL".into(),
-                    })?;
+                    });
+                    continue;
+                }
+            };
 
             if !matches!(url.scheme(), "http" | "https") {
-                return Err(ConfigError::InvalidUpstream {
+                ctx.push(ConfigError::InvalidUpstream {
                     service: name.clone(),
                     upstream: upstream.url.clone(),
                     reason: "unsupported URL scheme".into(),
@@ -174,17 +200,17 @@ fn validate_services(services: &HashMap<String, ServiceConfig>) -> Result<(), Co
                 || cb.half_open_max_requests == 0
                 || cb.success_threshold == 0)
         {
-            return Err(ConfigError::InvalidCircuitBreaker {
+            ctx.push(ConfigError::InvalidCircuitBreaker {
                 service: name.clone(),
                 reason: "all circuit breaker thresholds must be >= 1".into(),
             });
         }
     }
-
-    Ok(())
 }
 
 /// Compile parsed routes into finalized RouteConfig values.
+///
+/// Still fail-fast: malformed route declarations cannot be meaningfully validated.
 pub fn compile_routes(routes: Vec<ParsedRoute>) -> Result<Vec<RouteConfig>, ConfigError> {
     let mut out = Vec::new();
 

@@ -1,5 +1,5 @@
-use crate::conf::error::ConfigError;
 use crate::conf::types::{DeviceConfig, ParsedRoute, ServiceConfig};
+use crate::conf::validation::error::ConfigError;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
