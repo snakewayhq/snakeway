@@ -40,5 +40,4 @@ Any MMDB database is supported, but the default for integration tests is [IP Geo
 
 ## User Agent Parsing
 
-Uses [ua-parser](https://github.com/ua-parser/uap-core).
-
+Uses Woothee by default, but also as a secondary options [ua-parser](https://github.com/ua-parser/uap-core).
