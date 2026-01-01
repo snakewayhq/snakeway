@@ -1,4 +1,4 @@
-use crate::conf::types::listener::ListenerConfig;
+use crate::conf::types::ListenerConfig;
 use crate::conf::validation::error::ConfigError;
 use crate::conf::validation::validation_ctx::ValidationCtx;
 use std::collections::HashSet;
