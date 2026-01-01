@@ -1,8 +1,8 @@
 [[route]]
 # URL path prefix for serving static files (e.g., /assets/style.css).
 path = "/assets"
-# Local directory containing the files to serve.
-file_dir = "./public"
+# Directory containing the files to serve.
+file_dir = "/var/www/html"
 # Default file to serve when a directory is requested.
 index = "index.html"
 # Whether to show directory contents when no index file exists.
