@@ -4,7 +4,7 @@ use crate::device::core::result::DeviceResult;
 use crate::proxy::error_classification::classify_pingora_error;
 use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
-use crate::route::RouteKind;
+use crate::route::RouteRuntime;
 use crate::server::{RuntimeState, UpstreamRuntime};
 
 use crate::traffic::{
@@ -171,7 +171,7 @@ impl ProxyHttp for PublicGateway {
         };
 
         match &route.kind {
-            RouteKind::Static { .. } => {
+            RouteRuntime::Static { .. } => {
                 if ctx.is_upgrade_req {
                     // Reject websocket upgrade requests for static files.
                     session
@@ -184,7 +184,7 @@ impl ProxyHttp for PublicGateway {
                     .await
             }
 
-            RouteKind::Proxy {
+            RouteRuntime::Service {
                 upstream,
                 allow_websocket,
             } => {

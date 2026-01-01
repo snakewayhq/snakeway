@@ -1,16 +1,16 @@
 use http::{HeaderMap, HeaderValue, StatusCode};
 
-use crate::route::RouteKind;
+use crate::route::RouteRuntime;
 use crate::static_files::render::{render_directory, render_file};
 use crate::static_files::resolve::{ResolveError, ResolvedStatic, resolve_static_path};
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 
 pub async fn handle_static_request(
-    route: &RouteKind,
+    route: &RouteRuntime,
     request_path: &str,
     conditional: &ConditionalHeaders,
 ) -> StaticResponse {
-    let RouteKind::Static {
+    let RouteRuntime::Static {
         path,
         file_dir,
         index,

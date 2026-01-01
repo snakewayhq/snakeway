@@ -1,10 +1,10 @@
 use crate::conf::types::{
-    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, RouteConfig, RouteTarget,
+    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, RouteConfig, RouteKind,
     ServiceConfig,
 };
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
-use crate::route::{RouteKind, Router};
+use crate::route::{RouteRuntime, Router};
 use ahash::RandomState;
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
@@ -128,19 +128,19 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
     let mut router = Router::new();
 
     for route in routes {
-        let route_kind = match &route.target {
-            RouteTarget::Service { name: service } => RouteKind::Proxy {
+        let route_kind = match &route.kind {
+            RouteKind::Service { name: service } => RouteRuntime::Service {
                 upstream: service.clone(),
                 allow_websocket: route.allow_websocket,
             },
 
-            RouteTarget::Static {
+            RouteKind::Static {
                 dir,
                 index,
                 directory_listing,
                 static_config,
                 cache_policy,
-            } => RouteKind::Static {
+            } => RouteRuntime::Static {
                 path: route.path.clone(),
                 file_dir: dir.into(),
                 index: index.clone().is_some(),

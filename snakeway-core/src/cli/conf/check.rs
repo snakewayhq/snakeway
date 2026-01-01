@@ -24,7 +24,7 @@ pub fn check(path: PathBuf) -> anyhow::Result<()> {
 
         Err(err) => {
             print_config_error(&err);
-            Err(err.into())
+            std::process::exit(1);
         }
     }
 }

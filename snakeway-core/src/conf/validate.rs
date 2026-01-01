@@ -1,7 +1,8 @@
 use crate::conf::error::ConfigError;
 use crate::conf::types::listener::ListenerConfig;
 use crate::conf::types::{
-    ParsedRoute, RouteConfig, RouteTarget, ServiceConfig, StaticCachePolicy, StaticFileConfig,
+    ParsedRoute, ParsedRouteType, RouteConfig, RouteKind, ServiceConfig, StaticCachePolicy,
+    StaticFileConfig,
 };
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -9,9 +10,10 @@ use std::path::{Path, PathBuf};
 
 /// Validate top-level config version.
 pub fn validate_version(version: u32) -> Result<(), ConfigError> {
-    match version {
-        1 => Ok(()),
-        _ => Err(ConfigError::InvalidVersion { version }),
+    if version == 1 {
+        Ok(())
+    } else {
+        Err(ConfigError::InvalidVersion { version })
     }
 }
 
@@ -35,30 +37,23 @@ pub fn validate_listeners(listeners: &[ListenerConfig]) -> Result<(), ConfigErro
             });
         }
 
-        // TLS validation
         if let Some(tls) = &listener.tls {
-            let cert = Path::new(&tls.cert);
-            let key = Path::new(&tls.key);
-
-            if !cert.is_file() {
+            if !Path::new(&tls.cert).is_file() {
                 return Err(ConfigError::MissingCertFile {
                     path: tls.cert.clone(),
                 });
             }
-
-            if !key.is_file() {
+            if !Path::new(&tls.key).is_file() {
                 return Err(ConfigError::MissingKeyFile {
                     path: tls.key.clone(),
                 });
             }
         }
 
-        // HTTP/2 requires TLS
         if listener.enable_http2 && listener.tls.is_none() {
             return Err(ConfigError::Http2RequiresTls);
         }
 
-        // Admin listener invariants
         if listener.enable_admin {
             if admin_seen {
                 return Err(ConfigError::MultipleAdminListeners);
@@ -68,12 +63,9 @@ pub fn validate_listeners(listeners: &[ListenerConfig]) -> Result<(), ConfigErro
             if listener.enable_http2 {
                 return Err(ConfigError::AdminListenerHttp2NotSupported);
             }
-
             if listener.tls.is_none() {
                 return Err(ConfigError::AdminListenerMissingTls);
             }
-
-            // Do not allow admin listeners on wildcard addresses
             if addr.ip().is_unspecified() {
                 return Err(ConfigError::InvalidListenerAddr {
                     addr: listener.addr.clone(),
@@ -93,7 +85,6 @@ pub fn validate_routes(
     let mut seen_paths = HashSet::new();
 
     for route in routes {
-        // Path must be absolute
         if !route.path.starts_with('/') {
             return Err(ConfigError::InvalidRoutePath {
                 path: route.path.clone(),
@@ -107,8 +98,8 @@ pub fn validate_routes(
             });
         }
 
-        match &route.target {
-            RouteTarget::Service { name } => {
+        match &route.kind {
+            RouteKind::Service { name } => {
                 if !services.contains_key(name) {
                     return Err(ConfigError::UnknownService {
                         route: route.path.clone(),
@@ -117,36 +108,26 @@ pub fn validate_routes(
                 }
             }
 
-            RouteTarget::Static { dir, .. } => {
+            RouteKind::Static { dir, .. } => {
                 if route.allow_websocket {
-                    return Err(ConfigError::InvalidRoute {
+                    return Err(ConfigError::WebSocketNotAllowedOnStaticRoute {
                         path: route.path.clone(),
                     });
                 }
 
-                let path = Path::new(dir);
-
-                // Static paths must be absolute and real directories
-                if path.is_relative() || !path.is_dir() || path == Path::new("/") {
+                let dir_path = Path::new(dir);
+                if dir_path.is_relative() || !dir_path.is_dir() || dir_path == Path::new("/") {
                     return Err(ConfigError::InvalidStaticDir {
                         path: PathBuf::from(dir),
-                        reason: "Static paths must be absolute and real directories".to_string(),
+                        reason: "static routes must point to an absolute, non-root directory"
+                            .into(),
                     });
                 }
             }
         }
-
-        // WebSocket routes must target services
-        if route.allow_websocket && !matches!(route.target, RouteTarget::Service { .. }) {
-            return Err(ConfigError::InvalidRoute {
-                path: route.path.clone(),
-            });
-        }
     }
 
-    validate_services(services)?;
-
-    Ok(())
+    validate_services(services)
 }
 
 /// Validate service definitions.
@@ -177,7 +158,7 @@ fn validate_services(services: &HashMap<String, ServiceConfig>) -> Result<(), Co
                         reason: "invalid URL".into(),
                     })?;
 
-            if url.scheme() != "http" && url.scheme() != "https" {
+            if !matches!(url.scheme(), "http" | "https") {
                 return Err(ConfigError::InvalidUpstream {
                     service: name.clone(),
                     upstream: upstream.url.clone(),
@@ -187,34 +168,16 @@ fn validate_services(services: &HashMap<String, ServiceConfig>) -> Result<(), Co
         }
 
         let cb = &service.circuit_breaker;
-        if cb.enable_auto_recovery {
-            if cb.failure_threshold == 0 {
-                return Err(ConfigError::InvalidCircuitBreaker {
-                    service: name.clone(),
-                    reason: "failure_threshold must be >= 1".into(),
-                });
-            }
-
-            if cb.open_duration_ms == 0 {
-                return Err(ConfigError::InvalidCircuitBreaker {
-                    service: name.clone(),
-                    reason: "open_duration_ms must be >= 1".into(),
-                });
-            }
-
-            if cb.half_open_max_requests == 0 {
-                return Err(ConfigError::InvalidCircuitBreaker {
-                    service: name.clone(),
-                    reason: "half_open_max_requests must be >= 1".into(),
-                });
-            }
-
-            if cb.success_threshold == 0 {
-                return Err(ConfigError::InvalidCircuitBreaker {
-                    service: name.clone(),
-                    reason: "success_threshold must be >= 1".into(),
-                });
-            }
+        if cb.enable_auto_recovery
+            && (cb.failure_threshold == 0
+                || cb.open_duration_ms == 0
+                || cb.half_open_max_requests == 0
+                || cb.success_threshold == 0)
+        {
+            return Err(ConfigError::InvalidCircuitBreaker {
+                service: name.clone(),
+                reason: "all circuit breaker thresholds must be >= 1".into(),
+            });
         }
     }
 
@@ -226,35 +189,50 @@ pub fn compile_routes(routes: Vec<ParsedRoute>) -> Result<Vec<RouteConfig>, Conf
     let mut out = Vec::new();
 
     for parsed in routes {
-        let path = if parsed.path.ends_with('/') && parsed.path != "/" {
-            parsed.path.trim_end_matches('/').to_string()
-        } else {
-            parsed.path
-        };
+        let path = parsed.path.trim_end_matches('/').to_string();
 
-        let target = match (parsed.service, parsed.file_dir) {
-            (Some(service), None) => RouteTarget::Service { name: service },
+        let kind = match parsed.r#type {
+            ParsedRouteType::Service => {
+                let service =
+                    parsed
+                        .service
+                        .ok_or_else(|| ConfigError::MissingServiceForServiceRoute {
+                            path: path.clone(),
+                        })?;
 
-            (None, Some(dir)) => RouteTarget::Static {
-                dir,
-                index: parsed.index,
-                directory_listing: parsed.directory_listing,
-                static_config: StaticFileConfig::default(),
-                cache_policy: StaticCachePolicy::default(),
-            },
+                if parsed.file_dir.is_some() {
+                    return Err(ConfigError::DirNotAllowedOnServiceRoute { path });
+                }
 
-            _ => {
-                return Err(ConfigError::InvalidRoute { path });
+                RouteKind::Service { name: service }
+            }
+
+            ParsedRouteType::Static => {
+                let dir = parsed
+                    .file_dir
+                    .ok_or_else(|| ConfigError::MissingDirForStaticRoute { path: path.clone() })?;
+
+                if parsed.service.is_some() {
+                    return Err(ConfigError::ServiceNotAllowedOnStaticRoute { path });
+                }
+
+                if parsed.allow_websocket {
+                    return Err(ConfigError::WebSocketNotAllowedOnStaticRoute { path });
+                }
+
+                RouteKind::Static {
+                    dir,
+                    index: parsed.index,
+                    directory_listing: parsed.directory_listing,
+                    static_config: StaticFileConfig::default(),
+                    cache_policy: StaticCachePolicy::default(),
+                }
             }
         };
 
-        if matches!(target, RouteTarget::Static { .. }) && parsed.allow_websocket {
-            return Err(ConfigError::InvalidRoute { path });
-        }
-
         out.push(RouteConfig {
             path,
-            target,
+            kind,
             allow_websocket: parsed.allow_websocket,
             ws_idle_timeout_ms: parsed.ws_idle_timeout_ms,
             ws_max_connections: parsed.ws_max_connections,

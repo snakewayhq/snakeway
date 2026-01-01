@@ -2,9 +2,9 @@ use crate::conf::types::{StaticCachePolicy, StaticFileConfig};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
-pub enum RouteKind {
+pub enum RouteRuntime {
     /// Forward request to upstream
-    Proxy {
+    Service {
         upstream: String,
         allow_websocket: bool,
     },

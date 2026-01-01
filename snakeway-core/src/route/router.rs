@@ -1,4 +1,4 @@
-use crate::route::kind::RouteKind;
+use crate::route::types::RouteRuntime;
 use anyhow::{Result, anyhow};
 
 #[derive(Debug)]
@@ -9,7 +9,7 @@ pub struct Router {
 #[derive(Debug)]
 pub struct RouteEntry {
     pub path: String,
-    pub kind: RouteKind,
+    pub kind: RouteRuntime,
 }
 
 impl Default for Router {
@@ -23,7 +23,7 @@ impl Router {
         Self { routes: Vec::new() }
     }
 
-    pub fn add_route(&mut self, path: &str, kind: RouteKind) -> Result<()> {
+    pub fn add_route(&mut self, path: &str, kind: RouteRuntime) -> Result<()> {
         if !path.starts_with('/') {
             return Err(anyhow!("route path must start with '/': {}", path));
         }

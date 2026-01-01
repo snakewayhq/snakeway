@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RouteConfig {
-    /// Path prefix (longest-prefix match)
+    /// Path prefix (longest-prefix match).
     pub path: String,
 
-    /// Target service (mutually exclusive with file_dir)
-    pub target: RouteTarget,
+    /// Target route.
+    pub kind: RouteKind,
 
     pub allow_websocket: bool,
     pub ws_idle_timeout_ms: Option<u64>,
@@ -15,7 +15,7 @@ pub struct RouteConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RouteTarget {
+pub enum RouteKind {
     Service {
         name: String,
     },
@@ -30,9 +30,13 @@ pub enum RouteTarget {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ParsedRoute {
+    /// The explicit type of the route, to ease route validation.
+    pub r#type: ParsedRouteType,
+
+    /// The path to the
     pub path: String,
 
-    /// Mutually exclusive with file_dir (validated later)
+    /// Mutually exclusive with file_dir
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service: Option<String>,
 
@@ -59,6 +63,13 @@ pub struct ParsedRoute {
     /// Only valid for static routes
     #[serde(default)]
     pub directory_listing: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ParsedRouteType {
+    Service,
+    Static,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

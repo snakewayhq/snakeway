@@ -32,7 +32,7 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Parsing
     //-------------------------------------------------------------------------
-    #[error("failed to parse TOML in {path}: {source}")]
+    #[error("invalid configuration file: {path}\n\n{source}")]
     Parse {
         path: PathBuf,
         #[source]
@@ -57,8 +57,23 @@ pub enum ConfigError {
     #[error("invalid route path '{path}': {reason}")]
     InvalidRoutePath { path: String, reason: String },
 
-    #[error("static route directory does not exist or is not a directory: {path} {reason}")]
+    #[error("static route directory does not exist or is not a directory: {path} ({reason})")]
     InvalidStaticDir { path: PathBuf, reason: String },
+
+    #[error("route '{path}' is declared as type=static and cannot enable WebSockets")]
+    WebSocketNotAllowedOnStaticRoute { path: String },
+
+    #[error("service route '{path}' is missing required 'service' field")]
+    MissingServiceForServiceRoute { path: String },
+
+    #[error("route '{path}' is declared as type=static but is missing required field: dir")]
+    MissingDirForStaticRoute { path: String },
+
+    #[error("route '{path}' is declared as type=static and must not define 'service'")]
+    ServiceNotAllowedOnStaticRoute { path: String },
+
+    #[error("service route '{path}' must not define 'dir'")]
+    DirNotAllowedOnServiceRoute { path: String },
 
     //-------------------------------------------------------------------------
     // Listeners
