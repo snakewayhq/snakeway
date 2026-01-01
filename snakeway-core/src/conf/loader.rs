@@ -1,4 +1,4 @@
-use crate::conf::discover::{discover, resolve_glob};
+use crate::conf::discover::discover;
 use crate::conf::merge::merge_services;
 use crate::conf::parse::{
     parse_devices, parse_service_routes, parse_services, parse_static_routes,
@@ -29,10 +29,10 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
 
-    let service_route_files = discover(&resolve_glob(root, &entry.include.service_routes))?;
-    let static_route_files = discover(&resolve_glob(root, &entry.include.static_routes))?;
-    let service_files = discover(&resolve_glob(root, &entry.include.services))?;
-    let device_files = discover(&resolve_glob(root, &entry.include.devices))?;
+    let service_route_files = discover(root, &entry.include.service_routes)?;
+    let static_route_files = discover(root, &entry.include.static_routes)?;
+    let service_files = discover(root, &entry.include.services)?;
+    let device_files = discover(root, &entry.include.devices)?;
 
     //--------------------------------------------------------------------------
     // Parse routes (hard fail)
