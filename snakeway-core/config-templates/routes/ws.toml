@@ -2,7 +2,7 @@
 path = "/ws"
 type = "service"
 service = "api"
-# Websockets enabled andconfigured...
+# Websockets enabled and configure...
 allow_websocket = true
 ws_idle_timeout_ms = 60_000
 ws_max_connections = 10_000
