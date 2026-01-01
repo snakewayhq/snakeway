@@ -32,4 +32,13 @@ pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
             });
         }
     }
+
+    if let Some(t) = cfg.threads
+        && (t == 0 || t > 1024)
+    {
+        ctx.push(ConfigError::InvalidThreads {
+            threads: cfg.threads.unwrap(),
+            reason: "must be between 1 and 1024".to_string(),
+        });
+    }
 }

@@ -31,6 +31,9 @@ pub enum ConfigError {
     #[error("invalid pid file path '{pid_file}': {reason}")]
     InvalidPidFile { pid_file: PathBuf, reason: String },
 
+    #[error("invalid threads '{threads}': {reason}")]
+    InvalidThreads { threads: usize, reason: String },
+
     #[error("config validation failed  {validation_errors:?}")]
     Validation { validation_errors: ValidationErrors },
 
