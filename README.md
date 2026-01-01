@@ -21,8 +21,8 @@ control plane.
 - Conceptual overview: `docs/index.md`
 - Architecture and lifecycle docs: `docs/guide/`
 - Configuration reference: `docs/configuration/`
-    - [Services & Circuit Breaking](docs/configuration/services.md)
-    - [Admin API & Observability](docs/configuration/admin.md)
+    - [Services & Circuit Breaking](docs/content/configuration/services.md)
+    - [Admin API & Observability](docs/content/configuration/admin.md)
 
 ## Status
 
