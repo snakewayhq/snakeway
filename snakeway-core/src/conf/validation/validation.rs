@@ -16,7 +16,7 @@ pub fn validate_runtime_config(
     }
 
     validators::validate_listeners(&entry.listeners, &mut ctx);
-    validators::validate_routes(routes, &mut ctx);
+    validators::validate_routes(routes, services, &mut ctx);
     validators::validate_services(services, &mut ctx);
 
     ctx.into_result()

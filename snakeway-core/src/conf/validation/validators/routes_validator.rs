@@ -1,21 +1,32 @@
-use crate::conf::types::{RouteConfig, RouteKind};
+use crate::conf::types::{RouteConfig, ServiceConfig};
 use crate::conf::validation::error::ConfigError;
 use crate::conf::validation::validation_ctx::ValidationCtx;
+use std::collections::HashMap;
 
 /// Validate routes and referenced services.
-pub fn validate_routes(routes: &[RouteConfig], ctx: &mut ValidationCtx) {
+pub fn validate_routes(
+    routes: &[RouteConfig],
+    services: &HashMap<String, ServiceConfig>,
+    ctx: &mut ValidationCtx,
+) {
     for route in routes {
-        if let RouteKind::Static { .. } = &route.kind {
-            if route.allow_websocket {
-                ctx.push(ConfigError::WebSocketNotAllowedOnStaticRoute {
-                    path: route.path.clone(),
-                });
+        match route {
+            RouteConfig::Service(cfg) => {
+                if !services.contains_key(&cfg.service) {
+                    ctx.push(ConfigError::UnknownService {
+                        path: cfg.path.clone(),
+                        service: cfg.service.clone(),
+                    });
+                }
             }
-            if route.ws_idle_timeout_ms.is_some() {
-                ctx.push(ConfigError::InvalidRoute {
-                    path: route.path.clone(),
-                });
+            RouteConfig::Static(cfg) => {
+                if !cfg.file_dir.exists() {
+                    ctx.push(ConfigError::InvalidStaticDir {
+                        path: cfg.file_dir.clone(),
+                        reason: "does not exist".to_string(),
+                    });
+                }
             }
-        }
+        };
     }
 }

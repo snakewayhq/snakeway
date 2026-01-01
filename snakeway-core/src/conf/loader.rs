@@ -1,9 +1,10 @@
 use crate::conf::discover::{discover, resolve_glob};
 use crate::conf::merge::merge_services;
-use crate::conf::normalize::{compile_routes, normalize_routes};
-use crate::conf::parse::{parse_devices, parse_routes, parse_services};
+use crate::conf::parse::{
+    parse_devices, parse_service_routes, parse_services, parse_static_routes,
+};
 use crate::conf::runtime::RuntimeConfig;
-use crate::conf::types::EntrypointConfig;
+use crate::conf::types::{EntrypointConfig, RouteConfig};
 use crate::conf::validation::error::ConfigError;
 use crate::conf::validation::validation::validate_runtime_config;
 use std::fs;
@@ -28,19 +29,22 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
 
-    let route_files = discover(&resolve_glob(root, &entry.include.routes))?;
+    let service_route_files = discover(&resolve_glob(root, &entry.include.service_routes))?;
+    let static_route_files = discover(&resolve_glob(root, &entry.include.static_routes))?;
     let service_files = discover(&resolve_glob(root, &entry.include.services))?;
     let device_files = discover(&resolve_glob(root, &entry.include.devices))?;
 
     //--------------------------------------------------------------------------
     // Parse routes (hard fail)
     //--------------------------------------------------------------------------
-    let mut parsed_routes = Vec::new();
-    for path in &route_files {
-        parsed_routes.extend(parse_routes(path.as_path())?);
+    let mut parsed_routes: Vec<RouteConfig> = Vec::new();
+    for path in &service_route_files {
+        parsed_routes.extend(parse_service_routes(path.as_path())?);
     }
-    let normalized_routes = normalize_routes(parsed_routes)?;
-    let routes = compile_routes(normalized_routes);
+
+    for path in &static_route_files {
+        parsed_routes.extend(parse_static_routes(path.as_path())?);
+    }
 
     //--------------------------------------------------------------------------
     // Parse services (hard fail)
@@ -54,7 +58,7 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Semantic validation (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    validate_runtime_config(&entry, &routes, &services).map_err(|errs| {
+    validate_runtime_config(&entry, &parsed_routes, &services).map_err(|errs| {
         ConfigError::Validation {
             validation_errors: errs,
         }
@@ -65,7 +69,7 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     //--------------------------------------------------------------------------
     Ok(RuntimeConfig {
         server: entry.server,
-        routes,
+        routes: parsed_routes,
         services,
         devices: parse_devices(device_files)?,
         listeners: entry.listeners,

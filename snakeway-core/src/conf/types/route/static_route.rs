@@ -1,18 +1,23 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum RouteKind {
-    Service {
-        name: String,
-    },
-    Static {
-        dir: String,
-        index: Option<String>,
-        directory_listing: bool,
-        static_config: StaticFileConfig,
-        cache_policy: StaticCachePolicy,
-    },
+pub struct StaticRouteConfig {
+    /// Path prefix (longest-prefix match).
+    pub path: String,
+    pub file_dir: PathBuf,
+
+    #[serde(default)]
+    pub index: Option<String>,
+
+    #[serde(default)]
+    pub directory_listing: bool,
+
+    #[serde(default)]
+    pub static_config: StaticFileConfig,
+
+    #[serde(default)]
+    pub cache_policy: StaticCachePolicy,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

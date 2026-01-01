@@ -1,9 +1,7 @@
-mod normalized_route;
 mod parsed_route;
-mod route;
-mod route_kind;
+mod service_route;
+mod static_route;
 
-pub use normalized_route::*;
 pub use parsed_route::*;
-pub use route::*;
-pub use route_kind::*;
+pub use service_route::*;
+pub use static_route::*;

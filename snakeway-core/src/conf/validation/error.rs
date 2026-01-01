@@ -107,8 +107,8 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Services
     //-------------------------------------------------------------------------
-    #[error("route '{route}' references unknown service '{service}'")]
-    UnknownService { route: String, service: String },
+    #[error("route '{path}' references unknown service '{service}'")]
+    UnknownService { path: String, service: String },
 
     #[error("service '{service}' has no upstreams defined")]
     EmptyService { service: String },
