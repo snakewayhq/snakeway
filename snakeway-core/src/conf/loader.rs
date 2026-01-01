@@ -1,10 +1,11 @@
 use crate::conf::discover::{discover, resolve_glob};
 use crate::conf::merge::merge_services;
+use crate::conf::normalize::{compile_routes, normalize_routes};
 use crate::conf::parse::{parse_devices, parse_routes, parse_services};
 use crate::conf::runtime::RuntimeConfig;
 use crate::conf::types::EntrypointConfig;
 use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation::{compile_routes, validate_runtime_config};
+use crate::conf::validation::validation::validate_runtime_config;
 use std::fs;
 use std::path::Path;
 
@@ -38,7 +39,8 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     for path in &route_files {
         parsed_routes.extend(parse_routes(path.as_path())?);
     }
-    let routes = compile_routes(parsed_routes)?;
+    let normalized_routes = normalize_routes(parsed_routes)?;
+    let routes = compile_routes(normalized_routes);
 
     //--------------------------------------------------------------------------
     // Parse services (hard fail)

@@ -1,6 +1,7 @@
 mod discover;
 mod loader;
 mod merge;
+mod normalize;
 mod parse;
 mod runtime;
 pub mod types;
