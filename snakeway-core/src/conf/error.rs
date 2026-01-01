@@ -26,9 +26,6 @@ pub enum ConfigError {
     #[error("invalid configuration")]
     InvalidConfig,
 
-    #[error("invalid route '{path}'")]
-    InvalidRoute { path: String },
-
     #[error("invalid version '{version}'")]
     InvalidVersion { version: u32 },
 
@@ -48,14 +45,24 @@ pub enum ConfigError {
     #[error("duplicate service definition: {name}")]
     DuplicateService { name: String },
 
-    #[error("duplicate route for path {path}")]
+    #[error("duplicate route for path '{path}'")]
     DuplicateRoute { path: String },
 
     //-------------------------------------------------------------------------
-    // Validation
+    // Routes
     //-------------------------------------------------------------------------
+    #[error("invalid route '{path}'")]
+    InvalidRoute { path: String },
 
+    #[error("invalid route path '{path}': {reason}")]
+    InvalidRoutePath { path: String, reason: String },
+
+    #[error("static route directory does not exist or is not a directory: {path} {reason}")]
+    InvalidStaticDir { path: PathBuf, reason: String },
+
+    //-------------------------------------------------------------------------
     // Listeners
+    //-------------------------------------------------------------------------
     #[error("invalid listener socket address '{addr}'")]
     InvalidListenerAddr { addr: String },
 
@@ -65,16 +72,24 @@ pub enum ConfigError {
     #[error("cert file does not exist: {path}")]
     MissingCertFile { path: String },
 
+    #[error("key file does not exist: {path}")]
+    MissingKeyFile { path: String },
+
+    #[error("HTTP/2 requires TLS to be configured on the listener")]
+    Http2RequiresTls,
+
     #[error("HTTP/2 is not supported on admin listeners")]
     AdminListenerHttp2NotSupported,
 
     #[error("admin listener must use TLS")]
     AdminListenerMissingTls,
 
-    #[error("HTTP/2 requires TLS to be configured on the listener")]
-    Http2RequiresTls,
+    #[error("only one admin listener may be defined")]
+    MultipleAdminListeners,
 
+    //-------------------------------------------------------------------------
     // Services
+    //-------------------------------------------------------------------------
     #[error("route '{route}' references unknown service '{service}'")]
     UnknownService { route: String, service: String },
 
