@@ -1,4 +1,4 @@
-use crate::conf::types::routes::RouteKind;
+use crate::conf::types::route::RouteKind;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -1,4 +1,4 @@
-use crate::conf::types::routes::RouteKind;
+use crate::conf::types::route::RouteKind;
 
 pub struct NormalizedRoute {
     pub path: String,
