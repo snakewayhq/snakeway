@@ -21,7 +21,10 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                         .sum::<usize>(),
                     "devices_enabled": cfg.devices.iter().filter(|d| d.enabled).count()
                 });
-                println!("{}", serde_json::to_string_pretty(&success_info).unwrap());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&success_info).expect("could not format JSON")
+                );
             } else {
                 println!("✔ Config loaded successfully");
                 println!("✔ {} routes", cfg.routes.len());
