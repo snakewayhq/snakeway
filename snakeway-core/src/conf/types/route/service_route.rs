@@ -9,6 +9,8 @@ pub struct ServiceRouteConfig {
 
     #[serde(default)]
     pub allow_websocket: bool,
-    pub ws_idle_timeout_ms: Option<u64>,
-    pub ws_max_connections: Option<u64>,
+    #[serde(default)]
+    pub ws_idle_timeout_ms: u64,
+    #[serde(default)]
+    pub ws_max_connections: u64,
 }
