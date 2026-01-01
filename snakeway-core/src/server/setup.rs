@@ -119,12 +119,7 @@ pub fn build_pingora_server(
     reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
-    if let Some(ca_file) = &config.server.ca_file {
-        // ca_file is guaranteed to be valid UTF-8 by conf validation subsystem.
-        // An error here would be a bug in the validation subsystem.
-        let ca_file_str = ca_file.to_str().expect("CA file path is not valid UTF-8");
-        conf.ca_file = Some(ca_file_str.to_string());
-    }
+    conf.ca_file = config.server.ca_file.clone();
 
     let mut server = if let Some(threads) = config.server.threads {
         tracing::debug!(
