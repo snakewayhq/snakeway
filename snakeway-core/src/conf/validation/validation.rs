@@ -13,11 +13,12 @@ pub fn validate_runtime_config(
 
     if let Err(e) = validators::validate_version(entry.server.version) {
         ctx.push(e);
+    } else {
+        validators::validate_server(&entry.server, &mut ctx);
+        validators::validate_listeners(&entry.listeners, &mut ctx);
+        validators::validate_routes(routes, services, &mut ctx);
+        validators::validate_services(services, &mut ctx);
     }
-
-    validators::validate_listeners(&entry.listeners, &mut ctx);
-    validators::validate_routes(routes, services, &mut ctx);
-    validators::validate_services(services, &mut ctx);
 
     ctx.into_result()
 }

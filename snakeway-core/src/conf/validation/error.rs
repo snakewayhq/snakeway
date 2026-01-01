@@ -28,6 +28,9 @@ pub enum ConfigError {
     #[error("invalid version '{version}'")]
     InvalidVersion { version: u32 },
 
+    #[error("invalid pid file path '{pid_file}': {reason}")]
+    InvalidPidFile { pid_file: PathBuf, reason: String },
+
     #[error("config validation failed  {validation_errors:?}")]
     Validation { validation_errors: ValidationErrors },
 
