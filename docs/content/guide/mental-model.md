@@ -2,7 +2,8 @@
 
 This page explains **how Snakeway thinks about traffic**.
 
-If you understand this page, you understand Snakeway. Everything else—configuration, devices, WASM, observability—is an implementation detail layered on top.
+If you understand this page, you understand Snakeway. Everything else—configuration, devices, WASM, observability—is an
+implementation detail layered on top.
 
 ## The Core Loop
 
@@ -75,11 +76,11 @@ Each device can hook into specific phases of the request lifecycle.
 Conceptually:
 
 ```
-on_request     → request received
-before_proxy   → just before upstream call
-after_proxy    → upstream response received
-on_response    → final response handling
-on_error       → unrecoverable failure
+1. **on_request** — Request received
+2. **before_proxy** — Just before upstream call
+3. **after_proxy** — Upstream response received
+4. **on_response** — Final response handling
+5. **on_error** — Unrecoverable failure
 ```
 
 Not every device needs every phase.
@@ -93,6 +94,7 @@ Devices are allowed to **stop the pipeline early**.
 This is intentional.
 
 Examples:
+
 - A device rejects a request due to validation failure
 - A static file device serves a response directly
 - A rules engine returns a cached response
@@ -112,13 +114,13 @@ A request may:
 - Be rejected before reaching any service
 
 This flexibility is what enables:
+
 - Static file serving
 - Edge logic
 - Traffic gating
 - Synthetic responses
 
 Upstreams are just one possible outcome of the pipeline.
-
 
 ## Errors Are First-Class
 
@@ -127,24 +129,24 @@ Errors are not exceptions flying out of the system.
 They are **events in the lifecycle**.
 
 When something goes wrong:
+
 - Devices can observe the error
 - Devices can log, count, or transform it
 - A response can still be generated deterministically
 
 This prevents “half-failed” requests and undefined behavior.
 
-
 ## Concurrency Model (High Level)
 
 Snakeway is highly concurrent, but **devices do not manage concurrency**.
 
 Key ideas:
+
 - Each request is processed independently
 - Devices must be thread-safe
 - Shared state must be explicit and intentional
 
 This keeps device authors focused on logic, not synchronization.
-
 
 ## What This Model Buys You
 
@@ -158,7 +160,6 @@ This mental model enables:
 It also enforces discipline.
 
 If a behavior is hard to explain using this model, it probably doesn’t belong in Snakeway.
-
 
 ## If You Remember One Thing
 

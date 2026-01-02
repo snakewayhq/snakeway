@@ -4,10 +4,6 @@ Builtin devices are first‑class, in‑process extensions that run directly ins
 designed for **high‑performance, low‑latency** behavior where sandboxing is unnecessary and tight integration with
 Snakeway internals is beneficial.
 
-If you are familiar with Laravel, you can think of builtin devices as a blend of **middleware** and **service providers
-**: they participate in the request lifecycle, but they also establish shared capabilities that other devices can rely
-on.
-
 ## What Are Builtin Devices?
 
 A builtin device is a Rust implementation of the `Device` trait that is compiled into Snakeway itself.

@@ -4,9 +4,6 @@ The **Identity** builtin device provides a canonical, request-scoped view of the
 client identity **once**, early in the request lifecycle, and exposes it to downstream devices via a typed extension on
 the request context.
 
-This mirrors the role of middleware + request objects in frameworks like Laravel: identity is resolved centrally,
-normalized, and reused — not re-parsed by every consumer.
-
 ## Overview
 
 When enabled, the Identity device:
