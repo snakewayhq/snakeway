@@ -6,10 +6,10 @@ pub fn dump(path: PathBuf, json: bool, yaml: bool) -> anyhow::Result<()> {
     let cfg = load_config(&path)?;
 
     if yaml {
-        dump_yaml(&cfg)?;
+        dump_yaml(&cfg.config)?;
     } else if json || !yaml {
         // default: json
-        dump_json(&cfg)?;
+        dump_json(&cfg.config)?;
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 use crate::conf::types::DeviceConfig;
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation_ctx::ValidationCtx;
+use crate::conf::validation::ValidationCtx;
+use crate::conf::validation::{ConfigError, ConfigWarning};
 use ipnet::IpNet;
 use std::net::IpAddr;
 
@@ -13,7 +13,7 @@ pub fn validate_devices(devices: &Vec<DeviceConfig>, ctx: &mut ValidationCtx) {
                 }
 
                 if !cfg.path.is_file() {
-                    ctx.push(ConfigError::InvalidWasmDevicePath {
+                    ctx.error(ConfigError::InvalidWasmDevicePath {
                         path: cfg.path.clone(),
                     });
                 }
@@ -30,7 +30,7 @@ pub fn validate_devices(devices: &Vec<DeviceConfig>, ctx: &mut ValidationCtx) {
                     && let Some(geoip_db) = cfg.geoip_db.as_ref()
                     && !geoip_db.is_file()
                 {
-                    ctx.push(ConfigError::InvalidGeoIPDatabasePath {
+                    ctx.error(ConfigError::InvalidGeoIPDatabasePath {
                         path: geoip_db.clone(),
                     });
                 }
@@ -53,7 +53,7 @@ fn validate_trusted_proxies(proxies: &[String], ctx: &mut ValidationCtx) {
         if let Ok(net) = proxy.parse::<IpNet>() {
             networks.push(net);
         } else {
-            ctx.push(ConfigError::InvalidTrustedProxy {
+            ctx.error(ConfigError::InvalidTrustedProxy {
                 proxy: proxy.clone(),
             });
         }
@@ -62,7 +62,7 @@ fn validate_trusted_proxies(proxies: &[String], ctx: &mut ValidationCtx) {
     for network in networks {
         // Hard error: trust-all networks
         if network.prefix_len() == 0 {
-            ctx.push(ConfigError::InvalidTrustedProxyNetwork {
+            ctx.error(ConfigError::InvalidTrustedProxyNetwork {
                 reason: "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)"
                     .into(),
             });
@@ -71,10 +71,8 @@ fn validate_trusted_proxies(proxies: &[String], ctx: &mut ValidationCtx) {
 
         // Trusting public IP ranges is a red flag.
         if !is_private_net(&network) {
-            ctx.push(ConfigError::SuspiciousTrustedProxy {
+            ctx.warn(ConfigWarning::PublicTrustedProxy {
                 network: network.to_string(),
-                reason: "public IP ranges should only be trusted if they belong to known infrastructure (e.g. CDN or load balancer)"
-                    .into(),
             });
         }
     }

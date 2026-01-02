@@ -2,7 +2,7 @@ use crate::conf::types::{
     DeviceConfig, IdentityDeviceConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
     StaticRouteConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig,
 };
-use crate::conf::validation::error::ConfigError;
+use crate::conf::validation::ConfigError;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;

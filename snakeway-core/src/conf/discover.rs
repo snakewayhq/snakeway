@@ -1,4 +1,4 @@
-use crate::conf::validation::error::ConfigError;
+use crate::conf::validation::ConfigError;
 use glob::glob;
 use std::path::{Path, PathBuf};
 

@@ -1,14 +1,14 @@
 use crate::conf::discover::discover;
 use crate::conf::merge::merge_services;
 use crate::conf::parse::{parse_devices, parse_routes, parse_services};
-use crate::conf::runtime::RuntimeConfig;
+use crate::conf::runtime::{RuntimeConfig, ValidatedConfig};
 use crate::conf::types::{DeviceConfig, EntrypointConfig, RouteConfig};
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::runtime_validation::validate_runtime_config;
+use crate::conf::validation::validate_runtime_config;
+use crate::conf::validation::{ConfigError, ValidationOutput};
 use std::fs;
 use std::path::Path;
 
-pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
+pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
@@ -68,11 +68,16 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Build runtime config
     //--------------------------------------------------------------------------
-    Ok(RuntimeConfig {
-        server: entry.server,
-        routes: parsed_routes,
-        services,
-        devices: parsed_devices,
-        listeners: entry.listeners,
+    Ok(ValidatedConfig {
+        config: RuntimeConfig {
+            server: entry.server,
+            routes: parsed_routes,
+            services,
+            devices: parsed_devices,
+            listeners: entry.listeners,
+        },
+        validation: ValidationOutput {
+            warnings: Vec::new(),
+        },
     })
 }

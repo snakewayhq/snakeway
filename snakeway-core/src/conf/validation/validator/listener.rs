@@ -1,6 +1,6 @@
 use crate::conf::types::ListenerConfig;
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation_ctx::ValidationCtx;
+use crate::conf::validation::ConfigError;
+use crate::conf::validation::ValidationCtx;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -16,7 +16,7 @@ pub fn validate_listeners(listeners: &[ListenerConfig], ctx: &mut ValidationCtx)
         let addr: SocketAddr = match listener.addr.parse() {
             Ok(a) => a,
             Err(_) => {
-                ctx.push(ConfigError::InvalidListenerAddr {
+                ctx.error(ConfigError::InvalidListenerAddr {
                     addr: listener.addr.clone(),
                 });
                 continue;
@@ -24,42 +24,42 @@ pub fn validate_listeners(listeners: &[ListenerConfig], ctx: &mut ValidationCtx)
         };
 
         if !seen_addrs.insert(addr) {
-            ctx.push(ConfigError::DuplicateListenerAddr {
+            ctx.error(ConfigError::DuplicateListenerAddr {
                 addr: listener.addr.clone(),
             });
         }
 
         if let Some(tls) = &listener.tls {
             if !Path::new(&tls.cert).is_file() {
-                ctx.push(ConfigError::MissingCertFile {
+                ctx.error(ConfigError::MissingCertFile {
                     path: tls.cert.clone(),
                 });
             }
             if !Path::new(&tls.key).is_file() {
-                ctx.push(ConfigError::MissingKeyFile {
+                ctx.error(ConfigError::MissingKeyFile {
                     path: tls.key.clone(),
                 });
             }
         }
 
         if listener.enable_http2 && listener.tls.is_none() {
-            ctx.push(ConfigError::Http2RequiresTls);
+            ctx.error(ConfigError::Http2RequiresTls);
         }
 
         if listener.enable_admin {
             if admin_seen {
-                ctx.push(ConfigError::MultipleAdminListeners);
+                ctx.error(ConfigError::MultipleAdminListeners);
             }
             admin_seen = true;
 
             if listener.enable_http2 {
-                ctx.push(ConfigError::AdminListenerHttp2NotSupported);
+                ctx.error(ConfigError::AdminListenerHttp2NotSupported);
             }
             if listener.tls.is_none() {
-                ctx.push(ConfigError::AdminListenerMissingTls);
+                ctx.error(ConfigError::AdminListenerMissingTls);
             }
             if addr.ip().is_unspecified() {
-                ctx.push(ConfigError::InvalidListenerAddr {
+                ctx.error(ConfigError::InvalidListenerAddr {
                     addr: listener.addr.clone(),
                 });
             }
