@@ -1,14 +1,14 @@
 use crate::conf::discover::discover;
 use crate::conf::merge::merge_services;
 use crate::conf::parse::{parse_devices, parse_routes, parse_services};
-use crate::conf::runtime::RuntimeConfig;
-use crate::conf::types::{EntrypointConfig, RouteConfig};
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::runtime_validation::validate_runtime_config;
+use crate::conf::runtime::{RuntimeConfig, ValidatedConfig};
+use crate::conf::types::{DeviceConfig, EntrypointConfig, RouteConfig};
+use crate::conf::validation::ConfigError;
+use crate::conf::validation::validate_runtime_config;
 use std::fs;
 use std::path::Path;
 
-pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
+pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
@@ -49,22 +49,32 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     let services = merge_services(parsed_services)?;
 
     //--------------------------------------------------------------------------
+    // Parse devices (hard fail)
+    //--------------------------------------------------------------------------
+    let mut parsed_devices: Vec<DeviceConfig> = Vec::new();
+    for path in &device_files {
+        parsed_devices.extend(parse_devices(path.as_path())?);
+    }
+
+    //--------------------------------------------------------------------------
     // Semantic validation (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    validate_runtime_config(&entry, &parsed_routes, &services).map_err(|errs| {
-        ConfigError::Validation {
+    let validation = validate_runtime_config(&entry, &parsed_routes, &services, &parsed_devices)
+        .map_err(|errs| ConfigError::Validation {
             validation_errors: errs,
-        }
-    })?;
+        })?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
     //--------------------------------------------------------------------------
-    Ok(RuntimeConfig {
-        server: entry.server,
-        routes: parsed_routes,
-        services,
-        devices: parse_devices(device_files)?,
-        listeners: entry.listeners,
+    Ok(ValidatedConfig {
+        config: RuntimeConfig {
+            server: entry.server,
+            routes: parsed_routes,
+            services,
+            devices: parsed_devices,
+            listeners: entry.listeners,
+        },
+        validation,
     })
 }

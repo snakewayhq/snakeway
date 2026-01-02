@@ -7,8 +7,6 @@ the request context.
 This mirrors the role of middleware + request objects in frameworks like Laravel: identity is resolved centrally,
 normalized, and reused — not re-parsed by every consumer.
 
----
-
 ## Overview
 
 When enabled, the Identity device:
@@ -22,22 +20,12 @@ When enabled, the Identity device:
 Identity data is **not logged**, **not forwarded upstream**, and **not exposed** unless explicitly consumed by another
 device.
 
----
-
 ## Execution Order
 
-The Identity device should run **early** in the device pipeline:
+The Identity device runs **before** all other devices in the pipeline.
 
-```toml
-[[device]]
-name = "identity"
-type = "builtin"
-builtin = "identity"
-```
-
-Downstream devices (logging, fraud detection, rate limiting) can safely assume identity data is already present.
-
----
+Downstream devices (logging, fraud detection, rate limiting) can safely assume identity data is already present in the
+request context.
 
 ## Request Context Integration
 
@@ -55,8 +43,6 @@ let identity = ctx.extensions.get::<ClientIdentity>();
 
 This approach avoids header re-parsing and provides a single source of truth for client identity.
 
----
-
 ## ClientIdentity Structure
 
 The identity data attached to each request includes:
@@ -68,8 +54,6 @@ The identity data attached to each request includes:
 
 Some fields may be unused by certain deployments but are part of the stable identity contract.
 
----
-
 ## Client IP Resolution
 
 Client IP resolution follows strict, defensive rules:
@@ -80,8 +64,6 @@ Client IP resolution follows strict, defensive rules:
 4. If no untrusted IP is found, the peer IP is used
 
 This prevents spoofing and aligns with industry best practices.
-
----
 
 ## GeoIP Enrichment
 
@@ -99,8 +81,6 @@ geoip_db = "./GeoLite2-Country.mmdb"
 
 No city-level or personally identifying location data is collected by default.
 
----
-
 ## User-Agent Parsing
 
 User-Agent parsing is optional and configurable:
@@ -113,8 +93,6 @@ ua_engine = "woothee"
 Supported engines balance accuracy and performance. Defensive limits (such as maximum UA length) are enforced to protect
 throughput.
 
----
-
 ## Compliance & Safety
 
 * Identity data is **internal-only**
@@ -123,8 +101,6 @@ throughput.
 * Designed to support EU compliance by default
 
 The Identity device focuses on correctness and reuse, not observability.
-
----
 
 ## When to Use
 

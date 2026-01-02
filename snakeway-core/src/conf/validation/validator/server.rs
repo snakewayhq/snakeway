@@ -1,6 +1,6 @@
 use crate::conf::types::ServerConfig;
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation_ctx::ValidationCtx;
+use crate::conf::validation::ConfigError;
+use crate::conf::validation::ValidationCtx;
 
 /// Validate top-level config version.
 ///
@@ -23,12 +23,12 @@ pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
         };
 
         if !parent.exists() {
-            ctx.push(ConfigError::InvalidPidFile {
+            ctx.error(ConfigError::InvalidPidFile {
                 pid_file: pid_file.clone(),
                 reason: "parent directory does not exist".to_string(),
             });
         } else if !parent.is_dir() {
-            ctx.push(ConfigError::InvalidPidFile {
+            ctx.error(ConfigError::InvalidPidFile {
                 pid_file: pid_file.clone(),
                 reason: "parent path exists but is not a directory".to_string(),
             });
@@ -37,13 +37,13 @@ pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
 
     if let Some(ca_file) = cfg.ca_file.clone() {
         if !std::path::Path::new(&ca_file).exists() {
-            ctx.push(ConfigError::InvalidRootCaFile {
+            ctx.error(ConfigError::InvalidRootCaFile {
                 ca_file: ca_file.clone(),
                 reason: "file does not exist".to_string(),
             });
         }
         if !std::path::Path::new(&ca_file).is_file() {
-            ctx.push(ConfigError::InvalidRootCaFile {
+            ctx.error(ConfigError::InvalidRootCaFile {
                 ca_file: ca_file.clone(),
                 reason: "path exists but is not a file".to_string(),
             });
@@ -53,7 +53,7 @@ pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
     if let Some(t) = cfg.threads
         && (t == 0 || t > 1024)
     {
-        ctx.push(ConfigError::InvalidThreads {
+        ctx.error(ConfigError::InvalidThreads {
             threads: cfg.threads.unwrap(),
             reason: "must be between 1 and 1024".to_string(),
         });

@@ -1,4 +1,4 @@
-use crate::harness::config::patch_ports;
+use crate::harness::config::patch_runtime;
 use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_ws_upstream};
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
@@ -45,7 +45,9 @@ impl TestServer {
         );
 
         // Load Snakeway config
-        let cfg = load_config(&fixture_dir).expect("failed to load fixture config");
+        let mut cfg = load_config(&fixture_dir)
+            .expect("failed to load fixture config")
+            .config;
 
         //---------------------------------------------------------------------
         // Setup upstreams and listeners, then patch config in-memory.
@@ -73,7 +75,7 @@ impl TestServer {
 
         // Patch config in memory.
         // This is a bit of magic that ensures all the integration tests can be run in parallel.
-        let cfg = patch_ports(cfg, &listener_ports, &upstream_ports);
+        patch_runtime(&mut cfg, &listener_ports, &upstream_ports);
 
         // Build the initial runtime state (static for tests).
         let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");

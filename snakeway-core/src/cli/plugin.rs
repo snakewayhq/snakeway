@@ -3,6 +3,7 @@ use crate::device::load_wasm_device;
 use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]
 pub enum PluginCmd {
@@ -13,7 +14,7 @@ pub enum PluginCmd {
 #[derive(Args, Debug)]
 pub struct PluginTestArgs {
     /// Path to the .wasm file
-    pub file: String,
+    pub file: PathBuf,
 
     /// Which hook to call (default: on_request)
     #[arg(long, default_value = "on_request")]
@@ -33,7 +34,7 @@ pub fn run(cmd: PluginCmd) -> Result<()> {
 fn run_test(args: PluginTestArgs) -> Result<()> {
     tracing::info!(
         "Loading WASM device {} with hook {} against path {}",
-        args.file,
+        args.file.display(),
         args.hook,
         args.path
     );

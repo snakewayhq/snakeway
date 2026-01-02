@@ -1,9 +1,8 @@
-use crate::conf::types::IdentityConfig;
+use crate::conf::types::IdentityDeviceConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, DeviceResult};
 use crate::enrichment::user_agent::{ClientIdentity, GeoInfo, UaEngine, build_ua_engine};
-use anyhow::Context;
 use http::HeaderMap;
 use ipnet::IpNet;
 use maxminddb::PathElement;
@@ -21,9 +20,7 @@ pub struct IdentityDevice {
 }
 
 impl IdentityDevice {
-    pub fn from_config(raw: &toml::Value) -> anyhow::Result<Self> {
-        let cfg: IdentityConfig = raw.clone().try_into().context("invalid identity config")?;
-
+    pub fn from_config(cfg: IdentityDeviceConfig) -> anyhow::Result<Self> {
         let geoip = match (cfg.enable_geoip, &cfg.geoip_db) {
             (true, Some(path)) => {
                 // SAFETY:

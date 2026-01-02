@@ -62,9 +62,8 @@ export default defineConfig({
                     text: "Devices",
                     items: [
                         {text: "Overview", link: "/devices/overview"},
-                        {text: "Execution Order", link: "/devices/execution-order"},
                         {text: "Built-in Devices", link: "/devices/builtin"},
-                        {text: "Identity Device", link: "/devices/identity"},
+                        {text: "Identity", link: "/devices/identity"},
                         {text: "Structured Logging", link: "/devices/structured-logging"},
                         // todo {text: "WASM Devices", link: "/devices/wasm"}
                     ]

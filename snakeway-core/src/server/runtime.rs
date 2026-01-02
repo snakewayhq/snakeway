@@ -56,7 +56,7 @@ pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeSta
     let cfg = load_config(config_path)?;
 
     // Build a new runtime state OFFLINE.
-    let new_state = build_runtime_state(&cfg)?;
+    let new_state = build_runtime_state(&cfg.config)?;
 
     // Log comparison against current state.
     let old = state.load();

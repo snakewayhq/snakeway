@@ -1,5 +1,5 @@
 use crate::conf::load_config;
-use crate::conf::validation::error::ConfigError;
+use crate::conf::validation::{ConfigError, ConfigWarning};
 use miette::{JSONReportHandler, Report};
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -7,7 +7,9 @@ use std::str::FromStr;
 
 pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> anyhow::Result<()> {
     match load_config(&path) {
-        Ok(cfg) => {
+        Ok(validation_cfg) => {
+            let cfg = validation_cfg.config;
+            let validation = validation_cfg.validation;
             if quiet {
                 // Print nothing.
             } else if matches!(format, ConfigCheckOutputFormat::Json) {
@@ -19,7 +21,7 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                         .values()
                         .map(|s| s.upstream.len())
                         .sum::<usize>(),
-                    "devices_enabled": cfg.devices.iter().filter(|d| d.enabled).count()
+                    "devices_enabled": cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 });
                 println!(
                     "{}",
@@ -38,8 +40,24 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                 );
                 println!(
                     "✔ {} devices enabled",
-                    cfg.devices.iter().filter(|d| d.enabled).count()
+                    cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 );
+            }
+
+            if !validation.warnings.is_empty() && !quiet {
+                eprintln!(
+                    "\n⚠ {} warning{}",
+                    validation.warnings.len(),
+                    if validation.warnings.len() == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
+                );
+
+                for warning in &validation.warnings {
+                    print_config_warning(warning, format.clone());
+                }
             }
             Ok(())
         }
@@ -49,6 +67,31 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
             }
 
             std::process::exit(1);
+        }
+    }
+}
+
+fn print_config_warning(warning: &ConfigWarning, format: ConfigCheckOutputFormat) {
+    match format {
+        ConfigCheckOutputFormat::Pretty => {
+            eprintln!("{:?}", Report::new(warning.clone()));
+        }
+
+        ConfigCheckOutputFormat::Plain => {
+            eprintln!("{}", warning);
+        }
+
+        ConfigCheckOutputFormat::Json => {
+            let mut out = String::new();
+
+            let handler = JSONReportHandler::new();
+            handler
+                .render_report(&mut out, warning)
+                .expect("failed to render JSON diagnostic");
+
+            let mut stdout = io::stdout();
+            stdout.write_all(out.as_bytes()).unwrap();
+            stdout.write_all(b"\n").unwrap();
         }
     }
 }

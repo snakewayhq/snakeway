@@ -1,6 +1,6 @@
 use crate::conf::types::{RouteConfig, ServiceConfig};
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation_ctx::ValidationCtx;
+use crate::conf::validation::ConfigError;
+use crate::conf::validation::ValidationCtx;
 use std::collections::HashMap;
 
 /// Validate routes and referenced services.
@@ -13,7 +13,7 @@ pub fn validate_routes(
         match route {
             RouteConfig::Service(cfg) => {
                 if !services.contains_key(&cfg.service) {
-                    ctx.push(ConfigError::UnknownService {
+                    ctx.error(ConfigError::UnknownService {
                         path: cfg.path.clone(),
                         service: cfg.service.clone(),
                     });
@@ -21,7 +21,7 @@ pub fn validate_routes(
             }
             RouteConfig::Static(cfg) => {
                 if !cfg.file_dir.exists() {
-                    ctx.push(ConfigError::InvalidStaticDir {
+                    ctx.error(ConfigError::InvalidStaticDir {
                         path: cfg.file_dir.clone(),
                         reason: "does not exist".to_string(),
                     });

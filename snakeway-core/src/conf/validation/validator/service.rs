@@ -1,13 +1,13 @@
 use crate::conf::types::ServiceConfig;
-use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation_ctx::ValidationCtx;
+use crate::conf::validation::ConfigError;
+use crate::conf::validation::ValidationCtx;
 use std::collections::HashMap;
 
 /// Validate service definitions.
 pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut ValidationCtx) {
     for (name, service) in services {
         if service.upstream.is_empty() {
-            ctx.push(ConfigError::EmptyService {
+            ctx.error(ConfigError::EmptyService {
                 service: name.clone(),
             });
             continue;
@@ -15,7 +15,7 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
 
         for upstream in &service.upstream {
             if upstream.weight == 0 {
-                ctx.push(ConfigError::InvalidUpstream {
+                ctx.error(ConfigError::InvalidUpstream {
                     service: name.clone(),
                     upstream: upstream.url.clone(),
                     reason: "weight must be > 0".into(),
@@ -25,7 +25,7 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
             let url = match upstream.url.parse::<url::Url>() {
                 Ok(u) => u,
                 Err(_) => {
-                    ctx.push(ConfigError::InvalidUpstream {
+                    ctx.error(ConfigError::InvalidUpstream {
                         service: name.clone(),
                         upstream: upstream.url.clone(),
                         reason: "invalid URL".into(),
@@ -35,7 +35,7 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
             };
 
             if !matches!(url.scheme(), "http" | "https") {
-                ctx.push(ConfigError::InvalidUpstream {
+                ctx.error(ConfigError::InvalidUpstream {
                     service: name.clone(),
                     upstream: upstream.url.clone(),
                     reason: "unsupported URL scheme".into(),
@@ -50,7 +50,7 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
                 || cb.half_open_max_requests == 0
                 || cb.success_threshold == 0)
         {
-            ctx.push(ConfigError::InvalidCircuitBreaker {
+            ctx.error(ConfigError::InvalidCircuitBreaker {
                 service: name.clone(),
                 reason: "all circuit breaker thresholds must be >= 1".into(),
             });

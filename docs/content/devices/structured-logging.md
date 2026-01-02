@@ -6,8 +6,6 @@ request/response lifecycle.
 It is designed to provide **high-signal, low-noise** observability while remaining safe for production and compliant by
 default.
 
----
-
 ## Design Goals
 
 The Structured Logging device is built around a few core principles:
@@ -16,8 +14,6 @@ The Structured Logging device is built around a few core principles:
 * Sensitive data should be **excluded by default**
 * Operators should be able to **opt in** to additional detail
 * Logging should integrate cleanly with `tracing` and existing Rust tooling
-
----
 
 ## What Gets Logged
 
@@ -36,8 +32,6 @@ Each log event may include:
 * Selected identity fields (optional)
 * Selected headers (optional)
 
----
-
 ## Lifecycle Events
 
 You can control *when* logs are emitted using event and phase filters.
@@ -55,8 +49,6 @@ phases = ["request", "response"]
 ```
 
 Phases provide a coarse-grained way to reduce log volume without listing individual hooks.
-
----
 
 ## Identity-Aware Logging
 
@@ -77,8 +69,6 @@ Identity logging is:
 * Derived from `ClientIdentity` stored in `ctx.extensions`
 
 This avoids re-parsing headers and ensures consistency with Identity resolution.
-
----
 
 ## Header Logging
 
@@ -106,26 +96,18 @@ redact_headers = [
 
 > Headers often contain personal or sensitive data. Enable this only when necessary.
 
----
-
 ## Configuration Example
 
 ```toml
-[[device]]
-name = "access-log"
-type = "builtin"
-builtin = "structured_logging"
-enabled = true
+[structured_logging_device]
+enable = true
 
-[device.config]
 level = "info"
 include_identity = true
 identity_fields = ["country", "device"]
 include_headers = false
 events = ["request", "response"]
 ```
-
----
 
 ## Integration with Tracing
 
@@ -135,16 +117,3 @@ Output format (JSON vs pretty) and sinks (stdout, files, OpenTelemetry, etc.) ar
 `tracing_subscriber`, not in this device.
 
 This keeps logging behavior consistent across Snakeway and application code.
-
----
-
-## When to Use Structured Logging
-
-This device is well suited for:
-
-* Access logs
-* Debugging routing or proxy behavior
-* Feeding structured logs into centralized logging systems
-* Lightweight production observability
-
-For metrics or long-term aggregation, pair this device with Snakeway's metrics and admin APIs.

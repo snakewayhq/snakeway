@@ -1,7 +1,7 @@
-[[route]]
+[[service_route]]
 path = "/api"
 service = "api"
 
-[[route]]
+[[static_route]]
 path = "/"
-file_dir = "./fixtures/public"
+file_dir = "/var/www/html"

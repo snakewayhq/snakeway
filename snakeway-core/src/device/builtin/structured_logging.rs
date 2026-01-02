@@ -1,12 +1,12 @@
-use crate::conf::types::structured_logging::LoggingConfig;
+use crate::conf::types::StructuredLoggingDeviceConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use http::HeaderMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use tracing::{debug, error, info, trace, warn};
 
@@ -14,17 +14,18 @@ use tracing::{debug, error, info, trace, warn};
 // Logging level & config enums
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     Trace,
     Debug,
     Info,
     Warn,
+    #[default]
     Error,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum LogEvent {
     Request,
@@ -33,14 +34,14 @@ pub enum LogEvent {
     Response,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LogPhase {
     Request,
     Response,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IdentityField {
     Country,
@@ -85,12 +86,7 @@ pub struct StructuredLoggingDevice {
 }
 
 impl StructuredLoggingDevice {
-    pub fn from_config(raw: &toml::Value) -> Result<Self> {
-        let cfg: LoggingConfig = raw
-            .clone()
-            .try_into()
-            .context("invalid structured_logging config")?;
-
+    pub fn from_config(cfg: StructuredLoggingDeviceConfig) -> Result<Self> {
         Ok(Self {
             level: cfg.level,
 
@@ -101,7 +97,7 @@ impl StructuredLoggingDevice {
                 .map(|h| h.to_lowercase())
                 .collect(),
             redact_headers: cfg
-                .redact_headers
+                .redacted_headers
                 .into_iter()
                 .map(|h| h.to_lowercase())
                 .collect(),

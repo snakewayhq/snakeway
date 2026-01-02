@@ -1,5 +1,5 @@
 use crate::conf::types::ServiceConfig;
-use crate::conf::validation::error::ConfigError;
+use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
 
 pub fn merge_services(

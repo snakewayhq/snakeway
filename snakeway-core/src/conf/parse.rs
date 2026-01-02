@@ -1,7 +1,8 @@
 use crate::conf::types::{
-    DeviceConfig, RouteConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
+    DeviceConfig, IdentityDeviceConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
+    StaticRouteConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig,
 };
-use crate::conf::validation::error::ConfigError;
+use crate::conf::validation::ConfigError;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
@@ -32,28 +33,33 @@ struct ServicesFile {
 
 pub fn parse_services(path: &Path) -> Result<Vec<ServiceConfig>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-
     let parsed: ServicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
     Ok(parsed.service)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 struct DevicesFile {
     #[serde(default)]
-    device: Vec<DeviceConfig>,
+    identity_device: IdentityDeviceConfig,
+
+    #[serde(default)]
+    structured_logging_device: StructuredLoggingDeviceConfig,
+
+    #[serde(default)]
+    wasm_device: Vec<WasmDeviceConfig>,
 }
 
-pub fn parse_devices(paths: Vec<std::path::PathBuf>) -> Result<Vec<DeviceConfig>, ConfigError> {
-    let mut devices = Vec::new();
+pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
+    let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
+    let parsed: DevicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+    let mut device_config = Vec::new();
 
-    for path in paths {
-        let s = fs::read_to_string(&path).map_err(|e| ConfigError::read_file(&path, e))?;
+    device_config.push(DeviceConfig::Identity(parsed.identity_device.clone()));
+    device_config.push(DeviceConfig::StructuredLogging(
+        parsed.structured_logging_device.clone(),
+    ));
+    device_config.extend(parsed.wasm_device.into_iter().map(DeviceConfig::Wasm));
 
-        let parsed: DevicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(&path, e))?;
-
-        devices.extend(parsed.device);
-    }
-
-    Ok(devices)
+    Ok(device_config)
 }

@@ -1,9 +1,9 @@
-[[route]]
+[[service_route]]
 path = "/api"
 service = "api"
 
-[[route]]
+[[static_route]]
 path = "/"
-file_dir = "./public"
+file_dir = "/var/www/html"
 index = "index.html"
 directory_listing = false

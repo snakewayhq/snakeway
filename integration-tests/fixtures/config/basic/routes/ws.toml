@@ -1,4 +1,4 @@
-[[route]]
+[[service_route]]
 path = "/ws"
 service = "api"
 allow_websocket = true

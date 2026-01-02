@@ -114,7 +114,7 @@ fn main() {
             init_logging();
 
             let cfg = load_config(Path::new(&config_path)).expect("Failed to load Snakeway config");
-            server::run(config_path, cfg).expect("Failed to start Snakeway server");
+            server::run(config_path, cfg.config).expect("Failed to start Snakeway server");
         }
 
         None => {
@@ -123,7 +123,7 @@ fn main() {
             let config_path = "config".to_string();
             let cfg = load_config(Path::new(&config_path))
                 .expect("Failed to load default Snakeway config");
-            server::run(config_path, cfg).expect("Failed to start Snakeway server");
+            server::run(config_path, cfg.config).expect("Failed to start Snakeway server");
         }
     }
 }

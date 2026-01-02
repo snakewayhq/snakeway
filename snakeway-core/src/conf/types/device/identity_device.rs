@@ -1,32 +1,28 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
-#[derive(Debug, Deserialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct IdentityConfig {
+pub struct IdentityDeviceConfig {
+    pub enable: bool,
+
     /// CIDR strings
-    #[serde(default)]
     pub trusted_proxies: Vec<String>,
 
-    #[serde(default)]
     pub enable_geoip: bool,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub geoip_db: Option<String>,
+    pub geoip_db: Option<PathBuf>,
 
-    #[serde(default)]
     pub enable_user_agent: bool,
 
-    #[serde(default = "default_ua_engine")]
     pub ua_engine: UaEngineKind,
 }
 
-fn default_ua_engine() -> UaEngineKind {
-    UaEngineKind::Woothee
-}
-
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum UaEngineKind {
     UaParser,
+    #[default]
     Woothee,
 }

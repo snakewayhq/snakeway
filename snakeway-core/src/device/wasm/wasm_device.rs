@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::path::PathBuf;
 use wasmtime::{
     Engine, Store,
     component::{Component, Linker},
@@ -23,7 +24,7 @@ pub struct WasmDevice {
 }
 
 impl WasmDevice {
-    pub fn load(path: &str) -> Result<Self> {
+    pub fn load(path: &PathBuf) -> Result<Self> {
         let engine = Engine::default();
         let component = Component::from_file(&engine, path)?;
         Ok(Self { engine, component })

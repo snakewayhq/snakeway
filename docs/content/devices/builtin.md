@@ -70,29 +70,23 @@ This pattern is central to how builtin devices cooperate.
 
 ## Configuration
 
-Builtin devices are declared under the `[[device]]` section:
+The builtin identity device basic configuration:
 
 ```toml
-[[device]]
-name = "identity"
-type = "builtin"
-builtin = "identity"
-enabled = true
+[identity_device]
+enable = true
 
-[device.config]
 enable_geoip = true
 enable_user_agent = true
 ```
 
 Key fields:
 
-| Field             | Description                               |
-|-------------------|-------------------------------------------|
-| `name`            | Logical device name (for logs and errors) |
-| `kind`            | Must be `"builtin"`                       |
-| `builtin`         | Builtin device identifier                 |
-| `enabled`         | Whether the device is active              |
-| `devices.options` | Device‑specific configuration             |
+| Field               | Description                                                            |
+|---------------------|------------------------------------------------------------------------|
+| `enable`            | Whether the device is active                                           |
+| `enable_geoip`      | Parse the client IP address to determine location                      |
+| `enable_user_agent` | Parse the client user agent to determine browser and device attributes |
 
 Unknown options are rejected to prevent silent misconfiguration.
 
@@ -109,54 +103,3 @@ A common pattern is:
 
 * **Builtin devices** provide core primitives (identity, logging, metrics)
 * **WASM devices** implement business‑specific policy on top
-
-## Design Philosophy
-
-Builtin devices follow a few core principles:
-
-### 1. Single Source of Truth
-
-If data can be derived once and reused, it should be.
-
-Example: client IP resolution should happen once, not in every device.
-
-### 2. Internal by Default
-
-Builtin devices should **not** mutate headers or leak data unless explicitly configured to do so.
-
-### 3. Composition Over Coupling
-
-Devices communicate via typed context extensions, not direct references.
-
-This keeps devices independent while still cooperating.
-
-### 4. Explicit Risk Boundaries
-
-Anything with privacy, security, or compliance impact must be:
-
-* Opt‑in
-* Narrowly scoped
-* Easy to audit
-
-## Available Builtin Devices
-
-See the following pages for concrete implementations:
-
-* **Identity** — Canonical client IP, proxy chain, geo, and UA enrichment
-* **Structured Logging** — Lifecycle‑aware structured logs
-
-More builtin devices will be added over time as Snakeway evolves.
-
-## When to Write a Builtin Device
-
-Write a builtin device if:
-
-* Performance is critical
-* You need access to internal request context
-* The behavior is foundational or infrastructural
-
-Prefer WASM devices if:
-
-* You want isolation
-* You expect third‑party or user‑supplied code
-* The logic is business‑specific
