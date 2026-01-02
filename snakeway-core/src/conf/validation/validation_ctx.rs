@@ -1,4 +1,6 @@
 use crate::conf::validation::error::ConfigError;
+use miette::Diagnostic;
+use thiserror::Error;
 
 #[derive(Default)]
 pub struct ValidationCtx {
@@ -18,9 +20,6 @@ impl ValidationCtx {
         }
     }
 }
-
-use miette::Diagnostic;
-use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
 #[error("configuration validation failed")]

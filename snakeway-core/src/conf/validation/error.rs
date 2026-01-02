@@ -138,6 +138,24 @@ pub enum ConfigError {
         upstream: String,
         reason: String,
     },
+
+    //-------------------------------------------------------------------------
+    // Devices
+    //-------------------------------------------------------------------------
+    #[error("invalid WASM device: {path}")]
+    InvalidWasmDevicePath { path: PathBuf },
+
+    #[error("invalid Geo IP database path: {path}")]
+    InvalidGeoIPDatabasePath { path: PathBuf },
+
+    #[error("invalid trusted proxy format: {proxy}")]
+    InvalidTrustedProxy { proxy: String },
+
+    #[error("invalid trusted proxy network: {reason}")]
+    InvalidTrustedProxyNetwork { reason: String },
+
+    #[error("suspicious trusted proxy network: {network}: {reason}")]
+    SuspiciousTrustedProxy { network: String, reason: String },
 }
 
 impl ConfigError {

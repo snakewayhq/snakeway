@@ -1,14 +1,15 @@
-[[device]]
-# The unique name identifier for this device.
-name = "identity"
-# The type of device, indicating it's a builtin device.
-type = "builtin"
-# The specific builtin device implementation to use.
-builtin = "identity"
+[identity_device]
 # Whether this device is enabled and active.
-enabled = true
-# Device-specific configuration options.
-# enable_geoip: Enables or disables GeoIP lookup for client IP addresses.
-# trusted_proxies: A list of trusted proxy IP addresses or CIDR ranges.
-# ua_engine: The user agent parser engine to use (woothee or uaparser).
-config = { enable_geoip = false, trusted_proxies = [], ua_engine = "woothee" }
+enable = true
+
+# Enables or disables GeoIP lookup for client IP addresses.
+enable_geoip = false
+
+# A list of trusted proxy IP addresses or CIDR ranges.
+trusted_proxies = []
+
+# Whether user agent parsing is enabled.
+enable_user_agent = true
+
+# The user agent parser engine to use (woothee or uaparser).
+ua_engine = "woothee"

@@ -19,7 +19,7 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                         .values()
                         .map(|s| s.upstream.len())
                         .sum::<usize>(),
-                    "devices_enabled": cfg.devices.iter().filter(|d| d.enabled).count()
+                    "devices_enabled": cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 });
                 println!(
                     "{}",
@@ -38,7 +38,7 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                 );
                 println!(
                     "✔ {} devices enabled",
-                    cfg.devices.iter().filter(|d| d.enabled).count()
+                    cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 );
             }
             Ok(())
