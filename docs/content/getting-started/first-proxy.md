@@ -7,15 +7,15 @@ that forwards traffic to a public API.
 
 First, create a new directory to hold your Snakeway configuration:
 
-```bash
-mkdir -p my-proxy/routes.d
-mkdir -p my-proxy/services.d
+```shell
+snakeway config init ./my-proxy
 ```
 
 ### 2. Configure the Server
 
-Create a file named `my-proxy/snakeway.toml`. This is the entry point for Snakeway. We'll define a single listener on
-port 8080:
+The entrypoint config file should exist: `./my-proxy/snakeway.toml`.
+
+It should have something that looks like this:
 
 ```toml
 [server]
@@ -27,6 +27,7 @@ addr = "127.0.0.1:8080"
 [include]
 routes = "routes.d/*.toml"
 services = "services.d/*.toml"
+devices = "devices.d/*.toml"
 ```
 
 ### 3. Define the Upstream Service

@@ -17,7 +17,7 @@ customizable HTTP proxies. By leveraging Pingora, Snakeway inherits:
 
 ### Snakeway vs. Snakeway-Core
 
-The project is split into two primary components:
+The project is split into two primary crates:
 
 1. **`snakeway` (The Binary)**: This is the command-line interface and entry point. It handles configuration loading,
    logging initialization, and lifecycle management (starting, stopping, and reloading the server).
@@ -42,7 +42,7 @@ When a request enters Snakeway, it follows a deterministic path through the syst
 
 ### Component Map
 
-- **Router**: Uses a fast radix-tree based matcher to map paths to handlers.
+- **Router**: Uses longest-path matching to route requests to the appropriate service or static file handler.
 - **Traffic Manager**: Maintains a real-time snapshot of system health, upstream status, and performance metrics.
 - **Device Registry**: Manages the lifecycle of both built-in and WASM devices.
 - **Admin Gateway**: A specialized, terminal gateway that handles administrative requests and provides access to the

@@ -35,9 +35,3 @@ for ensuring that the global `DeviceRegistry` can be shared safely across all wo
 The "hot path"—the code that executes for every request—is carefully optimized to minimize locking and contention. We
 use high-performance concurrency primitives like `Arc` (Atomic Reference Counting) and `ArcSwap` to ensure that data
 access is as fast as possible, even in highly multi-threaded environments.
-
-### CPU Pinning (Future)
-
-To further improve performance and reduce cache misses, we are exploring CPU pinning (affinitization), which binds
-specific worker threads to specific physical CPU cores. This is particularly beneficial in high-performance environments
-where every microsecond of latency matters.
