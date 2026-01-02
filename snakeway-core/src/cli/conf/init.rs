@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use rust_embed::RustEmbed;
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(RustEmbed)]
@@ -26,78 +25,45 @@ pub fn init(path: PathBuf) -> Result<()> {
         }
     }
 
-    // Create directory structure
-    let routes_dir = path.join("routes");
-    let services_dir = path.join("services");
-    let devices_dir = path.join("devices");
+    // Map embedded templates to their destination paths
+    let mut created_files = Vec::new();
+    for template_path in ConfigTemplates::iter() {
+        let template_path = template_path.as_ref();
+        let file = ConfigTemplates::get(template_path)
+            .with_context(|| format!("missing embedded template: {template_path}"))?;
 
-    fs::create_dir_all(&routes_dir)?;
-    fs::create_dir_all(&services_dir)?;
-    fs::create_dir_all(&devices_dir)?;
+        // Destination path matches template path (keeping .d suffixes)
+        let dest_rel_path = template_path.to_string();
+        let dest_path = path.join(&dest_rel_path);
 
-    // Write files...
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create directory {}", parent.display()))?;
+        }
 
-    // Entrypoint
-    write_file(&path.join("snakeway.toml"), &template("snakeway.toml")?)?;
+        let contents = std::str::from_utf8(file.data.as_ref())
+            .context("config template is not valid UTF-8")?
+            .trim_start();
 
-    // Routes
-    write_file(
-        &services_dir.join("api.toml"),
-        &template("routes/api.toml")?,
-    )?;
-    write_file(&services_dir.join("ws.toml"), &template("routes/ws.toml")?)?;
-    write_file(
-        &routes_dir.join("assets.toml"),
-        &template("routes/assets.toml")?,
-    )?;
+        fs::write(&dest_path, contents.as_bytes())
+            .with_context(|| format!("failed to write {}", dest_path.display()))?;
 
-    // Services
-    write_file(
-        &services_dir.join("api.toml"),
-        &template("services/api.toml")?,
-    )?;
+        created_files.push(dest_rel_path);
+    }
 
-    // Devices
-    write_file(
-        &devices_dir.join("identity.toml"),
-        &template("devices/identity.toml")?,
-    )?;
-    write_file(
-        &devices_dir.join("structured_logging.toml"),
-        &template("devices/structured_logging.toml")?,
-    )?;
+    // Sort for deterministic output
+    created_files.sort();
 
     // User feedback
     println!("✔ Initialized Snakeway config in {}", path.display());
     println!("✔ Created:");
-    println!("  - snakeway.toml");
-    println!("  - routes/default.toml");
-    println!("  - services/api.toml");
-    println!("  - devices/identity.toml");
-    println!("  - devices/structured_logging.toml");
+    for file in created_files {
+        println!("  - {file}");
+    }
     println!();
     println!("Next steps:");
     println!("  snakeway config check");
     println!("  snakeway run");
 
-    Ok(())
-}
-
-/// Fetch an embedded config template as UTF-8 text
-fn template(path: &str) -> Result<String> {
-    let file = ConfigTemplates::get(path)
-        .with_context(|| format!("missing embedded config template: {path}"))?;
-
-    let s =
-        std::str::from_utf8(file.data.as_ref()).context("config template is not valid UTF-8")?;
-
-    Ok(s.to_owned())
-}
-
-/// Helper to write a file (simple, deterministic, no magic)
-fn write_file(path: &PathBuf, contents: &str) -> Result<()> {
-    let mut f =
-        fs::File::create(path).with_context(|| format!("failed to create {}", path.display()))?;
-    f.write_all(contents.trim_start().as_bytes())?;
     Ok(())
 }
