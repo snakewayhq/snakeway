@@ -69,7 +69,7 @@ Supported strategies:
 
 The circuit breaker protects your services by aggressively stopping traffic to failing upstreams.
 
-### enabled
+### enable
 
 **Type:** `boolean`  
 **Default:** `true`
