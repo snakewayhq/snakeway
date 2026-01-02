@@ -134,7 +134,7 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
             },
             RouteConfig::Static(cfg) => RouteRuntime::Static {
                 path: cfg.path.clone(),
-                file_dir: cfg.file_dir.clone().into(),
+                file_dir: cfg.file_dir.clone(),
                 index: cfg.index.clone().is_some(),
                 directory_listing: cfg.directory_listing,
                 static_config: cfg.static_config.clone(),
