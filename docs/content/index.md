@@ -17,7 +17,7 @@ hero:
       link: /guide/what-is-snakeway
     - theme: alt
       text: GitHub
-      link: https://github.com/ethanhann/snakeway
+      link: https://github.com/snakewayhq/snakeway
 
 features:
   - icon: 🧩
