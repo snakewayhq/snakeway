@@ -6,7 +6,7 @@ use crate::conf::parse::{
 use crate::conf::runtime::RuntimeConfig;
 use crate::conf::types::{EntrypointConfig, RouteConfig};
 use crate::conf::validation::error::ConfigError;
-use crate::conf::validation::validation::validate_runtime_config;
+use crate::conf::validation::runtime_validation::validate_runtime_config;
 use std::fs;
 use std::path::Path;
 
