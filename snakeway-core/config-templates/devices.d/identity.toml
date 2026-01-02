@@ -6,6 +6,8 @@ enable = true
 enable_geoip = false
 
 # A list of trusted proxy IP addresses or CIDR ranges.
+# Defines which intermediate servers are allowed to be believed when determining the real client IP from X-Forwarded-For.
+# To put it another way, if an IP is in trusted_proxies, Snakeway assumes it is allowed to lie on behalf of the client.
 trusted_proxies = []
 
 # Whether user agent parsing is enabled.

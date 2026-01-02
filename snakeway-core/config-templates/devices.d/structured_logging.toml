@@ -2,10 +2,16 @@
 # Whether this device is enabled and active.
 enable = true
 
-# include_headers: Whether to include HTTP headers in the structured logs.
+# Whether to include HTTP headers in the structured logs.
 include_headers = false
 
-# Logging level, e.g., error, info, warning
-level = "error"
+allowed_headers = []
+
+redacted_headers = []
+
+level = "info"
+
+# Whether to include identity information in the structured logs.
+include_identity = false
 
 identity_fields = ["country", "region", "asn", "device", "bot"]

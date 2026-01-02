@@ -3,8 +3,8 @@ use crate::conf::merge::merge_services;
 use crate::conf::parse::{parse_devices, parse_routes, parse_services};
 use crate::conf::runtime::{RuntimeConfig, ValidatedConfig};
 use crate::conf::types::{DeviceConfig, EntrypointConfig, RouteConfig};
+use crate::conf::validation::ConfigError;
 use crate::conf::validation::validate_runtime_config;
-use crate::conf::validation::{ConfigError, ValidationOutput};
 use std::fs;
 use std::path::Path;
 
@@ -59,11 +59,10 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Semantic validation (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    validate_runtime_config(&entry, &parsed_routes, &services, &parsed_devices).map_err(
-        |errs| ConfigError::Validation {
+    let validation = validate_runtime_config(&entry, &parsed_routes, &services, &parsed_devices)
+        .map_err(|errs| ConfigError::Validation {
             validation_errors: errs,
-        },
-    )?;
+        })?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
@@ -76,8 +75,6 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
             devices: parsed_devices,
             listeners: entry.listeners,
         },
-        validation: ValidationOutput {
-            warnings: Vec::new(),
-        },
+        validation,
     })
 }

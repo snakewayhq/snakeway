@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 #[cfg(not(feature = "wasm"))]
-pub fn load_wasm_device(_device_file_path: &str) -> anyhow::Result<Arc<dyn Device>> {
+pub fn load_wasm_device(_device_file_path: &PathBuf) -> anyhow::Result<Arc<dyn Device>> {
     Err(anyhow::anyhow!(
         "WASM devices are disabled. Rebuild with --features wasm"
     ))
