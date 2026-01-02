@@ -1,7 +1,9 @@
+use crate::conf::validation::validation_ctx::ValidationErrors;
+use miette::Diagnostic;
 use std::path::PathBuf;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum ConfigError {
     //-------------------------------------------------------------------------
     // IO / Discovery
@@ -23,16 +25,29 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Top-level
     //-------------------------------------------------------------------------
-    #[error("invalid configuration")]
-    InvalidConfig,
-
     #[error("invalid version '{version}'")]
     InvalidVersion { version: u32 },
+
+    #[error("invalid pid file path '{pid_file}': {reason}")]
+    InvalidPidFile { pid_file: PathBuf, reason: String },
+
+    #[error("invalid ca file path '{ca_file}': {reason}")]
+    InvalidRootCaFile { ca_file: String, reason: String },
+
+    #[error("invalid threads '{threads}': {reason}")]
+    InvalidThreads { threads: usize, reason: String },
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    Validation {
+        #[from]
+        validation_errors: ValidationErrors,
+    },
 
     //-------------------------------------------------------------------------
     // Parsing
     //-------------------------------------------------------------------------
-    #[error("failed to parse TOML in {path}: {source}")]
+    #[error("invalid configuration file: {path}\n\n{source}")]
     Parse {
         path: PathBuf,
         #[source]
@@ -57,8 +72,23 @@ pub enum ConfigError {
     #[error("invalid route path '{path}': {reason}")]
     InvalidRoutePath { path: String, reason: String },
 
-    #[error("static route directory does not exist or is not a directory: {path} {reason}")]
+    #[error("static route directory does not exist or is not a directory: {path} ({reason})")]
     InvalidStaticDir { path: PathBuf, reason: String },
+
+    #[error("route '{path}' is declared as type=static and cannot enable WebSockets")]
+    WebSocketNotAllowedOnStaticRoute { path: String },
+
+    #[error("service route '{path}' is missing required 'service' field")]
+    MissingServiceForServiceRoute { path: String },
+
+    #[error("route '{path}' is declared as type=static but is missing required field: dir")]
+    MissingDirForStaticRoute { path: String },
+
+    #[error("route '{path}' is declared as type=static and must not define 'service'")]
+    ServiceNotAllowedOnStaticRoute { path: String },
+
+    #[error("service route '{path}' must not define 'dir'")]
+    DirNotAllowedOnServiceRoute { path: String },
 
     //-------------------------------------------------------------------------
     // Listeners
@@ -90,8 +120,8 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Services
     //-------------------------------------------------------------------------
-    #[error("route '{route}' references unknown service '{service}'")]
-    UnknownService { route: String, service: String },
+    #[error("route '{path}' references unknown service '{service}'")]
+    UnknownService { path: String, service: String },
 
     #[error("service '{service}' has no upstreams defined")]
     EmptyService { service: String },

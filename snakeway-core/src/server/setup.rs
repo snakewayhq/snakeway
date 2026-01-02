@@ -23,9 +23,9 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     // Attempt to write pid file (best-effort)
     if let Some(pid_file) = &config.server.pid_file {
         if let Err(e) = pid::write_pid(pid_file) {
-            tracing::warn!(error = %e, pid_file, "failed to write pid file; continuing");
+            tracing::warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file; continuing");
         } else {
-            tracing::info!(pid_file, "pid file written");
+            tracing::info!(pid_file = %pid_file.display(), "pid file written");
         }
     }
 

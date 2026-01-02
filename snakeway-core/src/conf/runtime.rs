@@ -1,4 +1,4 @@
-use crate::conf::types::listener::ListenerConfig;
+use crate::conf::types::ListenerConfig;
 use crate::conf::types::*;
 use serde::Serialize;
 use std::collections::HashMap;

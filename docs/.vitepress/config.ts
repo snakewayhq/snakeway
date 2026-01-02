@@ -1,6 +1,8 @@
 import {defineConfig} from "vitepress";
 
 export default defineConfig({
+    srcDir: "content",
+
     title: "Snakeway",
     description: "Programmable proxy built on top of Pingora.",
 
@@ -19,9 +21,9 @@ export default defineConfig({
                     text: "Guide",
                     items: [
                         {text: "What is Snakeway?", link: "/guide/what-is-snakeway"},
-                        {text: "Why Snakeway Exists", link: "/guide/why-snakeway-exists"},
+                        // todo {text: "Why Snakeway Exists", link: "/guide/why-snakeway-exists"},
                         {text: "Mental Model", link: "/guide/mental-model"},
-                        {text: "Architecture", link: "/guide/architecture"},
+                        // todo {text: "Architecture", link: "/guide/architecture"},
                         {text: "Lifecycle", link: "/guide/lifecycle"}
                     ]
                 }
@@ -31,8 +33,9 @@ export default defineConfig({
                 {
                     text: "Getting Started",
                     items: [
-                        {text: "Installation", link: "/getting-started/installation"},
-                        {text: "First Proxy", link: "/getting-started/first-proxy"},
+                        // todo {text: "Installation", link: "/getting-started/installation"},
+                        {text: "Configuration", link: "/getting-started/configuration"},
+                        // todo {text: "First Proxy", link: "/getting-started/first-proxy"},
                         {text: "Static Files", link: "/getting-started/static-files"},
                         {text: "Reloads", link: "/getting-started/reloads"}
                     ]
@@ -44,12 +47,12 @@ export default defineConfig({
                     text: "Configuration",
                     items: [
                         {text: "Overview", link: "/configuration/overview"},
+                        {text: "Admin", link: "/configuration/admin"},
                         {text: "Server", link: "/configuration/server"},
                         {text: "Listeners", link: "/configuration/listeners"},
                         {text: "Services", link: "/configuration/services"},
                         {text: "Routes", link: "/configuration/routes"},
-                        {text: "Devices", link: "/configuration/devices"},
-                        {text: "Formats", link: "/configuration/formats"}
+                        // todo {text: "Devices", link: "/configuration/devices"}
                     ]
                 }
             ],
@@ -63,7 +66,7 @@ export default defineConfig({
                         {text: "Built-in Devices", link: "/devices/builtin"},
                         {text: "Identity Device", link: "/devices/identity"},
                         {text: "Structured Logging", link: "/devices/structured-logging"},
-                        {text: "WASM Devices", link: "/devices/wasm"}
+                        // todo {text: "WASM Devices", link: "/devices/wasm"}
                     ]
                 }
             ],
@@ -72,9 +75,9 @@ export default defineConfig({
                 {
                     text: "Observability",
                     items: [
-                        {text: "Logging", link: "/observability/logging"},
-                        {text: "Metrics", link: "/observability/metrics"},
-                        {text: "Admin API", link: "/observability/admin-api"}
+                        // todo {text: "Logging", link: "/observability/logging"},
+                        // todo {text: "Metrics", link: "/observability/metrics"},
+                        // todo {text: "Admin API", link: "/observability/admin-api"}
                     ]
                 }
             ],
@@ -83,10 +86,10 @@ export default defineConfig({
                 {
                     text: "Internals",
                     items: [
-                        {text: "Request Pipeline", link: "/internals/request-pipeline"},
-                        {text: "Threading Model", link: "/internals/threading-model"},
-                        {text: "Safety and Sandboxing", link: "/internals/safety-and-sandboxing"},
-                        {text: "Design Decisions", link: "/internals/design-decisions"}
+                        // todo {text: "Request Pipeline", link: "/internals/request-pipeline"},
+                        // todo {text: "Threading Model", link: "/internals/threading-model"},
+                        // todo {text: "Safety and Sandboxing", link: "/internals/safety-and-sandboxing"},
+                        // todo {text: "Design Decisions", link: "/internals/design-decisions"}
                     ]
                 }
             ]

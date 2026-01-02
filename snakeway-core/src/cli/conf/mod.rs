@@ -15,6 +15,14 @@ pub enum ConfigCmd {
         /// Path to config directory
         #[arg(default_value = "config")]
         path: PathBuf,
+
+        /// Suppresses all diagnostic
+        #[arg(short, long)]
+        quiet: bool,
+
+        /// Emit machine readable diagnostics
+        #[arg(short, long, default_value = "pretty", conflicts_with = "quiet")]
+        format: ConfigCheckOutputFormat,
     },
 
     /// Print resolved configuration

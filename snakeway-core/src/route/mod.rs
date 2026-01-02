@@ -1,5 +1,5 @@
-pub mod kind;
 pub mod router;
+pub mod types;
 
-pub use kind::RouteKind;
 pub use router::{RouteEntry, Router};
+pub use types::RouteRuntime;

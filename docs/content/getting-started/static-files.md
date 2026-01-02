@@ -16,22 +16,22 @@ cargo build --release --features static_files
 To serve static files, add a route with `file_dir` instead of `upstream`:
 
 ```toml
-[[routes]]
+[[static_route]]
 path = "/"
-file_dir = "./public"
-index = true
+file_dir = "/var/www/public"
+index = "index.html"
 ```
 
 ### Configuration Options
 
-| Option              | Type    | Required | Description                                                             |
-|---------------------|---------|----------|-------------------------------------------------------------------------|
-| `path`              | string  | Yes      | The URL path prefix to match                                            |
-| `file_dir`          | string  | Yes      | The directory containing static files                                   |
-| `index`             | boolean | No       | Whether to serve `index.html` for directory requests (default: `false`) |
-| `directory_listing` | boolean | No       | Whether list the contents of directory requests (default: `false`)      |
-| `cache_policy`      | table   | No       | Advanced cache policy configuration (see below)                         |
-| `config`            | table   | No       | Advanced static file configuration (see below)                          |
+| Option              | Type    | Required | Description                                                        |
+|---------------------|---------|----------|--------------------------------------------------------------------|
+| `path`              | string  | Yes      | The URL path prefix to match                                       |
+| `file_dir`          | string  | Yes      | The directory containing static files                              |
+| `index`             | string  | No       | The name of the index file, e.g., `index.html` (no default)        |
+| `directory_listing` | boolean | No       | Whether list the contents of directory requests (default: `false`) |
+| `cache_policy`      | table   | No       | Advanced cache policy configuration (see below)                    |
+| `config`            | table   | No       | Advanced static file configuration (see below)                     |
 
 ### Cache Policy (Per-Route)
 
@@ -59,10 +59,9 @@ Each static route can have an optional `[routes.config]` section to customize co
 **Example with custom compression settings:**
 
 ```toml
-[[routes]]
+[[static_route]]
 path = "/"
-file_dir = "./public"
-index = true
+file_dir = "/var/www/public"
 
 [routes.config]
 enable_brotli = true
@@ -74,10 +73,9 @@ min_gzip_size = 1024
 **Disable compression entirely for a route:**
 
 ```toml
-[[routes]]
+[[static_route]]
 path = "/raw"
-file_dir = "./raw-assets"
-index = false
+file_dir = "/var/www/raw-assets"
 
 [routes.config]
 enable_brotli = false
@@ -87,10 +85,9 @@ enable_gzip = false
 **Increase file size limits for large assets:**
 
 ```toml
-[[routes]]
+[[static_route]]
 path = "/downloads"
-file_dir = "./large-files"
-index = false
+file_dir = "/var/www/large-files"
 
 [routes.config]
 max_file_size = 104857600  # 100 MiB
@@ -102,34 +99,31 @@ small_file_threshold = 1048576  # 1 MiB - stream files larger than this
 **Serve a single-page application:**
 
 ```toml
-[[routes]]
+[[static_route]]
 path = "/"
-file_dir = "./dist"
-index = true
+file_dir = "/var/www/dist"
 ```
 
 **Serve static assets under a prefix:**
 
 ```toml
-[[routes]]
+[[static_route]]
 path = "/static"
-file_dir = "./assets"
-index = false
+file_dir = "/var/www/assets"
 ```
 
 **Mix static files with API proxy:**
 
 ```toml
 # API requests go to upstream
-[[routes]]
+[[static_route]]
 path = "/api"
-upstream = "127.0.0.1:8080"
+service = "127.0.0.1:8080"
 
 # Everything else serves static files
-[[routes]]
+[[static_route]]
 path = "/"
-file_dir = "./public"
-index = true
+file_dir = "/var/www/public"
 ```
 
 ## MIME Type Detection

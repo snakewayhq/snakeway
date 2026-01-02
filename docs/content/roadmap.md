@@ -181,6 +181,9 @@ Todo:
 - **Config Observability**
     - Add an option to the `config dump` command to format the config hierarchically to better show relationships.
 
+- **Verify all config params are actually used**
+    - Audit all config params and ensure they are used.
+
 - **Architecture Review**
     - Review ownership and lifetimes.
     - Audit public traits / hook surfaces.
@@ -307,9 +310,9 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ```shell
 /etc/snakeway/snakeway.toml
-/etc/snakeway/routes.d\*.toml
-/etc/snakeway/services.d\*.toml
-/etc/snakeway/devices.d\*.toml  
+/etc/snakeway/routes.d/*.toml
+/etc/snakeway/services.d/*.toml
+/etc/snakeway/devices.d/*.toml  
 ```
 
 * Systemd unit

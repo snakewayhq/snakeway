@@ -1,20 +1,27 @@
-use crate::conf::error::ConfigError;
-use crate::conf::types::{DeviceConfig, ParsedRoute, ServiceConfig};
+use crate::conf::types::{
+    DeviceConfig, RouteConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
+};
+use crate::conf::validation::error::ConfigError;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RoutesFile {
-    pub route: Vec<ParsedRoute>,
+    #[serde(default)]
+    pub service_route: Vec<ServiceRouteConfig>,
+
+    #[serde(default)]
+    pub static_route: Vec<StaticRouteConfig>,
 }
 
-pub fn parse_routes(path: &Path) -> Result<Vec<ParsedRoute>, ConfigError> {
+pub fn parse_routes(path: &Path) -> Result<Vec<RouteConfig>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-
     let parsed: RoutesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
-
-    Ok(parsed.route)
+    let mut routes = Vec::new();
+    routes.extend(parsed.service_route.into_iter().map(RouteConfig::Service));
+    routes.extend(parsed.static_route.into_iter().map(RouteConfig::Static));
+    Ok(routes)
 }
 
 #[derive(Debug, Deserialize)]
