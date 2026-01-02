@@ -310,9 +310,9 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ```shell
 /etc/snakeway/snakeway.toml
-/etc/snakeway/routes.d\*.toml
-/etc/snakeway/services.d\*.toml
-/etc/snakeway/devices.d\*.toml  
+/etc/snakeway/routes.d/*.toml
+/etc/snakeway/services.d/*.toml
+/etc/snakeway/devices.d/*.toml  
 ```
 
 * Systemd unit

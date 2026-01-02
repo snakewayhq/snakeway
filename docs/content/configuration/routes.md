@@ -16,40 +16,30 @@ In your `snakeway.toml`, use the `[include]` section to specify where to find ro
 
 ```toml
 [include]
-routes = "routes/*.toml"
+routes = "/etc/snakeway/routes.d/*.toml"
 ```
 
 Each included file can contain one or more `[[service_route]]` and `[[static_route]]` blocks.
 
 ## Overview
 
-Routes are defined using one or more `[[service_route]]` and `[[static_route]]` blocks.
+Routes are defined using one or more `[[service_route]]` and `[[static_route]]` blocks. These blocks can be placed in
+the main configuration file or in included files.
 
-These blocks can be placed in the main configuration file or in included files.
+## Service Routes
 
-### Service Route Example
+Service routes forward requests to an upstream service.
 
-`routes/api.toml`:
+### Example
 
 ```toml
 [[service_route]]
 path = "/api"
 service = "api"
+allow_websocket = true
 ```
 
-### Static Route Example
-
-`routes/assets.toml`:
-
-```toml
-[[static_route]]
-path = "/assets"
-file_dir = "/var/www/html"
-```
-
-Each route must explicitly declare its `type` to avoid ambiguity and enable strict validation.
-
-## Route Types
+### Fields
 
 ##### path
 
@@ -61,11 +51,12 @@ The URL path prefix to match. Must:
 - start with `/`
 - be unique across all routes
 
-Examples:
+##### service
 
-- `/api`
-- `/ws`
-- `/`
+**Type:** `string`  
+**Required:** `true`
+
+The name of the service to proxy requests to. This must match a service defined in your service configuration.
 
 ##### allow_websocket
 
@@ -79,9 +70,7 @@ Enables WebSocket upgrades for this route.
 **Type:** `integer`  
 **Optional**
 
-Idle timeout for WebSocket connections, in milliseconds.
-
-Only applicable when `allow_websocket = true`.
+Idle timeout for WebSocket connections, in milliseconds. Only applicable when `allow_websocket = true`.
 
 ##### ws_max_connections
 
@@ -90,23 +79,20 @@ Only applicable when `allow_websocket = true`.
 
 Maximum number of concurrent WebSocket connections allowed for this route.
 
-#### Example
+## Static Routes
+
+Static routes serve files from the local filesystem.
+
+### Example
 
 ```toml
 [[static_route]]
-path = "/static"
-file_dir = "/var/www"
+path = "/assets"
+file_dir = "/var/www/html"
+index = "index.html"
 ```
 
-#### Fields
-
-##### type
-
-**Type:** `string`  
-**Required:** `true`  
-**Value:** `static`
-
-Declares this route as a static file route.
+### Fields
 
 ##### path
 
@@ -136,12 +122,6 @@ Constraints:
 
 Filename to serve when a directory is requested.
 
-Example:
-
-```toml
-index = "index.html"
-```
-
 ##### directory_listing
 
 **Type:** `boolean`  
@@ -149,11 +129,9 @@ index = "index.html"
 
 Whether to enable directory listings when no index file is present.
 
-## Static File Configuration
+### Advanced Static Configuration
 
-Static routes include a file handling configuration block with sane defaults.
-
-### Fields
+Static routes include optional configuration for performance and caching.
 
 #### static_config
 
@@ -178,18 +156,12 @@ file_dir = "/var/www"
 static_config = { enable_gzip = false, max_file_size = 1048576 }
 ```
 
-## Static Cache Policy
-
-Static routes also include a cache policy with defaults optimized for typical web assets.
-
-### Fields
-
 #### cache_policy
 
 **Type:** `object`  
 **Optional**
 
-Configuration for the Cache-Control header.
+Configuration for the `Cache-Control` header.
 
 - `max_age`: (integer) `max-age` value in seconds. Default: `3600` (1 hour)
 - `public`: (boolean) Whether the cache is `public`. Default: `true`

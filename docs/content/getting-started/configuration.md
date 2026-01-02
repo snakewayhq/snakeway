@@ -6,9 +6,9 @@ Directory structure:
 
 ```shell
 /etc/snakeway/snakeway.toml
-/etc/snakeway/routes.d\*.toml
-/etc/snakeway/services.d\*.toml
-/etc/snakeway/devices.d\*.toml  
+/etc/snakeway/routes.d/*.toml
+/etc/snakeway/services.d/*.toml
+/etc/snakeway/devices.d/*.toml  
 ```
 
 The good news?
