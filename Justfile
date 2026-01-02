@@ -223,10 +223,13 @@ generate-dev-certs:
     [ ! -d "integration-tests/certs" ] && ./gen-test-certs.sh || true
 
 test:
-    cargo nextest run
+    cargo nextest run -p snakeway-core --features static_files,wasm
 
 integration-test: generate-dev-certs
     cargo nextest run -p integration-tests
+
+test-everything: lint test integration-test
+    @echo "All good."
 
 # -----------------------------------------------------------------------------
 # CLEANUP
