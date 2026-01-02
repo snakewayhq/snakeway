@@ -27,13 +27,11 @@ pub fn init(path: PathBuf) -> Result<()> {
     }
 
     // Create directory structure
-    let static_routes_dir = path.join("routes_static");
-    let service_routes_dir = path.join("routes_service");
+    let routes_dir = path.join("routes");
     let services_dir = path.join("services");
     let devices_dir = path.join("devices");
 
-    fs::create_dir_all(&static_routes_dir)?;
-    fs::create_dir_all(&service_routes_dir)?;
+    fs::create_dir_all(&routes_dir)?;
     fs::create_dir_all(&services_dir)?;
     fs::create_dir_all(&devices_dir)?;
 
@@ -45,15 +43,12 @@ pub fn init(path: PathBuf) -> Result<()> {
     // Routes
     write_file(
         &services_dir.join("api.toml"),
-        &template("routes_service/api.toml")?,
+        &template("routes/api.toml")?,
     )?;
+    write_file(&services_dir.join("ws.toml"), &template("routes/ws.toml")?)?;
     write_file(
-        &services_dir.join("ws.toml"),
-        &template("routes_service/ws.toml")?,
-    )?;
-    write_file(
-        &static_routes_dir.join("assets.toml"),
-        &template("routes_static/assets.toml")?,
+        &routes_dir.join("assets.toml"),
+        &template("routes/assets.toml")?,
     )?;
 
     // Services

@@ -6,27 +6,21 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Deserialize)]
-pub struct StaticRoutesFile {
-    pub route: Vec<StaticRouteConfig>,
+#[derive(Debug, Deserialize)]
+pub struct RoutesFile {
+    #[serde(default)]
+    pub service_route: Vec<ServiceRouteConfig>,
+
+    #[serde(default)]
+    pub static_route: Vec<StaticRouteConfig>,
 }
 
-pub fn parse_static_routes(path: &Path) -> Result<Vec<RouteConfig>, ConfigError> {
+pub fn parse_routes(path: &Path) -> Result<Vec<RouteConfig>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: StaticRoutesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
-    let routes = parsed.route.into_iter().map(RouteConfig::Static).collect();
-    Ok(routes)
-}
-
-#[derive(Deserialize)]
-pub struct ServiceRoutesFile {
-    pub route: Vec<ServiceRouteConfig>,
-}
-
-pub fn parse_service_routes(path: &Path) -> Result<Vec<RouteConfig>, ConfigError> {
-    let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: ServiceRoutesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
-    let routes = parsed.route.into_iter().map(RouteConfig::Service).collect();
+    let parsed: RoutesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+    let mut routes = Vec::new();
+    routes.extend(parsed.service_route.into_iter().map(RouteConfig::Service));
+    routes.extend(parsed.static_route.into_iter().map(RouteConfig::Static));
     Ok(routes)
 }
 

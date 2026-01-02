@@ -51,7 +51,7 @@ export default defineConfig({
                         {text: "Server", link: "/configuration/server"},
                         {text: "Listeners", link: "/configuration/listeners"},
                         {text: "Services", link: "/configuration/services"},
-                        // todo {text: "Routes", link: "/configuration/routes"},
+                        {text: "Routes", link: "/configuration/routes"},
                         // todo {text: "Devices", link: "/configuration/devices"}
                     ]
                 }

@@ -1,8 +1,6 @@
 use crate::conf::discover::discover;
 use crate::conf::merge::merge_services;
-use crate::conf::parse::{
-    parse_devices, parse_service_routes, parse_services, parse_static_routes,
-};
+use crate::conf::parse::{parse_devices, parse_routes, parse_services};
 use crate::conf::runtime::RuntimeConfig;
 use crate::conf::types::{EntrypointConfig, RouteConfig};
 use crate::conf::validation::error::ConfigError;
@@ -29,8 +27,7 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
 
-    let service_route_files = discover(root, &entry.include.service_routes)?;
-    let static_route_files = discover(root, &entry.include.static_routes)?;
+    let route_files = discover(root, &entry.include.routes)?;
     let service_files = discover(root, &entry.include.services)?;
     let device_files = discover(root, &entry.include.devices)?;
 
@@ -38,12 +35,8 @@ pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
     // Parse routes (hard fail)
     //--------------------------------------------------------------------------
     let mut parsed_routes: Vec<RouteConfig> = Vec::new();
-    for path in &service_route_files {
-        parsed_routes.extend(parse_service_routes(path.as_path())?);
-    }
-
-    for path in &static_route_files {
-        parsed_routes.extend(parse_static_routes(path.as_path())?);
+    for path in &route_files {
+        parsed_routes.extend(parse_routes(path.as_path())?);
     }
 
     //--------------------------------------------------------------------------

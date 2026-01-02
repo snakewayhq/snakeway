@@ -1,4 +1,4 @@
-[[route]]
+[[static_route]]
 # URL path prefix for serving static files (e.g., /assets/style.css).
 path = "/assets"
 # This route points to a static file directory.

@@ -2,8 +2,8 @@
 
 Routes define how incoming requests are matched and handled. Each route maps a URL path prefix to either:
 
-- a **service** (proxied upstream traffic), or
-- a **static filesystem directory** (local file serving).
+- **service** (proxied upstream traffic)
+- **static filesystem directory** (local file serving)
 
 Snakeway uses **longest-prefix matching**, meaning more specific routes take precedence over broader ones.
 
@@ -16,71 +16,40 @@ In your `snakeway.toml`, use the `[include]` section to specify where to find ro
 
 ```toml
 [include]
-routes_service = "routes_service/*.toml"
-routes_static = "routes_static/*.toml"
+routes = "routes/*.toml"
 ```
 
-Each included file can contain one or more `[[route]]` blocks.
-
----
+Each included file can contain one or more `[[service_route]]` and `[[static_route]]` blocks.
 
 ## Overview
 
-Routes are defined using one or more `[[route]]` blocks. These blocks can be placed in the main configuration file or in
-included files.
+Routes are defined using one or more `[[service_route]]` and `[[static_route]]` blocks.
+
+These blocks can be placed in the main configuration file or in included files.
 
 ### Service Route Example
 
-`routes_service/api.toml`:
+`routes/api.toml`:
 
 ```toml
-[[route]]
+[[service_route]]
 path = "/api"
-type = "service"
 service = "api"
 ```
 
 ### Static Route Example
 
-`routes_static/assets.toml`:
+`routes/assets.toml`:
 
 ```toml
-[[route]]
+[[static_route]]
 path = "/assets"
-type = "static"
 file_dir = "/var/www/html"
 ```
 
 Each route must explicitly declare its `type` to avoid ambiguity and enable strict validation.
 
----
-
 ## Route Types
-
-### type = "service"
-
-A **service route** forwards traffic to a named service defined in a service configuration file.
-
-#### Example
-
-```toml
-[[route]]
-path = "/api"
-type = "service"
-service = "api"
-```
-
-#### Fields
-
-##### type
-
-**Type:** `string`  
-**Required:** `true`  
-**Allowed values:** `service`, `static`
-
-Declares this route as a service-backed route.
-
----
 
 ##### path
 
@@ -98,28 +67,12 @@ Examples:
 - `/ws`
 - `/`
 
----
-
-##### service
-
-**Type:** `string`  
-**Required:** `true`
-
-The name of the service to route requests to.  
-Must match a service defined in the service configuration.
-
----
-
 ##### allow_websocket
 
 **Type:** `boolean`  
 **Default:** `false`
 
 Enables WebSocket upgrades for this route.
-
-Only valid for `type = "service"` routes.
-
----
 
 ##### ws_idle_timeout_ms
 
@@ -130,8 +83,6 @@ Idle timeout for WebSocket connections, in milliseconds.
 
 Only applicable when `allow_websocket = true`.
 
----
-
 ##### ws_max_connections
 
 **Type:** `integer`  
@@ -139,17 +90,10 @@ Only applicable when `allow_websocket = true`.
 
 Maximum number of concurrent WebSocket connections allowed for this route.
 
----
-
-### type = "static"
-
-A **static route** serves files directly from the local filesystem.
-
 #### Example
 
 ```toml
-[[route]]
-type = "static"
+[[static_route]]
 path = "/static"
 file_dir = "/var/www"
 ```
@@ -164,16 +108,12 @@ file_dir = "/var/www"
 
 Declares this route as a static file route.
 
----
-
 ##### path
 
 **Type:** `string`  
 **Required:** `true`
 
 The URL path prefix to match.
-
----
 
 ##### file_dir
 
@@ -189,8 +129,6 @@ Constraints:
 - must be a directory
 - must not be `/`
 
----
-
 ##### index
 
 **Type:** `string`  
@@ -203,8 +141,6 @@ Example:
 ```toml
 index = "index.html"
 ```
-
----
 
 ##### directory_listing
 
@@ -236,14 +172,11 @@ Advanced configuration for static file handling.
 Example:
 
 ```toml
-[[route]]
-type = "static"
+[[static_route]]
 path = "/static"
 file_dir = "/var/www"
 static_config = { enable_gzip = false, max_file_size = 1048576 }
 ```
-
----
 
 ## Static Cache Policy
 
@@ -265,8 +198,7 @@ Configuration for the Cache-Control header.
 Example:
 
 ```toml
-[[route]]
-type = "static"
+[[static_route]]
 path = "/assets"
 file_dir = "/var/www/assets"
 cache_policy = { max_age = 86400, immutable = true }
