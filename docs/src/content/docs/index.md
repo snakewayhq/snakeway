@@ -1,7 +1,7 @@
 ---
 title: Snakeway
 description: Programmable edge proxy built on Pingora
-
+template: splash
 hero:
   title: Snakeway
   subtitle: Programmable Edge Proxy
@@ -11,10 +11,10 @@ hero:
     alt: Snakeway logo
   actions:
     - text: Get Started
-      link: /guide/what-is-snakeway/
-      variant: primary
+      link: /getting-started/installation/
     - text: GitHub
       link: https://github.com/snakewayhq/snakeway
+      icon: github
       variant: secondary
 
 features:

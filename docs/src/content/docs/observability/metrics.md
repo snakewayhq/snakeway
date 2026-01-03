@@ -40,19 +40,3 @@ Stats are grouped by the service name defined in your configuration. For each se
   codes).
 - **`total_failures`**: The number of requests that resulted in an error (typically 4xx and 5xx status codes, or
   connection failures).
-
-### Integration with External Tools
-
-While the Admin API provides raw metrics in JSON format, you can easily integrate Snakeway with external monitoring
-systems:
-
-- **Prometheus**: You can use a simple sidecar or "exporter" script to poll the `/admin/stats` endpoint and convert the
-  JSON data into Prometheus-compatible metrics.
-- **CloudWatch/Datadog**: Similarly, custom scripts can be used to push Snakeway metrics to your preferred cloud
-  monitoring platform.
-
-### Future Roadmap
-
-We are planning to include native support for Prometheus and OpenTelemetry in future versions of Snakeway. This will
-allow for even easier integration with modern observability stacks, including automatic export of histograms for request
-latency and percentile tracking.

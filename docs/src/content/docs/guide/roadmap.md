@@ -337,12 +337,10 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 The following is pushed out past the v1.0.x release, because it is not in the critical path.
 
+### Static file server
+
 The additional static file features range from nice-to-haves to critical for a static file server, but static files are
 only an ancillary feature of Snakeway.
-
-Similarly, the external control plane and discovery features are only important after the core functionality exists.
-
-### Static file server
 
 1. For large files, server precompressed assets (.br/.gz)
 2. Use sendfile for zero-copy serving
@@ -351,10 +349,19 @@ Similarly, the external control plane and discovery features are only important 
 
 ### External Control Planes and Discovery
 
+Similarly, the external control plane and discovery features are only important after the core functionality exists.
+
 1. Dynamic cert management
 2. Service discovery:
+    * DNS A/AAAA \+ TTL
+    * SRV records
+    * optional plugin-based discovery
+    * optional file-based watcher
 
-* DNS A/AAAA \+ TTL
-* SRV records
-* optional plugin-based discovery
-* optional file-based watcher
+### Admissions control
+
+Standalone backpressure monitoring tool that integrates with the core proxy.
+
+### Observability
+
+Native Prometheus/OpenTelemetry support.

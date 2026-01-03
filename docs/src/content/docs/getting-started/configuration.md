@@ -26,6 +26,8 @@ A new configuration directory can be easily generated:
 snakeway config init
 ```
 
+Or, with a custom directory:
+
 ```shell
 snakeway config init /etc/snakeway
 ```
