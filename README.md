@@ -1,14 +1,3 @@
-```
-   ███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
-   ██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
-   ███████╗██╔██╗ ██║███████║█████╔╝ █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
-   ╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
-   ███████║██║ ╚████║██║  ██║██║  ██╗███████╗╚███╔███╔╝██║  ██║   ██║   
-   ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   
-
-            A programmable edge proxy built with Rust.
-```
-
 # Snakeway
 
 **Snakeway** is a modern, extensible **L7 reverse proxy** built with **Rust**.
@@ -18,11 +7,7 @@ control plane.
 
 ## Documentation
 
-- Conceptual overview: `docs/index.md`
-- Architecture and lifecycle docs: `docs/guide/`
-- Configuration reference: `docs/configuration/`
-    - [Services & Circuit Breaking](docs/content/configuration/services.md)
-    - [Admin API & Observability](docs/content/configuration/admin.md)
+See https://snakeway.dev/
 
 ## Status
 
