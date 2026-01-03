@@ -1,0 +1,9 @@
+/* Make callout titles larger */
+.vp-doc .custom-block-title {
+    font-size: 1.15em;
+}
+
+:root {
+    --vp-c-brand-1: #646cff;
+    --vp-c-brand-2: #747bff;
+}

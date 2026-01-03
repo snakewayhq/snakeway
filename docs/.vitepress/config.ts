@@ -5,6 +5,14 @@ export default defineConfig({
 
     title: "Snakeway",
     description: "Programmable proxy built on top of Pingora.",
+    markdown: {
+        container: {
+            tipLabel: ':bulb:',
+            infoLabel: ':information_source:',
+            warningLabel: ':warning:',
+            dangerLabel: ':no_entry:',
+        }
+    },
 
     themeConfig: {
         nav: [
