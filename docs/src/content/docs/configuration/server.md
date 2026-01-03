@@ -31,9 +31,7 @@ If set, Snakeway will write its process ID (PID) to the specified file on startu
 
 ```toml
 [server]
-pid_file = "/tmp/snakeway.pid"  # [!code focus]
-threads = 8
-ca_file = "./path/to/certs/ca.pem"
+pid_file = "/tmp/snakeway.pid"
 ```
 
 :::
@@ -59,9 +57,7 @@ Controls the number of worker threads used by the proxy runtime to process reque
 
 ```toml
 [server]
-pid_file = "/tmp/snakeway.pid"
-threads = 8 # [!code focus]
-ca_file = "./path/to/certs/ca.pem"
+threads = 8
 ```
 
 ## ca_file
@@ -75,9 +71,7 @@ This is not optional if upstreams are configured with TLS.
 
 ```toml
 [server]
-pid_file = "/tmp/snakeway.pid"
-threads = 8
-ca_file = "./path/to/certs/ca.pem" # [!code focus]
+ca_file = "./path/to/certs/ca.pem"
 ```
 
 ### Default behavior

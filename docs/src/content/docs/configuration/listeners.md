@@ -33,9 +33,7 @@ The address Snakeway listens on for incoming connections.
 
 ```toml
 [[listener]]
-addr = "127.0.0.1:8443" # [!code focus]
-tls = { cert = "./path/to/certs/server.pem", key = "./path/to/certs/server.key" }
-enable_http2 = true
+addr = "127.0.0.1:8443"
 ```
 
 This value is passed directly to the underlying listener. Both IP-based and hostname-based bindings are supported.
@@ -60,9 +58,7 @@ If set, Snakeway will listen on the specified address using TLS.
 
 ```toml
 [[listener]]
-addr = "127.0.0.1:8443"
-tls = { cert = "./path/to/certs/server.pem", key = "./path/to/certs/server.key" } # [!code focus]
-enable_http2 = true
+tls = { cert = "./path/to/certs/server.pem", key = "./path/to/certs/server.key" }
 ```
 
 ## enable_http2
@@ -74,9 +70,7 @@ Enables HTTP/2 (e.g., gRPC) support. If enabled, a TLS configuration is required
 
 ```toml
 [[listener]]
-addr = "127.0.0.1:8443"
-tls = { cert = "./path/to/certs/server.pem", key = "./path/to/certs/server.key" }
-enable_http2 = true # [!code focus]
+enable_http2 = true
 ```
 
 ## enable_http2

@@ -10,7 +10,7 @@ At its core, Snakeway answers a simple question:
 
 > *“What should happen to this request before, during, and after it reaches an upstream service?”*
 
-Snakeway lets you answer that question with **devices** — small, composable units of logic that can observe, mutate,
+Snakeway lets you answer that question with **devices** - small, composable units of logic that can observe, mutate,
 short-circuit, or enrich traffic as it flows through the system.
 
 ## What Snakeway Is
@@ -120,13 +120,8 @@ Snakeway is built around a few non-negotiable ideas:
 
 If you’re new to Snakeway, read these pages next:
 
-1. **[Mental Model](/guide/mental-model)** — how requests flow through the system
-2. **[Architecture](/guide/architecture)** — how Snakeway is structured internally
-3. **[Devices Overview](/devices/overview)** — how extensibility works
-4. **[Getting Started](/getting-started/installation)** — running your first proxy
+1. **[Mental Model](/guide/mental-model)** how requests flow through the system
+2. **[Architecture](/guide/architecture)** how Snakeway is structured internally
+3. **[Devices Overview](/devices/overview)** how extensibility works
+4. **[Getting Started](/getting-started/installation)** running your first proxy
 
-Snakeway is intentionally small in surface area.  
-If something feels unclear, that’s a documentation bug — not a feature.
-
-Snakeway is still evolving, but its core ideas are stable.  
-Everything else builds on top of this foundation.

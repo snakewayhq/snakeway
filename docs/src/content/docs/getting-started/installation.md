@@ -41,17 +41,3 @@ To start the proxy, simply run the binary and point it to your configuration dir
 
 If your configuration is valid, Snakeway will start and begin listening for incoming traffic based on your defined
 listeners.
-
-### Using the Justfile
-
-The Snakeway repository includes a `Justfile` (using the [just](https://github.com/casey/just) command runner) to
-simplify common development and build tasks.
-
-If you have `just` installed, you can use these convenient commands:
-
-- `just build`: Build the binary in debug mode.
-- `just release`: Build an optimized release binary.
-- `just run`: Run Snakeway with the default configuration.
-- `just test`: Run the core test suite.
-
-For a full list of available commands, you can run `just --list`.
