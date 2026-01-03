@@ -2,9 +2,10 @@ import {defineConfig} from 'astro/config'
 import starlight from '@astrojs/starlight'
 
 export default defineConfig({
+    site: 'https://snakeway.dev',
+    base: '/',
+
     integrations: [starlight({
-        site: 'https://snakeway.dev',
-        base: '/',
         title: 'Snakeway', description: 'Programmable proxy built on top of Pingora.',
 
         sidebar: [{
