@@ -3,6 +3,8 @@ import starlight from '@astrojs/starlight'
 
 export default defineConfig({
     integrations: [starlight({
+        site: 'https://snakeway.dev',
+        base: '/',
         title: 'Snakeway', description: 'Programmable proxy built on top of Pingora.',
 
         sidebar: [{
