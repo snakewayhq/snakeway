@@ -1,4 +1,7 @@
-# WebAssembly Devices
+---
+title: WebAssembly Devices
+---
+
 
 Snakeway can be extended using WebAssembly (WASM), allowing you to write custom traffic logic in a variety of languages
 while maintaining high performance and strong security isolation.
@@ -88,7 +91,7 @@ enable = true
 path = "/path/to/my_wasm_device.wasm"
 
 [wasm.config]
-# Optional configuration passed to your device
+
 key = "value"
 ```
 

@@ -1,4 +1,7 @@
-# Performance Metrics
+---
+title: Performance Metrics
+---
+
 
 Monitoring the performance and health of your proxy is critical for maintaining a reliable service. Snakeway provides
 real-time metrics through its Admin API, giving you visibility into traffic patterns and upstream health.

@@ -1,4 +1,6 @@
-# Builtin Devices
+---
+title: Builtin Devices
+---
 
 Builtin devices are first‑class, in‑process extensions that run directly inside the Snakeway request pipeline. They are
 designed for **high‑performance, low‑latency** behavior where sandboxing is unnecessary and tight integration with

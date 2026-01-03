@@ -1,4 +1,7 @@
-# Structured Logging Device
+---
+title: Structured Logging Device
+---
+
 
 The **Structured Logging device** is a builtin Snakeway device that emits structured tracing events at key points in the
 request/response lifecycle.

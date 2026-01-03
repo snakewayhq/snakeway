@@ -1,4 +1,6 @@
-# Configuring Devices
+---
+title: Configuring Devices
+---
 
 Devices are the primary way to extend Snakeway's functionality. They are small, composable units of logic that execute
 at specific points in the request/response lifecycle. In this guide, we'll explore how to enable and configure both

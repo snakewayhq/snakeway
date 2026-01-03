@@ -7,7 +7,7 @@ hero:
   subtitle: Programmable Edge Proxy
   tagline: A modern, extensible reverse proxy built on Pingora
   image:
-    file: /logo.svg
+    file: ../../assets/logo.svg
     alt: Snakeway logo
   actions:
     - text: Get Started

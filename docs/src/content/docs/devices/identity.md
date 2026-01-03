@@ -1,4 +1,6 @@
-# Identity Device
+---
+title: Identity Device
+---
 
 The **Identity** builtin device provides a canonical, request-scoped view of the client making a request. It resolves
 client identity **once**, early in the request lifecycle, and exposes it to downstream devices via a typed extension on

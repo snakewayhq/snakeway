@@ -1,4 +1,7 @@
-# Design Decisions
+---
+title: Design Decisions
+---
+
 
 This document outlines the key architectural and technical decisions made during the development of Snakeway. These
 decisions reflect our commitment to performance, safety, and developer experience.

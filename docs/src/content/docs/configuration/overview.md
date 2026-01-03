@@ -1,4 +1,6 @@
-# Configuration Overview
+---
+title: Configuration Overview
+---
 
 Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale. While small
 deployments can live in a single file, larger environments can leverage modularity to organize routes, services, and

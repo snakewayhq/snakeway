@@ -1,4 +1,7 @@
-# Threading Model
+---
+title: Threading Model
+---
+
 
 Snakeway utilizes a highly efficient, multi-worker threading model inherited from the Pingora framework. This model is
 designed to maximize CPU utilization and handle large volumes of concurrent traffic with minimal context switching.

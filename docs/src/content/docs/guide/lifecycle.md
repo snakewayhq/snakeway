@@ -1,4 +1,7 @@
-# Lifecycle
+---
+title: Lifecycle
+---
+
 
 Snakeway processes every HTTP request through a well-defined lifecycle composed of discrete, ordered phases.
 

@@ -1,4 +1,7 @@
-# Why Snakeway Exists
+---
+title: Why Snakeway Exists
+---
+
 
 The landscape of reverse proxies and API gateways is vast, ranging from simple, battle-tested tools like Nginx to
 massive, service-mesh architectures like Envoy and Istio. Snakeway exists to fill the gap between these two extremes.

@@ -1,4 +1,7 @@
-# Devices Overview
+---
+title: Devices Overview
+---
+
 
 At the core of Snakeway's design is the **Device**. A device is a modular, high-performance unit of logic that
 intercepts and processes traffic as it flows through the proxy.

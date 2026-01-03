@@ -1,4 +1,7 @@
-# Structured Logging
+---
+title: Structured Logging
+---
+
 
 Snakeway provides deep, structured observability through its `StructuredLogging` device. Instead of traditional
 line-based logs, Snakeway emits rich, JSON-formatted events that are easy to parse and analyze with modern log
@@ -63,7 +66,7 @@ is useful for reducing log volume in high-traffic environments:
 
 ```toml
 [[structured_logging]]
-# Only log the final response phase
+
 phases = ["response"]
 events = ["response"]
 ```

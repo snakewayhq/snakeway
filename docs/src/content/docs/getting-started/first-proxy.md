@@ -1,4 +1,7 @@
-# Your First Proxy
+---
+title: Your First Proxy
+---
+
 
 The best way to understand Snakeway is to see it in action. In this guide, we'll walk through setting up a minimal proxy
 that forwards traffic to a public API.

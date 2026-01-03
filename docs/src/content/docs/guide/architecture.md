@@ -1,4 +1,7 @@
-# Architecture
+---
+title: Architecture
+---
+
 
 Snakeway is designed to be a high-performance, modular, and extensible traffic control engine. Its architecture
 leverages the strengths of the Rust programming language and the Pingora proxy framework to deliver a robust and

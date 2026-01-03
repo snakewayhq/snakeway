@@ -1,4 +1,7 @@
-# Static Files
+---
+title: Static Files
+---
+
 
 Snakeway can serve static files directly from the filesystem, making it easy to host frontend assets, images, and other
 static content without needing a separate web server.
@@ -115,12 +118,12 @@ file_dir = "/var/www/assets"
 **Mix static files with API proxy:**
 
 ```toml
-# API requests go to upstream
+
 [[static_route]]
 path = "/api"
 service = "127.0.0.1:8080"
 
-# Everything else serves static files
+
 [[static_route]]
 path = "/"
 file_dir = "/var/www/public"

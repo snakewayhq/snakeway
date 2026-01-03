@@ -1,4 +1,7 @@
-# Admin API
+---
+title: Admin API
+---
+
 
 Snakeway includes a built-in administrative API that allows you to monitor the health of your proxy, inspect upstream
 services, view performance statistics, and trigger configuration reloads.

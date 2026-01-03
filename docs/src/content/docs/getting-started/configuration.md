@@ -1,4 +1,7 @@
-# Configuration
+---
+title: Configuration
+---
+
 
 Snakeway cannot run without configuration files.
 

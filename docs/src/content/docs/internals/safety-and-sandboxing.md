@@ -1,4 +1,7 @@
-# Safety and Sandboxing
+---
+title: Safety and Sandboxing
+---
+
 
 Security and stability are core tenets of Snakeway. When building a programmable proxy, it is essential to ensure that
 user-defined logic cannot compromise the integrity of the system or other requests.

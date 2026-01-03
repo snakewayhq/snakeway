@@ -1,4 +1,7 @@
-# Mental Model
+---
+title: Mental Model
+---
+
 
 This page explains **how Snakeway thinks about traffic**.
 

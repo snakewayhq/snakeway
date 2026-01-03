@@ -1,4 +1,6 @@
-# Admin API
+---
+title: Admin API
+---
 
 Snakeway provides a built-in Admin API for observability and operational insight. These endpoints are available on the
 main listener under the `/admin/` path.
@@ -19,7 +21,9 @@ state.
   "services": {
     "api": {
       "127.0.0.1:8080": {
-        "health": { "healthy": true },
+        "health": {
+          "healthy": true
+        },
         "circuit": "closed",
         "active_requests": 0,
         "total_requests": 150,

@@ -1,4 +1,7 @@
-# What Is Snakeway?
+---
+title: What Is Snakeway?
+---
+
 
 Snakeway is a **programmable traffic control engine** that sits in front of your services and executes a configurable
 pipeline of logic on every request and response.

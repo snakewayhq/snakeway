@@ -1,4 +1,6 @@
-# Route Configuration
+---
+title: Route Configuration
+---
 
 Routes define how incoming requests are matched and handled. Each route maps a URL path prefix to either:
 

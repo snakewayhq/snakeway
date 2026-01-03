@@ -1,4 +1,7 @@
-# Reloads
+---
+title: Reloads
+---
+
 
 Snakeway supports hot reloads for configuration files. This means that changes to configuration files can be applied
 without restarting the Snakeway process.

@@ -1,4 +1,7 @@
-# Installation
+---
+title: Installation
+---
+
 
 Snakeway is a modern, high-performance edge proxy built on Rust and Pingora. Getting it running on your local machine is
 straightforward, whether you're building from source or using a pre-compiled binary.

@@ -1,4 +1,6 @@
-# Service Configuration
+---
+title: Service Configuration
+---
 
 Services define how groups of upstreams are managed, including load balancing and circuit breaking.
 

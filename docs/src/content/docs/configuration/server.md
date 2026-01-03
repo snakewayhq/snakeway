@@ -1,4 +1,6 @@
-# Server Configuration
+---
+title: Server Configuration
+---
 
 The `server` configuration block controls how Snakeway runs as a process.
 

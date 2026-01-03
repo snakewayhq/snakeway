@@ -1,4 +1,7 @@
-# Request Pipeline
+---
+title: Request Pipeline
+---
+
 
 Understanding the journey of a request through Snakeway is key to building effective traffic logic. The pipeline is
 designed to be deterministic, with clearly defined stages for both processing and extension.
