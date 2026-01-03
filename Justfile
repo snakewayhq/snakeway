@@ -29,7 +29,7 @@ install-dev-tools:
     cargo install tokio-console samply cargo-nextest
 
 docs:
-    cd docs && npm run docs:dev
+    cd docs && bun start
 
 # Install mkcert and nss, then create dev certs.
 setup-tls-dev-cert:
