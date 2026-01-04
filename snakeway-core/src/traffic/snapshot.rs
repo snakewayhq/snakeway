@@ -1,5 +1,5 @@
 use crate::conf::types::LoadBalancingStrategy;
-use crate::server::{RuntimeState, UpstreamRuntime};
+use crate::runtime::{RuntimeState, UpstreamRuntime};
 use crate::traffic::types::*;
 use std::collections::HashMap;
 

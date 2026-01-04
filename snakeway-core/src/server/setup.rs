@@ -1,9 +1,9 @@
 use crate::conf::RuntimeConfig;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::{AdminGateway, PublicGateway};
+use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
-use crate::server::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::traffic::{TrafficManager, TrafficSnapshot};
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
