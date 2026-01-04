@@ -366,3 +366,7 @@ Standalone backpressure monitoring tool that integrates with the core proxy.
 ### Observability
 
 Native Prometheus/OpenTelemetry support.
+
+### Enhanced Hot reload
+
+Zero-drop reload support.
