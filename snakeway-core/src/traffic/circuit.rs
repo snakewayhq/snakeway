@@ -1,4 +1,4 @@
-use crate::server::UpstreamId;
+use crate::runtime::UpstreamId;
 use crate::traffic::ServiceId;
 use std::time::{Duration, Instant, SystemTime};
 use tracing::info;

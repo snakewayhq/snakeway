@@ -1,6 +1,6 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::ctx::RequestCtx;
-use crate::server::{UpstreamId, UpstreamRuntime};
+use crate::runtime::{UpstreamId, UpstreamRuntime};
 use crate::traffic::circuit::CircuitBreakerParams;
 use crate::traffic::decision::TrafficDecision;
 use crate::traffic::strategy::TrafficStrategy;

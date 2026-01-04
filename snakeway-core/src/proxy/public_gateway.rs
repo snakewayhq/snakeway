@@ -5,7 +5,7 @@ use crate::proxy::error_classification::classify_pingora_error;
 use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteRuntime;
-use crate::server::{RuntimeState, UpstreamRuntime};
+use crate::runtime::{RuntimeState, UpstreamRuntime};
 
 use crate::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,

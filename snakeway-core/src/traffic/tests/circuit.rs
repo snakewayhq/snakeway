@@ -1,4 +1,4 @@
-use crate::server::UpstreamId;
+use crate::runtime::UpstreamId;
 use crate::traffic::circuit::*;
 use crate::traffic::types::ServiceId;
 use std::time::Duration;

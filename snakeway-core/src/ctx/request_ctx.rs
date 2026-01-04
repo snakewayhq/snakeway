@@ -1,4 +1,4 @@
-use crate::server::UpstreamId;
+use crate::runtime::UpstreamId;
 use crate::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use http::{Extensions, HeaderMap, Method, Uri};
 use pingora::prelude::Session;
