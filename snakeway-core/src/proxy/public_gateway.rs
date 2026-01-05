@@ -7,8 +7,8 @@ use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteRuntime;
 use crate::runtime::{RuntimeState, UpstreamRuntime};
 
-use crate::connection::ConnectionManager;
-use crate::traffic::{
+use crate::connection_management::ConnectionManager;
+use crate::traffic_management::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use arc_swap::ArcSwap;

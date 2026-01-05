@@ -1,11 +1,11 @@
 use crate::conf::RuntimeConfig;
-use crate::connection::ConnectionManager;
+use crate::connection_management::ConnectionManager;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::{AdminGateway, PublicGateway};
 use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
-use crate::traffic::{TrafficManager, TrafficSnapshot};
+use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
 use pingora::listeners::tls::TlsSettings;

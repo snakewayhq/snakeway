@@ -1,5 +1,5 @@
-use crate::traffic::HealthStatus;
-use crate::traffic::circuit::{CircuitBreakerParams, CircuitState};
+use crate::traffic_management::HealthStatus;
+use crate::traffic_management::circuit::{CircuitBreakerParams, CircuitState};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

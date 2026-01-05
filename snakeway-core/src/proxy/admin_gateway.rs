@@ -1,7 +1,7 @@
 use crate::ctx::RequestCtx;
 use crate::proxy::handlers::AdminHandler;
 use crate::server::ReloadHandle;
-use crate::traffic::TrafficManager;
+use crate::traffic_management::TrafficManager;
 use async_trait::async_trait;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};

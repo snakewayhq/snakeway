@@ -1,6 +1,6 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::runtime::{RuntimeState, UpstreamRuntime};
-use crate::traffic::types::*;
+use crate::traffic_management::types::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

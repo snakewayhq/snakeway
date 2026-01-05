@@ -1,5 +1,5 @@
 use crate::server::ReloadHandle;
-use crate::traffic::TrafficManager;
+use crate::traffic_management::TrafficManager;
 use http::{StatusCode, header};
 use pingora::prelude::Session;
 use pingora::{Custom, Error};

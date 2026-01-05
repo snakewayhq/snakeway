@@ -1,5 +1,5 @@
-use crate::connection::guard::ConnectionGuard;
-use crate::connection::state::RouteConnectionState;
+use crate::connection_management::guard::ConnectionGuard;
+use crate::connection_management::state::RouteConnectionState;
 use crate::route::types::RouteId;
 use dashmap::DashMap;
 use std::sync::Arc;

@@ -11,7 +11,7 @@ pub mod route;
 pub mod server;
 pub mod traffic;
 
-pub mod connection;
+pub mod connection_management;
 mod proxy;
 pub mod runtime;
 #[cfg(feature = "static_files")]

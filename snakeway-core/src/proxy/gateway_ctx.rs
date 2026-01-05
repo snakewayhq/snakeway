@@ -1,6 +1,6 @@
-use crate::connection::ConnectionManager;
+use crate::connection_management::ConnectionManager;
 use crate::runtime::RuntimeState;
-use crate::traffic::TrafficManager;
+use crate::traffic_management::TrafficManager;
 use arc_swap::{ArcSwap, Guard};
 use std::sync::Arc;
 

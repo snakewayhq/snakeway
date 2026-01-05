@@ -1,7 +1,7 @@
 use crate::conf::types::{HealthCheckConfig, LoadBalancingStrategy};
 use crate::runtime::{UpstreamId, UpstreamRuntime};
-use crate::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
-use crate::traffic::{ServiceId, TrafficManager};
+use crate::traffic_management::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
+use crate::traffic_management::{ServiceId, TrafficManager};
 use std::collections::HashMap;
 
 #[test]
@@ -96,7 +96,10 @@ fn test_admin_view_circuit_details() {
 
     let view = manager.get_upstream_view(&service_id, &upstream_id, true);
 
-    assert_eq!(view.circuit, crate::traffic::circuit::CircuitState::Open);
+    assert_eq!(
+        view.circuit,
+        crate::traffic_management::circuit::CircuitState::Open
+    );
     let details = view.circuit_details.expect("details");
     assert!(details.opened_at_rfc3339.is_some());
 

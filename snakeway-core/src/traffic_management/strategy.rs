@@ -1,6 +1,6 @@
 use crate::ctx::RequestCtx;
-use crate::traffic::decision::TrafficDecision;
-use crate::traffic::{ServiceId, TrafficManager, UpstreamSnapshot};
+use crate::traffic_management::decision::TrafficDecision;
+use crate::traffic_management::{ServiceId, TrafficManager, UpstreamSnapshot};
 
 pub trait TrafficStrategy: Send + Sync {
     fn decide(

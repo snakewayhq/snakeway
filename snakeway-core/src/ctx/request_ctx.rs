@@ -1,7 +1,7 @@
-use crate::connection::ConnectionGuard;
+use crate::connection_management::ConnectionGuard;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
-use crate::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use http::{Extensions, HeaderMap, Method, Uri};
 use pingora::prelude::Session;
 use std::net::{IpAddr, Ipv4Addr};

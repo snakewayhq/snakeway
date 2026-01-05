@@ -1,4 +1,4 @@
-use crate::connection::state::RouteConnectionState;
+use crate::connection_management::state::RouteConnectionState;
 use std::sync::Arc;
 
 /// RAII guard for a single acquired connection slot.
