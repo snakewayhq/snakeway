@@ -1,6 +1,7 @@
 use crate::conf::types::{RouteConfig, ServiceConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
+use crate::route::types::RouteId;
 use crate::route::{RouteRuntime, Router};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
@@ -89,13 +90,17 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
     for route in routes {
         let route_runtime = match &route {
             RouteConfig::Service(cfg) => RouteRuntime::Service {
+                id: RouteId::service(&cfg.path, &cfg.service),
                 upstream: cfg.service.clone(),
                 allow_websocket: cfg.allow_websocket,
+                ws_max_connections: cfg.ws_max_connections,
+                ws_idle_timeout_ms: cfg.ws_idle_timeout_ms,
             },
             RouteConfig::Static(cfg) => RouteRuntime::Static {
+                id: RouteId::static_route(&cfg.path, &canonicalize_dir(&cfg.file_dir)),
                 path: cfg.path.clone(),
                 file_dir: cfg.file_dir.clone(),
-                index: cfg.index.clone().is_some(),
+                index: cfg.index.is_some(),
                 directory_listing: cfg.directory_listing,
                 static_config: cfg.static_config.clone(),
                 cache_policy: cfg.cache_policy.clone(),
@@ -148,4 +153,15 @@ fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 
     UpstreamId(HASHER.hash_one((host, port)) as u32)
+}
+
+/// Converts a directory path to its full absolute path as a string.
+///
+/// Takes a path that might be relative (like `./files` or `../data`) and converts
+/// it to a complete path (like `/home/user/app/files`). If the path doesn't exist
+/// or can't be resolved, it just uses the path as-is.
+fn canonicalize_dir(dir: &Path) -> String {
+    let path_buf = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+    let result = path_buf.to_string_lossy();
+    result.to_string()
 }

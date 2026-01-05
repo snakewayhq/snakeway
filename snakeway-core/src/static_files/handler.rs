@@ -11,6 +11,7 @@ pub async fn handle_static_request(
     conditional: &ConditionalHeaders,
 ) -> StaticResponse {
     let RouteRuntime::Static {
+        id,
         path,
         file_dir,
         index,

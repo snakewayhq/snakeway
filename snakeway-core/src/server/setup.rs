@@ -1,4 +1,5 @@
 use crate::conf::RuntimeConfig;
+use crate::connection::ConnectionManager;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::{AdminGateway, PublicGateway};
 use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
@@ -32,7 +33,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     // Build initial runtime state (reloadable)
     let initial_state = build_runtime_state(&config)?;
     let state = Arc::new(ArcSwap::from_pointee(initial_state));
-    let traffic = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
+    let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
         state.load().as_ref(),
     )));
 
@@ -60,7 +61,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
         let mut last_epoch = 0;
         let state = state.clone();
         let config_path = config_path.clone();
-        let traffic = Arc::clone(&traffic);
+        let traffic = Arc::clone(&traffic_manager);
 
         async move {
             tracing::info!("Reload loop started");
@@ -89,12 +90,20 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
         }
     });
 
+    let connection_manager = Arc::new(ConnectionManager::new());
+
     // Build Pingora server (Pingora owns its own runtimes)
-    let server = build_pingora_server(config.clone(), state, Arc::clone(&traffic), reload.clone())
-        .map_err(|e| {
-            tracing::error!(error = %e, "failed to build Pingora server");
-            e
-        })?;
+    let server = build_pingora_server(
+        config.clone(),
+        state,
+        Arc::clone(&traffic_manager),
+        Arc::clone(&connection_manager),
+        reload.clone(),
+    )
+    .map_err(|e| {
+        tracing::error!(error = %e, "failed to build Pingora server");
+        e
+    })?;
 
     // Ensure pid file cleanup on shutdown
     if let Some(pid_file) = config.server.pid_file.clone() {
@@ -116,6 +125,7 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
     traffic: Arc<TrafficManager>,
+    connection_manager: Arc<ConnectionManager>,
     reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
@@ -142,7 +152,8 @@ pub fn build_pingora_server(
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
     // Build the public HTTP proxy service from Pingora.
-    let public_gateway = PublicGateway::new(state.clone(), traffic.clone());
+    let public_gateway =
+        PublicGateway::new(state.clone(), traffic.clone(), connection_manager.clone());
     let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
     for listener in &config
         .listeners

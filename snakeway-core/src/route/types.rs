@@ -1,5 +1,6 @@
 use crate::conf::types::{StaticCachePolicy, StaticFileConfig};
-use std::path::{Path, PathBuf};
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -34,30 +35,61 @@ impl RouteRuntime {
     }
 }
 
-/// RouteId format:
-/// service:{path}:{service}
-/// static:{path}:{file_dir}
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct RouteId(Arc<str>);
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub enum RouteKind {
+    Service,
+    Static,
+}
 
-impl RouteId {
-    pub fn new(s: impl Into<Arc<str>>) -> Self {
-        Self(s.into())
-    }
+#[derive(Debug, Clone, Eq)]
+pub struct RouteId {
+    kind: RouteKind,
+    path: Arc<str>,
+    target: Arc<str>,
+}
 
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    pub fn from_config(kind: &str, path: &str, target: &str) -> Self {
-        let normalized_path = path.trim_end_matches('/');
-        let id = format!("{}:{}:{}", kind, normalized_path, target);
-        Self::new(id)
+impl PartialEq for RouteId {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && self.path == other.path && self.target == other.target
     }
 }
 
-pub fn canonicalize_dir(dir: &Path) -> String {
-    let path_buf = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
-    let result = path_buf.to_string_lossy();
-    result.to_string()
+impl Hash for RouteId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        self.path.hash(state);
+        self.target.hash(state);
+    }
+}
+
+impl RouteId {
+    pub fn service(path: &str, service: &str) -> Self {
+        Self {
+            kind: RouteKind::Service,
+            path: Arc::from(path.trim_end_matches('/')),
+            target: Arc::from(service),
+        }
+    }
+
+    pub fn static_route(path: &str, file_dir: &str) -> Self {
+        Self {
+            kind: RouteKind::Static,
+            path: Arc::from(path.trim_end_matches('/')),
+            target: Arc::from(file_dir),
+        }
+    }
+
+    /// Stable string form for logging / admin APIs
+    pub fn as_str(&self) -> String {
+        let kind = match self.kind {
+            RouteKind::Service => "service",
+            RouteKind::Static => "static",
+        };
+
+        format!("{kind}:{}:{}", self.path, self.target)
+    }
+
+    pub fn kind(&self) -> RouteKind {
+        self.kind
+    }
 }
