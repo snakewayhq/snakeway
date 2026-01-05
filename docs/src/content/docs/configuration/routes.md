@@ -67,13 +67,6 @@ The name of the service to proxy requests to. This must match a service defined 
 
 Enables WebSocket upgrades for this route.
 
-##### ws_idle_timeout_ms
-
-**Type:** `integer`  
-**Optional**
-
-Idle timeout for WebSocket connections, in milliseconds. Only applicable when `allow_websocket = true`.
-
 ##### ws_max_connections
 
 **Type:** `integer`  

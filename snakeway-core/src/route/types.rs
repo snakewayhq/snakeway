@@ -11,7 +11,6 @@ pub enum RouteRuntime {
         upstream: String,
         allow_websocket: bool,
         ws_max_connections: Option<usize>,
-        ws_idle_timeout_ms: Option<usize>,
     },
 
     /// Serve files from the local filesystem

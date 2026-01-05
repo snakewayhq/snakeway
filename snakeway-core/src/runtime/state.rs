@@ -94,7 +94,6 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
                 upstream: cfg.service.clone(),
                 allow_websocket: cfg.allow_websocket,
                 ws_max_connections: cfg.ws_max_connections,
-                ws_idle_timeout_ms: cfg.ws_idle_timeout_ms,
             },
             RouteConfig::Static(cfg) => RouteRuntime::Static {
                 id: RouteId::static_route(&cfg.path, &canonicalize_dir(&cfg.file_dir)),
