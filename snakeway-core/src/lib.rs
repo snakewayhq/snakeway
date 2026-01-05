@@ -9,7 +9,7 @@ pub mod http_event;
 pub mod logging;
 pub mod route;
 pub mod server;
-pub mod traffic;
+pub mod traffic_management;
 
 pub mod connection_management;
 mod proxy;
