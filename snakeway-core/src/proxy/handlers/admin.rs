@@ -84,7 +84,7 @@ impl AdminHandler {
 
             AdminEndpoint::Stats => {
                 let traffic = self.traffic_manager.snapshot();
-                let mut stats = std::collections::HashMap::new();
+                let mut traffic_stats = std::collections::HashMap::new();
 
                 for (svc_id, svc_snapshot) in &traffic.services {
                     let mut svc_stats = serde_json::json!({
@@ -111,7 +111,7 @@ impl AdminHandler {
                         s["total_failures"] =
                             (s["total_failures"].as_u64().unwrap() + failures as u64).into();
                     }
-                    stats.insert(svc_id.clone(), svc_stats);
+                    traffic_stats.insert(svc_id.clone(), svc_stats);
                 }
 
                 let connections = self.connection_manager.snapshot();
@@ -128,7 +128,7 @@ impl AdminHandler {
                 }
 
                 let body = serde_json::to_vec(&serde_json::json!({
-                    "traffic": stats,
+                    "traffic": traffic_stats,
                     "connections": {
                         "websocket": ws_connections
                     }
