@@ -1,6 +1,6 @@
 ---
 title: Snakeway
-description: Programmable edge proxy built on Pingora
+description: A modern, extensible reverse proxy built with Rust
 template: splash
 hero:
   title: Snakeway

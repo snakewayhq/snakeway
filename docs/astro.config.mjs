@@ -6,9 +6,9 @@ export default defineConfig({
 
     integrations: [starlight({
         title: 'Snakeway',
-        description: 'Programmable proxy built on top of Pingora.',
+        description: 'Programmable proxy built with rust.',
 
-        // Social Links
+        // TOC
         tableOfContents: {minHeadingLevel: 2, maxHeadingLevel: 2},
 
         // Logo
