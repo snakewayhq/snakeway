@@ -1,3 +1,4 @@
+use crate::connection_management::ConnectionManager;
 use crate::ctx::RequestCtx;
 use crate::proxy::handlers::AdminHandler;
 use crate::server::ReloadHandle;
@@ -12,9 +13,13 @@ pub struct AdminGateway {
 }
 
 impl AdminGateway {
-    pub fn new(traffic_manager: Arc<TrafficManager>, reload: Arc<ReloadHandle>) -> Self {
+    pub fn new(
+        traffic_manager: Arc<TrafficManager>,
+        connection_manager: Arc<ConnectionManager>,
+        reload: Arc<ReloadHandle>,
+    ) -> Self {
         Self {
-            admin_handler: AdminHandler::new(traffic_manager, reload),
+            admin_handler: AdminHandler::new(traffic_manager, connection_manager, reload),
         }
     }
 }

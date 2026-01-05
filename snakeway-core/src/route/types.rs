@@ -1,4 +1,5 @@
 use crate::conf::types::{StaticCachePolicy, StaticFileConfig};
+use serde::Serialize;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -34,13 +35,13 @@ impl RouteRuntime {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize)]
 pub enum RouteKind {
     Service,
     Static,
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, Serialize)]
 pub struct RouteId {
     kind: RouteKind,
     path: Arc<str>,

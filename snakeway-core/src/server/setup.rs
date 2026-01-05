@@ -124,7 +124,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
 pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
-    traffic: Arc<TrafficManager>,
+    traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<ConnectionManager>,
     reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
@@ -152,8 +152,11 @@ pub fn build_pingora_server(
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
     // Build the public HTTP proxy service from Pingora.
-    let public_gateway =
-        PublicGateway::new(state.clone(), traffic.clone(), connection_manager.clone());
+    let public_gateway = PublicGateway::new(
+        state.clone(),
+        traffic_manager.clone(),
+        connection_manager.clone(),
+    );
     let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
     for listener in &config
         .listeners
@@ -179,7 +182,7 @@ pub fn build_pingora_server(
     server.add_service(public_svc);
 
     // Build the admin HTTP proxy service from Pingora.
-    let admin_gateway = AdminGateway::new(traffic, reload);
+    let admin_gateway = AdminGateway::new(traffic_manager, connection_manager, reload);
     let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
     for listener in &config
         .listeners

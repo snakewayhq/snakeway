@@ -1,3 +1,4 @@
+use crate::connection_management::ConnectionManager;
 use crate::server::ReloadHandle;
 use crate::traffic_management::TrafficManager;
 use http::{StatusCode, header};
@@ -31,13 +32,19 @@ impl FromStr for AdminEndpoint {
 
 pub struct AdminHandler {
     traffic_manager: Arc<TrafficManager>,
+    connection_manager: Arc<ConnectionManager>,
     reload: Arc<ReloadHandle>,
 }
 
 impl AdminHandler {
-    pub fn new(traffic_manager: Arc<TrafficManager>, reload: Arc<ReloadHandle>) -> Self {
+    pub fn new(
+        traffic_manager: Arc<TrafficManager>,
+        connection_manager: Arc<ConnectionManager>,
+        reload: Arc<ReloadHandle>,
+    ) -> Self {
         Self {
             traffic_manager,
+            connection_manager,
             reload,
         }
     }
@@ -76,10 +83,10 @@ impl AdminHandler {
             }
 
             AdminEndpoint::Stats => {
-                let snapshot = self.traffic_manager.snapshot();
+                let traffic = self.traffic_manager.snapshot();
                 let mut stats = std::collections::HashMap::new();
 
-                for (svc_id, svc_snapshot) in &snapshot.services {
+                for (svc_id, svc_snapshot) in &traffic.services {
                     let mut svc_stats = serde_json::json!({
                         "total_requests": 0,
                         "total_successes": 0,
@@ -107,8 +114,26 @@ impl AdminHandler {
                     stats.insert(svc_id.clone(), svc_stats);
                 }
 
-                let body = serde_json::to_vec(&stats)
-                    .map_err(|_| Error::new(Custom("json serialization failed")))?;
+                let connections = self.connection_manager.snapshot();
+
+                let mut ws_connections = std::collections::HashMap::new();
+                for c in connections {
+                    ws_connections.insert(
+                        c.route_id,
+                        serde_json::json!({
+                            "active": c.active,
+                            "max": c.max
+                        }),
+                    );
+                }
+
+                let body = serde_json::to_vec(&serde_json::json!({
+                    "traffic": stats,
+                    "connections": {
+                        "websocket": ws_connections
+                    }
+                }))
+                .map_err(|_| Error::new(Custom("json serialization failed")))?;
 
                 self.send_json_response(session, StatusCode::OK, body)
                     .await?;

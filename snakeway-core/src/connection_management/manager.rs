@@ -52,3 +52,25 @@ impl ConnectionManager {
             .unwrap_or(0)
     }
 }
+
+pub struct RouteConnectionSnapshot {
+    pub route_id: RouteId,
+    pub active: usize,
+    pub max: Option<usize>,
+}
+
+impl ConnectionManager {
+    pub fn snapshot(&self) -> Vec<RouteConnectionSnapshot> {
+        self.routes
+            .iter()
+            .map(|entry| {
+                let state = entry.value();
+                RouteConnectionSnapshot {
+                    route_id: entry.key().clone(),
+                    active: state.active(),
+                    max: state.max(),
+                }
+            })
+            .collect()
+    }
+}

@@ -50,4 +50,8 @@ impl RouteConnectionState {
     pub fn active(&self) -> usize {
         self.active.load(Ordering::Relaxed)
     }
+
+    pub fn max(&self) -> Option<usize> {
+        self.max
+    }
 }
