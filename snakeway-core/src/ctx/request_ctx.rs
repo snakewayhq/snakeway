@@ -1,5 +1,7 @@
+use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
-use crate::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::ws_connection_management::WsConnectionGuard;
 use http::{Extensions, HeaderMap, Method, Uri};
 use pingora::prelude::Session;
 use std::net::{IpAddr, Ipv4Addr};
@@ -7,6 +9,11 @@ use std::net::{IpAddr, Ipv4Addr};
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
 pub struct RequestCtx {
+    pub route_id: Option<RouteId>,
+
+    // Holds the WS connection slot for the lifetime of the connection
+    pub ws_guard: Option<WsConnectionGuard>,
+
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
     pub admission_guard: Option<AdmissionGuard>,
 
@@ -68,6 +75,9 @@ impl Default for RequestCtx {
 impl RequestCtx {
     pub fn empty() -> Self {
         Self {
+            route_id: None,
+            ws_guard: None,
+
             // Request lifecycle-related.
             hydrated: false,
             admission_guard: None,

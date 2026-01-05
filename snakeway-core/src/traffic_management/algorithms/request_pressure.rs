@@ -1,5 +1,5 @@
 use crate::ctx::RequestCtx;
-use crate::traffic::{
+use crate::traffic_management::{
     ServiceId, TrafficManager, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
 

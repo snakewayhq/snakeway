@@ -1,4 +1,4 @@
-use crate::traffic::TransportFailure;
+use crate::traffic_management::TransportFailure;
 
 /// Classifies Pingora upstream errors into Snakeway transport failures.
 /// Non-upstream errors are intentionally ignored to avoid penalizing healthy upstreams.

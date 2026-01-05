@@ -1,10 +1,10 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::ctx::RequestCtx;
 use crate::runtime::{UpstreamId, UpstreamRuntime};
-use crate::traffic::circuit::CircuitBreakerParams;
-use crate::traffic::decision::TrafficDecision;
-use crate::traffic::strategy::TrafficStrategy;
-use crate::traffic::{
+use crate::traffic_management::circuit::CircuitBreakerParams;
+use crate::traffic_management::decision::TrafficDecision;
+use crate::traffic_management::strategy::TrafficStrategy;
+use crate::traffic_management::{
     TrafficManager,
     decision::DecisionReason,
     director::{TrafficDirector, TrafficError},

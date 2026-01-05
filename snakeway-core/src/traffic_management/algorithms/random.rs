@@ -1,12 +1,13 @@
 use crate::ctx::RequestCtx;
-use crate::traffic::{
+use crate::traffic_management::{
     ServiceId, TrafficManager, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
+use rand::{Rng, rng};
 
 #[derive(Debug, Default)]
-pub struct Failover {}
+pub struct Random {}
 
-impl TrafficStrategy for Failover {
+impl TrafficStrategy for Random {
     fn decide(
         &self,
         _req: &RequestCtx,
@@ -18,13 +19,14 @@ impl TrafficStrategy for Failover {
             return None;
         }
 
-        let healthy = healthy.first()?;
+        // This is per thread, which is ok for a random algorithm.
+        let idx = rng().random_range(0..healthy.len());
+        let upstream_snapshot = &healthy[idx];
 
         Some(TrafficDecision {
-            upstream_id: healthy.endpoint.id,
-            reason: DecisionReason::Failover,
+            upstream_id: upstream_snapshot.endpoint.id,
+            reason: DecisionReason::Random,
             protocol: None,
-
             cb_started: true,
         })
     }

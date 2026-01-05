@@ -17,6 +17,7 @@ pub async fn handle_static_request(
         directory_listing,
         static_config,
         cache_policy,
+        ..
     } = route
     else {
         unreachable!("handle_static_request called with non-static route");

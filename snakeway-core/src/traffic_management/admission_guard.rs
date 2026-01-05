@@ -1,5 +1,5 @@
 use crate::runtime::UpstreamId;
-use crate::traffic::{ServiceId, TrafficManager};
+use crate::traffic_management::{ServiceId, TrafficManager};
 use std::sync::Arc;
 
 #[derive(Debug)]

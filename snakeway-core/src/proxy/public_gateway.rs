@@ -7,9 +7,10 @@ use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteRuntime;
 use crate::runtime::{RuntimeState, UpstreamRuntime};
 
-use crate::traffic::{
+use crate::traffic_management::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
+use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -28,8 +29,12 @@ pub struct PublicGateway {
 }
 
 impl PublicGateway {
-    pub fn new(state: Arc<ArcSwap<RuntimeState>>, traffic_manager: Arc<TrafficManager>) -> Self {
-        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone());
+    pub fn new(
+        state: Arc<ArcSwap<RuntimeState>>,
+        traffic_manager: Arc<TrafficManager>,
+        connection_manager: Arc<WsConnectionManager>,
+    ) -> Self {
+        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager);
         Self {
             gw_ctx,
             traffic_director: TrafficDirector,
@@ -171,7 +176,8 @@ impl ProxyHttp for PublicGateway {
         };
 
         match &route.kind {
-            RouteRuntime::Static { .. } => {
+            RouteRuntime::Static { id, .. } => {
+                ctx.route_id = Some(id.clone());
                 if ctx.is_upgrade_req {
                     // Reject websocket upgrade requests for static files.
                     session
@@ -185,15 +191,31 @@ impl ProxyHttp for PublicGateway {
             }
 
             RouteRuntime::Service {
+                id,
                 upstream,
                 allow_websocket,
+                ws_max_connections,
+                ..
             } => {
+                ctx.route_id = Some(id.clone());
+
                 // If it is a websocket upgrade request, check if the upstream supports websockets.
-                if ctx.is_upgrade_req && !allow_websocket {
-                    session
-                        .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
-                        .await?;
-                    return Ok(true);
+                if ctx.is_upgrade_req {
+                    if !allow_websocket {
+                        session
+                            .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
+                            .await?;
+                        return Ok(true);
+                    }
+
+                    // Acquire a connection slot for ws guard.
+                    let guard = self
+                        .gw_ctx
+                        .connection_manager
+                        .try_acquire(id, ws_max_connections.to_owned())
+                        .ok_or_else(|| Error::new(Custom("too many websocket connections")))?;
+
+                    ctx.ws_guard = Some(guard);
                 }
 
                 ctx.service = Some(upstream.clone());
