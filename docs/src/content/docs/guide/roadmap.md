@@ -257,7 +257,7 @@ Todo:
 
 ### Goals
 
-* Let’s Encrypt automation
+* Let's Encrypt automation
 * Automatic cert renewal
 * Integration with devices
 

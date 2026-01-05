@@ -77,7 +77,7 @@ ca_file = "./path/to/certs/ca.pem"
 ### Default behavior
 
 If `threads` is **not set**, Snakeway does not select a value on your behalf. Instead, it *defers entirely* to the
-runtime’s internal defaults and scheduling heuristics.
+runtime's internal defaults and scheduling heuristics.
 
 This behavior is intentional. The runtime defaults are designed to prioritize:
 

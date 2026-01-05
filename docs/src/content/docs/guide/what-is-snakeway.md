@@ -31,12 +31,12 @@ Snakeway is intentionally **not**:
 
 - A service mesh
 - A general-purpose application framework
-- A replacement for your cloud provider’s L4 load balancer
+- A replacement for your cloud provider's L4 load balancer
 - A UI-driven gateway product with a control plane SaaS
 
-If you’re looking for automatic retries, policy DSLs, or cluster-wide orchestration, Snakeway is the wrong tool.
+If you're looking for automatic retries, policy DSLs, or cluster-wide orchestration, Snakeway is the wrong tool.
 
-If you want **precise, inspectable, programmable control over requests**, it’s the right one.
+If you want **precise, inspectable, programmable control over requests**, it's the right one.
 
 ## The Core Idea: Devices
 
@@ -114,11 +114,11 @@ Snakeway is built around a few non-negotiable ideas:
   User-defined logic runs in constrained environments.
 
 - **Observable from day one**  
-  Traffic you can’t see is traffic you don’t control.
+  Traffic you can't see is traffic you don't control.
 
 ## How to Read the Docs
 
-If you’re new to Snakeway, read these pages next:
+If you're new to Snakeway, read these pages next:
 
 1. **[Mental Model](/guide/mental-model)** how requests flow through the system
 2. **[Architecture](/guide/architecture)** how Snakeway is structured internally

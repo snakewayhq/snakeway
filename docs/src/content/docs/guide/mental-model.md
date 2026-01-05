@@ -162,7 +162,7 @@ This mental model enables:
 
 It also enforces discipline.
 
-If a behavior is hard to explain using this model, it probably doesn’t belong in Snakeway.
+If a behavior is hard to explain using this model, it probably doesn't belong in Snakeway.
 
 ## If You Remember One Thing
 

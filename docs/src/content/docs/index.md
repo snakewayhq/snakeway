@@ -12,7 +12,7 @@ hero:
     alt: Snakeway logo
   actions:
     - text: Get Started
-      link: /getting-started/installation/
+      link: /guide/what-is-snakeway/
     - text: GitHub
       link: https://github.com/snakewayhq/snakeway
       icon: github
@@ -37,7 +37,7 @@ features:
 
   - title: Built on Pingora
     icon: tabler:brand-rust
-    description: Leverages Cloudflare’s Pingora 0.6.0 for serious throughput and modern HTTP support.
+    description: Leverages Cloudflare's Pingora 0.6.0 for serious throughput and modern HTTP support.
 
   - title: Designed to Evolve
     icon: tabler:tools
