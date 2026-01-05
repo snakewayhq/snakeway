@@ -1,6 +1,6 @@
-mod connection_guard;
+mod guard;
 mod manager;
 mod state;
 
-pub use connection_guard::ConnectionGuard;
+pub use guard::ConnectionGuard;
 pub use manager::ConnectionManager;

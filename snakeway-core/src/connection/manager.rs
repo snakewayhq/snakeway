@@ -1,4 +1,4 @@
-use crate::connection::connection_guard::ConnectionGuard;
+use crate::connection::guard::ConnectionGuard;
 use crate::connection::state::RouteConnectionState;
 use crate::route::types::RouteId;
 use dashmap::DashMap;
