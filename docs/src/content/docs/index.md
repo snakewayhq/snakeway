@@ -5,9 +5,10 @@ template: splash
 hero:
   title: Snakeway
   subtitle: Programmable Edge Proxy
-  tagline: A modern, extensible reverse proxy built on Pingora
+  tagline: A modern, extensible reverse proxy built with Rust
   image:
-    file: ../../assets/logo.svg
+    dark: ../../assets/logo.svg
+    light: ../../assets/logo_black.svg
     alt: Snakeway logo
   actions:
     - text: Get Started

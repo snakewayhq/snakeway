@@ -2,85 +2,241 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-        width="106.6463mm"
-        height="99.963821mm"
-        viewBox="0 0 106.6463 99.963822"
-        version="1.1"
-        id="svg1"
-        inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
-        sodipodi:docname="snakeway_logo.svg"
-        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-        xmlns="http://www.w3.org/2000/svg"
-        xmlns:svg="http://www.w3.org/2000/svg">
-    <sodipodi:namedview
-            id="namedview1"
-            pagecolor="#ffffff"
-            bordercolor="#ffffff"
-            borderopacity="0.25"
-            inkscape:showpageshadow="2"
-            inkscape:pageopacity="0.0"
-            inkscape:pagecheckerboard="0"
-            inkscape:deskcolor="#d1d1d1"
-            inkscape:document-units="mm"
-            showguides="true"
-            inkscape:zoom="1.35"
-            inkscape:cx="201.11111"
-            inkscape:cy="104.07407"
-            inkscape:window-width="2560"
-            inkscape:window-height="1186"
-            inkscape:window-x="0"
-            inkscape:window-y="30"
-            inkscape:window-maximized="0"
-            inkscape:current-layer="layer1">
-        <sodipodi:guide
-                position="158.34973,33.601184"
-                orientation="0,1"
-                id="guide2"
-                inkscape:locked="false"
-                inkscape:label=""
-                inkscape:color="rgb(0,134,229)"/>
-    </sodipodi:namedview>
-    <defs
-            id="defs1">
-        <marker
-                markerWidth="0.52499998"
-                markerHeight="0.99999994"
-                refX="0"
-                refY="0"
-                orient="auto-start-reverse"
-                id="CapTriangle"
-                viewBox="0 0 0.525 1"
-                inkscape:stockid="Triangle cap"
-                style="overflow:visible"
-                preserveAspectRatio="xMidYMid"
-                inkscape:isstock="true"
-                inkscape:collect="always">
-            <path
-                    style="fill:context-stroke;stroke-linecap:butt"
-                    d="M 0,-1 1,0 0,1 -0.05,0 Z"
-                    sodipodi:nodetypes="sssssscsss"
-                    transform="scale(0.5)"
-                    id="path61"/>
-        </marker>
-    </defs>
-    <g
-            inkscape:label="Layer 1"
-            inkscape:groupmode="layer"
-            id="layer1"
-            transform="translate(-51.650273,-89.592985)">
-        <path
-                style="fill:none;stroke:#ffffff;stroke-width:16.199;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#CapTriangle);paint-order:normal"
-                id="path1"
-                sodipodi:type="arc"
-                sodipodi:cx="104.99999"
-                sodipodi:cy="139.56471"
-                sodipodi:rx="45.352974"
-                sodipodi:ry="41.838127"
-                sodipodi:start="5.4305579"
-                sodipodi:end="5.1336163"
-                sodipodi:arc-type="arc"
-                d="m 134.84256,108.06011 a 45.352974,41.838127 0 0 1 6.42804,56.62195 45.352974,41.838127 0 0 1 -60.732998,10.11303 45.352974,41.838127 0 0 1 -15.436834,-55.12185 45.352974,41.838127 0 0 1 58.443182,-18.28949"
-                sodipodi:open="true"/>
-    </g>
+   width="442.51483mm"
+   height="442.51596mm"
+   viewBox="0 0 442.5148 442.51596"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+   sodipodi:docname="logo.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.1767767"
+     inkscape:cx="2760.5449"
+     inkscape:cy="1196.4247"
+     inkscape:window-width="2560"
+     inkscape:window-height="1294"
+     inkscape:window-x="0"
+     inkscape:window-y="30"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g14" />
+  <defs
+     id="defs1">
+    <rect
+       x="-2233.9143"
+       y="1237.1079"
+       width="1477.4094"
+       height="1085.8069"
+       id="rect1" />
+    <inkscape:path-effect
+       effect="powerstroke"
+       message=""
+       id="path-effect1"
+       is_visible="true"
+       lpeversion="1.3"
+       scale_width="6.8181818"
+       interpolator_type="CentripetalCatmullRom"
+       interpolator_beta="0.88986014"
+       start_linecap_type="round"
+       end_linecap_type="zerowidth"
+       offset_points="120,0.016488099"
+       linejoin_type="round"
+       miter_limit="4"
+       not_jump="false"
+       sort_points="true" />
+    <inkscape:path-effect
+       effect="construct_grid"
+       id="path-effect65"
+       is_visible="true"
+       lpeversion="1"
+       nr_x="20"
+       nr_y="20" />
+    <inkscape:path-effect
+       effect="lattice2"
+       gridpoint0="0.25543162,0.25543162"
+       gridpoint1="209.74457,0.25543162"
+       gridpoint2="0.25543162,139.20734"
+       gridpoint3="209.74457,139.20734"
+       gridpoint4="52.627716,0.25543162"
+       gridpoint5="157.37228,0.25543162"
+       gridpoint6="52.627716,139.20734"
+       gridpoint7="157.37228,139.20734"
+       gridpoint8x9="105,0.25543162"
+       gridpoint10x11="105,139.20734"
+       gridpoint12="0.25543162,34.993408"
+       gridpoint13="209.74457,34.993408"
+       gridpoint14="0.25543162,104.46936"
+       gridpoint15="209.74457,104.46936"
+       gridpoint16="52.627716,34.993408"
+       gridpoint17="157.37228,34.993408"
+       gridpoint18="52.627716,104.46936"
+       gridpoint19="157.37228,104.46936"
+       gridpoint20x21="105,34.993408"
+       gridpoint22x23="105,104.46936"
+       gridpoint24x26="0.25543162,69.731384"
+       gridpoint25x27="209.74457,69.731384"
+       gridpoint28x30="52.627716,69.731384"
+       gridpoint29x31="157.37228,69.731384"
+       gridpoint32x33x34x35="105,69.731384"
+       id="path-effect64"
+       is_visible="true"
+       lpeversion="1"
+       horizontal_mirror="false"
+       vertical_mirror="false"
+       perimetral="false"
+       live_update="true" />
+    <inkscape:path-effect
+       effect="construct_grid"
+       id="path-effect61"
+       is_visible="true"
+       lpeversion="1"
+       nr_x="20"
+       nr_y="20" />
+    <inkscape:path-effect
+       effect="fill_between_many"
+       method="bsplinespiro"
+       autoreverse="false"
+       close="false"
+       join="false"
+       linkedpaths="#rect63,0,1"
+       id="path-effect2"
+       is_visible="true"
+       lpeversion="0" />
+  </defs>
+  <g
+     inkscape:label="Layer 2 - color"
+     inkscape:groupmode="layer"
+     id="g14"
+     transform="translate(120.46138,109.92606)"
+     style="display:inline">
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:22.1137;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="path46"
+       cy="111.33192"
+       cx="100.79603"
+       rx="210.20056"
+       ry="210.20113" />
+    <text
+       xml:space="preserve"
+       style="font-size:271.114px;line-height:0.2;font-family:'Metal Mania';-inkscape-font-specification:'Metal Mania';text-align:center;letter-spacing:6.3px;word-spacing:0.0835947px;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.10567;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-opacity:1"
+       x="383.14243"
+       y="135.92859"
+       id="text2"><tspan
+         sodipodi:role="line"
+         id="tspan2"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.2;font-family:Nadeem;-inkscape-font-specification:Nadeem;text-align:start;letter-spacing:6.3px;word-spacing:0.0835947px;text-anchor:start;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.105671;stroke-opacity:1"
+         x="383.14243"
+         y="135.92859">Snakeway</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:119.904px;line-height:0.2;font-family:'Metal Mania';-inkscape-font-specification:'Metal Mania';text-align:center;letter-spacing:6.75523px;word-spacing:0.0369707px;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.0467336;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-opacity:1"
+       x="575.5014"
+       y="279.53656"
+       id="text2-0"><tspan
+         sodipodi:role="line"
+         id="tspan2-4"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.2;font-family:Nadeem;-inkscape-font-specification:Nadeem;letter-spacing:6.75523px;word-spacing:0.0369707px;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.0467341;stroke-opacity:1"
+         x="578.87903"
+         y="279.53656">DOCS</tspan></text>
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:14.6632;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse7"
+       cy="110.58357"
+       cx="100.84654"
+       rx="45.736771"
+       ry="93.308075" />
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:13.6256;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse8"
+       cy="132.39638"
+       cx="100.79603"
+       rx="140.88087"
+       ry="119.06846" />
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:13.6137;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse9"
+       cy="90.53511"
+       cx="100.79603"
+       rx="140.95494"
+       ry="118.80082" />
+  </g>
+  <g
+     inkscape:label="Layer 2 - color"
+     inkscape:groupmode="layer"
+     id="g15"
+     transform="translate(120.46138,109.92606)"
+     style="display:none"
+     sodipodi:insensitive="true">
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:18;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse11"
+       cy="111.33192"
+       cx="100.79603"
+       rx="171.09801"
+       ry="171.09846"
+       sodipodi:insensitive="true" />
+    <text
+       xml:space="preserve"
+       style="font-size:227.722px;line-height:0.2;font-family:'Metal Mania';-inkscape-font-specification:'Metal Mania';text-align:center;letter-spacing:5.29167px;word-spacing:0.0702152px;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.0887573;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-opacity:1"
+       x="877.92395"
+       y="147.65974"
+       id="text11"><tspan
+         sodipodi:role="line"
+         id="tspan11"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.2;font-family:Nadeem;-inkscape-font-specification:Nadeem;letter-spacing:5.29167px;word-spacing:0.0702152px;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.088758;stroke-opacity:1"
+         x="880.56982"
+         y="147.65974">Snakeway</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:93.9257px;line-height:0.2;font-family:'Metal Mania';-inkscape-font-specification:'Metal Mania';text-align:center;letter-spacing:5.29167px;word-spacing:0.0289608px;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.0366085;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-opacity:1"
+       x="439.25818"
+       y="257.25732"
+       id="text12"><tspan
+         sodipodi:role="line"
+         id="tspan12"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.2;font-family:Nadeem;-inkscape-font-specification:Nadeem;letter-spacing:5.29167px;word-spacing:0.0289608px;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:0.0366089;stroke-opacity:1"
+         x="441.90402"
+         y="257.25732">DOCS</tspan></text>
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:1;stroke:#83079d;stroke-width:7.03426;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse12"
+       cy="111.33192"
+       cx="100.79603"
+       rx="45.618908"
+       ry="98.004005" />
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:14.076;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse13"
+       cy="124.39374"
+       cx="100.79603"
+       rx="140.88087"
+       ry="127.07109" />
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:13.9826;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse14"
+       cy="97.060883"
+       cx="100.79603"
+       rx="140.95494"
+       ry="125.32659" />
+    <ellipse
+       style="display:inline;fill:#83079d;fill-opacity:0;stroke:#83079d;stroke-width:16.288;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:25.2;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="ellipse15"
+       cy="110.95773"
+       cx="100.79603"
+       rx="171.95404"
+       ry="139.40106"
+       sodipodi:insensitive="true" />
+  </g>
 </svg>
