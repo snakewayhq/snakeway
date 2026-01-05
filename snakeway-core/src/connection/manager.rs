@@ -22,7 +22,7 @@ impl ConnectionManager {
 
     /// Get (or lazily create) the connection state for a route.
     ///
-    /// `max` is applied only on first creation and is immutable thereafter.
+    /// `max` is applied only on the first creation and is immutable thereafter.
     pub fn route_state(&self, route_id: &RouteId, max: Option<usize>) -> Arc<RouteConnectionState> {
         self.routes
             .entry(route_id.clone())
@@ -44,7 +44,7 @@ impl ConnectionManager {
     }
 
     /// Get the current active connection count for a route.
-    /// Intended for admin / observability.
+    /// Intended for admin/observability.
     pub fn active(&self, route_id: &RouteId) -> usize {
         self.routes
             .get(route_id)

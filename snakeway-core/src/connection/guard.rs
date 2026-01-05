@@ -20,6 +20,7 @@ impl ConnectionGuard {
 }
 
 impl Drop for ConnectionGuard {
+    /// Release the slot when the request ends.
     fn drop(&mut self) {
         self.state.release();
     }
