@@ -4,10 +4,10 @@ use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::conf::load_config;
-use snakeway_core::connection_management::ConnectionManager;
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
 use snakeway_core::traffic_management::{TrafficManager, TrafficSnapshot};
+use snakeway_core::ws_connection_management::WsConnectionManager;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -87,7 +87,7 @@ impl TestServer {
         )));
 
         // Build server.
-        let connection_manager = Arc::new(ConnectionManager::new());
+        let connection_manager = Arc::new(WsConnectionManager::new());
         let reload = Arc::new(ReloadHandle::new());
         let server = build_pingora_server(
             cfg.clone(),

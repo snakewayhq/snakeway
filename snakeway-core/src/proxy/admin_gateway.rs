@@ -1,8 +1,8 @@
-use crate::connection_management::ConnectionManager;
 use crate::ctx::RequestCtx;
 use crate::proxy::handlers::AdminHandler;
 use crate::server::ReloadHandle;
 use crate::traffic_management::TrafficManager;
+use crate::ws_connection_management::WsConnectionManager;
 use async_trait::async_trait;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
@@ -15,7 +15,7 @@ pub struct AdminGateway {
 impl AdminGateway {
     pub fn new(
         traffic_manager: Arc<TrafficManager>,
-        connection_manager: Arc<ConnectionManager>,
+        connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,
     ) -> Self {
         Self {

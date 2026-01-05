@@ -1,12 +1,12 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug)]
-pub struct RouteConnectionState {
+pub struct WsRouteConnectionState {
     active: AtomicUsize,
     max: Option<usize>,
 }
 
-impl RouteConnectionState {
+impl WsRouteConnectionState {
     pub fn new(max: Option<usize>) -> Self {
         Self {
             active: AtomicUsize::new(0),

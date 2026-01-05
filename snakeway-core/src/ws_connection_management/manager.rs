@@ -1,6 +1,6 @@
-use crate::connection_management::guard::ConnectionGuard;
-use crate::connection_management::state::RouteConnectionState;
 use crate::route::types::RouteId;
+use crate::ws_connection_management::guard::WsConnectionGuard;
+use crate::ws_connection_management::state::WsRouteConnectionState;
 use dashmap::DashMap;
 use std::sync::Arc;
 
@@ -8,11 +8,11 @@ use std::sync::Arc;
 ///
 /// Lives in runtime state and survives reloads.
 #[derive(Debug, Default)]
-pub struct ConnectionManager {
-    routes: DashMap<RouteId, Arc<RouteConnectionState>>,
+pub struct WsConnectionManager {
+    routes: DashMap<RouteId, Arc<WsRouteConnectionState>>,
 }
 
-impl ConnectionManager {
+impl WsConnectionManager {
     /// Create a new, empty manager.
     pub fn new() -> Self {
         Self {
@@ -23,24 +23,28 @@ impl ConnectionManager {
     /// Get (or lazily create) the connection state for a route.
     ///
     /// `max` is applied only on the first creation and is immutable thereafter.
-    pub fn route_state(&self, route_id: &RouteId, max: Option<usize>) -> Arc<RouteConnectionState> {
+    pub fn route_state(
+        &self,
+        route_id: &RouteId,
+        max: Option<usize>,
+    ) -> Arc<WsRouteConnectionState> {
         self.routes
             .entry(route_id.clone())
-            .or_insert_with(|| Arc::new(RouteConnectionState::new(max)))
+            .or_insert_with(|| Arc::new(WsRouteConnectionState::new(max)))
             .clone()
     }
 
     /// Attempt to acquire a connection slot for the given route.
     ///
     /// On success, returns a ConnectionGuard that will release the slot on Drop.
-    pub fn try_acquire(&self, route_id: &RouteId, max: Option<usize>) -> Option<ConnectionGuard> {
+    pub fn try_acquire(&self, route_id: &RouteId, max: Option<usize>) -> Option<WsConnectionGuard> {
         let state = self.route_state(route_id, max);
 
         if !state.try_acquire() {
             return None;
         }
 
-        Some(ConnectionGuard::new_acquired(state))
+        Some(WsConnectionGuard::new_acquired(state))
     }
 
     /// Get the current active connection count for a route.
@@ -59,7 +63,7 @@ pub struct RouteConnectionSnapshot {
     pub max: Option<usize>,
 }
 
-impl ConnectionManager {
+impl WsConnectionManager {
     pub fn snapshot(&self) -> Vec<RouteConnectionSnapshot> {
         self.routes
             .iter()

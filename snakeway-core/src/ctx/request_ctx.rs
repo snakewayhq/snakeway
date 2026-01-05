@@ -1,7 +1,7 @@
-use crate::connection_management::ConnectionGuard;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::ws_connection_management::WsConnectionGuard;
 use http::{Extensions, HeaderMap, Method, Uri};
 use pingora::prelude::Session;
 use std::net::{IpAddr, Ipv4Addr};
@@ -12,7 +12,7 @@ pub struct RequestCtx {
     pub route_id: Option<RouteId>,
 
     // Holds the WS connection slot for the lifetime of the connection
-    pub ws_guard: Option<ConnectionGuard>,
+    pub ws_guard: Option<WsConnectionGuard>,
 
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
     pub admission_guard: Option<AdmissionGuard>,

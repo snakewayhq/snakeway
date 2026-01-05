@@ -1,11 +1,11 @@
 use crate::conf::RuntimeConfig;
-use crate::connection_management::ConnectionManager;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::{AdminGateway, PublicGateway};
 use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
+use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
 use pingora::listeners::tls::TlsSettings;
@@ -90,7 +90,7 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
         }
     });
 
-    let connection_manager = Arc::new(ConnectionManager::new());
+    let connection_manager = Arc::new(WsConnectionManager::new());
 
     // Build Pingora server (Pingora owns its own runtimes)
     let server = build_pingora_server(
@@ -125,7 +125,7 @@ pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
     traffic_manager: Arc<TrafficManager>,
-    connection_manager: Arc<ConnectionManager>,
+    connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
     let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");

@@ -7,10 +7,10 @@ use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteRuntime;
 use crate::runtime::{RuntimeState, UpstreamRuntime};
 
-use crate::connection_management::ConnectionManager;
 use crate::traffic_management::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
+use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use http::{StatusCode, Version, header};
@@ -32,7 +32,7 @@ impl PublicGateway {
     pub fn new(
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
-        connection_manager: Arc<ConnectionManager>,
+        connection_manager: Arc<WsConnectionManager>,
     ) -> Self {
         let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager);
         Self {

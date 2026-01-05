@@ -1,6 +1,6 @@
-use crate::connection_management::ConnectionManager;
 use crate::server::ReloadHandle;
 use crate::traffic_management::TrafficManager;
+use crate::ws_connection_management::WsConnectionManager;
 use http::{StatusCode, header};
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
@@ -32,14 +32,14 @@ impl FromStr for AdminEndpoint {
 
 pub struct AdminHandler {
     traffic_manager: Arc<TrafficManager>,
-    connection_manager: Arc<ConnectionManager>,
+    connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
 }
 
 impl AdminHandler {
     pub fn new(
         traffic_manager: Arc<TrafficManager>,
-        connection_manager: Arc<ConnectionManager>,
+        connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,
     ) -> Self {
         Self {
