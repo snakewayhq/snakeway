@@ -54,6 +54,24 @@ func main() {
 		TLSConfig: tlsCfg,
 	}
 
+	// HTTP over UDS
+	httpSock := "/tmp/snakeway-http.sock"
+	_ = os.Remove(httpSock)
+	httpUdsLis, err := net.Listen("unix", httpSock)
+	if err != nil {
+		log.Fatalf("failed to listen on HTTP UDS %s: %v", httpSock, err)
+	}
+	log.Printf("Listening HTTP + WS on UDS %s\n", httpSock)
+
+	_ = os.Chmod(httpSock, 0660)
+
+	// HTTP over UDS
+	go func() {
+		if err := httpSrv.Serve(httpUdsLis); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP UDS server failed: %v", err)
+		}
+	}()
+
 	// HTTP
 	go func() {
 		log.Printf("Starting HTTP + WS on %s\n", httpAddr)
