@@ -21,4 +21,4 @@ vendor/
 .idea/
 
 # Binary
-upstream-server
+origin-server

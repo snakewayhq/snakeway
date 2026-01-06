@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-mkdir ./userspb/
+mkdir -p ./userspb/
 protoc \
   --go_out=paths=source_relative:./userspb \
   --go-grpc_out=paths=source_relative:./userspb \

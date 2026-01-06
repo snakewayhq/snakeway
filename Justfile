@@ -84,7 +84,7 @@ profile-tokio:
 
 # Generate meaningful profiling data against an upstream.
 run-load-against-upstream:
-    hey -n 300000 -c 256 http://127.0.0.1:8080/__metrics
+    hey -n 300000 -c 256 http://127.0.0.1:8080/api/users/1
 
 # Generate meaningful profiling data against a static file.
 run-load-against-static:
@@ -95,18 +95,18 @@ run-spoofed-traffic:
     k6 run --vus 10 --duration 30s spoof-traffic.js
 
 # Build once, then run (faster restarts)
-build-upstream:
+build-origin:
     @echo "Generate proto code..."
-    cd upstream && ./generate-proto.sh
-    @echo "Starting Go upstream (http, https, ws, wss, grpc)..."
-    cd upstream && go build -o upstream-server .
+    (cd snakeway-origin && ./generate-proto.sh)
+    @echo "Starting Go origin server (http, https, ws, wss, grpc)..."
+    cd snakeway-origin && go build -o origin-server .
 
 # Build and run the upstream.
-start-upstream: build-upstream
-    TLS_CERT_FILE=./integration-tests/certs/server.pem TLS_KEY_FILE=./integration-tests/certs/server.key ./upstream/upstream-server
+start-origin:
+    TLS_CERT_FILE=./integration-tests/certs/server.pem TLS_KEY_FILE=./integration-tests/certs/server.key ./snakeway-origin/origin-server
 
 # Check all 5 upstream channels
-sanity-check-upstream:
+sanity-check-origin:
     @echo "HTTP:"
     @curl -s http://localhost:3000/
 
@@ -122,7 +122,7 @@ sanity-check-upstream:
     @echo "\ngRPC:"
     @grpcurl \
       -cacert integration-tests/certs/ca.pem \
-      -proto upstream/users.proto \
+      -proto snakeway-origin/users.proto \
       -d '{"id":"123"}' \
       localhost:5051 \
       users.UserService/GetUser
