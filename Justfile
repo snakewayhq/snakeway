@@ -94,18 +94,11 @@ run-load-against-static:
 run-spoofed-traffic:
     k6 run --vus 10 --duration 30s spoof-traffic.js
 
-# Build once, then run (faster restarts)
-build-origin:
-    @echo "Generate proto code..."
-    (cd snakeway-origin && ./generate-proto.sh)
-    @echo "Starting Go origin server (http, https, ws, wss, grpc)..."
-    cd snakeway-origin && go build -o origin-server .
-
-# Build and run the upstream.
+# Build and run the origin server.
 start-origin:
-    TLS_CERT_FILE=./integration-tests/certs/server.pem TLS_KEY_FILE=./integration-tests/certs/server.key ./snakeway-origin/origin-server
+    (cd snakeway-origin && just launch)
 
-# Check all 5 upstream channels
+# Check all 5 origin protocols
 sanity-check-origin:
     @echo "HTTP:"
     @curl -s http://localhost:3000/
