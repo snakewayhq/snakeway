@@ -19,7 +19,7 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                     "services": cfg.services.len(),
                     "upstreams": cfg.services
                         .values()
-                        .map(|s| s.upstream.len())
+                        .map(|s| s.tcp_upstreams.len())
                         .sum::<usize>(),
                     "devices_enabled": cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 });
@@ -35,7 +35,7 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                     "✔ {} upstreams",
                     cfg.services
                         .values()
-                        .map(|s| s.upstream.len())
+                        .map(|s| s.tcp_upstreams.len())
                         .sum::<usize>()
                 );
                 println!(

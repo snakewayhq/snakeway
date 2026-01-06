@@ -55,7 +55,7 @@ impl StickyHash {
     ) -> Option<&'a UpstreamSnapshot> {
         upstreams.iter().max_by_key(|u| {
             // Combine sticky key and upstream identity
-            self.hash_to_u64(&(key, u.endpoint.id))
+            self.hash_to_u64(&(key, u.endpoint.id()))
         })
     }
 }
@@ -76,7 +76,7 @@ impl TrafficStrategy for StickyHash {
         let upstream = self.rendezvous(&key, healthy)?;
 
         Some(TrafficDecision {
-            upstream_id: upstream.endpoint.id,
+            upstream_id: upstream.endpoint.id(),
             reason: DecisionReason::StickyHash,
             protocol: None,
             cb_started: true,

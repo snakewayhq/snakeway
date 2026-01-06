@@ -1,6 +1,6 @@
-use crate::conf::types::CircuitBreakerConfig;
 use crate::conf::types::service::health_check::HealthCheckConfig;
-use crate::conf::types::service::upstream::UpstreamConfig;
+use crate::conf::types::service::upstream::UpstreamTcpConfig;
+use crate::conf::types::{CircuitBreakerConfig, UpstreamUnixConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -11,8 +11,11 @@ pub struct ServiceConfig {
     #[serde(default = "default_strategy")]
     pub strategy: LoadBalancingStrategy,
 
-    #[serde(default)]
-    pub upstream: Vec<UpstreamConfig>,
+    #[serde(default, rename = "tcp_upstream")]
+    pub tcp_upstreams: Vec<UpstreamTcpConfig>,
+
+    #[serde(default, rename = "unix_upstream")]
+    pub unix_upstreams: Vec<UpstreamUnixConfig>,
 
     #[serde(default)]
     pub circuit_breaker: CircuitBreakerConfig,

@@ -32,7 +32,7 @@ impl TrafficDirector {
             .iter()
             .filter(|u| {
                 traffic_manager
-                    .health_status(service_id, &u.endpoint.id)
+                    .health_status(service_id, &u.endpoint.id())
                     .healthy
             })
             .cloned()
@@ -56,7 +56,7 @@ impl TrafficDirector {
             let decision = strategy
                 .decide(req, service_id, &healthy_candidates, traffic_manager)
                 .unwrap_or_else(|| TrafficDecision {
-                    upstream_id: healthy_candidates[0].endpoint.id,
+                    upstream_id: healthy_candidates[0].endpoint.id(),
                     reason: DecisionReason::NoStrategyDecision,
                     protocol: None,
                     cb_started: true,
@@ -67,7 +67,7 @@ impl TrafficDirector {
             }
 
             // Circuit denied: remove and retry.
-            healthy_candidates.retain(|u| u.endpoint.id != decision.upstream_id);
+            healthy_candidates.retain(|u| u.endpoint.id() != decision.upstream_id);
         }
 
         Err(TrafficError::NoHealthyUpstreams)

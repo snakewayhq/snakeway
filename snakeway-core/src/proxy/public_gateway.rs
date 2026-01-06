@@ -108,18 +108,32 @@ impl ProxyHttp for PublicGateway {
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        let mut peer = HttpPeer::new(
-            (upstream.host.as_str(), upstream.port),
-            upstream.use_tls,
-            upstream.sni.clone(),
-        );
+        let mut peer = match upstream {
+            UpstreamRuntime::Tcp(tcp) => Ok(HttpPeer::new(
+                tcp.http_peer_addr(),
+                tcp.use_tls,
+                tcp.sni.clone(),
+            )),
+            UpstreamRuntime::Unix(unix) => {
+                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
+                    anyhow::anyhow!(
+                        "Could not connect to unix domain socket `{}`: {}",
+                        unix.path,
+                        e
+                    )
+                })
+            }
+        }
+        .map_err(|_| Error::new(Custom("http peer creation failed")))?;
 
         // Enforce protocol rules for this upstream and request.
         self.enforce_protocol(&mut peer, ctx, upstream)?;
 
         // Set upstream authority for gRPC requests.
-        let authority = format!("{}:{}", upstream.host, upstream.port);
-        ctx.upstream_authority = Some(authority);
+        if let UpstreamRuntime::Tcp(tcp) = upstream {
+            let authority = format!("{}:{}", tcp.host, tcp.port);
+            ctx.upstream_authority = Some(authority);
+        }
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
@@ -129,13 +143,13 @@ impl ProxyHttp for PublicGateway {
             let guard = AdmissionGuard::new(
                 self.gw_ctx.traffic_manager.clone(),
                 service_id.clone(),
-                upstream.id,
+                upstream.id(),
             );
 
             ctx.admission_guard = Some(guard);
         }
 
-        ctx.selected_upstream = Some((service_id, upstream.id));
+        ctx.selected_upstream = Some((service_id, upstream.id()));
 
         Ok(Box::new(peer))
     }
@@ -407,7 +421,7 @@ impl PublicGateway {
         let upstream = service
             .upstreams
             .iter()
-            .find(|u| u.id == decision.upstream_id)
+            .find(|u| u.id() == decision.upstream_id)
             .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
 
         Ok(SelectedUpstream {
@@ -432,7 +446,7 @@ impl PublicGateway {
             // WebSockets MUST be HTTP/1.1
             peer.options.set_http_version(1, 1);
         } else if ctx.is_grpc {
-            if !upstream.use_tls {
+            if !upstream.use_tls() {
                 return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
             }
             peer.options.set_http_version(2, 2);

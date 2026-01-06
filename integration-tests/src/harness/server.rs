@@ -59,7 +59,7 @@ impl TestServer {
         let upstream_ports = cfg
             .services
             .iter()
-            .flat_map(|(_, c)| c.upstream.iter())
+            .flat_map(|(_, c)| c.tcp_upstreams.iter())
             .map(|_| free_port())
             .collect::<Vec<_>>();
 

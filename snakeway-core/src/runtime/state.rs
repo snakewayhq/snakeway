@@ -1,8 +1,9 @@
-use crate::conf::types::{RouteConfig, ServiceConfig};
+use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::types::RouteId;
 use crate::route::{RouteRuntime, Router};
+use crate::runtime::types::{UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
 use anyhow::{Result, anyhow};
@@ -60,14 +61,24 @@ fn build_runtime_services(
     let mut out = HashMap::new();
 
     for (name, svc) in services {
-        let upstreams = svc
-            .upstream
+        let mut upstreams = svc
+            .tcp_upstreams
             .iter()
             .map(|u| {
-                let rt = make_upstream_runtime(&u.url, u.weight)?;
+                let rt = make_upstream_runtime_from_tcp(u)?;
                 Ok(rt)
             })
             .collect::<Result<Vec<_>>>()?;
+
+        upstreams.extend(
+            svc.unix_upstreams
+                .iter()
+                .map(|u| {
+                    let rt = make_upstream_runtime_for_unix(u)?;
+                    Ok(rt)
+                })
+                .collect::<Result<Vec<_>>>()?,
+        );
 
         out.insert(
             name.clone(),
@@ -112,17 +123,18 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
     Ok(router)
 }
 
-/// Parse an upstream address of the form "host:port".
-fn make_upstream_runtime(raw: &str, weight: u32) -> Result<UpstreamRuntime> {
-    let uri: Uri = raw
+/// Factory function to make a TCP upstream runtime.
+fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRuntime> {
+    let uri: Uri = cfg
+        .url
         .parse()
-        .map_err(|_| anyhow!("invalid upstream URL: {}", raw))?;
+        .map_err(|_| anyhow!("invalid upstream URL: {}", cfg.url))?;
 
     let scheme = uri.scheme_str().unwrap_or("http");
 
     let authority = uri
         .authority()
-        .ok_or_else(|| anyhow!("upstream URL missing authority: {}", raw))?;
+        .ok_or_else(|| anyhow!("upstream URL missing authority: {}", cfg.url))?;
 
     let host = authority.host().to_string();
 
@@ -131,27 +143,43 @@ fn make_upstream_runtime(raw: &str, weight: u32) -> Result<UpstreamRuntime> {
         _ => 80,
     });
 
-    let use_tls = scheme == "https";
-    let sni = host.clone();
-
-    Ok(UpstreamRuntime {
-        id: make_upstream_id(&host, port),
-        host,
+    let addr = UpstreamAddr::Tcp {
+        host: host.clone(),
         port,
-        use_tls,
-        sni,
-        weight,
-    })
+    };
+
+    Ok(UpstreamRuntime::Tcp(UpstreamTcpRuntime {
+        id: make_upstream_id(&addr),
+        host: host.clone(),
+        port,
+        use_tls: scheme == "https",
+        sni: host.clone(),
+        weight: cfg.weight,
+    }))
+}
+
+/// Factory function to make a unix upstream runtime.
+fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRuntime> {
+    let addr = UpstreamAddr::Unix {
+        path: cfg.sock.clone(),
+    };
+    Ok(UpstreamRuntime::Unix(UpstreamUnixRuntime {
+        id: make_upstream_id(&addr),
+        path: cfg.sock.clone(),
+        use_tls: cfg.use_tls,
+        sni: cfg.sni.clone(),
+        weight: cfg.weight,
+    }))
 }
 
 // Fixed-seed ahash:
 // - deterministic across restarts
 // - fast
 // - not used for security
-fn make_upstream_id(host: &str, port: u16) -> UpstreamId {
+fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 
-    UpstreamId(HASHER.hash_one((host, port)) as u32)
+    UpstreamId(HASHER.hash_one(addr) as u32)
 }
 
 /// Converts a directory path to its full absolute path as a string.

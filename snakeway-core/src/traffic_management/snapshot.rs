@@ -39,7 +39,7 @@ impl TrafficSnapshot {
                 .map(|u| UpstreamSnapshot {
                     endpoint: u.clone(),
                     latency: None,
-                    weight: u.weight,
+                    weight: u.weight(),
                 })
                 .collect::<Vec<_>>();
 
