@@ -1,0 +1,19 @@
+#!/usr/bin/env just --justfile
+
+# Update dependencies.
+update:
+    go get -u
+    go mod tidy -v
+
+generate-proto:
+    @echo "Generate proto code..."
+    ./generate-proto.sh
+
+build:
+    @echo "Build the server (http, https, ws, wss, grpc)..."
+    go build -o origin-server  ./cmd/origin-server
+    @echo "Build the launcher"
+    go build -o origin-launcher ./cmd/origin-launcher
+
+launch: build
+    ./origin-launcher

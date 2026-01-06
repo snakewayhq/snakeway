@@ -21,4 +21,5 @@ vendor/
 .idea/
 
 # Binary
-origin-server
+/origin-server
+/origin-launcher
