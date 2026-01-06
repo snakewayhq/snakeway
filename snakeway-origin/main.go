@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"upstream/server"
 
 	"golang.org/x/net/http2"
@@ -13,31 +13,18 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func getenv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
 func main() {
-	certFile := flag.String(
-		"tls-cert",
-		getenv("TLS_CERT_FILE", "./data/certs/localhost-cert.pem"),
-		"Path to TLS certificate PEM file",
-	)
+	cfg := server.LoadConfig()
 
-	keyFile := flag.String(
-		"tls-key",
-		getenv("TLS_KEY_FILE", "./data/certs/localhost-key.pem"),
-		"Path to TLS private key PEM file",
-	)
+	flag.IntVar(&cfg.Port, "port", cfg.Port, "Base port")
+	flag.StringVar(&cfg.CertFile, "tls-cert", cfg.CertFile, "TLS cert file")
+	flag.StringVar(&cfg.KeyFile, "tls-key", cfg.KeyFile, "TLS key file")
 
 	flag.Parse()
 
 	tlsCfg, err := server.NewTLSConfig(server.TLSOptions{
-		CertFile: *certFile,
-		KeyFile:  *keyFile,
+		CertFile: cfg.CertFile,
+		KeyFile:  cfg.KeyFile,
 	})
 	if err != nil {
 		log.Fatalf("TLS config error: %v", err)
@@ -45,10 +32,14 @@ func main() {
 
 	httpHandler := server.NewHTTPHandler()
 
+	httpAddr := fmt.Sprintf(":%d", cfg.Port)
+	httpsAddr := fmt.Sprintf(":%d", cfg.Port+443)
+	grpcAddr := fmt.Sprintf(":%d", cfg.Port+2051)
+
 	// Start HTTP and WS Server (unencrypted).
 	go func() {
-		log.Println("Starting HTTP + WS on :3000")
-		if err := http.ListenAndServe(":3000", httpHandler); err != nil {
+		log.Printf("Starting HTTP + WS on %s\n", httpAddr)
+		if err := http.ListenAndServe(httpAddr, httpHandler); err != nil {
 			log.Fatalf("HTTP server failed: %v", err)
 		}
 	}()
@@ -56,7 +47,7 @@ func main() {
 	// Start HTTPS and WSS Server (TLS).
 	go func() {
 		httpsServer := &http.Server{
-			Addr:      ":3443",
+			Addr:      httpsAddr,
 			Handler:   httpHandler,
 			TLSConfig: tlsCfg,
 		}
@@ -66,7 +57,7 @@ func main() {
 			log.Fatalf("failed to configure http2: %v", err)
 		}
 
-		log.Println("Starting HTTPS + WSS on :3443")
+		log.Printf("Starting HTTPS + WSS on %s\n", httpsAddr)
 		if err := httpsServer.ListenAndServeTLS("", ""); err != nil {
 			log.Fatalf("HTTPS httpsServer failed: %v", err)
 		}
@@ -74,9 +65,9 @@ func main() {
 
 	// Start gRPC Server (TLS, h2).
 	go func() {
-		lis, err := net.Listen("tcp", ":5051")
+		lis, err := net.Listen("tcp", grpcAddr)
 		if err != nil {
-			log.Fatalf("failed to listen on :5051: %v", err)
+			log.Fatalf("failed to listen on %s: %v", grpcAddr, err)
 		}
 
 		creds := credentials.NewTLS(tlsCfg)
@@ -85,7 +76,7 @@ func main() {
 		// Register the manually defined gRPC service
 		server.RegisterUserService(grpcServer)
 
-		log.Println("Starting gRPC (TLS, h2) on :5051")
+		log.Printf("Starting gRPC (TLS, h2) on %s\n", grpcAddr)
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("gRPC server failed: %v", err)
 		}
