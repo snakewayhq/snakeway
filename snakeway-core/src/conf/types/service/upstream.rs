@@ -15,12 +15,13 @@ pub struct UpstreamUnixConfig {
     pub sock: String,
 
     #[serde(default)]
-    pub sni: String,
-
-    #[serde(default)]
     pub use_tls: bool,
 
-    pub grpc_authority: Option<String>,
+    #[serde(default)]
+    pub grpc_authority: String,
+
+    #[serde(default)]
+    pub sni: String,
 
     #[serde(default = "default_weight")]
     pub weight: u32,
