@@ -4,10 +4,16 @@ name = "api"
 # The load balancing strategy to use when distributing requests across upstreams.
 strategy = "round_robin"
 
-[[service.upstream]]
+[[service.tcp_upstream]]
 # The URL of the upstream server to forward requests to.
 url = "http://127.0.0.1:3000"
 
 # An additional upstream server configuration.
-# [[service.upstream]]
+# [[service.tcp_upstream]]
 # url = "http://127.0.0.1:3001"
+
+[[service.unix_upstream]]
+sock = "/tmp/snakeway.sock"
+grpc_authority = "api.internal"
+use_tls = false
+sni = ""
