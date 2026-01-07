@@ -108,6 +108,9 @@ impl ProxyHttp for PublicGateway {
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
+        // Creating an HttpPeer instance per request may raise an eyebrow, but
+        // it is merely a sort of configuration object that is used by Pingora
+        // to compute a hash later when its internal pooling logic runs.
         let mut peer = match upstream {
             UpstreamRuntime::Tcp(tcp) => Ok(HttpPeer::new(
                 tcp.http_peer_addr(),
