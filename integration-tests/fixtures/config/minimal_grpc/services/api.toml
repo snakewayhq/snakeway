@@ -1,5 +1,5 @@
 [[service]]
 name = "api"
 
-[[service.upstream]]
+[[service.tcp_upstream]]
 url = "https://127.0.0.1:9001"
