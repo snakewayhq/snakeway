@@ -14,6 +14,5 @@ url = "http://127.0.0.1:3000"
 
 [[service.unix_upstream]]
 sock = "/tmp/snakeway.sock"
-grpc_authority = "api.internal"
 use_tls = false
-sni = ""
+sni = "localhost"

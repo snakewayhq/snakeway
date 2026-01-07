@@ -46,6 +46,18 @@ impl UpstreamRuntime {
             UpstreamRuntime::Unix(u) => u.use_tls,
         }
     }
+
+    pub fn authority(&self) -> String {
+        match self {
+            UpstreamRuntime::Tcp(u) => {
+                format!("{}:{}", u.host, u.port)
+            }
+            UpstreamRuntime::Unix(u) => {
+                // Logical authority - must exist, even over UDS
+                u.sni.clone()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]

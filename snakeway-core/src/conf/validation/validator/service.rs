@@ -62,21 +62,12 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
                 seen_sock_values.insert(unix.sock.clone(), ());
             }
 
-            if unix.use_tls {
-                if unix.sni.is_empty() {
-                    ctx.error(ConfigError::InvalidUpstream {
-                        service: name.clone(),
-                        upstream: unix.sock.clone(),
-                        reason: "SNI must be set when using TLS".into(),
-                    });
-                }
-                if unix.grpc_authority.is_empty() {
-                    ctx.error(ConfigError::InvalidUpstream {
-                        service: name.clone(),
-                        upstream: unix.sock.clone(),
-                        reason: "gRPC authority must be set when using TLS".into(),
-                    });
-                }
+            if unix.use_tls && unix.sni.is_empty() {
+                ctx.error(ConfigError::InvalidUpstream {
+                    service: name.clone(),
+                    upstream: unix.sock.clone(),
+                    reason: "SNI must be set when using TLS".into(),
+                });
             }
         }
 

@@ -18,9 +18,6 @@ pub struct UpstreamUnixConfig {
     pub use_tls: bool,
 
     #[serde(default)]
-    pub grpc_authority: String,
-
-    #[serde(default)]
     pub sni: String,
 
     #[serde(default = "default_weight")]
