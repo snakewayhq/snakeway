@@ -29,6 +29,7 @@ func main() {
 		cmd := exec.CommandContext(
 			ctx,
 			binary,
+			"-instance-id", fmt.Sprint(i),
 			"-port", fmt.Sprint(port),
 			"-tls-cert", "../integration-tests/certs/server.pem",
 			"-tls-key", "../integration-tests/certs/server.key",

@@ -21,6 +21,7 @@ import (
 func main() {
 	cfg := server.LoadConfig()
 
+	flag.IntVar(&cfg.InstanceId, "instance-id", 0, "Instance ID")
 	flag.IntVar(&cfg.Port, "port", cfg.Port, "Base port")
 	flag.StringVar(&cfg.CertFile, "tls-cert", cfg.CertFile, "TLS cert file")
 	flag.StringVar(&cfg.KeyFile, "tls-key", cfg.KeyFile, "TLS key file")
@@ -55,7 +56,8 @@ func main() {
 	}
 
 	// HTTP over UDS
-	httpSock := "/tmp/snakeway-http.sock"
+	httpSock := fmt.Sprintf("/tmp/snakeway-http-%d.sock", cfg.InstanceId)
+
 	_ = os.Remove(httpSock)
 	httpUdsLis, err := net.Listen("unix", httpSock)
 	if err != nil {
