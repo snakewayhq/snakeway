@@ -1,8 +1,10 @@
+pub mod entrypoint;
 mod expose_admin;
 mod expose_redirect;
 mod expose_service;
 mod expose_static;
 
+pub use entrypoint::EntrypointConfig;
 pub use expose_admin::ExposeAdminConfig;
 pub use expose_redirect::ExposeRedirectConfig;
 pub use expose_service::ExposeServiceConfig;
