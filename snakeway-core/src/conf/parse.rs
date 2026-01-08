@@ -9,11 +9,8 @@ use std::path::Path;
 
 #[derive(Debug, Deserialize, Default)]
 struct DevicesFile {
-    #[serde(default)]
-    identity_device: IdentityDeviceConfig,
-
-    #[serde(default)]
-    structured_logging_device: StructuredLoggingDeviceConfig,
+    identity_device: Option<IdentityDeviceConfig>,
+    structured_logging_device: Option<StructuredLoggingDeviceConfig>,
 
     #[serde(default)]
     wasm_device: Vec<WasmDeviceConfig>,
@@ -22,12 +19,17 @@ struct DevicesFile {
 pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
     let parsed: DevicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+
     let mut device_config = Vec::new();
 
-    device_config.push(DeviceConfig::Identity(parsed.identity_device.clone()));
-    device_config.push(DeviceConfig::StructuredLogging(
-        parsed.structured_logging_device.clone(),
-    ));
+    if let Some(identity) = parsed.identity_device {
+        device_config.push(DeviceConfig::Identity(identity));
+    }
+
+    if let Some(logging) = parsed.structured_logging_device {
+        device_config.push(DeviceConfig::StructuredLogging(logging));
+    }
+
     device_config.extend(parsed.wasm_device.into_iter().map(DeviceConfig::Wasm));
 
     Ok(device_config)
