@@ -1,4 +1,5 @@
 [[service]]
+listener = "public_http"
 # The unique name identifier for this service.
 name = "api"
 # The load balancing strategy to use when distributing requests across upstreams.

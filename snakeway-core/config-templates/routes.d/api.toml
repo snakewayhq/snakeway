@@ -5,3 +5,4 @@ path = "/api"
 type = "service"
 # The name of the service that will handle requests to this route.
 service = "api"
+listener = "public_http"

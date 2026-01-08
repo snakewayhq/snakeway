@@ -9,10 +9,12 @@ threads = 8
 # ca_file = "./certs/ca.pem"
 
 [[listener]]
+name = "public_http"
 addr = "127.0.0.1:8080"
 
 # A second listener with a TLS configuration for encryption.
 # [[listener]]
+# name = "public_https"
 # addr = "127.0.0.1:8443"
 # tls = { cert = "./path/to/tls_cert.pem", key = "./path/to/tls_cert.key" }
 
