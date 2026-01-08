@@ -13,12 +13,8 @@ pub struct StaticRouteConfig {
     #[serde(default)]
     pub directory_listing: bool,
 
-    #[serde(default)]
     pub static_config: StaticFileConfig,
-
-    #[serde(default)]
     pub cache_policy: StaticCachePolicy,
-
     pub listener: String,
 }
 
@@ -32,32 +28,9 @@ pub struct StaticFileConfig {
     pub enable_brotli: bool,
 }
 
-impl Default for StaticFileConfig {
-    fn default() -> Self {
-        Self {
-            max_file_size: 10 * 1024 * 1024,  // 10 MiB
-            small_file_threshold: 256 * 1024, // 256 KiB
-            min_gzip_size: 1024,              // 1 KiB
-            min_brotli_size: 4 * 1024,        // 4 KiB
-            enable_gzip: true,
-            enable_brotli: true,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticCachePolicy {
-    pub max_age: u32, // seconds
+    pub max_age_secs: u32,
     pub public: bool,
     pub immutable: bool,
-}
-
-impl Default for StaticCachePolicy {
-    fn default() -> Self {
-        Self {
-            max_age: 3600, // 1 hour
-            public: true,
-            immutable: false,
-        }
-    }
 }

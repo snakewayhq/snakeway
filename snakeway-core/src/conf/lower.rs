@@ -1,7 +1,7 @@
 use crate::conf::merge::merge_services;
 use crate::conf::types::{
     ExposeConfig, ListenerConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
-    StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    StaticCachePolicy, StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
@@ -114,8 +114,19 @@ pub fn lower_expose_configs(
                         file_dir: route.file_dir,
                         index: route.index.clone(),
                         directory_listing: route.directory_listing,
-                        static_config: route.static_config,
-                        cache_policy: route.cache_policy,
+                        static_config: StaticFileConfig {
+                            max_file_size: route.max_file_size,
+                            small_file_threshold: route.compression.small_file_threshold,
+                            min_gzip_size: route.compression.min_gzip_size,
+                            min_brotli_size: route.compression.min_brotli_size,
+                            enable_gzip: route.compression.enable_gzip,
+                            enable_brotli: route.compression.enable_brotli,
+                        },
+                        cache_policy: StaticCachePolicy {
+                            max_age_secs: route.cache_policy.max_age_secs,
+                            public: route.cache_policy.public,
+                            immutable: route.cache_policy.immutable,
+                        },
                         listener: listener_name.clone(),
                     }));
                 }

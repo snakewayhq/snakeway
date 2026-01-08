@@ -1,3 +1,4 @@
+use crate::conf::types::shared::TlsConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -19,12 +20,4 @@ pub struct ListenerConfig {
     /// Whether a listener serves admin endpoints or not.
     #[serde(default)]
     pub enable_admin: bool,
-}
-
-/// Paths are validated and resolved during config validation.
-/// Runtime code assumes these values are valid.
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
-pub struct TlsConfig {
-    pub cert: String,
-    pub key: String,
 }
