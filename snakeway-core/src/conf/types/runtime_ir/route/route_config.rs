@@ -21,4 +21,11 @@ impl RouteConfig {
             RouteConfig::Static(cfg) => &cfg.listener,
         }
     }
+
+    pub fn set_listener(&mut self, listener: String) {
+        match self {
+            RouteConfig::Service(cfg) => cfg.listener = listener,
+            RouteConfig::Static(cfg) => cfg.listener = listener,
+        }
+    }
 }

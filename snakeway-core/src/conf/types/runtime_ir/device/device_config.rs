@@ -2,6 +2,7 @@ use crate::conf::types::{IdentityDeviceConfig, StructuredLoggingDeviceConfig, Wa
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DeviceConfig {
     Wasm(WasmDeviceConfig),
     Identity(IdentityDeviceConfig),
@@ -17,6 +18,3 @@ impl DeviceConfig {
         }
     }
 }
-
-//     /// Device-specific configuration blob
-//     pub config: toml::Value,

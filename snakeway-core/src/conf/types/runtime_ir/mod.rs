@@ -12,6 +12,7 @@ pub use service::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct RuntimeConfig {
     pub server: ServerConfig,
     pub listeners: Vec<ListenerConfig>,

@@ -1,4 +1,4 @@
-use crate::conf::merge::merge_services;
+use crate::conf::merge::{merge_listeners, merge_services};
 use crate::conf::types::{
     ExposeConfig, ListenerConfig, RedirectConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
     StaticCachePolicy, StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
@@ -141,7 +141,18 @@ pub fn lower_expose_configs(
         };
     }
 
-    let service_map: HashMap<String, ServiceConfig> = merge_services(services)?;
+    let (merged_listeners, name_map) = merge_listeners(listeners)?;
 
-    Ok((listeners, routes, service_map))
+    for route in &mut routes {
+        route.set_listener(name_map[route.listener()].clone());
+    }
+
+    for service in services.iter_mut() {
+        service.listener = name_map[&service.listener].clone();
+    }
+
+    // Services have to be merged after rewriting listener names
+    let merged_services: HashMap<String, ServiceConfig> = merge_services(services.clone())?;
+
+    Ok((merged_listeners, routes, merged_services))
 }
