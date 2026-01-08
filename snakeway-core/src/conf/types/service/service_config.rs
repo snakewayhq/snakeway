@@ -11,7 +11,7 @@ pub struct ServiceConfig {
     pub listener: String,
 
     /// Load balancing strategy
-    #[serde(default = "default_strategy")]
+    #[serde(default)]
     pub strategy: LoadBalancingStrategy,
 
     #[serde(default, rename = "tcp_upstream")]
@@ -27,13 +27,10 @@ pub struct ServiceConfig {
     pub health_check: HealthCheckConfig,
 }
 
-fn default_strategy() -> LoadBalancingStrategy {
-    LoadBalancingStrategy::Failover
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LoadBalancingStrategy {
+    #[default]
     Failover,
     RoundRobin,
     RequestPressure,

@@ -18,4 +18,5 @@ pub struct IncludeConfig {
     pub routes: String,
     pub services: String,
     pub devices: String,
+    pub ingress: String,
 }

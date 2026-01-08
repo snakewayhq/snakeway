@@ -1,8 +1,10 @@
 use crate::conf::discover::discover;
 use crate::conf::merge::merge_services;
-use crate::conf::parse::{parse_devices, parse_routes, parse_services};
+use crate::conf::parse::{parse_devices, parse_ingress, parse_routes, parse_services};
 use crate::conf::runtime::{RuntimeConfig, ValidatedConfig};
-use crate::conf::types::{DeviceConfig, EntrypointConfig, RouteConfig};
+use crate::conf::types::{
+    DeviceConfig, EntrypointConfig, ExposeConfig, ExposeServiceConfig, RouteConfig,
+};
 use crate::conf::validation::ConfigError;
 use crate::conf::validation::validate_runtime_config;
 use std::fs;
@@ -26,10 +28,10 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
-
     let route_files = discover(root, &entry.include.routes)?;
     let service_files = discover(root, &entry.include.services)?;
     let device_files = discover(root, &entry.include.devices)?;
+    let ingress_files = discover(root, &entry.include.ingress)?;
 
     //--------------------------------------------------------------------------
     // Parse routes (hard fail)
@@ -54,6 +56,15 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let mut parsed_devices: Vec<DeviceConfig> = Vec::new();
     for path in &device_files {
         parsed_devices.extend(parse_devices(path.as_path())?);
+    }
+
+    //--------------------------------------------------------------------------
+    // Parse ingress (hard fail)
+    //--------------------------------------------------------------------------
+    let mut parsed_ingress_services: Vec<Vec<ExposeConfig>> = Vec::new();
+    for path in &ingress_files {
+        let parsed_ingress = parse_ingress(path.as_path())?;
+        parsed_ingress_services.push(parsed_ingress);
     }
 
     //--------------------------------------------------------------------------
