@@ -1,5 +1,5 @@
-use crate::conf::types::service::health_check::HealthCheckConfig;
-use crate::conf::types::service::upstream::UpstreamTcpConfig;
+use crate::conf::types::runtime_ir::service::health_check::HealthCheckConfig;
+use crate::conf::types::runtime_ir::service::upstream::UpstreamTcpConfig;
 use crate::conf::types::{CircuitBreakerConfig, UpstreamUnixConfig};
 use serde::{Deserialize, Serialize};
 
