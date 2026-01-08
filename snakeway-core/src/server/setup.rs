@@ -210,7 +210,7 @@ pub fn build_pingora_server(
 }
 
 /// Sanity check if ports are already in use by listeners (or something else).
-fn bail_if_port_is_in_use(listeners: &Vec<ListenerConfig>) -> Result<()> {
+fn bail_if_port_is_in_use(listeners: &[ListenerConfig]) -> Result<()> {
     let mut has_error = false;
     for cfg in listeners.iter() {
         if TcpListener::bind(&cfg.addr).is_err() {

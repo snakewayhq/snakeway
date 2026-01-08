@@ -22,10 +22,11 @@ pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeSta
 
     // Log comparison against current state.
     let old = state.load();
+    let old_routers = old.routers.len();
     tracing::info!(
-        // old_routes = old.routers,
+        old_routers = old_routers,
         old_devices = old.devices.all().len(),
-        // new_routes = new_state.router.route_count(),
+        new_routers = new_state.routers.len(),
         new_devices = new_state.devices.all().len(),
         "runtime state reloaded"
     );
@@ -104,9 +105,7 @@ pub fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>,
     for route in routes {
         let listener = route.listener();
 
-        let router = routers
-            .entry(Arc::from(listener))
-            .or_insert_with(Router::new);
+        let router = routers.entry(Arc::from(listener)).or_default();
 
         let route_runtime = match route {
             RouteConfig::Service(cfg) => RouteRuntime::Service {
