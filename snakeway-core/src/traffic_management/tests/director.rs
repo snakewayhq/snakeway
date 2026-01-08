@@ -1,6 +1,6 @@
 use crate::conf::types::LoadBalancingStrategy;
 use crate::ctx::RequestCtx;
-use crate::runtime::{UpstreamId, UpstreamRuntime};
+use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::traffic_management::circuit::CircuitBreakerParams;
 use crate::traffic_management::decision::TrafficDecision;
 use crate::traffic_management::strategy::TrafficStrategy;
@@ -29,14 +29,14 @@ fn dummy_request() -> RequestCtx {
 
 fn upstream(id: u16) -> UpstreamSnapshot {
     UpstreamSnapshot {
-        endpoint: UpstreamRuntime {
+        endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
             id: UpstreamId(id as u32),
             host: "127.0.0.1".to_string(),
             port: id,
             use_tls: false,
             sni: "localhost".to_string(),
             weight: 1,
-        },
+        }),
         latency: Some(LatencyStats {
             ewma: Duration::from_millis(10),
         }),
@@ -243,7 +243,7 @@ fn fallback_is_used_when_strategy_returns_none() {
     let decision = strategy
         .decide(&req, &service_id, healthy, &manager)
         .unwrap_or_else(|| TrafficDecision {
-            upstream_id: healthy[0].endpoint.id,
+            upstream_id: healthy[0].endpoint.id(),
             reason: DecisionReason::NoStrategyDecision,
             protocol: None,
             cb_started: true,

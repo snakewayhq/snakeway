@@ -1,5 +1,5 @@
 use crate::conf::types::{HealthCheckConfig, LoadBalancingStrategy};
-use crate::runtime::{UpstreamId, UpstreamRuntime};
+use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::traffic_management::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
 use crate::traffic_management::{ServiceId, TrafficManager};
 use std::collections::HashMap;
@@ -16,14 +16,14 @@ fn test_admin_view_counters() {
             service_id: service_id.clone(),
             strategy: LoadBalancingStrategy::RoundRobin,
             upstreams: vec![UpstreamSnapshot {
-                endpoint: UpstreamRuntime {
+                endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
                     id: upstream_id,
                     host: "127.0.0.1".into(),
                     port: 8080,
                     use_tls: false,
                     sni: "localhost".into(),
                     weight: 1,
-                },
+                }),
                 latency: None,
                 weight: 1,
             }],
@@ -66,14 +66,14 @@ fn test_admin_view_circuit_details() {
             service_id: service_id.clone(),
             strategy: LoadBalancingStrategy::RoundRobin,
             upstreams: vec![UpstreamSnapshot {
-                endpoint: UpstreamRuntime {
+                endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
                     id: upstream_id,
                     host: "127.0.0.1".into(),
                     port: 8080,
                     use_tls: false,
                     sni: "localhost".into(),
                     weight: 1,
-                },
+                }),
                 latency: None,
                 weight: 1,
             }],
@@ -121,14 +121,14 @@ fn test_metrics_persistence_on_reload() {
             service_id: service_id.clone(),
             strategy: LoadBalancingStrategy::RoundRobin,
             upstreams: vec![UpstreamSnapshot {
-                endpoint: UpstreamRuntime {
+                endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
                     id: upstream_id,
                     host: "127.0.0.1".into(),
                     port: 8080,
                     use_tls: false,
                     sni: "localhost".into(),
                     weight: 1,
-                },
+                }),
                 latency: None,
                 weight: 1,
             }],
@@ -164,14 +164,14 @@ fn test_metrics_persistence_on_reload() {
             service_id: service_id.clone(),
             strategy: LoadBalancingStrategy::RoundRobin,
             upstreams: vec![UpstreamSnapshot {
-                endpoint: UpstreamRuntime {
+                endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
                     id: upstream_id2,
                     host: "127.0.0.1".into(),
                     port: 8081,
                     use_tls: false,
                     sni: "localhost".into(),
                     weight: 1,
-                },
+                }),
                 latency: None,
                 weight: 1,
             }],

@@ -16,13 +16,13 @@ impl TrafficStrategy for RequestPressure {
     ) -> Option<TrafficDecision> {
         let upstream = healthy.iter().min_by_key(|u| {
             (
-                traffic_manager.active_requests(service_id, &u.endpoint.id),
-                u.endpoint.id, // Deterministic tie-break.
+                traffic_manager.active_requests(service_id, &u.endpoint.id()),
+                u.endpoint.id(), // Deterministic tie-break.
             )
         })?;
 
         Some(TrafficDecision {
-            upstream_id: upstream.endpoint.id,
+            upstream_id: upstream.endpoint.id(),
             reason: DecisionReason::AdmissionPressure,
             protocol: None,
             cb_started: true,

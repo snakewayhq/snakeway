@@ -1,3 +1,4 @@
+use crate::runtime::UpstreamRuntime;
 use crate::server::ReloadHandle;
 use crate::traffic_management::TrafficManager;
 use crate::ws_connection_management::WsConnectionManager;
@@ -61,17 +62,22 @@ impl AdminHandler {
                 let mut services = std::collections::HashMap::new();
 
                 for (svc_id, svc_snapshot) in &snapshot.services {
-                    let mut upstreams = std::collections::HashMap::new();
+                    let mut tcp_upstreams = std::collections::HashMap::new();
                     for u in &svc_snapshot.upstreams {
-                        let view = self.traffic_manager.get_upstream_view(
-                            svc_id,
-                            &u.endpoint.id,
-                            include_details,
-                        );
-                        let addr = format!("{}:{}", u.endpoint.host, u.endpoint.port);
-                        upstreams.insert(addr, view);
+                        match &u.endpoint {
+                            UpstreamRuntime::Tcp(tcp) => {
+                                let view = self.traffic_manager.get_upstream_view(
+                                    svc_id,
+                                    &u.endpoint.id(),
+                                    include_details,
+                                );
+                                let addr = format!("{}:{}", tcp.host, tcp.port);
+                                tcp_upstreams.insert(addr, view);
+                            }
+                            UpstreamRuntime::Unix(_) => {}
+                        };
                     }
-                    services.insert(svc_id.clone(), upstreams);
+                    services.insert(svc_id.clone(), tcp_upstreams);
                 }
 
                 let body = serde_json::to_vec(&serde_json::json!({ "services": services }))
@@ -95,11 +101,18 @@ impl AdminHandler {
                     });
 
                     for u in &svc_snapshot.upstreams {
-                        let active = self.traffic_manager.active_requests(svc_id, &u.endpoint.id);
-                        let total = self.traffic_manager.total_requests(svc_id, &u.endpoint.id);
-                        let successes =
-                            self.traffic_manager.total_successes(svc_id, &u.endpoint.id);
-                        let failures = self.traffic_manager.total_failures(svc_id, &u.endpoint.id);
+                        let active = self
+                            .traffic_manager
+                            .active_requests(svc_id, &u.endpoint.id());
+                        let total = self
+                            .traffic_manager
+                            .total_requests(svc_id, &u.endpoint.id());
+                        let successes = self
+                            .traffic_manager
+                            .total_successes(svc_id, &u.endpoint.id());
+                        let failures = self
+                            .traffic_manager
+                            .total_failures(svc_id, &u.endpoint.id());
 
                         let s = svc_stats.as_object_mut().unwrap();
                         s["active_requests"] =

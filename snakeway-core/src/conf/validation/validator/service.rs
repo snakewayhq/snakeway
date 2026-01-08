@@ -6,28 +6,28 @@ use std::collections::HashMap;
 /// Validate service definitions.
 pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut ValidationCtx) {
     for (name, service) in services {
-        if service.upstream.is_empty() {
+        if service.tcp_upstreams.is_empty() && service.unix_upstreams.is_empty() {
             ctx.error(ConfigError::EmptyService {
                 service: name.clone(),
             });
             continue;
         }
 
-        for upstream in &service.upstream {
-            if upstream.weight == 0 {
+        for tcp in &service.tcp_upstreams {
+            if tcp.weight == 0 {
                 ctx.error(ConfigError::InvalidUpstream {
                     service: name.clone(),
-                    upstream: upstream.url.clone(),
+                    upstream: tcp.url.clone(),
                     reason: "weight must be > 0".into(),
                 });
             }
 
-            let url = match upstream.url.parse::<url::Url>() {
+            let url = match tcp.url.parse::<url::Url>() {
                 Ok(u) => u,
                 Err(_) => {
                     ctx.error(ConfigError::InvalidUpstream {
                         service: name.clone(),
-                        upstream: upstream.url.clone(),
+                        upstream: tcp.url.clone(),
                         reason: "invalid URL".into(),
                     });
                     continue;
@@ -37,8 +37,36 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
             if !matches!(url.scheme(), "http" | "https") {
                 ctx.error(ConfigError::InvalidUpstream {
                     service: name.clone(),
-                    upstream: upstream.url.clone(),
+                    upstream: tcp.url.clone(),
                     reason: "unsupported URL scheme".into(),
+                });
+            }
+        }
+
+        let mut seen_sock_values = HashMap::new();
+        for unix in &service.unix_upstreams {
+            if unix.weight == 0 {
+                ctx.error(ConfigError::InvalidUpstream {
+                    service: name.clone(),
+                    upstream: unix.sock.clone(),
+                    reason: "weight must be > 0".into(),
+                });
+            }
+            if seen_sock_values.contains_key(&unix.sock) {
+                ctx.error(ConfigError::InvalidUpstream {
+                    service: name.clone(),
+                    upstream: unix.sock.clone(),
+                    reason: "duplicate socket path".into(),
+                });
+            } else {
+                seen_sock_values.insert(unix.sock.clone(), ());
+            }
+
+            if unix.use_tls && unix.sni.is_empty() {
+                ctx.error(ConfigError::InvalidUpstream {
+                    service: name.clone(),
+                    upstream: unix.sock.clone(),
+                    reason: "SNI must be set when using TLS".into(),
                 });
             }
         }

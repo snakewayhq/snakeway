@@ -2,7 +2,7 @@ use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
-use http::{Extensions, HeaderMap, Method, Uri};
+use http::{Extensions, HeaderMap, Method, Uri, Version};
 use pingora::prelude::Session;
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -47,8 +47,8 @@ pub struct RequestCtx {
     /// Was a websocket connection opened?
     pub ws_opened: bool,
 
-    /// Is it a gRPC request?
-    pub is_grpc: bool,
+    /// Is it an HTTP/2 request?
+    pub is_http2: bool,
 
     /// Upstream authority for HTTP/2 requests.
     pub upstream_authority: Option<String>,
@@ -95,7 +95,7 @@ impl RequestCtx {
             upstream_path: None,
 
             // Protocol flags that help figure out what to do with the request.
-            is_grpc: false,
+            is_http2: false,
             is_upgrade_req: false,
             ws_opened: false,
 
@@ -124,12 +124,7 @@ impl RequestCtx {
         self.headers = req.headers.clone();
         self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
-        self.is_grpc = req
-            .headers
-            .get(http::header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .is_some_and(|ct| ct.starts_with("application/grpc"));
-
+        self.is_http2 = req.version == Version::HTTP_2;
         self.hydrated = true;
     }
 

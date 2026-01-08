@@ -10,6 +10,8 @@ generate-proto:
     ./generate-proto.sh
 
 build:
+    @echo "Ensure sock file exists for UDS"
+    touch /tmp/snakeway-http.sock
     @echo "Build the server (http, https, ws, wss, grpc)..."
     go build -o origin-server  ./cmd/origin-server
     @echo "Build the launcher"

@@ -41,13 +41,13 @@ fn patch_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16], upstream_ports: 
         .expect("fixture missing services.api");
 
     assert!(
-        svc.upstream.len() <= upstream_ports.len(),
+        svc.tcp_upstreams.len() <= upstream_ports.len(),
         "fixture defines {} upstreams but only {} ports allocated",
-        svc.upstream.len(),
+        svc.tcp_upstreams.len(),
         upstream_ports.len()
     );
 
-    for (i, up) in svc.upstream.iter_mut().enumerate() {
+    for (i, up) in svc.tcp_upstreams.iter_mut().enumerate() {
         let mut url = Url::parse(&up.url).expect("invalid upstream URL in fixture");
 
         url.set_port(Some(upstream_ports[i]))

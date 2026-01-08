@@ -117,7 +117,11 @@ impl TrafficManager {
             new_snapshot
                 .services
                 .get(service_id)
-                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
                 .unwrap_or(false)
         });
 
@@ -126,7 +130,11 @@ impl TrafficManager {
             new_snapshot
                 .services
                 .get(service_id)
-                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
                 .unwrap_or(false)
         });
 
@@ -135,21 +143,33 @@ impl TrafficManager {
             new_snapshot
                 .services
                 .get(service_id)
-                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
                 .unwrap_or(false)
         });
         self.total_successes.retain(|(service_id, upstream_id), _| {
             new_snapshot
                 .services
                 .get(service_id)
-                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
                 .unwrap_or(false)
         });
         self.total_failures.retain(|(service_id, upstream_id), _| {
             new_snapshot
                 .services
                 .get(service_id)
-                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
                 .unwrap_or(false)
         });
 
@@ -158,7 +178,11 @@ impl TrafficManager {
             new_snapshot
                 .services
                 .get(service_id)
-                .map(|svc| svc.upstreams.iter().any(|u| u.endpoint.id == *upstream_id))
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
                 .unwrap_or(false)
         });
 
@@ -242,7 +266,7 @@ impl TrafficManager {
         // Build signature inputs (ids + weights)
         // NOTE: This allocates a Vec each call. If you want to go harder later,
         // we can avoid allocations by hashing instead.
-        let upstream_ids: Vec<UpstreamId> = healthy.iter().map(|u| u.endpoint.id).collect();
+        let upstream_ids: Vec<UpstreamId> = healthy.iter().map(|u| u.endpoint.id()).collect();
 
         let total_weight: i64 = healthy
             .iter()

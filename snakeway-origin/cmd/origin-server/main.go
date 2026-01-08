@@ -21,6 +21,7 @@ import (
 func main() {
 	cfg := server.LoadConfig()
 
+	flag.IntVar(&cfg.InstanceId, "instance-id", 0, "Instance ID")
 	flag.IntVar(&cfg.Port, "port", cfg.Port, "Base port")
 	flag.StringVar(&cfg.CertFile, "tls-cert", cfg.CertFile, "TLS cert file")
 	flag.StringVar(&cfg.KeyFile, "tls-key", cfg.KeyFile, "TLS key file")
@@ -53,6 +54,25 @@ func main() {
 		Handler:   httpHandler,
 		TLSConfig: tlsCfg,
 	}
+
+	// HTTP over UDS
+	httpSock := fmt.Sprintf("/tmp/snakeway-http-%d.sock", cfg.InstanceId)
+
+	_ = os.Remove(httpSock)
+	httpUdsLis, err := net.Listen("unix", httpSock)
+	if err != nil {
+		log.Fatalf("failed to listen on HTTP UDS %s: %v", httpSock, err)
+	}
+	log.Printf("Listening HTTP + WS on UDS %s\n", httpSock)
+
+	_ = os.Chmod(httpSock, 0660)
+
+	// HTTP over UDS
+	go func() {
+		if err := httpSrv.Serve(httpUdsLis); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP UDS server failed: %v", err)
+		}
+	}()
 
 	// HTTP
 	go func() {

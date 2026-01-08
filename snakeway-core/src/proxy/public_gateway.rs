@@ -108,18 +108,34 @@ impl ProxyHttp for PublicGateway {
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        let mut peer = HttpPeer::new(
-            (upstream.host.as_str(), upstream.port),
-            upstream.use_tls,
-            upstream.sni.clone(),
-        );
+        // Creating an HttpPeer instance per request may raise an eyebrow, but
+        // it is merely a sort of configuration object that is used by Pingora
+        // to compute a hash later when its internal pooling logic runs.
+        let mut peer = match upstream {
+            UpstreamRuntime::Tcp(tcp) => Ok(HttpPeer::new(
+                tcp.http_peer_addr(),
+                tcp.use_tls,
+                tcp.sni.clone(),
+            )),
+            UpstreamRuntime::Unix(unix) => {
+                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
+                    anyhow::anyhow!(
+                        "Could not connect to unix domain socket `{}`: {}",
+                        unix.path,
+                        e
+                    )
+                })
+            }
+        }
+        .map_err(|_| Error::new(Custom("http peer creation failed")))?;
 
         // Enforce protocol rules for this upstream and request.
         self.enforce_protocol(&mut peer, ctx, upstream)?;
 
-        // Set upstream authority for gRPC requests.
-        let authority = format!("{}:{}", upstream.host, upstream.port);
-        ctx.upstream_authority = Some(authority);
+        // Set upstream authority for gRPC and http/2.0 requests.
+        if ctx.is_http2 {
+            ctx.upstream_authority = Some(upstream.authority());
+        }
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
@@ -129,13 +145,13 @@ impl ProxyHttp for PublicGateway {
             let guard = AdmissionGuard::new(
                 self.gw_ctx.traffic_manager.clone(),
                 service_id.clone(),
-                upstream.id,
+                upstream.id(),
             );
 
             ctx.admission_guard = Some(guard);
         }
 
-        ctx.selected_upstream = Some((service_id, upstream.id));
+        ctx.selected_upstream = Some((service_id, upstream.id()));
 
         Ok(Box::new(peer))
     }
@@ -234,11 +250,12 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        if ctx.is_grpc {
+        if upstream.version == Version::HTTP_2 {
             let authority = ctx
                 .upstream_authority()
-                .ok_or_else(|| Error::new(Custom("missing upstream authority for gRPC")))?;
+                .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
 
+            // Set Host - Pingora will map it to :authority
             upstream.insert_header(header::HOST, authority)?;
         }
 
@@ -322,10 +339,10 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        if ctx.ws_opened || ctx.is_grpc {
-            // Do not run on_response devices for WebSockets or gRPC.
-            // For WebSockets and gRPC, this is not a real "response."
-            // It is a protocol switch.
+        if ctx.ws_opened || ctx.is_http2 {
+            // Do not run on_response devices for WebSockets or HTTP/2.
+            // For WebSockets and HTTP/2, this is not a real "response."
+            // For WebSockets, it is a protocol switch.
             return Ok(());
         }
 
@@ -407,7 +424,7 @@ impl PublicGateway {
         let upstream = service
             .upstreams
             .iter()
-            .find(|u| u.id == decision.upstream_id)
+            .find(|u| u.id() == decision.upstream_id)
             .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
 
         Ok(SelectedUpstream {
@@ -431,8 +448,8 @@ impl PublicGateway {
         if ctx.is_upgrade_req {
             // WebSockets MUST be HTTP/1.1
             peer.options.set_http_version(1, 1);
-        } else if ctx.is_grpc {
-            if !upstream.use_tls {
+        } else if ctx.is_http2 {
+            if !upstream.use_tls() {
                 return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
             }
             peer.options.set_http_version(2, 2);

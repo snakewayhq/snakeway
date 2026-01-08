@@ -21,7 +21,7 @@ impl TrafficStrategy for Failover {
         let healthy = healthy.first()?;
 
         Some(TrafficDecision {
-            upstream_id: healthy.endpoint.id,
+            upstream_id: healthy.endpoint.id(),
             reason: DecisionReason::Failover,
             protocol: None,
 
