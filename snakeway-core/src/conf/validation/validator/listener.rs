@@ -12,7 +12,15 @@ pub fn validate_listeners(listeners: &[ListenerConfig], ctx: &mut ValidationCtx)
     let mut seen_addrs = HashSet::new();
     let mut admin_seen = false;
 
+    let mut seen = HashSet::new();
+
     for listener in listeners {
+        if !seen.insert(&listener.addr) {
+            ctx.error(ConfigError::DuplicateListenerName {
+                name: listener.name.clone(),
+            })
+        }
+
         let addr: SocketAddr = match listener.addr.parse() {
             Ok(a) => a,
             Err(_) => {

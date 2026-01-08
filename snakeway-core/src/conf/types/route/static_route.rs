@@ -18,6 +18,8 @@ pub struct StaticRouteConfig {
 
     #[serde(default)]
     pub cache_policy: StaticCachePolicy,
+
+    pub listener: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

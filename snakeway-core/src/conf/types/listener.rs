@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListenerConfig {
+    /// Name of the listener. Must be unique among listeners.
+    pub name: String,
+
     /// Address to bind, e.g. "0.0.0.0:8080"
     pub addr: String,
 

@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 pub struct ServiceConfig {
     pub name: String,
 
+    /// The name of a listener this service is attached to.
+    pub listener: String,
+
     /// Load balancing strategy
     #[serde(default = "default_strategy")]
     pub strategy: LoadBalancingStrategy,

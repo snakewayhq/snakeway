@@ -14,4 +14,11 @@ impl RouteConfig {
             RouteConfig::Static(cfg) => &cfg.path,
         }
     }
+
+    pub fn listener(&self) -> &str {
+        match self {
+            RouteConfig::Service(cfg) => &cfg.listener,
+            RouteConfig::Static(cfg) => &cfg.listener,
+        }
+    }
 }
