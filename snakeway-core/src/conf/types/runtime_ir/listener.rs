@@ -20,4 +20,13 @@ pub struct ListenerConfig {
     /// Whether a listener serves admin endpoints or not.
     #[serde(default)]
     pub enable_admin: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redirect: Option<RedirectConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RedirectConfig {
+    pub to: String,
+    pub status: u16,
 }

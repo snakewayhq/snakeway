@@ -30,6 +30,9 @@ pub enum ConfigCmd {
         #[arg(default_value = "config")]
         path: PathBuf,
 
+        #[arg(short, long, default_value = "dsl")]
+        repr: RepresentationFormat,
+
         /// Output as JSON
         #[arg(long, conflicts_with = "yaml")]
         json: bool,

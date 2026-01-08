@@ -9,11 +9,12 @@ pub use expose_admin::ExposeAdminConfig;
 pub use expose_redirect::ExposeRedirectConfig;
 pub use expose_service::ExposeServiceConfig;
 pub use expose_static::ExposeStaticConfig;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// The operator DSL for the config subsystem.
 /// This defines the configuration file format of files in ./config/ingress.d/*.toml
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ExposeConfig {
     Redirect(ExposeRedirectConfig),
     Service(ExposeServiceConfig),

@@ -68,8 +68,13 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-            cli::conf::ConfigCmd::Dump { path, json, yaml } => {
-                if let Err(e) = cli::conf::dump(path, json, yaml) {
+            cli::conf::ConfigCmd::Dump {
+                path,
+                json,
+                yaml,
+                repr,
+            } => {
+                if let Err(e) = cli::conf::dump(path, json, yaml, repr) {
                     eprintln!("Failed to dump configuration: {e}");
                     std::process::exit(1);
                 }

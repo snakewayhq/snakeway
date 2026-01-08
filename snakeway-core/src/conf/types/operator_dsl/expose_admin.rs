@@ -1,7 +1,7 @@
 use crate::conf::types::TlsConfig;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ExposeAdminConfig {
     pub addr: String,
     pub tls: TlsConfig,

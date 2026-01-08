@@ -2,13 +2,43 @@ use crate::conf::discover::discover;
 use crate::conf::lower::lower_expose_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::runtime::{RuntimeConfig, ValidatedConfig};
-use crate::conf::types::{DeviceConfig, EntrypointConfig, ExposeConfig};
+use crate::conf::types::{DeviceConfig, EntrypointConfig, ExposeConfig, ServerConfig};
 use crate::conf::validation::ConfigError;
 use crate::conf::validation::validate_runtime_config;
 use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
+    let (server, devices, exposes) = load_dsl_config(root)?;
+
+    let (listeners, routes, services) = lower_expose_configs(exposes)?;
+
+    //--------------------------------------------------------------------------
+    // Semantic validation (aggregate all semantic errors)
+    //--------------------------------------------------------------------------
+    let validation = validate_runtime_config(&server, &listeners, &routes, &services, &devices)
+        .map_err(|errs| ConfigError::Validation {
+            validation_errors: errs,
+        })?;
+
+    //--------------------------------------------------------------------------
+    // Build runtime config
+    //--------------------------------------------------------------------------
+    Ok(ValidatedConfig {
+        config: RuntimeConfig {
+            server,
+            devices,
+            routes,
+            services,
+            listeners,
+        },
+        validation,
+    })
+}
+
+pub type ConfigIntermediateRepresentation = (ServerConfig, Vec<DeviceConfig>, Vec<ExposeConfig>);
+
+pub fn load_dsl_config(root: &Path) -> Result<ConfigIntermediateRepresentation, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
@@ -47,33 +77,6 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
         .into_iter()
         .flatten()
         .collect();
-    let (listeners, routes, services) = lower_expose_configs(exposes)?;
 
-    //--------------------------------------------------------------------------
-    // Semantic validation (aggregate all semantic errors)
-    //--------------------------------------------------------------------------
-    let validation = validate_runtime_config(
-        &entry.server,
-        &listeners,
-        &routes,
-        &services,
-        &parsed_devices,
-    )
-    .map_err(|errs| ConfigError::Validation {
-        validation_errors: errs,
-    })?;
-
-    //--------------------------------------------------------------------------
-    // Build runtime config
-    //--------------------------------------------------------------------------
-    Ok(ValidatedConfig {
-        config: RuntimeConfig {
-            server: entry.server,
-            devices: parsed_devices,
-            routes,
-            services,
-            listeners,
-        },
-        validation,
-    })
+    Ok((entry.server, parsed_devices, exposes))
 }

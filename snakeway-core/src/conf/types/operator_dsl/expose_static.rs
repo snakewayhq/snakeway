@@ -2,14 +2,14 @@ use crate::conf::types::TlsConfig;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ExposeStaticConfig {
     pub addr: String,
     pub tls: Option<TlsConfig>,
     pub routes: Vec<ExposeStaticRouteConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ExposeStaticRouteConfig {
     pub path: String,
     pub file_dir: PathBuf,

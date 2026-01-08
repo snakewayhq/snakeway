@@ -1,12 +1,12 @@
 use crate::conf::merge::merge_services;
 use crate::conf::types::{
-    ExposeConfig, ListenerConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
+    ExposeConfig, ListenerConfig, RedirectConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
     StaticCachePolicy, StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
 
-type ConfigIntermediateRepresentation = (
+pub type ExposeIntermediateRepresentation = (
     Vec<ListenerConfig>,
     Vec<RouteConfig>,
     HashMap<String, ServiceConfig>,
@@ -14,13 +14,13 @@ type ConfigIntermediateRepresentation = (
 
 pub fn lower_expose_configs(
     exposes: Vec<ExposeConfig>,
-) -> Result<ConfigIntermediateRepresentation, ConfigError> {
+) -> Result<ExposeIntermediateRepresentation, ConfigError> {
     let mut listeners: Vec<ListenerConfig> = Vec::new();
     let mut routes: Vec<RouteConfig> = Vec::new();
     let mut services: Vec<ServiceConfig> = Vec::new();
 
     for (expose_idx, expose) in exposes.into_iter().enumerate() {
-        let listener_name = format!("expose-{}", expose_idx);
+        let listener_name = format!("listener-{}", expose_idx);
         match expose {
             ExposeConfig::Admin(cfg) => {
                 listeners.push(ListenerConfig {
@@ -29,6 +29,7 @@ pub fn lower_expose_configs(
                     tls: Some(cfg.tls),
                     enable_http2: false,
                     enable_admin: cfg.enable_admin,
+                    redirect: None,
                 });
             }
             ExposeConfig::Redirect(cfg) => {
@@ -38,6 +39,10 @@ pub fn lower_expose_configs(
                     tls: None,
                     enable_http2: false,
                     enable_admin: false,
+                    redirect: Some(RedirectConfig {
+                        to: cfg.to,
+                        status: cfg.status,
+                    }),
                 });
             }
             ExposeConfig::Service(cfg) => {
@@ -48,6 +53,7 @@ pub fn lower_expose_configs(
                     tls: cfg.tls,
                     enable_http2: cfg.enable_http2,
                     enable_admin: false,
+                    redirect: None,
                 };
                 let use_tls = listener.tls.is_some();
                 listeners.push(listener);
@@ -106,6 +112,7 @@ pub fn lower_expose_configs(
                     tls: cfg.tls.clone(),
                     enable_http2: false,
                     enable_admin: false,
+                    redirect: None,
                 });
 
                 for route in cfg.routes {
