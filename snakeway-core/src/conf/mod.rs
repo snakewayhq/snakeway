@@ -1,5 +1,6 @@
 mod discover;
 mod loader;
+mod lower;
 mod merge;
 mod parse;
 mod runtime;

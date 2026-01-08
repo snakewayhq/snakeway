@@ -1,3 +1,5 @@
+/// The operator DSL for the config subsystem.
+///
 /*
 [[expose_redirect]]
 addr = "0.0.0.0:80"
@@ -42,18 +44,26 @@ weight = 1
 [[expose_service.backends]]
 unix = { sock = "/tmp/snakeway-http" }
 weight = 1
-
-
 */
 use crate::conf::types::{
-    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, TlsConfig,
+    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, StaticCachePolicy,
+    StaticFileConfig, TlsConfig,
 };
 use serde::Deserialize;
+use std::path::PathBuf;
 
 pub enum ExposeConfig {
     Redirect(ExposeRedirectConfig),
     Service(ExposeServiceConfig),
-    StaticRoute(ExposeStaticConfig),
+    Static(ExposeStaticConfig),
+    Admin(ExposeAdminConfig),
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct ExposeAdminConfig {
+    pub addr: String,
+    pub tls: TlsConfig,
+    pub enable_admin: bool,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -87,7 +97,7 @@ pub struct ExposeRouteConfig {
 pub struct ExposeBackendConfig {
     pub tcp: Option<TcpConfig>,
     pub unix: Option<UnixConfig>,
-    pub weight: usize,
+    pub weight: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,7 +132,9 @@ pub struct ExposeStaticConfig {
 #[derive(Debug, Deserialize)]
 pub struct ExposeStaticRouteConfig {
     pub path: String,
-    pub file_dir: String,
+    pub file_dir: PathBuf,
     pub index: Option<String>,
     pub directory_listing: bool,
+    pub static_config: StaticFileConfig,
+    pub cache_policy: StaticCachePolicy,
 }

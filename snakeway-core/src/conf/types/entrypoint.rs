@@ -1,13 +1,10 @@
 use crate::conf::types::ServerConfig;
-use crate::conf::types::listener::ListenerConfig;
 use serde::Deserialize;
 
 /// Represents the top-level configuration file.
 #[derive(Debug, Deserialize)]
 pub struct EntrypointConfig {
     pub server: ServerConfig,
-    #[serde(rename = "listener")]
-    pub listeners: Vec<ListenerConfig>,
     pub include: IncludeConfig,
 }
 
@@ -15,8 +12,6 @@ pub struct EntrypointConfig {
 /// The members are directory paths where sub-configuration files are located.
 #[derive(Debug, Deserialize)]
 pub struct IncludeConfig {
-    pub routes: String,
-    pub services: String,
     pub devices: String,
     pub ingress: String,
 }
