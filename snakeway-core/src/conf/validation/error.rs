@@ -102,9 +102,6 @@ pub enum ConfigError {
     #[error("invalid listener socket address '{addr}'")]
     InvalidListenerAddr { addr: String },
 
-    #[error("duplicate listener address '{addr}'")]
-    DuplicateListenerAddr { addr: String },
-
     #[error("cert file does not exist: {path}")]
     MissingCertFile { path: String },
 

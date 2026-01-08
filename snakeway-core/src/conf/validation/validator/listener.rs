@@ -9,13 +9,12 @@ use std::path::Path;
 ///
 /// Structural errors here are aggregated, not fail-fast.
 pub fn validate_listeners(listeners: &[ListenerConfig], ctx: &mut ValidationCtx) {
-    let mut seen_addrs = HashSet::new();
     let mut admin_seen = false;
 
-    let mut seen = HashSet::new();
+    let mut seen_listener_names = HashSet::new();
 
     for listener in listeners {
-        if !seen.insert(&listener.addr) {
+        if !seen_listener_names.insert(&listener.name) {
             ctx.error(ConfigError::DuplicateListenerName {
                 name: listener.name.clone(),
             })
@@ -30,12 +29,6 @@ pub fn validate_listeners(listeners: &[ListenerConfig], ctx: &mut ValidationCtx)
                 continue;
             }
         };
-
-        if !seen_addrs.insert(addr) {
-            ctx.error(ConfigError::DuplicateListenerAddr {
-                addr: listener.addr.clone(),
-            });
-        }
 
         if let Some(tls) = &listener.tls {
             if !Path::new(&tls.cert).is_file() {

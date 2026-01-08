@@ -1,9 +1,7 @@
 use crate::conf::types::{
-    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, StaticCachePolicy,
-    StaticFileConfig, TlsConfig,
+    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, TlsConfig,
 };
 use serde::Deserialize;
-use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct ExposeServiceConfig {

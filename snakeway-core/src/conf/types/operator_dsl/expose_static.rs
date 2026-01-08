@@ -1,7 +1,4 @@
-use crate::conf::types::{
-    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, StaticCachePolicy,
-    StaticFileConfig, TlsConfig,
-};
+use crate::conf::types::{StaticCachePolicy, StaticFileConfig, TlsConfig};
 use serde::Deserialize;
 use std::path::PathBuf;
 

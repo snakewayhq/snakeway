@@ -42,13 +42,16 @@ pub fn lower_expose_configs(
             }
             ExposeConfig::Service(cfg) => {
                 let service_name = format!("{}-service", cfg.addr);
-                listeners.push(ListenerConfig {
+                let listener = ListenerConfig {
                     name: listener_name.clone(),
                     addr: cfg.addr.clone(),
                     tls: cfg.tls,
                     enable_http2: cfg.enable_http2,
                     enable_admin: false,
-                });
+                };
+                let use_tls = listener.tls.is_some();
+                listeners.push(listener);
+
                 let unix_upstreams = cfg
                     .backends
                     .iter()
@@ -56,7 +59,7 @@ pub fn lower_expose_configs(
                         b.unix.as_ref().map(|unix| UpstreamUnixConfig {
                             weight: b.weight,
                             sock: unix.sock.clone(),
-                            use_tls: false,
+                            use_tls,
                             sni: "localhost".to_string(),
                         })
                     })
@@ -68,7 +71,10 @@ pub fn lower_expose_configs(
                     .filter_map(|b| {
                         b.tcp.as_ref().map(|tcp| UpstreamTcpConfig {
                             weight: b.weight,
-                            url: tcp.addr.clone(),
+                            url: match use_tls {
+                                true => format!("https://{}", tcp.addr),
+                                false => format!("http://{}", tcp.addr),
+                            },
                         })
                     })
                     .collect();
