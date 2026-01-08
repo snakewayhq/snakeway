@@ -1,9 +1,11 @@
 use crate::conf::discover::discover;
 use crate::conf::lower::lower_expose_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
-use crate::conf::runtime::{RuntimeConfig, ValidatedConfig};
-use crate::conf::types::{DeviceConfig, EntrypointConfig, ExposeConfig, ServerConfig};
+use crate::conf::types::{
+    DeviceConfig, EntrypointConfig, ExposeConfig, RuntimeConfig, ServerConfig,
+};
 use crate::conf::validation::ConfigError;
+use crate::conf::validation::ValidatedConfig;
 use crate::conf::validation::validate_runtime_config;
 use std::fs;
 use std::path::Path;
