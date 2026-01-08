@@ -54,7 +54,7 @@ pub enum ConfigError {
     Parse {
         path: PathBuf,
         #[source]
-        source: toml::de::Error,
+        source: hcl::Error,
     },
 
     //-------------------------------------------------------------------------
@@ -169,7 +169,7 @@ impl ConfigError {
         }
     }
 
-    pub fn parse(path: impl Into<PathBuf>, source: toml::de::Error) -> Self {
+    pub fn parse(path: impl Into<PathBuf>, source: hcl::Error) -> Self {
         Self::Parse {
             path: path.into(),
             source,

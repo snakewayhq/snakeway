@@ -1,64 +1,59 @@
 use crate::conf::merge::{merge_listeners, merge_services};
 use crate::conf::types::{
-    ExposeConfig, ListenerConfig, RedirectConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
+    IngressConfig, ListenerConfig, RedirectConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
     StaticCachePolicy, StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
 
-pub type ExposeIntermediateRepresentation = (
+pub type IrConfig = (
     Vec<ListenerConfig>,
     Vec<RouteConfig>,
     HashMap<String, ServiceConfig>,
 );
 
-pub fn lower_expose_configs(
-    exposes: Vec<ExposeConfig>,
-) -> Result<ExposeIntermediateRepresentation, ConfigError> {
+/// Transform DSL configs to intermediate representation.
+pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigError> {
     let mut listeners: Vec<ListenerConfig> = Vec::new();
     let mut routes: Vec<RouteConfig> = Vec::new();
     let mut services: Vec<ServiceConfig> = Vec::new();
 
-    for (expose_idx, expose) in exposes.into_iter().enumerate() {
-        let listener_name = format!("listener-{}", expose_idx);
-        match expose {
-            ExposeConfig::Admin(cfg) => {
-                listeners.push(ListenerConfig {
-                    name: listener_name.clone(),
-                    addr: cfg.addr,
-                    tls: Some(cfg.tls),
-                    enable_http2: false,
-                    enable_admin: cfg.enable_admin,
-                    redirect: None,
-                });
-            }
-            ExposeConfig::Redirect(cfg) => {
-                listeners.push(ListenerConfig {
-                    name: listener_name.clone(),
-                    addr: cfg.addr,
-                    tls: None,
-                    enable_http2: false,
-                    enable_admin: false,
-                    redirect: Some(RedirectConfig {
-                        to: cfg.to,
-                        status: cfg.status,
-                    }),
-                });
-            }
-            ExposeConfig::Service(cfg) => {
-                let service_name = format!("{}-service", cfg.addr);
-                let listener = ListenerConfig {
-                    name: listener_name.clone(),
-                    addr: cfg.addr.clone(),
-                    tls: cfg.tls,
-                    enable_http2: cfg.enable_http2,
-                    enable_admin: false,
-                    redirect: None,
-                };
-                let use_tls = listener.tls.is_some();
-                listeners.push(listener);
+    for (idx, ingress) in ingresses.into_iter().enumerate() {
+        let listener_name = format!("listener-{}", idx);
 
-                let unix_upstreams = cfg
+        for redirect_cfg in ingress.redirect_cfgs {
+            listeners.push(ListenerConfig {
+                name: listener_name.clone(),
+                addr: redirect_cfg.addr,
+                tls: None,
+                enable_http2: false,
+                enable_admin: false,
+                redirect: Some(RedirectConfig {
+                    to: redirect_cfg.to,
+                    status: redirect_cfg.status,
+                }),
+            });
+        }
+
+        if let Some(admin_bind) = ingress.admin_bind {
+            listeners.push(ListenerConfig {
+                name: listener_name.clone(),
+                addr: admin_bind.addr,
+                tls: Some(admin_bind.tls),
+                enable_http2: false,
+                enable_admin: true,
+                redirect: None,
+            });
+        }
+
+        if let Some(bind) = ingress.bind {
+            let use_tls = bind.tls.is_some();
+
+            //-----------------------------------------------------------------
+            // Services
+            //-----------------------------------------------------------------
+            for service_cfg in ingress.service_cfgs {
+                let unix_upstreams = service_cfg
                     .backends
                     .iter()
                     .filter_map(|b| {
@@ -71,7 +66,7 @@ pub fn lower_expose_configs(
                     })
                     .collect();
 
-                let tcp_upstreams = cfg
+                let tcp_upstreams = service_cfg
                     .backends
                     .iter()
                     .filter_map(|b| {
@@ -85,17 +80,19 @@ pub fn lower_expose_configs(
                     })
                     .collect();
 
+                let service_name = format!("{}-service", bind.addr.clone());
+
                 services.push(ServiceConfig {
                     name: service_name.clone(),
                     listener: listener_name.clone(),
-                    strategy: cfg.strategy,
+                    strategy: service_cfg.strategy,
                     tcp_upstreams,
                     unix_upstreams,
-                    circuit_breaker: cfg.circuit_breaker.unwrap_or_default(),
-                    health_check: cfg.health_check.unwrap_or_default(),
+                    circuit_breaker: service_cfg.circuit_breaker.unwrap_or_default(),
+                    health_check: service_cfg.health_check.unwrap_or_default(),
                 });
 
-                for route in cfg.routes {
+                for route in service_cfg.routes {
                     routes.push(RouteConfig::Service(ServiceRouteConfig {
                         path: route.path,
                         listener: listener_name.clone(),
@@ -105,17 +102,12 @@ pub fn lower_expose_configs(
                     }));
                 }
             }
-            ExposeConfig::Static(cfg) => {
-                listeners.push(ListenerConfig {
-                    name: listener_name.clone(),
-                    addr: cfg.addr.clone(),
-                    tls: cfg.tls.clone(),
-                    enable_http2: false,
-                    enable_admin: false,
-                    redirect: None,
-                });
 
-                for route in cfg.routes {
+            //-----------------------------------------------------------------
+            // Static files
+            //-----------------------------------------------------------------
+            for static_cfg in ingress.static_cfgs {
+                for route in static_cfg.routes {
                     routes.push(RouteConfig::Static(StaticRouteConfig {
                         path: route.path,
                         file_dir: route.file_dir,
@@ -138,7 +130,16 @@ pub fn lower_expose_configs(
                     }));
                 }
             }
-        };
+
+            listeners.push(ListenerConfig {
+                name: listener_name.clone(),
+                addr: bind.addr,
+                tls: bind.tls,
+                enable_http2: false,
+                enable_admin: false,
+                redirect: None,
+            });
+        }
     }
 
     let (merged_listeners, name_map) = merge_listeners(listeners)?;

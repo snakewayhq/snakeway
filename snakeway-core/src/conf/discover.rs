@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 ///
 /// # Arguments
 ///
-/// * `pattern` - A glob pattern string (e.g., `"config/**/*.toml"`)
+/// * `pattern` - A glob pattern string (e.g., `"config/**/*.hcl"`)
 ///
 /// # Returns
 ///

@@ -9,5 +9,5 @@ pub struct WasmDeviceConfig {
     pub path: PathBuf,
 
     /// Device-specific configuration blob
-    pub config: Option<toml::Value>,
+    pub config: Option<hcl::Value>,
 }

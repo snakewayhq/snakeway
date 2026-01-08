@@ -1,19 +1,20 @@
 use crate::conf::discover::discover;
-use crate::conf::lower::lower_expose_configs;
+use crate::conf::lower::lower_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::types::{
-    DeviceConfig, EntrypointConfig, ExposeConfig, RuntimeConfig, ServerConfig,
+    DeviceConfig, EntrypointConfig, IngressConfig, RuntimeConfig, ServerConfig,
 };
 use crate::conf::validation::ConfigError;
 use crate::conf::validation::ValidatedConfig;
 use crate::conf::validation::validate_runtime_config;
+
 use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (server, devices, exposes) = load_dsl_config(root)?;
 
-    let (listeners, routes, services) = lower_expose_configs(exposes)?;
+    let (listeners, routes, services) = lower_configs(exposes)?;
 
     //--------------------------------------------------------------------------
     // Semantic validation (aggregate all semantic errors)
@@ -38,19 +39,19 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     })
 }
 
-pub type ConfigIntermediateRepresentation = (ServerConfig, Vec<DeviceConfig>, Vec<ExposeConfig>);
+pub type ConfigIntermediateRepresentation = (ServerConfig, Vec<DeviceConfig>, Vec<IngressConfig>);
 
 pub fn load_dsl_config(root: &Path) -> Result<ConfigIntermediateRepresentation, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
     let entry =
-        fs::read_to_string(root.join("snakeway.toml")).map_err(|e| ConfigError::ReadFile {
+        fs::read_to_string(root.join("snakeway.hcl")).map_err(|e| ConfigError::ReadFile {
             path: root.to_path_buf(),
             source: e,
         })?;
 
-    let entry: EntrypointConfig = toml::from_str(&entry).map_err(|e| ConfigError::Parse {
+    let entry: EntrypointConfig = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
         path: root.to_path_buf(),
         source: e,
     })?;
@@ -72,13 +73,10 @@ pub fn load_dsl_config(root: &Path) -> Result<ConfigIntermediateRepresentation, 
     //--------------------------------------------------------------------------
     // Parse ingress (hard fail)
     //--------------------------------------------------------------------------
-    let exposes: Vec<ExposeConfig> = ingress_files
+    let ingresses = ingress_files
         .iter()
         .map(|p| parse_ingress(p.as_path()))
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .flatten()
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
-    Ok((entry.server, parsed_devices, exposes))
+    Ok((entry.server, parsed_devices, ingresses))
 }

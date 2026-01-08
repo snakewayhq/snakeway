@@ -1,6 +1,7 @@
 use crate::conf::types::{
-    DeviceConfig, ExposeConfig, ExposeRedirectConfig, ExposeServiceConfig, ExposeStaticConfig,
-    IdentityDeviceConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig,
+    AdminBindConfig, BindConfig, DeviceConfig, ExposeRedirectConfig, ExposeServiceConfig,
+    ExposeStaticConfig, IdentityDeviceConfig, IngressConfig, StructuredLoggingDeviceConfig,
+    WasmDeviceConfig,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -18,7 +19,7 @@ struct DevicesFile {
 
 pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: DevicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+    let parsed: DevicesFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
     let mut device_config = Vec::new();
 
@@ -37,37 +38,29 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
 
 #[derive(Debug, Deserialize)]
 struct ExposeServiceFile {
+    bind: Option<BindConfig>,
+
+    admin_bind: Option<AdminBindConfig>,
+
     #[serde(default)]
     expose_redirect: Vec<ExposeRedirectConfig>,
 
     #[serde(default)]
-    expose_service: Option<ExposeServiceConfig>,
+    expose_service: Vec<ExposeServiceConfig>,
 
     #[serde(default)]
-    expose_static: Option<ExposeStaticConfig>,
+    expose_static: Vec<ExposeStaticConfig>,
 }
 
-pub fn parse_ingress(path: &Path) -> Result<Vec<ExposeConfig>, ConfigError> {
+pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
+    let parsed: ExposeServiceFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
-    let parsed: ExposeServiceFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
-
-    let mut exposes = Vec::new();
-
-    // Redirects (plural, order preserved)
-    for redirect in parsed.expose_redirect {
-        exposes.push(ExposeConfig::Redirect(redirect));
-    }
-
-    // Service (at most one)
-    if let Some(service) = parsed.expose_service {
-        exposes.push(ExposeConfig::Service(service));
-    }
-
-    // Static (at most one)
-    if let Some(static_cfg) = parsed.expose_static {
-        exposes.push(ExposeConfig::Static(static_cfg));
-    }
-
-    Ok(exposes)
+    Ok(IngressConfig {
+        bind: parsed.bind,
+        admin_bind: parsed.admin_bind,
+        redirect_cfgs: parsed.expose_redirect,
+        service_cfgs: parsed.expose_service,
+        static_cfgs: parsed.expose_static,
+    })
 }
