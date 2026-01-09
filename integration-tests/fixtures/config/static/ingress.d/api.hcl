@@ -1,6 +1,6 @@
 bind = {
   addr         = "127.0.0.1:8080"
-  enable_http2 = true
+  enable_http2 = false
 }
 
 redirects = []
