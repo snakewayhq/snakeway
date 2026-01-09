@@ -1,3 +1,0 @@
-[[service_route]]
-path = "/api"
-service = "api"

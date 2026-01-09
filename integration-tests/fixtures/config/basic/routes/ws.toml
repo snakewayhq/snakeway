@@ -1,5 +1,0 @@
-[[service_route]]
-path = "/ws"
-service = "api"
-allow_websocket = true
-ws_max_connections = 10_000
