@@ -3,7 +3,7 @@ identity_device = {
 
   enable_geoip = false
 
-  trusted_proxies = []
+  trusted_proxies = ["10.0.0.0/8"]
 
   enable_user_agent = true
 

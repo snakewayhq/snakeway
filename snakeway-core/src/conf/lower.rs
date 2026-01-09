@@ -135,7 +135,7 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
                 name: listener_name.clone(),
                 addr: bind.addr,
                 tls: bind.tls,
-                enable_http2: false,
+                enable_http2: bind.enable_http2,
                 enable_admin: false,
                 redirect: None,
             });

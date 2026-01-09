@@ -1,5 +1,5 @@
 bind = {
-  addr         = "127.0.0.1:8443"
+  addr         = "127.0.0.1:8080"
   enable_http2 = true
 }
 

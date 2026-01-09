@@ -33,4 +33,26 @@ fn patch_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16], upstream_ports: 
     for (i, port) in listener_ports.iter().enumerate() {
         cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{port}");
     }
+
+    // Patch upstream URLs (preserve scheme)
+    let svc = cfg
+        .services
+        .get_mut("127.0.0.1:8080-service")
+        .expect("service not found");
+
+    assert!(
+        svc.tcp_upstreams.len() <= upstream_ports.len(),
+        "fixture defines {} upstreams but only {} ports allocated",
+        svc.tcp_upstreams.len(),
+        upstream_ports.len()
+    );
+
+    for (i, up) in svc.tcp_upstreams.iter_mut().enumerate() {
+        let mut url = Url::parse(&up.url).expect("invalid upstream URL in fixture");
+
+        url.set_port(Some(upstream_ports[i]))
+            .expect("failed to set upstream port");
+
+        up.url = url.to_string();
+    }
 }
