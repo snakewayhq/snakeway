@@ -122,7 +122,7 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
                             enable_brotli: route.compression.enable_brotli,
                         },
                         cache_policy: StaticCachePolicy {
-                            max_age_secs: route.cache_policy.max_age_secs,
+                            max_age_seconds: route.cache_policy.max_age_seconds,
                             public: route.cache_policy.public,
                             immutable: route.cache_policy.immutable,
                         },

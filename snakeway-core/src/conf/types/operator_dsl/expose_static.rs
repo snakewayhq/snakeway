@@ -43,7 +43,7 @@ impl Default for CompressionConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CachePolicyConfig {
-    pub max_age_secs: u32,
+    pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
 }
@@ -51,7 +51,7 @@ pub struct CachePolicyConfig {
 impl Default for CachePolicyConfig {
     fn default() -> Self {
         Self {
-            max_age_secs: 3600,
+            max_age_seconds: 3600,
             public: true,
             immutable: false,
         }

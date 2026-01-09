@@ -28,7 +28,7 @@ pub struct StaticFileConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticCachePolicy {
-    pub max_age_secs: u32,
+    pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
 }

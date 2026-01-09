@@ -71,7 +71,7 @@ impl HeaderBuilder {
             value.push_str("private");
         }
 
-        value.push_str(&format!(", max-age={}", policy.max_age_secs));
+        value.push_str(&format!(", max-age={}", policy.max_age_seconds));
 
         if policy.immutable {
             value.push_str(", immutable");
