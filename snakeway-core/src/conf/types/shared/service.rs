@@ -1,9 +1,26 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct HealthCheckConfig {
+    pub enable: bool,
+    #[serde(default = "hc_default_threshold")]
+    pub failure_threshold: u32,
+    #[serde(default = "hc_default_unhealthy_cooldown_seconds")]
+    pub unhealthy_cooldown_seconds: u64,
+}
+
+fn hc_default_threshold() -> u32 {
+    3
+}
+
+fn hc_default_unhealthy_cooldown_seconds() -> u64 {
+    10
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct CircuitBreakerConfig {
     /// Enable circuit breaking auto recovery for this service.
-    #[serde(default = "cb_default_enable_auto_recovery")]
+    #[serde(default)]
     pub enable_auto_recovery: bool,
 
     /// Failures in the "closed" state before opening the circuit.
@@ -28,9 +45,6 @@ pub struct CircuitBreakerConfig {
     pub count_http_5xx_as_failure: bool,
 }
 
-fn cb_default_enable_auto_recovery() -> bool {
-    false
-}
 fn cb_default_failure_threshold() -> u32 {
     5
 }

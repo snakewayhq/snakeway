@@ -1,6 +1,5 @@
-use crate::conf::types::runtime_ir::service::health_check::HealthCheckConfig;
 use crate::conf::types::runtime_ir::service::upstream::UpstreamTcpConfig;
-use crate::conf::types::{CircuitBreakerConfig, UpstreamUnixConfig};
+use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, UpstreamUnixConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

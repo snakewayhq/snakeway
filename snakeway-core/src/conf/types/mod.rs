@@ -4,4 +4,4 @@ mod shared;
 
 pub use operator_dsl::*;
 pub use runtime_ir::*;
-pub use shared::*;
+pub use shared::{CircuitBreakerConfig, HealthCheckConfig, ServerConfig, TlsConfig};
