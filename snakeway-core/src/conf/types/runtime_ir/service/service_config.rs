@@ -11,19 +11,14 @@ pub struct ServiceConfig {
     pub listener: String,
 
     /// Load balancing strategy
-    #[serde(default)]
     pub load_balancing_strategy: LoadBalancingStrategy,
 
-    #[serde(default, rename = "tcp_upstream")]
     pub tcp_upstreams: Vec<UpstreamTcpConfig>,
 
-    #[serde(default, rename = "unix_upstream")]
     pub unix_upstreams: Vec<UpstreamUnixConfig>,
 
-    #[serde(default)]
     pub circuit_breaker: CircuitBreakerConfig,
 
-    #[serde(default)]
     pub health_check: HealthCheckConfig,
 }
 

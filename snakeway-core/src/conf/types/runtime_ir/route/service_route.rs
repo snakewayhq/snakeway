@@ -7,7 +7,6 @@ pub struct ServiceRouteConfig {
 
     pub service: String,
 
-    #[serde(default)]
     pub allow_websocket: bool,
     pub ws_max_connections: Option<usize>,
 

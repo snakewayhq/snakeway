@@ -7,10 +7,8 @@ pub struct StaticRouteConfig {
     pub path: String,
     pub file_dir: PathBuf,
 
-    #[serde(default)]
     pub index: Option<String>,
 
-    #[serde(default)]
     pub directory_listing: bool,
 
     pub static_config: StaticFileConfig,

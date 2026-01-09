@@ -11,7 +11,6 @@ pub struct IdentityDeviceConfig {
 
     pub enable_geoip: bool,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub geoip_db: Option<PathBuf>,
 
     pub enable_user_agent: bool,
