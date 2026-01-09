@@ -12,7 +12,7 @@ expose_redirect = []
 
 expose_service = [
   {
-    strategy = "round_robin"
+    load_balancing_strategy = "round_robin"
 
     health_check = {
       enable                     = false

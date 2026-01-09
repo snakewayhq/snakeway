@@ -3,7 +3,7 @@ listener = "public_http"
 # The unique name identifier for this service.
 name = "api"
 # The load balancing strategy to use when distributing requests across upstreams.
-strategy = "round_robin"
+load_balancing_strategy = "round_robin"
 
 [[service.tcp_upstream]]
 # The URL of the upstream server to forward requests to.

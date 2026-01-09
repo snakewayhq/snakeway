@@ -12,7 +12,7 @@ pub struct ServiceConfig {
 
     /// Load balancing strategy
     #[serde(default)]
-    pub strategy: LoadBalancingStrategy,
+    pub load_balancing_strategy: LoadBalancingStrategy,
 
     #[serde(default, rename = "tcp_upstream")]
     pub tcp_upstreams: Vec<UpstreamTcpConfig>,

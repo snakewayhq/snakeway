@@ -85,7 +85,7 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
                 services.push(ServiceConfig {
                     name: service_name.clone(),
                     listener: listener_name.clone(),
-                    strategy: service_cfg.strategy,
+                    load_balancing_strategy: service_cfg.load_balancing_strategy,
                     tcp_upstreams,
                     unix_upstreams,
                     circuit_breaker: service_cfg.circuit_breaker.unwrap_or_default(),
