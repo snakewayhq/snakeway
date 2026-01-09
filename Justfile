@@ -100,7 +100,7 @@ start-origin:
 
 # Check all origin protocols (TCP + UDS)
 sanity-check-origin:
-    @echo "================ TCP ================"
+    @echo "TCP ================"
 
     @echo "\nHTTP:"
     @curl -s http://localhost:3000/
@@ -122,7 +122,7 @@ sanity-check-origin:
     	localhost:5051 \
     	users.UserService/GetUser
 
-    @echo "\n================ UDS ================"
+    @echo "\n UDS ================"
 
     @echo "\nHTTP (plaintext) over UDS:"
     @curl -s --unix-socket /tmp/snakeway-http-0.sock http://localhost/
@@ -132,6 +132,14 @@ sanity-check-origin:
     	--unix-socket /tmp/snakeway-https-0.sock \
     	--cacert integration-tests/certs/ca.pem \
     	https://localhost/
+
+sanity-check-snakeway:
+    @echo "\n\nStatic file over HTTPS ================"
+    curl -s --cacert integration-tests/certs/ca.pem https://127.0.0.1:8443/assets/index.html
+    @echo "\n\nService over HTTPS ================"
+    curl -s --cacert integration-tests/certs/ca.pem https://127.0.0.1:8443/api/users/1
+    @echo "\n\nAdmin stats ================"
+    curl -s --cacert integration-tests/certs/ca.pem https://127.0.0.1:8440/admin/stats
 
 # -----------------------------------------------------------------------------
 # Debugging

@@ -14,7 +14,7 @@ struct DevicesFile {
     structured_logging_device: Option<StructuredLoggingDeviceConfig>,
 
     #[serde(default)]
-    wasm_device: Vec<WasmDeviceConfig>,
+    wasm_devices: Vec<WasmDeviceConfig>,
 }
 
 pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
@@ -31,7 +31,7 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
         device_config.push(DeviceConfig::StructuredLogging(logging));
     }
 
-    device_config.extend(parsed.wasm_device.into_iter().map(DeviceConfig::Wasm));
+    device_config.extend(parsed.wasm_devices.into_iter().map(DeviceConfig::Wasm));
 
     Ok(device_config)
 }
@@ -43,13 +43,13 @@ struct ExposeServiceFile {
     bind_admin: Option<BindAdminConfig>,
 
     #[serde(default)]
-    expose_redirect: Vec<ExposeRedirectConfig>,
+    redirects: Vec<ExposeRedirectConfig>,
 
     #[serde(default)]
-    expose_service: Vec<ExposeServiceConfig>,
+    services: Vec<ExposeServiceConfig>,
 
     #[serde(default)]
-    expose_static: Vec<ExposeStaticConfig>,
+    static_files: Vec<ExposeStaticConfig>,
 }
 
 pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
@@ -59,8 +59,8 @@ pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
     Ok(IngressConfig {
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
-        redirect_cfgs: parsed.expose_redirect,
-        service_cfgs: parsed.expose_service,
-        static_cfgs: parsed.expose_static,
+        redirect_cfgs: parsed.redirects,
+        service_cfgs: parsed.services,
+        static_cfgs: parsed.static_files,
     })
 }

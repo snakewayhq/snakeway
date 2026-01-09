@@ -8,9 +8,9 @@ bind = {
   }
 }
 
-expose_redirect = []
+redirects = []
 
-expose_service = [
+services = [
   {
     load_balancing_strategy = "round_robin"
 
@@ -63,15 +63,8 @@ expose_service = [
   }
 ]
 
-expose_static = [
+static_files = [
   {
-    addr = "127.0.0.1:8443"
-
-    tls = {
-      cert = "./integration-tests/certs/server.pem"
-      key  = "./integration-tests/certs/server.key"
-    }
-
     routes = [
       {
         path              = "/assets"
