@@ -34,9 +34,7 @@ services = [
     backends = [
       {
         weight = 1
-        tcp = {
-          addr = "127.0.0.1:9001"
-        }
+        addr   = "127.0.0.1:9001"
       },
     ]
   }

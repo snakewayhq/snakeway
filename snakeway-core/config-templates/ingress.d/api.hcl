@@ -43,21 +43,15 @@ services = [
     backends = [
       {
         weight = 1
-        tcp = {
-          addr = "127.0.0.1:3443"
-        }
+        addr   = "127.0.0.1:3443"
       },
       {
         weight = 1
-        tcp = {
-          addr = "127.0.0.1:3444"
-        }
+        addr   = "127.0.0.1:3444"
       },
       {
         weight = 1
-        unix = {
-          sock = "/tmp/snakeway-http-1.sock"
-        }
+        sock   = "/tmp/snakeway-http-1.sock"
       }
     ]
   }
