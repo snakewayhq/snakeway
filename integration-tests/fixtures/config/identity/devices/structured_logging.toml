@@ -1,9 +1,0 @@
-[[device]]
-name = "structured_logging"
-type = "builtin"
-builtin = "structured_logging"
-enabled = true
-
-[device.config]
-include_headers = true
-identity_fields = ["country", "region", "asn", "device", "bot"]
