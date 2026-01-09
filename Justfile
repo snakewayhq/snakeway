@@ -98,9 +98,11 @@ run-spoofed-traffic:
 start-origin:
     (cd snakeway-origin && just launch)
 
-# Check all 5 origin protocols
+# Check all origin protocols (TCP + UDS)
 sanity-check-origin:
-    @echo "HTTP:"
+    @echo "================ TCP ================"
+
+    @echo "\nHTTP:"
     @curl -s http://localhost:3000/
 
     @echo "\nHTTPS:"
@@ -114,11 +116,22 @@ sanity-check-origin:
 
     @echo "\ngRPC:"
     @grpcurl \
-      -cacert integration-tests/certs/ca.pem \
-      -proto snakeway-origin/users.proto \
-      -d '{"id":"123"}' \
-      localhost:5051 \
-      users.UserService/GetUser
+    	-cacert integration-tests/certs/ca.pem \
+    	-proto snakeway-origin/users.proto \
+    	-d '{"id":"123"}' \
+    	localhost:5051 \
+    	users.UserService/GetUser
+
+    @echo "\n================ UDS ================"
+
+    @echo "\nHTTP (plaintext) over UDS:"
+    @curl -s --unix-socket /tmp/snakeway-http-0.sock http://localhost/
+
+    @echo "\nHTTPS (TLS) over UDS:"
+    @curl -s \
+    	--unix-socket /tmp/snakeway-https-0.sock \
+    	--cacert integration-tests/certs/ca.pem \
+    	https://localhost/
 
 # -----------------------------------------------------------------------------
 # Debugging

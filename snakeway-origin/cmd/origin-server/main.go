@@ -46,41 +46,42 @@ func main() {
 	// -------------------------------------------------------------------------
 	// HTTP handler
 	// -------------------------------------------------------------------------
-	httpHandler := server.NewHTTPHandler()
-
-	httpSrv := &http.Server{
-		Handler: httpHandler,
-	}
-
-	httpsSrv := &http.Server{
-		Handler:   httpHandler,
-		TLSConfig: tlsCfg,
-	}
-
-	// Enable HTTP/2 on all TLS servers
-	if err := http2.ConfigureServer(httpsSrv, &http2.Server{}); err != nil {
-		log.Fatalf("failed to configure http2: %v", err)
-	}
+	handler := server.NewHTTPHandler()
 
 	// -------------------------------------------------------------------------
 	// HTTP over TCP
 	// -------------------------------------------------------------------------
 	httpAddr := fmt.Sprintf(":%d", cfg.Port)
+	httpSrvTCP := &http.Server{
+		Addr:    httpAddr,
+		Handler: handler,
+	}
+
 	go func() {
 		log.Printf("Starting HTTP + WS on %s\n", httpAddr)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed: %v", err)
+		if err := httpSrvTCP.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP TCP server failed: %v", err)
 		}
 	}()
 
 	// -------------------------------------------------------------------------
-	// HTTPS over TCP
+	// HTTPS over TCP (TLS + h2)
 	// -------------------------------------------------------------------------
 	httpsAddr := fmt.Sprintf(":%d", cfg.Port+443)
+	httpsSrvTCP := &http.Server{
+		Addr:      httpsAddr,
+		Handler:   handler,
+		TLSConfig: tlsCfg,
+	}
+
+	if err := http2.ConfigureServer(httpsSrvTCP, &http2.Server{}); err != nil {
+		log.Fatalf("failed to configure http2 (TCP): %v", err)
+	}
+
 	go func() {
 		log.Printf("Starting HTTPS + WSS on %s\n", httpsAddr)
-		if err := httpsSrv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTPS server failed: %v", err)
+		if err := httpsSrvTCP.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTPS TCP server failed: %v", err)
 		}
 	}()
 
@@ -96,15 +97,19 @@ func main() {
 	}
 	_ = os.Chmod(httpSock, 0660)
 
+	httpSrvUDS := &http.Server{
+		Handler: handler,
+	}
+
 	log.Printf("Listening HTTP + WS on UDS %s\n", httpSock)
 	go func() {
-		if err := httpSrv.Serve(httpUdsLis); err != nil && err != http.ErrServerClosed {
+		if err := httpSrvUDS.Serve(httpUdsLis); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("HTTP UDS server failed: %v", err)
 		}
 	}()
 
 	// -------------------------------------------------------------------------
-	// HTTPS over UDS (TLS + HTTP/2)
+	// HTTPS over UDS (TLS + h2)
 	// -------------------------------------------------------------------------
 	httpsSock := fmt.Sprintf("/tmp/snakeway-https-%d.sock", cfg.InstanceId)
 	_ = os.Remove(httpsSock)
@@ -117,9 +122,18 @@ func main() {
 
 	tlsUdsLis := tls.NewListener(httpsUdsLis, tlsCfg)
 
+	httpsSrvUDS := &http.Server{
+		Handler:   handler,
+		TLSConfig: tlsCfg,
+	}
+
+	if err := http2.ConfigureServer(httpsSrvUDS, &http2.Server{}); err != nil {
+		log.Fatalf("failed to configure http2 (UDS): %v", err)
+	}
+
 	log.Printf("Listening HTTPS + WSS on UDS %s\n", httpsSock)
 	go func() {
-		if err := httpsSrv.Serve(tlsUdsLis); err != nil && err != http.ErrServerClosed {
+		if err := httpsSrvUDS.Serve(tlsUdsLis); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("HTTPS UDS server failed: %v", err)
 		}
 	}()
@@ -154,7 +168,9 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_ = httpSrv.Shutdown(shutdownCtx)
-	_ = httpsSrv.Shutdown(shutdownCtx)
+	_ = httpSrvTCP.Shutdown(shutdownCtx)
+	_ = httpsSrvTCP.Shutdown(shutdownCtx)
+	_ = httpSrvUDS.Shutdown(shutdownCtx)
+	_ = httpsSrvUDS.Shutdown(shutdownCtx)
 	grpcServer.GracefulStop()
 }
