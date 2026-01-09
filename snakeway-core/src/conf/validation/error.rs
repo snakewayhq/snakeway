@@ -99,6 +99,9 @@ pub enum ConfigError {
     #[error("duplicate listener name '{name}'")]
     DuplicateListenerName { name: String },
 
+    #[error("duplicate listener addr '{addr}'")]
+    DuplicateListenerAddr { addr: String },
+
     #[error("invalid listener socket address '{addr}'")]
     InvalidListenerAddr { addr: String },
 

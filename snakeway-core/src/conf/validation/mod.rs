@@ -2,7 +2,7 @@ mod error;
 mod runtime_validation;
 mod validated_config;
 mod validation_ctx;
-mod validator;
+pub mod validator;
 mod warning;
 
 pub use error::ConfigError;
