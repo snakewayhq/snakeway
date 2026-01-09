@@ -1,9 +1,0 @@
-[[expose_static]]
-addr = "127.0.0.1:8443"
-tls = { cert = "./integration-tests/certs/server.pem", key = "./integration-tests/certs/server.key" }
-
-[[expose_static.route]]
-path = "/assets"
-file_dir = "/var/www/html/"
-index = "index.html"
-directory_listing = false

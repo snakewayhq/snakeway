@@ -1,7 +1,0 @@
-[[wasm_device]]
-# Whether this device is enabled and active.
-enable = false
-path = "./plugins/snakeway_wasm_example.wasm"
-
-# Additional per-device configuration
-# config = {...}
