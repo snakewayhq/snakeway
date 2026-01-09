@@ -18,7 +18,7 @@ pub struct AdminUpstreamView {
 pub struct CircuitBreakerParamsView {
     pub enabled: bool,
     pub failure_threshold: u32,
-    pub open_duration_ms: u64,
+    pub open_duration_milliseconds: u64,
     pub half_open_max_requests: u32,
     pub success_threshold: u32,
     pub count_http_5xx_as_failure: bool,
@@ -29,7 +29,7 @@ impl From<&CircuitBreakerParams> for CircuitBreakerParamsView {
         Self {
             enabled: p.enable_auto_recovery,
             failure_threshold: p.failure_threshold,
-            open_duration_ms: p.open_duration.as_millis() as u64,
+            open_duration_milliseconds: p.open_duration.as_millis() as u64,
             half_open_max_requests: p.half_open_max_requests,
             success_threshold: p.success_threshold,
             count_http_5xx_as_failure: p.count_http_5xx_as_failure,

@@ -28,8 +28,8 @@ pub struct CircuitBreakerConfig {
     pub failure_threshold: u32,
 
     /// How long to keep the circuit open before allowing probes.
-    #[serde(default = "cb_default_open_duration_ms")]
-    pub open_duration_ms: u64,
+    #[serde(default = "cb_default_open_duration_milliseconds")]
+    pub open_duration_milliseconds: u64,
 
     /// How many simultaneous probe requests are allowed in half-open.
     /// (Start with 1; keep it simple and safe.)
@@ -48,7 +48,7 @@ pub struct CircuitBreakerConfig {
 fn cb_default_failure_threshold() -> u32 {
     5
 }
-fn cb_default_open_duration_ms() -> u64 {
+fn cb_default_open_duration_milliseconds() -> u64 {
     10_000
 }
 fn cb_default_half_open_max_requests() -> u32 {

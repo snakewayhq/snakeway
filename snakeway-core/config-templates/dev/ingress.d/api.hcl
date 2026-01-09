@@ -21,12 +21,12 @@ expose_service = [
     }
 
     circuit_breaker = {
-      enable_auto_recovery      = false
-      failure_threshold         = 3
-      open_duration_ms          = 10000
-      half_open_max_requests    = 1
-      success_threshold         = 2
-      count_http_5xx_as_failure = false
+      enable_auto_recovery       = false
+      failure_threshold          = 3
+      open_duration_milliseconds = 10000
+      half_open_max_requests     = 1
+      success_threshold          = 2
+      count_http_5xx_as_failure  = false
     }
 
     routes = [
@@ -89,9 +89,9 @@ expose_static = [
         }
 
         cache_policy = {
-          max_age_secs = 60
-          public       = true
-          immutable    = false
+          max_age_seconds = 60
+          public          = true
+          immutable       = false
         }
       }
     ]
