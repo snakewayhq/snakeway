@@ -9,7 +9,8 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
     match load_config(&path) {
         Ok(validation_cfg) => {
             let cfg = validation_cfg.config;
-            let validation = validation_cfg.validation;
+            let dsl_validation = validation_cfg.dsl_validation;
+            let ir_validation = validation_cfg.ir_validation;
             if quiet {
                 // Print nothing.
             } else if matches!(format, ConfigCheckOutputFormat::Json) {
@@ -44,20 +45,9 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                 );
             }
 
-            if !validation.warnings.is_empty() && !quiet {
-                eprintln!(
-                    "\n⚠ {} warning{}",
-                    validation.warnings.len(),
-                    if validation.warnings.len() == 1 {
-                        ""
-                    } else {
-                        "s"
-                    }
-                );
-
-                for warning in &validation.warnings {
-                    print_config_warning(warning, format.clone());
-                }
+            if !quiet {
+                print_validation_warnings(&dsl_validation.warnings, &format);
+                print_validation_warnings(&ir_validation.warnings, &format);
             }
             Ok(())
         }
@@ -67,6 +57,20 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
             }
 
             std::process::exit(1);
+        }
+    }
+}
+
+fn print_validation_warnings(warnings: &[ConfigWarning], format: &ConfigCheckOutputFormat) {
+    if !warnings.is_empty() {
+        eprintln!(
+            "\n⚠ {} warning{}",
+            warnings.len(),
+            if warnings.len() == 1 { "" } else { "s" }
+        );
+
+        for warning in warnings.iter() {
+            print_config_warning(warning, format.clone());
         }
     }
 }

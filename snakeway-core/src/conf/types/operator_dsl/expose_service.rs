@@ -21,22 +21,12 @@ pub struct ExposeRouteConfig {
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ExposeBackendConfig {
-    pub tcp: Option<TcpConfig>,
-    pub unix: Option<UnixConfig>,
+    pub addr: Option<String>,
+    pub sock: Option<String>,
     #[serde(default = "default_weight")]
     pub weight: u32,
 }
 
 fn default_weight() -> u32 {
     1
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TcpConfig {
-    pub addr: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct UnixConfig {
-    pub sock: String,
 }

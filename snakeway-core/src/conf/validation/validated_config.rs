@@ -3,5 +3,6 @@ use crate::conf::validation::ValidationOutput;
 
 pub struct ValidatedConfig {
     pub config: RuntimeConfig,
-    pub validation: ValidationOutput,
+    pub ir_validation: ValidationOutput,
+    pub dsl_validation: ValidationOutput,
 }

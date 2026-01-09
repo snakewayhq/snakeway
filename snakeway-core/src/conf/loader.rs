@@ -2,11 +2,10 @@ use crate::conf::discover::discover;
 use crate::conf::lower::lower_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::types::{
-    DeviceConfig, EntrypointConfig, IngressConfig, ListenerConfig, RouteConfig, RuntimeConfig,
-    ServerConfig, ServiceConfig,
+    DeviceConfig, EntrypointConfig, IngressConfig, RuntimeConfig, ServerConfig,
 };
-use crate::conf::validation::ValidatedConfig;
-use crate::conf::validation::{ConfigError, ValidationCtx, ValidationErrors, ValidationOutput};
+use crate::conf::validation::{ConfigError, validate_dsl_config};
+use crate::conf::validation::{ValidatedConfig, validate_runtime_config};
 
 use std::fs;
 use std::path::Path;
@@ -14,7 +13,10 @@ use std::path::Path;
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (server, devices, ingresses) = load_dsl_config(root)?;
 
-    let validation = validate_dsl_config(&server, &ingresses, &devices).map_err(|errs| {
+    //--------------------------------------------------------------------------
+    // Semantic validation of DSL config (aggregate all semantic errors)
+    //--------------------------------------------------------------------------
+    let dsl_validation = validate_dsl_config(&server, &ingresses, &devices).map_err(|errs| {
         ConfigError::Validation {
             validation_errors: errs,
         }
@@ -23,12 +25,12 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (listeners, routes, services) = lower_configs(ingresses)?;
 
     //--------------------------------------------------------------------------
-    // Semantic validation (aggregate all semantic errors)
+    // Semantic validation of IR config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    // let validation = validate_runtime_config(&server, &listeners, &routes, &services, &devices)
-    //     .map_err(|errs| ConfigError::Validation {
-    //         validation_errors: errs,
-    //     })?;
+    let ir_validation =
+        validate_runtime_config(&services).map_err(|errs| ConfigError::Validation {
+            validation_errors: errs,
+        })?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
@@ -41,26 +43,9 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
             services,
             listeners,
         },
-        validation,
+        dsl_validation,
+        ir_validation,
     })
-}
-
-pub fn validate_dsl_config(
-    server: &ServerConfig,
-    ingresses: &[IngressConfig],
-    devices: &Vec<DeviceConfig>,
-) -> Result<ValidationOutput, ValidationErrors> {
-    let mut ctx = ValidationCtx::default();
-
-    if let Err(e) = crate::conf::validation::validator::validate_version(server.version) {
-        ctx.error(e);
-    } else {
-        crate::conf::validation::validator::validate_server(server, &mut ctx);
-        crate::conf::validation::validator::validate_ingresses(ingresses, &mut ctx);
-        crate::conf::validation::validator::validate_devices(devices, &mut ctx);
-    }
-
-    ctx.into_result()
 }
 
 pub type ConfigIntermediateRepresentation = (ServerConfig, Vec<DeviceConfig>, Vec<IngressConfig>);

@@ -57,9 +57,9 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
                     .backends
                     .iter()
                     .filter_map(|b| {
-                        b.unix.as_ref().map(|unix| UpstreamUnixConfig {
+                        b.sock.as_ref().map(|sock| UpstreamUnixConfig {
                             weight: b.weight,
-                            sock: unix.sock.clone(),
+                            sock: sock.clone(),
                             use_tls,
                             sni: "localhost".to_string(),
                         })
@@ -70,12 +70,9 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
                     .backends
                     .iter()
                     .filter_map(|b| {
-                        b.tcp.as_ref().map(|tcp| UpstreamTcpConfig {
+                        b.addr.as_ref().map(|addr| UpstreamTcpConfig {
                             weight: b.weight,
-                            url: match use_tls {
-                                true => format!("https://{}", tcp.addr),
-                                false => format!("http://{}", tcp.addr),
-                            },
+                            url: format!("{}://{}", if use_tls { "https" } else { "http" }, addr),
                         })
                     })
                     .collect();

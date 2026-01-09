@@ -67,6 +67,16 @@ pub enum ConfigError {
     DuplicateRoute { path: String },
 
     //-------------------------------------------------------------------------
+    // Backends
+    //-------------------------------------------------------------------------
+    #[error("invalid backend '{backend}' for service '{service}': {reason}")]
+    InvalidBackend {
+        service: String,
+        backend: String,
+        reason: String,
+    },
+
+    //-------------------------------------------------------------------------
     // Routes
     //-------------------------------------------------------------------------
     #[error("invalid route '{path}'")]

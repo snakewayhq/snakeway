@@ -12,6 +12,7 @@ pub fn validate_ingresses(ingresses: &[IngressConfig], ctx: &mut ValidationCtx) 
     let mut seen_listener_addrs = HashSet::new();
 
     for ingress in ingresses {
+        // Bind
         if let Some(bind) = &ingress.bind {
             let bind_addr: SocketAddr = match bind.addr.parse() {
                 Ok(a) => a,
@@ -75,6 +76,18 @@ pub fn validate_ingresses(ingresses: &[IngressConfig], ctx: &mut ValidationCtx) 
                 ctx.error(ConfigError::InvalidListenerAddr {
                     addr: bind_admin_addr.to_string(),
                 });
+            }
+        }
+
+        // Static Files
+        for cfg in ingress.static_cfgs.iter() {
+            for route in cfg.routes.iter() {
+                if !route.file_dir.exists() {
+                    ctx.error(ConfigError::InvalidStaticDir {
+                        path: route.file_dir.clone(),
+                        reason: "does not exist".to_string(),
+                    });
+                }
             }
         }
     }
