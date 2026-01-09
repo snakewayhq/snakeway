@@ -34,11 +34,11 @@ fn patch_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16], upstream_ports: 
         cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{port}");
     }
 
-    // Patch upstream URLs (preserve scheme!)
+    // Patch upstream URLs (preserve scheme)
     let svc = cfg
         .services
-        .get_mut("api")
-        .expect("fixture missing services.api");
+        .get_mut("127.0.0.1:8080-service")
+        .expect("service not found");
 
     assert!(
         svc.tcp_upstreams.len() <= upstream_ports.len(),

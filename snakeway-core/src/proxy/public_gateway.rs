@@ -21,21 +21,22 @@ use std::sync::Arc;
 /// PublicGateway is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub struct PublicGateway {
+    listener: Arc<str>,
     gw_ctx: GatewayCtx,
     traffic_director: TrafficDirector,
-
-    // Handler(s)
     static_file_handler: StaticFileHandler,
 }
 
 impl PublicGateway {
     pub fn new(
+        listener: Arc<str>,
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
     ) -> Self {
         let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager);
         Self {
+            listener,
             gw_ctx,
             traffic_director: TrafficDirector,
             static_file_handler: StaticFileHandler,
@@ -182,7 +183,12 @@ impl ProxyHttp for PublicGateway {
         }
 
         // Make a decision about the route.
-        let route = match state.router.match_route(&ctx.route_path) {
+        let router = state
+            .routers
+            .get(self.listener.as_ref())
+            .ok_or_else(|| Error::new(Custom("no router for listener")))?;
+
+        let route = match router.match_route(&ctx.route_path) {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");

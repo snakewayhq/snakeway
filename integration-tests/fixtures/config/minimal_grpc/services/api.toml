@@ -1,5 +1,0 @@
-[[service]]
-name = "api"
-
-[[service.tcp_upstream]]
-url = "https://127.0.0.1:9001"

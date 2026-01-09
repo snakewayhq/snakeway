@@ -74,7 +74,7 @@ pub fn validate_services(services: &HashMap<String, ServiceConfig>, ctx: &mut Va
         let cb = &service.circuit_breaker;
         if cb.enable_auto_recovery
             && (cb.failure_threshold == 0
-                || cb.open_duration_ms == 0
+                || cb.open_duration_milliseconds == 0
                 || cb.half_open_max_requests == 0
                 || cb.success_threshold == 0)
         {

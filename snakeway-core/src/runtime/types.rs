@@ -3,9 +3,10 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::route::Router;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::sync::Arc;
 
 pub struct RuntimeState {
-    pub router: Router,
+    pub routers: HashMap<Arc<str>, Router>,
     pub devices: DeviceRegistry,
     pub services: HashMap<String, ServiceRuntime>,
 }
@@ -17,6 +18,7 @@ pub struct ServiceRuntime {
     pub upstreams: Vec<UpstreamRuntime>,
     pub circuit_breaker_cfg: CircuitBreakerConfig,
     pub health_check_cfg: HealthCheckConfig,
+    pub listener: Option<Arc<str>>,
 }
 
 #[derive(Debug, Clone)]

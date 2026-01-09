@@ -67,3 +67,4 @@ dashmap = { workspace = true }
 chrono = { workspace = true }
 url = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
+hcl-rs = { workspace = true }

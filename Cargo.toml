@@ -61,3 +61,4 @@ dashmap = "7.0.0-rc2"
 chrono = { version = "0.4", features = ["serde"] }
 url = "2"
 miette = { version = "7" }
+hcl-rs = "0.19.4"

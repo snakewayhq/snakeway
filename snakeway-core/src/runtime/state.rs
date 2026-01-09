@@ -22,10 +22,11 @@ pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeSta
 
     // Log comparison against current state.
     let old = state.load();
+    let old_routers = old.routers.len();
     tracing::info!(
-        old_routes = old.router.route_count(),
+        old_routers = old_routers,
         old_devices = old.devices.all().len(),
-        new_routes = new_state.router.route_count(),
+        new_routers = new_state.routers.len(),
         new_devices = new_state.devices.all().len(),
         "runtime state reloaded"
     );
@@ -37,8 +38,8 @@ pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeSta
 }
 
 pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
-    // Router
-    let router = build_runtime_router(&cfg.routes)?;
+    // Routers
+    let routers = build_runtime_routers(&cfg.routes)?;
 
     // Devices
     let mut devices = DeviceRegistry::new();
@@ -49,12 +50,14 @@ pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
     let services = build_runtime_services(&cfg.services)?;
 
     Ok(RuntimeState {
-        router,
+        routers,
         devices,
         services,
     })
 }
 
+/// Build service runtimes from config services.
+/// The output is a map of service names to their respective runtimes.
 fn build_runtime_services(
     services: &HashMap<String, ServiceConfig>,
 ) -> Result<HashMap<String, ServiceRuntime>> {
@@ -83,10 +86,11 @@ fn build_runtime_services(
         out.insert(
             name.clone(),
             ServiceRuntime {
-                strategy: svc.strategy.clone(),
+                strategy: svc.load_balancing_strategy.clone(),
                 upstreams,
                 circuit_breaker_cfg: svc.circuit_breaker.clone(),
                 health_check_cfg: svc.health_check.clone(),
+                listener: Some(Arc::from(svc.listener.clone())),
             },
         );
     }
@@ -95,11 +99,15 @@ fn build_runtime_services(
 }
 
 /// Build router from config routes.
-pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
-    let mut router = Router::new();
+pub fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>, Router>> {
+    let mut routers: HashMap<Arc<str>, Router> = HashMap::new();
 
     for route in routes {
-        let route_runtime = match &route {
+        let listener = route.listener();
+
+        let router = routers.entry(Arc::from(listener)).or_default();
+
+        let route_runtime = match route {
             RouteConfig::Service(cfg) => RouteRuntime::Service {
                 id: RouteId::service(&cfg.path, &cfg.service),
                 upstream: cfg.service.clone(),
@@ -120,7 +128,7 @@ pub fn build_runtime_router(routes: &[RouteConfig]) -> anyhow::Result<Router> {
         router.add_route(route.path(), route_runtime)?;
     }
 
-    Ok(router)
+    Ok(routers)
 }
 
 /// Factory function to make a TCP upstream runtime.

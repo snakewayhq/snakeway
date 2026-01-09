@@ -1,7 +1,0 @@
-[[service_route]]
-path = "/api"
-service = "api"
-
-[[static_route]]
-path = "/"
-file_dir = "/var/www/html"

@@ -22,6 +22,9 @@ pub enum ConfigError {
         source: glob::PatternError,
     },
 
+    #[error("message")]
+    Custom { message: String },
+
     //-------------------------------------------------------------------------
     // Top-level
     //-------------------------------------------------------------------------
@@ -51,7 +54,7 @@ pub enum ConfigError {
     Parse {
         path: PathBuf,
         #[source]
-        source: toml::de::Error,
+        source: hcl::Error,
     },
 
     //-------------------------------------------------------------------------
@@ -62,6 +65,16 @@ pub enum ConfigError {
 
     #[error("duplicate route for path '{path}'")]
     DuplicateRoute { path: String },
+
+    //-------------------------------------------------------------------------
+    // Backends
+    //-------------------------------------------------------------------------
+    #[error("invalid backend '{backend}' for service '{service}': {reason}")]
+    InvalidBackend {
+        service: String,
+        backend: String,
+        reason: String,
+    },
 
     //-------------------------------------------------------------------------
     // Routes
@@ -93,11 +106,14 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Listeners
     //-------------------------------------------------------------------------
+    #[error("duplicate listener name '{name}'")]
+    DuplicateListenerName { name: String },
+
+    #[error("duplicate listener addr '{addr}'")]
+    DuplicateListenerAddr { addr: String },
+
     #[error("invalid listener socket address '{addr}'")]
     InvalidListenerAddr { addr: String },
-
-    #[error("duplicate listener address '{addr}'")]
-    DuplicateListenerAddr { addr: String },
 
     #[error("cert file does not exist: {path}")]
     MissingCertFile { path: String },
@@ -166,7 +182,7 @@ impl ConfigError {
         }
     }
 
-    pub fn parse(path: impl Into<PathBuf>, source: toml::de::Error) -> Self {
+    pub fn parse(path: impl Into<PathBuf>, source: hcl::Error) -> Self {
         Self::Parse {
             path: path.into(),
             source,

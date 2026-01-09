@@ -98,9 +98,11 @@ run-spoofed-traffic:
 start-origin:
     (cd snakeway-origin && just launch)
 
-# Check all 5 origin protocols
+# Check all origin protocols (TCP + UDS)
 sanity-check-origin:
-    @echo "HTTP:"
+    @echo "TCP ================"
+
+    @echo "\nHTTP:"
     @curl -s http://localhost:3000/
 
     @echo "\nHTTPS:"
@@ -114,11 +116,30 @@ sanity-check-origin:
 
     @echo "\ngRPC:"
     @grpcurl \
-      -cacert integration-tests/certs/ca.pem \
-      -proto snakeway-origin/users.proto \
-      -d '{"id":"123"}' \
-      localhost:5051 \
-      users.UserService/GetUser
+    	-cacert integration-tests/certs/ca.pem \
+    	-proto snakeway-origin/users.proto \
+    	-d '{"id":"123"}' \
+    	localhost:5051 \
+    	users.UserService/GetUser
+
+    @echo "\n UDS ================"
+
+    @echo "\nHTTP (plaintext) over UDS:"
+    @curl -s --unix-socket /tmp/snakeway-http-0.sock http://localhost/
+
+    @echo "\nHTTPS (TLS) over UDS:"
+    @curl -s \
+    	--unix-socket /tmp/snakeway-https-0.sock \
+    	--cacert integration-tests/certs/ca.pem \
+    	https://localhost/
+
+sanity-check-snakeway:
+    @echo "\n\nStatic file over HTTPS ================"
+    curl -s --cacert integration-tests/certs/ca.pem https://127.0.0.1:8443/assets/index.html
+    @echo "\n\nService over HTTPS ================"
+    curl -s --cacert integration-tests/certs/ca.pem https://127.0.0.1:8443/api/users/1
+    @echo "\n\nAdmin stats ================"
+    curl -s --cacert integration-tests/certs/ca.pem https://127.0.0.1:8440/admin/stats
 
 # -----------------------------------------------------------------------------
 # Debugging

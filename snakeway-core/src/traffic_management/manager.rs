@@ -199,7 +199,9 @@ impl TrafficManager {
             let params = CircuitBreakerParams {
                 enable_auto_recovery: svc.circuit_breaker_cfg.enable_auto_recovery,
                 failure_threshold: svc.circuit_breaker_cfg.failure_threshold,
-                open_duration: Duration::from_millis(svc.circuit_breaker_cfg.open_duration_ms),
+                open_duration: Duration::from_millis(
+                    svc.circuit_breaker_cfg.open_duration_milliseconds,
+                ),
                 half_open_max_requests: svc.circuit_breaker_cfg.half_open_max_requests,
                 success_threshold: svc.circuit_breaker_cfg.success_threshold,
                 count_http_5xx_as_failure: svc.circuit_breaker_cfg.count_http_5xx_as_failure,

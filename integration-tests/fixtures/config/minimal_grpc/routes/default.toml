@@ -1,3 +1,0 @@
-[[service_route]]
-path = "/helloworld.Greeter/SayHello"
-service = "api"

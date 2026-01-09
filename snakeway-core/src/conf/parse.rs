@@ -1,65 +1,66 @@
 use crate::conf::types::{
-    DeviceConfig, IdentityDeviceConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
-    StaticRouteConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig,
+    BindAdminConfig, BindConfig, DeviceConfig, ExposeRedirectConfig, ExposeServiceConfig,
+    ExposeStaticConfig, IdentityDeviceConfig, IngressConfig, StructuredLoggingDeviceConfig,
+    WasmDeviceConfig,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
-pub struct RoutesFile {
-    #[serde(default)]
-    pub service_route: Vec<ServiceRouteConfig>,
-
-    #[serde(default)]
-    pub static_route: Vec<StaticRouteConfig>,
-}
-
-pub fn parse_routes(path: &Path) -> Result<Vec<RouteConfig>, ConfigError> {
-    let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: RoutesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
-    let mut routes = Vec::new();
-    routes.extend(parsed.service_route.into_iter().map(RouteConfig::Service));
-    routes.extend(parsed.static_route.into_iter().map(RouteConfig::Static));
-    Ok(routes)
-}
-
-#[derive(Debug, Deserialize)]
-struct ServicesFile {
-    #[serde(default)]
-    service: Vec<ServiceConfig>,
-}
-
-pub fn parse_services(path: &Path) -> Result<Vec<ServiceConfig>, ConfigError> {
-    let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: ServicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
-
-    Ok(parsed.service)
-}
-
 #[derive(Debug, Deserialize, Default)]
 struct DevicesFile {
-    #[serde(default)]
-    identity_device: IdentityDeviceConfig,
+    identity_device: Option<IdentityDeviceConfig>,
+    structured_logging_device: Option<StructuredLoggingDeviceConfig>,
 
     #[serde(default)]
-    structured_logging_device: StructuredLoggingDeviceConfig,
-
-    #[serde(default)]
-    wasm_device: Vec<WasmDeviceConfig>,
+    wasm_devices: Vec<WasmDeviceConfig>,
 }
 
 pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: DevicesFile = toml::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+    let parsed: DevicesFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+
     let mut device_config = Vec::new();
 
-    device_config.push(DeviceConfig::Identity(parsed.identity_device.clone()));
-    device_config.push(DeviceConfig::StructuredLogging(
-        parsed.structured_logging_device.clone(),
-    ));
-    device_config.extend(parsed.wasm_device.into_iter().map(DeviceConfig::Wasm));
+    if let Some(identity) = parsed.identity_device {
+        device_config.push(DeviceConfig::Identity(identity));
+    }
+
+    if let Some(logging) = parsed.structured_logging_device {
+        device_config.push(DeviceConfig::StructuredLogging(logging));
+    }
+
+    device_config.extend(parsed.wasm_devices.into_iter().map(DeviceConfig::Wasm));
 
     Ok(device_config)
+}
+
+#[derive(Debug, Deserialize)]
+struct ExposeServiceFile {
+    bind: Option<BindConfig>,
+
+    bind_admin: Option<BindAdminConfig>,
+
+    #[serde(default)]
+    redirects: Vec<ExposeRedirectConfig>,
+
+    #[serde(default)]
+    services: Vec<ExposeServiceConfig>,
+
+    #[serde(default)]
+    static_files: Vec<ExposeStaticConfig>,
+}
+
+pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
+    let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
+    let parsed: ExposeServiceFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+
+    Ok(IngressConfig {
+        bind: parsed.bind,
+        bind_admin: parsed.bind_admin,
+        redirect_cfgs: parsed.redirects,
+        service_cfgs: parsed.services,
+        static_cfgs: parsed.static_files,
+    })
 }

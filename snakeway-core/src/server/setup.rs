@@ -1,4 +1,5 @@
 use crate::conf::RuntimeConfig;
+use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::{AdminGateway, PublicGateway};
 use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
@@ -12,11 +13,15 @@ use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::server::Server;
 use pingora::server::configuration::ServerConf;
+use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Run the Pingora server with the given configuration.
 pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
+    #[cfg(debug_assertions)]
+    bail_if_port_is_in_use(&config.listeners)?;
+
     use tokio::runtime::Builder;
 
     let config_path = PathBuf::from(config_path);
@@ -128,16 +133,17 @@ pub fn build_pingora_server(
     connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
-    let mut conf = ServerConf::new().expect("Could not construct pingora server configuration");
-    conf.ca_file = config.server.ca_file.clone();
+    let mut pingora_server_conf =
+        ServerConf::new().expect("Could not construct pingora server configuration");
+    pingora_server_conf.ca_file = config.server.ca_file.clone();
 
     let mut server = if let Some(threads) = config.server.threads {
         tracing::debug!(
             threads,
             "Creating Pingora server with overridden worker threads"
         );
-        conf.threads = threads;
-        Server::new_with_opt_and_conf(None, conf)
+        pingora_server_conf.threads = threads;
+        Server::new_with_opt_and_conf(None, pingora_server_conf)
     } else {
         // Create a Pingora server with default settings.
         // "None" is required here to truly tell Pingora to use its default settings.
@@ -151,19 +157,16 @@ pub fn build_pingora_server(
     registry.load_from_config(&config)?;
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
-    // Build the public HTTP proxy service from Pingora.
-    let public_gateway = PublicGateway::new(
-        state.clone(),
-        traffic_manager.clone(),
-        connection_manager.clone(),
-    );
-    let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
-    for listener in &config
-        .listeners
-        .iter()
-        .filter(|l| !l.enable_admin)
-        .collect::<Vec<_>>()
-    {
+    for listener in config.listeners.iter().filter(|l| !l.enable_admin) {
+        // Build the public HTTP proxy service from Pingora.
+        let public_gateway = PublicGateway::new(
+            Arc::from(listener.name.clone()),
+            state.clone(),
+            traffic_manager.clone(),
+            connection_manager.clone(),
+        );
+        let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
+
         match &listener.tls {
             Some(tls) => {
                 let mut tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
@@ -176,20 +179,19 @@ pub fn build_pingora_server(
                 public_svc.add_tcp(&listener.addr.to_string());
             }
         }
+
+        // Register public service.
+        server.add_service(public_svc);
     }
 
-    // Register public service.
-    server.add_service(public_svc);
-
     // Build the admin HTTP proxy service from Pingora.
-    let admin_gateway = AdminGateway::new(traffic_manager, connection_manager, reload);
-    let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
-    for listener in &config
-        .listeners
-        .iter()
-        .filter(|l| l.enable_admin)
-        .collect::<Vec<_>>()
-    {
+    for listener in config.listeners.iter().filter(|l| l.enable_admin) {
+        let admin_gateway = AdminGateway::new(
+            traffic_manager.clone(),
+            connection_manager.clone(),
+            reload.clone(),
+        );
+        let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
         match &listener.tls {
             Some(tls) => {
                 let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
@@ -199,10 +201,25 @@ pub fn build_pingora_server(
                 admin_svc.add_tcp(&listener.addr);
             }
         }
+
+        // Register admin service.
+        server.add_service(admin_svc);
     }
 
-    // Register admin service.
-    server.add_service(admin_svc);
-
     Ok(server)
+}
+
+/// Sanity check if ports are already in use by listeners (or something else).
+fn bail_if_port_is_in_use(listeners: &[ListenerConfig]) -> Result<()> {
+    let mut has_error = false;
+    for cfg in listeners.iter() {
+        if TcpListener::bind(&cfg.addr).is_err() {
+            tracing::error!("Listener {} ({}) already in use", cfg.name, cfg.addr);
+            has_error = true;
+        }
+    }
+    if has_error {
+        anyhow::bail!("One or more listeners are already in use");
+    }
+    Ok(())
 }

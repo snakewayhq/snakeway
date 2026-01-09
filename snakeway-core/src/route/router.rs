@@ -56,10 +56,6 @@ impl Router {
 
         Err(anyhow!("no route matched path {}", request_path))
     }
-
-    pub(crate) fn route_count(&self) -> usize {
-        self.routes.len()
-    }
 }
 
 fn path_matches(route_path: &str, request_path: &str) -> bool {
