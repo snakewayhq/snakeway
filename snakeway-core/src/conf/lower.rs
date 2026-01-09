@@ -35,11 +35,11 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
             });
         }
 
-        if let Some(admin_bind) = ingress.admin_bind {
+        if let Some(bind_admin) = ingress.bind_admin {
             listeners.push(ListenerConfig {
                 name: listener_name.clone(),
-                addr: admin_bind.addr,
-                tls: Some(admin_bind.tls),
+                addr: bind_admin.addr,
+                tls: Some(bind_admin.tls),
                 enable_http2: false,
                 enable_admin: true,
                 redirect: None,

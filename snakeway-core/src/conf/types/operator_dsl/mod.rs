@@ -7,7 +7,7 @@ mod expose_static;
 
 pub use bind::BindConfig;
 pub use entrypoint::EntrypointConfig;
-pub use expose_admin::AdminBindConfig;
+pub use expose_admin::BindAdminConfig;
 pub use expose_redirect::ExposeRedirectConfig;
 pub use expose_service::ExposeServiceConfig;
 pub use expose_static::ExposeStaticConfig;
@@ -21,14 +21,14 @@ pub enum ExposeConfig {
     Redirect(ExposeRedirectConfig),
     Service(ExposeServiceConfig),
     Static(ExposeStaticConfig),
-    Admin(AdminBindConfig),
+    Admin(BindAdminConfig),
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct IngressConfig {
     pub bind: Option<BindConfig>,
-    pub admin_bind: Option<AdminBindConfig>,
+    pub bind_admin: Option<BindAdminConfig>,
     pub redirect_cfgs: Vec<ExposeRedirectConfig>,
     pub service_cfgs: Vec<ExposeServiceConfig>,
     pub static_cfgs: Vec<ExposeStaticConfig>,

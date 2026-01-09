@@ -1,5 +1,5 @@
 use crate::conf::types::{
-    AdminBindConfig, BindConfig, DeviceConfig, ExposeRedirectConfig, ExposeServiceConfig,
+    BindAdminConfig, BindConfig, DeviceConfig, ExposeRedirectConfig, ExposeServiceConfig,
     ExposeStaticConfig, IdentityDeviceConfig, IngressConfig, StructuredLoggingDeviceConfig,
     WasmDeviceConfig,
 };
@@ -40,7 +40,7 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
 struct ExposeServiceFile {
     bind: Option<BindConfig>,
 
-    admin_bind: Option<AdminBindConfig>,
+    bind_admin: Option<BindAdminConfig>,
 
     #[serde(default)]
     expose_redirect: Vec<ExposeRedirectConfig>,
@@ -58,7 +58,7 @@ pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
 
     Ok(IngressConfig {
         bind: parsed.bind,
-        admin_bind: parsed.admin_bind,
+        bind_admin: parsed.bind_admin,
         redirect_cfgs: parsed.expose_redirect,
         service_cfgs: parsed.expose_service,
         static_cfgs: parsed.expose_static,
