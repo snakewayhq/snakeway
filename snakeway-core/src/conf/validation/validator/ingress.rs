@@ -155,14 +155,14 @@ pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport
                 continue;
             }
 
-            if let Some(addr) = &backend.addr {
-                if addr.parse::<SocketAddr>().is_err() {
-                    report.error(
-                        format!("invalid upstream - invalid addr: {}", addr),
-                        &service.origin,
-                        None,
-                    );
-                }
+            if let Some(addr) = &backend.addr
+                && addr.parse::<SocketAddr>().is_err()
+            {
+                report.error(
+                    format!("invalid upstream - invalid addr: {}", addr),
+                    &service.origin,
+                    None,
+                );
             }
 
             // Duplicate socks?
@@ -177,17 +177,18 @@ pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport
                     seen_sock_values.insert(sock.clone(), ());
                 }
 
-                if let Some(sock_options) = &backend.sock_options {
-                    if sock_options.use_tls && sock_options.sni.is_empty() {
-                        report.error(
-                            format!(
-                                "invalid upstream - SNI must be set when using TLS: {}",
-                                sock
-                            ),
-                            &service.origin,
-                            None,
-                        );
-                    }
+                if let Some(sock_options) = &backend.sock_options
+                    && sock_options.use_tls
+                    && sock_options.sni.is_empty()
+                {
+                    report.error(
+                        format!(
+                            "invalid upstream - SNI must be set when using TLS: {}",
+                            sock
+                        ),
+                        &service.origin,
+                        None,
+                    );
                 }
             }
         }
