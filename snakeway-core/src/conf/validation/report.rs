@@ -1,8 +1,9 @@
 use crate::conf::types::Origin;
 use owo_colors::OwoColorize;
+use serde::Serialize;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
     pub message: String,
@@ -10,7 +11,7 @@ pub struct ValidationIssue {
     pub help: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Severity {
     Error,
     Warning,
@@ -19,6 +20,12 @@ pub enum Severity {
 pub struct ValidationReport {
     pub errors: Vec<ValidationIssue>,
     pub warnings: Vec<ValidationIssue>,
+}
+
+#[derive(Serialize)]
+struct ValidationReportJson<'a> {
+    errors: &'a [ValidationIssue],
+    warnings: &'a [ValidationIssue],
 }
 
 impl ValidationReport {
@@ -44,7 +51,39 @@ impl ValidationReport {
         });
     }
 
-    pub fn print(&self) {
+    pub fn render_json(&self) {
+        let json = ValidationReportJson {
+            errors: &self.errors,
+            warnings: &self.warnings,
+        };
+
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json).expect("failed to serialize validation report")
+        );
+    }
+
+    pub fn render_plain(&self) {
+        for issue in self.errors.iter().chain(self.warnings.iter()) {
+            let severity = match issue.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+            };
+
+            println!(
+                "{}:{}: {}",
+                issue.origin.file.display(),
+                severity,
+                issue.message
+            );
+
+            if let Some(help) = &issue.help {
+                println!("  help: {}", help);
+            }
+        }
+    }
+
+    pub fn render_pretty(&self) {
         let errors = self
             .errors
             .iter()

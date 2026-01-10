@@ -1,7 +1,8 @@
+use serde::Serialize;
 use std::fmt;
 use std::path::PathBuf;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct Origin {
     pub(crate) file: PathBuf,
     kind: String,

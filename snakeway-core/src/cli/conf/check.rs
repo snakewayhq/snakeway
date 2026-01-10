@@ -13,13 +13,13 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                 if !quiet {
                     match format {
                         ConfigCheckOutputFormat::Pretty => {
-                            validation_report.print();
+                            validation_report.render_pretty();
                         }
                         ConfigCheckOutputFormat::Plain => {
-                            validation_report.print();
+                            validation_report.render_plain();
                         }
                         ConfigCheckOutputFormat::Json => {
-                            validation_report.print();
+                            validation_report.render_json();
                         }
                     };
                 }

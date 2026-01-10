@@ -50,7 +50,7 @@ pub fn load_spec_config(root: &Path) -> Result<Spec, ConfigError> {
     })?;
 
     let mut entry: EntrypointSpec = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
-        path: root.to_path_buf(),
+        path: root_path.to_path_buf(),
         source: e,
     })?;
 
