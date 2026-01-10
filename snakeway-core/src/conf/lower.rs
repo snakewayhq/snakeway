@@ -1,6 +1,6 @@
 use crate::conf::merge::{merge_listeners, merge_services};
 use crate::conf::types::{
-    ExposeServerConfig, IngressConfig, ListenerConfig, RedirectConfig, RouteConfig, ServerConfig,
+    IngressSpec, ListenerConfig, RedirectConfig, RouteConfig, ServerConfig, ServerSpec,
     ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
     UpstreamTcpConfig, UpstreamUnixConfig,
 };
@@ -14,16 +14,16 @@ pub type IrConfig = (
     HashMap<String, ServiceConfig>,
 );
 
-/// Transform DSL configs to intermediate representation.
+/// Transform spec to the runtime configuration.
 pub fn lower_configs(
-    server_dsl: ExposeServerConfig,
-    ingresses: Vec<IngressConfig>,
+    server_spec: ServerSpec,
+    ingresses: Vec<IngressSpec>,
 ) -> Result<IrConfig, ConfigError> {
     let server: ServerConfig = ServerConfig {
-        version: server_dsl.version,
-        threads: server_dsl.threads,
-        pid_file: server_dsl.pid_file.unwrap_or_default(),
-        ca_file: server_dsl.ca_file.unwrap_or_default(),
+        version: server_spec.version,
+        threads: server_spec.threads,
+        pid_file: server_spec.pid_file.unwrap_or_default(),
+        ca_file: server_spec.ca_file.unwrap_or_default(),
     };
 
     let mut listeners: Vec<ListenerConfig> = Vec::new();
@@ -66,7 +66,7 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             for service_cfg in ingress.service_cfgs {
                 let unix_upstreams = service_cfg
-                    .backends
+                    .upstreams
                     .iter()
                     .filter_map(|b| {
                         b.sock.as_ref().map(|sock| UpstreamUnixConfig {
@@ -79,7 +79,7 @@ pub fn lower_configs(
                     .collect();
 
                 let tcp_upstreams = service_cfg
-                    .backends
+                    .upstreams
                     .iter()
                     .filter_map(|b| {
                         b.addr.as_ref().map(|addr| UpstreamTcpConfig {

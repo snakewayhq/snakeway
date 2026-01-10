@@ -6,5 +6,5 @@ pub mod validator;
 
 pub use error::ConfigError;
 pub use report::*;
-pub use validate::validate_dsl_config;
+pub use validate::validate_spec;
 pub use validated_config::ValidatedConfig;

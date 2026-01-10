@@ -1,10 +1,10 @@
-use crate::conf::types::ExposeServerConfig;
+use crate::conf::types::ServerSpec;
 use crate::conf::validation::report::ValidationReport;
 
 /// Validate top-level config version.
 ///
 /// Fail-fast: invalid versions invalidate the entire config model.
-pub fn validate_version(server: &ExposeServerConfig, report: &mut ValidationReport) -> bool {
+pub fn validate_version(server: &ServerSpec, report: &mut ValidationReport) -> bool {
     if server.version != 1 {
         report.error(
             format!("invalid config version {}", server.version),
@@ -19,7 +19,7 @@ pub fn validate_version(server: &ExposeServerConfig, report: &mut ValidationRepo
 /// Validate the server config.
 ///
 /// Version validation fails fast, because it invalidates the entire config model.
-pub fn validate_server(cfg: &ExposeServerConfig, report: &mut ValidationReport) {
+pub fn validate_server(cfg: &ServerSpec, report: &mut ValidationReport) {
     if let Some(pid_file) = cfg.pid_file.clone() {
         let Some(parent) = pid_file.parent() else {
             return;

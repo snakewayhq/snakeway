@@ -1,7 +1,6 @@
 use crate::conf::types::{
-    BindAdminConfig, BindConfig, DeviceConfig, ExposeRedirectConfig, ExposeServiceConfig,
-    ExposeStaticConfig, IdentityDeviceConfig, IngressConfig, Origin, StructuredLoggingDeviceConfig,
-    WasmDeviceConfig,
+    BindAdminSpec, BindSpec, DeviceConfig, IdentityDeviceConfig, IngressSpec, Origin, RedirectSpec,
+    ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceConfig, WasmDeviceConfig,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -37,25 +36,24 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
 }
 
 #[derive(Debug, Deserialize)]
-struct ExposeServiceFile {
-    bind: Option<BindConfig>,
+struct IngressFile {
+    bind: Option<BindSpec>,
 
-    bind_admin: Option<BindAdminConfig>,
-
-    #[serde(default)]
-    redirects: Vec<ExposeRedirectConfig>,
+    bind_admin: Option<BindAdminSpec>,
 
     #[serde(default)]
-    services: Vec<ExposeServiceConfig>,
+    redirects: Vec<RedirectSpec>,
 
     #[serde(default)]
-    static_files: Vec<ExposeStaticConfig>,
+    services: Vec<ServiceSpec>,
+
+    #[serde(default)]
+    static_files: Vec<StaticFilesSpec>,
 }
 
-pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
+pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let mut parsed: ExposeServiceFile =
-        hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+    let mut parsed: IngressFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
     //-------------------------------------------------------------------------
     // Inject origin metadata
@@ -77,7 +75,7 @@ pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
         for (j, route) in service.routes.iter_mut().enumerate() {
             route.origin = Origin::new(&path.to_path_buf(), "route", Some(j));
         }
-        for (j, backend) in service.backends.iter_mut().enumerate() {
+        for (j, backend) in service.upstreams.iter_mut().enumerate() {
             backend.origin = Origin::new(&path.to_path_buf(), "backend", Some(j));
         }
     }
@@ -93,7 +91,7 @@ pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
     // Lower to ingress config
     //-------------------------------------------------------------------------
 
-    Ok(IngressConfig {
+    Ok(IngressSpec {
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
         redirect_cfgs: parsed.redirects,

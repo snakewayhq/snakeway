@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ExposeServerConfig {
+pub struct ServerSpec {
     #[serde(skip)]
     pub origin: Origin,
 

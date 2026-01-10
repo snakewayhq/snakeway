@@ -30,7 +30,7 @@ pub enum ConfigCmd {
         #[arg(default_value = "config")]
         path: PathBuf,
 
-        #[arg(short, long, default_value = "dsl")]
+        #[arg(short, long, default_value = "spec")]
         repr: RepresentationFormat,
 
         /// Output as JSON

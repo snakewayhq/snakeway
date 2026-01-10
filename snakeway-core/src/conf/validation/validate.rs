@@ -1,11 +1,11 @@
-use crate::conf::types::{DeviceConfig, ExposeServerConfig, IngressConfig};
+use crate::conf::types::{DeviceConfig, IngressSpec, ServerSpec};
 use crate::conf::validation::report::ValidationReport;
 use crate::conf::validation::validator;
 
 /// Validate everything that exists in a fully parsed config.
-pub fn validate_dsl_config(
-    server: &ExposeServerConfig,
-    ingresses: &[IngressConfig],
+pub fn validate_spec(
+    server: &ServerSpec,
+    ingresses: &[IngressSpec],
     devices: &[DeviceConfig],
 ) -> ValidationReport {
     let mut report = ValidationReport {

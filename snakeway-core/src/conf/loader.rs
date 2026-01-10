@@ -2,10 +2,10 @@ use crate::conf::discover::discover;
 use crate::conf::lower::lower_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::types::{
-    DeviceConfig, EntrypointConfig, ExposeServerConfig, IngressConfig, Origin, RuntimeConfig,
+    DeviceConfig, EntrypointSpec, IngressSpec, Origin, RuntimeConfig, ServerSpec,
 };
 use crate::conf::validation::ValidatedConfig;
-use crate::conf::validation::{ConfigError, validate_dsl_config};
+use crate::conf::validation::{ConfigError, validate_spec};
 
 use std::fs;
 use std::path::Path;
@@ -14,13 +14,13 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     //--------------------------------------------------------------------------
     // Semantic validation of DSL config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    let (server_dsl, devices, ingresses) = load_dsl_config(root)?;
-    let dsl_validation = validate_dsl_config(&server_dsl, &ingresses, &devices);
+    let (server_spec, devices, ingresses) = load_spec_config(root)?;
+    let validation_report = validate_spec(&server_spec, &ingresses, &devices);
 
     //--------------------------------------------------------------------------
     // Semantic validation of IR config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    let (server, listeners, routes, services) = lower_configs(server_dsl, ingresses)?;
+    let (server, listeners, routes, services) = lower_configs(server_spec, ingresses)?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
@@ -33,13 +33,13 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
             services,
             listeners,
         },
-        dsl_validation,
+        validation_report,
     })
 }
 
-pub type DslRepresentation = (ExposeServerConfig, Vec<DeviceConfig>, Vec<IngressConfig>);
+pub type Spec = (ServerSpec, Vec<DeviceConfig>, Vec<IngressSpec>);
 
-pub fn load_dsl_config(root: &Path) -> Result<DslRepresentation, ConfigError> {
+pub fn load_spec_config(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
@@ -49,7 +49,7 @@ pub fn load_dsl_config(root: &Path) -> Result<DslRepresentation, ConfigError> {
         source: e,
     })?;
 
-    let mut entry: EntrypointConfig = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
+    let mut entry: EntrypointSpec = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
         path: root.to_path_buf(),
         source: e,
     })?;

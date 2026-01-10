@@ -1,11 +1,11 @@
-use crate::conf::types::Origin;
+use crate::conf::types::{Origin, TlsConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Default, Serialize)]
-pub struct ExposeRedirectConfig {
+pub struct BindSpec {
     #[serde(skip)]
     pub origin: Origin,
     pub addr: String,
-    pub to: String,
-    pub status: u16,
+    pub tls: Option<TlsConfig>,
+    pub enable_http2: bool,
 }

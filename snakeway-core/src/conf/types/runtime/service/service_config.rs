@@ -1,4 +1,4 @@
-use crate::conf::types::runtime_ir::service::upstream::UpstreamTcpConfig;
+use crate::conf::types::runtime::service::upstream::UpstreamTcpConfig;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, UpstreamUnixConfig};
 use serde::{Deserialize, Serialize};
 

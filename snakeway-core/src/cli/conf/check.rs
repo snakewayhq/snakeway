@@ -6,20 +6,20 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
     match load_config(&path) {
         Ok(validation_cfg) => {
             let cfg = validation_cfg.config;
-            let dsl_validation = validation_cfg.dsl_validation;
+            let validation_report = validation_cfg.validation_report;
 
             // Validation...
-            if dsl_validation.has_violations() {
+            if validation_report.has_violations() {
                 if !quiet {
                     match format {
                         ConfigCheckOutputFormat::Pretty => {
-                            dsl_validation.print();
+                            validation_report.print();
                         }
                         ConfigCheckOutputFormat::Plain => {
-                            dsl_validation.print();
+                            validation_report.print();
                         }
                         ConfigCheckOutputFormat::Json => {
-                            dsl_validation.print();
+                            validation_report.print();
                         }
                     };
                 }

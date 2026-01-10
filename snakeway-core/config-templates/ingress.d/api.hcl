@@ -40,7 +40,7 @@ services = [
       }
     ]
 
-    backends = [
+    upstreams = [
       {
         weight = 1
         addr   = "127.0.0.1:3443"

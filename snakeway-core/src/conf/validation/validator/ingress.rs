@@ -1,4 +1,4 @@
-use crate::conf::types::{ExposeServiceConfig, IngressConfig};
+use crate::conf::types::{IngressSpec, ServiceSpec};
 use crate::conf::validation::ValidationReport;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -7,7 +7,7 @@ use std::path::Path;
 /// Validate listener definitions.
 ///
 /// Structural errors here are aggregated, not fail-fast.
-pub fn validate_ingresses(ingresses: &[IngressConfig], report: &mut ValidationReport) {
+pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_addrs = HashSet::new();
 
     for ingress in ingresses {
@@ -112,9 +112,9 @@ pub fn validate_ingresses(ingresses: &[IngressConfig], report: &mut ValidationRe
 }
 
 /// Validate service definitions.
-pub fn validate_services(services: &[ExposeServiceConfig], report: &mut ValidationReport) {
+pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport) {
     for service in services {
-        if service.backends.is_empty() {
+        if service.upstreams.is_empty() {
             report.error(
                 "service has no upstreams".to_string(),
                 &service.origin,
@@ -126,7 +126,7 @@ pub fn validate_services(services: &[ExposeServiceConfig], report: &mut Validati
         let mut seen_sock_values = HashMap::new();
 
         // Validate backends
-        for backend in &service.backends {
+        for backend in &service.upstreams {
             if backend.weight == 0 || backend.weight > 1_000 {
                 report.error(
                     format!(
