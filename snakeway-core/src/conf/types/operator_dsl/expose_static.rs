@@ -1,13 +1,18 @@
+use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ExposeStaticConfig {
+    #[serde(skip)]
+    pub origin: Origin,
     pub routes: Vec<ExposeStaticRouteConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ExposeStaticRouteConfig {
+    #[serde(skip)]
+    pub origin: Origin,
     pub path: String,
     pub file_dir: PathBuf,
     pub index: Option<String>,

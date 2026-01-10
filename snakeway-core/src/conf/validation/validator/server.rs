@@ -1,22 +1,25 @@
-use crate::conf::types::ServerConfig;
+use crate::conf::types::ExposeServerConfig;
 use crate::conf::validation::ConfigError;
 use crate::conf::validation::ValidationCtx;
 
 /// Validate top-level config version.
 ///
 /// Fail-fast: invalid versions invalidate the entire config model.
-pub fn validate_version(version: u32) -> Result<(), ConfigError> {
-    if version == 1 {
+pub fn validate_version(server: &ExposeServerConfig) -> Result<(), ConfigError> {
+    if server.version == 1 {
         Ok(())
     } else {
-        Err(ConfigError::InvalidVersion { version })
+        Err(ConfigError::InvalidVersion {
+            version: server.version,
+            origin: server.origin.clone(),
+        })
     }
 }
 
 /// Validate the server config.
 ///
 /// Version validation fails fast, because it invalidates the entire config model.
-pub fn validate_server(cfg: &ServerConfig, ctx: &mut ValidationCtx) {
+pub fn validate_server(cfg: &ExposeServerConfig, ctx: &mut ValidationCtx) {
     if let Some(pid_file) = cfg.pid_file.clone() {
         let Some(parent) = pid_file.parent() else {
             return;

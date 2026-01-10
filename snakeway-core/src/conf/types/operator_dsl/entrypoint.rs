@@ -1,10 +1,10 @@
-use crate::conf::types::ServerConfig;
+use crate::conf::types::ExposeServerConfig;
 use serde::Deserialize;
 
 /// Represents the top-level configuration file.
 #[derive(Debug, Deserialize)]
 pub struct EntrypointConfig {
-    pub server: ServerConfig,
+    pub server: ExposeServerConfig,
     pub include: IncludeConfig,
 }
 

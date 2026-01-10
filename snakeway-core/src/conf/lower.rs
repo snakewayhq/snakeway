@@ -1,19 +1,31 @@
 use crate::conf::merge::{merge_listeners, merge_services};
 use crate::conf::types::{
-    IngressConfig, ListenerConfig, RedirectConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
-    StaticCachePolicy, StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    ExposeServerConfig, IngressConfig, ListenerConfig, RedirectConfig, RouteConfig, ServerConfig,
+    ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
+    UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
 
 pub type IrConfig = (
+    ServerConfig,
     Vec<ListenerConfig>,
     Vec<RouteConfig>,
     HashMap<String, ServiceConfig>,
 );
 
 /// Transform DSL configs to intermediate representation.
-pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigError> {
+pub fn lower_configs(
+    server_dsl: ExposeServerConfig,
+    ingresses: Vec<IngressConfig>,
+) -> Result<IrConfig, ConfigError> {
+    let server: ServerConfig = ServerConfig {
+        version: server_dsl.version,
+        threads: server_dsl.threads,
+        pid_file: server_dsl.pid_file.unwrap_or_default(),
+        ca_file: server_dsl.ca_file.unwrap_or_default(),
+    };
+
     let mut listeners: Vec<ListenerConfig> = Vec::new();
     let mut routes: Vec<RouteConfig> = Vec::new();
     let mut services: Vec<ServiceConfig> = Vec::new();
@@ -152,5 +164,5 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
     // Services have to be merged after rewriting listener names
     let merged_services: HashMap<String, ServiceConfig> = merge_services(services.clone())?;
 
-    Ok((merged_listeners, routes, merged_services))
+    Ok((server, merged_listeners, routes, merged_services))
 }

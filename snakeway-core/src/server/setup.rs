@@ -9,6 +9,7 @@ use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
+use nix::NixPath;
 use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::server::Server;
@@ -27,8 +28,9 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     let config_path = PathBuf::from(config_path);
 
     // Attempt to write pid file (best-effort)
-    if let Some(pid_file) = &config.server.pid_file {
-        if let Err(e) = pid::write_pid(pid_file) {
+    if !&config.server.pid_file.is_empty() {
+        let pid_file = config.server.pid_file.clone();
+        if let Err(e) = pid::write_pid(&pid_file) {
             tracing::warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file; continuing");
         } else {
             tracing::info!(pid_file = %pid_file.display(), "pid file written");
@@ -111,10 +113,10 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
     })?;
 
     // Ensure pid file cleanup on shutdown
-    if let Some(pid_file) = config.server.pid_file.clone() {
+    if !config.server.pid_file.is_empty() {
         ctrlc::set_handler(move || {
             tracing::info!("shutdown requested, removing pid file");
-            pid::remove_pid(&pid_file);
+            pid::remove_pid(&config.server.pid_file);
             std::process::exit(0);
         })?;
     }
@@ -135,7 +137,9 @@ pub fn build_pingora_server(
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
-    pingora_server_conf.ca_file = config.server.ca_file.clone();
+    if !config.server.ca_file.is_empty() {
+        pingora_server_conf.ca_file = Some(config.server.ca_file.clone());
+    }
 
     let mut server = if let Some(threads) = config.server.threads {
         tracing::debug!(

@@ -41,6 +41,7 @@ impl From<&ListenerConfig> for ListenerKey {
 
 type MergedListeners = (Vec<ListenerConfig>, HashMap<String, String>);
 
+#[deprecated]
 pub fn merge_listeners(listeners: Vec<ListenerConfig>) -> Result<MergedListeners, ConfigError> {
     let mut merged: HashMap<ListenerKey, ListenerConfig> = HashMap::new();
     // old_name to canonical_name

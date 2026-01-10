@@ -1,3 +1,4 @@
+use crate::conf::types::Origin;
 use crate::conf::validation::validation_ctx::ValidationErrors;
 use miette::Diagnostic;
 use std::path::PathBuf;
@@ -28,8 +29,9 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Top-level
     //-------------------------------------------------------------------------
-    #[error("invalid version '{version}'")]
-    InvalidVersion { version: u32 },
+    #[error("invalid config version")]
+    #[diagnostic(help = "See: {origin}")]
+    InvalidVersion { version: u32, origin: Origin },
 
     #[error("invalid pid file path '{pid_file}': {reason}")]
     InvalidPidFile { pid_file: PathBuf, reason: String },

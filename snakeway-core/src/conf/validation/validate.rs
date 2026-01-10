@@ -1,4 +1,4 @@
-use crate::conf::types::{DeviceConfig, IngressConfig, ServerConfig, ServiceConfig};
+use crate::conf::types::{DeviceConfig, ExposeServerConfig, IngressConfig, ServiceConfig};
 use crate::conf::validation::validation_ctx::{ValidationCtx, ValidationErrors};
 use crate::conf::validation::{ValidationOutput, validator};
 use std::collections::HashMap;
@@ -16,13 +16,13 @@ pub fn validate_runtime_config(
 
 /// Validate everything that exists in a fully parsed config.
 pub fn validate_dsl_config(
-    server: &ServerConfig,
+    server: &ExposeServerConfig,
     ingress: &[IngressConfig],
     devices: &Vec<DeviceConfig>,
 ) -> Result<ValidationOutput, ValidationErrors> {
     let mut ctx = ValidationCtx::default();
 
-    if let Err(e) = validator::validate_version(server.version) {
+    if let Err(e) = validator::validate_version(server) {
         ctx.error(e);
     } else {
         validator::validate_server(server, &mut ctx);

@@ -2,15 +2,19 @@ mod bind;
 pub mod entrypoint;
 mod expose_admin;
 mod expose_redirect;
+mod expose_server;
 mod expose_service;
 mod expose_static;
+mod origin;
 
 pub use bind::BindConfig;
 pub use entrypoint::EntrypointConfig;
 pub use expose_admin::BindAdminConfig;
 pub use expose_redirect::ExposeRedirectConfig;
+pub use expose_server::ExposeServerConfig;
 pub use expose_service::ExposeServiceConfig;
 pub use expose_static::ExposeStaticConfig;
+pub use origin::Origin;
 use serde::{Deserialize, Serialize};
 
 /// The operator DSL for the config subsystem.
