@@ -6,14 +6,9 @@ pub fn merge_services(
     services: Vec<ServiceConfig>,
 ) -> Result<HashMap<String, ServiceConfig>, ConfigError> {
     let mut map = HashMap::new();
-
     for svc in services {
-        if map.contains_key(&svc.name) {
-            return Err(ConfigError::DuplicateService { name: svc.name });
-        }
         map.insert(svc.name.clone(), svc);
     }
-
     Ok(map)
 }
 
@@ -41,7 +36,6 @@ impl From<&ListenerConfig> for ListenerKey {
 
 type MergedListeners = (Vec<ListenerConfig>, HashMap<String, String>);
 
-#[deprecated]
 pub fn merge_listeners(listeners: Vec<ListenerConfig>) -> Result<MergedListeners, ConfigError> {
     let mut merged: HashMap<ListenerKey, ListenerConfig> = HashMap::new();
     // old_name to canonical_name

@@ -1,4 +1,6 @@
-use crate::conf::types::{IdentityDeviceConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig};
+use crate::conf::types::{
+    IdentityDeviceConfig, Origin, StructuredLoggingDeviceConfig, WasmDeviceConfig,
+};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -15,6 +17,14 @@ impl DeviceConfig {
             DeviceConfig::Identity(i) => i.enable,
             DeviceConfig::StructuredLogging(s) => s.enable,
             DeviceConfig::Wasm(w) => w.enable,
+        }
+    }
+
+    pub fn origin(&self) -> &Origin {
+        match self {
+            DeviceConfig::Identity(i) => &i.origin,
+            DeviceConfig::StructuredLogging(s) => &s.origin,
+            DeviceConfig::Wasm(w) => &w.origin,
         }
     }
 }

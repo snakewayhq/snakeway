@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Default, Clone)]
 pub struct Origin {
-    file: PathBuf,
+    pub(crate) file: PathBuf,
     kind: String,
     index: Option<usize>,
 }
@@ -21,8 +21,8 @@ impl Origin {
 impl fmt::Display for Origin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.index {
-            Some(i) => write!(f, "{}: {}[{}]", self.file.display(), self.kind, i),
-            None => write!(f, "{}: {}", self.file.display(), self.kind),
+            Some(i) => write!(f, "{}: {}[{}] block", self.file.display(), self.kind, i),
+            None => write!(f, "{}: {} block", self.file.display(), self.kind),
         }
     }
 }

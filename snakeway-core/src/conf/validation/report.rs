@@ -1,11 +1,12 @@
+use crate::conf::types::Origin;
 use owo_colors::OwoColorize;
-use std::path::PathBuf;
+use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 pub struct ValidationIssue {
     pub severity: Severity,
     pub message: String,
-    pub file: PathBuf,
+    pub origin: Origin,
     pub help: Option<String>,
 }
 
@@ -21,6 +22,24 @@ pub struct ValidationReport {
 }
 
 impl ValidationReport {
+    pub fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
+        self.errors.push(ValidationIssue {
+            severity: Severity::Error,
+            message,
+            origin: origin.clone(),
+            help,
+        });
+    }
+
+    pub fn warning(&mut self, message: String, origin: &Origin, help: Option<String>) {
+        self.warnings.push(ValidationIssue {
+            severity: Severity::Warning,
+            message,
+            origin: origin.clone(),
+            help,
+        });
+    }
+
     pub fn print(&self) {
         let errors = self
             .errors
@@ -39,7 +58,10 @@ impl ValidationReport {
 
         let mut by_file = std::collections::BTreeMap::new();
         for issue in &self.errors {
-            by_file.entry(&issue.file).or_insert(Vec::new()).push(issue);
+            by_file
+                .entry(&issue.origin.file)
+                .or_insert(Vec::new())
+                .push(issue);
         }
 
         for (file, issues) in by_file {

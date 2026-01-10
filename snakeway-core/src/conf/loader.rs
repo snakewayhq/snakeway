@@ -4,34 +4,23 @@ use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::types::{
     DeviceConfig, EntrypointConfig, ExposeServerConfig, IngressConfig, Origin, RuntimeConfig,
 };
+use crate::conf::validation::ValidatedConfig;
 use crate::conf::validation::{ConfigError, validate_dsl_config};
-use crate::conf::validation::{ValidatedConfig, validate_runtime_config};
 
 use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let (server_dsl, devices, ingresses) = load_dsl_config(root)?;
-
     //--------------------------------------------------------------------------
     // Semantic validation of DSL config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    let dsl_validation =
-        validate_dsl_config(&server_dsl, &ingresses, &devices).map_err(|errs| {
-            ConfigError::Validation {
-                validation_errors: errs,
-            }
-        })?;
-
-    let (server, listeners, routes, services) = lower_configs(server_dsl, ingresses)?;
+    let (server_dsl, devices, ingresses) = load_dsl_config(root)?;
+    let dsl_validation = validate_dsl_config(&server_dsl, &ingresses, &devices);
 
     //--------------------------------------------------------------------------
     // Semantic validation of IR config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    let ir_validation =
-        validate_runtime_config(&services).map_err(|errs| ConfigError::Validation {
-            validation_errors: errs,
-        })?;
+    let (server, listeners, routes, services) = lower_configs(server_dsl, ingresses)?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
@@ -45,14 +34,12 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
             listeners,
         },
         dsl_validation,
-        ir_validation,
     })
 }
 
-pub type ConfigIntermediateRepresentation =
-    (ExposeServerConfig, Vec<DeviceConfig>, Vec<IngressConfig>);
+pub type DslRepresentation = (ExposeServerConfig, Vec<DeviceConfig>, Vec<IngressConfig>);
 
-pub fn load_dsl_config(root: &Path) -> Result<ConfigIntermediateRepresentation, ConfigError> {
+pub fn load_dsl_config(root: &Path) -> Result<DslRepresentation, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------

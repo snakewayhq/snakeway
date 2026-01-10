@@ -1,10 +1,9 @@
-use crate::conf::types::DeviceConfig;
-use crate::conf::validation::ValidationCtx;
-use crate::conf::validation::{ConfigError, ConfigWarning};
+use crate::conf::types::{DeviceConfig, Origin};
+use crate::conf::validation::ValidationReport;
 use ipnet::IpNet;
 use std::net::IpAddr;
 
-pub fn validate_devices(devices: &Vec<DeviceConfig>, ctx: &mut ValidationCtx) {
+pub fn validate_devices(devices: &Vec<DeviceConfig>, report: &mut ValidationReport) {
     for device in devices {
         match device {
             DeviceConfig::Wasm(cfg) => {
@@ -13,9 +12,11 @@ pub fn validate_devices(devices: &Vec<DeviceConfig>, ctx: &mut ValidationCtx) {
                 }
 
                 if !cfg.path.is_file() {
-                    ctx.error(ConfigError::InvalidWasmDevicePath {
-                        path: cfg.path.clone(),
-                    });
+                    report.error(
+                        format!("invalid WASM device path : {}", cfg.path.display()),
+                        device.origin(),
+                        None,
+                    );
                 }
             }
             DeviceConfig::Identity(cfg) => {
@@ -23,16 +24,18 @@ pub fn validate_devices(devices: &Vec<DeviceConfig>, ctx: &mut ValidationCtx) {
                     return;
                 }
 
-                validate_trusted_proxies(&cfg.trusted_proxies, ctx);
+                validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
 
                 if cfg.enable
                     && cfg.enable_geoip
                     && let Some(geoip_db) = cfg.geoip_db.as_ref()
                     && !geoip_db.is_file()
                 {
-                    ctx.error(ConfigError::InvalidGeoIPDatabasePath {
-                        path: geoip_db.clone(),
-                    });
+                    report.error(
+                        format!("invalid geo ip database path: {}", geoip_db.display()),
+                        device.origin(),
+                        None,
+                    );
                 }
                 if cfg.enable && cfg.enable_user_agent {
                     return;
@@ -47,33 +50,35 @@ pub fn validate_devices(devices: &Vec<DeviceConfig>, ctx: &mut ValidationCtx) {
     }
 }
 
-fn validate_trusted_proxies(proxies: &[String], ctx: &mut ValidationCtx) {
+fn validate_trusted_proxies(proxies: &[String], report: &mut ValidationReport, origin: &Origin) {
     let mut networks = Vec::new();
     for proxy in proxies {
         if let Ok(net) = proxy.parse::<IpNet>() {
             networks.push(net);
         } else {
-            ctx.error(ConfigError::InvalidTrustedProxy {
-                proxy: proxy.clone(),
-            });
+            report.error(format!("invalid trusted proxy: {}", proxy), origin, None);
         }
     }
 
     for network in networks {
         // Hard error: trust-all networks
         if network.prefix_len() == 0 {
-            ctx.error(ConfigError::InvalidTrustedProxyNetwork {
-                reason: "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)"
-                    .into(),
-            });
+            report.error(
+                "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)"
+                    .to_string(),
+                origin,
+                None,
+            );
             continue;
         }
 
         // Trusting public IP ranges is a red flag.
         if !is_private_net(&network) {
-            ctx.warn(ConfigWarning::PublicTrustedProxy {
-                network: network.to_string(),
-            });
+            report.error(
+                format!("trusted_proxies contains a public IP range: {network}"),
+                origin,
+                None,
+            );
         }
     }
 }

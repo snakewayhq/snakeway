@@ -1,34 +1,35 @@
-use crate::conf::types::{DeviceConfig, ExposeServerConfig, IngressConfig, ServiceConfig};
-use crate::conf::validation::validation_ctx::{ValidationCtx, ValidationErrors};
-use crate::conf::validation::{ValidationOutput, validator};
-use std::collections::HashMap;
+use crate::conf::types::{
+    DeviceConfig, ExposeServerConfig, ExposeServiceConfig, IngressConfig, ServiceConfig,
+};
+use crate::conf::validation::report::ValidationReport;
+use crate::conf::validation::validator;
 
 /// Validate everything that exists in a fully parsed config.
-pub fn validate_runtime_config(
-    services: &HashMap<String, ServiceConfig>,
-) -> Result<ValidationOutput, ValidationErrors> {
-    let mut ctx = ValidationCtx::default();
+pub fn validate_runtime_config(services: &[ExposeServiceConfig]) -> ValidationReport {
+    let mut report = ValidationReport {
+        errors: vec![],
+        warnings: vec![],
+    };
 
-    validator::validate_services(services, &mut ctx);
+    validator::validate_services(services, &mut report);
 
-    ctx.into_result()
+    report
 }
 
 /// Validate everything that exists in a fully parsed config.
 pub fn validate_dsl_config(
     server: &ExposeServerConfig,
-    ingress: &[IngressConfig],
+    ingresses: &[IngressConfig],
     devices: &Vec<DeviceConfig>,
-) -> Result<ValidationOutput, ValidationErrors> {
-    let mut ctx = ValidationCtx::default();
-
-    if let Err(e) = validator::validate_version(server) {
-        ctx.error(e);
-    } else {
-        validator::validate_server(server, &mut ctx);
-        validator::validate_ingresses(ingress, &mut ctx);
-        validator::validate_devices(devices, &mut ctx);
+) -> ValidationReport {
+    let mut report = ValidationReport {
+        errors: vec![],
+        warnings: vec![],
+    };
+    if validator::validate_version(server, &mut report) {
+        validator::validate_server(server, &mut report);
+        validator::validate_ingresses(ingresses, &mut report);
+        validator::validate_devices(devices, &mut report);
     }
-
-    ctx.into_result()
+    report
 }

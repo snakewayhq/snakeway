@@ -60,7 +60,6 @@ pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
     //-------------------------------------------------------------------------
     // Inject origin metadata
     //-------------------------------------------------------------------------
-
     if let Some(bind) = &mut parsed.bind {
         bind.origin = Origin::new(&path.to_path_buf(), "bind", None);
     }

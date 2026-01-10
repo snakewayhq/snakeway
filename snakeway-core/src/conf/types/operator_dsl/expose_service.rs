@@ -29,10 +29,16 @@ pub struct ExposeBackendConfig {
     pub origin: Origin,
     pub addr: Option<String>,
     pub sock: Option<String>,
+    pub sock_options: Option<ExposeUnixTransportOptions>,
     #[serde(default = "default_weight")]
     pub weight: u32,
 }
-
 fn default_weight() -> u32 {
     1
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct ExposeUnixTransportOptions {
+    pub use_tls: bool,
+    pub sni: String,
 }

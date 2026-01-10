@@ -152,11 +152,9 @@ pub fn lower_configs(
     }
 
     let (merged_listeners, name_map) = merge_listeners(listeners)?;
-
     for route in &mut routes {
         route.set_listener(name_map[route.listener()].clone());
     }
-
     for service in services.iter_mut() {
         service.listener = name_map[&service.listener].clone();
     }
