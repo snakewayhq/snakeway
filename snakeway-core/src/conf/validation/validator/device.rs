@@ -3,7 +3,7 @@ use crate::conf::validation::ValidationReport;
 use ipnet::IpNet;
 use std::net::IpAddr;
 
-pub fn validate_devices(devices: &Vec<DeviceConfig>, report: &mut ValidationReport) {
+pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport) {
     for device in devices {
         match device {
             DeviceConfig::Wasm(cfg) => {

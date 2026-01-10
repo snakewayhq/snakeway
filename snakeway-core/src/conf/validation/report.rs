@@ -22,6 +22,10 @@ pub struct ValidationReport {
 }
 
 impl ValidationReport {
+    pub fn has_violations(&self) -> bool {
+        !self.errors.is_empty() || !self.warnings.is_empty()
+    }
+
     pub fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
         self.errors.push(ValidationIssue {
             severity: Severity::Error,

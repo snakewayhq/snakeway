@@ -1,5 +1,4 @@
 use crate::conf::load_config;
-use crate::conf::validation::{ConfigError, ValidationIssue};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -8,6 +7,26 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
         Ok(validation_cfg) => {
             let cfg = validation_cfg.config;
             let dsl_validation = validation_cfg.dsl_validation;
+
+            // Validation...
+            if dsl_validation.has_violations() {
+                if !quiet {
+                    match format {
+                        ConfigCheckOutputFormat::Pretty => {
+                            dsl_validation.print();
+                        }
+                        ConfigCheckOutputFormat::Plain => {
+                            dsl_validation.print();
+                        }
+                        ConfigCheckOutputFormat::Json => {
+                            dsl_validation.print();
+                        }
+                    };
+                }
+                std::process::exit(1);
+            }
+
+            // Success...
             if quiet {
                 // Print nothing.
             } else if matches!(format, ConfigCheckOutputFormat::Json) {
@@ -32,100 +51,24 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
                     cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 );
             }
-
-            if !quiet {
-                dsl_validation.print();
-                // print_validation_warnings(&dsl_validation.warnings, &format);
-                // print_validation_warnings(&ir_validation.warnings, &format);
-            }
             Ok(())
         }
         Err(err) => {
             if !quiet {
-                print_config_error(err, format);
+                match format {
+                    ConfigCheckOutputFormat::Pretty => {
+                        eprintln!("{}", err);
+                    }
+                    ConfigCheckOutputFormat::Plain => {
+                        eprintln!("{}", err);
+                    }
+                    ConfigCheckOutputFormat::Json => {
+                        eprintln!("{}", err);
+                    }
+                }
             }
 
             std::process::exit(1);
-        }
-    }
-}
-
-fn print_validation_warnings(warnings: &[ValidationIssue], format: &ConfigCheckOutputFormat) {
-    if !warnings.is_empty() {
-        eprintln!(
-            "\n⚠ {} warning{}",
-            warnings.len(),
-            if warnings.len() == 1 { "" } else { "s" }
-        );
-
-        for warning in warnings.iter() {
-            print_config_warning(warning, format.clone());
-        }
-    }
-}
-
-fn print_config_warning(issue: &ValidationIssue, format: ConfigCheckOutputFormat) {
-    match format {
-        ConfigCheckOutputFormat::Pretty => {
-            // eprintln!("{:?}", Report::new(warning));
-
-            // ariadne::Report::build(ReportKind::Error, issue.file, issue.span.start)
-            //     .with_message(issue.message)
-            //     .with_label(
-            //         Label::new((issue.file, issue.span.range))
-            //             .with_message(issue.help.unwrap_or_default()),
-            //     )
-            //     .finish()
-            //     .print()?;
-        }
-        ConfigCheckOutputFormat::Plain => {
-            // eprintln!("{}", warning);
-        }
-
-        ConfigCheckOutputFormat::Json => {
-            // let mut out = String::new();
-            //
-            // let handler = JSONReportHandler::new();
-            // handler
-            //     .render_report(&mut out, warning)
-            //     .expect("failed to render JSON diagnostic");
-            //
-            // let mut stdout = io::stdout();
-            // stdout.write_all(out.as_bytes()).unwrap();
-            // stdout.write_all(b"\n").unwrap();
-        }
-    }
-}
-
-fn print_config_error(report: ConfigError, format: ConfigCheckOutputFormat) {
-    match format {
-        ConfigCheckOutputFormat::Pretty => {
-            // let hint = config_error_hint(&err);
-            // eprintln!("{:?}", Report::new(err));
-            //
-            // if let Some(hint) = hint {
-            //     eprintln!("\nHint:\n{hint}");
-            // }
-            // report.print();
-        }
-
-        ConfigCheckOutputFormat::Plain => {
-            // eprintln!("{}", err);
-            // report.print();
-        }
-
-        ConfigCheckOutputFormat::Json => {
-            // report.print();
-            // let mut out = String::new();
-            //
-            // let handler = JSONReportHandler::new();
-            // handler
-            //     .render_report(&mut out, &err)
-            //     .expect("failed to render JSON diagnostic");
-            //
-            // let mut stdout = io::stdout();
-            // stdout.write_all(out.as_bytes()).unwrap();
-            // stdout.write_all(b"\n").unwrap();
         }
     }
 }
