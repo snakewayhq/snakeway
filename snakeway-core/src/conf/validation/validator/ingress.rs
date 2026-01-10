@@ -1,5 +1,9 @@
 use crate::conf::types::{IngressSpec, ServiceSpec};
 use crate::conf::validation::ValidationReport;
+use crate::conf::validation::constraints::{
+    CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
+    validate_range,
+};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::Path;
@@ -13,84 +17,56 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
     for ingress in ingresses {
         // Bind
         if let Some(bind) = &ingress.bind {
-            let bind_addr: SocketAddr = match bind.addr.parse() {
-                Ok(a) => a,
+            let bind_addr: Option<SocketAddr> = match bind.addr.parse() {
+                Ok(a) => Some(a),
                 Err(_) => {
-                    report.error(
-                        format!("invalid listener address: {}", bind.addr),
-                        &bind.origin,
-                        None,
-                    );
-                    continue;
+                    report.invalid_bind_addr(&bind.addr, &bind.origin);
+                    None
                 }
             };
 
-            if bind_addr.ip().is_unspecified() {
-                report.error(
-                    "invalid listener address: unspecified IP address".to_string(),
-                    &bind.origin,
-                    None,
-                );
+            if let Some(addr) = bind_addr
+                && addr.ip().is_unspecified()
+            {
+                report.invalid_bind_addr(&bind.addr, &bind.origin);
             }
 
             if !seen_listener_addrs.insert(&bind.addr) {
-                report.error(
-                    format!("duplicate listener address: {}", bind.addr),
-                    &bind.origin,
-                    None,
-                );
+                report.duplicate_bind_addr(&bind.addr, &bind.origin);
             }
 
             if let Some(tls) = &bind.tls {
                 if !Path::new(&tls.cert).is_file() {
-                    report.error(
-                        format!("missing certificate file: {}", tls.cert),
-                        &bind.origin,
-                        None,
-                    );
+                    report.missing_cert_file(&tls.cert, &bind.origin);
                 }
                 if !Path::new(&tls.key).is_file() {
-                    report.error(format!("missing key file: {}", tls.key), &bind.origin, None);
+                    report.missing_key_file(&tls.key, &bind.origin);
                 }
             }
 
             // HTTP/2 requires TLS.
             if bind.enable_http2 && bind.tls.is_none() {
-                report.error(
-                    format!("HTTP/2 listener requires TLS: {}", bind.addr),
-                    &bind.origin,
-                    None,
-                );
+                report.http2_requires_tls(&bind.addr, &bind.origin);
             }
         }
 
         if let Some(bind_admin) = &ingress.bind_admin {
             if !seen_listener_addrs.insert(&bind_admin.addr) {
-                report.error(
-                    format!("duplicate listener address: {}", bind_admin.addr),
-                    &bind_admin.origin,
-                    None,
-                );
+                report.duplicate_bind_addr(&bind_admin.addr, &bind_admin.origin);
             }
 
-            let bind_admin_addr: SocketAddr = match bind_admin.addr.parse() {
-                Ok(a) => a,
+            let bind_admin_addr: Option<SocketAddr> = match bind_admin.addr.parse() {
+                Ok(a) => Some(a),
                 Err(_) => {
-                    report.error(
-                        format!("invalid listener address: {}", bind_admin.addr),
-                        &bind_admin.origin,
-                        None,
-                    );
-                    continue;
+                    report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin);
+                    None
                 }
             };
 
-            if bind_admin_addr.ip().is_unspecified() {
-                report.error(
-                    "invalid listener address: unspecified IP address".to_string(),
-                    &bind_admin.origin,
-                    None,
-                );
+            if let Some(addr) = bind_admin_addr
+                && addr.ip().is_unspecified()
+            {
+                report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin);
             }
         }
 
@@ -100,11 +76,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
         for cfg in ingress.static_cfgs.iter() {
             for route in cfg.routes.iter() {
                 if !route.file_dir.exists() {
-                    report.error(
-                        format!("invalid static directory: {}", route.file_dir.display()),
-                        &route.origin,
-                        None,
-                    );
+                    report.invalid_static_dir(&route.file_dir, &route.origin);
                 }
             }
         }
@@ -115,80 +87,45 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
 pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport) {
     for service in services {
         if service.upstreams.is_empty() {
-            report.error(
-                "service has no upstreams".to_string(),
-                &service.origin,
-                None,
-            );
-            continue;
+            report.service_has_no_upstreams(&service.origin);
         }
 
         let mut seen_sock_values = HashMap::new();
 
-        // Validate backends
-        for backend in &service.upstreams {
-            if backend.weight == 0 || backend.weight > 1_000 {
-                report.error(
-                    format!(
-                        "invalid upstream weight - must be between 1 and 1000 (inclusive): {}",
-                        backend.weight
-                    ),
-                    &service.origin,
-                    None,
-                );
+        // Validate upstreams
+        for upstream in &service.upstreams {
+            if upstream.weight == 0 || upstream.weight > 1_000 {
+                report.invalid_upstream_weight(&upstream.weight, &service.origin);
             }
 
-            let backend_addr = backend.addr.clone().unwrap_or_default();
-            let backend_sock = backend.sock.clone().unwrap_or_default();
+            let backend_addr = upstream.addr.clone().unwrap_or_default();
+            let backend_sock = upstream.sock.clone().unwrap_or_default();
             let neither_are_defined = backend_addr.is_empty() && backend_sock.is_empty();
             let both_are_defined = !backend_addr.is_empty() && !backend_sock.is_empty();
             if neither_are_defined || both_are_defined {
-                report.error(
-                    format!(
-                        "invalid upstream - addr (TCP) or a sock (UNIX) are mutually exclusive: {} {}",
-                        backend.addr.as_ref().unwrap(),
-                        backend.sock.as_ref().unwrap(),
-                    ),
-                    &service.origin,
-                    None,
-                );
+                report.invalid_upstream_target(&upstream.addr, &upstream.sock, &service.origin);
                 continue;
             }
 
-            if let Some(addr) = &backend.addr
+            if let Some(addr) = &upstream.addr
                 && addr.parse::<SocketAddr>().is_err()
             {
-                report.error(
-                    format!("invalid upstream - invalid addr: {}", addr),
-                    &service.origin,
-                    None,
-                );
+                report.invalid_upstream_addr(&upstream.addr, &service.origin);
             }
 
             // Duplicate socks?
-            if let Some(sock) = &backend.sock {
+            if let Some(sock) = &upstream.sock {
                 if seen_sock_values.contains_key(sock) {
-                    report.error(
-                        format!("invalid upstream - duplicate socket path: {}", sock),
-                        &service.origin,
-                        None,
-                    );
+                    report.duplicate_upstream_sock(sock, &service.origin);
                 } else {
                     seen_sock_values.insert(sock.clone(), ());
                 }
 
-                if let Some(sock_options) = &backend.sock_options
+                if let Some(sock_options) = &upstream.sock_options
                     && sock_options.use_tls
                     && sock_options.sni.is_empty()
                 {
-                    report.error(
-                        format!(
-                            "invalid upstream - SNI must be set when using TLS: {}",
-                            sock
-                        ),
-                        &service.origin,
-                        None,
-                    );
+                    report.invalid_sock_options_tls_requires_sni(&service.origin);
                 }
             }
         }
@@ -196,15 +133,33 @@ pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport
         // Validate circuit breaker
         if let Some(cb) = &service.circuit_breaker
             && cb.enable_auto_recovery
-            && (cb.failure_threshold == 0
-                || cb.open_duration_milliseconds == 0
-                || cb.half_open_max_requests == 0
-                || cb.success_threshold == 0)
         {
-            report.error(
-                "invalid circuit breaker - all thresholds must be >= 1".to_string(),
+            validate_range(
+                cb.failure_threshold,
+                &CB_FAILURE_THRESHOLD,
+                report,
                 &service.origin,
-                None,
+            );
+
+            validate_range(
+                cb.open_duration_milliseconds,
+                &CB_OPEN_DURATION_MS,
+                report,
+                &service.origin,
+            );
+
+            validate_range(
+                cb.half_open_max_requests,
+                &CB_HALF_OPEN_MAX_REQUESTS,
+                report,
+                &service.origin,
+            );
+
+            validate_range(
+                cb.success_threshold,
+                &CB_SUCCESS_THRESHOLD,
+                report,
+                &service.origin,
             );
         }
     }

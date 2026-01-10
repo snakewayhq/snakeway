@@ -42,7 +42,7 @@ impl ValidationReport {
         });
     }
 
-    pub fn warning(&mut self, message: String, origin: &Origin, help: Option<String>) {
+    fn warning(&mut self, message: String, origin: &Origin, help: Option<String>) {
         self.warnings.push(ValidationIssue {
             severity: Severity::Warning,
             message,
@@ -123,5 +123,79 @@ impl ValidationReport {
                 println!();
             }
         }
+    }
+}
+
+/// Bind Spec Validation
+impl ValidationReport {
+    pub fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {
+        self.error(format!("invalid address: {}", addr), origin, None);
+    }
+
+    pub fn duplicate_bind_addr(&mut self, addr: &str, origin: &Origin) {
+        self.error(format!("duplicate address: {}", addr), origin, None);
+    }
+
+    pub fn missing_cert_file(&mut self, cert_file: &str, origin: &Origin) {
+        self.error(format!("missing cert file: {}", cert_file), origin, None);
+    }
+
+    pub fn missing_key_file(&mut self, key_file: &str, origin: &Origin) {
+        self.error(format!("missing key file: {}", key_file), origin, None);
+    }
+
+    pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
+        self.error(format!("HTTP/2 requires TLS: {}", addr), origin, None);
+    }
+}
+
+/// Static Files Spec Validation
+impl ValidationReport {
+    pub fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {
+        self.error(
+            format!("invalid static dir: {}", dir.display()),
+            origin,
+            None,
+        );
+    }
+}
+
+/// Service Spec Validation
+impl ValidationReport {
+    pub fn service_has_no_upstreams(&mut self, origin: &Origin) {
+        self.error("service has no upstream backends".to_string(), origin, None)
+    }
+
+    pub fn invalid_upstream_weight(&mut self, weight: &u32, origin: &Origin) {
+        self.error(format!("invalid upstream weight: {}", weight), origin, None)
+    }
+
+    pub fn invalid_upstream_target(
+        &mut self,
+        addr: &Option<String>,
+        sock: &Option<String>,
+        origin: &Origin,
+    ) {
+        self.error(format!("invalid upstream - addr (TCP) or a sock (UNIX) are mutually exclusive: {:?}, sock: {:?}", addr, sock), origin, None)
+    }
+
+    pub fn invalid_upstream_addr(&mut self, addr: &Option<String>, origin: &Origin) {
+        self.error(
+            format!("invalid upstream address: {:?}", addr),
+            origin,
+            None,
+        )
+    }
+
+    pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
+        self.error(format!("duplicate upstream sock: {}", sock), origin, None)
+    }
+
+    pub fn invalid_sock_options_tls_requires_sni(&mut self, origin: &Origin) {
+        self.error(
+            "invalid sock options - TLS requires SNI".to_string(),
+            origin,
+            None,
+        )
     }
 }
