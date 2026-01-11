@@ -1,8 +1,8 @@
 mod discover;
 mod loader;
 mod lower;
-mod merge;
 mod parse;
+mod tests;
 pub mod types;
 pub(crate) mod validation;
 
