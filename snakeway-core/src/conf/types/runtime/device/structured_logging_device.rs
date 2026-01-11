@@ -31,17 +31,17 @@ pub struct StructuredLoggingDeviceConfig {
 }
 
 impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
-    fn from(d: StructuredLoggingDeviceSpec) -> Self {
+    fn from(spec: StructuredLoggingDeviceSpec) -> Self {
         Self {
-            enable: d.enable,
-            level: d.level,
-            include_headers: d.include_headers,
-            allowed_headers: d.allowed_headers,
-            redacted_headers: d.redacted_headers,
-            include_identity: d.include_identity,
-            identity_fields: d.identity_fields,
-            events: d.events,
-            phases: d.phases,
+            enable: spec.enable,
+            level: spec.level,
+            include_headers: spec.include_headers,
+            allowed_headers: spec.allowed_headers,
+            redacted_headers: spec.redacted_headers,
+            include_identity: spec.include_identity,
+            identity_fields: spec.identity_fields,
+            events: spec.events,
+            phases: spec.phases,
         }
     }
 }

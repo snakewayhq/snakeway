@@ -20,14 +20,14 @@ pub struct IdentityDeviceConfig {
 }
 
 impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
-    fn from(d: IdentityDeviceSpec) -> Self {
+    fn from(spec: IdentityDeviceSpec) -> Self {
         Self {
-            enable: d.enable,
-            trusted_proxies: d.trusted_proxies,
-            enable_geoip: d.enable_geoip,
-            geoip_db: d.geoip_db,
-            enable_user_agent: d.enable_user_agent,
-            ua_engine: d.ua_engine.into(),
+            enable: spec.enable,
+            trusted_proxies: spec.trusted_proxies,
+            enable_geoip: spec.enable_geoip,
+            geoip_db: spec.geoip_db,
+            enable_user_agent: spec.enable_user_agent,
+            ua_engine: spec.ua_engine.into(),
         }
     }
 }

@@ -19,7 +19,7 @@ pub use redirect::RedirectSpec;
 use serde::{Deserialize, Serialize};
 pub use server::ServerSpec;
 pub use service::ServiceSpec;
-pub use static_files::StaticFilesSpec;
+pub use static_files::{StaticFilesSpec, StaticRouteSpec};
 
 /// The operator DSL for the config subsystem.
 /// This defines the configuration file format of files in ./config/ingress.d/*.hcl

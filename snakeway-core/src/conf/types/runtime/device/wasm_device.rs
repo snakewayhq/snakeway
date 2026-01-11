@@ -14,11 +14,11 @@ pub struct WasmDeviceConfig {
 }
 
 impl From<WasmDeviceSpec> for WasmDeviceConfig {
-    fn from(d: WasmDeviceSpec) -> Self {
+    fn from(spec: WasmDeviceSpec) -> Self {
         Self {
-            enable: d.enable,
-            path: d.path,
-            config: d.config,
+            enable: spec.enable,
+            path: spec.path,
+            config: spec.config,
         }
     }
 }
