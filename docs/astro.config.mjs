@@ -41,13 +41,12 @@ export default defineConfig({
             },
 
             {
-                label: 'Configuration', items: [{label: 'Overview', link: '/configuration/overview/'}, {
-                    label: 'Admin', link: '/configuration/admin/'
-                }, {label: 'Server', link: '/configuration/server/'}, {
-                    label: 'Listeners', link: '/configuration/listeners/'
-                }, {label: 'Services', link: '/configuration/services/'}, {
-                    label: 'Routes', link: '/configuration/routes/'
-                }, {label: 'Devices', link: '/configuration/devices/'},],
+                label: 'Configuration', items: [
+                    {label: 'Overview', link: '/configuration/overview/'},
+                    {label: 'Server', link: '/configuration/server/'},
+                    {label: 'Ingress', link: '/configuration/ingress/'},
+                    {label: 'Devices', link: '/configuration/devices/'},
+                ],
             }, {
                 label: 'Devices', items: [{label: 'Overview', link: '/devices/overview/'}, {
                     label: 'Built-in Devices', link: '/devices/builtin/'

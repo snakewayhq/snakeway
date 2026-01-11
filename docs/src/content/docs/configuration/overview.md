@@ -2,42 +2,40 @@
 title: Configuration Overview
 ---
 
-Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale. While small
-deployments can live in a single file, larger environments can leverage modularity to organize routes, services, and
-devices independently.
+Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale.
 
-### The Entry Point: `snakeway.toml`
+### The Entry Point: `snakeway.hcl`
 
-The heart of Snakeway's configuration is the `snakeway.toml` file. This file defines the global server settings, network
-listeners, and instructions for including modular configuration files.
+The heart of Snakeway's configuration is the `snakeway.hcl` file.
+This file defines the global server settings and modular configuration file locations.
 
-A typical `snakeway.toml` looks like this:
+A typical `snakeway.hcl` looks like this:
 
-```toml
-[server]
-version = 1
-threads = 4
+```hcl
+server {
+  version  = 1
+  pid_file = "/tmp/snakeway.pid"
+  threads  = 8
+  ca_file  = "/path/to/certs/ca.pem"
+}
 
-[[listener]]
-addr = "0.0.0.0:8080"
+include {
+  devices = "devices.d/*.hcl"
+  ingress = "ingress.d/*.hcl"
+}
 
-[include]
-routes = "routes.d/*.toml"
-services = "services.d/*.toml"
-devices = "devices.d/*.toml"
 ```
 
 ### Modular Configuration
 
-The `[include]` section allows you to split your configuration into logical parts using glob patterns. This is
-particularly useful for managing many routes or services without creating a monolithic, unmanageable file.
+The `include` section allows you to split your configuration into logical parts using glob patterns.
 
-- **`routes.d/`**: Define your request mapping and path-based logic here.
-- **`services.d/`**: Define your upstream services and their load balancing strategies.
+- **`ingress.d/`**: Define your [Ingress](/configuration/ingress) files.
 - **`devices.d/`**: Define the [Devices](/devices/overview) that should be active in the request pipeline.
 
 When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a
-single unified runtime configuration.
+single unified runtime configuration. This is discussed in more detail
+in [Configuration Internals](/internals/configuration).
 
 ### Hot Reloading
 
@@ -58,7 +56,7 @@ continues running with the previous, stable configuration.
 You can manually validate your configuration directory at any time using the `snakeway config check` command:
 
 ```bash
-snakeway config check --path ./config
+snakeway config check --path /etc/snakeway/
 ```
 
 This will report any syntax errors or logical inconsistencies in your configuration files before you attempt to apply

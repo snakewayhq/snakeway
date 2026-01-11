@@ -3,9 +3,9 @@ title: Server Configuration
 ---
 
 The `server` configuration block controls how Snakeway runs as a process.
+It defines how Snakeway starts, and manages its execution environment.
 
-This section focuses on **process-level behavior** and **runtime characteristics**, not routing or request handling. It
-defines how Snakeway starts, and manages its execution environment.
+It is located in the config directory under `CONFIG_ROOT/snakeway.hcl`.
 
 ## Overview
 
