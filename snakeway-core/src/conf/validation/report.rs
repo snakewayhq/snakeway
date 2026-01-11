@@ -2,6 +2,7 @@ use crate::conf::types::Origin;
 use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
+use std::path::Display;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ValidationIssue {
@@ -33,7 +34,7 @@ impl ValidationReport {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
 
-    pub fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
+    pub(crate) fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
         self.errors.push(ValidationIssue {
             severity: Severity::Error,
             message,
@@ -194,6 +195,111 @@ impl ValidationReport {
     pub fn invalid_sock_options_tls_requires_sni(&mut self, origin: &Origin) {
         self.error(
             "invalid sock options - TLS requires SNI".to_string(),
+            origin,
+            None,
+        )
+    }
+}
+
+/// Server Spec Validation
+impl ValidationReport {
+    pub fn invalid_config_version(&mut self, version: &u32, origin: &Origin) {
+        self.error(format!("invalid config version: {}", version), origin, None)
+    }
+
+    pub fn pid_file_parent_dir_does_not_exist(&mut self, pid_file: Display, origin: &Origin) {
+        self.error(
+            format!("pid file parent directory does not exist: {}", pid_file),
+            origin,
+            None,
+        )
+    }
+
+    pub fn pid_file_parent_not_a_dir(&mut self, pid_file: Display, origin: &Origin) {
+        self.error(
+            format!("pid file parent is not a directory: {}", pid_file),
+            origin,
+            None,
+        )
+    }
+
+    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &str, origin: &Origin) {
+        self.error(
+            format!("root CA file does not exist: {}", ca_file),
+            origin,
+            None,
+        )
+    }
+
+    pub fn root_ca_file_not_a_file(&mut self, ca_file: &str, origin: &Origin) {
+        self.error(
+            format!("root CA file is not a file: {}", ca_file),
+            origin,
+            None,
+        )
+    }
+}
+
+/// Wasm Device Spec Validation
+impl ValidationReport {
+    pub fn wasm_device_path_is_empty(&mut self, path: Display, origin: &Origin) {
+        self.error(format!("wasm device path is empty: {}", path), origin, None)
+    }
+    pub fn wasm_device_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("wasm device path does not exist: {}", path),
+            origin,
+            None,
+        )
+    }
+    pub fn wasm_device_path_is_not_a_file(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("wasm device path is not a file: {}", path),
+            origin,
+            None,
+        )
+    }
+}
+
+/// Builtin Identity Device Spec Validation
+impl ValidationReport {
+    pub fn geoip_db_path_is_empty(&mut self, path: Display, origin: &Origin) {
+        self.error(format!("geoip db path is empty: {}", path), origin, None)
+    }
+    pub fn geoip_db_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("geoip db path does not exist: {}", path),
+            origin,
+            None,
+        )
+    }
+    pub fn geoip_db_is_not_a_file(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("geoip db path is not a file: {}", path),
+            origin,
+            None,
+        )
+    }
+
+    pub fn invalid_trusted_proxy(&mut self, proxy: &str, origin: &Origin) {
+        self.error(format!("invalid trusted proxy: {}", proxy), origin, None)
+    }
+
+    pub fn trusted_proxies_cannot_trust_all_networks(&mut self, origin: &Origin) {
+        self.error(
+            "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn trusted_proxies_contains_a_public_ip_range(
+        &mut self,
+        network: ipnet::IpNet,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!("trusted_proxies cannot contain a public IP range: {network}"),
             origin,
             None,
         )

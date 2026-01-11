@@ -1,6 +1,7 @@
 use crate::conf::types::{DeviceConfig, Origin};
 use crate::conf::validation::ValidationReport;
 use ipnet::IpNet;
+use nix::NixPath;
 use std::net::IpAddr;
 
 pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport) {
@@ -11,12 +12,14 @@ pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport)
                     return;
                 }
 
+                if cfg.path.is_empty() {
+                    report.wasm_device_path_is_empty(cfg.path.display(), device.origin());
+                }
+                if !cfg.path.exists() {
+                    report.wasm_device_path_does_not_exist(cfg.path.display(), device.origin());
+                }
                 if !cfg.path.is_file() {
-                    report.error(
-                        format!("invalid WASM device path : {}", cfg.path.display()),
-                        device.origin(),
-                        None,
-                    );
+                    report.wasm_device_path_is_not_a_file(cfg.path.display(), device.origin());
                 }
             }
             DeviceConfig::Identity(cfg) => {
@@ -31,11 +34,15 @@ pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport)
                     && let Some(geoip_db) = cfg.geoip_db.as_ref()
                     && !geoip_db.is_file()
                 {
-                    report.error(
-                        format!("invalid geo ip database path: {}", geoip_db.display()),
-                        device.origin(),
-                        None,
-                    );
+                    if geoip_db.is_empty() {
+                        report.geoip_db_path_is_empty(geoip_db.display(), device.origin());
+                    }
+                    if !geoip_db.exists() {
+                        report.geoip_db_path_does_not_exist(geoip_db.display(), device.origin());
+                    }
+                    if !geoip_db.is_file() {
+                        report.geoip_db_is_not_a_file(geoip_db.display(), device.origin());
+                    }
                 }
                 if cfg.enable && cfg.enable_user_agent {
                     return;
@@ -56,29 +63,19 @@ fn validate_trusted_proxies(proxies: &[String], report: &mut ValidationReport, o
         if let Ok(net) = proxy.parse::<IpNet>() {
             networks.push(net);
         } else {
-            report.error(format!("invalid trusted proxy: {}", proxy), origin, None);
+            report.invalid_trusted_proxy(proxy, origin);
         }
     }
 
     for network in networks {
-        // Hard error: trust-all networks
+        // Hard error - trust-all networks
         if network.prefix_len() == 0 {
-            report.error(
-                "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)"
-                    .to_string(),
-                origin,
-                None,
-            );
-            continue;
+            report.trusted_proxies_cannot_trust_all_networks(origin);
         }
 
         // Trusting public IP ranges is a red flag.
         if !is_private_net(&network) {
-            report.error(
-                format!("trusted_proxies contains a public IP range: {network}"),
-                origin,
-                None,
-            );
+            report.trusted_proxies_contains_a_public_ip_range(network, origin);
         }
     }
 }

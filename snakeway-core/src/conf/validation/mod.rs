@@ -1,4 +1,3 @@
-mod constraints;
 mod error;
 mod report;
 mod validate;

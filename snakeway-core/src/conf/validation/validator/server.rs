@@ -1,16 +1,15 @@
 use crate::conf::types::ServerSpec;
 use crate::conf::validation::report::ValidationReport;
+use crate::conf::validation::validator::constraints::{
+    CB_SUCCESS_THRESHOLD, SERVER_THREADS, validate_range,
+};
 
 /// Validate top-level config version.
 ///
 /// Fail-fast: invalid versions invalidate the entire config model.
 pub fn validate_version(server: &ServerSpec, report: &mut ValidationReport) -> bool {
     if server.version != 1 {
-        report.error(
-            format!("invalid config version {}", server.version),
-            &server.origin,
-            None,
-        );
+        report.invalid_config_version(&server.version, &server.origin);
         return false;
     }
     true
@@ -26,53 +25,24 @@ pub fn validate_server(cfg: &ServerSpec, report: &mut ValidationReport) {
         };
 
         if !parent.exists() {
-            report.error(
-                format!(
-                    "invalid pid file - parent directory does not exist: {}",
-                    pid_file.display()
-                ),
-                &cfg.origin,
-                None,
-            );
+            report.pid_file_parent_dir_does_not_exist(pid_file.display(), &cfg.origin);
         } else if !parent.is_dir() {
-            report.error(
-                format!(
-                    "invalid pid file - parent path exists but is not a directory: {}",
-                    pid_file.display()
-                ),
-                &cfg.origin,
-                None,
-            );
+            report.pid_file_parent_not_a_dir(pid_file.display(), &cfg.origin);
         }
     }
 
     if let Some(ca_file) = cfg.ca_file.clone() {
         if !std::path::Path::new(&ca_file).exists() {
-            report.error(
-                format!("invalid root CA file - file does not exist: {}", ca_file),
-                &cfg.origin,
-                None,
-            );
+            report.root_ca_file_does_not_exist(&ca_file, &cfg.origin);
         }
         if !std::path::Path::new(&ca_file).is_file() {
-            report.error(
-                format!(
-                    "invalid root CA file - path exists but is not a file: {}",
-                    ca_file
-                ),
-                &cfg.origin,
-                None,
-            );
+            report.root_ca_file_not_a_file(&ca_file, &cfg.origin);
         }
     }
 
     if let Some(t) = cfg.threads
         && (t == 0 || t > 1024)
     {
-        report.error(
-            format!("invalid threads - must be between 1 and 1024: {}", t),
-            &cfg.origin,
-            None,
-        );
+        validate_range(t, &SERVER_THREADS, report, &cfg.origin);
     }
 }

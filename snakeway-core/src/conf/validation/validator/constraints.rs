@@ -37,6 +37,13 @@ pub const CB_SUCCESS_THRESHOLD: RangeConstraint<u32> = RangeConstraint {
     units: None,
 };
 
+pub const SERVER_THREADS: RangeConstraint<usize> = RangeConstraint {
+    min: 1,
+    max: 1024,
+    label: "server.threads",
+    units: None,
+};
+
 pub fn validate_range<T>(
     value: T,
     constraint: &RangeConstraint<T>,
