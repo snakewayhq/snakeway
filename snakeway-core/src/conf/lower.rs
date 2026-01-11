@@ -1,4 +1,3 @@
-use crate::conf::merge::{merge_listeners, merge_services};
 use crate::conf::types::{
     IngressSpec, ListenerConfig, RedirectConfig, RouteConfig, ServerConfig, ServerSpec,
     ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
@@ -28,7 +27,7 @@ pub fn lower_configs(
 
     let mut listeners: Vec<ListenerConfig> = Vec::new();
     let mut routes: Vec<RouteConfig> = Vec::new();
-    let mut services: Vec<ServiceConfig> = Vec::new();
+    let mut services: HashMap<String, ServiceConfig> = HashMap::new();
 
     for (idx, ingress) in ingresses.into_iter().enumerate() {
         let listener_name = format!("listener-{}", idx);
@@ -91,15 +90,18 @@ pub fn lower_configs(
 
                 let service_name = format!("{}-service", bind.addr.clone());
 
-                services.push(ServiceConfig {
-                    name: service_name.clone(),
-                    listener: listener_name.clone(),
-                    load_balancing_strategy: service_cfg.load_balancing_strategy,
-                    tcp_upstreams,
-                    unix_upstreams,
-                    circuit_breaker: service_cfg.circuit_breaker.unwrap_or_default(),
-                    health_check: service_cfg.health_check.unwrap_or_default(),
-                });
+                services.insert(
+                    service_name.clone(),
+                    ServiceConfig {
+                        name: service_name.clone(),
+                        listener: listener_name.clone(),
+                        load_balancing_strategy: service_cfg.load_balancing_strategy,
+                        tcp_upstreams,
+                        unix_upstreams,
+                        circuit_breaker: service_cfg.circuit_breaker.unwrap_or_default(),
+                        health_check: service_cfg.health_check.unwrap_or_default(),
+                    },
+                );
 
                 for route in service_cfg.routes {
                     routes.push(RouteConfig::Service(ServiceRouteConfig {
@@ -151,16 +153,5 @@ pub fn lower_configs(
         }
     }
 
-    let (merged_listeners, name_map) = merge_listeners(listeners)?;
-    for route in &mut routes {
-        route.set_listener(name_map[route.listener()].clone());
-    }
-    for service in services.iter_mut() {
-        service.listener = name_map[&service.listener].clone();
-    }
-
-    // Services have to be merged after rewriting listener names
-    let merged_services: HashMap<String, ServiceConfig> = merge_services(services.clone())?;
-
-    Ok((server, merged_listeners, routes, merged_services))
+    Ok((server, listeners, routes, services))
 }

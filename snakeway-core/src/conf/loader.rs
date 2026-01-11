@@ -11,15 +11,12 @@ use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    //--------------------------------------------------------------------------
-    // Semantic validation of DSL config (aggregate all semantic errors)
-    //--------------------------------------------------------------------------
     let (server_spec, devices, ingresses) = load_spec_config(root)?;
+
+    // Semantic validation of DSL config (aggregate all semantic errors)
     let validation_report = validate_spec(&server_spec, &ingresses, &devices);
 
-    //--------------------------------------------------------------------------
-    // Semantic validation of IR config (aggregate all semantic errors)
-    //--------------------------------------------------------------------------
+    // Convert spec to runtime config.
     let (server, listeners, routes, services) = lower_configs(server_spec, ingresses)?;
 
     //--------------------------------------------------------------------------

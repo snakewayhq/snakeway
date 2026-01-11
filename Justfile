@@ -152,6 +152,15 @@ debug-file-descriptors:
     @echo "\nCurrent descriptors in use:"
     @lsof -p $(pgrep snakeway) | wc -l
 
+dump-whole-config:
+    #!/usr/bin/env bash
+    find config -type f -name "*.hcl" | sort | while read -r f; do
+      echo
+      echo "##### FILE: $f #####"
+      echo
+      cat "$f"
+    done
+
 # -----------------------------------------------------------------------------
 # BUILD TASKS
 # -----------------------------------------------------------------------------

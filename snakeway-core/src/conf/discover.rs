@@ -26,12 +26,12 @@ pub fn discover(root: &Path, glob_pattern: &str) -> Result<Vec<PathBuf>, ConfigE
             source: e,
         })?
         .filter_map(Result::ok)
+        .filter(|p| p.is_file())
         .collect();
 
     paths.sort();
     Ok(paths)
 }
-
 /// Resolves a glob pattern relative to a root directory.
 ///
 /// Joins the given `pattern` to the `root` path and returns it as a string.

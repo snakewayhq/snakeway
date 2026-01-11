@@ -54,10 +54,19 @@ export default defineConfig({
                 }, {label: 'Identity', link: '/devices/identity/'}, {
                     label: 'Structured Logging', link: '/devices/structured-logging/'
                 }, {label: 'WASM Devices', link: '/devices/wasm/'},],
-            }, {
-                label: 'Observability', items: [{label: 'Logging', link: '/observability/logging/'}, {
-                    label: 'Metrics', link: '/observability/metrics/'
-                }, {label: 'Admin API', link: '/observability/admin-api/'},],
-            },],
+            },
+            {
+                label: 'Observability', items: [
+                    {label: 'Logging', link: '/observability/logging/'},
+                    {label: 'Metrics', link: '/observability/metrics/'},
+                    {label: 'Admin API', link: '/observability/admin-api/'},
+                ],
+            },
+            {
+                label: 'Internals', items: [
+                    {label: 'Configuration', link: '/internals/configuration/'},
+                ],
+            },
+        ],
     }),],
 })
