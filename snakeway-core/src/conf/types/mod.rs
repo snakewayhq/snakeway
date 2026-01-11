@@ -1,7 +1,7 @@
-mod operator_dsl;
-mod runtime_ir;
+mod runtime;
 mod shared;
+mod specification;
 
-pub use operator_dsl::*;
-pub use runtime_ir::*;
+pub use runtime::*;
 pub use shared::{CircuitBreakerConfig, HealthCheckConfig, ServerConfig, TlsConfig};
+pub use specification::*;

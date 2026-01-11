@@ -1,12 +1,11 @@
 mod error;
+mod report;
+mod single_file;
 mod validate;
 mod validated_config;
-mod validation_ctx;
 pub mod validator;
-mod warning;
 
 pub use error::ConfigError;
-pub use validate::{validate_dsl_config, validate_runtime_config};
+pub use report::*;
+pub use validate::validate_spec;
 pub use validated_config::ValidatedConfig;
-pub use validation_ctx::*;
-pub use warning::ConfigWarning;

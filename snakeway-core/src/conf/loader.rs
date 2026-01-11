@@ -2,35 +2,25 @@ use crate::conf::discover::discover;
 use crate::conf::lower::lower_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::types::{
-    DeviceConfig, EntrypointConfig, IngressConfig, RuntimeConfig, ServerConfig,
+    DeviceConfig, EntrypointSpec, IngressSpec, Origin, RuntimeConfig, ServerSpec,
 };
-use crate::conf::validation::{ConfigError, validate_dsl_config};
-use crate::conf::validation::{ValidatedConfig, validate_runtime_config};
+use crate::conf::validation::ValidatedConfig;
+use crate::conf::validation::{ConfigError, validate_spec};
 
 use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let (server, devices, ingresses) = load_dsl_config(root)?;
-
     //--------------------------------------------------------------------------
     // Semantic validation of DSL config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    let dsl_validation = validate_dsl_config(&server, &ingresses, &devices).map_err(|errs| {
-        ConfigError::Validation {
-            validation_errors: errs,
-        }
-    })?;
-
-    let (listeners, routes, services) = lower_configs(ingresses)?;
+    let (server_spec, devices, ingresses) = load_spec_config(root)?;
+    let validation_report = validate_spec(&server_spec, &ingresses, &devices);
 
     //--------------------------------------------------------------------------
     // Semantic validation of IR config (aggregate all semantic errors)
     //--------------------------------------------------------------------------
-    let ir_validation =
-        validate_runtime_config(&services).map_err(|errs| ConfigError::Validation {
-            validation_errors: errs,
-        })?;
+    let (server, listeners, routes, services) = lower_configs(server_spec, ingresses)?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
@@ -43,27 +33,28 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
             services,
             listeners,
         },
-        dsl_validation,
-        ir_validation,
+        validation_report,
     })
 }
 
-pub type ConfigIntermediateRepresentation = (ServerConfig, Vec<DeviceConfig>, Vec<IngressConfig>);
+pub type Spec = (ServerSpec, Vec<DeviceConfig>, Vec<IngressSpec>);
 
-pub fn load_dsl_config(root: &Path) -> Result<ConfigIntermediateRepresentation, ConfigError> {
+pub fn load_spec_config(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
-    let entry =
-        fs::read_to_string(root.join("snakeway.hcl")).map_err(|e| ConfigError::ReadFile {
-            path: root.to_path_buf(),
-            source: e,
-        })?;
-
-    let entry: EntrypointConfig = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
+    let root_path = root.join("snakeway.hcl");
+    let entry = fs::read_to_string(&root_path).map_err(|e| ConfigError::ReadFile {
         path: root.to_path_buf(),
         source: e,
     })?;
+
+    let mut entry: EntrypointSpec = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
+        path: root_path.to_path_buf(),
+        source: e,
+    })?;
+
+    entry.server.origin = Origin::new(&root_path, "server", None);
 
     //--------------------------------------------------------------------------
     // Discover included files (hard fail)

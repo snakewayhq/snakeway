@@ -1,4 +1,4 @@
-use crate::conf::{load_config, load_dsl_config};
+use crate::conf::{load_config, load_spec_config};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -9,8 +9,8 @@ pub fn dump(
     yaml: bool,
     repr: RepresentationFormat,
 ) -> anyhow::Result<()> {
-    if matches!(repr, RepresentationFormat::Dsl) {
-        let cfg = load_dsl_config(&path)?;
+    if matches!(repr, RepresentationFormat::Spec) {
+        let cfg = load_spec_config(&path)?;
         if yaml {
             dump_yaml(&cfg)?;
         } else if json || !yaml {
@@ -42,7 +42,7 @@ fn dump_yaml<T: Serialize>(value: &T) -> anyhow::Result<()> {
 
 #[derive(Clone, Debug)]
 pub enum RepresentationFormat {
-    Dsl,
+    Spec,
     Runtime,
 }
 
@@ -51,7 +51,7 @@ impl FromStr for RepresentationFormat {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "dsl" => Ok(Self::Dsl),
+            "spec" => Ok(Self::Spec),
             "runtime" => Ok(Self::Runtime),
             _ => Err(anyhow::anyhow!("invalid output format: {}", s)),
         }

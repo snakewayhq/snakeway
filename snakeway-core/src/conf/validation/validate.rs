@@ -1,34 +1,21 @@
-use crate::conf::types::{DeviceConfig, IngressConfig, ServerConfig, ServiceConfig};
-use crate::conf::validation::validation_ctx::{ValidationCtx, ValidationErrors};
-use crate::conf::validation::{ValidationOutput, validator};
-use std::collections::HashMap;
+use crate::conf::types::{DeviceConfig, IngressSpec, ServerSpec};
+use crate::conf::validation::report::ValidationReport;
+use crate::conf::validation::single_file;
 
 /// Validate everything that exists in a fully parsed config.
-pub fn validate_runtime_config(
-    services: &HashMap<String, ServiceConfig>,
-) -> Result<ValidationOutput, ValidationErrors> {
-    let mut ctx = ValidationCtx::default();
-
-    validator::validate_services(services, &mut ctx);
-
-    ctx.into_result()
-}
-
-/// Validate everything that exists in a fully parsed config.
-pub fn validate_dsl_config(
-    server: &ServerConfig,
-    ingress: &[IngressConfig],
-    devices: &Vec<DeviceConfig>,
-) -> Result<ValidationOutput, ValidationErrors> {
-    let mut ctx = ValidationCtx::default();
-
-    if let Err(e) = validator::validate_version(server.version) {
-        ctx.error(e);
-    } else {
-        validator::validate_server(server, &mut ctx);
-        validator::validate_ingresses(ingress, &mut ctx);
-        validator::validate_devices(devices, &mut ctx);
+pub fn validate_spec(
+    server: &ServerSpec,
+    ingresses: &[IngressSpec],
+    devices: &[DeviceConfig],
+) -> ValidationReport {
+    let mut report = ValidationReport {
+        errors: vec![],
+        warnings: vec![],
+    };
+    if single_file::validate_version(server, &mut report) {
+        single_file::validate_server(server, &mut report);
+        single_file::validate_ingresses(ingresses, &mut report);
+        single_file::validate_devices(devices, &mut report);
     }
-
-    ctx.into_result()
+    report
 }

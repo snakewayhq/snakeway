@@ -1,6 +1,7 @@
 pub mod device;
 pub mod listener;
 pub mod route;
+pub mod server;
 pub mod service;
 
 use crate::conf::types::ServerConfig;

@@ -1,24 +1,29 @@
+use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Default, Serialize)]
-pub struct ExposeStaticConfig {
-    pub routes: Vec<ExposeStaticRouteConfig>,
+pub struct StaticFilesSpec {
+    #[serde(skip)]
+    pub origin: Origin,
+    pub routes: Vec<StaticRouteSpec>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ExposeStaticRouteConfig {
+pub struct StaticRouteSpec {
+    #[serde(skip)]
+    pub origin: Origin,
     pub path: String,
     pub file_dir: PathBuf,
     pub index: Option<String>,
     pub directory_listing: bool,
     pub max_file_size: u64,
-    pub compression: CompressionConfig,
-    pub cache_policy: CachePolicyConfig,
+    pub compression: CompressionSpec,
+    pub cache_policy: CachePolicySpec,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CompressionConfig {
+pub struct CompressionSpec {
     pub small_file_threshold: u64,
     pub min_gzip_size: u64,
     pub min_brotli_size: u64,
@@ -26,7 +31,7 @@ pub struct CompressionConfig {
     pub enable_brotli: bool,
 }
 
-impl Default for CompressionConfig {
+impl Default for CompressionSpec {
     fn default() -> Self {
         Self {
             small_file_threshold: 256 * 1024, // 256 KiB
@@ -39,13 +44,13 @@ impl Default for CompressionConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CachePolicyConfig {
+pub struct CachePolicySpec {
     pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
 }
 
-impl Default for CachePolicyConfig {
+impl Default for CachePolicySpec {
     fn default() -> Self {
         Self {
             max_age_seconds: 3600,

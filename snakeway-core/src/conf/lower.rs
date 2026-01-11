@@ -1,19 +1,31 @@
 use crate::conf::merge::{merge_listeners, merge_services};
 use crate::conf::types::{
-    IngressConfig, ListenerConfig, RedirectConfig, RouteConfig, ServiceConfig, ServiceRouteConfig,
-    StaticCachePolicy, StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    IngressSpec, ListenerConfig, RedirectConfig, RouteConfig, ServerConfig, ServerSpec,
+    ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
+    UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
 
 pub type IrConfig = (
+    ServerConfig,
     Vec<ListenerConfig>,
     Vec<RouteConfig>,
     HashMap<String, ServiceConfig>,
 );
 
-/// Transform DSL configs to intermediate representation.
-pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigError> {
+/// Transform spec to the runtime configuration.
+pub fn lower_configs(
+    server_spec: ServerSpec,
+    ingresses: Vec<IngressSpec>,
+) -> Result<IrConfig, ConfigError> {
+    let server: ServerConfig = ServerConfig {
+        version: server_spec.version,
+        threads: server_spec.threads,
+        pid_file: server_spec.pid_file.unwrap_or_default(),
+        ca_file: server_spec.ca_file.unwrap_or_default(),
+    };
+
     let mut listeners: Vec<ListenerConfig> = Vec::new();
     let mut routes: Vec<RouteConfig> = Vec::new();
     let mut services: Vec<ServiceConfig> = Vec::new();
@@ -54,7 +66,7 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
             //-----------------------------------------------------------------
             for service_cfg in ingress.service_cfgs {
                 let unix_upstreams = service_cfg
-                    .backends
+                    .upstreams
                     .iter()
                     .filter_map(|b| {
                         b.sock.as_ref().map(|sock| UpstreamUnixConfig {
@@ -67,7 +79,7 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
                     .collect();
 
                 let tcp_upstreams = service_cfg
-                    .backends
+                    .upstreams
                     .iter()
                     .filter_map(|b| {
                         b.addr.as_ref().map(|addr| UpstreamTcpConfig {
@@ -140,11 +152,9 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
     }
 
     let (merged_listeners, name_map) = merge_listeners(listeners)?;
-
     for route in &mut routes {
         route.set_listener(name_map[route.listener()].clone());
     }
-
     for service in services.iter_mut() {
         service.listener = name_map[&service.listener].clone();
     }
@@ -152,5 +162,5 @@ pub fn lower_configs(ingresses: Vec<IngressConfig>) -> Result<IrConfig, ConfigEr
     // Services have to be merged after rewriting listener names
     let merged_services: HashMap<String, ServiceConfig> = merge_services(services.clone())?;
 
-    Ok((merged_listeners, routes, merged_services))
+    Ok((server, merged_listeners, routes, merged_services))
 }

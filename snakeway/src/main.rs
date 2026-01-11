@@ -9,7 +9,7 @@ use std::path::Path;
 #[command(
     name = "snakeway",
     version,
-    about = "Snakeway: Pingora-based HTTP proxy"
+    about = "Snakeway: A HTTP proxy built with Rust"
 )]
 struct Cli {
     #[command(subcommand)]

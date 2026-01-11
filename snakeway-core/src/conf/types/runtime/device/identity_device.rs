@@ -1,9 +1,13 @@
+use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct IdentityDeviceConfig {
+    #[serde(skip)]
+    pub origin: Origin,
+
     pub enable: bool,
 
     /// CIDR strings

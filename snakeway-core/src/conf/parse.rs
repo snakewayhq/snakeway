@@ -1,7 +1,6 @@
 use crate::conf::types::{
-    BindAdminConfig, BindConfig, DeviceConfig, ExposeRedirectConfig, ExposeServiceConfig,
-    ExposeStaticConfig, IdentityDeviceConfig, IngressConfig, StructuredLoggingDeviceConfig,
-    WasmDeviceConfig,
+    BindAdminSpec, BindSpec, DeviceConfig, IdentityDeviceConfig, IngressSpec, Origin, RedirectSpec,
+    ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceConfig, WasmDeviceConfig,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -37,26 +36,62 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
 }
 
 #[derive(Debug, Deserialize)]
-struct ExposeServiceFile {
-    bind: Option<BindConfig>,
+struct IngressFile {
+    bind: Option<BindSpec>,
 
-    bind_admin: Option<BindAdminConfig>,
-
-    #[serde(default)]
-    redirects: Vec<ExposeRedirectConfig>,
+    bind_admin: Option<BindAdminSpec>,
 
     #[serde(default)]
-    services: Vec<ExposeServiceConfig>,
+    redirects: Vec<RedirectSpec>,
 
     #[serde(default)]
-    static_files: Vec<ExposeStaticConfig>,
+    services: Vec<ServiceSpec>,
+
+    #[serde(default)]
+    static_files: Vec<StaticFilesSpec>,
 }
 
-pub fn parse_ingress(path: &Path) -> Result<IngressConfig, ConfigError> {
+pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
-    let parsed: ExposeServiceFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
+    let mut parsed: IngressFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
-    Ok(IngressConfig {
+    //-------------------------------------------------------------------------
+    // Inject origin metadata
+    //-------------------------------------------------------------------------
+    if let Some(bind) = &mut parsed.bind {
+        bind.origin = Origin::new(&path.to_path_buf(), "bind", None);
+    }
+
+    if let Some(bind_admin) = &mut parsed.bind_admin {
+        bind_admin.origin = Origin::new(&path.to_path_buf(), "bind_admin", None);
+    }
+
+    for (i, redirect) in parsed.redirects.iter_mut().enumerate() {
+        redirect.origin = Origin::new(&path.to_path_buf(), "redirect", Some(i));
+    }
+
+    for (i, service) in parsed.services.iter_mut().enumerate() {
+        service.origin = Origin::new(&path.to_path_buf(), "service", Some(i));
+        for (j, route) in service.routes.iter_mut().enumerate() {
+            route.origin = Origin::new(&path.to_path_buf(), "route", Some(j));
+        }
+        for (j, backend) in service.upstreams.iter_mut().enumerate() {
+            backend.origin = Origin::new(&path.to_path_buf(), "backend", Some(j));
+        }
+    }
+
+    for (i, static_files) in parsed.static_files.iter_mut().enumerate() {
+        static_files.origin = Origin::new(&path.to_path_buf(), "static_files", Some(i));
+        for (j, route) in static_files.routes.iter_mut().enumerate() {
+            route.origin = Origin::new(&path.to_path_buf(), "route", Some(j));
+        }
+    }
+
+    //-------------------------------------------------------------------------
+    // Lower to ingress config
+    //-------------------------------------------------------------------------
+
+    Ok(IngressSpec {
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
         redirect_cfgs: parsed.redirects,

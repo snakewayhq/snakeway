@@ -1,8 +1,7 @@
 use crate::conf::types::RuntimeConfig;
-use crate::conf::validation::ValidationOutput;
+use crate::conf::validation::report::ValidationReport;
 
 pub struct ValidatedConfig {
     pub config: RuntimeConfig,
-    pub ir_validation: ValidationOutput,
-    pub dsl_validation: ValidationOutput,
+    pub validation_report: ValidationReport,
 }

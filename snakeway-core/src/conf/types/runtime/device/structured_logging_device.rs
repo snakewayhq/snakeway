@@ -1,9 +1,13 @@
+use crate::conf::types::Origin;
 use crate::device::builtin::structured_logging::{IdentityField, LogEvent, LogLevel, LogPhase};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct StructuredLoggingDeviceConfig {
+    #[serde(skip)]
+    pub origin: Origin,
+
     pub enable: bool,
 
     pub level: LogLevel,
