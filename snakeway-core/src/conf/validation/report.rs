@@ -93,7 +93,7 @@ impl ValidationReport {
 
         let warnings = self.warnings.len();
 
-        if errors > 0 {
+        if errors > 0 || warnings > 0 {
             println!(
                 "configuration validation failed ({} errors, {} warnings)\n",
                 errors, warnings
@@ -102,6 +102,12 @@ impl ValidationReport {
 
         let mut by_file = std::collections::BTreeMap::new();
         for issue in &self.errors {
+            by_file
+                .entry(&issue.origin.file)
+                .or_insert(Vec::new())
+                .push(issue);
+        }
+        for issue in &self.warnings {
             by_file
                 .entry(&issue.origin.file)
                 .or_insert(Vec::new())
