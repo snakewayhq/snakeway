@@ -68,24 +68,24 @@ fn validate_trusted_proxies(proxies: &[String], report: &mut ValidationReport, o
     }
 
     for network in networks {
-        // Hard error - trust-all networks
+        // Security note: Trusting all proxies is a catastrophic misconfiguration.
         if network.prefix_len() == 0 {
             report.trusted_proxies_cannot_trust_all_networks(origin);
         }
 
-        // Trusting public IP ranges is a red flag.
-        if !is_private_net(&network) {
+        // Trusting public IP ranges is a red flag/gray area.
+        // Some environments must trust public IPs, but they should feel nervous about it.
+        if !is_non_public_infra_network(&network) {
             report.trusted_proxies_contains_a_public_ip_range_warning(network, origin);
         }
     }
 }
 
-fn is_private_net(net: &IpNet) -> bool {
-    is_private_ip(&net.addr())
-}
-
-fn is_private_ip(ip: &IpAddr) -> bool {
-    match ip {
+/// NOTE: This function identifies non-globally-routable infrastructure address
+/// space (RFC1918, ULA, loopback, link-local).
+/// It MUST NOT be used to determine the absolute trustworthiness of a peer.
+fn is_non_public_infra_network(net: &IpNet) -> bool {
+    match &net.addr() {
         IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
         IpAddr::V6(v6) => v6.is_loopback() || v6.is_unique_local() || v6.is_unicast_link_local(),
     }

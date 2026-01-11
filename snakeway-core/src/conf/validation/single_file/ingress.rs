@@ -1,6 +1,6 @@
 use crate::conf::types::{IngressSpec, ServiceSpec};
 use crate::conf::validation::ValidationReport;
-use crate::conf::validation::validator::constraints::{
+use crate::conf::validation::validator::range::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
     validate_range,
 };

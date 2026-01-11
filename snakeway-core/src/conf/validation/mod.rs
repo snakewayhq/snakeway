@@ -1,5 +1,6 @@
 mod error;
 mod report;
+mod single_file;
 mod validate;
 mod validated_config;
 pub mod validator;

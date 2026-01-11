@@ -1,6 +1,6 @@
 use crate::conf::types::{DeviceConfig, IngressSpec, ServerSpec};
 use crate::conf::validation::report::ValidationReport;
-use crate::conf::validation::validator;
+use crate::conf::validation::single_file;
 
 /// Validate everything that exists in a fully parsed config.
 pub fn validate_spec(
@@ -12,10 +12,10 @@ pub fn validate_spec(
         errors: vec![],
         warnings: vec![],
     };
-    if validator::validate_version(server, &mut report) {
-        validator::validate_server(server, &mut report);
-        validator::validate_ingresses(ingresses, &mut report);
-        validator::validate_devices(devices, &mut report);
+    if single_file::validate_version(server, &mut report) {
+        single_file::validate_server(server, &mut report);
+        single_file::validate_ingresses(ingresses, &mut report);
+        single_file::validate_devices(devices, &mut report);
     }
     report
 }
