@@ -2,6 +2,7 @@ mod discover;
 mod loader;
 mod lower;
 mod parse;
+#[cfg(test)]
 mod tests;
 pub mod types;
 pub(crate) mod validation;
