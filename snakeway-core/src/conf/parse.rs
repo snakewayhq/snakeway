@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, DeviceConfig, IdentityDeviceConfig, IngressSpec, Origin, RedirectSpec,
-    ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceConfig, WasmDeviceConfig,
+    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin, RedirectSpec,
+    ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -9,28 +9,28 @@ use std::path::Path;
 
 #[derive(Debug, Deserialize, Default)]
 struct DevicesFile {
-    identity_device: Option<IdentityDeviceConfig>,
-    structured_logging_device: Option<StructuredLoggingDeviceConfig>,
+    identity_device: Option<IdentityDeviceSpec>,
+    structured_logging_device: Option<StructuredLoggingDeviceSpec>,
 
     #[serde(default)]
-    wasm_devices: Vec<WasmDeviceConfig>,
+    wasm_devices: Vec<WasmDeviceSpec>,
 }
 
-pub fn parse_devices(path: &Path) -> Result<Vec<DeviceConfig>, ConfigError> {
+pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
     let parsed: DevicesFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
     let mut device_config = Vec::new();
 
     if let Some(identity) = parsed.identity_device {
-        device_config.push(DeviceConfig::Identity(identity));
+        device_config.push(DeviceSpec::Identity(identity));
     }
 
     if let Some(logging) = parsed.structured_logging_device {
-        device_config.push(DeviceConfig::StructuredLogging(logging));
+        device_config.push(DeviceSpec::StructuredLogging(logging));
     }
 
-    device_config.extend(parsed.wasm_devices.into_iter().map(DeviceConfig::Wasm));
+    device_config.extend(parsed.wasm_devices.into_iter().map(DeviceSpec::Wasm));
 
     Ok(device_config)
 }

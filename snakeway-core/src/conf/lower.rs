@@ -1,7 +1,8 @@
 use crate::conf::types::{
-    IngressSpec, ListenerConfig, RedirectConfig, RouteConfig, ServerConfig, ServerSpec,
-    ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
-    UpstreamTcpConfig, UpstreamUnixConfig,
+    DeviceConfig, DeviceSpec, IdentityDeviceConfig, IngressSpec, ListenerConfig, RedirectConfig,
+    RouteConfig, ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticCachePolicy,
+    StaticFileConfig, StaticRouteConfig, StructuredLoggingDeviceConfig, UaEngineKind, UaEngineSpec,
+    UpstreamTcpConfig, UpstreamUnixConfig, WasmDeviceConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
@@ -11,12 +12,14 @@ pub type IrConfig = (
     Vec<ListenerConfig>,
     Vec<RouteConfig>,
     HashMap<String, ServiceConfig>,
+    Vec<DeviceConfig>,
 );
 
 /// Transform spec to the runtime configuration.
 pub fn lower_configs(
     server_spec: ServerSpec,
     ingresses: Vec<IngressSpec>,
+    device_specs: Vec<DeviceSpec>,
 ) -> Result<IrConfig, ConfigError> {
     let server: ServerConfig = ServerConfig {
         version: server_spec.version,
@@ -153,5 +156,46 @@ pub fn lower_configs(
         }
     }
 
-    Ok((server, listeners, routes, services))
+    let mut devices: Vec<DeviceConfig> = Vec::new();
+    for device_spec in device_specs {
+        match device_spec {
+            DeviceSpec::Wasm(d) => {
+                devices.push(DeviceConfig::Wasm(WasmDeviceConfig {
+                    enable: d.enable,
+                    path: d.path,
+                    config: d.config,
+                }));
+            }
+            DeviceSpec::Identity(d) => {
+                devices.push(DeviceConfig::Identity(IdentityDeviceConfig {
+                    enable: d.enable,
+                    trusted_proxies: d.trusted_proxies,
+                    enable_geoip: d.enable_geoip,
+                    geoip_db: d.geoip_db,
+                    enable_user_agent: d.enable_user_agent,
+                    ua_engine: match d.ua_engine {
+                        UaEngineSpec::UaParser => UaEngineKind::UaParser,
+                        UaEngineSpec::Woothee => UaEngineKind::Woothee,
+                    },
+                }));
+            }
+            DeviceSpec::StructuredLogging(d) => {
+                devices.push(DeviceConfig::StructuredLogging(
+                    StructuredLoggingDeviceConfig {
+                        enable: d.enable,
+                        level: d.level,
+                        include_headers: d.include_headers,
+                        allowed_headers: d.allowed_headers,
+                        redacted_headers: d.redacted_headers,
+                        include_identity: d.include_identity,
+                        identity_fields: d.identity_fields,
+                        events: d.events,
+                        phases: d.phases,
+                    },
+                ));
+            }
+        };
+    }
+
+    Ok((server, listeners, routes, services, devices))
 }

@@ -1,5 +1,5 @@
 use crate::conf::parse::parse_devices;
-use crate::conf::types::DeviceConfig;
+use crate::conf::types::DeviceSpec;
 use std::fs;
 use tempfile::tempdir;
 
@@ -28,7 +28,7 @@ identity_device = {
 
     // Assert
     assert_eq!(devices.len(), 1);
-    assert!(matches!(devices[0], DeviceConfig::Identity(_)));
+    assert!(matches!(devices[0], DeviceSpec::Identity(_)));
 }
 
 #[test]
@@ -58,5 +58,5 @@ structured_logging_device = {
 
     // Assert
     assert_eq!(devices.len(), 1);
-    assert!(matches!(devices[0], DeviceConfig::StructuredLogging(_)));
+    assert!(matches!(devices[0], DeviceSpec::StructuredLogging(_)));
 }

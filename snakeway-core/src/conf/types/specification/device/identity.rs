@@ -1,9 +1,13 @@
+use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct IdentityDeviceConfig {
+pub struct IdentityDeviceSpec {
+    #[serde(skip)]
+    pub origin: Origin,
+
     pub enable: bool,
 
     /// CIDR strings
@@ -15,12 +19,12 @@ pub struct IdentityDeviceConfig {
 
     pub enable_user_agent: bool,
 
-    pub ua_engine: UaEngineKind,
+    pub ua_engine: UaEngineSpec,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
-pub enum UaEngineKind {
+pub enum UaEngineSpec {
     UaParser,
     #[default]
     Woothee,

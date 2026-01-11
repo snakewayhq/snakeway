@@ -1,5 +1,6 @@
 mod admin;
 mod bind;
+mod device;
 pub mod entrypoint;
 mod origin;
 mod redirect;
@@ -9,6 +10,9 @@ mod static_files;
 
 pub use admin::BindAdminSpec;
 pub use bind::BindSpec;
+pub use device::{
+    DeviceSpec, IdentityDeviceSpec, StructuredLoggingDeviceSpec, UaEngineSpec, WasmDeviceSpec,
+};
 pub use entrypoint::EntrypointSpec;
 pub use origin::Origin;
 pub use redirect::RedirectSpec;

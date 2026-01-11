@@ -2,7 +2,7 @@ use crate::conf::discover::discover;
 use crate::conf::lower::lower_configs;
 use crate::conf::parse::{parse_devices, parse_ingress};
 use crate::conf::types::{
-    DeviceConfig, EntrypointSpec, IngressSpec, Origin, RuntimeConfig, ServerSpec,
+    DeviceSpec, EntrypointSpec, IngressSpec, Origin, RuntimeConfig, ServerSpec,
 };
 use crate::conf::validation::ValidatedConfig;
 use crate::conf::validation::{ConfigError, validate_spec};
@@ -11,13 +11,14 @@ use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let (server_spec, devices, ingresses) = load_spec_config(root)?;
+    let (server_spec, device_specs, ingresses) = load_spec_config(root)?;
 
     // Semantic validation of DSL config (aggregate all semantic errors)
-    let validation_report = validate_spec(&server_spec, &ingresses, &devices);
+    let validation_report = validate_spec(&server_spec, &ingresses, &device_specs);
 
     // Convert spec to runtime config.
-    let (server, listeners, routes, services) = lower_configs(server_spec, ingresses)?;
+    let (server, listeners, routes, services, devices) =
+        lower_configs(server_spec, ingresses, device_specs)?;
 
     //--------------------------------------------------------------------------
     // Build runtime config
@@ -34,7 +35,7 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     })
 }
 
-pub type Spec = (ServerSpec, Vec<DeviceConfig>, Vec<IngressSpec>);
+pub type Spec = (ServerSpec, Vec<DeviceSpec>, Vec<IngressSpec>);
 
 pub fn load_spec_config(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
@@ -62,7 +63,7 @@ pub fn load_spec_config(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
     // Parse devices (hard fail)
     //--------------------------------------------------------------------------
-    let mut parsed_devices: Vec<DeviceConfig> = Vec::new();
+    let mut parsed_devices: Vec<DeviceSpec> = Vec::new();
     for path in &device_files {
         parsed_devices.extend(parse_devices(path.as_path())?);
     }

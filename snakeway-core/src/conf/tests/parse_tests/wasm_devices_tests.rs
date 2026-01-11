@@ -1,5 +1,5 @@
 use crate::conf::parse::parse_devices;
-use crate::conf::types::DeviceConfig;
+use crate::conf::types::DeviceSpec;
 use std::fs;
 use tempfile::tempdir;
 
@@ -25,7 +25,7 @@ wasm_devices = [
 
     // Assert
     assert_eq!(devices.len(), 2);
-    assert!(devices.iter().all(|d| matches!(d, DeviceConfig::Wasm(_))));
+    assert!(devices.iter().all(|d| matches!(d, DeviceSpec::Wasm(_))));
 }
 
 #[test]
