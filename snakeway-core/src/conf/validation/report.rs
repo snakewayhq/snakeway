@@ -146,7 +146,11 @@ impl ValidationReport {
     }
 
     pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
-        self.error(format!("HTTP/2 requires TLS: {}", addr), origin, None);
+        self.error(
+            format!("HTTP/2 requires TLS: {}", addr),
+            origin,
+            Some("Enable TLS on the bind or disable HTTP/2.".to_string()),
+        );
     }
 }
 
@@ -293,12 +297,12 @@ impl ValidationReport {
         )
     }
 
-    pub fn trusted_proxies_contains_a_public_ip_range(
+    pub fn trusted_proxies_contains_a_public_ip_range_warning(
         &mut self,
         network: ipnet::IpNet,
         origin: &Origin,
     ) {
-        self.error(
+        self.warning(
             format!("trusted_proxies cannot contain a public IP range: {network}"),
             origin,
             None,

@@ -75,7 +75,7 @@ fn validate_trusted_proxies(proxies: &[String], report: &mut ValidationReport, o
 
         // Trusting public IP ranges is a red flag.
         if !is_private_net(&network) {
-            report.trusted_proxies_contains_a_public_ip_range(network, origin);
+            report.trusted_proxies_contains_a_public_ip_range_warning(network, origin);
         }
     }
 }

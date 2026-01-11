@@ -1,8 +1,6 @@
 use crate::conf::types::ServerSpec;
 use crate::conf::validation::report::ValidationReport;
-use crate::conf::validation::validator::constraints::{
-    CB_SUCCESS_THRESHOLD, SERVER_THREADS, validate_range,
-};
+use crate::conf::validation::validator::constraints::{SERVER_THREADS, validate_range};
 
 /// Validate top-level config version.
 ///
