@@ -4,7 +4,7 @@ title: Configuration Overview
 
 Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale.
 
-### The Entry Point: `snakeway.hcl`
+### The Entry Point
 
 The heart of Snakeway's configuration is the `snakeway.hcl` file.
 This file defines the global server settings and modular configuration file locations.
