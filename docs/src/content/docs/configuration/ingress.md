@@ -116,6 +116,67 @@ Supported strategies:
 - `random`: Picks a random healthy upstream.
 - `sticky_hash`: Consistent hashing based on request characteristics.
 
+:::note
+For **round_robin**, the weight is specified on the upstream level.
+:::
+
+### Circuit Breaker
+
+The circuit breaker protects your services by aggressively stopping traffic to failing upstreams.
+
+#### enable
+
+**Type:** `boolean`  
+**Default:** `true`
+
+#### failure_threshold
+
+**Type:** `integer`  
+**Default:** `5`
+
+Number of consecutive failures (transport errors or 5xx) in the `Closed` state before tripping the circuit to `Open`.
+
+#### open_duration_milliseconds
+
+**Type:** `integer`  
+**Default:** `10000` (10 seconds)
+
+How long the circuit remains `Open` before transitioning to `HalfOpen` to allow probes.
+
+#### half_open_max_requests
+
+**Type:** `integer`  
+**Default:** `1`
+
+How many simultaneous probe requests are allowed while in the `HalfOpen` state.
+
+#### success_threshold
+
+**Type:** `integer`  
+**Default:** `2`
+
+How many successful probes are required in `HalfOpen` to close the circuit again.
+
+#### count_http_5xx_as_failure
+
+**Type:** `boolean`  
+**Default:** `true`
+
+Whether HTTP 5xx responses from the upstream count as failures for the circuit breaker.
+
+#### Load Balancing Strategy
+
+**Type:** `string`  
+**Default:** `failover`
+
+Supported strategies:
+
+- `failover`: Always picks the first healthy upstream in the list.
+- `round_robin`: Distributes requests evenly across upstreams.
+- `request_pressure`: Picks the upstream with the lowest recent request pressure (heuristic-based, not transport-level).
+- `random`: Picks a random healthy upstream.
+- `sticky_hash`: Consistent hashing based on request characteristics.
+
 ### Routes
 
 ##### path
