@@ -23,7 +23,6 @@ include {
   devices = "devices.d/*.hcl"
   ingress = "ingress.d/*.hcl"
 }
-
 ```
 
 ### Modular Configuration
