@@ -46,7 +46,9 @@ Future versions of Snakeway may include built-in authentication for the Admin AP
 
 ## Services
 
-An ingress configuration file may define one or more services:
+An ingress configuration file may define zero or more services:
+
+### Example
 
 ```hcl
 services = [
@@ -91,10 +93,6 @@ services = [
       {
         weight = 1
         sock   = "/tmp/snakeway-http-1.sock"
-        sock_options = {
-          use_tls = true,
-          sni     = "example.com"
-        }
       }
     ]
   }
@@ -246,4 +244,118 @@ A weight of `10` will receive approximately 10 times more requests than a weight
 
 ## Static Files
 
-...
+An ingress configuration file may define zero or more static file policies.
+
+### Example
+
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path              = "/assets"
+        file_dir          = "/var/www/html"
+        index             = "index.html"
+        directory_listing = false
+        max_file_size = 10485760 // 10 MiB
+
+        compression = {
+          enable_gzip     = false
+          small_file_threshold = 102400 // 100 KiB
+          min_gzip_size = 1024   // 1 KiB
+          enable_brotli   = false
+          min_brotli_size = 4096
+        }
+
+        cache_policy = {
+          max_age_seconds = 60
+          public          = true
+          immutable       = false
+        }
+      }
+    ]
+  }
+]
+```
+
+### Fields
+
+#### path
+
+**Type:** `string`  
+**Required:** `true`
+
+The URL path prefix to match.
+
+#### file_dir
+
+**Type:** `string`  
+**Required:** `true`
+
+Absolute path to the directory on disk that will be served.
+
+Constraints:
+
+- must be an absolute path
+- must exist
+- must be a directory
+- must not be `/`
+
+#### index
+
+**Type:** `string`  
+**Optional**
+
+Filename to serve when a directory is requested.
+
+#### directory_listing
+
+**Type:** `boolean`  
+**Default:** `false`
+
+Whether to enable directory listings when no index file is present.
+
+#### max_file_size
+
+**Type:** `integer`  
+**Optional**
+
+Maximum file size in bytes. Default: `10485760` (10 MiB)
+
+--- 
+
+### Advanced Static Configuration
+
+Static routes include optional configuration for performance and caching.
+
+#### compression
+
+**Type:** `object`  
+**Optional**
+
+Advanced configuration for static file handling.
+
+- `small_file_threshold`: (integer) Threshold for small file optimization in bytes. Default: `262144` (256 KiB)
+- `min_gzip_size`: (integer) Minimum size to enable gzip compression. Default: `1024` (1 KiB)
+- `min_brotli_size`: (integer) Minimum size to enable brotli compression. Default: `4096` (4 KiB)
+- `enable_gzip`: (boolean) Enable gzip compression. Default: `true`
+- `enable_brotli`: (boolean) Enable brotli compression. Default: `true`
+
+#### cache_policy
+
+**Type:** `object`  
+**Optional**
+
+Configuration for the `Cache-Control` header.
+
+- `max_age`: (integer) `max-age` value in seconds. Default: `3600` (1 hour)
+- `public`: (boolean) Whether the cache is `public`. Default: `true`
+- `immutable`: (boolean) Whether to add the `immutable` directive. Default: `false`
+
+## Operational Notes
+
+**Routing Priority**
+
+Both services and static routes use **longest-prefix matching**, meaning more specific routes take precedence over
+broader ones.
+
