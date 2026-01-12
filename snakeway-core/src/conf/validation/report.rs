@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use std::path::Display;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
     pub message: String,
@@ -12,12 +12,14 @@ pub struct ValidationIssue {
     pub help: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub enum Severity {
+    #[default]
     Error,
     Warning,
 }
 
+#[derive(Debug, Default)]
 pub struct ValidationReport {
     pub errors: Vec<ValidationIssue>,
     pub warnings: Vec<ValidationIssue>,

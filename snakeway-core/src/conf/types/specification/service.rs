@@ -24,7 +24,7 @@ pub enum LoadBalancingStrategySpec {
     Random,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ServiceRouteSpec {
     #[serde(skip)]
     pub origin: Origin,
