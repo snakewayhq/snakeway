@@ -17,6 +17,7 @@ pub async fn handle_static_request(
         directory_listing,
         static_config,
         cache_policy,
+        max_file_size,
         ..
     } = route
     else {
@@ -29,9 +30,15 @@ pub async fn handle_static_request(
     };
 
     match resolved {
-        ResolvedStatic::File(path) => render_file(path, conditional, static_config, cache_policy)
-            .await
-            .unwrap_or_else(|e| error_response(map_serve_error(e))),
+        ResolvedStatic::File(path) => render_file(
+            path,
+            max_file_size,
+            conditional,
+            static_config,
+            cache_policy,
+        )
+        .await
+        .unwrap_or_else(|e| error_response(map_serve_error(e))),
 
         ResolvedStatic::Directory(dir) => {
             if !directory_listing {

@@ -1,10 +1,13 @@
-use crate::conf::types::StructuredLoggingDeviceSpec;
+use crate::conf::types::Origin;
 use crate::device::builtin::structured_logging::{IdentityField, LogEvent, LogLevel, LogPhase};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct StructuredLoggingDeviceConfig {
+pub struct StructuredLoggingDeviceSpec {
+    #[serde(skip)]
+    pub origin: Origin,
+
     pub enable: bool,
 
     pub level: LogLevel,
@@ -28,20 +31,4 @@ pub struct StructuredLoggingDeviceConfig {
     pub events: Option<Vec<LogEvent>>,
 
     pub phases: Option<Vec<LogPhase>>,
-}
-
-impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
-    fn from(spec: StructuredLoggingDeviceSpec) -> Self {
-        Self {
-            enable: spec.enable,
-            level: spec.level,
-            include_headers: spec.include_headers,
-            allowed_headers: spec.allowed_headers,
-            redacted_headers: spec.redacted_headers,
-            include_identity: spec.include_identity,
-            identity_fields: spec.identity_fields,
-            events: spec.events,
-            phases: spec.phases,
-        }
-    }
 }

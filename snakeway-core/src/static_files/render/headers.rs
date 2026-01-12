@@ -1,4 +1,4 @@
-use crate::conf::types::StaticCachePolicy;
+use crate::conf::types::CachePolicy;
 use crate::static_files::render::range::ByteRange;
 use http::{HeaderMap, HeaderName, HeaderValue, header};
 
@@ -62,7 +62,7 @@ impl HeaderBuilder {
         self.insert(header::VARY, "Accept-Encoding");
     }
 
-    pub(crate) fn cache_control(&mut self, policy: &StaticCachePolicy) {
+    pub(crate) fn cache_control(&mut self, policy: &CachePolicy) {
         let mut value = String::new();
 
         if policy.public {

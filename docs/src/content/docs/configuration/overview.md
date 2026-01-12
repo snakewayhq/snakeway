@@ -2,63 +2,74 @@
 title: Configuration Overview
 ---
 
-Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale. While small
-deployments can live in a single file, larger environments can leverage modularity to organize routes, services, and
-devices independently.
+Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale.
 
-### The Entry Point: `snakeway.toml`
+## The Entry Point
 
-The heart of Snakeway's configuration is the `snakeway.toml` file. This file defines the global server settings, network
-listeners, and instructions for including modular configuration files.
+The heart of Snakeway's configuration is the `snakeway.hcl` file.
+This file defines the global server settings and modular configuration file locations.
 
-A typical `snakeway.toml` looks like this:
+A typical `snakeway.hcl` looks like this:
 
-```toml
-[server]
-version = 1
-threads = 4
+```hcl
+server {
+  version  = 1
+  pid_file = "/var/run/snakeway.pid"
+  ca_file  = "/path/to/certs/ca.pem"
+}
 
-[[listener]]
-addr = "0.0.0.0:8080"
-
-[include]
-routes = "routes.d/*.toml"
-services = "services.d/*.toml"
-devices = "devices.d/*.toml"
+include {
+  devices = "devices.d/*.hcl"
+  ingress = "ingress.d/*.hcl"
+}
 ```
 
-### Modular Configuration
+## Modular Configuration
 
-The `[include]` section allows you to split your configuration into logical parts using glob patterns. This is
-particularly useful for managing many routes or services without creating a monolithic, unmanageable file.
+The `include` section allows you to split your configuration into logical parts using glob patterns.
 
-- **`routes.d/`**: Define your request mapping and path-based logic here.
-- **`services.d/`**: Define your upstream services and their load balancing strategies.
+- **`ingress.d/`**: Define your [Ingress](/configuration/ingress) files.
 - **`devices.d/`**: Define the [Devices](/devices/overview) that should be active in the request pipeline.
 
 When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a
-single unified runtime configuration.
+single unified runtime configuration. This is discussed in more detail
+in [Configuration Internals](/internals/configuration).
 
-### Hot Reloading
+## Hot Reloading
 
 Snakeway supports zero-downtime configuration reloads. This means you can update your routes, add new services, or
 change device settings without dropping active connections.
-
-Reloads can be triggered in two ways:
-
-1. **SIGHUP Signal**: Send a `SIGHUP` signal to the Snakeway process.
-2. **Admin API**: If enabled, you can send a `POST` request to the `/admin/reload` endpoint.
 
 Before a reload is applied, Snakeway performs a full semantic validation of the new configuration. If any errors are
 found (e.g., a route pointing to a non-existent service), the reload is aborted, the errors are logged, and the server
 continues running with the previous, stable configuration.
 
-### Configuration Validation
+Reloads can be triggered in two ways:
 
-You can manually validate your configuration directory at any time using the `snakeway config check` command:
+#### Reload command
+
+Send a `SIGHUP` signal to the Snakeway process.
 
 ```bash
-snakeway config check --path ./config
+snakeway reload
+```
+
+#### Admin API
+
+If enabled the admin API is enable, you can send a `POST` request to the `/admin/reload` endpoint.
+
+For example:
+
+```bash
+curl -X POST https://127.0.0.1:8440/admin/reload 
+```
+
+## Configuration Validation
+
+You can manually validate your configuration directory at any time using the `config check` command:
+
+```bash
+snakeway config check --path /etc/snakeway/
 ```
 
 This will report any syntax errors or logical inconsistencies in your configuration files before you attempt to apply

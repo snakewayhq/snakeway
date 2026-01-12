@@ -1,13 +1,13 @@
-use crate::conf::types::{DeviceConfig, Origin};
+use crate::conf::types::{DeviceSpec, Origin};
 use crate::conf::validation::ValidationReport;
 use ipnet::IpNet;
 use nix::NixPath;
 use std::net::IpAddr;
 
-pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport) {
+pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     for device in devices {
         match device {
-            DeviceConfig::Wasm(cfg) => {
+            DeviceSpec::Wasm(cfg) => {
                 if !cfg.enable {
                     return;
                 }
@@ -22,7 +22,7 @@ pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport)
                     report.wasm_device_path_is_not_a_file(cfg.path.display(), device.origin());
                 }
             }
-            DeviceConfig::Identity(cfg) => {
+            DeviceSpec::Identity(cfg) => {
                 if !cfg.enable {
                     return;
                 }
@@ -48,7 +48,7 @@ pub fn validate_devices(devices: &[DeviceConfig], report: &mut ValidationReport)
                     return;
                 }
             }
-            DeviceConfig::StructuredLogging(cfg) => {
+            DeviceSpec::StructuredLogging(cfg) => {
                 if !cfg.enable {
                     return;
                 }

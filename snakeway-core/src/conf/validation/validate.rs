@@ -1,4 +1,4 @@
-use crate::conf::types::{DeviceConfig, IngressSpec, ServerSpec};
+use crate::conf::types::{DeviceSpec, IngressSpec, ServerSpec};
 use crate::conf::validation::report::ValidationReport;
 use crate::conf::validation::single_file;
 
@@ -6,7 +6,7 @@ use crate::conf::validation::single_file;
 pub fn validate_spec(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
-    devices: &[DeviceConfig],
+    devices: &[DeviceSpec],
 ) -> ValidationReport {
     let mut report = ValidationReport {
         errors: vec![],

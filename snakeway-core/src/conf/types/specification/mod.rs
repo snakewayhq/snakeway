@@ -1,5 +1,6 @@
 mod admin;
 mod bind;
+mod device;
 pub mod entrypoint;
 mod origin;
 mod redirect;
@@ -9,13 +10,16 @@ mod static_files;
 
 pub use admin::BindAdminSpec;
 pub use bind::BindSpec;
+pub use device::{
+    DeviceSpec, IdentityDeviceSpec, StructuredLoggingDeviceSpec, UaEngineSpec, WasmDeviceSpec,
+};
 pub use entrypoint::EntrypointSpec;
 pub use origin::Origin;
 pub use redirect::RedirectSpec;
 use serde::{Deserialize, Serialize};
 pub use server::ServerSpec;
-pub use service::ServiceSpec;
-pub use static_files::StaticFilesSpec;
+pub use service::{LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec};
+pub use static_files::{CachePolicySpec, CompressionOptsSpec, StaticFilesSpec, StaticRouteSpec};
 
 /// The operator DSL for the config subsystem.
 /// This defines the configuration file format of files in ./config/ingress.d/*.hcl

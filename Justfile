@@ -26,7 +26,7 @@ install-dev-tools:
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
     just brew-install "grpcurl go"
     bun i -g wscat
-    cargo install tokio-console samply cargo-nextest
+    cargo install tokio-console samply cargo-nextest cargo-llvm-cov
 
 docs:
     cd docs && bun start
@@ -152,6 +152,15 @@ debug-file-descriptors:
     @echo "\nCurrent descriptors in use:"
     @lsof -p $(pgrep snakeway) | wc -l
 
+dump-whole-config:
+    #!/usr/bin/env bash
+    find config -type f -name "*.hcl" | sort | while read -r f; do
+      echo
+      echo "##### FILE: $f #####"
+      echo
+      cat "$f"
+    done
+
 # -----------------------------------------------------------------------------
 # BUILD TASKS
 # -----------------------------------------------------------------------------
@@ -244,6 +253,13 @@ integration-test: generate-dev-certs
 
 test-everything: lint test integration-test
     @echo "All good."
+
+test-with-coverage:
+    cargo llvm-cov nextest -p snakeway-core --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
+    open target/llvm-cov/html/index.html
+
+test-with-coverage-summary:
+    cargo llvm-cov nextest -p snakeway-core --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # -----------------------------------------------------------------------------
 # CLEANUP

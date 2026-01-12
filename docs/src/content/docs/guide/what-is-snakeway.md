@@ -25,24 +25,13 @@ Snakeway is:
 Snakeway is designed for teams that need **deterministic control over traffic behavior** without embedding that logic
 deep inside every service.
 
-## What Snakeway Is Not
-
-Snakeway is intentionally **not**:
-
-- A service mesh
-- A general-purpose application framework
-- A replacement for your cloud provider's L4 load balancer
-- A UI-driven gateway product with a control plane SaaS
-
-If you're looking for automatic retries, policy DSLs, or cluster-wide orchestration, Snakeway is the wrong tool.
-
-If you want **precise, inspectable, programmable control over requests**, it's the right one.
-
-## The Core Idea: Devices
+## The Core Extensibility Model: Devices
 
 Everything in Snakeway revolves around **devices**.
 
-A device is a unit of logic that runs at a specific point in the request lifecycle. Devices can:
+A device is a unit of logic that runs at a specific point in the request lifecycle.
+
+Devices can:
 
 - Read or modify request headers and bodies
 - Make routing decisions
@@ -50,10 +39,11 @@ A device is a unit of logic that runs at a specific point in the request lifecyc
 - Observe traffic for logging or metrics
 - React to upstream responses or errors
 
-Devices are executed **in a strict, ordered pipeline**.  
+Devices are executed **in a strict, ordered pipeline**.
+
 Order matters. Behavior is deterministic.
 
-This is not middleware in the traditional web-framework sense.  
+This is not middleware in the traditional web-framework sense.
 Devices are closer to **traffic operators** than request handlers.
 
 ## Where Snakeway Fits
@@ -61,14 +51,11 @@ Devices are closer to **traffic operators** than request handlers.
 A typical deployment looks like this:
 
 ```
-Client
-  ↓
-[ Snakeway ]
-  ↓
-Upstream Service(s)
+Web Browser -> Snakeway -> Upstream Web Services
 ```
 
-Snakeway sits **between clients and services**, making decisions at the edge before traffic ever hits application code.
+Snakeway sits **between clients and web services**, making decisions at the edge before traffic ever hits application
+code.
 
 Common use cases include:
 
@@ -124,4 +111,3 @@ If you're new to Snakeway, read these pages next:
 2. **[Architecture](/guide/architecture)** how Snakeway is structured internally
 3. **[Devices Overview](/devices/overview)** how extensibility works
 4. **[Getting Started](/getting-started/installation)** running your first proxy
-

@@ -1,4 +1,4 @@
-use crate::conf::types::{StaticCachePolicy, StaticFileConfig};
+use crate::conf::types::{CachePolicy, CompressionOptions};
 use serde::Serialize;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -21,8 +21,9 @@ pub enum RouteRuntime {
         file_dir: PathBuf,
         index: bool,
         directory_listing: bool,
-        static_config: StaticFileConfig,
-        cache_policy: StaticCachePolicy,
+        max_file_size: u64,
+        static_config: CompressionOptions,
+        cache_policy: CachePolicy,
     },
 }
 

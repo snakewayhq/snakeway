@@ -1,3 +1,4 @@
+use crate::conf::types::ServiceRouteSpec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -11,4 +12,16 @@ pub struct ServiceRouteConfig {
     pub ws_max_connections: Option<usize>,
 
     pub listener: String,
+}
+
+impl ServiceRouteConfig {
+    pub fn new(service: &str, listener: &str, spec: ServiceRouteSpec) -> Self {
+        Self {
+            service: service.to_string(),
+            listener: listener.to_string(),
+            path: spec.path,
+            allow_websocket: spec.enable_websocket,
+            ws_max_connections: spec.ws_max_connections,
+        }
+    }
 }
