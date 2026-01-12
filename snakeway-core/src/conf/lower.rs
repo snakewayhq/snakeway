@@ -34,12 +34,12 @@ pub fn lower_configs(
         let listener_name = format!("listener-{}", idx);
 
         for redirect_cfg in ingress.redirect_cfgs {
-            let listener = ListenerConfig::from_redirect(listener_name.clone(), redirect_cfg);
+            let listener = ListenerConfig::from_redirect(&listener_name, redirect_cfg);
             listeners.push(listener);
         }
 
         if let Some(bind_admin) = ingress.bind_admin {
-            let listener = ListenerConfig::from_bind_admin(listener_name.clone(), bind_admin);
+            let listener = ListenerConfig::from_bind_admin(&listener_name, bind_admin);
             listeners.push(listener);
         }
 
@@ -73,8 +73,8 @@ pub fn lower_configs(
                 let service_name = format!("{}-service", bind.addr.clone());
 
                 let service = ServiceConfig::new(
-                    service_name.clone(),
-                    listener_name.clone(),
+                    &service_name,
+                    &listener_name,
                     tcp_upstreams,
                     unix_upstreams,
                     &service_cfg,
@@ -83,7 +83,7 @@ pub fn lower_configs(
 
                 for route in service_cfg.routes {
                     let service_route =
-                        ServiceRouteConfig::new(service_name.clone(), listener_name.clone(), route);
+                        ServiceRouteConfig::new(&service_name, &listener_name, route);
                     routes.push(RouteConfig::Service(service_route));
                 }
             }
@@ -98,7 +98,7 @@ pub fn lower_configs(
                 }
             }
 
-            listeners.push(ListenerConfig::from_bind(listener_name.clone(), bind));
+            listeners.push(ListenerConfig::from_bind(&listener_name, bind));
         }
     }
 

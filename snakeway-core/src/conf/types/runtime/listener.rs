@@ -24,9 +24,9 @@ pub struct ListenerConfig {
 }
 
 impl ListenerConfig {
-    pub fn from_redirect(name: String, spec: RedirectSpec) -> Self {
+    pub fn from_redirect(name: &str, spec: RedirectSpec) -> Self {
         Self {
-            name,
+            name: name.to_string(),
             addr: spec.addr.clone(),
             tls: None,
             enable_http2: false,
@@ -35,9 +35,9 @@ impl ListenerConfig {
         }
     }
 
-    pub fn from_bind(name: String, spec: BindSpec) -> Self {
+    pub fn from_bind(name: &str, spec: BindSpec) -> Self {
         Self {
-            name,
+            name: name.to_string(),
             addr: spec.addr,
             tls: spec.tls,
             enable_http2: spec.enable_http2,
@@ -46,9 +46,9 @@ impl ListenerConfig {
         }
     }
 
-    pub fn from_bind_admin(name: String, spec: BindAdminSpec) -> Self {
+    pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Self {
         Self {
-            name,
+            name: name.to_string(),
             addr: spec.addr,
             tls: Some(spec.tls),
             enable_http2: false,

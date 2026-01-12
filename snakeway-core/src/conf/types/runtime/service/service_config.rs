@@ -26,15 +26,15 @@ pub struct ServiceConfig {
 
 impl ServiceConfig {
     pub fn new(
-        name: String,
-        listener: String,
+        name: &str,
+        listener: &str,
         tcp_upstreams: Vec<UpstreamTcpConfig>,
         unix_upstreams: Vec<UpstreamUnixConfig>,
         spec: &ServiceSpec,
     ) -> Self {
         Self {
-            name,
-            listener,
+            name: name.to_string(),
+            listener: listener.to_string(),
             load_balancing_strategy: spec.load_balancing_strategy.clone().into(),
             tcp_upstreams,
             unix_upstreams,

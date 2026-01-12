@@ -15,10 +15,10 @@ pub struct ServiceRouteConfig {
 }
 
 impl ServiceRouteConfig {
-    pub fn new(service: String, listener: String, spec: ServiceRouteSpec) -> Self {
+    pub fn new(service: &str, listener: &str, spec: ServiceRouteSpec) -> Self {
         Self {
-            service,
-            listener,
+            service: service.to_string(),
+            listener: listener.to_string(),
             path: spec.path,
             allow_websocket: spec.enable_websocket,
             ws_max_connections: spec.ws_max_connections,
