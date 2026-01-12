@@ -18,12 +18,12 @@ pub struct StaticRouteSpec {
     pub index: Option<String>,
     pub directory_listing: bool,
     pub max_file_size: u64,
-    pub compression: CompressionSpec,
+    pub compression: CompressionOptsSpec,
     pub cache_policy: CachePolicySpec,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CompressionSpec {
+pub struct CompressionOptsSpec {
     pub small_file_threshold: u64,
     pub min_gzip_size: u64,
     pub min_brotli_size: u64,
@@ -31,7 +31,7 @@ pub struct CompressionSpec {
     pub enable_brotli: bool,
 }
 
-impl Default for CompressionSpec {
+impl Default for CompressionOptsSpec {
     fn default() -> Self {
         Self {
             small_file_threshold: 256 * 1024, // 256 KiB

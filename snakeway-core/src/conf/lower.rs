@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
-    ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
+    CachePolicy, CompressionOptions, DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig,
+    RouteConfig, ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
     UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
@@ -73,27 +73,19 @@ pub fn lower_configs(
 
                 let service_name = format!("{}-service", bind.addr.clone());
 
-                services.insert(
+                let service = ServiceConfig::new(
                     service_name.clone(),
-                    ServiceConfig {
-                        name: service_name.clone(),
-                        listener: listener_name.clone(),
-                        load_balancing_strategy: service_cfg.load_balancing_strategy,
-                        tcp_upstreams,
-                        unix_upstreams,
-                        circuit_breaker: service_cfg.circuit_breaker.unwrap_or_default(),
-                        health_check: service_cfg.health_check.unwrap_or_default(),
-                    },
+                    listener_name.clone(),
+                    tcp_upstreams,
+                    unix_upstreams,
+                    &service_cfg,
                 );
+                services.insert(service_name.clone(), service);
 
                 for route in service_cfg.routes {
-                    routes.push(RouteConfig::Service(ServiceRouteConfig {
-                        path: route.path,
-                        listener: listener_name.clone(),
-                        service: service_name.clone(),
-                        allow_websocket: route.enable_websocket,
-                        ws_max_connections: route.ws_max_connections,
-                    }));
+                    let service_route =
+                        ServiceRouteConfig::new(service_name.clone(), listener_name.clone(), route);
+                    routes.push(RouteConfig::Service(service_route));
                 }
             }
 
@@ -107,15 +99,15 @@ pub fn lower_configs(
                         file_dir: route.file_dir,
                         index: route.index.clone(),
                         directory_listing: route.directory_listing,
-                        static_config: StaticFileConfig {
-                            max_file_size: route.max_file_size,
+                        max_file_size: route.max_file_size,
+                        static_config: CompressionOptions {
                             small_file_threshold: route.compression.small_file_threshold,
                             min_gzip_size: route.compression.min_gzip_size,
                             min_brotli_size: route.compression.min_brotli_size,
                             enable_gzip: route.compression.enable_gzip,
                             enable_brotli: route.compression.enable_brotli,
                         },
-                        cache_policy: StaticCachePolicy {
+                        cache_policy: CachePolicy {
                             max_age_seconds: route.cache_policy.max_age_seconds,
                             public: route.cache_policy.public,
                             immutable: route.cache_policy.immutable,

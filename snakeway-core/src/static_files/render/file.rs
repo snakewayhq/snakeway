@@ -6,7 +6,7 @@ use crate::static_files::render::compression::{
 };
 use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
 
-use crate::conf::types::{StaticCachePolicy, StaticFileConfig};
+use crate::conf::types::{CachePolicy, CompressionOptions};
 use crate::static_files::render::headers::HeaderBuilder;
 use crate::static_files::render::range::parse_range_header;
 use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
@@ -18,9 +18,10 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 pub async fn render_file(
     path: PathBuf,
+    max_file_size: &u64,
     conditional: &ConditionalHeaders,
-    static_config: &StaticFileConfig,
-    cache_policy: &StaticCachePolicy,
+    compression_opts: &CompressionOptions,
+    cache_policy: &CachePolicy,
 ) -> Result<StaticResponse, ServeError> {
     let metadata = fs::metadata(&path)
         .await
@@ -32,7 +33,7 @@ pub async fn render_file(
     }
 
     // Guard against memory exhaustion vulnerability.
-    if metadata.len() > static_config.max_file_size {
+    if metadata.len() > *max_file_size {
         return Err(ServeError::Forbidden);
     }
 
@@ -64,8 +65,10 @@ pub async fn render_file(
             let size = metadata.len();
 
             // Determine what encodings are allowed based on size
-            let br_allowed = static_config.enable_brotli && size >= static_config.min_brotli_size;
-            let gzip_allowed = static_config.enable_gzip && size >= static_config.min_gzip_size;
+            let br_allowed =
+                compression_opts.enable_brotli && size >= compression_opts.min_brotli_size;
+            let gzip_allowed =
+                compression_opts.enable_gzip && size >= compression_opts.min_gzip_size;
 
             match preferred_encoding(ae) {
                 Some(CompressionEncoding::Brotli) if br_allowed => {
@@ -92,7 +95,7 @@ pub async fn render_file(
     }
 
     // Add Vary header to indicate response varies based on Accept-Encoding
-    if response_varies_by_encoding(&mime, metadata.len(), static_config) {
+    if response_varies_by_encoding(&mime, metadata.len(), compression_opts) {
         headers.vary()
     }
 
@@ -129,7 +132,7 @@ pub async fn render_file(
         })?;
 
     // For small files, read into memory (and optionally compress)
-    if metadata.len() <= static_config.small_file_threshold {
+    if metadata.len() <= compression_opts.small_file_threshold {
         // Use a pre-allocated vec for better performance.
         // This is NOT a micro optimization - it yields a 30% rps increase.
         let mut buf = Vec::with_capacity(metadata.len() as usize);

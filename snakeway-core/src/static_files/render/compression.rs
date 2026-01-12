@@ -1,4 +1,4 @@
-use crate::conf::types::StaticFileConfig;
+use crate::conf::types::CompressionOptions;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use std::io::Write;
@@ -144,7 +144,7 @@ pub(crate) fn brotli_compress(data: &[u8]) -> std::io::Result<Vec<u8>> {
 pub(crate) fn response_varies_by_encoding(
     mime: &mime_guess::Mime,
     size: u64,
-    cfg: &StaticFileConfig,
+    cfg: &CompressionOptions,
 ) -> bool {
     if !is_compressible_mime(mime) {
         return false;
