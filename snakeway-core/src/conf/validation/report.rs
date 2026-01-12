@@ -201,14 +201,6 @@ impl ValidationReport {
     pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
     }
-
-    pub fn invalid_sock_options_tls_requires_sni(&mut self, origin: &Origin) {
-        self.error(
-            "invalid sock options - TLS requires SNI".to_string(),
-            origin,
-            None,
-        )
-    }
 }
 
 /// Server Spec Validation

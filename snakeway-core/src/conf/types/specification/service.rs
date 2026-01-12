@@ -29,16 +29,9 @@ pub struct UpstreamSpec {
     pub origin: Origin,
     pub addr: Option<String>,
     pub sock: Option<String>,
-    pub sock_options: Option<UnixTransportOptionsSpec>,
     #[serde(default = "default_weight")]
     pub weight: u32,
 }
 fn default_weight() -> u32 {
     1
-}
-
-#[derive(Debug, Deserialize, Serialize, Default)]
-pub struct UnixTransportOptionsSpec {
-    pub use_tls: bool,
-    pub sni: String,
 }

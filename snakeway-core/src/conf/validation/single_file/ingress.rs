@@ -120,13 +120,6 @@ pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport
                 } else {
                     seen_sock_values.insert(sock.clone(), ());
                 }
-
-                if let Some(sock_options) = &upstream.sock_options
-                    && sock_options.use_tls
-                    && sock_options.sni.is_empty()
-                {
-                    report.invalid_sock_options_tls_requires_sni(&service.origin);
-                }
             }
         }
 
