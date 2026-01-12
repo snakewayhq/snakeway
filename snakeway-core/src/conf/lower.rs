@@ -1,7 +1,7 @@
 use crate::conf::types::{
-    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RedirectConfig, RouteConfig,
-    ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticCachePolicy,
-    StaticFileConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
+    ServiceConfig, ServiceRouteConfig, StaticCachePolicy, StaticFileConfig, StaticRouteConfig,
+    UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
@@ -35,28 +35,13 @@ pub fn lower_configs(
         let listener_name = format!("listener-{}", idx);
 
         for redirect_cfg in ingress.redirect_cfgs {
-            listeners.push(ListenerConfig {
-                name: listener_name.clone(),
-                addr: redirect_cfg.addr,
-                tls: None,
-                enable_http2: false,
-                enable_admin: false,
-                redirect: Some(RedirectConfig {
-                    to: redirect_cfg.to,
-                    status: redirect_cfg.status,
-                }),
-            });
+            let listener = ListenerConfig::from_redirect(listener_name.clone(), redirect_cfg);
+            listeners.push(listener);
         }
 
         if let Some(bind_admin) = ingress.bind_admin {
-            listeners.push(ListenerConfig {
-                name: listener_name.clone(),
-                addr: bind_admin.addr,
-                tls: Some(bind_admin.tls),
-                enable_http2: false,
-                enable_admin: true,
-                redirect: None,
-            });
+            let listener = ListenerConfig::from_bind_admin(listener_name.clone(), bind_admin);
+            listeners.push(listener);
         }
 
         if let Some(bind) = ingress.bind {
@@ -69,24 +54,20 @@ pub fn lower_configs(
                 let unix_upstreams = service_cfg
                     .upstreams
                     .iter()
-                    .filter_map(|b| {
-                        b.sock.as_ref().map(|sock| UpstreamUnixConfig {
-                            weight: b.weight,
-                            sock: sock.clone(),
-                            use_tls,
-                            sni: "localhost".to_string(),
-                        })
+                    .filter_map(|u| {
+                        u.sock
+                            .as_ref()
+                            .map(|sock| UpstreamUnixConfig::new(sock.clone(), use_tls, u.weight))
                     })
                     .collect();
 
                 let tcp_upstreams = service_cfg
                     .upstreams
                     .iter()
-                    .filter_map(|b| {
-                        b.addr.as_ref().map(|addr| UpstreamTcpConfig {
-                            weight: b.weight,
-                            url: format!("{}://{}", if use_tls { "https" } else { "http" }, addr),
-                        })
+                    .filter_map(|u| {
+                        u.addr
+                            .as_ref()
+                            .map(|addr| UpstreamTcpConfig::new(addr, use_tls, u.weight))
                     })
                     .collect();
 
@@ -144,14 +125,7 @@ pub fn lower_configs(
                 }
             }
 
-            listeners.push(ListenerConfig {
-                name: listener_name.clone(),
-                addr: bind.addr,
-                tls: bind.tls,
-                enable_http2: bind.enable_http2,
-                enable_admin: false,
-                redirect: None,
-            });
+            listeners.push(ListenerConfig::from_bind(listener_name.clone(), bind));
         }
     }
 

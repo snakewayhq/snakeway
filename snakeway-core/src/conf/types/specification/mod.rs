@@ -18,7 +18,7 @@ pub use origin::Origin;
 pub use redirect::RedirectSpec;
 use serde::{Deserialize, Serialize};
 pub use server::ServerSpec;
-pub use service::ServiceSpec;
+pub use service::{ServiceSpec, UpstreamSpec};
 pub use static_files::{StaticFilesSpec, StaticRouteSpec};
 
 /// The operator DSL for the config subsystem.
