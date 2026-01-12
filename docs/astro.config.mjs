@@ -27,22 +27,21 @@ export default defineConfig({
         sidebar: [
             {
                 label: 'Guide', items: [{label: 'What is Snakeway?', link: '/guide/what-is-snakeway/'},
-                    {
-                        label: 'Why Snakeway Exists', link: '/guide/why-snakeway-exists/'
-                    },
+                    {label: 'Why Snakeway Exists', link: '/guide/why-snakeway-exists/'},
                     {label: 'Mental Model', link: '/guide/mental-model/'},
-                    {
-                        label: 'Architecture', link: '/guide/architecture/'
-                    }, {
-                        label: 'Lifecycle', link: '/guide/lifecycle/'
-                    }, {label: 'Roadmap', link: '/guide/roadmap/'}],
+                    {label: 'Architecture', link: '/guide/architecture/'},
+                    {label: 'Lifecycle', link: '/guide/lifecycle/'},
+                    {label: 'Roadmap', link: '/guide/roadmap/'},
+                ],
             },
             {
-                label: 'Getting Started', items: [{label: 'Installation', link: '/getting-started/installation/'}, {
-                    label: 'Configuration', link: '/getting-started/configuration/'
-                }, {label: 'Your First Proxy', link: '/getting-started/first-proxy/'}, {
-                    label: 'Static Files', link: '/getting-started/static-files/'
-                }, {label: 'Reloads', link: '/getting-started/reloads/'},],
+                label: 'Getting Started', items: [
+                    {label: 'Installation', link: '/getting-started/installation/'},
+                    {label: 'Configuration', link: '/getting-started/configuration/'},
+                    {label: 'Your First Proxy', link: '/getting-started/first-proxy/'},
+                    {label: 'Static Files', link: '/getting-started/static-files/'},
+                    {label: 'Reloads', link: '/getting-started/reloads/'},
+                ],
             },
 
             {
@@ -53,11 +52,13 @@ export default defineConfig({
                     {label: 'Devices', link: '/configuration/devices/'},
                 ],
             }, {
-                label: 'Devices', items: [{label: 'Overview', link: '/devices/overview/'}, {
-                    label: 'Built-in Devices', link: '/devices/builtin/'
-                }, {label: 'Identity', link: '/devices/identity/'}, {
-                    label: 'Structured Logging', link: '/devices/structured-logging/'
-                }, {label: 'WASM Devices', link: '/devices/wasm/'},],
+                label: 'Devices', items: [
+                    {label: 'Overview', link: '/devices/overview/'},
+                    {label: 'Built-in Devices', link: '/devices/builtin/'},
+                    {label: 'Identity', link: '/devices/identity/'},
+                    {label: 'Structured Logging', link: '/devices/structured-logging/'},
+                    {label: 'WASM Devices', link: '/devices/wasm/'},
+                ],
             },
             {
                 label: 'Observability', items: [
