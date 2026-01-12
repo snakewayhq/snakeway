@@ -13,10 +13,15 @@ export default defineConfig({
 
         // Logo
         logo: {
-            dark: "./src/assets/logo.svg",
-            light: "./src/assets/logo_black.svg",
+            dark: "./src/assets/logo-dark.svg",
+            light: "./src/assets/logo.svg",
             alt: "Snakeway Logo",
         },
+
+        // Styles
+        customCss: [
+            './src/styles/custom.css',
+        ],
 
         // Sidebar
         sidebar: [

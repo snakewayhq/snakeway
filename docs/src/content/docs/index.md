@@ -7,8 +7,8 @@ hero:
   subtitle: Programmable Edge Proxy
   tagline: A modern, extensible reverse proxy built with Rust
   image:
-    dark: ../../assets/logo.svg
-    light: ../../assets/logo_black.svg
+    dark: ../../assets/logo-dark.svg
+    light: ../../assets/logo.svg
     alt: Snakeway logo
   actions:
     - text: Get Started
