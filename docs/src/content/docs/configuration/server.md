@@ -10,7 +10,7 @@ It is located in the config directory under `CONFIG_ROOT/snakeway.hcl`.
 ```hcl
 server {
   version  = 1
-  pid_file = "/tmp/snakeway.pid"
+  pid_file = "/var/run/snakeway.pid"
   threads  = 8
   ca_file  = "/path/to/certs/ca.pem"
 }
@@ -42,7 +42,7 @@ If set, Snakeway will write its process ID (PID) to the specified file on startu
 
 ```hcl
 server {
-  pid_file = "/tmp/snakeway.pid"
+  pid_file = "/var/run/snakeway.pid"
 }
 ```
 

@@ -14,8 +14,7 @@ A typical `snakeway.hcl` looks like this:
 ```hcl
 server {
   version  = 1
-  pid_file = "/tmp/snakeway.pid"
-  threads  = 8
+  pid_file = "/var/run/snakeway.pid"
   ca_file  = "/path/to/certs/ca.pem"
 }
 
