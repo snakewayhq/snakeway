@@ -1,7 +1,6 @@
 use crate::conf::types::{
-    CachePolicy, CompressionOptions, DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig,
-    RouteConfig, ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
-    UpstreamTcpConfig, UpstreamUnixConfig,
+    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
+    ServiceConfig, ServiceRouteConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
@@ -94,26 +93,8 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             for static_cfg in ingress.static_cfgs {
                 for route in static_cfg.routes {
-                    routes.push(RouteConfig::Static(StaticRouteConfig {
-                        path: route.path,
-                        file_dir: route.file_dir,
-                        index: route.index.clone(),
-                        directory_listing: route.directory_listing,
-                        max_file_size: route.max_file_size,
-                        static_config: CompressionOptions {
-                            small_file_threshold: route.compression.small_file_threshold,
-                            min_gzip_size: route.compression.min_gzip_size,
-                            min_brotli_size: route.compression.min_brotli_size,
-                            enable_gzip: route.compression.enable_gzip,
-                            enable_brotli: route.compression.enable_brotli,
-                        },
-                        cache_policy: CachePolicy {
-                            max_age_seconds: route.cache_policy.max_age_seconds,
-                            public: route.cache_policy.public,
-                            immutable: route.cache_policy.immutable,
-                        },
-                        listener: listener_name.clone(),
-                    }));
+                    let static_route = StaticRouteConfig::new(&listener_name, route);
+                    routes.push(RouteConfig::Static(static_route));
                 }
             }
 
@@ -121,6 +102,9 @@ pub fn lower_configs(
         }
     }
 
+    //-------------------------------------------------------------------------
+    // Devices
+    //-------------------------------------------------------------------------
     let mut devices: Vec<DeviceConfig> = Vec::new();
     for device_spec in device_specs {
         let device_config = match device_spec {

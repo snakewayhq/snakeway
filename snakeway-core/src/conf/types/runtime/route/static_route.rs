@@ -22,9 +22,9 @@ pub struct StaticRouteConfig {
 }
 
 impl StaticRouteConfig {
-    pub fn new(spec: StaticRouteSpec) -> Self {
+    pub fn new(listener: &str, spec: StaticRouteSpec) -> Self {
         Self {
-            listener: "".to_string(),
+            listener: listener.to_string(),
             path: spec.path,
             file_dir: spec.file_dir,
             index: spec.index,
