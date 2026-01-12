@@ -26,7 +26,7 @@ install-dev-tools:
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
     just brew-install "grpcurl go"
     bun i -g wscat
-    cargo install tokio-console samply cargo-nextest
+    cargo install tokio-console samply cargo-nextest cargo-llvm-cov
 
 docs:
     cd docs && bun start
@@ -253,6 +253,13 @@ integration-test: generate-dev-certs
 
 test-everything: lint test integration-test
     @echo "All good."
+
+test-with-coverage:
+    cargo llvm-cov nextest -p snakeway-core --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
+    open target/llvm-cov/html/index.html
+
+test-with-coverage-summary:
+    cargo llvm-cov nextest -p snakeway-core --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # -----------------------------------------------------------------------------
 # CLEANUP
