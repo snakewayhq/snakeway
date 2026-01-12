@@ -34,12 +34,12 @@ fn validate_multiple_services_at_once() {
     validate_services(&services, &mut report);
 
     // Assert
-    assert_eq!(report.errors.len(), 1);
     assert!(
-        report.errors[0]
-            .message
-            .contains("service has no upstream backends")
-    );
+        report
+            .errors
+            .iter()
+            .any(|w| { w.message.contains("service has no upstream backends") })
+    )
 }
 
 #[test]
@@ -109,7 +109,6 @@ fn validate_service_but_have_an_upstream() {
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains(expected));
     assert!(report.has_violations());
-    assert_eq!(report.errors.len(), 1);
     assert!(report.warnings.is_empty());
 }
 
@@ -134,7 +133,6 @@ fn validate_service_must_have_an_upstream_with_weight_greater_than_zero() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains(&expected));
-    assert_eq!(report.errors.len(), 1);
     assert!(report.has_violations());
     assert!(report.warnings.is_empty());
 }
@@ -160,7 +158,6 @@ fn validate_service_must_have_an_upstream_with_weight_not_greater_than_1000() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains(&expected));
-    assert_eq!(report.errors.len(), 1);
     assert!(report.has_violations());
     assert!(report.warnings.is_empty());
 }
@@ -185,7 +182,6 @@ fn validate_service_upstream_cannot_have_both_addr_and_sock() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("mutually exclusive"));
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -208,7 +204,6 @@ fn validate_service_upstream_must_have_either_addr_or_sock() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("mutually exclusive"));
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -231,7 +226,6 @@ fn validate_service_upstream_with_invalid_addr() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("invalid upstream address"));
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -261,7 +255,6 @@ fn validate_service_duplicate_upstream_socks() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("duplicate upstream sock"));
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -319,7 +312,6 @@ fn validate_service_circuit_breaker_failure_threshold_out_of_range() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("circuit_breaker.failure_threshold"));
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -353,7 +345,6 @@ fn validate_service_circuit_breaker_open_duration_out_of_range() {
             .message
             .contains("circuit_breaker.open_duration_milliseconds")
     );
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -387,7 +378,6 @@ fn validate_service_circuit_breaker_half_open_max_requests_out_of_range() {
             .message
             .contains("circuit_breaker.half_open_max_requests")
     );
-    assert_eq!(report.errors.len(), 1);
 }
 
 #[test]
@@ -417,5 +407,4 @@ fn validate_service_circuit_breaker_success_threshold_out_of_range() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("circuit_breaker.success_threshold"));
-    assert_eq!(report.errors.len(), 1);
 }

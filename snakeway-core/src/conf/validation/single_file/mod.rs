@@ -1,6 +1,7 @@
 mod device;
 mod ingress;
 mod server;
+#[cfg(test)]
 mod tests;
 
 pub use device::*;
