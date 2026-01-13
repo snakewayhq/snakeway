@@ -3,6 +3,7 @@ use crate::conf::types::{
     UpstreamSpec,
 };
 use crate::conf::validation::{ValidationReport, validate_ingresses, validate_services};
+use pretty_assertions::assert_eq;
 
 fn minimal_maybe_bind_addr() -> Option<BindSpec> {
     Some(BindSpec {
@@ -436,7 +437,7 @@ fn validate_service_circuit_breaker_success_threshold_out_of_range() {
 fn validate_sock_file_not_reused_across_services() {
     // Arrange
     let sock = "/tmp/test.sock";
-    let expected_error = format!("duplicate upstream sock:{}", sock);
+    let expected_error = format!("duplicate upstream sock: {}", sock);
     let mut report = ValidationReport::default();
     let services = vec![
         ServiceSpec {

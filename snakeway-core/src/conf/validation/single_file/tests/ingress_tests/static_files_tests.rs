@@ -1,9 +1,14 @@
-use crate::conf::types::{IngressSpec, StaticFilesSpec, StaticRouteSpec};
+use crate::conf::types::{BindSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec};
 use crate::conf::validation::{ValidationReport, validate_ingresses};
+use pretty_assertions::assert_eq;
 use std::path::PathBuf;
 
 fn minimal_static_files_ingress(file_dir: &str) -> IngressSpec {
     IngressSpec {
+        bind: Some(BindSpec {
+            addr: "127.0.0.1:8080".to_string(),
+            ..Default::default()
+        }),
         static_files: vec![StaticFilesSpec {
             routes: vec![StaticRouteSpec {
                 file_dir: PathBuf::from(file_dir),
