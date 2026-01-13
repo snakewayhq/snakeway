@@ -227,7 +227,7 @@ fn validate_identity_device_trusted_proxy_public_ip_warning() {
     assert!(report.has_violations());
     assert!(report.warnings.iter().any(|w| {
         w.message
-            .contains("cannot contain a public IP range: 8.8.8.8/32")
+            .contains("should NOT contain a public IP range: 8.8.8.8/32")
     }))
 }
 
