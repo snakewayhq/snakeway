@@ -284,3 +284,32 @@ fn invalid_port_produces_error() {
     // Assert
     assert_eq!(report.errors[0].message, "invalid port: 0");
 }
+
+#[test]
+fn redirect_should_not_exist_without_tls() {
+    // Arrange
+    let addr = "127.0.0.1:8080".to_string();
+    let expected_error = format!("redirect_http_to_https requires TLS: {addr}");
+    let expected_help =
+        Some("Enable TLS on the bind or remove redirect_http_to_https.".to_string());
+    let mut report = ValidationReport::default();
+    let ingress = IngressSpec {
+        bind: Some(BindSpec {
+            addr,
+            redirect_http_to_https: Some(RedirectSpec {
+                port: 8080,
+                status: 308,
+            }),
+            ..Default::default()
+        }),
+        service_cfgs: vec![minimal_service()],
+        ..Default::default()
+    };
+
+    // Act
+    validate_ingresses(&[ingress], &mut report);
+
+    // Assert
+    assert_eq!(report.errors[0].message, expected_error);
+    assert_eq!(report.errors[0].help, expected_help);
+}

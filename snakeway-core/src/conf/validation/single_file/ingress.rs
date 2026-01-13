@@ -51,6 +51,10 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
 
             if let Some(redirect) = &bind.redirect_http_to_https {
                 validate_redirect(redirect, &bind.origin, report);
+
+                if bind.tls.is_none() {
+                    report.redirect_http_to_https_requires_tls(&bind.addr, &bind.origin);
+                }
             }
         }
 
@@ -89,9 +93,12 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
 
 /// Validate
 pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut ValidationReport) {
+    // Validate port
     if spec.port == 0 {
         report.invalid_port(spec.port, origin);
     }
+
+    // Validate response code
     validate_range(spec.status, &REDIRECT_RESPONSE_CODE, report, origin);
 }
 

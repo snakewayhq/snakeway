@@ -170,6 +170,14 @@ impl ValidationReport {
         );
     }
 
+    pub fn redirect_http_to_https_requires_tls(&mut self, addr: &str, origin: &Origin) {
+        self.error(
+            format!("redirect_http_to_https requires TLS: {}", addr),
+            origin,
+            Some("Enable TLS on the bind or remove redirect_http_to_https.".to_string()),
+        );
+    }
+
     pub fn redirect_status_is_not_a_3xx_code(&mut self, status_code: u16, origin: &Origin) {
         self.error(
             format!("redirect status {status_code} is not a 3xx code"),
