@@ -7,6 +7,7 @@ mod redirect;
 mod server;
 mod service;
 mod static_files;
+mod tls;
 
 pub use admin::BindAdminSpec;
 pub use bind::BindSpec;
@@ -20,10 +21,11 @@ use serde::{Deserialize, Serialize};
 pub use server::ServerSpec;
 pub use service::{LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec};
 pub use static_files::{CachePolicySpec, CompressionOptsSpec, StaticFilesSpec, StaticRouteSpec};
+pub use tls::TlsSpec;
 
 /// The operator DSL for the config subsystem.
 /// This defines the configuration file format of files in ./config/ingress.d/*.hcl
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct IngressSpec {
     pub bind: Option<BindSpec>,

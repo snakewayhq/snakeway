@@ -1,6 +1,5 @@
 pub mod service;
-mod tls;
 
 pub use crate::conf::types::runtime::server::*;
+pub use crate::conf::types::runtime::tls::*;
 pub use service::*;
-pub use tls::*;

@@ -138,11 +138,11 @@ impl ValidationReport {
 /// Bind Spec Validation
 impl ValidationReport {
     pub fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {
-        self.error(format!("invalid address: {}", addr), origin, None);
+        self.error(format!("invalid bind address: {}", addr), origin, None);
     }
 
     pub fn duplicate_bind_addr(&mut self, addr: &str, origin: &Origin) {
-        self.error(format!("duplicate address: {}", addr), origin, None);
+        self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
     pub fn missing_cert_file(&mut self, cert_file: &str, origin: &Origin) {
@@ -166,7 +166,7 @@ impl ValidationReport {
 impl ValidationReport {
     pub fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {
         self.error(
-            format!("invalid static dir: {}", dir.display()),
+            format!("invalid static directory: {}", dir.display()),
             origin,
             None,
         );

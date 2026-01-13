@@ -39,7 +39,7 @@ impl ListenerConfig {
         Self {
             name: name.to_string(),
             addr: spec.addr,
-            tls: spec.tls,
+            tls: spec.tls.map(Into::into),
             enable_http2: spec.enable_http2,
             enable_admin: false,
             redirect: None,
@@ -50,7 +50,7 @@ impl ListenerConfig {
         Self {
             name: name.to_string(),
             addr: spec.addr,
-            tls: Some(spec.tls),
+            tls: Some(spec.tls.into()),
             enable_http2: false,
             enable_admin: true,
             redirect: None,

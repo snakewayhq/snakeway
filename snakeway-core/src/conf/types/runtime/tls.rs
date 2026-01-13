@@ -1,3 +1,4 @@
+use crate::conf::types::TlsSpec;
 use serde::{Deserialize, Serialize};
 
 /// Paths are validated and resolved during config validation.
@@ -6,4 +7,13 @@ use serde::{Deserialize, Serialize};
 pub struct TlsConfig {
     pub cert: String,
     pub key: String,
+}
+
+impl From<TlsSpec> for TlsConfig {
+    fn from(spec: TlsSpec) -> Self {
+        Self {
+            cert: spec.cert,
+            key: spec.key,
+        }
+    }
 }

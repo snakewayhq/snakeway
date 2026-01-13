@@ -3,6 +3,7 @@ pub mod listener;
 pub mod route;
 pub mod server;
 pub mod service;
+pub mod tls;
 
 use crate::conf::types::ServerConfig;
 pub use device::*;
