@@ -1,7 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
-use crate::proxy::{AdminGateway, PublicGateway};
+use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
@@ -161,7 +161,11 @@ pub fn build_pingora_server(
     registry.load_from_config(&config)?;
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
-    for listener in config.listeners.iter().filter(|l| !l.enable_admin) {
+    for listener in config
+        .listeners
+        .iter()
+        .filter(|l| !l.enable_admin && l.redirect.is_none())
+    {
         // Build the public HTTP proxy service from Pingora.
         let public_gateway = PublicGateway::new(
             Arc::from(listener.name.clone()),
@@ -186,6 +190,21 @@ pub fn build_pingora_server(
 
         // Register public service.
         server.add_service(public_svc);
+    }
+
+    // Create redirect listener(s).
+    for listener in config
+        .listeners
+        .iter()
+        .filter(|l| l.enable_admin && l.redirect.is_some())
+    {
+        if let Some(redirect) = &listener.redirect {
+            // Build and register the redirect Pingora HTTP proxy service with a standalone listener.
+            let redirect_gateway =
+                RedirectGateway::new(redirect.destination.clone(), redirect.response_code);
+            let redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
+            server.add_service(redirect_scv);
+        }
     }
 
     // Build the admin HTTP proxy service from Pingora.

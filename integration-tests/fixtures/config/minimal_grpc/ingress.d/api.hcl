@@ -4,7 +4,7 @@ bind = {
   enable_http2 = true
 }
 
-redirects = []
+
 
 services = [
   {

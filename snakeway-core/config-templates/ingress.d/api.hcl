@@ -8,7 +8,7 @@ bind = {
   }
 }
 
-redirects = []
+
 
 services = [
   {

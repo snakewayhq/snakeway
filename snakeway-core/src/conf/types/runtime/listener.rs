@@ -1,5 +1,5 @@
 use crate::conf::types::shared::TlsConfig;
-use crate::conf::types::{BindAdminSpec, BindSpec, RedirectSpec};
+use crate::conf::types::{BindAdminSpec, BindSpec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -24,14 +24,19 @@ pub struct ListenerConfig {
 }
 
 impl ListenerConfig {
-    pub fn from_redirect(name: &str, spec: RedirectSpec) -> Self {
+    pub fn from_redirect(
+        name: &str,
+        from_addr: String,
+        redirect_response_code: u16,
+        spec: BindSpec,
+    ) -> Self {
         Self {
             name: name.to_string(),
-            addr: spec.addr.clone(),
+            addr: from_addr,
             tls: None,
             enable_http2: false,
             enable_admin: false,
-            redirect: Some(spec.into()),
+            redirect: Some(RedirectConfig::new(spec.addr, redirect_response_code)),
         }
     }
 
@@ -60,15 +65,15 @@ impl ListenerConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RedirectConfig {
-    pub to: String,
-    pub status: u16,
+    pub destination: String,
+    pub response_code: u16,
 }
 
-impl From<RedirectSpec> for RedirectConfig {
-    fn from(spec: RedirectSpec) -> Self {
+impl RedirectConfig {
+    pub fn new(destination: String, response_code: u16) -> Self {
         Self {
-            to: spec.to,
-            status: spec.status,
+            destination,
+            response_code,
         }
     }
 }

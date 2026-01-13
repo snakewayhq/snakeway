@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin, RedirectSpec,
-    ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
+    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin, ServiceSpec,
+    StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -42,9 +42,6 @@ struct IngressFile {
     bind_admin: Option<BindAdminSpec>,
 
     #[serde(default)]
-    redirects: Vec<RedirectSpec>,
-
-    #[serde(default)]
     services: Vec<ServiceSpec>,
 
     #[serde(default)]
@@ -64,10 +61,6 @@ pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
 
     if let Some(bind_admin) = &mut parsed.bind_admin {
         bind_admin.origin = Origin::new(&path.to_path_buf(), "bind_admin", None);
-    }
-
-    for (i, redirect) in parsed.redirects.iter_mut().enumerate() {
-        redirect.origin = Origin::new(&path.to_path_buf(), "redirect", Some(i));
     }
 
     for (i, service) in parsed.services.iter_mut().enumerate() {
@@ -94,7 +87,6 @@ pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     Ok(IngressSpec {
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
-        redirect_cfgs: parsed.redirects,
         service_cfgs: parsed.services,
         static_cfgs: parsed.static_files,
     })
