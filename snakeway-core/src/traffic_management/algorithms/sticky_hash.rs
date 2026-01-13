@@ -78,7 +78,6 @@ impl TrafficStrategy for StickyHash {
         Some(TrafficDecision {
             upstream_id: upstream.endpoint.id(),
             reason: DecisionReason::StickyHash,
-            protocol: None,
             cb_started: true,
         })
     }

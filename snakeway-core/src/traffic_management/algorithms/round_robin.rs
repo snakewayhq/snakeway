@@ -28,7 +28,6 @@ impl TrafficStrategy for RoundRobin {
         Some(TrafficDecision {
             upstream_id: upstream.endpoint.id(),
             reason: DecisionReason::RoundRobin,
-            protocol: None,
             cb_started: true,
         })
     }
