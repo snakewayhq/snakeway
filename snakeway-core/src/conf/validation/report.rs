@@ -55,6 +55,9 @@ impl ValidationReport {
     }
 
     pub fn render_json(&self) {
+        if !self.has_violations() {
+            return;
+        }
         let json = ValidationReportJson {
             errors: &self.errors,
             warnings: &self.warnings,
@@ -67,6 +70,10 @@ impl ValidationReport {
     }
 
     pub fn render_plain(&self) {
+        if !self.has_violations() {
+            return;
+        }
+
         for issue in self.errors.iter().chain(self.warnings.iter()) {
             let severity = match issue.severity {
                 Severity::Error => "error",
@@ -87,28 +94,29 @@ impl ValidationReport {
     }
 
     pub fn render_pretty(&self) {
-        let errors = self
-            .errors
-            .iter()
-            .filter(|i| matches!(i.severity, Severity::Error))
-            .count();
-
-        let warnings = self.warnings.len();
-
-        if errors > 0 || warnings > 0 {
-            println!(
-                "configuration validation failed ({} errors, {} warnings)\n",
-                errors, warnings
-            );
+        if !self.has_violations() {
+            return;
         }
 
+        // Establish that there are some errors and/or warnings.
+        println!(
+            "configuration validation failed ({} errors, {} warnings)\n",
+            self.errors.len(),
+            self.warnings.len()
+        );
+
+        // Group violations by config file.
         let mut by_file = std::collections::BTreeMap::new();
+
+        // Errors...
         for issue in &self.errors {
             by_file
                 .entry(&issue.origin.file)
                 .or_insert(Vec::new())
                 .push(issue);
         }
+
+        // Warnings...
         for issue in &self.warnings {
             by_file
                 .entry(&issue.origin.file)
@@ -116,6 +124,7 @@ impl ValidationReport {
                 .push(issue);
         }
 
+        // Render each file's violations in order.
         for (file, issues) in by_file {
             println!("{}", file.display());
 
@@ -327,7 +336,7 @@ impl ValidationReport {
         origin: &Origin,
     ) {
         self.warning(
-            format!("trusted_proxies cannot contain a public IP range: {network}"),
+            format!("trusted_proxies should NOT contain a public IP range: {network}"),
             origin,
             None,
         )
