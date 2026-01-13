@@ -131,7 +131,7 @@ pub fn validate_services(
     services: &[ServiceSpec],
     report: &mut ValidationReport,
 ) {
-    let bind_uses_http2 = maybe_bind.as_ref().map_or(false, |b| b.enable_http2);
+    let bind_uses_http2 = maybe_bind.as_ref().is_some_and(|b| b.enable_http2);
     for service in services {
         if service.upstreams.is_empty() {
             report.service_has_no_upstreams(&service.origin);
