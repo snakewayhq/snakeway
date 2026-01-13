@@ -65,7 +65,7 @@ static_files = [
     routes = [
       {
         path              = "/assets"
-        file_dir          = "./public"
+        file_dir          = "/var/www/html"
         index             = "index.html"
         directory_listing = false
         max_file_size     = 1048576

@@ -220,6 +220,17 @@ impl ValidationReport {
             None,
         );
     }
+
+    pub fn invalid_static_dir_must_be_absolute(&mut self, dir: &std::path::Path, origin: &Origin) {
+        self.error(
+            format!(
+                "static file directory must be an absolute path: {}",
+                dir.display()
+            ),
+            origin,
+            None,
+        );
+    }
 }
 
 /// Service Spec Validation

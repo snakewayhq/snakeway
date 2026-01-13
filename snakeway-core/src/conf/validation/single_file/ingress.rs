@@ -85,6 +85,9 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 if !route.file_dir.exists() {
                     report.invalid_static_dir(&route.file_dir, &route.origin);
                 }
+                if route.file_dir.is_relative() {
+                    report.invalid_static_dir_must_be_absolute(&route.file_dir, &route.origin);
+                }
             }
         }
     }
