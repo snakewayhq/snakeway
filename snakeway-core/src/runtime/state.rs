@@ -3,6 +3,7 @@ use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::types::RouteId;
 use crate::route::{RouteRuntime, Router};
+use crate::runtime::error::ReloadError;
 use crate::runtime::types::{UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
@@ -13,12 +14,21 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-pub async fn reload_runtime_state(config_path: &Path, state: &ArcSwap<RuntimeState>) -> Result<()> {
+pub async fn reload_runtime_state(
+    config_path: &Path,
+    state: &ArcSwap<RuntimeState>,
+) -> Result<(), ReloadError> {
     // Parse and validate config.
-    let cfg = load_config(config_path)?;
+    let validated = load_config(config_path)?;
+
+    if !validated.is_valid() {
+        return Err(ReloadError::InvalidConfig {
+            report: validated.validation_report,
+        });
+    }
 
     // Build a new runtime state OFFLINE.
-    let new_state = build_runtime_state(&cfg.config)?;
+    let new_state = build_runtime_state(&validated.config)?;
 
     // Log comparison against current state.
     let old = state.load();
