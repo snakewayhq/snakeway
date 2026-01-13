@@ -26,6 +26,8 @@ pub use tls::TlsSpec;
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct IngressSpec {
+    #[serde(skip)]
+    pub origin: Origin,
     pub bind: Option<BindSpec>,
     pub bind_admin: Option<BindAdminSpec>,
     pub services: Vec<ServiceSpec>,

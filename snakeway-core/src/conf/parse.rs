@@ -90,6 +90,7 @@ pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     //-------------------------------------------------------------------------
 
     Ok(IngressSpec {
+        origin: Origin::new(&path.to_path_buf(), "ingress", None),
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
         services: parsed.services,

@@ -144,6 +144,17 @@ impl ValidationReport {
     }
 }
 
+/// Ingress Spec Validation
+impl ValidationReport {
+    pub fn missing_bind(&mut self, origin: &Origin) {
+        self.error(
+            "ingress config must have a bind or bind_admin declaration".to_string(),
+            origin,
+            None,
+        );
+    }
+}
+
 /// Bind Spec Validation
 impl ValidationReport {
     pub fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {

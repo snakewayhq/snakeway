@@ -1,7 +1,8 @@
 use crate::conf::types::{
-    BindSpec, CircuitBreakerConfig, Origin, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+    BindSpec, CircuitBreakerConfig, IngressSpec, Origin, ServiceRouteSpec, ServiceSpec,
+    UpstreamSpec,
 };
-use crate::conf::validation::{ValidationReport, validate_services};
+use crate::conf::validation::{ValidationReport, validate_ingresses, validate_services};
 
 fn minimal_maybe_bind_addr() -> Option<BindSpec> {
     Some(BindSpec {
@@ -429,4 +430,42 @@ fn validate_service_circuit_breaker_success_threshold_out_of_range() {
     // Assert
     let error = report.errors.first().expect("expected at least one error");
     assert!(error.message.contains("circuit_breaker.success_threshold"));
+}
+
+#[test]
+fn validate_sock_file_not_reused_across_services() {
+    // Arrange
+    let sock = "/tmp/test.sock";
+    let expected_error = format!("duplicate upstream sock:{}", sock);
+    let mut report = ValidationReport::default();
+    let services = vec![
+        ServiceSpec {
+            upstreams: vec![UpstreamSpec {
+                sock: Some(sock.to_string()),
+                weight: 1,
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+        ServiceSpec {
+            upstreams: vec![UpstreamSpec {
+                sock: Some(sock.to_string()),
+                weight: 1,
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+    ];
+    let bind = minimal_maybe_bind_addr();
+    let ingresses = vec![IngressSpec {
+        bind,
+        services,
+        ..Default::default()
+    }];
+
+    // Act
+    validate_ingresses(&ingresses, &mut report);
+
+    // Assert
+    assert_eq!(report.errors[0].message, expected_error);
 }

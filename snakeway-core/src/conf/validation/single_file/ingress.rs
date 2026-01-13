@@ -17,6 +17,7 @@ use std::path::Path;
 pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_addrs = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
+    let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
         // Bind
@@ -79,8 +80,23 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             }
         }
 
-        validate_services(&ingress.bind, &ingress.services, report);
+        if ingress.bind.is_none() && ingress.bind_admin.is_none() {
+            report.missing_bind(&ingress.origin);
+        }
+
         validate_static_files(&ingress.static_files, report);
+        validate_services(&ingress.bind, &ingress.services, report);
+
+        // Validate across ingresses.
+        for service in &ingress.services {
+            for upstream in &service.upstreams {
+                if let Some(sock) = &upstream.sock
+                    && !seen_upstream_socks.insert(sock.clone())
+                {
+                    report.duplicate_upstream_sock(sock, &service.origin);
+                }
+            }
+        }
     }
 }
 
