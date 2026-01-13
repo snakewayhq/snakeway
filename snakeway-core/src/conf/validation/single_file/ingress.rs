@@ -4,6 +4,7 @@ use crate::conf::validation::validator::range::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
     REDIRECT_RESPONSE_CODE, validate_range,
 };
+use crate::conf::validation::validator::socket_addr::validate_socket_addr;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::Path;
@@ -13,17 +14,14 @@ use std::path::Path;
 /// Structural errors here are aggregated, not fail-fast.
 pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_addrs = HashSet::new();
+    let mut seen_redirect_ports = HashSet::new();
 
     for ingress in ingresses {
         // Bind
         if let Some(bind) = &ingress.bind {
-            let bind_addr: Option<SocketAddr> = match bind.addr.parse() {
-                Ok(a) => Some(a),
-                Err(_) => {
-                    report.invalid_bind_addr(&bind.addr, &bind.origin);
-                    None
-                }
-            };
+            let bind_addr: Option<SocketAddr> = validate_socket_addr(&bind.addr, || {
+                report.invalid_bind_addr(&bind.addr, &bind.origin)
+            });
 
             if let Some(addr) = bind_addr
                 && addr.ip().is_unspecified()
@@ -55,6 +53,10 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 if bind.tls.is_none() {
                     report.redirect_http_to_https_requires_tls(&bind.addr, &bind.origin);
                 }
+
+                if !seen_redirect_ports.insert(&redirect.port) {
+                    report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
+                }
             }
         }
 
@@ -63,13 +65,10 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 report.duplicate_bind_addr(&bind_admin.addr, &bind_admin.origin);
             }
 
-            let bind_admin_addr: Option<SocketAddr> = match bind_admin.addr.parse() {
-                Ok(a) => Some(a),
-                Err(_) => {
-                    report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin);
-                    None
-                }
-            };
+            let bind_admin_addr: Option<SocketAddr> =
+                validate_socket_addr(&bind_admin.addr, || {
+                    report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin)
+                });
 
             if let Some(addr) = bind_admin_addr
                 && addr.ip().is_unspecified()

@@ -194,6 +194,14 @@ impl ValidationReport {
         );
     }
 
+    pub fn duplicate_redirect_http_to_https_port(&mut self, port: u16, origin: &Origin) {
+        self.error(
+            format!("duplicate redirect_http_to_https port: {}", port),
+            origin,
+            None,
+        );
+    }
+
     pub fn invalid_port(&mut self, port: u16, origin: &Origin) {
         self.error(
             format!("invalid port: {}", port),
