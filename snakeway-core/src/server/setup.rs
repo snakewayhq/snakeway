@@ -196,37 +196,37 @@ pub fn build_pingora_server(
     for listener in config
         .listeners
         .iter()
-        .filter(|l| l.enable_admin && l.redirect.is_some())
+        .filter(|l| !l.enable_admin && l.redirect.is_some())
     {
         if let Some(redirect) = &listener.redirect {
             // Build and register the redirect Pingora HTTP proxy service with a standalone listener.
             let redirect_gateway =
                 RedirectGateway::new(redirect.destination.clone(), redirect.response_code);
-            let redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
+            let mut redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
+            redirect_scv.add_tcp(&listener.addr);
             server.add_service(redirect_scv);
         }
     }
 
     // Build the admin HTTP proxy service from Pingora.
     for listener in config.listeners.iter().filter(|l| l.enable_admin) {
-        let admin_gateway = AdminGateway::new(
-            traffic_manager.clone(),
-            connection_manager.clone(),
-            reload.clone(),
-        );
-        let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
-        match &listener.tls {
-            Some(tls) => {
-                let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
-                admin_svc.add_tls_with_settings(&listener.addr, None, tls_settings);
-            }
-            None => {
-                admin_svc.add_tcp(&listener.addr);
-            }
+        if let Some(tls) = &listener.tls {
+            let admin_gateway = AdminGateway::new(
+                traffic_manager.clone(),
+                connection_manager.clone(),
+                reload.clone(),
+            );
+            let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
+            let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
+            admin_svc.add_tls_with_settings(&listener.addr, None, tls_settings);
+            // Register admin service.
+            server.add_service(admin_svc);
+        } else {
+            tracing::warn!(
+                "Admin API listener {} has no TLS configured and will not be bound",
+                listener.name
+            );
         }
-
-        // Register admin service.
-        server.add_service(admin_svc);
     }
 
     Ok(server)

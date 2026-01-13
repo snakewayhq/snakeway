@@ -47,13 +47,13 @@ impl ProxyHttp for RedirectGateway {
         let mut resp = ResponseHeader::build(self.response_code, None)?;
 
         // Set the redirect destination via the location header.
-        let path = session
+        let path_and_query = session
             .req_header()
             .uri
             .path_and_query()
             .map(|pq| pq.as_str())
             .unwrap_or("/");
-        let location = format!("{}{}", self.destination, path);
+        let location = format!("https://{}{}", self.destination, path_and_query);
         resp.insert_header("Location", &location)?;
         resp.insert_header("Connection", "close")?;
         resp.insert_header("Content-Length", "0")?;
