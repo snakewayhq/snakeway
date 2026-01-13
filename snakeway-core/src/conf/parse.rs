@@ -22,15 +22,20 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
 
     let mut device_config = Vec::new();
 
-    if let Some(identity) = parsed.identity_device {
+    if let Some(mut identity) = parsed.identity_device {
+        identity.origin = Origin::new(&path.to_path_buf(), "identity_device", None);
         device_config.push(DeviceSpec::Identity(identity));
     }
 
-    if let Some(logging) = parsed.structured_logging_device {
+    if let Some(mut logging) = parsed.structured_logging_device {
+        logging.origin = Origin::new(&path.to_path_buf(), "structured_logging_device", None);
         device_config.push(DeviceSpec::StructuredLogging(logging));
     }
 
-    device_config.extend(parsed.wasm_devices.into_iter().map(DeviceSpec::Wasm));
+    for (idx, mut device) in parsed.wasm_devices.into_iter().enumerate() {
+        device.origin = Origin::new(&path.to_path_buf(), "wasm_device", idx.into());
+        device_config.push(DeviceSpec::Wasm(device));
+    }
 
     Ok(device_config)
 }
