@@ -263,6 +263,14 @@ impl ValidationReport {
     pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
     }
+
+    pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {
+        self.error(
+            format!("websocket route cannot be used with HTTP2: {}", path),
+            origin,
+            None,
+        )
+    }
 }
 
 /// Server Spec Validation

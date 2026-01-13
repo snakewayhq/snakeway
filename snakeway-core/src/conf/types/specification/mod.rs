@@ -28,6 +28,6 @@ pub use tls::TlsSpec;
 pub struct IngressSpec {
     pub bind: Option<BindSpec>,
     pub bind_admin: Option<BindAdminSpec>,
-    pub service_cfgs: Vec<ServiceSpec>,
-    pub static_cfgs: Vec<StaticFilesSpec>,
+    pub services: Vec<ServiceSpec>,
+    pub static_files: Vec<StaticFilesSpec>,
 }

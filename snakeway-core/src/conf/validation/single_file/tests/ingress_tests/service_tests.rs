@@ -1,7 +1,14 @@
 use crate::conf::types::{
-    CircuitBreakerConfig, Origin, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+    BindSpec, CircuitBreakerConfig, Origin, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
 };
 use crate::conf::validation::{ValidationReport, validate_services};
+
+fn minimal_maybe_bind_addr() -> Option<BindSpec> {
+    Some(BindSpec {
+        addr: "127.0.0.1:8080".to_string(),
+        ..BindSpec::default()
+    })
+}
 
 #[test]
 fn validate_multiple_services_at_once() {
@@ -29,9 +36,10 @@ fn validate_multiple_services_at_once() {
             ..Default::default()
         },
     ];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     assert!(
@@ -55,9 +63,10 @@ fn validate_minimum_service_spec() {
         ..Default::default()
     };
     let services = vec![service];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     assert!(!report.has_violations());
@@ -82,9 +91,10 @@ fn validate_websocket_service() {
         ..Default::default()
     };
     let services = vec![service];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     assert!(!report.has_violations());
@@ -101,9 +111,10 @@ fn validate_service_but_have_an_upstream() {
         upstreams: vec![],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -126,9 +137,10 @@ fn validate_service_must_have_an_upstream_with_weight_greater_than_zero() {
         }],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -151,9 +163,10 @@ fn validate_service_must_have_an_upstream_with_weight_not_greater_than_1000() {
         }],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -175,9 +188,10 @@ fn validate_service_upstream_cannot_have_both_addr_and_sock() {
         }],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -197,9 +211,10 @@ fn validate_service_upstream_must_have_either_addr_or_sock() {
         }],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -219,9 +234,10 @@ fn validate_service_upstream_with_invalid_addr() {
         }],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -248,9 +264,10 @@ fn validate_service_duplicate_upstream_socks() {
         ],
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -277,9 +294,10 @@ fn validate_service_circuit_breaker_valid() {
         }),
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     assert!(!report.has_violations());
@@ -305,9 +323,10 @@ fn validate_service_circuit_breaker_failure_threshold_out_of_range() {
         }),
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -334,9 +353,10 @@ fn validate_service_circuit_breaker_open_duration_out_of_range() {
         }),
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -367,9 +387,10 @@ fn validate_service_circuit_breaker_half_open_max_requests_out_of_range() {
         }),
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");
@@ -400,9 +421,10 @@ fn validate_service_circuit_breaker_success_threshold_out_of_range() {
         }),
         ..Default::default()
     }];
+    let maybe_bind = minimal_maybe_bind_addr();
 
     // Act
-    validate_services(&services, &mut report);
+    validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
     let error = report.errors.first().expect("expected at least one error");

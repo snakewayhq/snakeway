@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 fn minimal_static_files_ingress(file_dir: &str) -> IngressSpec {
     IngressSpec {
-        static_cfgs: vec![StaticFilesSpec {
+        static_files: vec![StaticFilesSpec {
             routes: vec![StaticRouteSpec {
                 file_dir: PathBuf::from(file_dir),
                 ..Default::default()

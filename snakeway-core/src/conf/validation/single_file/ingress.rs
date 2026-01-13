@@ -1,4 +1,6 @@
-use crate::conf::types::{IngressSpec, Origin, RedirectSpec, ServiceSpec};
+use crate::conf::types::{
+    BindSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec, StaticFilesSpec,
+};
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::range::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
@@ -77,23 +79,26 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             }
         }
 
-        validate_services(&ingress.service_cfgs, report);
+        validate_services(&ingress.bind, &ingress.services, report);
+        validate_static_files(&ingress.static_files, report);
+    }
+}
 
-        // Static Files
-        for cfg in ingress.static_cfgs.iter() {
-            for route in cfg.routes.iter() {
-                if !route.file_dir.exists() {
-                    report.invalid_static_dir(&route.file_dir, &route.origin);
-                }
-                if route.file_dir.is_relative() {
-                    report.invalid_static_dir_must_be_absolute(&route.file_dir, &route.origin);
-                }
+/// Validate Static files
+fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
+    for spec in static_file_specs.iter() {
+        for route in spec.routes.iter() {
+            if !route.file_dir.exists() {
+                report.invalid_static_dir(&route.file_dir, &route.origin);
+            }
+            if route.file_dir.is_relative() {
+                report.invalid_static_dir_must_be_absolute(&route.file_dir, &route.origin);
             }
         }
     }
 }
 
-/// Validate
+/// Validate redirect configuration.
 pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut ValidationReport) {
     // Validate port
     if spec.port == 0 {
@@ -105,13 +110,25 @@ pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut Vali
 }
 
 /// Validate service definitions.
-pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport) {
+pub fn validate_services(
+    maybe_bind: &Option<BindSpec>,
+    services: &[ServiceSpec],
+    report: &mut ValidationReport,
+) {
+    let bind_uses_http2 = maybe_bind.as_ref().map_or(false, |b| b.enable_http2);
     for service in services {
         if service.upstreams.is_empty() {
             report.service_has_no_upstreams(&service.origin);
         }
 
         let mut seen_sock_values = HashMap::new();
+
+        // Validate routes
+        for route in &service.routes {
+            if bind_uses_http2 && route.enable_websocket {
+                report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
+            }
+        }
 
         // Validate upstreams
         for upstream in &service.upstreams {

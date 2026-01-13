@@ -45,7 +45,7 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             // Services
             //-----------------------------------------------------------------
-            for service_cfg in ingress.service_cfgs {
+            for service_cfg in ingress.services {
                 let unix_upstreams = service_cfg
                     .upstreams
                     .iter()
@@ -87,7 +87,7 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             // Static files
             //-----------------------------------------------------------------
-            for static_cfg in ingress.static_cfgs {
+            for static_cfg in ingress.static_files {
                 for route in static_cfg.routes {
                     let static_route = StaticRouteConfig::new(&listener_name, route);
                     routes.push(RouteConfig::Static(static_route));

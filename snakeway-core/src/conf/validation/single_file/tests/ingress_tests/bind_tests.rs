@@ -28,7 +28,7 @@ fn validate_ingress_valid_minimal_bind() {
             addr: "127.0.0.1:8080".to_string(),
             ..Default::default()
         }),
-        service_cfgs: vec![minimal_service()],
+        services: vec![minimal_service()],
         ..Default::default()
     };
 
@@ -302,7 +302,7 @@ fn redirect_should_not_exist_without_tls() {
             }),
             ..Default::default()
         }),
-        service_cfgs: vec![minimal_service()],
+        services: vec![minimal_service()],
         ..Default::default()
     };
 

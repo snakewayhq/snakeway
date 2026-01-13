@@ -92,7 +92,7 @@ pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     Ok(IngressSpec {
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
-        service_cfgs: parsed.services,
-        static_cfgs: parsed.static_files,
+        services: parsed.services,
+        static_files: parsed.static_files,
     })
 }
