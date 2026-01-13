@@ -2,13 +2,16 @@ bind = {
   addr         = "127.0.0.1:8443"
   enable_http2 = true
 
+  redirect_http_to_https = {
+    port   = 8080
+    status = 308
+  }
+
   tls = {
     cert = "./integration-tests/certs/server.pem"
     key  = "./integration-tests/certs/server.key"
   }
 }
-
-
 
 services = [
   {
