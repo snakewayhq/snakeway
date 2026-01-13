@@ -40,4 +40,4 @@ To start the proxy, simply run the binary and point it to your configuration dir
 ```
 
 If your configuration is valid, Snakeway will start and begin listening for incoming traffic based on your defined
-listeners.
+ingress configuration files.
