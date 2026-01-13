@@ -11,16 +11,9 @@ pub enum DecisionReason {
 }
 
 #[derive(Debug, Clone)]
-pub enum EnforcedProtocol {
-    Http1,
-    Http2,
-}
-
-#[derive(Debug, Clone)]
 pub struct TrafficDecision {
     pub upstream_id: UpstreamId,
     pub reason: DecisionReason,
-    pub protocol: Option<EnforcedProtocol>,
     pub cb_started: bool,
 }
 

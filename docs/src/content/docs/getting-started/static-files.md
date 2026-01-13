@@ -16,13 +16,20 @@ cargo build --release --features static_files
 
 ## Configuration
 
-To serve static files, add a route with `file_dir` instead of `upstream`:
+To serve static files, add a route to the `static_files` block:
 
-```toml
-[[static_route]]
-path = "/"
-file_dir = "/var/www/public"
-index = "index.html"
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/"
+        file_dir = "/var/www/public"
+        index    = "index.html"
+      }
+    ]
+  }
+]
 ```
 
 ### Configuration Options
@@ -33,22 +40,22 @@ index = "index.html"
 | `file_dir`          | string  | Yes      | The directory containing static files                              |
 | `index`             | string  | No       | The name of the index file, e.g., `index.html` (no default)        |
 | `directory_listing` | boolean | No       | Whether list the contents of directory requests (default: `false`) |
-| `cache_policy`      | table   | No       | Advanced cache policy configuration (see below)                    |
-| `config`            | table   | No       | Advanced static file configuration (see below)                     |
+| `cache_policy`      | object  | No       | Advanced cache policy configuration (see below)                    |
+| `compression`       | object  | No       | Advanced compression configuration (see below)                     |
 
 ### Cache Policy (Per-Route)
 
-Each static route can have an optional `[routes.cache_policy]` cache header behavior.
+Each static route can have an optional `cache_policy` block.
 
-| Option      | Type    | Default | Description                                                                                                                 |
-|-------------|---------|---------|-----------------------------------------------------------------------------------------------------------------------------|
-| `max_age`   | integer | `3600`  | How long a cached response is valid (e.g., `3600 seconds` = `1 hour`).                                                      |
-| `public`    | boolean | `true`  | Indicates a cache can be shared across domains or with third-party services.                                                |
-| `immutable` | boolean | `false` | esponse won't change unless its associated resource changes, allowing caches to return the same result without re-checking. |
+| Option            | Type    | Default | Description                                                                                                                  |
+|-------------------|---------|---------|------------------------------------------------------------------------------------------------------------------------------|
+| `max_age_seconds` | integer | `3600`  | How long a cached response is valid (e.g., `3600 seconds` = `1 hour`).                                                       |
+| `public`          | boolean | `true`  | Indicates a cache can be shared across domains or with third-party services.                                                 |
+| `immutable`       | boolean | `false` | Response won't change unless its associated resource changes, allowing caches to return the same result without re-checking. |
 
-### Advanced Configuration (Per-Route)
+### Advanced Compression (Per-Route)
 
-Each static route can have an optional `[routes.config]` section to customize compression and file handling behavior.
+Each static route can have an optional `compression` block to customize compression behavior.
 
 | Option                 | Type    | Default    | Description                                                                                                 |
 |------------------------|---------|------------|-------------------------------------------------------------------------------------------------------------|
@@ -61,72 +68,123 @@ Each static route can have an optional `[routes.config]` section to customize co
 
 **Example with custom compression settings:**
 
-```toml
-[[static_route]]
-path = "/"
-file_dir = "/var/www/public"
-
-[routes.config]
-enable_brotli = true
-enable_gzip = true
-min_brotli_size = 4096
-min_gzip_size = 1024
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/"
+        file_dir = "/var/www/public"
+        compression = {
+          enable_brotli   = true
+          enable_gzip     = true
+          min_brotli_size = 4096
+          min_gzip_size   = 1024
+        }
+      }
+    ]
+  }
+]
 ```
 
 **Disable compression entirely for a route:**
 
-```toml
-[[static_route]]
-path = "/raw"
-file_dir = "/var/www/raw-assets"
-
-[routes.config]
-enable_brotli = false
-enable_gzip = false
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/raw"
+        file_dir = "/var/www/raw-assets"
+        compression = {
+          enable_brotli = false
+          enable_gzip   = false
+        }
+      }
+    ]
+  }
+]
 ```
 
 **Increase file size limits for large assets:**
 
-```toml
-[[static_route]]
-path = "/downloads"
-file_dir = "/var/www/large-files"
-
-[routes.config]
-max_file_size = 104857600  # 100 MiB
-small_file_threshold = 1048576  # 1 MiB - stream files larger than this
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/downloads"
+        file_dir = "/var/www/large-files"
+        compression = {
+          max_file_size        = 104857600  # 100 MiB
+          small_file_threshold = 1048576    # 1 MiB - stream files larger than this
+        }
+      }
+    ]
+  }
+]
 ```
 
 ### Example Configurations
 
 **Serve a single-page application:**
 
-```toml
-[[static_route]]
-path = "/"
-file_dir = "/var/www/dist"
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/"
+        file_dir = "/var/www/dist"
+      }
+    ]
+  }
+]
 ```
 
 **Serve static assets under a prefix:**
 
-```toml
-[[static_route]]
-path = "/static"
-file_dir = "/var/www/assets"
+```hcl
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/static"
+        file_dir = "/var/www/assets"
+      }
+    ]
+  }
+]
 ```
 
 **Mix static files with API proxy:**
 
-```toml
+```hcl
+services = [
+  {
+    routes = [
+      {
+        path = "/api"
+      }
+    ]
+    upstreams = [
+      {
+        addr = "127.0.0.1:8080"
+      }
+    ]
+  }
+]
 
-[[static_route]]
-path = "/api"
-service = "127.0.0.1:8080"
-
-
-[[static_route]]
-path = "/"
-file_dir = "/var/www/public"
+static_files = [
+  {
+    routes = [
+      {
+        path     = "/"
+        file_dir = "/var/www/public"
+      }
+    ]
+  }
+]
 ```
 
 ## MIME Type Detection

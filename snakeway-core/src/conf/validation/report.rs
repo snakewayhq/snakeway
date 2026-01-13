@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use std::path::Display;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
     pub message: String,
@@ -12,12 +12,14 @@ pub struct ValidationIssue {
     pub help: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub enum Severity {
+    #[default]
     Error,
     Warning,
 }
 
+#[derive(Debug, Default)]
 pub struct ValidationReport {
     pub errors: Vec<ValidationIssue>,
     pub warnings: Vec<ValidationIssue>,
@@ -53,6 +55,9 @@ impl ValidationReport {
     }
 
     pub fn render_json(&self) {
+        if !self.has_violations() {
+            return;
+        }
         let json = ValidationReportJson {
             errors: &self.errors,
             warnings: &self.warnings,
@@ -65,6 +70,10 @@ impl ValidationReport {
     }
 
     pub fn render_plain(&self) {
+        if !self.has_violations() {
+            return;
+        }
+
         for issue in self.errors.iter().chain(self.warnings.iter()) {
             let severity = match issue.severity {
                 Severity::Error => "error",
@@ -85,28 +94,29 @@ impl ValidationReport {
     }
 
     pub fn render_pretty(&self) {
-        let errors = self
-            .errors
-            .iter()
-            .filter(|i| matches!(i.severity, Severity::Error))
-            .count();
-
-        let warnings = self.warnings.len();
-
-        if errors > 0 || warnings > 0 {
-            println!(
-                "configuration validation failed ({} errors, {} warnings)\n",
-                errors, warnings
-            );
+        if !self.has_violations() {
+            return;
         }
 
+        // Establish that there are some errors and/or warnings.
+        println!(
+            "configuration validation failed ({} errors, {} warnings)\n",
+            self.errors.len(),
+            self.warnings.len()
+        );
+
+        // Group violations by config file.
         let mut by_file = std::collections::BTreeMap::new();
+
+        // Errors...
         for issue in &self.errors {
             by_file
                 .entry(&issue.origin.file)
                 .or_insert(Vec::new())
                 .push(issue);
         }
+
+        // Warnings...
         for issue in &self.warnings {
             by_file
                 .entry(&issue.origin.file)
@@ -114,6 +124,7 @@ impl ValidationReport {
                 .push(issue);
         }
 
+        // Render each file's violations in order.
         for (file, issues) in by_file {
             println!("{}", file.display());
 
@@ -133,14 +144,25 @@ impl ValidationReport {
     }
 }
 
+/// Ingress Spec Validation
+impl ValidationReport {
+    pub fn missing_bind(&mut self, origin: &Origin) {
+        self.error(
+            "ingress config must have a bind or bind_admin declaration".to_string(),
+            origin,
+            None,
+        );
+    }
+}
+
 /// Bind Spec Validation
 impl ValidationReport {
     pub fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {
-        self.error(format!("invalid address: {}", addr), origin, None);
+        self.error(format!("invalid bind address: {}", addr), origin, None);
     }
 
     pub fn duplicate_bind_addr(&mut self, addr: &str, origin: &Origin) {
-        self.error(format!("duplicate address: {}", addr), origin, None);
+        self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
     pub fn missing_cert_file(&mut self, cert_file: &str, origin: &Origin) {
@@ -158,13 +180,64 @@ impl ValidationReport {
             Some("Enable TLS on the bind or disable HTTP/2.".to_string()),
         );
     }
+
+    pub fn redirect_http_to_https_requires_tls(&mut self, addr: &str, origin: &Origin) {
+        self.error(
+            format!("redirect_http_to_https requires TLS: {}", addr),
+            origin,
+            Some("Enable TLS on the bind or remove redirect_http_to_https.".to_string()),
+        );
+    }
+
+    pub fn redirect_status_is_not_a_3xx_code(&mut self, status_code: u16, origin: &Origin) {
+        self.error(
+            format!("redirect status {status_code} is not a 3xx code"),
+            origin,
+            None,
+        );
+    }
+
+    pub fn invalid_http_status_code(&mut self, status_code: u16, origin: &Origin) {
+        self.error(
+            format!("invalid HTTP status code {}", status_code),
+            origin,
+            None,
+        );
+    }
+
+    pub fn duplicate_redirect_http_to_https_port(&mut self, port: u16, origin: &Origin) {
+        self.error(
+            format!("duplicate redirect_http_to_https port: {}", port),
+            origin,
+            None,
+        );
+    }
+
+    pub fn invalid_port(&mut self, port: u16, origin: &Origin) {
+        self.error(
+            format!("invalid port: {}", port),
+            origin,
+            Some("ports must be in the range 1–65535".to_string()),
+        );
+    }
 }
 
 /// Static Files Spec Validation
 impl ValidationReport {
     pub fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {
         self.error(
-            format!("invalid static dir: {}", dir.display()),
+            format!("invalid static directory: {}", dir.display()),
+            origin,
+            None,
+        );
+    }
+
+    pub fn invalid_static_dir_must_be_absolute(&mut self, dir: &std::path::Path, origin: &Origin) {
+        self.error(
+            format!(
+                "static file directory must be an absolute path: {}",
+                dir.display()
+            ),
             origin,
             None,
         );
@@ -200,6 +273,14 @@ impl ValidationReport {
 
     pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
+    }
+
+    pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {
+        self.error(
+            format!("websocket route cannot be used with HTTP2: {}", path),
+            origin,
+            None,
+        )
     }
 }
 
@@ -301,7 +382,7 @@ impl ValidationReport {
         origin: &Origin,
     ) {
         self.warning(
-            format!("trusted_proxies cannot contain a public IP range: {network}"),
+            format!("trusted_proxies should NOT contain a public IP range: {network}"),
             origin,
             None,
         )

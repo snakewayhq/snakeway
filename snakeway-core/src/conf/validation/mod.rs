@@ -7,5 +7,7 @@ pub mod validator;
 
 pub use error::ConfigError;
 pub use report::*;
+#[cfg(test)]
+pub use single_file::*;
 pub use validate::validate_spec;
 pub use validated_config::ValidatedConfig;

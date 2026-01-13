@@ -3,7 +3,7 @@ bind = {
   enable_http2 = false
 }
 
-redirects = []
+
 
 services = [
   {

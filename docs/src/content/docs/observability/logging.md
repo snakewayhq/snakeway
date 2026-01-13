@@ -9,17 +9,18 @@ management tools.
 
 ### Configuring the Logging Device
 
-To enable structured logging, add the `[[structured_logging]]` configuration to your `devices.d/` directory:
+To enable structured logging, add the `structured_logging_device` configuration to your `devices.d/` directory:
 
-```toml
-[[structured_logging]]
-enable = true
-level = "info"
-include_headers = true
-allowed_headers = ["User-Agent", "X-Request-Id"]
-redacted_headers = ["Authorization", "Cookie"]
-include_identity = true
-identity_fields = ["country", "device", "bot"]
+```hcl
+structured_logging_device = {
+  enable           = true
+  level            = "info"
+  include_headers  = true
+  allowed_headers = ["User-Agent", "X-Request-Id"]
+  redacted_headers = ["Authorization", "Cookie"]
+  include_identity = true
+  identity_fields = ["country", "device", "bot"]
+}
 ```
 
 ### Log Format
@@ -64,9 +65,9 @@ To keep your logs clean and secure, Snakeway offers fine-grained control over he
 You can control which phases of the request/response lifecycle are logged using the `phases` and `events` settings. This
 is useful for reducing log volume in high-traffic environments:
 
-```toml
-[[structured_logging]]
-
-phases = ["response"]
-events = ["response"]
+```hcl
+structured_logging_device = {
+  phases = ["response"]
+  events = ["response"]
+}
 ```

@@ -8,39 +8,43 @@ built-in and WebAssembly-based devices.
 
 ### Enabling Devices
 
-Devices are defined in your configuration using the `[[wasm]]`, `[[identity]]`, or `[[structured_logging]]` arrays.
-While you can define these directly in `snakeway.toml`, they are typically placed in the `devices.d/` directory for
-better organization.
+Devices are defined in your configuration using the `wasm_devices`, `identity_device`, or `structured_logging_device`
+blocks.
+They are located in the `CONFIG_ROOT/devices.d/` directory.
 
 ### Identity Device
 
-The `Identity` device is responsible for identifying the client making the request. It can extract client IP addresses (
-respecting trusted proxies), parse User-Agent strings, and perform GeoIP lookups.
+The `Identity` device is responsible for identifying the client making the request.
 
-```toml
-[[identity]]
-enable = true
-trusted_proxies = ["10.0.0.0/8", "192.168.0.0/16"]
-enable_user_agent = true
-ua_engine = "woothee"
-enable_geoip = true
-geoip_db = "/etc/snakeway/geoip.mmdb"
+It can extract client IP addresses (respecting trusted proxies), parse User-Agent strings, and perform GeoIP lookups.
+
+```hcl
+identity_device = {
+  enable            = true
+  trusted_proxies = ["10.0.0.0/8", "192.168.0.0/16"]
+  enable_user_agent = true
+  ua_engine         = "woothee"
+  enable_geoip      = true
+  geoip_db          = "/etc/snakeway/geoip.mmdb"
+}
 ```
 
 ### Structured Logging Device
 
-The `StructuredLogging` device provides detailed, JSON-formatted logs for every request. It allows you to control
-exactly what information is logged, including specific headers and identity information.
+The `StructuredLogging` device provides detailed, JSON-formatted logs for every request.
 
-```toml
-[[structured_logging]]
-enable = true
-level = "info"
-include_headers = true
-allowed_headers = ["User-Agent", "Accept", "X-Request-Id"]
-redacted_headers = ["Authorization", "Cookie"]
-include_identity = true
-identity_fields = ["ip", "country", "browser"]
+It allows you to control exactly what information is logged, including specific headers and identity information.
+
+```hcl
+structured_logging_device = {
+  enable           = true
+  level            = "info"
+  include_headers  = true
+  allowed_headers = ["User-Agent", "Accept", "X-Request-Id"]
+  redacted_headers = ["Authorization", "Cookie"]
+  include_identity = true
+  identity_fields = ["ip", "country", "browser"]
+}
 ```
 
 ### WASM Devices
@@ -51,14 +55,17 @@ languages like Rust or Go and run them with near-native performance.
 To load a WASM device, you specify the path to the `.wasm` file and an optional configuration blob that will be passed
 to the device at runtime.
 
-```toml
-[[wasm]]
-enable = true
-path = "/path/to/my_plugin.wasm"
-
-[wasm.config]
-api_key = "secret-key"
-environment = "production"
+```hcl
+wasm_devices = [
+  {
+    enable = true
+    path   = "/path/to/my_plugin.wasm"
+    config = {
+      api_key     = "secret-key"
+      environment = "production"
+    }
+  }
+]
 ```
 
 For more information on building your own WASM devices, check out the [WASM Device guide](/devices/wasm).

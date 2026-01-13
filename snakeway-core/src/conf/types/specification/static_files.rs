@@ -9,7 +9,7 @@ pub struct StaticFilesSpec {
     pub routes: Vec<StaticRouteSpec>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct StaticRouteSpec {
     #[serde(skip)]
     pub origin: Origin,

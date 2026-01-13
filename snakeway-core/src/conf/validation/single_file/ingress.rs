@@ -1,9 +1,12 @@
-use crate::conf::types::{IngressSpec, ServiceSpec};
+use crate::conf::types::{
+    BindSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec, StaticFilesSpec,
+};
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::range::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    validate_range,
+    REDIRECT_RESPONSE_CODE, validate_range,
 };
+use crate::conf::validation::validator::socket_addr::validate_socket_addr;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::Path;
@@ -13,17 +16,15 @@ use std::path::Path;
 /// Structural errors here are aggregated, not fail-fast.
 pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_addrs = HashSet::new();
+    let mut seen_redirect_ports = HashSet::new();
+    let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
         // Bind
         if let Some(bind) = &ingress.bind {
-            let bind_addr: Option<SocketAddr> = match bind.addr.parse() {
-                Ok(a) => Some(a),
-                Err(_) => {
-                    report.invalid_bind_addr(&bind.addr, &bind.origin);
-                    None
-                }
-            };
+            let bind_addr: Option<SocketAddr> = validate_socket_addr(&bind.addr, || {
+                report.invalid_bind_addr(&bind.addr, &bind.origin)
+            });
 
             if let Some(addr) = bind_addr
                 && addr.ip().is_unspecified()
@@ -48,6 +49,18 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             if bind.enable_http2 && bind.tls.is_none() {
                 report.http2_requires_tls(&bind.addr, &bind.origin);
             }
+
+            if let Some(redirect) = &bind.redirect_http_to_https {
+                validate_redirect(redirect, &bind.origin, report);
+
+                if bind.tls.is_none() {
+                    report.redirect_http_to_https_requires_tls(&bind.addr, &bind.origin);
+                }
+
+                if !seen_redirect_ports.insert(&redirect.port) {
+                    report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
+                }
+            }
         }
 
         if let Some(bind_admin) = &ingress.bind_admin {
@@ -55,13 +68,10 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 report.duplicate_bind_addr(&bind_admin.addr, &bind_admin.origin);
             }
 
-            let bind_admin_addr: Option<SocketAddr> = match bind_admin.addr.parse() {
-                Ok(a) => Some(a),
-                Err(_) => {
-                    report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin);
-                    None
-                }
-            };
+            let bind_admin_addr: Option<SocketAddr> =
+                validate_socket_addr(&bind_admin.addr, || {
+                    report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin)
+                });
 
             if let Some(addr) = bind_admin_addr
                 && addr.ip().is_unspecified()
@@ -70,27 +80,71 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             }
         }
 
-        validate_services(&ingress.service_cfgs, report);
+        if ingress.bind.is_none() && ingress.bind_admin.is_none() {
+            report.missing_bind(&ingress.origin);
+        }
 
-        // Static Files
-        for cfg in ingress.static_cfgs.iter() {
-            for route in cfg.routes.iter() {
-                if !route.file_dir.exists() {
-                    report.invalid_static_dir(&route.file_dir, &route.origin);
+        validate_static_files(&ingress.static_files, report);
+        validate_services(&ingress.bind, &ingress.services, report);
+
+        // Validate across ingresses.
+        for service in &ingress.services {
+            for upstream in &service.upstreams {
+                if let Some(sock) = &upstream.sock
+                    && !seen_upstream_socks.insert(sock.clone())
+                {
+                    report.duplicate_upstream_sock(sock, &service.origin);
                 }
             }
         }
     }
 }
 
+/// Validate Static files
+fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
+    for spec in static_file_specs.iter() {
+        for route in spec.routes.iter() {
+            if !route.file_dir.exists() {
+                report.invalid_static_dir(&route.file_dir, &route.origin);
+            }
+            if route.file_dir.is_relative() {
+                report.invalid_static_dir_must_be_absolute(&route.file_dir, &route.origin);
+            }
+        }
+    }
+}
+
+/// Validate redirect configuration.
+pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut ValidationReport) {
+    // Validate port
+    if spec.port == 0 {
+        report.invalid_port(spec.port, origin);
+    }
+
+    // Validate response code
+    validate_range(spec.status, &REDIRECT_RESPONSE_CODE, report, origin);
+}
+
 /// Validate service definitions.
-pub fn validate_services(services: &[ServiceSpec], report: &mut ValidationReport) {
+pub fn validate_services(
+    maybe_bind: &Option<BindSpec>,
+    services: &[ServiceSpec],
+    report: &mut ValidationReport,
+) {
+    let bind_uses_http2 = maybe_bind.as_ref().is_some_and(|b| b.enable_http2);
     for service in services {
         if service.upstreams.is_empty() {
             report.service_has_no_upstreams(&service.origin);
         }
 
         let mut seen_sock_values = HashMap::new();
+
+        // Validate routes
+        for route in &service.routes {
+            if bind_uses_http2 && route.enable_websocket {
+                report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
+            }
+        }
 
         // Validate upstreams
         for upstream in &service.upstreams {

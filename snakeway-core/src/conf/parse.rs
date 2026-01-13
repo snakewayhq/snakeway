@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin, RedirectSpec,
-    ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
+    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin, ServiceSpec,
+    StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -22,15 +22,20 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
 
     let mut device_config = Vec::new();
 
-    if let Some(identity) = parsed.identity_device {
+    if let Some(mut identity) = parsed.identity_device {
+        identity.origin = Origin::new(&path.to_path_buf(), "identity_device", None);
         device_config.push(DeviceSpec::Identity(identity));
     }
 
-    if let Some(logging) = parsed.structured_logging_device {
+    if let Some(mut logging) = parsed.structured_logging_device {
+        logging.origin = Origin::new(&path.to_path_buf(), "structured_logging_device", None);
         device_config.push(DeviceSpec::StructuredLogging(logging));
     }
 
-    device_config.extend(parsed.wasm_devices.into_iter().map(DeviceSpec::Wasm));
+    for (idx, mut device) in parsed.wasm_devices.into_iter().enumerate() {
+        device.origin = Origin::new(&path.to_path_buf(), "wasm_device", idx.into());
+        device_config.push(DeviceSpec::Wasm(device));
+    }
 
     Ok(device_config)
 }
@@ -40,9 +45,6 @@ struct IngressFile {
     bind: Option<BindSpec>,
 
     bind_admin: Option<BindAdminSpec>,
-
-    #[serde(default)]
-    redirects: Vec<RedirectSpec>,
 
     #[serde(default)]
     services: Vec<ServiceSpec>,
@@ -64,10 +66,6 @@ pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
 
     if let Some(bind_admin) = &mut parsed.bind_admin {
         bind_admin.origin = Origin::new(&path.to_path_buf(), "bind_admin", None);
-    }
-
-    for (i, redirect) in parsed.redirects.iter_mut().enumerate() {
-        redirect.origin = Origin::new(&path.to_path_buf(), "redirect", Some(i));
     }
 
     for (i, service) in parsed.services.iter_mut().enumerate() {
@@ -92,10 +90,10 @@ pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     //-------------------------------------------------------------------------
 
     Ok(IngressSpec {
+        origin: Origin::new(&path.to_path_buf(), "ingress", None),
         bind: parsed.bind,
         bind_admin: parsed.bind_admin,
-        redirect_cfgs: parsed.redirects,
-        service_cfgs: parsed.services,
-        static_cfgs: parsed.static_files,
+        services: parsed.services,
+        static_files: parsed.static_files,
     })
 }

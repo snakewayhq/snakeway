@@ -89,7 +89,7 @@ services = [
     let ingress = parse_ingress(&path).unwrap();
 
     // Assert
-    let svc = &ingress.service_cfgs[0];
+    let svc = &ingress.services[0];
     assert_eq!(svc.origin.section, "service");
     assert_eq!(svc.origin.index, Some(0));
 

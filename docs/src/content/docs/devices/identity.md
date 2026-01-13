@@ -73,9 +73,9 @@ GeoIP support is **opt-in** and **EU-safe by default**.
 * Decoded lazily via path lookups
 * Default enrichment: **country code only**
 
-```toml
+```hcl
 enable_geoip = true
-geoip_db = "./GeoLite2-Country.mmdb"
+geoip_db     = "./GeoLite2-Country.mmdb"
 ```
 
 No city-level or personally identifying location data is collected by default.
@@ -84,9 +84,9 @@ No city-level or personally identifying location data is collected by default.
 
 User-Agent parsing is optional and configurable:
 
-```toml
+```hcl
 enable_user_agent = true
-ua_engine = "woothee"
+ua_engine         = "woothee"
 ```
 
 Supported engines balance accuracy and performance. Defensive limits (such as maximum UA length) are enforced to protect

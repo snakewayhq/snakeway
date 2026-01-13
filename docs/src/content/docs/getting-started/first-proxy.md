@@ -16,47 +16,50 @@ snakeway config init ./my-proxy
 
 ### 2. Configure the Server
 
-The entrypoint config file should exist: `./my-proxy/snakeway.toml`.
+The entrypoint config file should exist: `./my-proxy/snakeway.hcl`.
 
 It should have something that looks like this:
 
-```toml
-[server]
-version = 1
+```hcl
+server {
+  version = 1
+}
 
-[[listener]]
-addr = "127.0.0.1:8080"
-
-[include]
-routes = "routes.d/*.toml"
-services = "services.d/*.toml"
-devices = "devices.d/*.toml"
+include {
+  ingress = "ingress.d/*.hcl"
+  devices = "devices.d/*.hcl"
+}
 ```
 
-### 3. Define the Upstream Service
+### 3. Define the Ingress
 
-Next, we'll define the service we want to proxy to. Create `my-proxy/services.d/httpbin.toml`:
+Next, we'll define the ingress we want to proxy to. Create `my-proxy/ingress.d/httpbin.hcl`:
 
-```toml
-[[service]]
-name = "httpbin"
-strategy = "round_robin"
+```hcl
+bind = {
+  addr = "127.0.0.1:8080"
+}
 
-[[service.upstream]]
-url = "https://httpbin.org"
+services = [
+  {
+    load_balancing_strategy = "round_robin"
+
+    routes = [
+      {
+        path = "/get"
+      }
+    ]
+
+    upstreams = [
+      {
+        addr = "httpbin.org:443"
+      }
+    ]
+  }
+]
 ```
 
-This tells Snakeway that there is a service named `httpbin` located at `https://httpbin.org`.
-
-### 4. Create a Route
-
-Now, let's map an incoming request path to our service. Create `my-proxy/routes.d/api.toml`:
-
-```toml
-[[service_route]]
-path = "/get"
-service = "httpbin"
-```
+This tells Snakeway that there is a service that handles requests to `/get` and forwards them to `httpbin.org`.
 
 With this configuration, any request sent to `http://localhost:8080/get` will be proxied to `https://httpbin.org/get`.
 

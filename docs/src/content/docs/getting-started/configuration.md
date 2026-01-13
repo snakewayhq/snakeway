@@ -8,10 +8,9 @@ Snakeway cannot run without configuration files.
 Directory structure:
 
 ```shell
-/etc/snakeway/snakeway.toml
-/etc/snakeway/routes.d/*.toml
-/etc/snakeway/services.d/*.toml
-/etc/snakeway/devices.d/*.toml  
+/etc/snakeway/snakeway.hcl
+/etc/snakeway/ingress.d/*.hcl
+/etc/snakeway/devices.d/*.hcl  
 ```
 
 The good news?
@@ -37,11 +36,10 @@ Which will yield...
 ```shell                                                                                                                  ✔ 
 ✔ Initialized Snakeway config in /etc/snakeway
 ✔ Created:
-  - snakeway.toml
-  - routes/default.toml
-  - services/api.toml
-  - devices/identity.toml
-  - devices/structured_logging.toml
+  - snakeway.hcl
+  - ingress.d/default.hcl
+  - devices.d/identity.hcl
+  - devices.d/structured_logging.hcl
 
 Next steps:
   snakeway config check

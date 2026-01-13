@@ -4,6 +4,7 @@ use crate::conf::types::{
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
+use std::net::SocketAddr;
 
 pub type IrConfig = (
     ServerConfig,
@@ -33,11 +34,6 @@ pub fn lower_configs(
     for (idx, ingress) in ingresses.into_iter().enumerate() {
         let listener_name = format!("listener-{}", idx);
 
-        for redirect_cfg in ingress.redirect_cfgs {
-            let listener = ListenerConfig::from_redirect(&listener_name, redirect_cfg);
-            listeners.push(listener);
-        }
-
         if let Some(bind_admin) = ingress.bind_admin {
             let listener = ListenerConfig::from_bind_admin(&listener_name, bind_admin);
             listeners.push(listener);
@@ -49,7 +45,7 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             // Services
             //-----------------------------------------------------------------
-            for service_cfg in ingress.service_cfgs {
+            for service_cfg in ingress.services {
                 let unix_upstreams = service_cfg
                     .upstreams
                     .iter()
@@ -91,14 +87,33 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             // Static files
             //-----------------------------------------------------------------
-            for static_cfg in ingress.static_cfgs {
+            for static_cfg in ingress.static_files {
                 for route in static_cfg.routes {
                     let static_route = StaticRouteConfig::new(&listener_name, route);
                     routes.push(RouteConfig::Static(static_route));
                 }
             }
 
-            listeners.push(ListenerConfig::from_bind(&listener_name, bind));
+            //-----------------------------------------------------------------
+            // Bind/Listener
+            //-----------------------------------------------------------------
+            listeners.push(ListenerConfig::from_bind(&listener_name, bind.clone()));
+
+            //-----------------------------------------------------------------
+            // Add listener
+            //-----------------------------------------------------------------
+            if let Some(redirect) = bind.clone().redirect_http_to_https {
+                let listener_name = format!("redirect-listener-{}", idx);
+                let mut socket: SocketAddr = bind.addr.parse().expect("invalid bind address");
+                socket.set_port(redirect.port);
+                let listener = ListenerConfig::from_redirect(
+                    &listener_name,
+                    socket.to_string(),
+                    redirect.status,
+                    bind,
+                );
+                listeners.push(listener);
+            }
         }
     }
 

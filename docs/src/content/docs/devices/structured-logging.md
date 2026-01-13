@@ -41,13 +41,13 @@ You can control *when* logs are emitted using event and phase filters.
 
 ### Events
 
-```toml
+```hcl
 events = ["request", "response"]
 ```
 
 ### Phases
 
-```toml
+```hcl
 phases = ["request", "response"]
 ```
 
@@ -82,18 +82,18 @@ If enabled, you can:
 * Whitelist which headers are allowed
 * Redact sensitive headers by name
 
-```toml
+```hcl
 include_headers = true
 
 allowed_headers = [
-    "host",
-    "user-agent",
-    "x-request-id"
+  "host",
+  "user-agent",
+  "x-request-id"
 ]
 
 redact_headers = [
-    "authorization",
-    "cookie"
+  "authorization",
+  "cookie"
 ]
 ```
 
@@ -101,15 +101,15 @@ redact_headers = [
 
 ## Configuration Example
 
-```toml
-[structured_logging_device]
-enable = true
-
-level = "info"
-include_identity = true
-identity_fields = ["country", "device"]
-include_headers = false
-events = ["request", "response"]
+```hcl
+structured_logging_device = {
+  enable           = true
+  level            = "info"
+  include_identity = true
+  identity_fields  = ["country", "device"]
+  include_headers  = false
+  events           = ["request", "response"]
+}
 ```
 
 ## Integration with Tracing

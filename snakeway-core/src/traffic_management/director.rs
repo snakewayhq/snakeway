@@ -58,7 +58,6 @@ impl TrafficDirector {
                 .unwrap_or_else(|| TrafficDecision {
                     upstream_id: healthy_candidates[0].endpoint.id(),
                     reason: DecisionReason::NoStrategyDecision,
-                    protocol: None,
                     cb_started: true,
                 });
 

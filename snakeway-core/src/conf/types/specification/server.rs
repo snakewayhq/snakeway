@@ -2,7 +2,7 @@ use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ServerSpec {
     #[serde(skip)]
     pub origin: Origin,

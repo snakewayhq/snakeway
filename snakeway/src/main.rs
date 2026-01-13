@@ -4,6 +4,7 @@ use snakeway_core::conf::load_config;
 use snakeway_core::logging::{LogMode, default_log_mode, init_logging};
 use snakeway_core::server;
 use std::path::Path;
+use std::process::exit;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -116,19 +117,26 @@ fn main() {
         Some(Command::Run {
             config: config_path,
         }) => {
-            init_logging();
-
-            let cfg = load_config(Path::new(&config_path)).expect("Failed to load Snakeway config");
-            server::run(config_path, cfg.config).expect("Failed to start Snakeway server");
+            run(&config_path);
         }
 
         None => {
-            init_logging();
-
-            let config_path = "config".to_string();
-            let cfg = load_config(Path::new(&config_path))
-                .expect("Failed to load default Snakeway config");
-            server::run(config_path, cfg.config).expect("Failed to start Snakeway server");
+            run("./config");
         }
+    }
+}
+
+fn run(config_path: &str) {
+    init_logging();
+
+    let validated =
+        load_config(Path::new(&config_path)).expect("Failed to load default Snakeway config");
+
+    validated.validation_report.render_pretty();
+
+    if validated.is_valid() {
+        server::run(config_path, validated.config).expect("Failed to start Snakeway server");
+    } else {
+        exit(1);
     }
 }
