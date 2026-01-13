@@ -44,6 +44,13 @@ pub const SERVER_THREADS: RangeConstraint<usize> = RangeConstraint {
     units: None,
 };
 
+pub const REDIRECT_RESPONSE_CODE: RangeConstraint<u16> = RangeConstraint {
+    min: 300,
+    max: 399,
+    label: "redirect_response_code",
+    units: None,
+};
+
 pub fn validate_range<T>(
     value: T,
     constraint: &RangeConstraint<T>,

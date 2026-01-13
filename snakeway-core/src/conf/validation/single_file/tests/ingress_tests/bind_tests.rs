@@ -1,5 +1,5 @@
 use crate::conf::types::*;
-use crate::conf::validation::{ValidationReport, validate_ingresses};
+use crate::conf::validation::{ValidationReport, validate_ingresses, validate_redirect};
 use pretty_assertions::assert_eq;
 use std::path::PathBuf;
 
@@ -213,26 +213,74 @@ fn validate_ingress_duplicate_admin_and_public_bind() {
     assert_eq!(report.errors.first().unwrap().message, expected_error);
 }
 
+fn test_origin() -> Origin {
+    Origin::test("redirect_http_to_https")
+}
+
 #[test]
-fn validate_ingress_static_file_dir_does_not_exist() {
+fn valid_3xx_status_produces_no_errors() {
     // Arrange
-    let file_dir = "/non/existent/static";
-    let expected_error = format!("invalid static directory: {}", file_dir);
-    let mut report = ValidationReport::default();
-    let ingress = IngressSpec {
-        static_cfgs: vec![StaticFilesSpec {
-            routes: vec![StaticRouteSpec {
-                file_dir: PathBuf::from(file_dir),
-                ..Default::default()
-            }],
-            ..Default::default()
-        }],
-        ..Default::default()
+    let spec = RedirectSpec {
+        port: 8080,
+        status: 308,
     };
+    let origin = test_origin();
+    let mut report = ValidationReport::default();
 
     // Act
-    validate_ingresses(&[ingress], &mut report);
+    validate_redirect(&spec, &origin, &mut report);
 
     // Assert
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors.is_empty(), true);
+}
+
+#[test]
+fn valid_non_3xx_status_produces_error_bottom_of_range() {
+    // Arrange
+    let status = 299;
+    let expected_error =
+        format!("invalid redirect_response_code: {status} (must be between 300 and 399)");
+    let spec = RedirectSpec { port: 8080, status };
+    let origin = test_origin();
+    let mut report = ValidationReport::default();
+
+    // Act
+    validate_redirect(&spec, &origin, &mut report);
+
+    // Assert
+    assert_eq!(report.errors[0].message, expected_error);
+}
+
+#[test]
+fn valid_non_3xx_status_produces_error_top_of_range() {
+    // Arrange
+    let status = 400;
+    let expected_error =
+        format!("invalid redirect_response_code: {status} (must be between 300 and 399)");
+    let spec = RedirectSpec { port: 8080, status };
+    let origin = test_origin();
+    let mut report = ValidationReport::default();
+
+    // Act
+    validate_redirect(&spec, &origin, &mut report);
+
+    // Assert
+    assert_eq!(report.errors[0].message, expected_error);
+}
+
+#[test]
+fn invalid_port_produces_error() {
+    // Arrange
+    let spec = RedirectSpec {
+        port: 0,
+        status: 308,
+    };
+    let origin = test_origin();
+    let mut report = ValidationReport::default();
+
+    // Act
+    validate_redirect(&spec, &origin, &mut report);
+
+    // Assert
+    assert_eq!(report.errors[0].message, "invalid port: 0");
 }

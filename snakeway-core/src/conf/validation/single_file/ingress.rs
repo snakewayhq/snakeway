@@ -1,8 +1,8 @@
-use crate::conf::types::{IngressSpec, ServiceSpec};
+use crate::conf::types::{IngressSpec, Origin, RedirectSpec, ServiceSpec};
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::range::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    validate_range,
+    REDIRECT_RESPONSE_CODE, validate_range,
 };
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -48,6 +48,10 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             if bind.enable_http2 && bind.tls.is_none() {
                 report.http2_requires_tls(&bind.addr, &bind.origin);
             }
+
+            if let Some(redirect) = &bind.redirect_http_to_https {
+                validate_redirect(redirect, &bind.origin, report);
+            }
         }
 
         if let Some(bind_admin) = &ingress.bind_admin {
@@ -81,6 +85,14 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             }
         }
     }
+}
+
+/// Validate
+pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut ValidationReport) {
+    if spec.port == 0 {
+        report.invalid_port(spec.port, origin);
+    }
+    validate_range(spec.status, &REDIRECT_RESPONSE_CODE, report, origin);
 }
 
 /// Validate service definitions.

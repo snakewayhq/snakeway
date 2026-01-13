@@ -160,6 +160,30 @@ impl ValidationReport {
             Some("Enable TLS on the bind or disable HTTP/2.".to_string()),
         );
     }
+
+    pub fn redirect_status_is_not_a_3xx_code(&mut self, status_code: u16, origin: &Origin) {
+        self.error(
+            format!("redirect status {status_code} is not a 3xx code"),
+            origin,
+            None,
+        );
+    }
+
+    pub fn invalid_http_status_code(&mut self, status_code: u16, origin: &Origin) {
+        self.error(
+            format!("invalid HTTP status code {}", status_code),
+            origin,
+            None,
+        );
+    }
+
+    pub fn invalid_port(&mut self, port: u16, origin: &Origin) {
+        self.error(
+            format!("invalid port: {}", port),
+            origin,
+            Some("ports must be in the range 1–65535".to_string()),
+        );
+    }
 }
 
 /// Static Files Spec Validation

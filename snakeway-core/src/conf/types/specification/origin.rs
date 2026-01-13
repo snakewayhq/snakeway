@@ -17,6 +17,10 @@ impl Origin {
             index,
         }
     }
+
+    pub fn test(message: &str) -> Self {
+        Self::new(&PathBuf::from("/test/file"), message, None)
+    }
 }
 
 impl fmt::Display for Origin {
