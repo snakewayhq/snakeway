@@ -2,7 +2,7 @@ use crate::conf::RuntimeConfig;
 use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
-use crate::runtime::{RuntimeState, build_runtime_state, reload_runtime_state};
+use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Run the Pingora server with the given configuration.
-pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
+pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     #[cfg(debug_assertions)]
     bail_if_port_is_in_use(&config.listeners)?;
 
@@ -91,7 +91,22 @@ pub fn run(config_path: String, config: RuntimeConfig) -> Result<()> {
                         let new_snapshot = TrafficSnapshot::from_runtime(state.load().as_ref());
                         traffic.update(new_snapshot);
                     }
-                    Err(e) => tracing::error!(error = %e, "reload failed"),
+                    Err(reload_err) => match reload_err {
+                        ReloadError::Load(e) => {
+                            tracing::error!(error = %e, "failed to reload config");
+                        }
+                        ReloadError::InvalidConfig { report } => {
+                            tracing::error!(
+                                error = "configuration validation failed",
+                                error_count = report.errors.len(),
+                                warning_count = report.warnings.len(),
+                                "reload failed"
+                            )
+                        }
+                        ReloadError::Build(e) => {
+                            tracing::error!(error = %e, "failed to build runtime state");
+                        }
+                    },
                 }
             }
         }
