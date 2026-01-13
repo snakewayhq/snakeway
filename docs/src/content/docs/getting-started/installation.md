@@ -29,7 +29,7 @@ define its behavior. By default, it looks for a directory named `config` in the 
 A typical Snakeway deployment consists of:
 
 1. The `snakeway` binary.
-2. A `config` directory containing `snakeway.toml` and various `.d` directories for modular configuration.
+2. A `config` directory containing `snakeway.hcl` and various `.d` directories for modular configuration.
 
 ### Running Snakeway
 

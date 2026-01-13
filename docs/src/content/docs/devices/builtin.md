@@ -70,12 +70,13 @@ This pattern is central to how builtin devices cooperate.
 
 The builtin identity device basic configuration:
 
-```toml
-[identity_device]
-enable = true
+```hcl
+identity_device = {
+  enable = true
 
-enable_geoip = true
-enable_user_agent = true
+  enable_geoip      = true
+  enable_user_agent = true
+}
 ```
 
 Key fields:

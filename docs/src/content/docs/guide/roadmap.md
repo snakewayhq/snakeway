@@ -313,10 +313,9 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 `/etc/snakeway/` directory structure:
 
 ```shell
-/etc/snakeway/snakeway.toml
-/etc/snakeway/routes.d/*.toml
-/etc/snakeway/services.d/*.toml
-/etc/snakeway/devices.d/*.toml  
+/etc/snakeway/snakeway.hcl
+/etc/snakeway/ingress.d/*.hcl
+/etc/snakeway/devices.d/*.hcl  
 ```
 
 * Systemd unit
@@ -370,3 +369,7 @@ Native Prometheus/OpenTelemetry support.
 ### Enhanced Hot reload
 
 Zero-drop reload support.
+
+### Traffic Management
+
+Active health checks (passive health checks already exist).

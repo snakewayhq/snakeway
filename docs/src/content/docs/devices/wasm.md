@@ -85,14 +85,16 @@ This will produce a `.wasm` file in `target/wasm32-wasi/release/`.
 
 Once you have your compiled `.wasm` module, you can load it into Snakeway via your configuration:
 
-```toml
-[[wasm]]
-enable = true
-path = "/path/to/my_wasm_device.wasm"
-
-[wasm.config]
-
-key = "value"
+```hcl
+wasm_devices = [
+  {
+    enable = true
+    path   = "/path/to/my_wasm_device.wasm"
+    config = {
+      key = "value"
+    }
+  }
+]
 ```
 
 For more details on the WIT definition and advanced WASM features, refer to the `snakeway-wit` directory in the Snakeway
