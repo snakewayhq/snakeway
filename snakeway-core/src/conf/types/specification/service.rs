@@ -50,6 +50,7 @@ fn default_weight() -> u32 {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[serde(untagged)]
 pub enum HostSpec {
     Ip(std::net::IpAddr),
     Hostname(String),

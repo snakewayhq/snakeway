@@ -171,16 +171,21 @@ pub fn validate_services(
                 report.invalid_upstream_weight(&upstream.weight, &service.origin);
             }
 
-            match (&upstream.endpoint, &upstream.sock) {
-                (Some(_), Some(_)) => {
+            let has_sock = upstream.sock.is_some();
+
+            let has_endpoint = upstream
+                .endpoint
+                .as_ref()
+                .is_some_and(|endpoint| is_valid_port(endpoint.port));
+
+            match (has_endpoint, has_sock) {
+                (true, false) => {} // valid: tcp upstream
+                (false, true) => {} // valid: unix upstream
+                _ => {
+                    // both or neither (or incomplete endpoint)
                     report.invalid_upstream_target(&service.origin);
                     continue;
                 }
-                (None, None) => {
-                    report.invalid_upstream_target(&service.origin);
-                    continue;
-                }
-                _ => {}
             }
 
             if let Some(endpoint) = &upstream.endpoint {
@@ -199,10 +204,10 @@ pub fn validate_services(
                 }
             }
 
-            if let Some(sock) = &upstream.sock {
-                if seen_sock_values.insert(sock.clone(), ()).is_some() {
-                    report.duplicate_upstream_sock(sock, &service.origin);
-                }
+            if let Some(sock) = &upstream.sock
+                && seen_sock_values.insert(sock.clone(), ()).is_some()
+            {
+                report.duplicate_upstream_sock(sock, &service.origin);
             }
         }
 
