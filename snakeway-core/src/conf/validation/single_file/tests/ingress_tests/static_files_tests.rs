@@ -6,7 +6,6 @@ use std::path::PathBuf;
 fn minimal_static_files_ingress(file_dir: &str) -> IngressSpec {
     IngressSpec {
         bind: Some(BindSpec {
-            addr: "127.0.0.1:8080".to_string(),
             ..Default::default()
         }),
         static_files: vec![StaticFilesSpec {

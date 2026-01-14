@@ -30,20 +30,27 @@ impl ListenerConfig {
         redirect_response_code: u16,
         spec: BindSpec,
     ) -> Self {
+        let addr = spec.resolve().expect("failed to resolve bind address");
         Self {
             name: name.to_string(),
             addr: from_addr,
             tls: None,
             enable_http2: false,
             enable_admin: false,
-            redirect: Some(RedirectConfig::new(spec.addr, redirect_response_code)),
+            redirect: Some(RedirectConfig::new(
+                addr.to_string(),
+                redirect_response_code,
+            )),
         }
     }
 
     pub fn from_bind(name: &str, spec: BindSpec) -> Self {
         Self {
             name: name.to_string(),
-            addr: spec.addr,
+            addr: spec
+                .resolve()
+                .expect("failed to resolve bind address")
+                .to_string(),
             tls: spec.tls.map(Into::into),
             enable_http2: spec.enable_http2,
             enable_admin: false,
@@ -54,7 +61,10 @@ impl ListenerConfig {
     pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Self {
         Self {
             name: name.to_string(),
-            addr: spec.addr,
+            addr: spec
+                .resolve()
+                .expect("failed to resolve bind address")
+                .to_string(),
             tls: Some(spec.tls.into()),
             enable_http2: false,
             enable_admin: true,

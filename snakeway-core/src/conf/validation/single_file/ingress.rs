@@ -1,39 +1,46 @@
 use crate::conf::types::{
-    BindSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec, StaticFilesSpec,
+    BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
+    StaticFilesSpec,
 };
 use crate::conf::validation::ValidationReport;
-use crate::conf::validation::validator::range::{
+use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    REDIRECT_RESPONSE_CODE, validate_range,
+    REDIRECT_RESPONSE_CODE, is_valid_hostname, is_valid_port, validate_range,
 };
-use crate::conf::validation::validator::socket_addr::validate_socket_addr;
 use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
 use std::path::Path;
 
 /// Validate listener definitions.
 ///
 /// Structural errors here are aggregated, not fail-fast.
 pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
-    let mut seen_listener_addrs = HashSet::new();
+    let mut seen_listener_keys = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
+        // ---------------------------------------------------------------------
         // Bind
+        // ---------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
-            let bind_addr: Option<SocketAddr> = validate_socket_addr(&bind.addr, || {
-                report.invalid_bind_addr(&bind.addr, &bind.origin)
-            });
-
-            if let Some(addr) = bind_addr
-                && addr.ip().is_unspecified()
-            {
-                report.invalid_bind_addr(&bind.addr, &bind.origin);
+            if !is_valid_port(bind.port) {
+                report.invalid_port(bind.port, &bind.origin);
             }
 
-            if !seen_listener_addrs.insert(&bind.addr) {
-                report.duplicate_bind_addr(&bind.addr, &bind.origin);
+            let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
+            match interface {
+                Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+                    report.invalid_bind_addr("0.0.0.0", &bind.origin);
+                }
+                Ok(spec) => {
+                    let key = format!("{}:{}", spec.as_ip(), bind.port);
+                    if !seen_listener_keys.insert(key.clone()) {
+                        report.duplicate_bind_addr(&key, &bind.origin);
+                    }
+                }
+                Err(_) => {
+                    report.invalid_bind_addr(&bind.interface.to_string(), &bind.origin);
+                }
             }
 
             if let Some(tls) = &bind.tls {
@@ -45,38 +52,49 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 }
             }
 
-            // HTTP/2 requires TLS.
+            // HTTP/2 requires TLS
             if bind.enable_http2 && bind.tls.is_none() {
-                report.http2_requires_tls(&bind.addr, &bind.origin);
+                report.http2_requires_tls(&bind.interface.to_string(), &bind.origin);
             }
 
             if let Some(redirect) = &bind.redirect_http_to_https {
                 validate_redirect(redirect, &bind.origin, report);
 
                 if bind.tls.is_none() {
-                    report.redirect_http_to_https_requires_tls(&bind.addr, &bind.origin);
+                    report.redirect_http_to_https_requires_tls(
+                        &bind.interface.to_string(),
+                        &bind.origin,
+                    );
                 }
 
-                if !seen_redirect_ports.insert(&redirect.port) {
+                if !seen_redirect_ports.insert(redirect.port) {
                     report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
                 }
             }
         }
 
+        // ---------------------------------------------------------------------
+        // Admin bind
+        // ---------------------------------------------------------------------
         if let Some(bind_admin) = &ingress.bind_admin {
-            if !seen_listener_addrs.insert(&bind_admin.addr) {
-                report.duplicate_bind_addr(&bind_admin.addr, &bind_admin.origin);
+            if !is_valid_port(bind_admin.port) {
+                report.invalid_port(bind_admin.port, &bind_admin.origin);
             }
 
-            let bind_admin_addr: Option<SocketAddr> =
-                validate_socket_addr(&bind_admin.addr, || {
-                    report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin)
-                });
-
-            if let Some(addr) = bind_admin_addr
-                && addr.ip().is_unspecified()
-            {
-                report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin);
+            let interface: Result<BindInterfaceSpec, _> = bind_admin.interface.clone().try_into();
+            match interface {
+                Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+                    report.invalid_bind_addr("0.0.0.0", &bind_admin.origin);
+                }
+                Ok(spec) => {
+                    let key = format!("{}:{}", spec.as_ip(), bind_admin.port);
+                    if !seen_listener_keys.insert(key.clone()) {
+                        report.duplicate_bind_addr(&key, &bind_admin.origin);
+                    }
+                }
+                Err(_) => {
+                    report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
+                }
             }
         }
 
@@ -87,13 +105,15 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
         validate_static_files(&ingress.static_files, report);
         validate_services(&ingress.bind, &ingress.services, report);
 
-        // Validate across ingresses.
+        // ---------------------------------------------------------------------
+        // Cross-ingress upstream sock uniqueness
+        // ---------------------------------------------------------------------
         for service in &ingress.services {
             for upstream in &service.upstreams {
-                if let Some(sock) = &upstream.sock
-                    && !seen_upstream_socks.insert(sock.clone())
-                {
-                    report.duplicate_upstream_sock(sock, &service.origin);
+                if let Some(sock) = &upstream.sock {
+                    if !seen_upstream_socks.insert(sock.clone()) {
+                        report.duplicate_upstream_sock(sock, &service.origin);
+                    }
                 }
             }
         }
@@ -102,8 +122,8 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
 
 /// Validate Static files
 fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
-    for spec in static_file_specs.iter() {
-        for route in spec.routes.iter() {
+    for spec in static_file_specs {
+        for route in &spec.routes {
             if !route.file_dir.exists() {
                 report.invalid_static_dir(&route.file_dir, &route.origin);
             }
@@ -116,12 +136,10 @@ fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut Val
 
 /// Validate redirect configuration.
 pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut ValidationReport) {
-    // Validate port
-    if spec.port == 0 {
+    if !is_valid_port(spec.port) {
         report.invalid_port(spec.port, origin);
     }
 
-    // Validate response code
     validate_range(spec.status, &REDIRECT_RESPONSE_CODE, report, origin);
 }
 
@@ -132,6 +150,7 @@ pub fn validate_services(
     report: &mut ValidationReport,
 ) {
     let bind_uses_http2 = maybe_bind.as_ref().is_some_and(|b| b.enable_http2);
+
     for service in services {
         if service.upstreams.is_empty() {
             report.service_has_no_upstreams(&service.origin);
@@ -139,45 +158,55 @@ pub fn validate_services(
 
         let mut seen_sock_values = HashMap::new();
 
-        // Validate routes
+        // Routes
         for route in &service.routes {
             if bind_uses_http2 && route.enable_websocket {
                 report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
             }
         }
 
-        // Validate upstreams
+        // Upstreams
         for upstream in &service.upstreams {
             if upstream.weight == 0 || upstream.weight > 1_000 {
                 report.invalid_upstream_weight(&upstream.weight, &service.origin);
             }
 
-            let backend_addr = upstream.addr.clone().unwrap_or_default();
-            let backend_sock = upstream.sock.clone().unwrap_or_default();
-            let neither_are_defined = backend_addr.is_empty() && backend_sock.is_empty();
-            let both_are_defined = !backend_addr.is_empty() && !backend_sock.is_empty();
-            if neither_are_defined || both_are_defined {
-                report.invalid_upstream_target(&upstream.addr, &upstream.sock, &service.origin);
-                continue;
+            match (&upstream.endpoint, &upstream.sock) {
+                (Some(_), Some(_)) => {
+                    report.invalid_upstream_target(&service.origin);
+                    continue;
+                }
+                (None, None) => {
+                    report.invalid_upstream_target(&service.origin);
+                    continue;
+                }
+                _ => {}
             }
 
-            if let Some(addr) = &upstream.addr
-                && addr.parse::<SocketAddr>().is_err()
-            {
-                report.invalid_upstream_addr(&upstream.addr, &service.origin);
+            if let Some(endpoint) = &upstream.endpoint {
+                match &endpoint.host {
+                    HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
+                        report.invalid_upstream_ip(ip, &service.origin);
+                    }
+                    HostSpec::Hostname(name) if !is_valid_hostname(name) => {
+                        report.invalid_upstream_hostname(name, &service.origin);
+                    }
+                    _ => {}
+                }
+
+                if !is_valid_port(endpoint.port) {
+                    report.invalid_port(endpoint.port, &service.origin);
+                }
             }
 
-            // Duplicate socks?
             if let Some(sock) = &upstream.sock {
-                if seen_sock_values.contains_key(sock) {
+                if seen_sock_values.insert(sock.clone(), ()).is_some() {
                     report.duplicate_upstream_sock(sock, &service.origin);
-                } else {
-                    seen_sock_values.insert(sock.clone(), ());
                 }
             }
         }
 
-        // Validate circuit breaker
+        // Circuit breaker
         if let Some(cb) = &service.circuit_breaker
             && cb.enable_auto_recovery
         {
@@ -187,21 +216,18 @@ pub fn validate_services(
                 report,
                 &service.origin,
             );
-
             validate_range(
                 cb.open_duration_milliseconds,
                 &CB_OPEN_DURATION_MS,
                 report,
                 &service.origin,
             );
-
             validate_range(
                 cb.half_open_max_requests,
                 &CB_HALF_OPEN_MAX_REQUESTS,
                 report,
                 &service.origin,
             );
-
             validate_range(
                 cb.success_threshold,
                 &CB_SUCCESS_THRESHOLD,

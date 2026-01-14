@@ -1,5 +1,7 @@
+use crate::conf::resolution::ResolveError;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, Origin};
 use serde::{Deserialize, Serialize};
+use std::net::{SocketAddr, ToSocketAddrs};
 
 #[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ServiceSpec {
@@ -38,11 +40,43 @@ pub struct ServiceRouteSpec {
 pub struct UpstreamSpec {
     #[serde(skip)]
     pub origin: Origin,
-    pub addr: Option<String>,
+    pub endpoint: Option<EndpointSpec>,
     pub sock: Option<String>,
     #[serde(default = "default_weight")]
     pub weight: u32,
 }
 fn default_weight() -> u32 {
     1
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub enum HostSpec {
+    Ip(std::net::IpAddr),
+    Hostname(String),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct EndpointSpec {
+    pub host: HostSpec,
+    pub port: u16,
+}
+
+impl EndpointSpec {
+    pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
+        let ip = match &self.host {
+            HostSpec::Ip(ip) => *ip,
+            HostSpec::Hostname(name) => {
+                let mut addrs = (name.as_str(), self.port)
+                    .to_socket_addrs()
+                    .map_err(|_| ResolveError::DnsFailed(name.clone()))?;
+
+                addrs
+                    .next()
+                    .ok_or_else(|| ResolveError::NoAddresses(name.clone()))?
+                    .ip()
+            }
+        };
+
+        Ok(SocketAddr::new(ip, self.port))
+    }
 }

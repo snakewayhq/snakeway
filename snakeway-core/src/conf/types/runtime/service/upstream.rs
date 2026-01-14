@@ -1,3 +1,5 @@
+use crate::conf::resolution::ResolveError;
+use crate::conf::types::EndpointSpec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -9,12 +11,13 @@ pub struct UpstreamTcpConfig {
 }
 
 impl UpstreamTcpConfig {
-    pub fn new(addr: &str, use_tls: bool, weight: u32) -> Self {
+    pub fn new(use_tls: bool, weight: u32, spec: &EndpointSpec) -> Result<Self, ResolveError> {
         let protocol = if use_tls { "https" } else { "http" };
-        Self {
+        let addr = spec.resolve()?;
+        Ok(Self {
             weight,
             url: format!("{protocol}://{addr}"),
-        }
+        })
     }
 }
 

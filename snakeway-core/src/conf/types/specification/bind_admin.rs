@@ -4,18 +4,16 @@ use crate::conf::types::{Origin, TlsSpec};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
-#[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub struct BindSpec {
+#[derive(Debug, Deserialize, Default, Serialize)]
+pub struct BindAdminSpec {
     #[serde(skip)]
     pub origin: Origin,
     pub interface: BindInterfaceInput,
     pub port: u16,
-    pub tls: Option<TlsSpec>,
-    pub enable_http2: bool,
-    pub redirect_http_to_https: Option<RedirectSpec>,
+    pub tls: TlsSpec,
 }
 
-impl BindSpec {
+impl BindAdminSpec {
     pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
         let interface: BindInterfaceSpec = self
             .interface
@@ -28,12 +26,7 @@ impl BindSpec {
             BindInterfaceSpec::All => std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
             BindInterfaceSpec::Ip(ip) => ip,
         };
+
         Ok(SocketAddr::new(ip, self.port))
     }
-}
-
-#[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub struct RedirectSpec {
-    pub port: u16,
-    pub status: u16,
 }

@@ -1,5 +1,6 @@
-mod admin;
 mod bind;
+mod bind_admin;
+mod bind_interface;
 mod device;
 pub mod entrypoint;
 mod origin;
@@ -8,8 +9,9 @@ mod service;
 mod static_files;
 mod tls;
 
-pub use admin::BindAdminSpec;
 pub use bind::{BindSpec, RedirectSpec};
+pub use bind_admin::BindAdminSpec;
+pub use bind_interface::{BindInterfaceInput, BindInterfaceSpec};
 pub use device::{
     DeviceSpec, IdentityDeviceSpec, StructuredLoggingDeviceSpec, UaEngineSpec, WasmDeviceSpec,
 };
@@ -17,7 +19,9 @@ pub use entrypoint::EntrypointSpec;
 pub use origin::Origin;
 use serde::{Deserialize, Serialize};
 pub use server::ServerSpec;
-pub use service::{LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec};
+pub use service::{
+    EndpointSpec, HostSpec, LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+};
 pub use static_files::{CachePolicySpec, CompressionOptsSpec, StaticFilesSpec, StaticRouteSpec};
 pub use tls::TlsSpec;
 

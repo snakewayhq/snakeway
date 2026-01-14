@@ -1,7 +1,9 @@
+use crate::conf::resolution::ResolveError;
 use crate::conf::types::Origin;
 use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
+use std::net::IpAddr;
 use std::path::Display;
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -254,21 +256,14 @@ impl ValidationReport {
         self.error(format!("invalid upstream weight: {}", weight), origin, None)
     }
 
-    pub fn invalid_upstream_target(
-        &mut self,
-        addr: &Option<String>,
-        sock: &Option<String>,
-        origin: &Origin,
-    ) {
-        self.error(format!("invalid upstream - addr (TCP) or a sock (UNIX) are mutually exclusive: {:?}, sock: {:?}", addr, sock), origin, None)
+    pub fn invalid_upstream_target(&mut self, origin: &Origin) {
+        let message =
+            "invalid upstream - addr (TCP) or a sock (UNIX) are mutually exclusive".to_string();
+        self.error(message, origin, Some("Only one can be set.".to_string()))
     }
 
-    pub fn invalid_upstream_addr(&mut self, addr: &Option<String>, origin: &Origin) {
-        self.error(
-            format!("invalid upstream address: {:?}", addr),
-            origin,
-            None,
-        )
+    pub fn invalid_upstream_addr(&mut self, err: &ResolveError, origin: &Origin) {
+        self.error(format!("invalid upstream address: {:?}", err), origin, None)
     }
 
     pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
@@ -278,6 +273,18 @@ impl ValidationReport {
     pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {
         self.error(
             format!("websocket route cannot be used with HTTP2: {}", path),
+            origin,
+            None,
+        )
+    }
+
+    pub fn invalid_upstream_ip(&mut self, ip: &IpAddr, origin: &Origin) {
+        self.error(format!("invalid upstream ip: {}", ip), origin, None)
+    }
+
+    pub fn invalid_upstream_hostname(&mut self, hostname: &str, origin: &Origin) {
+        self.error(
+            format!("invalid upstream hostname: {}", hostname),
             origin,
             None,
         )

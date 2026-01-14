@@ -2,6 +2,7 @@ mod discover;
 mod loader;
 mod lower;
 mod parse;
+mod resolution;
 #[cfg(test)]
 mod tests;
 pub mod types;

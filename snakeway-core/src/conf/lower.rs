@@ -15,38 +15,55 @@ pub type IrConfig = (
 );
 
 /// Transform spec to the runtime configuration.
+///
+/// Assumes all specs have already passed validation.
 pub fn lower_configs(
     server_spec: ServerSpec,
     ingresses: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
 ) -> Result<IrConfig, ConfigError> {
-    let server: ServerConfig = ServerConfig {
+    // ---------------------------------------------------------------------
+    // Server
+    // ---------------------------------------------------------------------
+    let server = ServerConfig {
         version: server_spec.version,
         threads: server_spec.threads,
         pid_file: server_spec.pid_file.unwrap_or_default(),
         ca_file: server_spec.ca_file.unwrap_or_default(),
     };
 
-    let mut listeners: Vec<ListenerConfig> = Vec::new();
-    let mut routes: Vec<RouteConfig> = Vec::new();
-    let mut services: HashMap<String, ServiceConfig> = HashMap::new();
+    let mut listeners = Vec::new();
+    let mut routes = Vec::new();
+    let mut services = HashMap::new();
 
+    // ---------------------------------------------------------------------
+    // Ingresses
+    // ---------------------------------------------------------------------
     for (idx, ingress) in ingresses.into_iter().enumerate() {
         let listener_name = format!("listener-{}", idx);
 
+        // -------------------------------------------------------------
+        // Admin bind
+        // -------------------------------------------------------------
         if let Some(bind_admin) = ingress.bind_admin {
-            let listener = ListenerConfig::from_bind_admin(&listener_name, bind_admin);
-            listeners.push(listener);
+            listeners.push(ListenerConfig::from_bind_admin(&listener_name, bind_admin));
         }
 
+        //--------------------------------------------------------------------
+        // Public bind
+        //--------------------------------------------------------------------
         if let Some(bind) = ingress.bind {
             let use_tls = bind.tls.is_some();
+            // safe - validated already
+            let bind_addr = bind
+                .resolve()
+                .expect("bind.resolve() must not fail after validation");
 
             //-----------------------------------------------------------------
             // Services
             //-----------------------------------------------------------------
-            for service_cfg in ingress.services {
-                let unix_upstreams = service_cfg
+            for service_spec in ingress.services {
+                let unix_upstreams = service_spec
                     .upstreams
                     .iter()
                     .filter_map(|u| {
@@ -54,33 +71,37 @@ pub fn lower_configs(
                             .as_ref()
                             .map(|sock| UpstreamUnixConfig::new(sock.clone(), use_tls, u.weight))
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
 
-                let tcp_upstreams = service_cfg
+                let tcp_upstreams = service_spec
                     .upstreams
                     .iter()
                     .filter_map(|u| {
-                        u.addr
+                        u.endpoint
                             .as_ref()
-                            .map(|addr| UpstreamTcpConfig::new(addr, use_tls, u.weight))
+                            .map(|endpoint| UpstreamTcpConfig::new(use_tls, u.weight, endpoint))
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>, _>>()
+                    .expect("upstream.resolve() must not fail");
 
-                let service_name = format!("{}-service", bind.addr.clone());
+                let service_name = format!("{}-service", bind_addr);
 
                 let service = ServiceConfig::new(
                     &service_name,
                     &listener_name,
                     tcp_upstreams,
                     unix_upstreams,
-                    &service_cfg,
+                    &service_spec,
                 );
+
                 services.insert(service_name.clone(), service);
 
-                for route in service_cfg.routes {
-                    let service_route =
-                        ServiceRouteConfig::new(&service_name, &listener_name, route);
-                    routes.push(RouteConfig::Service(service_route));
+                for route in service_spec.routes {
+                    routes.push(RouteConfig::Service(ServiceRouteConfig::new(
+                        &service_name,
+                        &listener_name,
+                        route,
+                    )));
                 }
             }
 
@@ -89,30 +110,33 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             for static_cfg in ingress.static_files {
                 for route in static_cfg.routes {
-                    let static_route = StaticRouteConfig::new(&listener_name, route);
-                    routes.push(RouteConfig::Static(static_route));
+                    routes.push(RouteConfig::Static(StaticRouteConfig::new(
+                        &listener_name,
+                        route,
+                    )));
                 }
             }
 
             //-----------------------------------------------------------------
-            // Bind/Listener
+            // Listener
             //-----------------------------------------------------------------
             listeners.push(ListenerConfig::from_bind(&listener_name, bind.clone()));
 
             //-----------------------------------------------------------------
-            // Add listener
+            // Redirect listener
             //-----------------------------------------------------------------
-            if let Some(redirect) = bind.clone().redirect_http_to_https {
-                let listener_name = format!("redirect-listener-{}", idx);
-                let mut socket: SocketAddr = bind.addr.parse().expect("invalid bind address");
+            if let Some(ref redirect) = bind.redirect_http_to_https {
+                let redirect_listener_name = format!("redirect-listener-{}", idx);
+
+                let mut socket: SocketAddr = bind_addr;
                 socket.set_port(redirect.port);
-                let listener = ListenerConfig::from_redirect(
-                    &listener_name,
+
+                listeners.push(ListenerConfig::from_redirect(
+                    &redirect_listener_name,
                     socket.to_string(),
                     redirect.status,
                     bind,
-                );
-                listeners.push(listener);
+                ));
             }
         }
     }
@@ -120,15 +144,14 @@ pub fn lower_configs(
     //-------------------------------------------------------------------------
     // Devices
     //-------------------------------------------------------------------------
-    let mut devices: Vec<DeviceConfig> = Vec::new();
-    for device_spec in device_specs {
-        let device_config = match device_spec {
+    let devices = device_specs
+        .into_iter()
+        .map(|spec| match spec {
             DeviceSpec::Wasm(d) => DeviceConfig::Wasm(d.into()),
             DeviceSpec::Identity(d) => DeviceConfig::Identity(d.into()),
             DeviceSpec::StructuredLogging(d) => DeviceConfig::StructuredLogging(d.into()),
-        };
-        devices.push(device_config);
-    }
+        })
+        .collect();
 
     Ok((server, listeners, routes, services, devices))
 }
