@@ -96,6 +96,25 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                     report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
                 }
             }
+
+            // Guard against binding the admin API to all interfaces.
+            // This is a dangerous situation because the admin API does not currently have
+            // authentication and could be used to gain unauthorized access to the server.
+            let iface: BindInterfaceSpec = match bind_admin.interface.clone().try_into() {
+                Ok(i) => i,
+                Err(_) => {
+                    report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
+                    continue;
+                }
+            };
+
+            if matches!(iface, BindInterfaceSpec::All) {
+                report.error(
+                    "admin API cannot bind to all interfaces".to_string(),
+                    &bind_admin.origin,
+                    Some("Use loopback or a specific IP address.".to_string()),
+                );
+            }
         }
 
         if ingress.bind.is_none() && ingress.bind_admin.is_none() {
@@ -110,16 +129,15 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
         // ---------------------------------------------------------------------
         for service in &ingress.services {
             for upstream in &service.upstreams {
-                if let Some(sock) = &upstream.sock {
-                    if !seen_upstream_socks.insert(sock.clone()) {
-                        report.duplicate_upstream_sock(sock, &service.origin);
-                    }
+                if let Some(sock) = &upstream.sock
+                    && !seen_upstream_socks.insert(sock.clone())
+                {
+                    report.duplicate_upstream_sock(sock, &service.origin);
                 }
             }
         }
     }
 }
-
 /// Validate Static files
 fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
     for spec in static_file_specs {

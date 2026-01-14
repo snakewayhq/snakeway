@@ -53,10 +53,7 @@ fn validate_ingress_valid_minimal_bind() {
     // Arrange
     let mut report = ValidationReport::default();
     let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            ..Default::default()
-        }),
+        bind: Some(minimal_bind()),
         services: vec![minimal_service()],
         ..Default::default()
     };
@@ -66,38 +63,6 @@ fn validate_ingress_valid_minimal_bind() {
 
     // Assert
     assert_eq!(report.has_violations(), false);
-}
-
-#[test]
-fn validate_ingress_invalid_bind_addr() {
-    // Arrange
-    let mut report = ValidationReport::default();
-    let addr = "not-an-addr".to_string();
-    let expected_error = format!("invalid bind address: {}", addr);
-    let ingress = minimal_ingress();
-
-    // Act
-    validate_ingresses(&[ingress], &mut report);
-
-    // Assert
-
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
-}
-
-#[test]
-fn validate_ingress_unspecified_ip_is_invalid() {
-    // Arrange
-    let mut report = ValidationReport::default();
-    let addr = "0.0.0.0:8080".to_string();
-    let expected_error = format!("invalid bind address: {}", addr);
-    let ingress = minimal_ingress();
-
-    // Act
-    validate_ingresses(&[ingress], &mut report);
-
-    // Assert
-
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
 }
 
 #[test]
@@ -114,7 +79,7 @@ fn validate_ingress_duplicate_bind_addr() {
 
     // Assert
 
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors[0].message, expected_error);
 }
 
 #[test]
@@ -148,10 +113,7 @@ fn validate_ingress_http2_requires_tls() {
     // Arrange
     let mut report = ValidationReport::default();
     let mut bind = minimal_bind();
-
-    let addr = bind.resolve().unwrap().to_string();
-
-    let expected_error = format!("HTTP/2 requires TLS: {addr}");
+    let expected_error = "HTTP/2 requires TLS: loopback".to_string();
     let expected_help = Some("Enable TLS on the bind or disable HTTP/2.".to_string());
     bind.enable_http2 = true;
     let ingress = IngressSpec {
@@ -163,8 +125,8 @@ fn validate_ingress_http2_requires_tls() {
     validate_ingresses(&[ingress], &mut report);
 
     // Assert
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
-    assert_eq!(report.errors.first().unwrap().help, expected_help);
+    assert_eq!(report.errors[0].message, expected_error);
+    assert_eq!(report.errors[0].help, expected_help);
 }
 
 #[test]
@@ -184,7 +146,36 @@ fn validate_ingress_bind_admin_invalid_addr() {
     validate_ingresses(&[ingress], &mut report);
 
     // Assert
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors[0].message, expected_error);
+}
+
+#[test]
+fn admin_bind_cannot_bind_to_all_interfaces() {
+    // Arrange
+    let mut report = ValidationReport::default();
+
+    let ingress = IngressSpec {
+        bind_admin: Some(BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("all".to_string()),
+            port: 9000,
+            ..Default::default()
+        }),
+        services: vec![minimal_service()],
+        ..Default::default()
+    };
+
+    // Act
+    validate_ingresses(&[ingress], &mut report);
+
+    // Assert
+    assert_eq!(report.errors.len(), 1);
+
+    let error = &report.errors[0];
+    assert_eq!(error.message, "admin API cannot bind to all interfaces");
+    assert_eq!(
+        error.help.as_deref(),
+        Some("Use loopback or a specific IP address.")
+    );
 }
 
 #[test]
@@ -203,8 +194,7 @@ fn validate_ingress_duplicate_admin_and_public_bind() {
         port,
         ..Default::default()
     };
-    let addr = format!("{}:{}", interface, port);
-    let expected_error = format!("duplicate bind address: {}", addr);
+    let expected_error = format!("duplicate bind address: 127.0.0.1:{}", port);
     let ingress = IngressSpec {
         bind: Some(bind),
         bind_admin: Some(bind_admin),
@@ -215,8 +205,7 @@ fn validate_ingress_duplicate_admin_and_public_bind() {
     validate_ingresses(&[ingress], &mut report);
 
     // Assert
-
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors[0].message, expected_error);
 }
 
 fn test_origin() -> Origin {
@@ -294,8 +283,7 @@ fn invalid_port_produces_error() {
 #[test]
 fn redirect_should_not_exist_without_tls() {
     // Arrange
-    let addr = "127.0.0.1:8080".to_string();
-    let expected_error = format!("redirect_http_to_https requires TLS: {addr}");
+    let expected_error = "redirect_http_to_https requires TLS: loopback".to_string();
     let expected_help =
         Some("Enable TLS on the bind or remove redirect_http_to_https.".to_string());
     let mut report = ValidationReport::default();

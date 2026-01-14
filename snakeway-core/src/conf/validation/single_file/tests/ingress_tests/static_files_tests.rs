@@ -1,4 +1,6 @@
-use crate::conf::types::{BindSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec};
+use crate::conf::types::{
+    BindInterfaceInput, BindSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec,
+};
 use crate::conf::validation::{ValidationReport, validate_ingresses};
 use pretty_assertions::assert_eq;
 use std::path::PathBuf;
@@ -6,6 +8,8 @@ use std::path::PathBuf;
 fn minimal_static_files_ingress(file_dir: &str) -> IngressSpec {
     IngressSpec {
         bind: Some(BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
             ..Default::default()
         }),
         static_files: vec![StaticFilesSpec {

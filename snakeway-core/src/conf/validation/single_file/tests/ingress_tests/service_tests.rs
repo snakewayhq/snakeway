@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindSpec, CircuitBreakerConfig, EndpointSpec, HostSpec, IngressSpec, Origin, ServiceRouteSpec,
-    ServiceSpec, UpstreamSpec,
+    BindInterfaceInput, BindSpec, CircuitBreakerConfig, EndpointSpec, HostSpec, IngressSpec,
+    Origin, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
 };
 use crate::conf::validation::{ValidationReport, validate_ingresses, validate_services};
 use pretty_assertions::assert_eq;
@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 fn minimal_maybe_bind_addr() -> Option<BindSpec> {
     Some(BindSpec {
+        interface: BindInterfaceInput::Keyword("loopback".to_string()),
         port: 8080,
         ..Default::default()
     })
@@ -212,27 +213,6 @@ fn validate_service_upstream_must_have_either_addr_or_sock() {
 }
 
 #[test]
-fn validate_service_upstream_with_invalid_addr() {
-    // Arrange
-    let invalid_addr = "not-an-ip";
-    let mut report = ValidationReport::default();
-    let mut service = minimal_service();
-    service.upstreams[0].endpoint = Some(EndpointSpec {
-        host: HostSpec::Ip(IpAddr::from_str(invalid_addr).unwrap()),
-        port: 3000,
-    });
-    let services = vec![service];
-    let maybe_bind = minimal_maybe_bind_addr();
-
-    // Act
-    validate_services(&maybe_bind, &services, &mut report);
-
-    // Assert
-    let error = report.errors.first().expect("expected at least one error");
-    assert!(error.message.contains("invalid upstream address"));
-}
-
-#[test]
 fn validate_service_duplicate_upstream_socks() {
     // Arrange
     let duplicate_sock = "/tmp/test.sock".to_string();
@@ -403,21 +383,24 @@ fn validate_service_circuit_breaker_success_threshold_out_of_range() {
 #[test]
 fn validate_sock_file_not_reused_across_services() {
     // Arrange
-    let sock = "/tmp/test.sock";
+    let sock = "/tmp/test.sock".to_string();
     let expected_error = format!("duplicate upstream sock: {}", sock);
     let mut report = ValidationReport::default();
-    let mut upstream1 = minimal_upstream();
-    upstream1.sock = Some(sock.to_string());
-    let mut upstream2 = minimal_upstream();
-    upstream2.sock = Some(sock.to_string());
-
     let services = vec![
         ServiceSpec {
-            upstreams: vec![upstream1],
+            upstreams: vec![UpstreamSpec {
+                sock: Some(sock.clone()),
+                weight: 1,
+                ..Default::default()
+            }],
             ..Default::default()
         },
         ServiceSpec {
-            upstreams: vec![upstream2],
+            upstreams: vec![UpstreamSpec {
+                sock: Some(sock.clone()),
+                weight: 1,
+                ..Default::default()
+            }],
             ..Default::default()
         },
     ];

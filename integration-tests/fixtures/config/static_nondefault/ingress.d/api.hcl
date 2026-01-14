@@ -1,5 +1,6 @@
 bind = {
-  addr         = "127.0.0.1:8080"
+  interface    = "127.0.0.1"
+  port         = 8080
   enable_http2 = false
 }
 
@@ -38,11 +39,11 @@ services = [
     upstreams = [
       {
         weight = 1
-        addr   = "127.0.0.1:9001"
+        endpoint = { host = "127.0.0.1", port = 9001 }
       },
       {
         weight = 1
-        addr   = "127.0.0.1:9002"
+        endpoint = { host = "127.0.0.1", port = 9002 }
       },
     ]
   }

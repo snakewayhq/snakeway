@@ -21,7 +21,7 @@ impl BindInterfaceSpec {
         match self {
             BindInterfaceSpec::Loopback => IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             BindInterfaceSpec::All => IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
-            BindInterfaceSpec::Ip(ip) => ip.clone(),
+            BindInterfaceSpec::Ip(ip) => *ip,
         }
     }
 }
