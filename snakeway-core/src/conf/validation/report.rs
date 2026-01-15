@@ -1,7 +1,9 @@
+use crate::conf::resolution::ResolveError;
 use crate::conf::types::Origin;
 use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
+use std::net::IpAddr;
 use std::path::Display;
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -93,6 +95,16 @@ impl ValidationReport {
         }
     }
 
+    fn format_help(&self, issue: &ValidationIssue) -> String {
+        let help = issue.help.as_deref().unwrap_or("");
+        let help = if !help.is_empty() {
+            &format!("\n   help: {}", help)
+        } else {
+            ""
+        };
+        help.to_string()
+    }
+
     pub fn render_pretty(&self) {
         if !self.has_violations() {
             return;
@@ -131,10 +143,20 @@ impl ValidationReport {
             for issue in issues {
                 match issue.severity {
                     Severity::Error => {
-                        println!("  {}: {}", "error".red().bold(), issue.message);
+                        println!(
+                            "  {}: {}{}",
+                            "error".red().bold(),
+                            issue.message,
+                            self.format_help(issue)
+                        );
                     }
                     Severity::Warning => {
-                        println!("  {}: {}", "warning".yellow().bold(), issue.message);
+                        println!(
+                            "  {}: {}{}",
+                            "warning".yellow().bold(),
+                            issue.message,
+                            self.format_help(issue)
+                        );
                     }
                 }
 
@@ -254,21 +276,32 @@ impl ValidationReport {
         self.error(format!("invalid upstream weight: {}", weight), origin, None)
     }
 
-    pub fn invalid_upstream_target(
+    pub fn upstream_cannot_have_both_sock_and_endpoint(
         &mut self,
-        addr: &Option<String>,
-        sock: &Option<String>,
+        sock: &str,
+        host: &str,
+        port: u16,
         origin: &Origin,
     ) {
-        self.error(format!("invalid upstream - addr (TCP) or a sock (UNIX) are mutually exclusive: {:?}, sock: {:?}", addr, sock), origin, None)
-    }
-
-    pub fn invalid_upstream_addr(&mut self, addr: &Option<String>, origin: &Origin) {
         self.error(
-            format!("invalid upstream address: {:?}", addr),
+            format!(
+                "upstream cannot have both sock {} and endpoint: {}:{}",
+                sock, host, port
+            ),
             origin,
             None,
         )
+    }
+
+    pub fn upstream_must_have_a_sock_or_endpoint(&mut self, origin: &Origin) {
+        let message =
+            "invalid upstream - it must have a sock or an endpoint, but neither are defined"
+                .to_string();
+        self.error(message, origin, Some("Only one can be set.".to_string()));
+    }
+
+    pub fn invalid_upstream_addr(&mut self, err: &ResolveError, origin: &Origin) {
+        self.error(format!("invalid upstream address: {:?}", err), origin, None)
     }
 
     pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
@@ -278,6 +311,18 @@ impl ValidationReport {
     pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {
         self.error(
             format!("websocket route cannot be used with HTTP2: {}", path),
+            origin,
+            None,
+        )
+    }
+
+    pub fn invalid_upstream_ip(&mut self, ip: &IpAddr, origin: &Origin) {
+        self.error(format!("invalid upstream ip: {}", ip), origin, None)
+    }
+
+    pub fn invalid_upstream_hostname(&mut self, hostname: &str, origin: &Origin) {
+        self.error(
+            format!("invalid upstream hostname: {}", hostname),
             origin,
             None,
         )

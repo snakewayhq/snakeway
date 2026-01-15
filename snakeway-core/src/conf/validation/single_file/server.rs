@@ -1,6 +1,6 @@
 use crate::conf::types::ServerSpec;
 use crate::conf::validation::report::ValidationReport;
-use crate::conf::validation::validator::range::{SERVER_THREADS, validate_range};
+use crate::conf::validation::validator::{SERVER_THREADS, validate_range};
 
 /// Validate top-level config version.
 ///

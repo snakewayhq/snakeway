@@ -1,28 +1,22 @@
-/// Validates a socket address string by attempting to parse it into the target type.
-///
-/// # Parameters
-/// * `value` - The string representation of the socket address to validate
-/// * `report_fn` - A callback function to invoke if validation fails
-///
-/// # Examples
-///
-/// ```
-/// # use snakeway_core::conf::validation::validator::socket_addr::validate_socket_addr;
-/// # use snakeway_core::conf::validation::ValidationReport;
-/// # let mut report = ValidationReport::default();
-/// # let bind_admin = snakeway_core::conf::types::BindAdminSpec {
-/// #     addr: "127.0.0.1:8080".to_string(),
-/// #     origin: snakeway_core::conf::types::Origin::default(),
-/// # };
-/// let bind_admin_addr = validate_socket_addr(
-///     &bind_admin.addr,
-///     || report.invalid_bind_addr(&bind_admin.addr, &bind_admin.origin)
-/// );
-/// ```
-pub fn validate_socket_addr<T, E, F>(value: &str, mut report_fn: F) -> Option<T>
-where
-    T: std::str::FromStr<Err = E>,
-    F: FnMut(),
-{
-    value.parse().map_err(|_| report_fn()).ok()
+/// Checks if a string is a valid hostname according to DNS rules.
+/// Validates length constraints (max 253 chars total, max 63 per label),
+/// alphanumeric/hyphen characters only, and proper hyphen placement.
+pub fn is_valid_hostname(s: &str) -> bool {
+    if s.is_empty() || s.len() > 253 {
+        return false;
+    }
+
+    s.split('.').all(|label| {
+        !label.is_empty()
+            && label.len() <= 63
+            && label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+    })
+}
+
+/// Checks if a port number is valid (must be greater than 0).
+/// It is naturally bounded by the upper limit of u16 (65535).
+pub const fn is_valid_port(port: u16) -> bool {
+    port > 0
 }

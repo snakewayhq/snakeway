@@ -13,7 +13,8 @@ fn parse_ingress_bind_file() {
         &path,
         r#"
 bind = {
-  addr = "127.0.0.1:8443"
+  interface = "127.0.0.1"
+  port = 8080
   enable_http2 = true
   tls = {
     cert = "cert.pem"
@@ -42,7 +43,8 @@ fn parse_ingress_admin_bind_file() {
         &path,
         r#"
 bind_admin = {
-  addr = "127.0.0.1:8440"
+  interface = "127.0.0.1"
+  port = 8080
   tls = {
     cert = "cert.pem"
     key  = "key.pem"

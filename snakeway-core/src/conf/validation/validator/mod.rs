@@ -1,2 +1,5 @@
-pub(crate) mod range;
-pub(crate) mod socket_addr;
+mod range;
+mod socket_addr;
+
+pub use range::*;
+pub use socket_addr::*;

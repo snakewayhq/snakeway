@@ -7,7 +7,7 @@ pub struct ServerSpec {
     #[serde(skip)]
     pub origin: Origin,
 
-    // Configuration schema version
+    /// Configuration schema version
     pub version: u32,
 
     /// Optional number of worker threads - default is decided by Pingora.

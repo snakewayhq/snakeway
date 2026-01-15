@@ -41,7 +41,6 @@ pingora-http = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.145"
 tokio = "1.48.0"
-toml = "0.9"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 uaparser = "0.6"

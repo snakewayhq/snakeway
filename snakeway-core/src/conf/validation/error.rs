@@ -32,6 +32,12 @@ pub enum ConfigError {
         #[source]
         source: hcl::Error,
     },
+
+    //-------------------------------------------------------------------------
+    // Validation during transformation
+    //-------------------------------------------------------------------------
+    #[error("invalid bind ip string: {0}")]
+    InvalidBindIpString(String),
 }
 
 impl ConfigError {

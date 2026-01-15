@@ -1,7 +1,9 @@
 use crate::conf::types::*;
 use crate::conf::validation::{ValidationReport, validate_ingresses, validate_redirect};
 use pretty_assertions::assert_eq;
+use std::net::IpAddr;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 /// Minimal valid service used to satisfy ingress validation
 fn minimal_service() -> ServiceSpec {
@@ -11,10 +13,37 @@ fn minimal_service() -> ServiceSpec {
             ..Default::default()
         }],
         upstreams: vec![UpstreamSpec {
-            addr: Some("127.0.0.1:8080".to_string()),
+            endpoint: Some(EndpointSpec {
+                host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                port: 8080,
+            }),
             weight: 1,
             ..Default::default()
         }],
+        ..Default::default()
+    }
+}
+
+fn minimal_bind() -> BindSpec {
+    BindSpec {
+        interface: BindInterfaceInput::Keyword("loopback".to_string()),
+        port: 8080,
+        ..Default::default()
+    }
+}
+
+fn minimal_admin_bind() -> BindAdminSpec {
+    BindAdminSpec {
+        interface: BindInterfaceInput::Keyword("loopback".to_string()),
+        port: 9000,
+        ..Default::default()
+    }
+}
+
+pub fn minimal_ingress() -> IngressSpec {
+    IngressSpec {
+        bind: Some(minimal_bind()),
+        services: vec![minimal_service()],
         ..Default::default()
     }
 }
@@ -24,10 +53,7 @@ fn validate_ingress_valid_minimal_bind() {
     // Arrange
     let mut report = ValidationReport::default();
     let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr: "127.0.0.1:8080".to_string(),
-            ..Default::default()
-        }),
+        bind: Some(minimal_bind()),
         services: vec![minimal_service()],
         ..Default::default()
     };
@@ -40,77 +66,20 @@ fn validate_ingress_valid_minimal_bind() {
 }
 
 #[test]
-fn validate_ingress_invalid_bind_addr() {
-    // Arrange
-    let mut report = ValidationReport::default();
-    let addr = "not-an-addr".to_string();
-    let expected_error = format!("invalid bind address: {}", addr);
-    let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr,
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Act
-    validate_ingresses(&[ingress], &mut report);
-
-    // Assert
-
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
-}
-
-#[test]
-fn validate_ingress_unspecified_ip_is_invalid() {
-    // Arrange
-    let mut report = ValidationReport::default();
-    let addr = "0.0.0.0:8080".to_string();
-    let expected_error = format!("invalid bind address: {}", addr);
-    let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr,
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Act
-    validate_ingresses(&[ingress], &mut report);
-
-    // Assert
-
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
-}
-
-#[test]
 fn validate_ingress_duplicate_bind_addr() {
     // Arrange
     let mut report = ValidationReport::default();
     let addr = "127.0.0.1:8080".to_string();
     let expected_error = format!("duplicate bind address: {}", addr);
-
-    let ingress1 = IngressSpec {
-        bind: Some(BindSpec {
-            addr: addr.clone(),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-    let ingress2 = IngressSpec {
-        bind: Some(BindSpec {
-            addr,
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
+    let ingress1 = minimal_ingress();
+    let ingress2 = minimal_ingress();
 
     // Act
     validate_ingresses(&[ingress1, ingress2], &mut report);
 
     // Assert
 
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors[0].message, expected_error);
 }
 
 #[test]
@@ -121,15 +90,13 @@ fn validate_ingress_tls_missing_cert_and_key() {
     let expected_cert_error = format!("missing cert file: {}", cert.display());
     let expected_key_error = format!("missing key file: {}", key.display());
     let mut report = ValidationReport::default();
+    let mut bind = minimal_bind();
+    bind.tls = Some(TlsSpec {
+        cert: cert.to_string_lossy().to_string(),
+        key: key.to_string_lossy().to_string(),
+    });
     let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr: "127.0.0.1:8443".to_string(),
-            tls: Some(TlsSpec {
-                cert: cert.to_string_lossy().to_string(),
-                key: key.to_string_lossy().to_string(),
-            }),
-            ..Default::default()
-        }),
+        bind: Some(bind),
         ..Default::default()
     };
 
@@ -145,16 +112,12 @@ fn validate_ingress_tls_missing_cert_and_key() {
 fn validate_ingress_http2_requires_tls() {
     // Arrange
     let mut report = ValidationReport::default();
-    let addr = "127.0.0.1:8080".to_string();
-    let expected_error = format!("HTTP/2 requires TLS: {addr}");
+    let mut bind = minimal_bind();
+    let expected_error = "HTTP/2 requires TLS: loopback".to_string();
     let expected_help = Some("Enable TLS on the bind or disable HTTP/2.".to_string());
+    bind.enable_http2 = true;
     let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr,
-            enable_http2: true,
-            tls: None,
-            ..Default::default()
-        }),
+        bind: Some(bind),
         ..Default::default()
     };
 
@@ -162,21 +125,20 @@ fn validate_ingress_http2_requires_tls() {
     validate_ingresses(&[ingress], &mut report);
 
     // Assert
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
-    assert_eq!(report.errors.first().unwrap().help, expected_help);
+    assert_eq!(report.errors[0].message, expected_error);
+    assert_eq!(report.errors[0].help, expected_help);
 }
 
 #[test]
 fn validate_ingress_bind_admin_invalid_addr() {
     // Arrange
     let mut report = ValidationReport::default();
-    let addr = "bad-addr".to_string();
+    let mut bind_admin = minimal_admin_bind();
+    let addr = "bad-addr";
+    bind_admin.interface = BindInterfaceInput::Keyword(addr.to_string());
     let expected_error = format!("invalid bind address: {}", addr);
     let ingress = IngressSpec {
-        bind_admin: Some(BindAdminSpec {
-            addr,
-            ..Default::default()
-        }),
+        bind_admin: Some(bind_admin),
         ..Default::default()
     };
 
@@ -184,24 +146,58 @@ fn validate_ingress_bind_admin_invalid_addr() {
     validate_ingresses(&[ingress], &mut report);
 
     // Assert
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors[0].message, expected_error);
+}
+
+#[test]
+fn admin_bind_cannot_bind_to_all_interfaces() {
+    // Arrange
+    let mut report = ValidationReport::default();
+
+    let ingress = IngressSpec {
+        bind_admin: Some(BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("all".to_string()),
+            port: 9000,
+            ..Default::default()
+        }),
+        services: vec![minimal_service()],
+        ..Default::default()
+    };
+
+    // Act
+    validate_ingresses(&[ingress], &mut report);
+
+    // Assert
+    assert_eq!(report.errors.len(), 1);
+
+    let error = &report.errors[0];
+    assert_eq!(error.message, "admin API cannot bind to all interfaces");
+    assert_eq!(
+        error.help.as_deref(),
+        Some("Use loopback or a specific IP address.")
+    );
 }
 
 #[test]
 fn validate_ingress_duplicate_admin_and_public_bind() {
     // Arrange
     let mut report = ValidationReport::default();
-    let addr = "127.0.0.1:9000".to_string();
-    let expected_error = format!("duplicate bind address: {}", addr);
+    let interface = BindInterfaceInput::Keyword("loopback".to_string());
+    let port = 9000;
+    let bind = BindSpec {
+        interface: interface.clone(),
+        port,
+        ..Default::default()
+    };
+    let bind_admin = BindAdminSpec {
+        interface: interface.clone(),
+        port,
+        ..Default::default()
+    };
+    let expected_error = format!("duplicate bind address: 127.0.0.1:{}", port);
     let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr: addr.clone(),
-            ..Default::default()
-        }),
-        bind_admin: Some(BindAdminSpec {
-            addr,
-            ..Default::default()
-        }),
+        bind: Some(bind),
+        bind_admin: Some(bind_admin),
         ..Default::default()
     };
 
@@ -209,8 +205,7 @@ fn validate_ingress_duplicate_admin_and_public_bind() {
     validate_ingresses(&[ingress], &mut report);
 
     // Assert
-
-    assert_eq!(report.errors.first().unwrap().message, expected_error);
+    assert_eq!(report.errors[0].message, expected_error);
 }
 
 fn test_origin() -> Origin {
@@ -288,20 +283,17 @@ fn invalid_port_produces_error() {
 #[test]
 fn redirect_should_not_exist_without_tls() {
     // Arrange
-    let addr = "127.0.0.1:8080".to_string();
-    let expected_error = format!("redirect_http_to_https requires TLS: {addr}");
+    let expected_error = "redirect_http_to_https requires TLS: loopback".to_string();
     let expected_help =
         Some("Enable TLS on the bind or remove redirect_http_to_https.".to_string());
     let mut report = ValidationReport::default();
+    let mut bind = minimal_bind();
+    bind.redirect_http_to_https = Some(RedirectSpec {
+        port: 8080,
+        status: 308,
+    });
     let ingress = IngressSpec {
-        bind: Some(BindSpec {
-            addr,
-            redirect_http_to_https: Some(RedirectSpec {
-                port: 8080,
-                status: 308,
-            }),
-            ..Default::default()
-        }),
+        bind: Some(bind),
         services: vec![minimal_service()],
         ..Default::default()
     };

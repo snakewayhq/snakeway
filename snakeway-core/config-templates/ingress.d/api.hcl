@@ -1,5 +1,6 @@
 bind = {
-  addr         = "127.0.0.1:8443"
+  interface    = "127.0.0.1"
+  port         = 8443
   enable_http2 = false
 
   redirect_http_to_https = {
@@ -46,11 +47,11 @@ services = [
     upstreams = [
       {
         weight = 1
-        addr   = "127.0.0.1:3443"
+        endpoint = { interface = "127.0.0.1", port = 3443 }
       },
       {
         weight = 1
-        addr   = "127.0.0.1:3444"
+        endpoint = { interface = "127.0.0.1", port = 3444 }
       },
       {
         weight = 1

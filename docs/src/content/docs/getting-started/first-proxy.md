@@ -37,7 +37,8 @@ Next, we'll define the ingress we want to proxy to. Create `my-proxy/ingress.d/h
 
 ```hcl
 bind = {
-  addr = "127.0.0.1:8080"
+  interface = "127.0.0.1"
+  port      = 8080
 }
 
 services = [
