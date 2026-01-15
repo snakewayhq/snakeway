@@ -171,8 +171,10 @@ fn validate_service_must_have_an_upstream_with_weight_not_greater_than_1000() {
 }
 
 #[test]
-fn validate_service_upstream_cannot_have_both_addr_and_sock() {
+fn validate_service_upstream_cannot_have_both_endpoint_and_sock() {
     // Arrange
+    let expected_error =
+        "upstream cannot have both sock /tmp/test.sock and endpoint: 127.0.0.1:3000";
     let mut report = ValidationReport::default();
     let mut service = minimal_service();
     service.upstreams[0].endpoint = Some(EndpointSpec {
@@ -187,13 +189,15 @@ fn validate_service_upstream_cannot_have_both_addr_and_sock() {
     validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
-    let error = report.errors.first().expect("expected at least one error");
-    assert!(error.message.contains("mutually exclusive"));
+    assert_eq!(report.errors[0].message, expected_error);
 }
 
 #[test]
 fn validate_service_upstream_must_have_either_addr_or_sock() {
     // Arrange
+    let expected_error =
+        "invalid upstream - it must have a sock or an endpoint, but neither are defined"
+            .to_string();
     let mut report = ValidationReport::default();
     let mut upstream = minimal_upstream();
     upstream.endpoint = None;
@@ -208,8 +212,7 @@ fn validate_service_upstream_must_have_either_addr_or_sock() {
     validate_services(&maybe_bind, &services, &mut report);
 
     // Assert
-    let error = report.errors.first().expect("expected at least one error");
-    assert!(error.message.contains("mutually exclusive"));
+    assert_eq!(report.errors[0].message, expected_error)
 }
 
 #[test]
