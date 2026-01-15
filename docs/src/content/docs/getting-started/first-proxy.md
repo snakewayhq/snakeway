@@ -53,7 +53,7 @@ services = [
 
     upstreams = [
       {
-        addr = "httpbin.org:443"
+        endpoint = { host = "httpbin.org" port = 443 }
       }
     ]
   }

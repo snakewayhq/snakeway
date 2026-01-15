@@ -209,18 +209,24 @@ Each service can have one or more upstream servers defined. Upstreams represent 
 proxied requests.
 
 :::note
-Only specify addr or sock, not both. They are mutually exclusive on a single upstream,
+Only specify endpoint or sock, not both. They are mutually exclusive on a single upstream,
 but a single service may have mixed upstreams.
 :::
 
 #### endpoint
 
-**Type:** `string`  
+**Type:** `object`  
 **Required:** `false`
 
-The address of the upstream server: host, and port (e.g., `10.0.0.1:8080`).
+The address of the upstream server: host, and port).
 
-The protocol is inferred from the `bind` address.
+Example:
+
+```hcl
+endpoint = { host = "10.0.0.1" port = 8080 } 
+```
+
+The protocol is inferred from the `bind` block's TLS settings (no settings mean HTTP, TLS means HTTPS).
 
 #### sock
 
