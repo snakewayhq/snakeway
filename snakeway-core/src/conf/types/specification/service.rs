@@ -1,6 +1,7 @@
 use crate::conf::resolution::ResolveError;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, Origin};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
 
 #[derive(Debug, Deserialize, Default, Serialize)]
@@ -54,6 +55,15 @@ fn default_weight() -> u32 {
 pub enum HostSpec {
     Ip(std::net::IpAddr),
     Hostname(String),
+}
+
+impl fmt::Display for HostSpec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HostSpec::Ip(ip) => write!(f, "{ip}"),
+            HostSpec::Hostname(name) => write!(f, "{}", name.to_lowercase()),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]

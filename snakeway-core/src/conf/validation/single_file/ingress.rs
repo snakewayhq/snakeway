@@ -189,21 +189,19 @@ pub fn validate_services(
                 report.invalid_upstream_weight(&upstream.weight, &service.origin);
             }
 
-            let has_sock = upstream.sock.is_some();
+            if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
+                report.upstream_cannot_have_both_sock_and_endpoint(
+                    sock,
+                    &endpoint.host.to_string(),
+                    endpoint.port,
+                    &service.origin,
+                );
+                continue;
+            }
 
-            let has_endpoint = upstream
-                .endpoint
-                .as_ref()
-                .is_some_and(|endpoint| is_valid_port(endpoint.port));
-
-            match (has_endpoint, has_sock) {
-                (true, false) => {} // valid: tcp upstream
-                (false, true) => {} // valid: unix upstream
-                _ => {
-                    // both or neither (or incomplete endpoint)
-                    report.invalid_upstream_target(&service.origin);
-                    continue;
-                }
+            if upstream.sock.is_none() && upstream.endpoint.is_none() {
+                report.upstream_must_have_a_sock_or_endpoint(&service.origin);
+                continue;
             }
 
             if let Some(endpoint) = &upstream.endpoint {
