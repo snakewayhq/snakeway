@@ -10,7 +10,8 @@ An ingress configuration file defines the ingress rules for a particular bound a
 
 ```hcl
 bind = {
-  addr         = "127.0.0.1:8443"
+  interface    = "127.0.0.1"
+  port         = 8443
   enable_http2 = true
 
   tls = {
@@ -27,7 +28,8 @@ These endpoints are available on the `bind_admin` address under the `/admin/` pa
 
 ```hcl
 bind_admin = {
-  addr = "127.0.0.1:8440"
+  interface = "127.0.0.1"
+  port      = 8440
   tls = {
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
@@ -84,11 +86,11 @@ services = [
     upstreams = [
       {
         weight = 1
-        addr   = "127.0.0.1:3443"
+        endpoint = { host = "127.0.0.1", port = 3443 }
       },
       {
         weight = 1
-        addr   = "127.0.0.1:3444"
+        endpoint = { host = "127.0.0.1", port = 3444 }
       },
       {
         weight = 1
@@ -211,7 +213,7 @@ Only specify addr or sock, not both. They are mutually exclusive on a single ups
 but a single service may have mixed upstreams.
 :::
 
-#### addr
+#### endpoint
 
 **Type:** `string`  
 **Required:** `false`
