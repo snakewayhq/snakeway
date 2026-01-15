@@ -11,7 +11,7 @@ while maintaining high performance and strong security isolation.
 By using WASM for extensibility, Snakeway provides several key benefits:
 
 - **Language Flexibility**: You can write your devices in Rust, Go, Zig, or any other language that can compile to WASM.
-- **Security & Isolation**: Custom logic runs in a secure, sandboxed environment. A bug in a WASM device cannot crash
+- **Security and Isolation**: Custom logic runs in a secure, sandboxed environment. A bug in a WASM device cannot crash
   the entire proxy.
 - **Near-Native Performance**: Modern WASM runtimes offer execution speeds that are very close to native code.
 - **Portable Artifacts**: Compiled `.wasm` modules can be shared and deployed across different architectures without

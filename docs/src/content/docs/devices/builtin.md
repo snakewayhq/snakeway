@@ -41,7 +41,7 @@ Devices are executed **in the order they are declared** in configuration.
 > **Important**
 > Devices earlier in the list may enrich or modify request context for devices that run later.
 
-## Request Context & Extensions
+## Request Context and Extensions
 
 Builtin devices operate on a shared `RequestCtx` and `ResponseCtx`.
 

@@ -61,7 +61,7 @@ wasm_devices = [
     enable = true
     path   = "/path/to/my_plugin.wasm"
     config = {
-      api_key     = "secret-key"
+      policy      = "passive"
       environment = "production"
     }
   }
@@ -76,5 +76,5 @@ In the current version of Snakeway, devices are global. Once enabled, they are a
 server. They are executed in a deterministic order based on their type and appearance in the configuration:
 
 1. **Identity**: Runs first to establish client context.
-2. **WASM & Built-in**: Executed in the order they are defined.
+2. **WASM and Built-in**: Executed in the order they are defined.
 3. **Structured Logging**: Typically runs last to capture the final state of the request and response.

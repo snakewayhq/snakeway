@@ -46,10 +46,10 @@ This approach avoids header re-parsing and provides a single source of truth for
 
 The identity data attached to each request includes:
 
-* **ip** — resolved client IP address
-* **proxy_chain** — ordered list of trusted proxies (if any)
-* **geo** — optional geographic information
-* **ua** — optional user-agent classification
+* **ip** resolved client IP address
+* **proxy_chain** ordered list of trusted proxies (if any)
+* **geo** optional geographic information
+* **ua** optional user-agent classification
 
 Some fields may be unused by certain deployments but are part of the stable identity contract.
 
@@ -92,7 +92,7 @@ ua_engine         = "woothee"
 Supported engines balance accuracy and performance. Defensive limits (such as maximum UA length) are enforced to protect
 throughput.
 
-## Compliance & Safety
+## Compliance and Safety
 
 * Identity data is **internal-only**
 * No headers are mutated or forwarded
