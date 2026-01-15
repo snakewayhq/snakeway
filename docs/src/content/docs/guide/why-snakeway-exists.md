@@ -8,11 +8,11 @@ massive, service-mesh architectures like Envoy and Istio. Snakeway exists to fil
 
 ### The Problem: Power vs. Complexity
 
-When teams need to add custom logic to their edge—things like request enrichment, custom access rules, or complex
-observability—they often face a difficult choice:
+When teams need to add custom logic to their edge (.e.g., request enrichment, custom access rules, or complex
+observability), they often face a challenging choice:
 
 1. **Simple Proxies**: Fast and reliable, but extending them often requires writing C modules or using limited scripting
-   languages (like Lua), which can be difficult to test and maintain.
+   languages (like Lua), which can be challenging to test and maintain.
 2. **Heavy Gateways**: Incredibly powerful, but often come with massive operational overhead, complex DSLs, and a "black
    box" nature that makes debugging difficult.
 
@@ -31,11 +31,14 @@ Snakeway was built on a different set of priorities:
 
 ### Why Rust and WASM?
 
-We chose **Rust** for the core of Snakeway because it offers the performance of C and C++ without the memory safety
-risks. This allows us to build a proxy that is both incredibly fast and inherently secure.
+**Rust** was chosen for the core of Snakeway because it offers the performance of C and C++ without the memory safety
+risks. This allows for a proxy that is both incredibly fast and inherently secure.
 
-We chose **WebAssembly (WASM)** for extensibility because it provides a near-perfect sandbox. You can run custom,
-third-party, or experimental logic at the edge without any risk of crashing the core proxy or leaking memory.
+**WebAssembly (WASM)** was chosen for extensibility because it provides a near-perfect sandbox.
+Custom, third-party, or experimental logic can be run at the edge without any risk of crashing the core proxy or leaking
+memory.
+WASM also has the benefit of authorship in multiple languages (e.g., Rust, Go, Elixir, Python).
+This makes a rich ecosystem of plugins and integrations possible.
 
 ### Who is Snakeway for?
 
@@ -46,4 +49,4 @@ Snakeway is for teams that:
 - Value transparency, observability, and deterministic behavior.
 - Want to use modern languages like Rust or Go to control their traffic.
 
-Snakeway isn't just a proxy; it's a **traffic control platform** designed to grow with your needs.
+Snakeway isn't just a proxy. It's a **traffic control platform** designed to grow with your needs.

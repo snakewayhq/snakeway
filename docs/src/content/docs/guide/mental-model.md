@@ -5,30 +5,22 @@ title: Mental Model
 
 This page explains **how Snakeway thinks about traffic**.
 
-If you understand this page, you understand Snakeway. Everything else—configuration, devices, WASM, observability—is an
-implementation detail layered on top.
+If you understand this page, you understand Snakeway.
+Everything else (e.g., configuration, devices, WASM, observability) is an implementation detail layered on top.
 
 ## The Core Loop
 
 Snakeway processes traffic as a **linear, deterministic pipeline**.
 
-For every request:
-
-```
-Request arrives
-    ↓
-Devices run (request phase)
-    ↓
-Optional proxy to upstream
-    ↓
-Devices run (response phase)
-    ↓
-Response returned
-```
+It is a **pipeline you configure**, and your code runs *inside that pipeline* with clear boundaries and guarantees.
 
 There is no hidden branching, background magic, or implicit retries.
 
 What you configure is exactly what happens.
+
+For every request:
+
+![Core loop diagram](../../../assets/mental-model/core-loop.svg)
 
 ## Requests Are Context, Not Handlers
 
@@ -49,6 +41,28 @@ Devices receive mutable access to these contexts and can:
 
 This is why Snakeway scales cleanly: logic is applied *to data*, not embedded *in control flow*.
 
+Example of a simple pipeline:
+
+**Device 1: Identity device**
+
+The builtin identity device creates a new identity context object.
+This object is attached to the request context and is available to later devices in the pipeline.
+
+**Device 2: Fraud signal detection device**
+
+A fraud signal detection device is planned for the future.
+It will access the identity context and produce its own fraud context object which will be attached to the request
+context.
+
+**Device 3: Operator-defined WASM device**
+
+An operator defined third-party WASM device might access both the identity context the fraud context.
+It can make decisions based on both and then take action perhaps to...
+
+1. Block the request
+2. Modify headers
+3. Forward to upstream
+
 ## The Device Pipeline
 
 Devices are executed in a strict, ordered sequence.
@@ -58,10 +72,10 @@ Order is explicit and intentional.
 Example:
 
 ```
-1. Header normalization device
-2. Authentication device
-3. Rules engine device
-4. Access logging device
+1. Identity device
+2. Structured logging device
+3. Fraud signal detection device
+4. Throttling device
 ```
 
 This ordering guarantees:
@@ -72,25 +86,25 @@ This ordering guarantees:
 
 If two devices conflict, the configuration—not the runtime—decides who wins.
 
-## Device Phases
+### Device Phases
 
 Each device can hook into specific phases of the request lifecycle.
 
 Conceptually:
 
 ```
-1. **on_request** — Request received
-2. **before_proxy** — Just before upstream call
-3. **after_proxy** — Upstream response received
-4. **on_response** — Final response handling
-5. **on_error** — Unrecoverable failure
+1. on_request: Request received
+2. before_proxy: Just before upstream call
+3. after_proxy: Upstream response received
+4. on_response: Final response handling
+5. on_error: Unrecoverable failure
 ```
 
 Not every device needs every phase.
 
 Most devices do one thing well, at one point in the lifecycle.
 
-## Short-circuiting (i.e., responding early) Is a Feature
+### Short-circuiting (i.e., responding early) is a Feature
 
 Devices are allowed to **stop the pipeline early**.
 
@@ -106,7 +120,7 @@ Once a response is finalized, downstream devices see the result—but upstream p
 
 This makes Snakeway fast by default and avoids unnecessary work.
 
-## Proxying Is Optional
+### Proxying Is Optional
 
 Snakeway is a proxy, but **proxying is not mandatory**.
 
@@ -125,7 +139,7 @@ This flexibility is what enables:
 
 Upstreams are just one possible outcome of the pipeline.
 
-## Errors Are First-Class
+### Errors Are First-Class
 
 Errors are not exceptions flying out of the system.
 
@@ -143,7 +157,7 @@ This prevents “half-failed” requests and undefined behavior.
 
 Snakeway is highly concurrent, but **devices do not manage concurrency**.
 
-Key ideas:
+### Key Ideas
 
 - Each request is processed independently
 - Devices must be thread-safe
@@ -151,7 +165,7 @@ Key ideas:
 
 This keeps device authors focused on logic, not synchronization.
 
-## What This Model Buys You
+### What This Model Buys You
 
 This mental model enables:
 
@@ -163,11 +177,5 @@ This mental model enables:
 It also enforces discipline.
 
 If a behavior is hard to explain using this model, it probably doesn't belong in Snakeway.
-
-## If You Remember One Thing
-
-Snakeway is **not** a framework that calls your code.
-
-It is a **pipeline you configure**, and your code runs *inside that pipeline* with clear boundaries and guarantees.
-
-Once you internalize that, everything else clicks.
+For example, if you have a service that needs to talk to a database, it probably belongs in an upstream service
+and not in the device pipeline.
