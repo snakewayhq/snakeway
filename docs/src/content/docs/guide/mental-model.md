@@ -18,11 +18,11 @@ There is no hidden branching, background magic, or implicit retries.
 
 What you configure is exactly what happens.
 
-For every request:
+#### For Every Request
 
 ![Core loop diagram](../../../assets/mental-model/core-loop.svg)
 
-## Requests Are Context, Not Handlers
+## Requests Are Context (Not Handlers)
 
 Snakeway does **not** think in terms of “routes with handlers.”
 
@@ -30,8 +30,8 @@ Instead, it thinks in terms of **context objects** flowing through the system.
 
 Two primary contexts exist:
 
-- `RequestCtx` — represents the incoming request and its evolving state
-- `ResponseCtx` — represents the upstream or locally-generated response
+- `RequestCtx` represents the incoming request and its evolving state
+- `ResponseCtx` represents the upstream or locally-generated response
 
 Devices receive mutable access to these contexts and can:
 
@@ -41,7 +41,7 @@ Devices receive mutable access to these contexts and can:
 
 This is why Snakeway scales cleanly: logic is applied *to data*, not embedded *in control flow*.
 
-Example of a simple pipeline:
+#### Concrete Example
 
 **Device 1: Identity device**
 
@@ -73,9 +73,9 @@ Example:
 
 ```
 1. Identity device
-2. Structured logging device
-3. Fraud signal detection device
-4. Throttling device
+2. Fraud signal detection device (future device)
+3. Throttling device    (future device)
+4. Structured logging device
 ```
 
 This ordering guarantees:
@@ -84,9 +84,16 @@ This ordering guarantees:
 - Predictable side effects
 - Easy reasoning under failure
 
-If two devices conflict, the configuration—not the runtime—decides who wins.
+Currently:
 
-### Device Phases
+The identity device is the first device in the pipeline.
+
+The structured logging device is the last device in the pipeline.
+
+WASM devices are run AFTER all builtin devices.
+In the future, WASM devices will run after all builtin devices except the structured logging device.
+
+## Device Phases
 
 Each device can hook into specific phases of the request lifecycle.
 
@@ -104,7 +111,7 @@ Not every device needs every phase.
 
 Most devices do one thing well, at one point in the lifecycle.
 
-### Short-circuiting (i.e., responding early) is a Feature
+## Short-circuiting (Responding Early)
 
 Devices are allowed to **stop the pipeline early**.
 
@@ -116,11 +123,11 @@ Examples:
 - A static file device serves a response directly
 - A rules engine returns a cached response
 
-Once a response is finalized, downstream devices see the result—but upstream proxying never happens.
+Once a response is finalized, downstream devices see the result, but upstream proxying never happens.
 
 This makes Snakeway fast by default and avoids unnecessary work.
 
-### Proxying Is Optional
+## Proxying Is Optional
 
 Snakeway is a proxy, but **proxying is not mandatory**.
 
@@ -139,7 +146,7 @@ This flexibility is what enables:
 
 Upstreams are just one possible outcome of the pipeline.
 
-### Errors Are First-Class
+## Errors Are First-class
 
 Errors are not exceptions flying out of the system.
 
