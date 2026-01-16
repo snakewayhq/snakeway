@@ -22,68 +22,113 @@ pub fn run_logs(mode: LogMode) -> Result<()> {
             continue;
         };
 
-        render_event(&json, mode);
+        if let Some(event) = parse_event(&json) {
+            handle_event(event, mode);
+        }
     }
 
     Ok(())
 }
 
+//-----------------------------------------------------------------------------
+// Event model
+//-----------------------------------------------------------------------------
+
+enum LogEvent {
+    Snakeway(SnakewayEvent),
+    Generic(GenericEvent),
+}
+
+struct SnakewayEvent {
+    level: String,
+    name: String,
+    method: Option<String>,
+    uri: Option<String>,
+    status: Option<i64>,
+}
+
+struct GenericEvent {
+    level: String,
+    message: String,
+    target: Option<String>,
+}
+
+//-----------------------------------------------------------------------------
+// Parsing
+//-----------------------------------------------------------------------------
+
 fn is_snakeway_event(event: &Value) -> bool {
     event.get("method").is_some() || event.get("uri").is_some() || event.get("status").is_some()
 }
 
-fn render_event(event: &Value, mode: LogMode) {
-    let level = event.get("level").and_then(Value::as_str).unwrap_or("INFO");
+fn parse_event(event: &Value) -> Option<LogEvent> {
+    let level = event
+        .get("level")
+        .and_then(Value::as_str)
+        .unwrap_or("INFO")
+        .to_string();
+
     if is_snakeway_event(event) {
-        render_snakeway_event(event, level, mode);
+        Some(LogEvent::Snakeway(SnakewayEvent {
+            level,
+            name: event
+                .get("event")
+                .and_then(Value::as_str)
+                .unwrap_or("request")
+                .to_string(),
+            method: event
+                .get("method")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            uri: event.get("uri").and_then(Value::as_str).map(str::to_string),
+            status: event.get("status").and_then(Value::as_i64),
+        }))
     } else {
-        render_generic_event(event, level, mode);
+        Some(LogEvent::Generic(GenericEvent {
+            level,
+            message: event
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("<no message>")
+                .to_string(),
+            target: event
+                .get("target")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+        }))
     }
 }
 
-fn render_generic_event(event: &Value, level: &str, mode: LogMode) {
-    let message = event
-        .get("message")
-        .and_then(Value::as_str)
-        .unwrap_or("<no message>");
+//-----------------------------------------------------------------------------
+// Handling / Rendering
+//-----------------------------------------------------------------------------
 
-    let target = event.get("target").and_then(Value::as_str).unwrap_or("");
-
+fn handle_event(event: LogEvent, mode: LogMode) {
     match mode {
-        LogMode::Pretty => {
-            if target.is_empty() {
-                println!("[{level}] {message}");
-            } else {
-                println!("[{level}] {message} ({target})");
-            }
-        }
-
+        LogMode::Pretty => render_pretty(event),
         LogMode::Raw => unreachable!(),
     }
 }
 
-fn render_snakeway_event(event: &Value, level: &str, mode: LogMode) {
-    let name = event
-        .get("event")
-        .and_then(Value::as_str)
-        .unwrap_or("request");
-
-    let method = event.get("method").and_then(Value::as_str);
-    let uri = event.get("uri").and_then(Value::as_str);
-    let status = event.get("status").and_then(Value::as_i64);
-
-    match mode {
-        LogMode::Pretty => {
-            print!("[{level}] {name}");
-            if let (Some(m), Some(u)) = (method, uri) {
+fn render_pretty(event: LogEvent) {
+    match event {
+        LogEvent::Snakeway(e) => {
+            print!("[{}] {}", e.level, e.name);
+            if let (Some(m), Some(u)) = (&e.method, &e.uri) {
                 print!(" → {m} {u}");
             }
-            if let Some(s) = status {
+            if let Some(s) = e.status {
                 print!(" ({s})");
             }
             println!();
         }
 
-        LogMode::Raw => unreachable!(),
+        LogEvent::Generic(e) => {
+            if let Some(target) = e.target {
+                println!("[{}] {} ({})", e.level, e.message, target);
+            } else {
+                println!("[{}] {}", e.level, e.message);
+            }
+        }
     }
 }
