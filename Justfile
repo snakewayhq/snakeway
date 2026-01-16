@@ -8,7 +8,7 @@ default: build
 # -----------------------------------------------------------------------------
 # The config Snakeway should load when running locally
 
-CONFIG := "config/snakeway.toml"
+CONFIG := "config/snakeway.hcl"
 
 # -----------------------------------------------------------------------------
 # Tools and docs
