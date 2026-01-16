@@ -37,6 +37,9 @@ enum Command {
 
         #[arg(long)]
         raw: bool,
+
+        #[arg(long)]
+        stats: bool,
     },
 
     /// Reload a running Snakeway instance (SIGHUP)
@@ -85,11 +88,13 @@ fn main() {
             }
         },
 
-        Some(Command::Logs { pretty, raw }) => {
+        Some(Command::Logs { pretty, raw, stats }) => {
             let mode = if raw {
                 LogMode::Raw
             } else if pretty {
                 LogMode::Pretty
+            } else if stats {
+                LogMode::Stats
             } else {
                 default_log_mode()
             };

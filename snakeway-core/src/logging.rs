@@ -42,4 +42,5 @@ pub fn default_log_mode() -> LogMode {
 pub enum LogMode {
     Raw,
     Pretty,
+    Stats,
 }
