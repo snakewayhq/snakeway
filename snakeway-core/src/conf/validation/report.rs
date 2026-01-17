@@ -391,6 +391,14 @@ impl ValidationReport {
 
 /// Builtin Identity Device Spec Validation
 impl ValidationReport {
+    pub fn geoip_enabled_with_no_dbs_specified(&mut self, origin: &Origin) {
+        self.warning(
+            "geoip enabled with no dbs specified".to_string(),
+            origin,
+            Some("At least one geoip db must be specified".to_string()),
+        )
+    }
+
     pub fn geoip_db_path_is_empty(&mut self, path: Display, origin: &Origin) {
         self.error(format!("geoip db path is empty: {}", path), origin, None)
     }
@@ -431,5 +439,9 @@ impl ValidationReport {
             origin,
             None,
         )
+    }
+
+    pub fn ua_engine_is_empty(&mut self, origin: &Origin) {
+        self.error("ua_engine is empty".to_string(), origin, None)
     }
 }
