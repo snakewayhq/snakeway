@@ -239,7 +239,7 @@ fn render_pretty(event: LogEvent) {
 //-----------------------------------------------------------------------------
 
 fn render_stats(snapshot: &StatsSnapshot) {
-    let (ok, client, server) = snapshot.status;
+    let (_ok, _client, server) = snapshot.status;
 
     // Summary metrics
     println!(
