@@ -3897,7 +3897,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "uaparser",
- "url",
  "uuid",
  "wasmtime",
  "wasmtime-wasi",
