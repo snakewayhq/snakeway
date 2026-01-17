@@ -59,7 +59,7 @@ fn run_stats() -> Result<()> {
         let stdin = io::stdin();
         let reader = stdin.lock();
 
-        for line in reader.lines().flatten() {
+        for line in reader.lines().map_while(Result::ok) {
             let Ok(json) = serde_json::from_str::<Value>(&line) else {
                 // Ignore non-JSON in stats mode (keeps dashboard clean).
                 continue;
