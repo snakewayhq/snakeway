@@ -135,7 +135,10 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
                 .and_then(Value::as_str)
                 .map(str::to_string),
             uri: event.get("uri").and_then(Value::as_str).map(str::to_string),
-            status: event.get("status").and_then(Value::as_i64),
+            status: event
+                .get("status")
+                .and_then(Value::as_str)
+                .and_then(|s| s.parse::<i64>().ok()),
         }))
     } else {
         Some(LogEvent::Generic(GenericEvent {
@@ -191,9 +194,11 @@ fn render_pretty(event: LogEvent) {
 //-----------------------------------------------------------------------------
 
 fn render_stats(snapshot: &StatsSnapshot) {
+    let (ok, client, server) = snapshot.status;
+
     println!(
-        "RPS: {:.1} | total: {} | 5xx: {}",
-        snapshot.rps, snapshot.total, snapshot.errors
+        "RPS: {:.1} | window: {} | 5xx: {}",
+        snapshot.rps, snapshot.window_events, server
     );
 
     let total_latency: u64 = snapshot.latency.iter().map(|(_, c)| *c).sum();
@@ -212,19 +217,15 @@ fn render_stats(snapshot: &StatsSnapshot) {
     println!();
 }
 
+struct WindowEvent {
+    ts: Instant,
+    latency_ms: Option<u64>,
+    status: Option<i64>,
+}
+
 struct StatsAggregator {
     window: Duration,
-    events: VecDeque<Instant>,
-
-    // Basic stats
-    total_seen: u64,
-    errors: u64,
-
-    // Histogram stats
-    latency: Histogram,
-    status_2xx: u64,
-    status_4xx: u64,
-    status_5xx: u64,
+    events: VecDeque<WindowEvent>,
 }
 
 impl StatsAggregator {
@@ -232,45 +233,28 @@ impl StatsAggregator {
         Self {
             window,
             events: VecDeque::new(),
-            total_seen: 0,
-            errors: 0,
-            latency: Histogram::new(LATENCY_BUCKETS_MS),
-            status_2xx: 0,
-            status_4xx: 0,
-            status_5xx: 0,
         }
     }
 
     fn push(&mut self, event: &LogEvent) {
         let now = Instant::now();
-        self.events.push_back(now);
-        self.total_seen += 1;
 
-        if let LogEvent::Snakeway(e) = event {
-            if let Some(status) = e.status {
-                match status {
-                    200..=299 => self.status_2xx += 1,
-                    400..=499 => self.status_4xx += 1,
-                    500..=599 => {
-                        self.status_5xx += 1;
-                        self.errors += 1;
-                    }
-                    _ => {}
-                }
-            }
+        if let LogEvent::Snakeway(e) = event
+            && (e.name == "response" || e.name == "after_proxy")
+        {
+            self.events.push_back(WindowEvent {
+                ts: now,
+                latency_ms: extract_latency_ms(e),
+                status: e.status,
+            });
 
-            // If there is latency, extract it.
-            if let Some(ms) = extract_latency_ms(e) {
-                self.latency.record(ms);
-            }
+            self.evict(now);
         }
-
-        self.evict(now);
     }
 
     fn evict(&mut self, now: Instant) {
-        while let Some(ts) = self.events.front() {
-            if now.duration_since(*ts) > self.window {
+        while let Some(ev) = self.events.front() {
+            if now.duration_since(ev.ts) > self.window {
                 self.events.pop_front();
             } else {
                 break;
@@ -279,21 +263,38 @@ impl StatsAggregator {
     }
 
     fn snapshot(&self) -> StatsSnapshot {
+        let mut latency = Histogram::new(LATENCY_BUCKETS_MS);
+        let mut status_2xx = 0;
+        let mut status_4xx = 0;
+        let mut status_5xx = 0;
+
+        for ev in &self.events {
+            if let Some(ms) = ev.latency_ms {
+                latency.record(ms);
+            }
+
+            if let Some(status) = ev.status {
+                match status {
+                    200..=299 => status_2xx += 1,
+                    400..=499 => status_4xx += 1,
+                    500..=599 => status_5xx += 1,
+                    _ => {}
+                }
+            }
+        }
+
         StatsSnapshot {
             rps: self.events.len() as f64 / self.window.as_secs_f64(),
-            total: self.total_seen,
-            errors: self.errors,
-            latency: self.latency.snapshot(),
-            status: (self.status_2xx, self.status_4xx, self.status_5xx),
+            window_events: self.events.len() as u64,
+            latency: latency.snapshot(),
+            status: (status_2xx, status_4xx, status_5xx),
         }
     }
 }
 
 struct StatsSnapshot {
     rps: f64,
-    total: u64,
-    errors: u64,
-
+    window_events: u64,
     latency: Vec<(String, u64)>,
     status: (u64, u64, u64), // 2xx, 4xx, 5xx
 }
