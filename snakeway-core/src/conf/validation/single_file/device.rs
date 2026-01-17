@@ -31,7 +31,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
 
                 if cfg.enable
                     && cfg.enable_geoip
-                    && let Some(geoip_db) = cfg.geoip_db.as_ref()
+                    && let Some(geoip_db) = cfg.geoip_city_db.as_ref()
                     && !geoip_db.is_file()
                 {
                     if geoip_db.is_empty() {
