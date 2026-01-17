@@ -8,7 +8,7 @@ default: build
 # -----------------------------------------------------------------------------
 # The config Snakeway should load when running locally
 
-CONFIG := "config/snakeway.toml"
+CONFIG := "config/snakeway.hcl"
 
 # -----------------------------------------------------------------------------
 # Tools and docs
@@ -53,7 +53,7 @@ benchmark-proxy:
     wrk -t4 -c128 -d10s https://localhost:8443/api/users/1
     @echo "Raw upstream (wrk)"
     wrk -t4 -c128 -d10s http://localhost:3000/api/users/1
-    @echo "To TLS (hey)"
+    @echo "NO TLS (hey)"
     hey -n 20000 -c 128 http://127.0.0.1:8080/api/users/1
     @echo "Raw upstream (hey)"
     hey -n 20000 -c 128 http://127.0.0.1:3000/api/users/1

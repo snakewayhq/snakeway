@@ -128,7 +128,7 @@ fn validate_identity_device_valid() {
         enable: true,
         trusted_proxies: vec!["127.0.0.1/32".to_string(), "10.0.0.0/8".to_string()],
         enable_geoip: true,
-        geoip_db: Some(geoip),
+        geoip_city_db: Some(geoip),
         ..Default::default()
     });
 
@@ -238,7 +238,7 @@ fn validate_identity_device_geoip_db_empty() {
     let device = DeviceSpec::Identity(IdentityDeviceSpec {
         enable: true,
         enable_geoip: true,
-        geoip_db: Some(PathBuf::from("")),
+        geoip_city_db: Some(PathBuf::from("")),
         ..Default::default()
     });
     let devices = vec![device];
@@ -263,7 +263,7 @@ fn validate_identity_device_geoip_db_does_not_exist() {
     let device = DeviceSpec::Identity(IdentityDeviceSpec {
         enable: true,
         enable_geoip: true,
-        geoip_db: Some(PathBuf::from("/non/existent/geoip.db")),
+        geoip_city_db: Some(PathBuf::from("/non/existent/geoip.db")),
         ..Default::default()
     });
     let devices = vec![device];
@@ -289,7 +289,7 @@ fn validate_identity_device_geoip_db_is_not_a_file() {
     let device = DeviceSpec::Identity(IdentityDeviceSpec {
         enable: true,
         enable_geoip: true,
-        geoip_db: Some(dir.path().to_path_buf()), // directory
+        geoip_city_db: Some(dir.path().to_path_buf()), // directory
         ..Default::default()
     });
 

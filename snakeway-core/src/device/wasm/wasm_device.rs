@@ -9,7 +9,7 @@ use http::{HeaderMap, HeaderName, StatusCode};
 use wasmtime::component::ResourceTable;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView, p2::add_to_linker_sync};
 
-use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::ctx::{RequestCtx, RequestId, ResponseCtx};
 use crate::device::core::{Device, result::DeviceResult};
 
 use crate::device::wasm::bindings::{
@@ -97,7 +97,8 @@ impl Device for WasmDevice {
 
         // Enforce decision
         if matches!(result.decision, Decision::Block) {
-            return DeviceResult::Respond(block_403());
+            let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+            return DeviceResult::Respond(block_403(request_id));
         }
 
         // Apply explicit patch intent
@@ -146,8 +147,9 @@ impl Device for WasmDevice {
 }
 
 /// Standard 403 response for blocked requests
-fn block_403() -> ResponseCtx {
+fn block_403(request_id: Option<String>) -> ResponseCtx {
     ResponseCtx::new(
+        request_id,
         StatusCode::FORBIDDEN,
         HeaderMap::new(),
         b"Blocked by device".to_vec(),

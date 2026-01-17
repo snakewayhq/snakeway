@@ -71,22 +71,36 @@ GeoIP support is **opt-in** and **EU-safe by default**.
 * Uses MaxMind MMDB databases
 * Memory-mapped for performance
 * Decoded lazily via path lookups
-* Default enrichment: **country code only**
+* Supports City, ISP, and Connection Type databases
 
 ```hcl
-enable_geoip = true
-geoip_db     = "./GeoLite2-Country.mmdb"
+identity_device = {
+  enable = true
+
+  enable_geoip = true
+
+  # Define the available databases (not included with Snakeway)...
+  geoip_city_db            = "/path/to/city.mmdb"
+  geoip_isp_db             = "/path/to/isp.mmdb"
+  geoip_connection_type_db = "/path/to/connection_type.mmdb"
+
+  trusted_proxies = []
+}
 ```
 
-No city-level or personally identifying location data is collected by default.
+No city-level or personally identifying location data is collected by default unless the corresponding database is
+configured and enabled.
 
 ## User-Agent Parsing
 
 User-Agent parsing is optional and configurable:
 
 ```hcl
-enable_user_agent = true
-ua_engine         = "woothee"
+identity_device = {
+  // ...
+  enable_user_agent = true
+  ua_engine         = "woothee"
+}
 ```
 
 Supported engines balance accuracy and performance. Defensive limits (such as maximum UA length) are enforced to protect

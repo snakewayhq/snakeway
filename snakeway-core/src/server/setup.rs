@@ -20,7 +20,6 @@ use std::sync::Arc;
 
 /// Run the Pingora server with the given configuration.
 pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
-    #[cfg(debug_assertions)]
     bail_if_port_is_in_use(&config.listeners)?;
 
     use tokio::runtime::Builder;

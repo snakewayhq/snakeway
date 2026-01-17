@@ -20,12 +20,19 @@ It can extract client IP addresses (respecting trusted proxies), parse User-Agen
 
 ```hcl
 identity_device = {
-  enable            = true
+  enable = true
+
+  # GeoIP/Location
+  enable_geoip  = true
   trusted_proxies = ["10.0.0.0/8", "192.168.0.0/16"]
+  # Define the available databases (not included with Snakeway)...
+  geoip_city_db = "/path/to/city.mmdb"
+  geoip_isp_db  = "/path/to/isp.mmdb"
+  geoip_connection_type_db = "/path/to/connection_type.mmdb"
+
+  # User-agent/Device
   enable_user_agent = true
   ua_engine         = "woothee"
-  enable_geoip      = true
-  geoip_db          = "/etc/snakeway/geoip.mmdb"
 }
 ```
 

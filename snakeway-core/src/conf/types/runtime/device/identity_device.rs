@@ -12,7 +12,9 @@ pub struct IdentityDeviceConfig {
 
     pub enable_geoip: bool,
 
-    pub geoip_db: Option<PathBuf>,
+    pub geoip_city_db: Option<PathBuf>,
+    pub geoip_isp_db: Option<PathBuf>,
+    pub geoip_connection_type_db: Option<PathBuf>,
 
     pub enable_user_agent: bool,
 
@@ -25,7 +27,9 @@ impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
             enable: spec.enable,
             trusted_proxies: spec.trusted_proxies,
             enable_geoip: spec.enable_geoip,
-            geoip_db: spec.geoip_db,
+            geoip_city_db: spec.geoip_city_db,
+            geoip_isp_db: spec.geoip_isp_db,
+            geoip_connection_type_db: spec.geoip_connection_type_db,
             enable_user_agent: spec.enable_user_agent,
             ua_engine: spec.ua_engine.into(),
         }

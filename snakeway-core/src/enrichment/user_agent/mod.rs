@@ -41,11 +41,28 @@ pub struct ClientIdentity {
     pub ua: Option<UserAgentInfo>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GeoInfo {
+    /// e.g., US, GB, etc
     pub country_code: Option<String>,
+    /// Location region
     pub region: Option<String>,
+    /// Autonomous System Number
     pub asn: Option<u32>,
+    /// Autonomous System Organization
+    pub aso: Option<String>,
+    /// e.g., wifi, mobile, etc
+    pub connection_type: Option<String>,
+}
+
+impl GeoInfo {
+    pub fn has_some_info(&self) -> bool {
+        self.country_code.is_some()
+            || self.region.is_some()
+            || self.asn.is_some()
+            || self.aso.is_some()
+            || self.connection_type.is_some()
+    }
 }
 
 #[derive(Debug, Clone)]

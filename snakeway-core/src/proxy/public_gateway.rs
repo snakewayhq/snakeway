@@ -1,4 +1,4 @@
-use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
+use crate::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::result::DeviceResult;
 use crate::proxy::error_classification::classify_pingora_error;
@@ -308,7 +308,13 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let mut resp_ctx = ResponseCtx::new(
+            request_id,
+            upstream.status,
+            upstream.headers.clone(),
+            Vec::new(),
+        );
         let state = self.gw_ctx.state();
 
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
@@ -352,7 +358,13 @@ impl ProxyHttp for PublicGateway {
             return Ok(());
         }
 
-        let mut resp_ctx = ResponseCtx::new(upstream.status, upstream.headers.clone(), Vec::new());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let mut resp_ctx = ResponseCtx::new(
+            request_id,
+            upstream.status,
+            upstream.headers.clone(),
+            Vec::new(),
+        );
         let state = self.gw_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}

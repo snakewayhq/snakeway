@@ -1,9 +1,11 @@
+use crate::ctx::RequestId;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
 use http::{Extensions, HeaderMap, Method, Uri, Version};
 use pingora::prelude::Session;
+use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
 use std::net::{IpAddr, Ipv4Addr};
 
 /// Canonical request context passed through the Snakeway pipeline
@@ -11,7 +13,7 @@ use std::net::{IpAddr, Ipv4Addr};
 pub struct RequestCtx {
     pub route_id: Option<RouteId>,
 
-    // Holds the WS connection slot for the lifetime of the connection
+    /// Holds the WS connection slot for the lifetime of the connection
     pub ws_guard: Option<WsConnectionGuard>,
 
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
@@ -76,11 +78,11 @@ impl RequestCtx {
     pub fn empty() -> Self {
         Self {
             route_id: None,
-            ws_guard: None,
 
             // Request lifecycle-related.
             hydrated: false,
             admission_guard: None,
+            ws_guard: None,
 
             // Request identity and content.
             method: None,
@@ -106,7 +108,7 @@ impl RequestCtx {
             cb_started: false,
             upstream_outcome: None,
 
-            // Peer info - Pingora fills this out later.
+            // Peer info - filled out during hydration
             peer_ip: Ipv4Addr::UNSPECIFIED.into(),
 
             // Device related data.
@@ -125,6 +127,13 @@ impl RequestCtx {
         self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
         self.is_http2 = req.version == Version::HTTP_2;
+        self.peer_ip = match session.client_addr() {
+            Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
+            _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        };
+
+        self.extensions.insert(RequestId::default());
+
         self.hydrated = true;
     }
 

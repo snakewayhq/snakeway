@@ -15,7 +15,9 @@ pub struct IdentityDeviceSpec {
 
     pub enable_geoip: bool,
 
-    pub geoip_db: Option<PathBuf>,
+    pub geoip_city_db: Option<PathBuf>,
+    pub geoip_isp_db: Option<PathBuf>,
+    pub geoip_connection_type_db: Option<PathBuf>,
 
     pub enable_user_agent: bool,
 

@@ -1,5 +1,5 @@
 use crate::conf::types::StructuredLoggingDeviceConfig;
-use crate::ctx::{RequestCtx, ResponseCtx};
+use crate::ctx::{RequestCtx, RequestId, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
 use crate::enrichment::user_agent::ClientIdentity;
@@ -226,9 +226,12 @@ impl StructuredLoggingDevice {
             .get::<ClientIdentity>()
             .and_then(|i| self.identity_json(i));
 
+        let request_id = self.request_id(ctx);
+
         emit!(
             self.level,
             event = %event.as_str(),
+            request_id,
             method = method,
             uri = uri,
             status = status,
@@ -237,12 +240,19 @@ impl StructuredLoggingDevice {
         );
     }
 
-    fn emit_http_response(&self, event: HttpEvent, status: Option<&str>) {
+    fn emit_http_response(&self, ctx: &ResponseCtx, event: HttpEvent) {
         emit!(
             self.level,
             event = %event.as_str(),
-            status = status,
+            request_id = ctx.request_id.as_deref(),
+            status = Some(ctx.status.as_str()),
         );
+    }
+
+    fn request_id<'a>(&self, ctx: &'a RequestCtx) -> Option<&'a str> {
+        ctx.extensions
+            .get::<RequestId>()
+            .map(move |id| id.0.as_str())
     }
 }
 
@@ -278,14 +288,14 @@ impl Device for StructuredLoggingDevice {
 
     fn after_proxy(&self, ctx: &mut ResponseCtx) -> DeviceResult {
         if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::AfterProxy) {
-            self.emit_http_response(HttpEvent::AfterProxy, Some(ctx.status.as_str()));
+            self.emit_http_response(ctx, HttpEvent::AfterProxy);
         }
         DeviceResult::Continue
     }
 
     fn on_response(&self, ctx: &mut ResponseCtx) -> DeviceResult {
         if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::Response) {
-            self.emit_http_response(HttpEvent::Response, Some(ctx.status.as_str()));
+            self.emit_http_response(ctx, HttpEvent::Response);
         }
         DeviceResult::Continue
     }

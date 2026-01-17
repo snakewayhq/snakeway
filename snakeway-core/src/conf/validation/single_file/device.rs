@@ -3,6 +3,7 @@ use crate::conf::validation::ValidationReport;
 use ipnet::IpNet;
 use nix::NixPath;
 use std::net::IpAddr;
+use std::path::Path;
 
 pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     for device in devices {
@@ -29,23 +30,25 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
 
                 validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
 
-                if cfg.enable
-                    && cfg.enable_geoip
-                    && let Some(geoip_db) = cfg.geoip_db.as_ref()
-                    && !geoip_db.is_file()
-                {
-                    if geoip_db.is_empty() {
-                        report.geoip_db_path_is_empty(geoip_db.display(), device.origin());
+                if cfg.enable_geoip {
+                    if cfg.geoip_city_db.is_none()
+                        && cfg.geoip_isp_db.is_none()
+                        && cfg.geoip_connection_type_db.is_none()
+                    {
+                        report.geoip_enabled_with_no_dbs_specified(device.origin());
                     }
-                    if !geoip_db.exists() {
-                        report.geoip_db_path_does_not_exist(geoip_db.display(), device.origin());
+
+                    if let Some(path) = cfg.geoip_city_db.as_ref() {
+                        validate_geoip_db_file(path, report, device.origin());
                     }
-                    if !geoip_db.is_file() {
-                        report.geoip_db_is_not_a_file(geoip_db.display(), device.origin());
+
+                    if let Some(path) = cfg.geoip_isp_db.as_ref() {
+                        validate_geoip_db_file(path, report, device.origin());
                     }
-                }
-                if cfg.enable && cfg.enable_user_agent {
-                    return;
+
+                    if let Some(geoip_city_db) = cfg.geoip_connection_type_db.as_ref() {
+                        validate_geoip_db_file(geoip_city_db, report, device.origin());
+                    }
                 }
             }
             DeviceSpec::StructuredLogging(cfg) => {
@@ -55,6 +58,25 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
             }
         };
     }
+}
+
+fn validate_geoip_db_file(geoip_db: &Path, report: &mut ValidationReport, origin: &Origin) -> bool {
+    let mut has_error = false;
+    if !geoip_db.is_file() {
+        if geoip_db.is_empty() {
+            report.geoip_db_path_is_empty(geoip_db.display(), origin);
+            has_error = true;
+        }
+        if !geoip_db.exists() {
+            report.geoip_db_path_does_not_exist(geoip_db.display(), origin);
+            has_error = true;
+        }
+        if !geoip_db.is_file() {
+            report.geoip_db_is_not_a_file(geoip_db.display(), origin);
+            has_error = true;
+        }
+    }
+    !has_error
 }
 
 fn validate_trusted_proxies(proxies: &[String], report: &mut ValidationReport, origin: &Origin) {
