@@ -1,3 +1,4 @@
+use crate::ctx::RequestId;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -11,7 +12,7 @@ use std::net::{IpAddr, Ipv4Addr};
 pub struct RequestCtx {
     pub route_id: Option<RouteId>,
 
-    // Holds the WS connection slot for the lifetime of the connection
+    /// Holds the WS connection slot for the lifetime of the connection
     pub ws_guard: Option<WsConnectionGuard>,
 
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
@@ -76,11 +77,11 @@ impl RequestCtx {
     pub fn empty() -> Self {
         Self {
             route_id: None,
-            ws_guard: None,
 
             // Request lifecycle-related.
             hydrated: false,
             admission_guard: None,
+            ws_guard: None,
 
             // Request identity and content.
             method: None,
@@ -125,6 +126,9 @@ impl RequestCtx {
         self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
         self.is_http2 = req.version == Version::HTTP_2;
+
+        self.extensions.insert(RequestId::default());
+
         self.hydrated = true;
     }
 

@@ -69,3 +69,4 @@ hcl-rs = { workspace = true }
 owo-colors = { workspace = true }
 tempfile = { workspace = true }
 pretty_assertions = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }

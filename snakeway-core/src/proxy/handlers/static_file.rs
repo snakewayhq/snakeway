@@ -26,7 +26,7 @@ impl StaticFileHandler {
         route: &RouteEntry,
         devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
-        use crate::ctx::ResponseCtx;
+        use crate::ctx::{RequestId, ResponseCtx};
         use crate::device::core::DeviceResult;
         use crate::device::core::pipeline::DevicePipeline;
         use pingora_http::ResponseHeader;
@@ -156,7 +156,13 @@ impl StaticFileHandler {
         }
 
         // Run on_response devices
-        let mut resp_ctx = ResponseCtx::new(static_resp.status, static_resp.headers, Vec::new());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let mut resp_ctx = ResponseCtx::new(
+            request_id,
+            static_resp.status,
+            static_resp.headers,
+            Vec::new(),
+        );
 
         match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}

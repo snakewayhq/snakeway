@@ -30,11 +30,13 @@
 //! render_stats
 //!
 
+use crate::ctx::RequestId;
 use crate::logging::LogMode;
 use anyhow::Result;
 use serde_json::Value;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io::{self, BufRead};
+use std::time::SystemTime;
 use std::time::{Duration, Instant};
 
 pub fn run_logs(mode: LogMode) -> Result<()> {
@@ -93,11 +95,13 @@ enum LogEvent {
 
 #[derive(Clone)]
 struct SnakewayEvent {
+    request_id: Option<String>,
     level: String,
     name: String,
     method: Option<String>,
     uri: Option<String>,
     status: Option<i64>,
+    ts: SystemTime,
 }
 
 #[derive(Clone)]
@@ -123,7 +127,19 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
         .to_string();
 
     if is_snakeway_event(event) {
+        let request_id = event
+            .get("request_id")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let ts = event
+            .get("timestamp")
+            .and_then(Value::as_str)
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(SystemTime::from)
+            .unwrap_or(SystemTime::now());
         Some(LogEvent::Snakeway(SnakewayEvent {
+            request_id,
+            ts,
             level,
             name: event
                 .get("event")
@@ -226,6 +242,12 @@ struct WindowEvent {
 struct StatsAggregator {
     window: Duration,
     events: VecDeque<WindowEvent>,
+    in_flight: HashMap<RequestId, InFlight>,
+}
+
+struct InFlight {
+    start: Instant,
+    status: Option<i64>,
 }
 
 impl StatsAggregator {
@@ -233,22 +255,60 @@ impl StatsAggregator {
         Self {
             window,
             events: VecDeque::new(),
+            in_flight: HashMap::new(),
         }
     }
-
     fn push(&mut self, event: &LogEvent) {
-        let now = Instant::now();
+        let LogEvent::Snakeway(e) = event else {
+            return;
+        };
 
-        if let LogEvent::Snakeway(e) = event
-            && (e.name == "response" || e.name == "after_proxy")
-        {
-            self.events.push_back(WindowEvent {
-                ts: now,
-                latency_ms: extract_latency_ms(e),
-                status: e.status,
-            });
+        let now = systemtime_to_instant(e.ts);
 
-            self.evict(now);
+        let Some(request_id) = &e.request_id else {
+            return;
+        };
+
+        let request_id = RequestId(request_id.clone());
+
+        match e.name.as_str() {
+            //------------------------------------------------------------
+            // Request start
+            //------------------------------------------------------------
+            "request" | "before_proxy" => {
+                self.in_flight
+                    .entry(request_id.clone())
+                    .or_insert(InFlight {
+                        start: now,
+                        status: None,
+                    });
+            }
+
+            //------------------------------------------------------------
+            // Upstream completion (may happen multiple times)
+            //------------------------------------------------------------
+            "after_proxy" => {
+                if let Some(f) = self.in_flight.get_mut(&request_id) {
+                    f.status = e.status;
+                }
+            }
+
+            //------------------------------------------------------------
+            // Final response (authoritative end-of-request)
+            //------------------------------------------------------------
+            "response" => {
+                if let Some(f) = self.in_flight.remove(&request_id) {
+                    let latency_ms = now.duration_since(f.start).as_millis() as u64;
+
+                    self.events.push_back(WindowEvent {
+                        ts: now,
+                        latency_ms: Some(latency_ms),
+                        status: e.status.or(f.status),
+                    });
+                }
+            }
+
+            _ => {}
         }
     }
 
@@ -262,7 +322,10 @@ impl StatsAggregator {
         }
     }
 
-    fn snapshot(&self) -> StatsSnapshot {
+    fn snapshot(&mut self) -> StatsSnapshot {
+        let now = Instant::now();
+        self.evict(now);
+
         let mut latency = Histogram::new(LATENCY_BUCKETS_MS);
         let mut status_2xx = 0;
         let mut status_4xx = 0;
@@ -330,10 +393,6 @@ impl Histogram {
         self.counts[last] += 1;
     }
 
-    fn reset(&mut self) {
-        self.counts.fill(0);
-    }
-
     fn snapshot(&self) -> Vec<(String, u64)> {
         let mut out = Vec::new();
 
@@ -350,6 +409,12 @@ impl Histogram {
     }
 }
 
-fn extract_latency_ms(_event: &SnakewayEvent) -> Option<u64> {
-    None
+fn systemtime_to_instant(ts: SystemTime) -> Instant {
+    let now_sys = SystemTime::now();
+    let now_inst = Instant::now();
+
+    match ts.duration_since(now_sys) {
+        Ok(delta) => now_inst + delta,
+        Err(e) => now_inst - e.duration(),
+    }
 }
