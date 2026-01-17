@@ -102,6 +102,13 @@ struct SnakewayEvent {
     uri: Option<String>,
     status: Option<i64>,
     ts: SystemTime,
+    identity: Option<IdentitySummary>,
+}
+
+#[derive(Clone, Default)]
+struct IdentitySummary {
+    device: Option<String>,
+    bot: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -127,20 +134,42 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
         .to_string();
 
     if is_snakeway_event(event) {
-        let request_id = event
-            .get("request_id")
-            .and_then(Value::as_str)
-            .map(str::to_string);
-        let ts = event
-            .get("timestamp")
-            .and_then(Value::as_str)
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(SystemTime::from)
-            .unwrap_or(SystemTime::now());
         Some(LogEvent::Snakeway(SnakewayEvent {
-            request_id,
-            ts,
             level,
+            request_id: event
+                .get("request_id")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            ts: event
+                .get("timestamp")
+                .and_then(Value::as_str)
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(SystemTime::from)
+                .unwrap_or(SystemTime::now()),
+            identity: event.get("identity").and_then(|v| {
+                // identity is a JSON-encoded string
+                let s = v.as_str()?;
+
+                let Ok(parsed) = serde_json::from_str::<Value>(s) else {
+                    return None;
+                };
+
+                let device = parsed
+                    .get("device")
+                    .and_then(Value::as_str)
+                    .map(String::from);
+
+                let bot = parsed
+                    .get("bot")
+                    .and_then(Value::as_str)
+                    .and_then(|b| b.parse::<bool>().ok());
+
+                if device.is_some() || bot.is_some() {
+                    Some(IdentitySummary { device, bot })
+                } else {
+                    None
+                }
+            }),
             name: event
                 .get("event")
                 .and_then(Value::as_str)
@@ -212,11 +241,13 @@ fn render_pretty(event: LogEvent) {
 fn render_stats(snapshot: &StatsSnapshot) {
     let (ok, client, server) = snapshot.status;
 
+    // Summary metrics
     println!(
         "RPS: {:.1} | window: {} | 5xx: {}",
         snapshot.rps, snapshot.window_events, server
     );
 
+    // Latency metrics
     let total_latency: u64 = snapshot.latency.iter().map(|(_, c)| *c).sum();
     if total_latency > 0 {
         println!("Latency (window):");
@@ -236,6 +267,21 @@ fn render_stats(snapshot: &StatsSnapshot) {
         snapshot.p95_ms, snapshot.p99_ms,
     );
 
+    // Identity metrics
+    println!(
+        "Clients: human={} bot={}",
+        snapshot.human_count, snapshot.bot_count
+    );
+
+    if !snapshot.device_counts.is_empty() {
+        print!("Devices: ");
+        for (d, c) in &snapshot.device_counts {
+            print!("{d}={c} ");
+        }
+        println!();
+    }
+
+    // Total response status metrics
     let (ok, client, server) = snapshot.status;
     println!("Status: 2xx={} 4xx={} 5xx={}", ok, client, server);
 
@@ -246,6 +292,7 @@ struct WindowEvent {
     ts: Instant,
     latency_ms: Option<u64>,
     status: Option<i64>,
+    identity: IdentitySummary,
 }
 
 struct StatsAggregator {
@@ -257,6 +304,7 @@ struct StatsAggregator {
 struct InFlight {
     start: Instant,
     status: Option<i64>,
+    identity: IdentitySummary,
 }
 
 impl StatsAggregator {
@@ -284,13 +332,18 @@ impl StatsAggregator {
             //------------------------------------------------------------
             // Request start
             //------------------------------------------------------------
-            "request" | "before_proxy" => {
+            "request" => {
                 self.in_flight
                     .entry(request_id.clone())
                     .or_insert(InFlight {
                         start: now,
                         status: None,
+                        identity: e.identity.clone().unwrap_or_default(),
                     });
+            }
+
+            "before_proxy" => {
+                // no/op
             }
 
             //------------------------------------------------------------
@@ -313,6 +366,7 @@ impl StatsAggregator {
                         ts: now,
                         latency_ms: Some(latency_ms),
                         status: e.status.or(f.status),
+                        identity: f.identity,
                     });
                 }
             }
@@ -340,11 +394,17 @@ impl StatsAggregator {
         let mut status_4xx = 0;
         let mut status_5xx = 0;
 
+        let mut device_counts: HashMap<String, u64> = HashMap::new();
+        let mut bot_count = 0;
+        let mut human_count = 0;
+
         for ev in &self.events {
+            // Latency
             if let Some(ms) = ev.latency_ms {
                 latency.record(ms);
             }
 
+            // Status codes
             if let Some(status) = ev.status {
                 match status {
                     200..=299 => status_2xx += 1,
@@ -353,21 +413,38 @@ impl StatsAggregator {
                     _ => {}
                 }
             }
+
+            // Identity
+            if let Some(bot) = ev.identity.bot {
+                if bot {
+                    bot_count += 1;
+                } else {
+                    human_count += 1;
+                }
+            }
+
+            // Device
+            if let Some(device) = &ev.identity.device {
+                *device_counts.entry(device.clone()).or_insert(0) += 1;
+            }
         }
 
         let buckets = latency.numeric_buckets();
         let total_latency: u64 = buckets.iter().map(|(_, c)| *c).sum();
 
-        let p95 = percentile_from_histogram(&buckets, total_latency, 0.95);
-        let p99 = percentile_from_histogram(&buckets, total_latency, 0.99);
+        let p95_ms = percentile_from_histogram(&buckets, total_latency, 0.95);
+        let p99_ms = percentile_from_histogram(&buckets, total_latency, 0.99);
 
         StatsSnapshot {
             rps: self.events.len() as f64 / self.window.as_secs_f64(),
             window_events: self.events.len() as u64,
             latency: latency.snapshot(),
             status: (status_2xx, status_4xx, status_5xx),
-            p95_ms: p95,
-            p99_ms: p99,
+            p95_ms,
+            p99_ms,
+            device_counts,
+            bot_count,
+            human_count,
         }
     }
 }
@@ -380,6 +457,11 @@ struct StatsSnapshot {
 
     p95_ms: u64,
     p99_ms: u64,
+
+    // Identity
+    device_counts: HashMap<String, u64>,
+    bot_count: u64,
+    human_count: u64,
 }
 
 fn systemtime_to_instant(ts: SystemTime) -> Instant {
