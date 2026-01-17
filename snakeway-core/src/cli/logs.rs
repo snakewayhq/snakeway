@@ -231,6 +231,11 @@ fn render_stats(snapshot: &StatsSnapshot) {
         }
     }
 
+    println!(
+        "Latency p95 ≈ {}ms | p99 ≈ {}ms",
+        snapshot.p95_ms, snapshot.p99_ms,
+    );
+
     let (ok, client, server) = snapshot.status;
     println!("Status: 2xx={} 4xx={} 5xx={}", ok, client, server);
 
@@ -350,11 +355,19 @@ impl StatsAggregator {
             }
         }
 
+        let buckets = latency.numeric_buckets();
+        let total_latency: u64 = buckets.iter().map(|(_, c)| *c).sum();
+
+        let p95 = percentile_from_histogram(&buckets, total_latency, 0.95);
+        let p99 = percentile_from_histogram(&buckets, total_latency, 0.99);
+
         StatsSnapshot {
             rps: self.events.len() as f64 / self.window.as_secs_f64(),
             window_events: self.events.len() as u64,
             latency: latency.snapshot(),
             status: (status_2xx, status_4xx, status_5xx),
+            p95_ms: p95,
+            p99_ms: p99,
         }
     }
 }
@@ -364,6 +377,19 @@ struct StatsSnapshot {
     window_events: u64,
     latency: Vec<(String, u64)>,
     status: (u64, u64, u64), // 2xx, 4xx, 5xx
+
+    p95_ms: u64,
+    p99_ms: u64,
+}
+
+fn systemtime_to_instant(ts: SystemTime) -> Instant {
+    let now_sys = SystemTime::now();
+    let now_inst = Instant::now();
+
+    match ts.duration_since(now_sys) {
+        Ok(delta) => now_inst + delta,
+        Err(e) => now_inst - e.duration(),
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -414,14 +440,42 @@ impl Histogram {
 
         out
     }
+
+    fn numeric_buckets(&self) -> Vec<(u64, u64)> {
+        let mut out = Vec::new();
+
+        for (i, count) in self.counts.iter().enumerate() {
+            let upper = if i < self.buckets.len() {
+                self.buckets[i]
+            } else {
+                *self.buckets.last().unwrap()
+            };
+            out.push((upper, *count));
+        }
+
+        out
+    }
 }
 
-fn systemtime_to_instant(ts: SystemTime) -> Instant {
-    let now_sys = SystemTime::now();
-    let now_inst = Instant::now();
-
-    match ts.duration_since(now_sys) {
-        Ok(delta) => now_inst + delta,
-        Err(e) => now_inst - e.duration(),
+fn percentile_from_histogram(
+    buckets: &[(u64, u64)], // (upper_bound_ms, count)
+    total: u64,
+    pct: f64,
+) -> u64 {
+    if total == 0 {
+        return 0;
     }
+
+    let target = (total as f64 * pct).ceil() as u64;
+    let mut running = 0;
+
+    for (upper, count) in buckets {
+        running += *count;
+        if running >= target {
+            return *upper;
+        }
+    }
+
+    // overflow bucket
+    buckets.last().map(|(u, _)| *u).unwrap_or(0)
 }
