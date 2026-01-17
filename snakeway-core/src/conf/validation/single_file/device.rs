@@ -31,17 +31,18 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
 
                 if cfg.enable
                     && cfg.enable_geoip
-                    && let Some(geoip_db) = cfg.geoip_city_db.as_ref()
-                    && !geoip_db.is_file()
+                    && let Some(geoip_city_db) = cfg.geoip_city_db.as_ref()
+                    && !geoip_city_db.is_file()
                 {
-                    if geoip_db.is_empty() {
-                        report.geoip_db_path_is_empty(geoip_db.display(), device.origin());
+                    if geoip_city_db.is_empty() {
+                        report.geoip_db_path_is_empty(geoip_city_db.display(), device.origin());
                     }
-                    if !geoip_db.exists() {
-                        report.geoip_db_path_does_not_exist(geoip_db.display(), device.origin());
+                    if !geoip_city_db.exists() {
+                        report
+                            .geoip_db_path_does_not_exist(geoip_city_db.display(), device.origin());
                     }
-                    if !geoip_db.is_file() {
-                        report.geoip_db_is_not_a_file(geoip_db.display(), device.origin());
+                    if !geoip_city_db.is_file() {
+                        report.geoip_db_is_not_a_file(geoip_city_db.display(), device.origin());
                     }
                 }
                 if cfg.enable && cfg.enable_user_agent {
