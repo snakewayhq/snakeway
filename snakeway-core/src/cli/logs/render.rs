@@ -1,4 +1,5 @@
 use super::stats_aggregation::StatsSnapshot;
+use crate::cli::logs::types::LogEvent;
 use std::io;
 use std::io::Write;
 
@@ -68,4 +69,26 @@ pub fn redraw(output: &str) {
     print!("\x1b[2J\x1b[H");
     println!("{output}");
     let _ = io::stdout().flush();
+}
+
+pub fn render_pretty(event: &LogEvent) {
+    match event {
+        LogEvent::Snakeway(e) => {
+            print!("[{}] {}", e.level, e.name);
+            if let (Some(m), Some(u)) = (&e.method, &e.uri) {
+                print!(" → {m} {u}");
+            }
+            if let Some(s) = e.status {
+                print!(" ({s})");
+            }
+            println!();
+        }
+        LogEvent::Generic(e) => {
+            if let Some(target) = &e.target {
+                println!("[{}] {} ({})", e.level, e.message, target);
+            } else {
+                println!("[{}] {}", e.level, e.message);
+            }
+        }
+    }
 }

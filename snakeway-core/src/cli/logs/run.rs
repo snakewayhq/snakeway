@@ -1,8 +1,7 @@
 use crate::cli::logs::constants::{LOOP_IDLE_SLEEP, RENDER_TICK, WINDOW};
 use crate::cli::logs::parse::parse_event;
-use crate::cli::logs::pretty::render_pretty;
+use crate::cli::logs::render::{redraw, render_pretty, render_stats};
 use crate::cli::logs::stats_aggregation::StatsAggregator;
-use crate::cli::logs::stats_rendering::{redraw, render_stats};
 use crate::cli::logs::types::LogEvent;
 use crate::logging::LogMode;
 use anyhow::Result;

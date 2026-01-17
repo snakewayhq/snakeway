@@ -33,10 +33,9 @@
 mod constants;
 mod histogram;
 mod parse;
-mod pretty;
+mod render;
 mod run;
 mod stats_aggregation;
-mod stats_rendering;
 mod types;
 
 pub use run::run_logs;
