@@ -222,7 +222,11 @@ fn render_stats(snapshot: &StatsSnapshot) {
         println!("Latency (window):");
         for (label, count) in &snapshot.latency {
             let pct = (*count as f64 / total_latency as f64) * 100.0;
-            let bars = (pct / 5.0).round() as usize;
+            let bars = if *count == 0 {
+                0
+            } else {
+                ((pct / 5.0).floor() as usize).max(1)
+            };
             println!("  {:<8} {:<20} {:>5.1}%", label, "█".repeat(bars), pct);
         }
     }
@@ -397,11 +401,14 @@ impl Histogram {
         let mut out = Vec::new();
 
         for (i, c) in self.counts.iter().enumerate() {
-            let label = if i < self.buckets.len() {
-                format!("≤{}ms", self.buckets[i])
+            let label = if i == 0 {
+                format!("0–{}ms", self.buckets[0])
+            } else if i < self.buckets.len() {
+                format!("{}–{}ms", self.buckets[i - 1] + 1, self.buckets[i])
             } else {
                 format!(">{}ms", self.buckets.last().unwrap())
             };
+
             out.push((label, *c));
         }
 
