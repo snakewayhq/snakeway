@@ -64,7 +64,7 @@ fn validate_geoip_db_file(geoip_db: &Path, report: &mut ValidationReport, origin
     let mut has_error = false;
     if !geoip_db.is_file() {
         if geoip_db.is_empty() {
-            report.geoip_db_path_is_empty(geoip_db.display(), &origin);
+            report.geoip_db_path_is_empty(geoip_db.display(), origin);
             has_error = true;
         }
         if !geoip_db.exists() {
