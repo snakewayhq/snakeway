@@ -35,50 +35,121 @@ use crate::logging::LogMode;
 use anyhow::Result;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::io::{self, BufRead};
-use std::time::SystemTime;
-use std::time::{Duration, Instant};
+use std::io::{self, BufRead, Write};
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Duration, Instant, SystemTime};
+
+const WINDOW: Duration = Duration::from_secs(10);
+const RENDER_TICK: Duration = Duration::from_secs(1);
+const IN_FLIGHT_TTL: Duration = Duration::from_secs(60);
+const LOOP_IDLE_SLEEP: Duration = Duration::from_millis(25);
 
 pub fn run_logs(mode: LogMode) -> Result<()> {
+    match mode {
+        LogMode::Raw => run_raw(),
+        LogMode::Pretty => run_pretty(),
+        LogMode::Stats => run_stats(),
+    }
+}
+
+fn run_raw() -> Result<()> {
     let stdin = io::stdin();
     let reader = stdin.lock();
 
-    let mut stats =
-        matches!(mode, LogMode::Stats).then(|| StatsAggregator::new(Duration::from_secs(10)));
+    for line in reader.lines() {
+        println!("{}", line?);
+    }
+    Ok(())
+}
 
-    let mut last_render = Instant::now();
+fn run_pretty() -> Result<()> {
+    let stdin = io::stdin();
+    let reader = stdin.lock();
 
     for line in reader.lines() {
         let line = line?;
 
-        if matches!(mode, LogMode::Raw) {
-            println!("{line}");
-            continue;
-        }
-
         let Ok(json) = serde_json::from_str::<Value>(&line) else {
+            // Preserve non-JSON lines as-is for troubleshooting.
             println!("{line}");
             continue;
         };
 
         if let Some(event) = parse_event(&json) {
-            // Existing behavior
-            if matches!(mode, LogMode::Pretty) {
-                handle_event(event.clone(), mode);
-            }
+            render_pretty(&event);
+        }
+    }
+    Ok(())
+}
 
-            // Stats-only path
-            if let Some(agg) = stats.as_mut() {
-                agg.push(&event);
+fn run_stats() -> Result<()> {
+    // Channel from reader thread -> stats loop.
+    let (tx, rx) = mpsc::channel::<LogEvent>();
 
-                if last_render.elapsed() >= Duration::from_secs(1) {
-                    let snap = agg.snapshot();
-                    render_stats(&snap);
-                    last_render = Instant::now();
+    // Reader thread: stdin -> parse -> send(LogEvent)
+    let reader_handle = thread::spawn(move || {
+        let stdin = io::stdin();
+        let reader = stdin.lock();
+
+        for line in reader.lines().flatten() {
+            let Ok(json) = serde_json::from_str::<Value>(&line) else {
+                // Ignore non-JSON in stats mode (keeps dashboard clean).
+                continue;
+            };
+
+            if let Some(event) = parse_event(&json) {
+                // If receiver is gone, stop early.
+                if tx.send(event).is_err() {
+                    break;
                 }
             }
         }
+        // tx is dropped here, which will disconnect rx.
+    });
+
+    // Optional UX polish: hide cursor while dashboard runs.
+    print!("\x1b[?25l");
+    let _ = io::stdout().flush();
+
+    let mut agg = StatsAggregator::new(WINDOW);
+    let mut last_render = Instant::now();
+
+    // Stats render loop
+    loop {
+        let mut disconnected = false;
+
+        // Drain events
+        loop {
+            match rx.try_recv() {
+                Ok(ev) => agg.push(&ev),
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    disconnected = true;
+                    break;
+                }
+            }
+        }
+
+        if last_render.elapsed() >= RENDER_TICK {
+            let snap = agg.snapshot();
+            redraw(&render_stats(&snap));
+            last_render = Instant::now();
+        }
+
+        if disconnected {
+            break;
+        }
+
+        thread::sleep(LOOP_IDLE_SLEEP);
     }
+
+    // Restore cursor
+    print!("\x1b[?25h");
+    let _ = io::stdout().flush();
+
+    // Join reader thread (best effort)
+    let _ = reader_handle.join();
 
     Ok(())
 }
@@ -100,8 +171,8 @@ struct SnakewayEvent {
     name: String,
     method: Option<String>,
     uri: Option<String>,
-    status: Option<i64>,
-    ts: SystemTime,
+    status: Option<i64>, // status is a string in logs; we parse to i64
+    ts: Option<SystemTime>,
     identity: Option<IdentitySummary>,
 }
 
@@ -144,12 +215,10 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
                 .get("timestamp")
                 .and_then(Value::as_str)
                 .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                .map(SystemTime::from)
-                .unwrap_or(SystemTime::now()),
+                .map(SystemTime::from),
             identity: event.get("identity").and_then(|v| {
                 // identity is a JSON-encoded string
                 let s = v.as_str()?;
-
                 let Ok(parsed) = serde_json::from_str::<Value>(s) else {
                     return None;
                 };
@@ -159,6 +228,7 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
                     .and_then(Value::as_str)
                     .map(String::from);
 
+                // In your logs bot is a string ("true"/"false")
                 let bot = parsed
                     .get("bot")
                     .and_then(Value::as_str)
@@ -180,6 +250,7 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
                 .and_then(Value::as_str)
                 .map(str::to_string),
             uri: event.get("uri").and_then(Value::as_str).map(str::to_string),
+            // status is a string in your logs (e.g. "200")
             status: event
                 .get("status")
                 .and_then(Value::as_str)
@@ -202,16 +273,10 @@ fn parse_event(event: &Value) -> Option<LogEvent> {
 }
 
 //-----------------------------------------------------------------------------
-// Handling / Rendering
+// Pretty rendering
 //-----------------------------------------------------------------------------
 
-fn handle_event(event: LogEvent, mode: LogMode) {
-    if matches!(mode, LogMode::Pretty) {
-        render_pretty(event);
-    }
-}
-
-fn render_pretty(event: LogEvent) {
+fn render_pretty(event: &LogEvent) {
     match event {
         LogEvent::Snakeway(e) => {
             print!("[{}] {}", e.level, e.name);
@@ -223,9 +288,8 @@ fn render_pretty(event: LogEvent) {
             }
             println!();
         }
-
         LogEvent::Generic(e) => {
-            if let Some(target) = e.target {
+            if let Some(target) = &e.target {
                 println!("[{}] {} ({})", e.level, e.message, target);
             } else {
                 println!("[{}] {}", e.level, e.message);
@@ -235,62 +299,84 @@ fn render_pretty(event: LogEvent) {
 }
 
 //-----------------------------------------------------------------------------
-// Stats Aggregation
+// Stats rendering
 //-----------------------------------------------------------------------------
 
-fn render_stats(snapshot: &StatsSnapshot) {
+fn render_stats(snapshot: &StatsSnapshot) -> String {
+    let mut out = String::new();
+
     let (_ok, _client, server) = snapshot.status;
 
-    // Summary metrics
-    println!(
-        "RPS: {:.1} | window: {} | 5xx: {}",
-        snapshot.rps, snapshot.window_events, server
-    );
+    out.push_str(&format!(
+        "Snakeway Stats ({}s window)\n\
+         ==========================\n\
+         RPS: {:.1} | events: {} | 5xx: {}\n\n",
+        snapshot.window_seconds, snapshot.rps, snapshot.window_events, server
+    ));
 
-    // Latency metrics
     let total_latency: u64 = snapshot.latency.iter().map(|(_, c)| *c).sum();
     if total_latency > 0 {
-        println!("Latency (window):");
+        out.push_str("Latency (window):\n");
         for (label, count) in &snapshot.latency {
             let pct = (*count as f64 / total_latency as f64) * 100.0;
-            let bars = if *count == 0 {
-                0
-            } else {
-                ((pct / 5.0).floor() as usize).max(1)
-            };
-            println!("  {:<8} {:<20} {:>5.1}%", label, "█".repeat(bars), pct);
+            let bars = ((pct / 5.0).floor() as usize).max(1);
+            out.push_str(&format!(
+                "  {:<8} {:<20} {:>5.1}%\n",
+                label,
+                "█".repeat(bars),
+                pct
+            ));
         }
+        out.push('\n');
+    } else {
+        out.push_str("Latency (window): <no samples>\n\n");
     }
 
-    println!(
-        "Latency p95 ≈ {}ms | p99 ≈ {}ms",
-        snapshot.p95_ms, snapshot.p99_ms,
-    );
+    out.push_str(&format!(
+        "Latency p95 ≈ {}ms | p99 ≈ {}ms\n\n",
+        snapshot.p95_ms, snapshot.p99_ms
+    ));
 
-    // Identity metrics
-    println!(
-        "Clients: human={} bot={}",
-        snapshot.human_count, snapshot.bot_count
-    );
+    // Identity semantics: these are counts of events with bot info present.
+    out.push_str(&format!(
+        "Identity: human={} bot={} unknown={}\n",
+        snapshot.human_count, snapshot.bot_count, snapshot.unknown_identity_count
+    ));
 
     if !snapshot.device_counts.is_empty() {
-        print!("Devices: ");
-        for (d, c) in &snapshot.device_counts {
-            print!("{d}={c} ");
+        // stable ordering: by device name
+        let mut devices: Vec<_> = snapshot.device_counts.iter().collect();
+        devices.sort_by_key(|(device, _)| *device);
+
+        out.push_str("Devices: ");
+        for (d, c) in devices {
+            out.push_str(&format!("{d}={c} "));
         }
-        println!();
+        out.push('\n');
     }
 
-    // Total response status metrics
     let (ok, client, server) = snapshot.status;
-    println!("Status: 2xx={} 4xx={} 5xx={}", ok, client, server);
+    out.push_str(&format!(
+        "\nStatus: 2xx={} 4xx={} 5xx={}\n",
+        ok, client, server
+    ));
 
-    println!();
+    out
 }
 
+fn redraw(output: &str) {
+    print!("\x1b[2J\x1b[H");
+    println!("{output}");
+    let _ = io::stdout().flush();
+}
+
+//-----------------------------------------------------------------------------
+// Stats aggregation
+//-----------------------------------------------------------------------------
+
 struct WindowEvent {
-    ts: Instant,
-    latency_ms: Option<u64>,
+    inserted_at: Instant,    // for eviction
+    latency_ms: Option<u64>, // computed from timestamps when available
     status: Option<i64>,
     identity: IdentitySummary,
 }
@@ -302,7 +388,8 @@ struct StatsAggregator {
 }
 
 struct InFlight {
-    start: Instant,
+    start_instant: Instant,           // for TTL eviction
+    start_system: Option<SystemTime>, // for latency math
     status: Option<i64>,
     identity: IdentitySummary,
 }
@@ -315,13 +402,11 @@ impl StatsAggregator {
             in_flight: HashMap::new(),
         }
     }
+
     fn push(&mut self, event: &LogEvent) {
         let LogEvent::Snakeway(e) = event else {
             return;
         };
-
-        let now = systemtime_to_instant(e.ts);
-
         let Some(request_id) = &e.request_id else {
             return;
         };
@@ -329,55 +414,43 @@ impl StatsAggregator {
         let request_id = RequestId(request_id.clone());
 
         match e.name.as_str() {
-            //------------------------------------------------------------
-            // Request start
-            //------------------------------------------------------------
             "request" => {
-                self.in_flight
-                    .entry(request_id.clone())
-                    .or_insert(InFlight {
-                        start: now,
-                        status: None,
-                        identity: e.identity.clone().unwrap_or_default(),
-                    });
+                self.in_flight.entry(request_id).or_insert(InFlight {
+                    start_instant: Instant::now(),
+                    start_system: e.ts,
+                    status: None,
+                    identity: e.identity.clone().unwrap_or_default(),
+                });
             }
-
-            "before_proxy" => {
-                // no/op
-            }
-
-            //------------------------------------------------------------
-            // Upstream completion (may happen multiple times)
-            //------------------------------------------------------------
             "after_proxy" => {
                 if let Some(f) = self.in_flight.get_mut(&request_id) {
                     f.status = e.status;
                 }
             }
-
-            //------------------------------------------------------------
-            // Final response (authoritative end-of-request)
-            //------------------------------------------------------------
             "response" => {
                 if let Some(f) = self.in_flight.remove(&request_id) {
-                    let latency_ms = now.duration_since(f.start).as_millis() as u64;
+                    let latency_ms = match (e.ts, f.start_system) {
+                        (Some(end), Some(start)) => {
+                            end.duration_since(start).ok().map(|d| d.as_millis() as u64)
+                        }
+                        _ => None,
+                    };
 
                     self.events.push_back(WindowEvent {
-                        ts: now,
-                        latency_ms: Some(latency_ms),
+                        inserted_at: Instant::now(),
+                        latency_ms,
                         status: e.status.or(f.status),
                         identity: f.identity,
                     });
                 }
             }
-
             _ => {}
         }
     }
 
-    fn evict(&mut self, now: Instant) {
+    fn evict_window(&mut self, now: Instant) {
         while let Some(ev) = self.events.front() {
-            if now.duration_since(ev.ts) > self.window {
+            if now.duration_since(ev.inserted_at) > self.window {
                 self.events.pop_front();
             } else {
                 break;
@@ -385,9 +458,15 @@ impl StatsAggregator {
         }
     }
 
+    fn evict_in_flight(&mut self, now: Instant) {
+        self.in_flight
+            .retain(|_, f| now.duration_since(f.start_instant) <= IN_FLIGHT_TTL);
+    }
+
     fn snapshot(&mut self) -> StatsSnapshot {
         let now = Instant::now();
-        self.evict(now);
+        self.evict_window(now);
+        self.evict_in_flight(now);
 
         let mut latency = Histogram::new(LATENCY_BUCKETS_MS);
         let mut status_2xx = 0;
@@ -397,14 +476,13 @@ impl StatsAggregator {
         let mut device_counts: HashMap<String, u64> = HashMap::new();
         let mut bot_count = 0;
         let mut human_count = 0;
+        let mut unknown_identity_count = 0;
 
         for ev in &self.events {
-            // Latency
             if let Some(ms) = ev.latency_ms {
                 latency.record(ms);
             }
 
-            // Status codes
             if let Some(status) = ev.status {
                 match status {
                     200..=299 => status_2xx += 1,
@@ -414,16 +492,12 @@ impl StatsAggregator {
                 }
             }
 
-            // Identity
-            if let Some(bot) = ev.identity.bot {
-                if bot {
-                    bot_count += 1;
-                } else {
-                    human_count += 1;
-                }
+            match ev.identity.bot {
+                Some(true) => bot_count += 1,
+                Some(false) => human_count += 1,
+                None => unknown_identity_count += 1,
             }
 
-            // Device
             if let Some(device) = &ev.identity.device {
                 *device_counts.entry(device.clone()).or_insert(0) += 1;
             }
@@ -435,8 +509,20 @@ impl StatsAggregator {
         let p95_ms = percentile_from_histogram(&buckets, total_latency, 0.95);
         let p99_ms = percentile_from_histogram(&buckets, total_latency, 0.99);
 
+        // RPS: use observed span, but avoid lying for sub-second spans by clamping to 0.1s.
+        let span = self
+            .events
+            .back()
+            .zip(self.events.front())
+            .map(|(b, f)| b.inserted_at.duration_since(f.inserted_at))
+            .unwrap_or(self.window);
+
+        let denom = span.as_secs_f64().clamp(0.1, self.window.as_secs_f64());
+        let rps = self.events.len() as f64 / denom;
+
         StatsSnapshot {
-            rps: self.events.len() as f64 / self.window.as_secs_f64(),
+            window_seconds: self.window.as_secs().max(1),
+            rps,
             window_events: self.events.len() as u64,
             latency: latency.snapshot(),
             status: (status_2xx, status_4xx, status_5xx),
@@ -445,11 +531,14 @@ impl StatsAggregator {
             device_counts,
             bot_count,
             human_count,
+            unknown_identity_count,
         }
     }
 }
 
 struct StatsSnapshot {
+    window_seconds: u64,
+
     rps: f64,
     window_events: u64,
     latency: Vec<(String, u64)>,
@@ -458,20 +547,10 @@ struct StatsSnapshot {
     p95_ms: u64,
     p99_ms: u64,
 
-    // Identity
     device_counts: HashMap<String, u64>,
     bot_count: u64,
     human_count: u64,
-}
-
-fn systemtime_to_instant(ts: SystemTime) -> Instant {
-    let now_sys = SystemTime::now();
-    let now_inst = Instant::now();
-
-    match ts.duration_since(now_sys) {
-        Ok(delta) => now_inst + delta,
-        Err(e) => now_inst - e.duration(),
-    }
+    unknown_identity_count: u64,
 }
 
 //-----------------------------------------------------------------------------
@@ -501,8 +580,7 @@ impl Histogram {
                 return;
             }
         }
-        let last = self.counts.len() - 1;
-        self.counts[last] += 1;
+        *self.counts.last_mut().unwrap() += 1;
     }
 
     fn snapshot(&self) -> Vec<(String, u64)> {
@@ -530,7 +608,7 @@ impl Histogram {
             let upper = if i < self.buckets.len() {
                 self.buckets[i]
             } else {
-                *self.buckets.last().unwrap()
+                u64::MAX // overflow bucket
             };
             out.push((upper, *count));
         }
@@ -539,11 +617,7 @@ impl Histogram {
     }
 }
 
-fn percentile_from_histogram(
-    buckets: &[(u64, u64)], // (upper_bound_ms, count)
-    total: u64,
-    pct: f64,
-) -> u64 {
+fn percentile_from_histogram(buckets: &[(u64, u64)], total: u64, pct: f64) -> u64 {
     if total == 0 {
         return 0;
     }
@@ -554,10 +628,18 @@ fn percentile_from_histogram(
     for (upper, count) in buckets {
         running += *count;
         if running >= target {
+            if *upper == u64::MAX {
+                // "greater than last real bucket"
+                return buckets
+                    .iter()
+                    .rev()
+                    .find(|(u, _)| *u != u64::MAX)
+                    .map(|(u, _)| u.saturating_add(1))
+                    .unwrap_or(0);
+            }
             return *upper;
         }
     }
 
-    // overflow bucket
-    buckets.last().map(|(u, _)| *u).unwrap_or(0)
+    0
 }
