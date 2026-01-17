@@ -5,6 +5,7 @@ use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
 use http::{Extensions, HeaderMap, Method, Uri, Version};
 use pingora::prelude::Session;
+use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
 use std::net::{IpAddr, Ipv4Addr};
 
 /// Canonical request context passed through the Snakeway pipeline
@@ -107,7 +108,7 @@ impl RequestCtx {
             cb_started: false,
             upstream_outcome: None,
 
-            // Peer info - Pingora fills this out later.
+            // Peer info - filled out during hydration
             peer_ip: Ipv4Addr::UNSPECIFIED.into(),
 
             // Device related data.
@@ -126,6 +127,10 @@ impl RequestCtx {
         self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
         self.is_http2 = req.version == Version::HTTP_2;
+        self.peer_ip = match session.client_addr() {
+            Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
+            _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        };
 
         self.extensions.insert(RequestId::default());
 
