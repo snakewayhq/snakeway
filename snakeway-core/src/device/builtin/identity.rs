@@ -32,23 +32,15 @@ impl IdentityDevice {
         // - Snakeway does not mutate the mmdb file
         let geoip_city_db = match (cfg.enable_geoip, &cfg.geoip_city_db) {
             (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
-            (true, None) => {
-                anyhow::bail!("enable_geoip=true but geoip_db is not set");
-            }
             _ => None,
         };
+
         let geoip_isp_db = match (cfg.enable_geoip, &cfg.geoip_isp_db) {
             (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
-            (true, None) => {
-                anyhow::bail!("enable_geoip=true but geoip_db is not set");
-            }
             _ => None,
         };
         let geoip_connection_type_db = match (cfg.enable_geoip, &cfg.geoip_connection_type_db) {
             (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
-            (true, None) => {
-                anyhow::bail!("enable_geoip=true but geoip_db is not set");
-            }
             _ => None,
         };
 
