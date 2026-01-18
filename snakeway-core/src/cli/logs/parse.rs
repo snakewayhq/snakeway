@@ -37,14 +37,35 @@ pub fn parse_event(event: &Value) -> Option<LogEvent> {
                     .and_then(Value::as_str)
                     .map(String::from);
 
-                // In your logs bot is a string ("true"/"false")
+                // All log values are strings, (e.g., "true", "false")
                 let bot = parsed
                     .get("bot")
                     .and_then(Value::as_str)
                     .and_then(|b| b.parse::<bool>().ok());
 
+                let asn = parsed
+                    .get("asn")
+                    .and_then(Value::as_str)
+                    .and_then(|s| s.parse::<usize>().ok());
+                let aso = parsed.get("aso").and_then(Value::as_str).map(String::from);
+                let connection_type = parsed
+                    .get("connection_type")
+                    .and_then(Value::as_str)
+                    .map(String::from);
+                let country = parsed
+                    .get("country")
+                    .and_then(Value::as_str)
+                    .map(String::from);
+
                 if device.is_some() || bot.is_some() {
-                    Some(IdentitySummary { device, bot })
+                    Some(IdentitySummary {
+                        device,
+                        bot,
+                        asn,
+                        aso,
+                        connection_type,
+                        country,
+                    })
                 } else {
                     None
                 }
@@ -59,7 +80,7 @@ pub fn parse_event(event: &Value) -> Option<LogEvent> {
                 .and_then(Value::as_str)
                 .map(str::to_string),
             uri: event.get("uri").and_then(Value::as_str).map(str::to_string),
-            // status is a string in your logs (e.g. "200")
+            // All log values are strings, (e.g., "200")
             status: event
                 .get("status")
                 .and_then(Value::as_str)
