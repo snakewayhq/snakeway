@@ -39,7 +39,7 @@ function pickRandom(arr) {
 
 export default function () {
     const slug = pickRandom(slugs);
-    const url = `https://localhost:8443/${slug}`;
+    const url = `https://127.0.0.1:8443/${slug}`;
 
     const headers = {
         "User-Agent": pickRandom(userAgents),
