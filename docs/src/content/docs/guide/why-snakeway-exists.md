@@ -22,7 +22,7 @@ Snakeway was built on a different set of priorities:
 
 - **Programmability First**: Real logic requires a real programming language. By using Rust and WASM, Snakeway allows
   developers to write, test, and deploy complex traffic logic using modern tools and workflows.
-- **Deterministic Pipeline**: We believe that the order of operations should be explicit and easy to reason about.
+- **Deterministic Pipeline**: The order of operations should be explicit and easy to reason about.
   Snakeway's linear device pipeline eliminates the "magic" of middleware.
 - **Developer Experience**: Configuration should reflect intent. Our directory-based configuration and modular design
   are built for humans, not just machines.
