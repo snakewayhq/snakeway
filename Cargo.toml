@@ -64,4 +64,4 @@ hcl-rs = "0.19"
 owo-colors = "4"
 tempfile = "3"
 pretty_assertions = "1"
-uuid = { version = "1.19.0" }
+uuid = "1.19.0"
