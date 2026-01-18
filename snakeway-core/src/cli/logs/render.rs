@@ -38,16 +38,23 @@ pub fn render_stats(snapshot: &StatsSnapshot) -> String {
         snapshot.p95_ms, snapshot.p99_ms
     ));
 
+    let (ok, client, server) = snapshot.status;
+    out.push_str(&format!(
+        "\nStatus: 2xx={} 4xx={} 5xx={}\n",
+        ok, client, server
+    ));
+    out.push_str("\n --------------------- \n");
     // Identity semantics: these are counts of events with bot info present.
     out.push_str(&format!(
         "Identity: human={} bot={} unknown={}\n",
         snapshot.human_count, snapshot.bot_count, snapshot.unknown_identity_count
     ));
 
+    // Identity semantics: these are counts of events with device info present.
     if !snapshot.device_counts.is_empty() {
         // stable ordering: by device name
         let mut devices: Vec<_> = snapshot.device_counts.iter().collect();
-        devices.sort_by_key(|(device, _)| *device);
+        devices.sort_by_key(|(k, _)| *k);
 
         out.push_str("Devices: ");
         for (d, c) in devices {
@@ -56,12 +63,49 @@ pub fn render_stats(snapshot: &StatsSnapshot) -> String {
         out.push('\n');
     }
 
-    let (ok, client, server) = snapshot.status;
-    out.push_str(&format!(
-        "\nStatus: 2xx={} 4xx={} 5xx={}\n",
-        ok, client, server
-    ));
+    // Identity semantics: these are counts of events with connection type info present.
+    if !snapshot.connection_type_counts.is_empty() {
+        let mut connection_types: Vec<_> = snapshot.connection_type_counts.iter().collect();
+        connection_types.sort_by_key(|(k, _)| *k);
+        out.push_str("Connection types: ");
+        for (connection_type, c) in connection_types {
+            out.push_str(&format!("{connection_type}={c} "));
+        }
+        out.push('\n');
+    }
 
+    // Identity semantics: these are counts of events with country info present.
+    if !snapshot.country_counts.is_empty() {
+        let mut countries: Vec<_> = snapshot.country_counts.iter().collect();
+        countries.sort_by_key(|(k, _)| *k);
+        out.push_str("Countries: ");
+        for (country, c) in countries {
+            out.push_str(&format!("{country}={c} "));
+        }
+        out.push('\n');
+    }
+
+    // Identity semantics: these are counts of events with ASN info present.
+    if !snapshot.asn_counts.is_empty() {
+        let mut asns: Vec<_> = snapshot.asn_counts.iter().collect();
+        asns.sort_by_key(|(k, _)| *k);
+        out.push_str("ASNs: ");
+        for (asn, c) in asns {
+            out.push_str(&format!("{asn}={c} "));
+        }
+        out.push('\n');
+    }
+
+    // Identity semantics: these are counts of events with ASO info present.
+    if !snapshot.aso_counts.is_empty() {
+        let mut asos: Vec<_> = snapshot.aso_counts.iter().collect();
+        asos.sort_by_key(|(k, _)| *k);
+        out.push_str("ASOs: ");
+        for (aso, c) in asos {
+            out.push_str(&format!("\n  {aso}={c}"));
+        }
+        out.push('\n');
+    }
     out
 }
 
