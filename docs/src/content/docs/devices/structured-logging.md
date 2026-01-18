@@ -9,6 +9,10 @@ request/response lifecycle.
 It is designed to provide **high-signal, low-noise** observability while remaining safe for production and compliant by
 default.
 
+:::info
+This device always runs last in the device pipeline.
+:::
+
 ## Design Goals
 
 The Structured Logging device is built around a few core principles:
@@ -106,9 +110,9 @@ structured_logging_device = {
   enable           = true
   level            = "info"
   include_identity = true
-  identity_fields  = ["country", "device"]
+  identity_fields = ["country", "device"]
   include_headers  = false
-  events           = ["request", "response"]
+  events = ["request", "response"]
 }
 ```
 

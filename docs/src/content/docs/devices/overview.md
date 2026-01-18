@@ -29,12 +29,18 @@ A device can hook into several stages of the request and response journey:
 
 ### Determinism and Order
 
-The order in which devices are defined in your configuration is the order in which they execute. For example, if you
-want to use information from the `Identity` device in your custom `WASM` plugin, you must ensure the `Identity` device
-appears first in your configuration.
+The order of the devices in the pipeline is important.
 
-This linear model eliminates the "magic" often found in complex middleware systems where execution order can be
-unpredictable or dependent on implicit internal state.
+The `Identity` device is always run first. It inspects the incoming request and extracts information about the client,
+such as their IP address and user agent.
+
+WASM devices are run after all other devices EXCEPT the `Structured Logging` device.
+The order of WASM devices is determined by the order they are defined in your configuration.
+
+The `Structured Logging` device is always run last.
+
+This linear model eliminates the "" often found in complex middleware systems where execution order can be
+unpredictable or dependent on an implicit internal state.
 
 ### Built-in vs. WASM
 

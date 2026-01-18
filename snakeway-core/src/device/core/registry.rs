@@ -32,20 +32,26 @@ impl DeviceRegistry {
             }
 
             match device_cfg {
+                // Important: The identity device must always be first, so that it can establish the
+                // context of the request BEFORE all other devices run.
                 DeviceConfig::Identity(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(IdentityDevice::from_config(device_config)?);
                     self.devices.push(device);
                 }
 
+                // Wasm devices are loaded dynamically at runtime.
+                // They should be run AFTER all builtin devices, except the logging device.
+                DeviceConfig::Wasm(cfg) => {
+                    self.load_wasm_device(cfg)?;
+                }
+
+                // Important: The logging device must always be last, so that it can observe all
+                // other devices' outputs.
                 DeviceConfig::StructuredLogging(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(StructuredLoggingDevice::from_config(device_config)?);
                     self.devices.push(device);
-                }
-
-                DeviceConfig::Wasm(cfg) => {
-                    self.load_wasm_device(cfg)?;
                 }
             }
         }

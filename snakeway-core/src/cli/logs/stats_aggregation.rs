@@ -107,10 +107,15 @@ impl StatsAggregator {
         let mut status_5xx = 0;
 
         let mut device_counts: HashMap<String, u64> = HashMap::new();
+        let mut connection_type_counts: HashMap<String, u64> = HashMap::new();
+        let mut asn_counts: HashMap<usize, u64> = HashMap::new();
+        let mut aso_counts: HashMap<String, u64> = HashMap::new();
+        let mut country_counts: HashMap<String, u64> = HashMap::new();
         let mut bot_count = 0;
         let mut human_count = 0;
         let mut unknown_identity_count = 0;
 
+        // Iterate over events and gather the stats for the windowed snapshot.
         for ev in &self.events {
             if let Some(ms) = ev.latency_ms {
                 latency.record(ms);
@@ -133,6 +138,24 @@ impl StatsAggregator {
 
             if let Some(device) = &ev.identity.device {
                 *device_counts.entry(device.clone()).or_insert(0) += 1;
+            }
+
+            if let Some(asn) = &ev.identity.asn {
+                *asn_counts.entry(*asn).or_insert(0) += 1;
+            }
+
+            if let Some(aso) = &ev.identity.aso {
+                *aso_counts.entry(aso.clone()).or_insert(0) += 1;
+            }
+
+            if let Some(country) = &ev.identity.country {
+                *country_counts.entry(country.clone()).or_insert(0) += 1;
+            }
+
+            if let Some(connection_type) = &ev.identity.connection_type {
+                *connection_type_counts
+                    .entry(connection_type.clone())
+                    .or_insert(0) += 1;
             }
         }
 
@@ -162,6 +185,10 @@ impl StatsAggregator {
             p95_ms,
             p99_ms,
             device_counts,
+            connection_type_counts,
+            asn_counts,
+            aso_counts,
+            country_counts,
             bot_count,
             human_count,
             unknown_identity_count,
@@ -181,6 +208,10 @@ pub struct StatsSnapshot {
     pub p99_ms: u64,
 
     pub device_counts: HashMap<String, u64>,
+    pub connection_type_counts: HashMap<String, u64>,
+    pub asn_counts: HashMap<usize, u64>,
+    pub aso_counts: HashMap<String, u64>,
+    pub country_counts: HashMap<String, u64>,
     pub bot_count: u64,
     pub human_count: u64,
     pub unknown_identity_count: u64,

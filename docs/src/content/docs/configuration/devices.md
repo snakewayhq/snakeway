@@ -84,4 +84,4 @@ server. They are executed in a deterministic order based on their type and appea
 
 1. **Identity**: Runs first to establish client context.
 2. **WASM and Built-in**: Executed in the order they are defined.
-3. **Structured Logging**: Typically runs last to capture the final state of the request and response.
+3. **Structured Logging**: Runs last to capture the final state of the request and response.

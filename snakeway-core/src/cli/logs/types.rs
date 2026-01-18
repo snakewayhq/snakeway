@@ -23,6 +23,10 @@ pub struct SnakewayEvent {
 pub struct IdentitySummary {
     pub device: Option<String>,
     pub bot: Option<bool>,
+    pub asn: Option<usize>,
+    pub aso: Option<String>,
+    pub connection_type: Option<String>,
+    pub country: Option<String>,
 }
 
 #[derive(Clone)]

@@ -44,11 +44,13 @@ pub enum LogPhase {
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IdentityField {
+    Asn,
+    Aso,
     Country,
     Region,
-    Device,
+    ConnectionType,
     Bot,
-    Asn,
+    Device,
 }
 
 // ----------------------------------------------------------------------------
@@ -190,6 +192,16 @@ impl StructuredLoggingDevice {
                 IdentityField::Asn => {
                     if let Some(asn) = geo.and_then(|g| g.asn) {
                         out.insert("asn".into(), asn.to_string());
+                    }
+                }
+                IdentityField::Aso => {
+                    if let Some(aso) = geo.and_then(|g| g.aso.as_ref()) {
+                        out.insert("aso".into(), aso.to_string());
+                    }
+                }
+                IdentityField::ConnectionType => {
+                    if let Some(connection_type) = geo.and_then(|g| g.connection_type.as_ref()) {
+                        out.insert("connection_type".into(), connection_type.to_string());
                     }
                 }
                 IdentityField::Device => {

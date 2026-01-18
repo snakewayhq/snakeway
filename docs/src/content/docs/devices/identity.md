@@ -24,7 +24,7 @@ device.
 The Identity device runs **before** all other devices in the pipeline.
 
 Downstream devices (logging, fraud detection, rate limiting) can safely assume identity data is already present in the
-request context.
+request context if the Identity device is enabled.
 
 ## Request Context Integration
 

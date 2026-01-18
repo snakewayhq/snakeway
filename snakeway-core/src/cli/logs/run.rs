@@ -7,9 +7,12 @@ use crate::logging::LogMode;
 use anyhow::Result;
 use serde_json::Value;
 use std::io::{self, BufRead, Write};
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Instant;
+
+static CTRL_C_INSTALLED: std::sync::Once = std::sync::Once::new();
 
 pub fn run_logs(mode: LogMode) -> Result<()> {
     match mode {
@@ -74,15 +77,37 @@ fn run_stats() -> Result<()> {
         // tx is dropped here, which will disconnect rx.
     });
 
-    // Optional UX polish: hide cursor while dashboard runs.
-    print!("\x1b[?25l");
-    let _ = io::stdout().flush();
+    // Terminal guard ensures cleanup no matter how the process exits.
+    struct TerminalGuard;
+    impl Drop for TerminalGuard {
+        fn drop(&mut self) {
+            restore_terminal();
+        }
+    }
+    let _term = TerminalGuard;
+
+    // Hide cursor while dashboard runs.
+    hide_cursor();
 
     let mut agg = StatsAggregator::new(WINDOW);
     let mut last_render = Instant::now();
 
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let shutdown_flag = shutdown.clone();
+
+    CTRL_C_INSTALLED.call_once(|| {
+        ctrlc::set_handler(move || {
+            shutdown_flag.store(true, Ordering::SeqCst);
+        })
+        .expect("failed to set Ctrl-C handler");
+    });
+
     // Stats render loop
     loop {
+        if shutdown.load(Ordering::SeqCst) {
+            break;
+        }
+
         let mut disconnected = false;
 
         // Drain events
@@ -110,12 +135,28 @@ fn run_stats() -> Result<()> {
         thread::sleep(LOOP_IDLE_SLEEP);
     }
 
-    // Restore cursor
-    print!("\x1b[?25h");
-    let _ = io::stdout().flush();
-
     // Join reader thread (best effort)
     let _ = reader_handle.join();
 
+    // Restore cursor and terminal state.
+    restore_terminal();
+
     Ok(())
+}
+
+fn hide_cursor() {
+    print!("\x1b[?25l");
+    let _ = io::stdout().flush();
+}
+
+fn restore_terminal() {
+    use std::io::{self, Write};
+
+    // Unhide cursor
+    print!("\x1b[?25h");
+
+    // Clear screen and move cursor to bottom
+    print!("\x1b[2J\x1b[H");
+    println!("Snakeway stats exited.");
+    let _ = io::stdout().flush();
 }
