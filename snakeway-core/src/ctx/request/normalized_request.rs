@@ -1,4 +1,4 @@
-use http::Method;
+use http::{HeaderMap, Method};
 
 #[derive(Debug)]
 pub struct NormalizedRequest {
@@ -47,10 +47,36 @@ impl NormalizedRequest {
 #[derive(Debug)]
 pub struct NormalizedPath(pub String);
 
+impl NormalizedPath {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug)]
 pub struct CanonicalQuery {
     raw: String,
+    /// todo actually use this.
     pairs: Vec<(String, String)>,
+}
+
+impl CanonicalQuery {
+    pub(crate) fn from_raw(raw: Option<&str>) -> CanonicalQuery {
+        let raw = raw.unwrap_or("").to_string();
+
+        CanonicalQuery {
+            raw,
+            pairs: Vec::new(),
+        }
+    }
+
+    pub fn raw(&self) -> &str {
+        &self.raw
+    }
+
+    pub fn pairs(&self) -> &[(String, String)] {
+        &self.pairs
+    }
 }
 
 impl CanonicalQuery {
@@ -63,4 +89,13 @@ impl CanonicalQuery {
 }
 
 #[derive(Debug)]
-pub struct NormalizedHeaders;
+pub struct NormalizedHeaders {
+    /// todo actually use this.
+    headers: HeaderMap,
+}
+
+impl From<HeaderMap> for NormalizedHeaders {
+    fn from(headers: HeaderMap) -> Self {
+        NormalizedHeaders { headers }
+    }
+}

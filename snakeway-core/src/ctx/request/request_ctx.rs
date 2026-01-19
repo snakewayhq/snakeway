@@ -1,6 +1,7 @@
 use crate::ctx::RequestId;
-use crate::ctx::request::NormalizedRequest;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, normalize_request};
+use crate::ctx::request::error::RequestRejectError;
+use crate::ctx::request::normalization::{NormalizationOutcome, normalize_path};
+use crate::ctx::request::{CanonicalQuery, NormalizedHeaders, NormalizedRequest};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -30,6 +31,8 @@ pub struct RequestCtx {
 
     /// Original URI as received from the client (immutable, for logging/debugging)
     pub original_uri: Option<Uri>,
+
+    pub query_string: Option<String>,
 
     /// Path used for routing decisions (mutable by devices before routing)
     pub route_path: String,
@@ -100,6 +103,7 @@ impl RequestCtx {
             // Request identity and content.
             method: None,
             original_uri: None,
+            query_string: None,
             headers: HeaderMap::new(),
             body: vec![],
 
@@ -143,6 +147,11 @@ impl RequestCtx {
 
         self.method = Some(req.method.clone());
         self.original_uri = Some(req.uri.clone());
+        self.query_string = req
+            .uri
+            .query()
+            .map(ToOwned::to_owned)
+            .filter(|s| !s.is_empty());
         self.headers = req.headers.clone();
         self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
@@ -158,18 +167,37 @@ impl RequestCtx {
         self.normalized = false;
     }
 
-    pub fn normalize(&mut self, session: &Session) -> Result<(), RejectReason> {
-        let req = session.req_header();
+    pub fn normalize_request(&mut self) -> Result<(), RequestRejectError> {
+        debug_assert!(self.hydrated, "normalize before hydrate");
+        debug_assert!(!self.normalized, "normalize called twice");
 
-        match normalize_request(req) {
-            NormalizationOutcome::Accept(nr) | NormalizationOutcome::Rewrite { value: nr, .. } => {
-                self.normalized_request = Some(nr);
-                self.normalized = true;
-                Ok(())
-            }
-
-            NormalizationOutcome::Reject { reason } => Err(reason),
+        if self.normalized {
+            return Ok(());
         }
+
+        let raw_path = self.route_path.as_str();
+
+        let normalized_path = match normalize_path(raw_path) {
+            NormalizationOutcome::Accept(p) => p,
+
+            NormalizationOutcome::Rewrite { value, .. } => value,
+
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidPath);
+            }
+        };
+
+        let raw_query = self.original_uri.as_ref().and_then(|u| u.query());
+
+        self.normalized_request = Some(NormalizedRequest::new(
+            self.method.clone().expect("method missing"),
+            normalized_path,
+            CanonicalQuery::from_raw(raw_query),
+            NormalizedHeaders::from(self.headers.clone()),
+        ));
+
+        self.normalized = true;
+        Ok(())
     }
 
     /// Path used when proxying upstream
@@ -193,5 +221,14 @@ impl RequestCtx {
 
     pub fn original_uri_str(&self) -> Option<String> {
         self.original_uri.as_ref().map(|u| u.to_string())
+    }
+
+    /// Internal canonical representation of the request path.
+    pub fn canonical_path(&self) -> &str {
+        self.normalized_request
+            .as_ref()
+            .expect("request not normalized")
+            .path()
+            .as_str()
     }
 }

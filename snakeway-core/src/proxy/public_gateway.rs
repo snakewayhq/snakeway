@@ -1,4 +1,4 @@
-use crate::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
+use crate::ctx::{RequestCtx, RequestId, RequestRejectError, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::device::core::pipeline::DevicePipeline;
 use crate::device::core::result::DeviceResult;
 use crate::proxy::error_classification::classify_pingora_error;
@@ -163,6 +163,18 @@ impl ProxyHttp for PublicGateway {
         ctx.hydrate_from_session(session);
         debug_assert!(ctx.method.is_some());
         debug_assert!(ctx.original_uri.is_some());
+
+        ctx.normalize_request().map_err(|reject| {
+            tracing::warn!(error = %reject, "request rejected during normalization");
+
+            match reject {
+                RequestRejectError::InvalidPath => Error::new(Custom("invalid_request_path")),
+
+                RequestRejectError::NormalizationFailure => {
+                    Error::new(Custom("request_normalization_failed"))
+                }
+            }
+        })?;
 
         let state = self.gw_ctx.state();
 
