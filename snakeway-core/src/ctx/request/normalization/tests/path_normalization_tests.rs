@@ -20,7 +20,7 @@ fn assert_accept(path: &str, expected: &str) {
     }
 }
 
-fn assert_rewrite(path: &str, expected: &str, reason: RewriteReason) {
+fn assert_rewrite(path: &str, expected: &str) {
     // Arrange
     let raw = path;
 
@@ -34,7 +34,7 @@ fn assert_rewrite(path: &str, expected: &str, reason: RewriteReason) {
             reason: r,
         } => {
             assert_eq!(p, expected);
-            assert_eq!(r, reason);
+            assert_eq!(r, RewriteReason::PathCanonicalization);
         }
         other => panic!("Expected Rewrite, got {:?}", other),
     }
@@ -61,27 +61,37 @@ fn assert_reject(path: &str, reason: RejectReason) {
 //-----------------------------------------------------------------------------
 #[test]
 fn accept_simple_root() {
-    assert_accept("/", "/");
+    let path = "/";
+
+    assert_accept(path, path);
 }
 
 #[test]
 fn accept_simple_path() {
-    assert_accept("/foo/bar", "/foo/bar");
+    let path = "/foo/bar";
+
+    assert_accept(path, path);
 }
 
 #[test]
 fn accept_numeric_segments() {
-    assert_accept("/v1/api/123", "/v1/api/123");
+    let path = "/v1/api/123";
+
+    assert_accept(path, path);
 }
 
 #[test]
 fn accept_dash_and_underscore() {
-    assert_accept("/foo-bar_baz", "/foo-bar_baz");
+    let path = "/foo-bar_baz";
+
+    assert_accept(path, path);
 }
 
 #[test]
 fn accept_reserved_characters_encoded() {
-    assert_accept("/foo%2Fbar", "/foo%2Fbar");
+    let path = "/foo%2Fbar";
+
+    assert_accept(path, path);
 }
 
 //-----------------------------------------------------------------------------
@@ -89,25 +99,17 @@ fn accept_reserved_characters_encoded() {
 //-----------------------------------------------------------------------------
 #[test]
 fn rewrite_double_slash() {
-    assert_rewrite("//", "/", RewriteReason::PathCanonicalization);
+    assert_rewrite("//", "/");
 }
 
 #[test]
 fn rewrite_multiple_slashes() {
-    assert_rewrite(
-        "/foo///bar",
-        "/foo/bar",
-        RewriteReason::PathCanonicalization,
-    );
+    assert_rewrite("/foo///bar", "/foo/bar");
 }
 
 #[test]
 fn rewrite_trailing_slashes() {
-    assert_rewrite(
-        "/foo/bar///",
-        "/foo/bar",
-        RewriteReason::PathCanonicalization,
-    );
+    assert_rewrite("/foo/bar///", "/foo/bar");
 }
 
 #[test]
@@ -120,30 +122,22 @@ fn accept_root_trailing_slash() {
 //-----------------------------------------------------------------------------
 #[test]
 fn rewrite_single_dot() {
-    assert_rewrite("/./", "/", RewriteReason::PathCanonicalization);
+    assert_rewrite("/./", "/");
 }
 
 #[test]
 fn rewrite_dot_in_path() {
-    assert_rewrite(
-        "/foo/./bar",
-        "/foo/bar",
-        RewriteReason::PathCanonicalization,
-    );
+    assert_rewrite("/foo/./bar", "/foo/bar");
 }
 
 #[test]
 fn rewrite_double_dot() {
-    assert_rewrite("/foo/../bar", "/bar", RewriteReason::PathCanonicalization);
+    assert_rewrite("/foo/../bar", "/bar");
 }
 
 #[test]
 fn rewrite_nested_dot_dot() {
-    assert_rewrite(
-        "/a/b/c/../../d",
-        "/a/d",
-        RewriteReason::PathCanonicalization,
-    );
+    assert_rewrite("/a/b/c/../../d", "/a/d");
 }
 
 //-----------------------------------------------------------------------------
@@ -216,13 +210,13 @@ fn reject_nested_escape() {
 // Edge cases
 //-----------------------------------------------------------------------------
 #[test]
-fn accept_empty_path_as_root() {
-    assert_accept("", "/");
+fn rewrite_empty_path_as_root() {
+    assert_rewrite("", "/");
 }
 
 #[test]
 fn rewrite_missing_leading_slash() {
-    assert_rewrite("foo/bar", "/foo/bar", RewriteReason::PathCanonicalization);
+    assert_rewrite("foo/bar", "/foo/bar");
 }
 
 #[test]
