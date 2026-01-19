@@ -1,4 +1,5 @@
 use crate::ctx::RequestId;
+use crate::ctx::types::{CanonicalQuery, NormalizedHeaders, NormalizedPath, NormalizedRequest};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -11,8 +12,6 @@ use std::net::{IpAddr, Ipv4Addr};
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
 pub struct RequestCtx {
-    pub route_id: Option<RouteId>,
-
     /// Holds the WS connection slot for the lifetime of the connection
     pub ws_guard: Option<WsConnectionGuard>,
 
@@ -58,9 +57,19 @@ pub struct RequestCtx {
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
     pub extensions: Extensions,
 
+    /// Normalized request representation for routing and processing.
+    pub normalized_request: Option<NormalizedRequest>,
+
+    /// Route ID for routing decisions.
+    pub route_id: Option<RouteId>,
+
+    /// Selected upstream and outcome
     pub selected_upstream: Option<(ServiceId, UpstreamId)>,
 
+    /// Outcome of upstream selection
     pub upstream_outcome: Option<UpstreamOutcome>,
+
+    /// Circuit breaker started?
     pub cb_started: bool,
 
     #[allow(dead_code)]
@@ -113,6 +122,7 @@ impl RequestCtx {
 
             // Device related data.
             extensions: Extensions::new(),
+            normalized_request: None,
         }
     }
 
@@ -133,6 +143,13 @@ impl RequestCtx {
         };
 
         self.extensions.insert(RequestId::default());
+
+        self.normalized_request = Some(NormalizedRequest::new(
+            req.method.clone(),
+            NormalizedPath(req.uri.path().to_string()),
+            CanonicalQuery(req.uri.query().unwrap_or("").to_string()),
+            NormalizedHeaders(req.headers.clone()),
+        ));
 
         self.hydrated = true;
     }
