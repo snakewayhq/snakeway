@@ -1,5 +1,5 @@
 use crate::ctx::RequestId;
-use crate::ctx::types::{CanonicalQuery, NormalizedHeaders, NormalizedPath, NormalizedRequest};
+use crate::ctx::request::{CanonicalQuery, NormalizedHeaders, NormalizedPath, NormalizedRequest};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
