@@ -1,5 +1,6 @@
 use crate::ctx::RequestId;
-use crate::ctx::request::{CanonicalQuery, NormalizedHeaders, NormalizedPath, NormalizedRequest};
+use crate::ctx::request::NormalizedRequest;
+use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, normalize_request};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -59,6 +60,9 @@ pub struct RequestCtx {
 
     /// Normalized request representation for routing and processing.
     pub normalized_request: Option<NormalizedRequest>,
+
+    /// Has the request been normalized?
+    pub normalized: bool,
 
     /// Route ID for routing decisions.
     pub route_id: Option<RouteId>,
@@ -122,12 +126,18 @@ impl RequestCtx {
 
             // Device related data.
             extensions: Extensions::new(),
+
+            // Request normalization
             normalized_request: None,
+            normalized: false,
         }
     }
 
     pub fn hydrate_from_session(&mut self, session: &Session) {
         debug_assert!(!self.hydrated, "RequestCtx hydrated twice");
+        if self.hydrated {
+            return;
+        }
 
         let req = session.req_header();
 
@@ -144,9 +154,22 @@ impl RequestCtx {
 
         self.extensions.insert(RequestId::default());
 
-        self.normalized_request = None;
-
         self.hydrated = true;
+        self.normalized = false;
+    }
+
+    pub fn normalize(&mut self, session: &Session) -> Result<(), RejectReason> {
+        let req = session.req_header();
+
+        match normalize_request(req) {
+            NormalizationOutcome::Accept(nr) | NormalizationOutcome::Rewrite { value: nr, .. } => {
+                self.normalized_request = Some(nr);
+                self.normalized = true;
+                Ok(())
+            }
+
+            NormalizationOutcome::Reject { reason } => Err(reason),
+        }
     }
 
     /// Path used when proxying upstream

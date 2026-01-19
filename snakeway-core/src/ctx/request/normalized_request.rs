@@ -53,5 +53,14 @@ pub struct CanonicalQuery {
     pairs: Vec<(String, String)>,
 }
 
+impl CanonicalQuery {
+    pub fn new(raw: &str) -> Self {
+        Self {
+            raw: raw.to_string(),
+            pairs: vec![],
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct NormalizedHeaders;
