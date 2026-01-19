@@ -59,7 +59,7 @@ pub fn normalize_path(raw: &str) -> NormalizationOutcome<NormalizedPath> {
     if rewritten {
         NormalizationOutcome::Rewrite {
             value: path,
-            reason: RewriteReason::PathCollapse,
+            reason: RewriteReason::PathCanonicalization,
         }
     } else {
         NormalizationOutcome::Accept(path)

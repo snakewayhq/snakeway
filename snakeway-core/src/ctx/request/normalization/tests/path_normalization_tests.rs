@@ -89,17 +89,25 @@ fn accept_reserved_characters_encoded() {
 //-----------------------------------------------------------------------------
 #[test]
 fn rewrite_double_slash() {
-    assert_rewrite("//", "/", RewriteReason::PathCollapse);
+    assert_rewrite("//", "/", RewriteReason::PathCanonicalization);
 }
 
 #[test]
 fn rewrite_multiple_slashes() {
-    assert_rewrite("/foo///bar", "/foo/bar", RewriteReason::PathCollapse);
+    assert_rewrite(
+        "/foo///bar",
+        "/foo/bar",
+        RewriteReason::PathCanonicalization,
+    );
 }
 
 #[test]
 fn rewrite_trailing_slashes() {
-    assert_rewrite("/foo/bar///", "/foo/bar", RewriteReason::PathCollapse);
+    assert_rewrite(
+        "/foo/bar///",
+        "/foo/bar",
+        RewriteReason::PathCanonicalization,
+    );
 }
 
 #[test]
@@ -112,22 +120,30 @@ fn accept_root_trailing_slash() {
 //-----------------------------------------------------------------------------
 #[test]
 fn rewrite_single_dot() {
-    assert_rewrite("/./", "/", RewriteReason::DotSegmentRemoval);
+    assert_rewrite("/./", "/", RewriteReason::PathCanonicalization);
 }
 
 #[test]
 fn rewrite_dot_in_path() {
-    assert_rewrite("/foo/./bar", "/foo/bar", RewriteReason::DotSegmentRemoval);
+    assert_rewrite(
+        "/foo/./bar",
+        "/foo/bar",
+        RewriteReason::PathCanonicalization,
+    );
 }
 
 #[test]
 fn rewrite_double_dot() {
-    assert_rewrite("/foo/../bar", "/bar", RewriteReason::DotSegmentRemoval);
+    assert_rewrite("/foo/../bar", "/bar", RewriteReason::PathCanonicalization);
 }
 
 #[test]
 fn rewrite_nested_dot_dot() {
-    assert_rewrite("/a/b/c/../../d", "/a/d", RewriteReason::DotSegmentRemoval);
+    assert_rewrite(
+        "/a/b/c/../../d",
+        "/a/d",
+        RewriteReason::PathCanonicalization,
+    );
 }
 
 //-----------------------------------------------------------------------------
@@ -206,7 +222,7 @@ fn accept_empty_path_as_root() {
 
 #[test]
 fn rewrite_missing_leading_slash() {
-    assert_rewrite("foo/bar", "/foo/bar", RewriteReason::PathCollapse);
+    assert_rewrite("foo/bar", "/foo/bar", RewriteReason::PathCanonicalization);
 }
 
 #[test]

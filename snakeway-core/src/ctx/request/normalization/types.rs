@@ -16,8 +16,6 @@ pub enum RejectReason {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RewriteReason {
-    PathCollapse,
-    DotSegmentRemoval,
-    PercentDecodeUnreserved,
+    PathCanonicalization,
     QueryCanonicalization,
 }
