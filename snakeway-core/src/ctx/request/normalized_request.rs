@@ -48,7 +48,10 @@ impl NormalizedRequest {
 pub struct NormalizedPath(pub String);
 
 #[derive(Debug)]
-pub struct CanonicalQuery(pub String);
+pub struct CanonicalQuery {
+    raw: String,
+    pairs: Vec<(String, String)>,
+}
 
 #[derive(Debug)]
-pub struct NormalizedHeaders(pub http::HeaderMap);
+pub struct NormalizedHeaders;

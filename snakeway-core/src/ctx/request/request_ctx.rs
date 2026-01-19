@@ -144,12 +144,7 @@ impl RequestCtx {
 
         self.extensions.insert(RequestId::default());
 
-        self.normalized_request = Some(NormalizedRequest::new(
-            req.method.clone(),
-            NormalizedPath(req.uri.path().to_string()),
-            CanonicalQuery(req.uri.query().unwrap_or("").to_string()),
-            NormalizedHeaders(req.headers.clone()),
-        ));
+        self.normalized_request = None;
 
         self.hydrated = true;
     }
