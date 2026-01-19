@@ -1,14 +1,8 @@
-use crate::ctx::request::NormalizedRequest;
-
-pub enum NormalizationOutcome {
-    Accept(NormalizedRequest),
-    Rewrite {
-        request: NormalizedRequest,
-        reason: RewriteReason,
-    },
-    Reject {
-        reason: RejectReason,
-    },
+#[derive(Debug)]
+pub enum NormalizationOutcome<T> {
+    Accept(T),
+    Rewrite { value: T, reason: RewriteReason },
+    Reject { reason: RejectReason },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
