@@ -46,7 +46,7 @@ impl PublicGateway {
 
 /// Pingora hook execution order in ProxyHttp...
 ///
-/// This is a giant orchestration traint implementation, so better to lay this out explicitly,
+/// This is a giant orchestration trait implementation, so better to lay this out explicitly,
 /// especially because it might change in later Pingora versions.
 ///
 /// 1. new_ctx()
