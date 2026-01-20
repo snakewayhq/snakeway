@@ -113,6 +113,36 @@ fn rewrite_percent_decode_unreserved() {
     );
 }
 
+#[test]
+fn rewrite_uppercase_normalization_reserved() {
+    // Lowercase hex digits in reserved characters should be normalized to uppercase
+    assert_rewrite_query(
+        "q=foo%2fbar",
+        &[("q", "foo%2Fbar")],
+        RewriteReason::PercentDecodeUnreserved,
+    );
+}
+
+#[test]
+fn rewrite_uppercase_normalization_non_ascii() {
+    // Non-ASCII bytes (>127) should be normalized to uppercase
+    assert_rewrite_query(
+        "q=%c3%a9",
+        &[("q", "%C3%A9")],
+        RewriteReason::PercentDecodeUnreserved,
+    );
+}
+
+#[test]
+fn rewrite_decode_all_unreserved_chars() {
+    // Test all unreserved characters: ALPHA, DIGIT, "-", ".", "_", "~"
+    assert_rewrite_query(
+        "q=%41%5A%61%7A%30%39%2D%2E%5F%7E",
+        &[("q", "AZaz09-._~")],
+        RewriteReason::PercentDecodeUnreserved,
+    );
+}
+
 //-----------------------------------------------------------------------------
 // Reject cases
 //-----------------------------------------------------------------------------

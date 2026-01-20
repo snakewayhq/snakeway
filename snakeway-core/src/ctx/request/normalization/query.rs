@@ -67,12 +67,17 @@ fn percent_decode_unreserved_with_outcome(input: &str) -> Result<(String, bool),
 
 /// Decodes percent-encoded sequences that represent unreserved characters per RFC 3986 Section 2.3.
 ///
-/// RFC 3986 defines unreserved characters as: ALPHA / DIGIT / "-" / "." / "_" / "~"
+/// RFC 3986 defines unreserved characters as: ALPHA / DIGIT / "-" / "." / "_" / "~".
 /// This function enforces the normalization requirement that percent-encoded triplets for these
 /// characters SHOULD be decoded to their literal form for URI comparison purposes.
 ///
 /// Percent-encoded sequences representing reserved or other characters are preserved as-is,
 /// ensuring that the semantic meaning of the URI is not altered during normalization.
+///
+/// # Security
+/// - Rejects malformed percent-encoding sequences (e.g. incomplete or non-hex triplets)
+/// - Restricts decoding to ASCII-range percent-encoded bytes (0–127)
+/// - Normalizes preserved percent-encoded sequences to uppercase per RFC 3986 Section 2.1
 fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
     let bytes = input.as_bytes();
     let mut out = String::with_capacity(input.len());
@@ -87,14 +92,29 @@ fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
 
                 let hex = &input[i + 1..i + 3];
                 let val = u8::from_str_radix(hex, 16).map_err(|_| ())?;
+
+                // Security: Only process valid ASCII bytes (0-127).
+                // Casting non-ASCII bytes (128-255) to char is unsafe and can create invalid Unicode.
+                // Non-ASCII bytes must remain percent-encoded per RFC 3986.
+                if val > 127 {
+                    // Preserve as percent-encoded, normalized to uppercase per RFC 3986 Section 2.1
+                    out.push('%');
+                    out.push_str(&format!("{:02X}", val));
+                    i += 3;
+                    continue;
+                }
+
                 let ch = val as char;
 
-                // Decode unreserved only (RFC 3986)
-                if ch.is_ascii_alphanumeric() || "-._~".contains(ch) {
+                // Decode unreserved characters only (RFC 3986 Section 2.3)
+                // Unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
+                if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '.' | '_' | '~') {
                     out.push(ch);
                 } else {
+                    // Preserve reserved and other characters as percent-encoded,
+                    // normalized to uppercase per RFC 3986 Section 2.1
                     out.push('%');
-                    out.push_str(hex);
+                    out.push_str(&format!("{:02X}", val));
                 }
 
                 i += 3;
