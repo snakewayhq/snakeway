@@ -123,7 +123,17 @@ pub fn normalize_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHead
                         };
                     }
                 };
-                *existing = HeaderValue::from_str(&merged).unwrap();
+
+                let merged_value = match HeaderValue::from_str(&merged) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return NormalizationOutcome::Reject {
+                            reason: RejectReason::HeaderEncodingViolation,
+                        };
+                    }
+                };
+
+                *existing = merged_value;
                 rewritten = true;
             }
             None => {
