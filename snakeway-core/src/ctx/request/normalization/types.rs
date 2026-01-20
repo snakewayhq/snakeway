@@ -1,8 +1,17 @@
 #[derive(Debug)]
 pub enum NormalizationOutcome<T> {
     Accept(T),
-    Rewrite { value: T, reason: RewriteReason },
-    Reject { reason: RejectReason },
+    Rewrite {
+        value: T,
+        // Semantically important, even if never read.
+        #[allow(dead_code)]
+        reason: RewriteReason,
+    },
+    Reject {
+        // Semantically important, even if never read.
+        #[allow(dead_code)]
+        reason: RejectReason,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
