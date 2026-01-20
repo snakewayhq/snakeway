@@ -7,7 +7,7 @@ fn input_to_header_map(input: &[(&str, &str)]) -> HeaderMap {
     for (k, v) in input {
         let name: HeaderName = k.parse().expect("invalid header name");
         let value: HeaderValue = v.parse().expect("invalid header value");
-        header_map.insert(name, value);
+        header_map.append(name, value);
     }
     header_map
 }
@@ -107,15 +107,6 @@ fn accept_multiple_distinct_headers() {
 // Rewrite cases
 //-----------------------------------------------------------------------------
 #[test]
-fn rewrite_header_name_casing() {
-    assert_rewrite_headers(
-        &[("Host", "example.com")],
-        &[("host", "example.com")],
-        RewriteReason::HeaderCanonicalization,
-    );
-}
-
-#[test]
 fn rewrite_fold_duplicate_headers() {
     assert_rewrite_headers(
         &[("accept", "text/plain"), ("accept", "application/json")],
@@ -137,19 +128,8 @@ fn rewrite_trim_whitespace() {
 // Reject cases
 //-----------------------------------------------------------------------------
 #[test]
-fn reject_invalid_header_name() {
-    assert_reject_headers(
-        &[("bad header", "oops")],
-        RejectReason::HeaderEncodingViolation,
-    );
-}
-
-#[test]
-fn reject_nul_in_header_value() {
-    assert_reject_headers(
-        &[("x-test", "abc\0def")],
-        RejectReason::HeaderEncodingViolation,
-    );
+fn reject_nul_in_header_value_at_parse_time() {
+    assert!(HeaderValue::from_bytes(b"abc\0def").is_err());
 }
 
 #[test]

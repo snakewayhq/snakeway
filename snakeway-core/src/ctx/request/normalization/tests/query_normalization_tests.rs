@@ -87,6 +87,11 @@ fn accept_key_without_value() {
     assert_accept_query("a", &[("a", "")]);
 }
 
+#[test]
+fn accept_duplicate_keys_preserve_order() {
+    assert_accept_query("a=1&a=2", &[("a", "1"), ("a", "2")]);
+}
+
 //-----------------------------------------------------------------------------
 // Rewrite cases
 //-----------------------------------------------------------------------------
@@ -105,15 +110,6 @@ fn rewrite_percent_decode_unreserved() {
         "q=foo%7Ebar",
         &[("q", "foo~bar")],
         RewriteReason::PercentDecodeUnreserved,
-    );
-}
-
-#[test]
-fn rewrite_duplicate_keys_grouped() {
-    assert_rewrite_query(
-        "a=1&a=2",
-        &[("a", "1"), ("a", "2")],
-        RewriteReason::QueryCanonicalization,
     );
 }
 
