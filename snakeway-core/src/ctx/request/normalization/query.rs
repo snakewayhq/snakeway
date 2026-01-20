@@ -65,6 +65,14 @@ fn percent_decode_unreserved_with_outcome(input: &str) -> Result<(String, bool),
     Ok((decoded.clone(), decoded != input))
 }
 
+/// Decodes percent-encoded sequences that represent unreserved characters per RFC 3986 Section 2.3.
+///
+/// RFC 3986 defines unreserved characters as: ALPHA / DIGIT / "-" / "." / "_" / "~"
+/// This function enforces the normalization requirement that percent-encoded triplets for these
+/// characters SHOULD be decoded to their literal form for URI comparison purposes.
+///
+/// Percent-encoded sequences representing reserved or other characters are preserved as-is,
+/// ensuring that the semantic meaning of the URI is not altered during normalization.
 fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
     let bytes = input.as_bytes();
     let mut out = String::with_capacity(input.len());
