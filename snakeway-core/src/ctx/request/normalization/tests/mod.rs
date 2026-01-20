@@ -1,1 +1,3 @@
+mod header_normalization_tests;
 mod path_normalization_tests;
+mod query_normalization_tests;

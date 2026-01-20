@@ -99,3 +99,9 @@ impl From<HeaderMap> for NormalizedHeaders {
         NormalizedHeaders { headers }
     }
 }
+
+impl NormalizedHeaders {
+    pub fn as_map(&self) -> &HeaderMap {
+        &self.headers
+    }
+}

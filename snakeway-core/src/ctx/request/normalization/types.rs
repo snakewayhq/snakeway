@@ -12,10 +12,13 @@ pub enum RejectReason {
     InvalidPercentEncoding,
     InvalidQueryEncoding,
     HeaderEncodingViolation,
+    HopByHopHeader,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RewriteReason {
     PathCanonicalization,
     QueryCanonicalization,
+    HeaderCanonicalization,
+    PercentDecodeUnreserved,
 }
