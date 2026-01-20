@@ -1,4 +1,6 @@
+mod headers;
 mod path;
+mod query;
 #[cfg(test)]
 mod tests;
 mod types;
