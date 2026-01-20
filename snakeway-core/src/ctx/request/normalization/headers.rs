@@ -1,16 +1,38 @@
 use crate::ctx::request::NormalizedHeaders;
 use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
 use http::{HeaderMap, HeaderName, HeaderValue};
+use std::collections::HashSet;
 
 pub fn normalize_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
 
+    // extract Connection tokens
+    let mut connection_tokens = HashSet::new();
+    if let Some(conn) = raw.get("connection") {
+        let value = match conn.to_str() {
+            Ok(v) => v,
+            Err(_) => {
+                return NormalizationOutcome::Reject {
+                    reason: RejectReason::HeaderEncodingViolation,
+                };
+            }
+        };
+
+        for token in value.split(',') {
+            let token = token.trim().to_ascii_lowercase();
+            if !token.is_empty() {
+                connection_tokens.insert(token);
+            }
+        }
+    }
+
+    // normalize headers
     for (name, value) in raw.iter() {
         let name_str = name.as_str();
 
-        // Reject hop-by-hop headers
-        if is_hop_by_hop(name_str) {
+        // Reject hop-by-hop headers and connection tokens
+        if is_standard_hop_by_hop(name_str) || connection_tokens.contains(name_str) {
             return NormalizationOutcome::Reject {
                 reason: RejectReason::HopByHopHeader,
             };
@@ -94,7 +116,7 @@ pub fn normalize_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHead
     }
 }
 
-fn is_hop_by_hop(name: &str) -> bool {
+fn is_standard_hop_by_hop(name: &str) -> bool {
     matches!(
         name,
         "connection"
