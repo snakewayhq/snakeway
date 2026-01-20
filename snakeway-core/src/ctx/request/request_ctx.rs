@@ -189,7 +189,7 @@ impl RequestCtx {
 
         let raw_query = self.query_string.as_deref().unwrap_or("");
 
-        let canonical_query = match normalize_query(&raw_query) {
+        let canonical_query = match normalize_query(raw_query) {
             NormalizationOutcome::Accept(q) => q,
             NormalizationOutcome::Rewrite { value, .. } => value,
             NormalizationOutcome::Reject { .. } => {
