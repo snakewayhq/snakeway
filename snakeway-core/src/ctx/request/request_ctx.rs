@@ -1,7 +1,9 @@
 use crate::ctx::RequestId;
+use crate::ctx::request::NormalizedRequest;
 use crate::ctx::request::error::RequestRejectError;
-use crate::ctx::request::normalization::{NormalizationOutcome, normalize_path};
-use crate::ctx::request::{CanonicalQuery, NormalizedHeaders, NormalizedRequest};
+use crate::ctx::request::normalization::{
+    NormalizationOutcome, normalize_headers, normalize_path, normalize_query,
+};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -179,21 +181,35 @@ impl RequestCtx {
 
         let normalized_path = match normalize_path(raw_path) {
             NormalizationOutcome::Accept(p) => p,
-
             NormalizationOutcome::Rewrite { value, .. } => value,
-
             NormalizationOutcome::Reject { .. } => {
                 return Err(RequestRejectError::InvalidPath);
             }
         };
 
-        let raw_query = self.original_uri.as_ref().and_then(|u| u.query());
+        let raw_query = self.query_string.as_deref().unwrap_or("");
+
+        let canonical_query = match normalize_query(&raw_query) {
+            NormalizationOutcome::Accept(q) => q,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidQueryString);
+            }
+        };
+
+        let normalized_headers = match normalize_headers(&self.headers) {
+            NormalizationOutcome::Accept(h) => h,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidHeaders);
+            }
+        };
 
         self.normalized_request = Some(NormalizedRequest::new(
             self.method.clone().expect("method missing"),
             normalized_path,
-            CanonicalQuery::from_raw(raw_query),
-            NormalizedHeaders::from(self.headers.clone()),
+            canonical_query,
+            normalized_headers,
         ));
 
         self.normalized = true;

@@ -53,15 +53,21 @@ impl NormalizedPath {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CanonicalQuery {
     raw: String,
-    /// todo actually use this.
     pairs: Vec<(String, String)>,
 }
 
 impl CanonicalQuery {
-    pub(crate) fn from_raw(raw: Option<&str>) -> CanonicalQuery {
+    pub fn new(raw: &str, pairs: Vec<(String, String)>) -> Self {
+        Self {
+            raw: raw.to_string(),
+            pairs,
+        }
+    }
+
+    pub fn from_raw(raw: Option<&str>) -> CanonicalQuery {
         let raw = raw.unwrap_or("").to_string();
 
         CanonicalQuery {
@@ -79,18 +85,8 @@ impl CanonicalQuery {
     }
 }
 
-impl CanonicalQuery {
-    pub fn new(raw: &str) -> Self {
-        Self {
-            raw: raw.to_string(),
-            pairs: vec![],
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct NormalizedHeaders {
-    /// todo actually use this.
     headers: HeaderMap,
 }
 
@@ -101,6 +97,10 @@ impl From<HeaderMap> for NormalizedHeaders {
 }
 
 impl NormalizedHeaders {
+    pub fn new(headers: HeaderMap) -> Self {
+        Self { headers }
+    }
+
     pub fn as_map(&self) -> &HeaderMap {
         &self.headers
     }

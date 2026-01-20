@@ -5,5 +5,7 @@ mod query;
 mod tests;
 mod types;
 
+pub use headers::*;
 pub use path::*;
+pub use query::*;
 pub use types::*;
