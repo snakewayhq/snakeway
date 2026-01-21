@@ -1,5 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 use integration_tests::harness::TestServer;
+use pretty_assertions::assert_eq;
 
 #[test]
 fn websocket_echo_is_proxied() {

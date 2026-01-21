@@ -1,7 +1,7 @@
 use integration_tests::harness::TestServer;
 use integration_tests::harness::upstream::helloworld;
 use integration_tests::harness::upstream::helloworld::HelloRequest;
-
+use pretty_assertions::assert_eq;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 
 #[test]

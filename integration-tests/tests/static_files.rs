@@ -1,4 +1,5 @@
 use integration_tests::harness::TestServer;
+use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 
 /// Serves index.html from the configured static directory
