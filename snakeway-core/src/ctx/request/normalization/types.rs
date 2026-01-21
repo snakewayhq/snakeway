@@ -31,3 +31,8 @@ pub enum RewriteReason {
     HeaderCanonicalization,
     PercentDecodeUnreserved,
 }
+
+pub enum ProtocolNormalizationMode {
+    Http1,
+    Http2,
+}

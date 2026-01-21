@@ -1,7 +1,155 @@
 use crate::ctx::request::NormalizedHeaders;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
+use crate::ctx::request::normalization::{
+    NormalizationOutcome, ProtocolNormalizationMode, RejectReason, RewriteReason,
+};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::collections::HashSet;
+
+pub fn normalize_headers(
+    raw: &HeaderMap,
+    protocol_mode: &ProtocolNormalizationMode,
+) -> NormalizationOutcome<NormalizedHeaders> {
+    match protocol_mode {
+        ProtocolNormalizationMode::Http1 => normalize_http1_headers(raw),
+        ProtocolNormalizationMode::Http2 => normalize_http2_headers(raw),
+    }
+}
+
+pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
+    let mut rewritten = false;
+    let mut out = HeaderMap::new();
+
+    for (name, value) in raw.iter() {
+        let name_str = name.as_str();
+
+        //---------------------------------------------------------------------
+        // RFC 9113 §8.2.1 — Header field names MUST be lowercase
+        //---------------------------------------------------------------------
+        if name_str.chars().any(|c| c.is_ascii_uppercase()) {
+            return NormalizationOutcome::Reject {
+                reason: RejectReason::HeaderEncodingViolation,
+            };
+        }
+
+        //---------------------------------------------------------------------
+        // RFC 9113 §8.2.2 — Connection-specific headers are forbidden
+        //---------------------------------------------------------------------
+        if is_http2_forbidden_header(name_str) {
+            return NormalizationOutcome::Reject {
+                reason: RejectReason::HopByHopHeader,
+            };
+        }
+
+        //---------------------------------------------------------------------
+        // RFC 9113 §8.2.1.2 — TE header special case
+        // Only allowed value: "trailers"
+        //---------------------------------------------------------------------
+        if name_str == "te" {
+            let v = match value.to_str() {
+                Ok(v) => v.trim(),
+                Err(_) => {
+                    return NormalizationOutcome::Reject {
+                        reason: RejectReason::HeaderEncodingViolation,
+                    };
+                }
+            };
+
+            if v != "trailers" {
+                return NormalizationOutcome::Reject {
+                    reason: RejectReason::HopByHopHeader,
+                };
+            }
+        }
+
+        //---------------------------------------------------------------------
+        // RFC 9110 §5.5 — Validate header value encoding
+        //---------------------------------------------------------------------
+        let value_str = match value.to_str() {
+            Ok(v) => v,
+            Err(_) => {
+                return NormalizationOutcome::Reject {
+                    reason: RejectReason::HeaderEncodingViolation,
+                };
+            }
+        };
+
+        // Reject NUL bytes outright
+        if value_str.as_bytes().contains(&0) {
+            return NormalizationOutcome::Reject {
+                reason: RejectReason::HeaderEncodingViolation,
+            };
+        }
+
+        // HTTP/2 disallows obs-fold; trimming OWS is safe and canonical
+        let trimmed = value_str.trim();
+        if trimmed != value_str {
+            rewritten = true;
+        }
+
+        let val = match HeaderValue::from_str(trimmed) {
+            Ok(v) => v,
+            Err(_) => {
+                return NormalizationOutcome::Reject {
+                    reason: RejectReason::HeaderEncodingViolation,
+                };
+            }
+        };
+
+        //---------------------------------------------------------------------
+        // RFC 9110 §5.3 - Fold duplicate headers
+        //---------------------------------------------------------------------
+        match out.get_mut(name) {
+            Some(existing) => {
+                let merged = match existing.to_str() {
+                    Ok(e) => format!("{}, {}", e, trimmed),
+                    Err(_) => {
+                        return NormalizationOutcome::Reject {
+                            reason: RejectReason::HeaderEncodingViolation,
+                        };
+                    }
+                };
+
+                *existing = match HeaderValue::from_str(&merged) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return NormalizationOutcome::Reject {
+                            reason: RejectReason::HeaderEncodingViolation,
+                        };
+                    }
+                };
+
+                rewritten = true;
+            }
+            None => {
+                out.insert(name.clone(), val);
+            }
+        }
+    }
+
+    let normalized = NormalizedHeaders::new(out);
+
+    if rewritten {
+        NormalizationOutcome::Rewrite {
+            value: normalized,
+            reason: RewriteReason::HeaderCanonicalization,
+        }
+    } else {
+        NormalizationOutcome::Accept(normalized)
+    }
+}
+
+fn is_http2_forbidden_header(name: &str) -> bool {
+    matches!(
+        name,
+        "connection"
+            | "keep-alive"
+            | "proxy-authenticate"
+            | "proxy-authorization"
+            | "transfer-encoding"
+            | "upgrade"
+            | "trailer"
+    )
+}
 
 /// Normalizes HTTP headers according to RFC 9110 and RFC 9112.
 ///
@@ -16,7 +164,7 @@ use std::collections::HashSet;
 /// - Rejects headers containing NUL bytes to prevent header injection attacks
 /// - Validates all header names and values are properly encoded
 /// - Strips hop-by-hop headers to prevent protocol confusion
-pub fn normalize_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
+pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
 

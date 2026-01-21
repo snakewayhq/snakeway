@@ -1,5 +1,6 @@
-use crate::ctx::request::normalization::headers::normalize_headers;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
+use crate::ctx::request::normalization::{
+    NormalizationOutcome, RejectReason, RewriteReason, normalize_http1_headers,
+};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
 fn input_to_header_map(input: &[(&str, &str)]) -> HeaderMap {
@@ -17,7 +18,7 @@ fn assert_accept_headers(input: &[(&str, &str)], expected: &[(&str, &str)]) {
     let raw = input_to_header_map(input);
 
     // Act
-    let outcome = normalize_headers(&raw);
+    let outcome = normalize_http1_headers(&raw);
 
     // Assert
     match outcome {
@@ -41,7 +42,7 @@ fn assert_rewrite_headers(
     let raw = input_to_header_map(input);
 
     // Act
-    let outcome = normalize_headers(&raw);
+    let outcome = normalize_http1_headers(&raw);
 
     // Assert
     match outcome {
@@ -65,7 +66,7 @@ fn assert_reject_headers(input: &[(&str, &str)], reason: RejectReason) {
     let raw = input_to_header_map(input);
 
     // Act
-    let outcome = normalize_headers(&raw);
+    let outcome = normalize_http1_headers(&raw);
 
     // Assert
     match outcome {

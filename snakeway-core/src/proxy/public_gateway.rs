@@ -134,7 +134,7 @@ impl ProxyHttp for PublicGateway {
         self.enforce_protocol(&mut peer, ctx, upstream)?;
 
         // Set upstream authority for gRPC and http/2.0 requests.
-        if ctx.is_http2 {
+        if ctx.is_http2() {
             ctx.upstream_authority = Some(upstream.authority());
         }
 
@@ -356,7 +356,7 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        if ctx.ws_opened || ctx.is_http2 {
+        if ctx.ws_opened || ctx.is_http2() {
             // Do not run on_response devices for WebSockets or HTTP/2.
             // For WebSockets and HTTP/2, this is not a real "response."
             // For WebSockets, it is a protocol switch.
@@ -471,7 +471,7 @@ impl PublicGateway {
         if ctx.is_upgrade_req {
             // WebSockets MUST be HTTP/1.1
             peer.options.set_http_version(1, 1);
-        } else if ctx.is_http2 {
+        } else if ctx.is_http2() {
             if !upstream.use_tls() {
                 return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
             }

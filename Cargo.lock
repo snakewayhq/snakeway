@@ -1986,6 +1986,7 @@ version = "0.5.3"
 dependencies = [
  "arc-swap",
  "futures-util",
+ "pretty_assertions",
  "prost",
  "reqwest",
  "snakeway-core",

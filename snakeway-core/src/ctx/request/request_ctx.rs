@@ -2,7 +2,8 @@ use crate::ctx::RequestId;
 use crate::ctx::request::NormalizedRequest;
 use crate::ctx::request::error::RequestRejectError;
 use crate::ctx::request::normalization::{
-    NormalizationOutcome, normalize_headers, normalize_path, normalize_query,
+    NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
+    normalize_query,
 };
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
@@ -23,7 +24,7 @@ pub struct RequestCtx {
     pub admission_guard: Option<AdmissionGuard>,
 
     /// Lifecycle flag to determine if the context has already been hydrated from a session.
-    pub hydrated: bool,
+    hydrated: bool,
 
     /// Service name for routing decisions.
     pub service: Option<String>,
@@ -54,8 +55,8 @@ pub struct RequestCtx {
     /// Was a websocket connection opened?
     pub ws_opened: bool,
 
-    /// Is it an HTTP/2 request?
-    pub is_http2: bool,
+    /// HTTP version (immutable)
+    protocol_version: Option<Version>,
 
     /// Upstream authority for HTTP/2 requests.
     pub upstream_authority: Option<String>,
@@ -67,7 +68,7 @@ pub struct RequestCtx {
     pub normalized_request: Option<NormalizedRequest>,
 
     /// Has the request been normalized?
-    pub normalized: bool,
+    normalized: bool,
 
     /// Route ID for routing decisions.
     pub route_id: Option<RouteId>,
@@ -116,9 +117,9 @@ impl RequestCtx {
             upstream_path: None,
 
             // Protocol flags that help figure out what to do with the request.
-            is_http2: false,
             is_upgrade_req: false,
             ws_opened: false,
+            protocol_version: None,
 
             // Required for gRPC.
             upstream_authority: None,
@@ -157,7 +158,7 @@ impl RequestCtx {
         self.headers = req.headers.clone();
         self.route_path = req.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
-        self.is_http2 = req.version == Version::HTTP_2;
+        self.protocol_version = Some(req.version);
         self.peer_ip = match session.client_addr() {
             Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
             _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
@@ -170,6 +171,51 @@ impl RequestCtx {
     }
 
     pub fn normalize_request(&mut self) -> Result<(), RequestRejectError> {
+        debug_assert!(self.hydrated, "normalize before hydrate");
+        debug_assert!(!self.normalized, "normalize called twice");
+
+        if self.is_upgrade_req {
+            self.normalize_ws_handshake()?;
+        } else {
+            self.normalize_http_request()?;
+        }
+
+        Ok(())
+    }
+
+    fn normalize_ws_handshake(&mut self) -> Result<(), RequestRejectError> {
+        // Method must be GET
+        if self.method != Some(Method::GET) {
+            return Err(RequestRejectError::InvalidMethod);
+        }
+
+        // Normalize path (security + routing)
+        let path = match normalize_path(&self.route_path) {
+            NormalizationOutcome::Accept(p) | NormalizationOutcome::Rewrite { value: p, .. } => p,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidPath);
+            }
+        };
+
+        self.route_path = path.as_str().to_string();
+
+        // Header *validation only*
+        for (name, value) in self.headers.iter() {
+            name.as_str(); // validate name
+            value
+                .to_str()
+                .map_err(|_| RequestRejectError::InvalidHeaders)?;
+
+            if value.as_bytes().contains(&0) {
+                return Err(RequestRejectError::InvalidHeaders);
+            }
+        }
+
+        self.normalized = true;
+        Ok(())
+    }
+
+    fn normalize_http_request(&mut self) -> Result<(), RequestRejectError> {
         debug_assert!(self.hydrated, "normalize before hydrate");
         debug_assert!(!self.normalized, "normalize called twice");
 
@@ -197,13 +243,20 @@ impl RequestCtx {
             }
         };
 
-        let normalized_headers = match normalize_headers(&self.headers) {
-            NormalizationOutcome::Accept(h) => h,
-            NormalizationOutcome::Rewrite { value, .. } => value,
-            NormalizationOutcome::Reject { .. } => {
-                return Err(RequestRejectError::InvalidHeaders);
-            }
+        // Header normalization is protocol-specific.
+        let protocol_normalization_mode = match self.protocol_version {
+            Some(Version::HTTP_2) => ProtocolNormalizationMode::Http2,
+            _ => ProtocolNormalizationMode::Http1,
         };
+
+        let normalized_headers =
+            match normalize_headers(&self.headers, &protocol_normalization_mode) {
+                NormalizationOutcome::Accept(h) => h,
+                NormalizationOutcome::Rewrite { value, .. } => value,
+                NormalizationOutcome::Reject { .. } => {
+                    return Err(RequestRejectError::InvalidHeaders);
+                }
+            };
 
         self.normalized_request = Some(NormalizedRequest::new(
             self.method.clone().expect("method missing"),
@@ -233,6 +286,10 @@ impl RequestCtx {
 
     pub fn method_str(&self) -> Option<&str> {
         self.method.as_ref().map(|m| m.as_str())
+    }
+
+    pub fn is_http2(&self) -> bool {
+        self.protocol_version == Some(Version::HTTP_2)
     }
 
     pub fn original_uri_str(&self) -> Option<String> {
