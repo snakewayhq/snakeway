@@ -5,6 +5,14 @@ use crate::ctx::request::normalization::{
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::collections::HashSet;
 
+/// Normalizes HTTP headers according to the appropriate protocol specification.
+///
+/// This function dispatches to protocol-specific normalization based on the HTTP version:
+/// - HTTP/1.x: Enforces RFC 9110 (HTTP Semantics) and RFC 9112 (HTTP/1.1)
+/// - HTTP/2: Enforces RFC 9110 (HTTP Semantics) and RFC 9113 (HTTP/2)
+///
+/// Both protocol modes validate header encoding, reject hop-by-hop headers, canonicalize
+/// header names and values, and fold duplicate headers according to their respective RFCs.
 pub fn normalize_headers(
     raw: &HeaderMap,
     protocol_mode: &ProtocolNormalizationMode,
@@ -15,6 +23,27 @@ pub fn normalize_headers(
     }
 }
 
+/// Normalizes HTTP/2 headers according to RFC 9110 and RFC 9113.
+///
+/// This function performs the following operations:
+/// 1. Validates header names are lowercase (RFC 9113 §8.2.1)
+/// 2. Rejects connection-specific headers forbidden in HTTP/2 (RFC 9113 §8.2.2)
+/// 3. Enforces TE header restrictions - only "trailers" allowed (RFC 9113 §8.2.1.2)
+/// 4. Validates header values for proper encoding (RFC 9110 §5.5)
+/// 5. Trims optional whitespace from header values
+/// 6. Folds duplicate headers with comma-separation (RFC 9110 §5.3)
+///
+/// # HTTP/2-Specific Rules
+/// - Header field names MUST be lowercase (RFC 9113 §8.2.1)
+/// - Connection-specific headers (Connection, Keep-Alive, Proxy-Authenticate,
+///   Proxy-Authorization, Transfer-Encoding, Upgrade, Trailer) are forbidden (RFC 9113 §8.2.2)
+/// - The TE header is only allowed with value "trailers" (RFC 9113 §8.2.1.2)
+/// - HTTP/2 does not support obs-fold (obsolete line folding)
+///
+/// # Security Considerations
+/// - Rejects headers containing NUL bytes to prevent header injection attacks
+/// - Validates all header names and values are properly encoded
+/// - Strictly enforces HTTP/2 protocol requirements to prevent downgrade attacks
 pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
@@ -22,28 +51,22 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
     for (name, value) in raw.iter() {
         let name_str = name.as_str();
 
-        //---------------------------------------------------------------------
-        // RFC 9113 §8.2.1 — Header field names MUST be lowercase
-        //---------------------------------------------------------------------
+        // RFC 9113 §8.2.1: Header field names MUST be lowercase
         if name_str.chars().any(|c| c.is_ascii_uppercase()) {
             return NormalizationOutcome::Reject {
                 reason: RejectReason::HeaderEncodingViolation,
             };
         }
 
-        //---------------------------------------------------------------------
-        // RFC 9113 §8.2.2 — Connection-specific headers are forbidden
-        //---------------------------------------------------------------------
+        // RFC 9113 §8.2.2: Connection-specific headers are forbidden
         if is_http2_forbidden_header(name_str) {
             return NormalizationOutcome::Reject {
                 reason: RejectReason::HopByHopHeader,
             };
         }
 
-        //---------------------------------------------------------------------
-        // RFC 9113 §8.2.1.2 — TE header special case
+        // RFC 9113 §8.2.1.2: TE header special case
         // Only allowed value: "trailers"
-        //---------------------------------------------------------------------
         if name_str == "te" {
             let v = match value.to_str() {
                 Ok(v) => v.trim(),
@@ -61,9 +84,7 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
             }
         }
 
-        //---------------------------------------------------------------------
-        // RFC 9110 §5.5 — Validate header value encoding
-        //---------------------------------------------------------------------
+        // RFC 9110 §5.5: Validate header value encoding
         let value_str = match value.to_str() {
             Ok(v) => v,
             Err(_) => {
@@ -95,9 +116,7 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
             }
         };
 
-        //---------------------------------------------------------------------
-        // RFC 9110 §5.3 - Fold duplicate headers
-        //---------------------------------------------------------------------
+        // RFC 9110 §5.3: Fold duplicate headers
         match out.get_mut(name) {
             Some(existing) => {
                 let merged = match existing.to_str() {
@@ -138,6 +157,29 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
     }
 }
 
+/// Checks if a header name is forbidden in HTTP/2 per RFC 9113 §8.2.2.
+///
+/// HTTP/2 prohibits connection-specific header fields that are specific to a particular
+/// connection and must not be forwarded. These headers are forbidden because HTTP/2 uses
+/// a single multiplexed connection and does not support connection-level negotiation in
+/// the same way as HTTP/1.1.
+///
+/// The forbidden headers are defined in RFC 9113 §8.2.2 and include:
+/// - Connection: Not needed in HTTP/2's multiplexed model
+/// - Keep-Alive: Not applicable to HTTP/2's persistent connection model
+/// - Proxy-Authenticate: Connection-specific proxy authentication
+/// - Proxy-Authorization: Connection-specific proxy credentials
+/// - Transfer-Encoding: HTTP/2 has built-in framing, making this obsolete
+/// - Upgrade: Protocol upgrade is handled differently in HTTP/2
+/// - Trailer: Trailers are handled via special HTTP/2 frames
+///
+/// # Arguments
+/// * `name` - The header name in lowercase (HTTP/2 requires lowercase header names)
+///
+/// # Security Note
+/// This function expects the input to already be lowercased per RFC 9113 §8.2.1.
+/// The presence of these headers in an HTTP/2 request must result in connection termination
+/// to prevent protocol confusion attacks and ensure HTTP/2 semantic integrity.
 fn is_http2_forbidden_header(name: &str) -> bool {
     matches!(
         name,
