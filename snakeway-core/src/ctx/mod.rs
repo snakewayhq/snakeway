@@ -1,11 +1,9 @@
-pub mod request_ctx;
+mod request;
 pub mod response_ctx;
-mod types;
 mod ws_close_ctx;
 mod ws_ctx;
 
-pub use request_ctx::RequestCtx;
+pub use request::{RequestCtx, RequestId, RequestRejectError};
 pub use response_ctx::ResponseCtx;
-pub use types::RequestId;
 pub use ws_close_ctx::*;
 pub use ws_ctx::*;

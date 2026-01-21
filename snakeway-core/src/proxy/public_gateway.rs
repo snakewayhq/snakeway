@@ -46,7 +46,7 @@ impl PublicGateway {
 
 /// Pingora hook execution order in ProxyHttp...
 ///
-/// This is a giant orchestration traint implementation, so better to lay this out explicitly,
+/// This is a giant orchestration trait implementation, so better to lay this out explicitly,
 /// especially because it might change in later Pingora versions.
 ///
 /// 1. new_ctx()
@@ -134,7 +134,7 @@ impl ProxyHttp for PublicGateway {
         self.enforce_protocol(&mut peer, ctx, upstream)?;
 
         // Set upstream authority for gRPC and http/2.0 requests.
-        if ctx.is_http2 {
+        if ctx.is_http2() {
             ctx.upstream_authority = Some(upstream.authority());
         }
 
@@ -163,6 +163,11 @@ impl ProxyHttp for PublicGateway {
         ctx.hydrate_from_session(session);
         debug_assert!(ctx.method.is_some());
         debug_assert!(ctx.original_uri.is_some());
+
+        ctx.normalize_request().map_err(|e| {
+            tracing::warn!(error = %e, "request rejected during normalization");
+            e.as_pingora_error()
+        })?;
 
         let state = self.gw_ctx.state();
 
@@ -351,7 +356,7 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        if ctx.ws_opened || ctx.is_http2 {
+        if ctx.ws_opened || ctx.is_http2() {
             // Do not run on_response devices for WebSockets or HTTP/2.
             // For WebSockets and HTTP/2, this is not a real "response."
             // For WebSockets, it is a protocol switch.
@@ -466,7 +471,7 @@ impl PublicGateway {
         if ctx.is_upgrade_req {
             // WebSockets MUST be HTTP/1.1
             peer.options.set_http_version(1, 1);
-        } else if ctx.is_http2 {
+        } else if ctx.is_http2() {
             if !upstream.use_tls() {
                 return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
             }
