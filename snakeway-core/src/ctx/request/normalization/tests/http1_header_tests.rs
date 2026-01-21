@@ -1,24 +1,15 @@
+use super::test_helpers::input_to_header_map;
 use crate::ctx::request::normalization::{
-    NormalizationOutcome, RejectReason, RewriteReason, normalize_http1_headers,
+    NormalizationOutcome, ProtocolNormalizationMode, RejectReason, RewriteReason, normalize_headers,
 };
-use http::{HeaderMap, HeaderName, HeaderValue};
-
-fn input_to_header_map(input: &[(&str, &str)]) -> HeaderMap {
-    let mut header_map = HeaderMap::new();
-    for (k, v) in input {
-        let name: HeaderName = k.parse().expect("invalid header name");
-        let value: HeaderValue = v.parse().expect("invalid header value");
-        header_map.append(name, value);
-    }
-    header_map
-}
+use http::HeaderValue;
 
 fn assert_accept_headers(input: &[(&str, &str)], expected: &[(&str, &str)]) {
     // Arrange
     let raw = input_to_header_map(input);
 
     // Act
-    let outcome = normalize_http1_headers(&raw);
+    let outcome = normalize_headers(&raw, &ProtocolNormalizationMode::Http1);
 
     // Assert
     match outcome {
@@ -42,7 +33,7 @@ fn assert_rewrite_headers(
     let raw = input_to_header_map(input);
 
     // Act
-    let outcome = normalize_http1_headers(&raw);
+    let outcome = normalize_headers(&raw, &ProtocolNormalizationMode::Http1);
 
     // Assert
     match outcome {
@@ -66,7 +57,7 @@ fn assert_reject_headers(input: &[(&str, &str)], reason: RejectReason) {
     let raw = input_to_header_map(input);
 
     // Act
-    let outcome = normalize_http1_headers(&raw);
+    let outcome = normalize_headers(&raw, &ProtocolNormalizationMode::Http1);
 
     // Assert
     match outcome {
