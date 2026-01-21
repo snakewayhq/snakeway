@@ -265,18 +265,14 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
             Ok(v) => v,
             Err(_) => {
                 // Non-visible ASCII or invalid UTF-8
-                return NormalizationOutcome::Reject {
-                    reason: RejectReason::HeaderEncodingViolation,
-                };
+                return NormalizationOutcome::reject_for_header_encoding_violation();
             }
         };
 
         // SECURITY: Reject NUL bytes (0x00) to prevent header injection and smuggling attacks.
         // NUL bytes can cause parsers to terminate strings early, leading to security vulnerabilities.
         if value_str.as_bytes().contains(&0) {
-            return NormalizationOutcome::Reject {
-                reason: RejectReason::HeaderEncodingViolation,
-            };
+            return NormalizationOutcome::reject_for_header_encoding_violation();
         }
 
         // RFC 9112 §6.3 and RFC 9110 §5.5: Leading and trailing whitespace (OWS) in field
