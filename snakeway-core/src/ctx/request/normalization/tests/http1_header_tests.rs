@@ -1,71 +1,21 @@
-use super::test_helpers::input_to_header_map;
-use crate::ctx::request::normalization::{
-    NormalizationOutcome, ProtocolNormalizationMode, RejectReason, RewriteReason, normalize_headers,
-};
+use super::test_helpers::{assert_accept_headers, assert_reject_headers, assert_rewrite_headers};
+use crate::ctx::request::normalization::{ProtocolNormalizationMode, RejectReason, RewriteReason};
 use http::HeaderValue;
 
-fn assert_accept_headers(input: &[(&str, &str)], expected: &[(&str, &str)]) {
-    // Arrange
-    let raw = input_to_header_map(input);
-
-    // Act
-    let outcome = normalize_headers(&raw, &ProtocolNormalizationMode::Http1);
-
-    // Assert
-    match outcome {
-        NormalizationOutcome::Accept(h) => {
-            let out = h.as_map();
-            assert_eq!(out.len(), expected.len());
-            for (k, v) in expected {
-                assert_eq!(out.get(*k).unwrap(), v);
-            }
-        }
-        other => panic!("Expected Accept, got {:?}", other),
-    }
+fn assert_accept_http1_headers(input: &[(&str, &str)], expected: &[(&str, &str)]) {
+    assert_accept_headers(input, expected, &ProtocolNormalizationMode::Http2);
 }
 
-fn assert_rewrite_headers(
+fn assert_rewrite_http1_headers(
     input: &[(&str, &str)],
     expected: &[(&str, &str)],
     reason: RewriteReason,
 ) {
-    // Arrange
-    let raw = input_to_header_map(input);
-
-    // Act
-    let outcome = normalize_headers(&raw, &ProtocolNormalizationMode::Http1);
-
-    // Assert
-    match outcome {
-        NormalizationOutcome::Rewrite {
-            value: h,
-            reason: r,
-        } => {
-            let out = h.as_map();
-            assert_eq!(out.len(), expected.len());
-            for (k, v) in expected {
-                assert_eq!(out.get(*k).unwrap(), v);
-            }
-            assert_eq!(r, reason);
-        }
-        other => panic!("Expected Rewrite, got {:?}", other),
-    }
+    assert_rewrite_headers(input, expected, reason, &ProtocolNormalizationMode::Http2);
 }
 
-fn assert_reject_headers(input: &[(&str, &str)], reason: RejectReason) {
-    // Arrange
-    let raw = input_to_header_map(input);
-
-    // Act
-    let outcome = normalize_headers(&raw, &ProtocolNormalizationMode::Http1);
-
-    // Assert
-    match outcome {
-        NormalizationOutcome::Reject { reason: r } => {
-            assert_eq!(r, reason);
-        }
-        other => panic!("Expected Reject, got {:?}", other),
-    }
+fn assert_reject_http1_headers(input: &[(&str, &str)], reason: RejectReason) {
+    assert_reject_headers(input, reason, &ProtocolNormalizationMode::Http2);
 }
 
 //-----------------------------------------------------------------------------
@@ -73,7 +23,7 @@ fn assert_reject_headers(input: &[(&str, &str)], reason: RejectReason) {
 //-----------------------------------------------------------------------------
 #[test]
 fn accept_simple_headers() {
-    assert_accept_headers(
+    assert_accept_http1_headers(
         &[("host", "example.com"), ("user-agent", "curl/8.0")],
         &[("host", "example.com"), ("user-agent", "curl/8.0")],
     );
@@ -81,7 +31,7 @@ fn accept_simple_headers() {
 
 #[test]
 fn accept_header_name_case_insensitive() {
-    assert_accept_headers(
+    assert_accept_http1_headers(
         &[("Host", "example.com"), ("USER-AGENT", "curl")],
         &[("host", "example.com"), ("user-agent", "curl")],
     );
@@ -89,7 +39,7 @@ fn accept_header_name_case_insensitive() {
 
 #[test]
 fn accept_multiple_distinct_headers() {
-    assert_accept_headers(
+    assert_accept_http1_headers(
         &[("accept", "text/plain"), ("accept-encoding", "gzip")],
         &[("accept", "text/plain"), ("accept-encoding", "gzip")],
     );
@@ -100,7 +50,7 @@ fn accept_multiple_distinct_headers() {
 //-----------------------------------------------------------------------------
 #[test]
 fn rewrite_fold_duplicate_headers() {
-    assert_rewrite_headers(
+    assert_rewrite_http1_headers(
         &[("accept", "text/plain"), ("accept", "application/json")],
         &[("accept", "text/plain, application/json")],
         RewriteReason::HeaderCanonicalization,
@@ -109,7 +59,7 @@ fn rewrite_fold_duplicate_headers() {
 
 #[test]
 fn rewrite_trim_whitespace() {
-    assert_rewrite_headers(
+    assert_rewrite_http1_headers(
         &[("x-test", "  value  ")],
         &[("x-test", "value")],
         RewriteReason::HeaderCanonicalization,
@@ -126,7 +76,7 @@ fn reject_nul_in_header_value_at_parse_time() {
 
 #[test]
 fn reject_hop_by_hop_header() {
-    assert_reject_headers(
+    assert_reject_http1_headers(
         &[("connection", "keep-alive")],
         RejectReason::HopByHopHeader,
     );
