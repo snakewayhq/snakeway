@@ -14,6 +14,16 @@ pub enum NormalizationOutcome<T> {
     },
 }
 
+/// Small helper to reduce noisy call site boilerplate.
+impl<T> NormalizationOutcome<T> {
+    #[inline]
+    pub fn reject_for_header_encoding_violation() -> Self {
+        Self::Reject {
+            reason: RejectReason::HeaderEncodingViolation,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RejectReason {
     InvalidUtf8,

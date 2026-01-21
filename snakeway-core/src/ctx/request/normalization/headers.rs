@@ -53,9 +53,7 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
 
         // RFC 9113 §8.2.1: Header field names MUST be lowercase
         if name_str.chars().any(|c| c.is_ascii_uppercase()) {
-            return NormalizationOutcome::Reject {
-                reason: RejectReason::HeaderEncodingViolation,
-            };
+            return NormalizationOutcome::reject_for_header_encoding_violation();
         }
 
         // RFC 9113 §8.2.2: Connection-specific headers are forbidden
@@ -70,11 +68,7 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
         if name_str == "te" {
             let v = match value.to_str() {
                 Ok(v) => v.trim(),
-                Err(_) => {
-                    return NormalizationOutcome::Reject {
-                        reason: RejectReason::HeaderEncodingViolation,
-                    };
-                }
+                Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
             };
 
             if v != "trailers" {
@@ -87,18 +81,12 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
         // RFC 9110 §5.5: Validate header value encoding
         let value_str = match value.to_str() {
             Ok(v) => v,
-            Err(_) => {
-                return NormalizationOutcome::Reject {
-                    reason: RejectReason::HeaderEncodingViolation,
-                };
-            }
+            Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
         };
 
         // Reject NUL bytes outright
         if value_str.as_bytes().contains(&0) {
-            return NormalizationOutcome::Reject {
-                reason: RejectReason::HeaderEncodingViolation,
-            };
+            return NormalizationOutcome::reject_for_header_encoding_violation();
         }
 
         // HTTP/2 disallows obs-fold; trimming OWS is safe and canonical
@@ -109,37 +97,51 @@ pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
 
         let val = match HeaderValue::from_str(trimmed) {
             Ok(v) => v,
-            Err(_) => {
-                return NormalizationOutcome::Reject {
-                    reason: RejectReason::HeaderEncodingViolation,
-                };
-            }
+            Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
         };
 
         // RFC 9110 §5.3: Fold duplicate headers
         match out.get_mut(name) {
             Some(existing) => {
+                // RFC 9110 §5.3:
+                // Multiple request header fields with the same name may be combined
+                // into a single field by comma-separating their values IF the header’s
+                // field definition allows list semantics.
+                //
+                // At this point we have already validated that this header:
+                //   - is not hop-by-hop
+                //   - is safe to fold for requests
+                //
+                // SECURITY:
+                // We must re-validate the existing value before merging to ensure it
+                // remains valid ASCII and does not contain illegal bytes (e.g., NUL).
                 let merged = match existing.to_str() {
                     Ok(e) => format!("{}, {}", e, trimmed),
                     Err(_) => {
-                        return NormalizationOutcome::Reject {
-                            reason: RejectReason::HeaderEncodingViolation,
-                        };
+                        // Existing header value failed UTF-8 / ASCII validation.
+                        // This indicates malformed input and must be rejected.
+                        return NormalizationOutcome::reject_for_header_encoding_violation();
                     }
                 };
 
+                // SECURITY:
+                // Re-parse the merged value into a HeaderValue to ensure it conforms
+                // to HTTP header value grammar after folding. This prevents accidental
+                // construction of invalid or injection-capable values.
                 *existing = match HeaderValue::from_str(&merged) {
                     Ok(v) => v,
                     Err(_) => {
-                        return NormalizationOutcome::Reject {
-                            reason: RejectReason::HeaderEncodingViolation,
-                        };
+                        // The merged header value violates header encoding rules.
+                        return NormalizationOutcome::reject_for_header_encoding_violation();
                     }
                 };
 
+                // Folding multiple headers into a single canonical value
+                // constitutes a semantic rewrite.
                 rewritten = true;
             }
             None => {
+                // First occurrence of this header name... insert as-is...
                 out.insert(name.clone(), val);
             }
         }
@@ -219,9 +221,7 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
             Ok(v) => v,
             Err(_) => {
                 // RFC 9110 §5.5: Header field values must be valid US-ASCII or encoded properly
-                return NormalizationOutcome::Reject {
-                    reason: RejectReason::HeaderEncodingViolation,
-                };
+                return NormalizationOutcome::reject_for_header_encoding_violation();
             }
         };
 
@@ -253,11 +253,7 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
         // for consistent processing (following RFC 3986 §6 normalization principles).
         let canonical_name: HeaderName = match name_lower.parse() {
             Ok(h) => h,
-            Err(_) => {
-                return NormalizationOutcome::Reject {
-                    reason: RejectReason::HeaderEncodingViolation,
-                };
-            }
+            Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
         };
 
         if name_str != canonical_name.as_str() {
@@ -292,11 +288,7 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
 
         let val = match HeaderValue::from_str(trimmed) {
             Ok(v) => v,
-            Err(_) => {
-                return NormalizationOutcome::Reject {
-                    reason: RejectReason::HeaderEncodingViolation,
-                };
-            }
+            Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
         };
 
         // RFC 9110 §5.3: Multiple header fields with the same name can be combined into a single
@@ -307,20 +299,12 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
             Some(existing) => {
                 let merged = match existing.to_str() {
                     Ok(e) => format!("{}, {}", e, trimmed),
-                    Err(_) => {
-                        return NormalizationOutcome::Reject {
-                            reason: RejectReason::HeaderEncodingViolation,
-                        };
-                    }
+                    Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
                 };
 
                 let merged_value = match HeaderValue::from_str(&merged) {
                     Ok(v) => v,
-                    Err(_) => {
-                        return NormalizationOutcome::Reject {
-                            reason: RejectReason::HeaderEncodingViolation,
-                        };
-                    }
+                    Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
                 };
 
                 *existing = merged_value;
