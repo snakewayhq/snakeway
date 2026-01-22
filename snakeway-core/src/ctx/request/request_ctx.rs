@@ -258,8 +258,13 @@ impl RequestCtx {
                 }
             };
 
+        let method = self
+            .method
+            .as_ref()
+            .ok_or(RequestRejectError::MissingMethod)?;
+
         self.normalized_request = Some(NormalizedRequest::new(
-            self.method.clone().expect("method missing"),
+            method.clone(),
             normalized_path,
             canonical_query,
             normalized_headers,
@@ -284,10 +289,6 @@ impl RequestCtx {
         self.upstream_authority.as_deref()
     }
 
-    pub fn method_str(&self) -> Option<&str> {
-        self.method.as_ref().map(|m| m.as_str())
-    }
-
     pub fn is_http2(&self) -> bool {
         self.protocol_version == Some(Version::HTTP_2)
     }
@@ -296,12 +297,33 @@ impl RequestCtx {
         self.original_uri.as_ref().map(|u| u.to_string())
     }
 
+    pub fn method_str(&self) -> &str {
+        debug_assert!(self.normalized_request.is_some());
+        self.normalized_request
+            .as_ref()
+            .expect("request not normalized. this is a bug.")
+            .method()
+            .as_str()
+    }
+
+    pub fn method(&self) -> &Method {
+        debug_assert!(self.normalized_request.is_some());
+        self.normalized_request
+            .as_ref()
+            .expect("request not normalized. this is a bug.")
+            .method()
+    }
+
     /// Internal canonical representation of the request path.
     pub fn canonical_path(&self) -> &str {
         self.normalized_request
             .as_ref()
-            .expect("request not normalized")
+            .expect("request not normalized. this is a bug.")
             .path()
             .as_str()
+    }
+
+    pub fn request_id(&self) -> Option<String> {
+        self.extensions.get::<RequestId>().map(|id| id.0.clone())
     }
 }

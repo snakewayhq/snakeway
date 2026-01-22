@@ -277,7 +277,7 @@ impl Device for StructuredLoggingDevice {
             self.emit_http_request(
                 ctx,
                 HttpEvent::Request,
-                ctx.method_str(),
+                Some(ctx.method_str()),
                 ctx.original_uri_str().as_deref(),
                 None,
             );
@@ -290,7 +290,7 @@ impl Device for StructuredLoggingDevice {
             self.emit_http_request(
                 ctx,
                 HttpEvent::BeforeProxy,
-                ctx.method_str(),
+                Some(ctx.method_str()),
                 ctx.original_uri_str().as_deref(),
                 None,
             );

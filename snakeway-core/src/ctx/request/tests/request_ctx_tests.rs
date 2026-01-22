@@ -218,7 +218,7 @@ fn method_and_original_uri_helpers() {
     let uri_str = ctx.original_uri_str();
 
     // Assert
-    assert_eq!(method_str, Some("PUT"));
+    assert_eq!(method_str, "PUT");
     assert_eq!(uri_str.as_deref(), Some("http://example.test/hello?x=1"));
 }
 
