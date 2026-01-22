@@ -1,7 +1,20 @@
 use crate::ctx::request::NormalizedPath;
 use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
 
-/// Normalize a raw URI path into a canonical, safe form.
+/// Normalizes an HTTP request path according to RFC 3986 (URI Generic Syntax) and RFC 9110 (HTTP Semantics).
+///
+/// This function enforces the following RFC-compliant behaviors:
+///
+/// - **RFC 3986 § 3.3**: Ensures paths begin with "/" (absolute-path format); relative paths are rewritten.
+/// - **RFC 3986 § 6.2.2**: Removes dot-segments ("." and "..") to prevent path traversal attacks and canonicalize the path.
+/// - **RFC 3986 § 6.2.3**: Collapses consecutive slashes (e.g., "///" → "/") for path normalization.
+/// - **RFC 9110 § 4.1**: Rejects paths containing NUL bytes (0x00) as they violate HTTP message syntax.
+/// - **RFC 3986 § 3.3**: Removes trailing slashes except for the root path ("/") to ensure consistent routing.
+///
+/// The function returns:
+/// - `Accept`: Path is already normalized and valid.
+/// - `Rewrite`: Path was modified to comply with normalization rules (reason provided).
+/// - `Reject`: Path contains invalid or dangerous patterns (e.g., traversal above root, NUL bytes).
 pub fn normalize_path(path: &str) -> NormalizationOutcome<NormalizedPath> {
     // Reject NUL bytes outright (never valid in HTTP semantics).
     if path.as_bytes().contains(&0) {

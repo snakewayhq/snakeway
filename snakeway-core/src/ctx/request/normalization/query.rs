@@ -1,6 +1,32 @@
 use crate::ctx::request::CanonicalQuery;
 use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
 
+/// Normalizes HTTP query strings per RFC 3986 and related specifications.
+///
+/// This function enforces multiple RFC requirements for query string normalization:
+///
+/// # RFC 3986 (URI Generic Syntax)
+/// - **Section 2.1**: Normalizes percent-encoded triplets to uppercase hexadecimal
+/// - **Section 2.3**: Decodes percent-encoded unreserved characters (ALPHA/DIGIT/"-"/"."/"_"/"~")
+///   to their literal form for canonical comparison
+/// - **Section 3.4**: Validates query component structure and encoding
+///
+/// # RFC 7230 (HTTP/1.1 Message Syntax)
+/// - Rejects null bytes in query strings as invalid encoding
+/// - Validates percent-encoding syntax (complete triplets with valid hexadecimal digits)
+///
+/// # Normalization Behavior
+/// The function performs the following normalizations:
+/// 1. Rejects queries containing null bytes (`\0`)
+/// 2. Decodes percent-encoded unreserved characters (e.g., `%41` → `A`)
+/// 3. Preserves percent-encoding for reserved and non-ASCII characters
+/// 4. Sorts query parameters by key-value pairs for canonical ordering
+/// 5. Normalizes remaining percent-encoded sequences to uppercase
+///
+/// # Returns
+/// - `Accept`: Query is already normalized
+/// - `Rewrite`: Query was normalized (with reason)
+/// - `Reject`: Query contains invalid encoding
 pub fn normalize_query(query: &str) -> NormalizationOutcome<CanonicalQuery> {
     if query.is_empty() {
         return NormalizationOutcome::Accept(CanonicalQuery::default());
