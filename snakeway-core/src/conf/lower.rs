@@ -147,11 +147,12 @@ pub fn lower_configs(
     let devices = device_specs
         .into_iter()
         .map(|spec| match spec {
-            DeviceSpec::Wasm(d) => DeviceConfig::Wasm(d.into()),
-            DeviceSpec::Identity(d) => DeviceConfig::Identity(d.into()),
-            DeviceSpec::StructuredLogging(d) => DeviceConfig::StructuredLogging(d.into()),
+            DeviceSpec::Wasm(d) => Ok(DeviceConfig::Wasm(d.into())),
+            DeviceSpec::Identity(d) => Ok(DeviceConfig::Identity(d.into())),
+            DeviceSpec::RequestFilter(d) => d.try_into().map(DeviceConfig::RequestFilter),
+            DeviceSpec::StructuredLogging(d) => Ok(DeviceConfig::StructuredLogging(d.into())),
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok((server, listeners, routes, services, devices))
 }

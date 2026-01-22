@@ -1,6 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::DeviceConfig;
 use crate::device::builtin::identity::IdentityDevice;
+use crate::device::builtin::request_filter::RequestFilterDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
 #[cfg(feature = "wasm")]
@@ -44,6 +45,12 @@ impl DeviceRegistry {
                 // They should be run AFTER all builtin devices, except the logging device.
                 DeviceConfig::Wasm(cfg) => {
                     self.load_wasm_device(cfg)?;
+                }
+
+                DeviceConfig::RequestFilter(cfg) => {
+                    let device_config = cfg.clone();
+                    let device = Arc::new(RequestFilterDevice::from_config(device_config)?);
+                    self.devices.push(device);
                 }
 
                 // Important: The logging device must always be last, so that it can observe all

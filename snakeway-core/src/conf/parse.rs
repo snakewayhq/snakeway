@@ -1,6 +1,7 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin, ServiceSpec,
-    StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
+    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin,
+    RequestFilterDeviceSpec, ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec,
+    WasmDeviceSpec,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -11,6 +12,9 @@ use std::path::Path;
 struct DevicesFile {
     identity_device: Option<IdentityDeviceSpec>,
     structured_logging_device: Option<StructuredLoggingDeviceSpec>,
+
+    #[serde(default)]
+    request_filter_devices: Vec<RequestFilterDeviceSpec>,
 
     #[serde(default)]
     wasm_devices: Vec<WasmDeviceSpec>,
@@ -30,6 +34,11 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     if let Some(mut logging) = parsed.structured_logging_device {
         logging.origin = Origin::new(&path.to_path_buf(), "structured_logging_device", None);
         device_config.push(DeviceSpec::StructuredLogging(logging));
+    }
+
+    for (idx, mut device) in parsed.request_filter_devices.into_iter().enumerate() {
+        device.origin = Origin::new(&path.to_path_buf(), "request_filter_device", idx.into());
+        device_config.push(DeviceSpec::RequestFilter(device));
     }
 
     for (idx, mut device) in parsed.wasm_devices.into_iter().enumerate() {

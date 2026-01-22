@@ -51,6 +51,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     }
                 }
             }
+            DeviceSpec::RequestFilter(cfg) => {
+                if !cfg.enable {
+                    return;
+                }
+            }
             DeviceSpec::StructuredLogging(cfg) => {
                 if !cfg.enable {
                     return;
@@ -63,7 +68,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
 fn validate_geoip_db_file(geoip_db: &Path, report: &mut ValidationReport, origin: &Origin) -> bool {
     let mut has_error = false;
     if !geoip_db.is_file() {
-        if geoip_db.is_empty() {
+        if NixPath::is_empty(geoip_db) {
             report.geoip_db_path_is_empty(geoip_db.display(), origin);
             has_error = true;
         }

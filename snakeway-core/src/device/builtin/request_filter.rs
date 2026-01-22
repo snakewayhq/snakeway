@@ -1,3 +1,4 @@
+use crate::conf::types::RequestFilterDeviceConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::{Device, DeviceResult};
 use http::{HeaderName, Method, StatusCode};
@@ -19,7 +20,7 @@ use smallvec::SmallVec;
 /// to store a few items, we use a small shelf (stack storage) first, and only rent
 /// warehouse space when we really need it.
 #[derive(Debug)]
-pub struct RequestFilter {
+pub struct RequestFilterDevice {
     pub allow_methods: SmallVec<[Method; 4]>,
     pub deny_methods: SmallVec<[Method; 4]>,
     pub deny_headers: SmallVec<[HeaderName; 8]>,
@@ -27,19 +28,32 @@ pub struct RequestFilter {
     pub required_headers: SmallVec<[HeaderName; 8]>,
     pub max_header_bytes: usize,
     pub max_body_bytes: usize,
-    pub on_match: MatchAction,
+    pub deny_status: Option<u16>,
 }
 
-impl RequestFilter {
+impl RequestFilterDevice {
+    pub fn from_config(cfg: RequestFilterDeviceConfig) -> anyhow::Result<Self> {
+        Ok(Self {
+            allow_methods: cfg.allow_methods.into_iter().collect(),
+            deny_methods: cfg.deny_methods.into_iter().collect(),
+            deny_headers: cfg.deny_headers.into_iter().collect(),
+            allow_headers: cfg.allow_headers.into_iter().collect(),
+            required_headers: cfg.required_headers.into_iter().collect(),
+            max_header_bytes: cfg.max_header_bytes,
+            max_body_bytes: cfg.max_body_bytes,
+            deny_status: cfg.deny_status,
+        })
+    }
+
     fn deny(
         &self,
         ctx: &RequestCtx,
         default_status: StatusCode,
         reason: &'static str,
     ) -> DeviceResult {
-        let status = match self.on_match {
-            MatchAction::Deny { status } => StatusCode::from_u16(status).unwrap_or(default_status),
-            MatchAction::Allow => return DeviceResult::Continue,
+        let status = match self.deny_status {
+            Some(status) => StatusCode::from_u16(status).unwrap_or(default_status),
+            None => default_status,
         };
 
         DeviceResult::Respond(ResponseCtx::new(
@@ -51,7 +65,7 @@ impl RequestFilter {
     }
 }
 
-impl Device for RequestFilter {
+impl Device for RequestFilterDevice {
     /// RequestFilter is a request-only gate by design
     /// It should only act on ctx.normalized_request
     ///
@@ -150,10 +164,4 @@ impl Device for RequestFilter {
     }
 
     fn on_error(&self, _: &crate::device::core::errors::DeviceError) {}
-}
-
-#[derive(Debug)]
-pub enum MatchAction {
-    Deny { status: u16 },
-    Allow,
 }
