@@ -1,5 +1,5 @@
 use crate::ctx::{RequestCtx, RequestId, RequestRejectError};
-use http::{HeaderMap, HeaderName, HeaderValue, Method, Uri, Version};
+use http::{HeaderMap, HeaderValue, Method, Uri, Version};
 
 //-----------------------------------------------------------------------------
 // Test helpers
@@ -223,6 +223,7 @@ fn method_and_original_uri_helpers() {
 }
 
 #[test]
+#[should_panic(expected = "request not normalized")]
 fn canonical_path_panics_if_not_normalized() {
     // Arrange
     let ctx = hydrated_ctx_base();
