@@ -24,7 +24,7 @@ pub struct RequestCtx {
     pub admission_guard: Option<AdmissionGuard>,
 
     /// Lifecycle flag to determine if the context has already been hydrated from a session.
-    hydrated: bool,
+    pub hydrated: bool,
 
     /// Service name for routing decisions.
     pub service: Option<String>,
@@ -56,7 +56,7 @@ pub struct RequestCtx {
     pub ws_opened: bool,
 
     /// HTTP version (immutable)
-    protocol_version: Option<Version>,
+    pub protocol_version: Option<Version>,
 
     /// Upstream authority for HTTP/2 requests.
     pub upstream_authority: Option<String>,
@@ -68,7 +68,7 @@ pub struct RequestCtx {
     pub normalized_request: Option<NormalizedRequest>,
 
     /// Has the request been normalized?
-    normalized: bool,
+    pub normalized: bool,
 
     /// Route ID for routing decisions.
     pub route_id: Option<RouteId>,

@@ -1,6 +1,4 @@
-use super::test_helpers::{
-    assert_accept_headers, assert_reject_headers, assert_rewrite_headers, input_to_header_map,
-};
+use super::test_helpers::{assert_accept_headers, assert_reject_headers, assert_rewrite_headers};
 use crate::ctx::request::normalization::ProtocolNormalizationMode;
 use crate::ctx::request::normalization::{RejectReason, RewriteReason};
 
