@@ -14,7 +14,7 @@ struct DevicesFile {
     structured_logging_device: Option<StructuredLoggingDeviceSpec>,
 
     #[serde(default)]
-    request_filter_devices: Vec<RequestFilterDeviceSpec>,
+    request_filter_device: Option<RequestFilterDeviceSpec>,
 
     #[serde(default)]
     wasm_devices: Vec<WasmDeviceSpec>,
@@ -36,9 +36,9 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
         device_config.push(DeviceSpec::StructuredLogging(logging));
     }
 
-    for (idx, mut device) in parsed.request_filter_devices.into_iter().enumerate() {
-        device.origin = Origin::new(&path.to_path_buf(), "request_filter_device", idx.into());
-        device_config.push(DeviceSpec::RequestFilter(device));
+    if let Some(mut request_filter) = parsed.request_filter_device {
+        request_filter.origin = Origin::new(&path.to_path_buf(), "request_filter_device", None);
+        device_config.push(DeviceSpec::RequestFilter(request_filter));
     }
 
     for (idx, mut device) in parsed.wasm_devices.into_iter().enumerate() {
