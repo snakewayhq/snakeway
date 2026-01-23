@@ -116,7 +116,7 @@ impl Device for RequestFilterDevice {
         //---------------------------------------------------------------------
         // 3. Header gates
         //---------------------------------------------------------------------
-        // Check if any deny list headers are present.
+        // If any denylist headers are present, then deny.
         if self
             .deny_headers
             .iter()
@@ -124,6 +124,17 @@ impl Device for RequestFilterDevice {
         {
             // Forbidden header.
             return self.deny(ctx, StatusCode::FORBIDDEN, "Header denied");
+        }
+
+        // Does the allowlist have headers?
+        if !self.allow_headers.is_empty() {
+            // For each header in the request, check if it's in the allowlist.
+            for header_name in ctx.headers.keys() {
+                // If the header is not in the allowlist, deny.
+                if !self.allow_headers.contains(header_name) {
+                    return self.deny(ctx, StatusCode::FORBIDDEN, "Allowed header is missing");
+                }
+            }
         }
 
         // Required headers.
@@ -134,17 +145,6 @@ impl Device for RequestFilterDevice {
         {
             // Missing one or more required headers.
             return self.deny(ctx, StatusCode::BAD_REQUEST, "Required header missing");
-        }
-
-        // Allowlist headers (only if non-empty)
-        for h in self.allow_headers.iter() {
-            if !ctx.headers.contains_key(h) {
-                return self.deny(
-                    ctx,
-                    StatusCode::FORBIDDEN,
-                    "Required allowed header missing",
-                );
-            }
         }
 
         // Body size limit
