@@ -16,7 +16,7 @@ Understanding this lifecycle is critical when writing devices or reasoning about
 For **proxied requests**, the full lifecycle is:
 
 ```
-on_request → on_stream_request_body → before_proxy → after_proxy → on_response
+on_request → on_stream_request_body (0 or more times) → before_proxy → after_proxy → on_response
 ```
 
 For **static file requests**, the lifecycle is intentionally shorter:
