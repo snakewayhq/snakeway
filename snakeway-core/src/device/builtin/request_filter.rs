@@ -161,6 +161,9 @@ impl Device for RequestFilterDevice {
         maybe_chunk: &mut Option<Bytes>,
         _end_of_stream: bool,
     ) -> DeviceResult {
+        //---------------------------------------------------------------------
+        // 4. Body size limit gate
+        //---------------------------------------------------------------------
         if let Some(chunk) = maybe_chunk.as_mut()
             && let Some(limit) = ctx.extensions.get_mut::<BodyLimit>()
         {
