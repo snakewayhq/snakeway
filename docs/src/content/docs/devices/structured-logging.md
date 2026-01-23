@@ -9,7 +9,7 @@ request/response lifecycle.
 It is designed to provide **high-signal, low-noise** observability while remaining safe for production and compliant by
 default.
 
-:::info
+:::note
 This device always runs last in the device pipeline.
 :::
 

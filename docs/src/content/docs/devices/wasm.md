@@ -3,6 +3,10 @@ title: WebAssembly Devices
 ---
 
 
+:::caution
+WASM support is experimental and will not be fully supported until after version 1.0.
+:::
+
 Snakeway can be extended using WebAssembly (WASM), allowing you to write custom traffic logic in a variety of languages
 while maintaining high performance and strong security isolation.
 
