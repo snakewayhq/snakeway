@@ -1,5 +1,6 @@
 use super::{Device, DeviceResult};
 use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
+use bytes::Bytes;
 use std::sync::Arc;
 
 pub struct DevicePipeline;
@@ -26,6 +27,25 @@ impl DevicePipeline {
             match dev.on_request(ctx) {
                 DeviceResult::Continue => continue,
                 r => return r,
+            }
+        }
+        DeviceResult::Continue
+    }
+
+    pub fn on_stream_request_body(
+        devices: &[Arc<dyn Device>],
+        ctx: &mut RequestCtx,
+        body: &mut Option<Bytes>,
+        end_of_stream: bool,
+    ) -> DeviceResult {
+        for dev in devices {
+            match dev.on_stream_request_body(ctx, body, end_of_stream) {
+                DeviceResult::Continue => continue,
+                r @ DeviceResult::Respond(_) => return r,
+                DeviceResult::Error(err) => {
+                    dev.as_ref().on_error(&err);
+                    return DeviceResult::Error(err);
+                }
             }
         }
         DeviceResult::Continue

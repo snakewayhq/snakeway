@@ -13,6 +13,7 @@ use crate::traffic_management::{
 use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
+use bytes::Bytes;
 use http::{StatusCode, Version, header};
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
@@ -247,6 +248,25 @@ impl ProxyHttp for PublicGateway {
 
                 ctx.service = Some(upstream.clone());
                 Ok(false)
+            }
+        }
+    }
+
+    async fn request_body_filter(
+        &self,
+        _session: &mut Session,
+        body: &mut Option<Bytes>,
+        end_of_stream: bool,
+        ctx: &mut Self::CTX,
+    ) -> Result<()> {
+        let state = self.gw_ctx.state();
+        match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
+        {
+            DeviceResult::Continue => Ok(()),
+            DeviceResult::Respond(_resp) => Err(Error::new(Custom("respond before proxy"))),
+            DeviceResult::Error(err) => {
+                tracing::error!("device error before_proxy: {err}");
+                Err(Error::new(Custom("device error before proxy")))
             }
         }
     }

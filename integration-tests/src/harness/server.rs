@@ -139,6 +139,18 @@ impl TestServer {
         self.client.get(format!("{}{}", self.base_url(), path))
     }
 
+    pub fn put(&self, path: &str) -> RequestBuilder {
+        self.client.put(format!("{}{}", self.base_url(), path))
+    }
+
+    pub fn post(&self, path: &str) -> RequestBuilder {
+        self.client.post(format!("{}{}", self.base_url(), path))
+    }
+
+    pub fn delete(&self, path: &str) -> RequestBuilder {
+        self.client.delete(format!("{}{}", self.base_url(), path))
+    }
+
     /// Returns the first configured base URL.
     pub fn base_url(&self) -> &str {
         self.base_urls.first().expect("no base url")

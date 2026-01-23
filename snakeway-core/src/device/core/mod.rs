@@ -6,6 +6,7 @@ pub mod result;
 use self::errors::DeviceError;
 pub(crate) use self::result::DeviceResult;
 use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
+use bytes::Bytes;
 
 /// A trait representing a processing unit in the HTTP proxy pipeline.
 ///
@@ -20,6 +21,18 @@ pub trait Device: Send + Sync {
     ///
     /// This is the first opportunity to inspect or modify the incoming request.
     fn on_request(&self, _ctx: &mut RequestCtx) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
+    /// Called when a request body is streamed.
+    ///
+    /// This is the opportunity to inspect or modify the request body as it is streamed.
+    fn on_stream_request_body(
+        &self,
+        _ctx: &mut RequestCtx,
+        _maybe_chunk: &mut Option<Bytes>,
+        _end_of_stream: bool,
+    ) -> DeviceResult {
         DeviceResult::Continue
     }
 

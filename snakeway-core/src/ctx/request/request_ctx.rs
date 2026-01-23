@@ -81,10 +81,6 @@ pub struct RequestCtx {
 
     /// Circuit breaker started?
     pub cb_started: bool,
-
-    #[allow(dead_code)]
-    /// Request body
-    pub body: Vec<u8>,
 }
 
 impl Default for RequestCtx {
@@ -108,7 +104,6 @@ impl RequestCtx {
             original_uri: None,
             query_string: None,
             headers: HeaderMap::new(),
-            body: vec![],
 
             // Upstream/routing related.
             route_path: "/".to_string(),
@@ -146,19 +141,19 @@ impl RequestCtx {
             return;
         }
 
-        let req = session.req_header();
+        let request_header = session.req_header();
 
-        self.method = Some(req.method.clone());
-        self.original_uri = Some(req.uri.clone());
-        self.query_string = req
+        self.method = Some(request_header.method.clone());
+        self.original_uri = Some(request_header.uri.clone());
+        self.query_string = request_header
             .uri
             .query()
             .map(ToOwned::to_owned)
             .filter(|s| !s.is_empty());
-        self.headers = req.headers.clone();
-        self.route_path = req.uri.path().to_string();
+        self.headers = request_header.headers.clone();
+        self.route_path = request_header.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
-        self.protocol_version = Some(req.version);
+        self.protocol_version = Some(request_header.version);
         self.peer_ip = match session.client_addr() {
             Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
             _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),

@@ -1,6 +1,7 @@
 use crate::conf::types::RequestFilterDeviceConfig;
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::{Device, DeviceResult};
+use bytes::Bytes;
 use http::{HeaderName, Method, StatusCode};
 use smallvec::SmallVec;
 
@@ -66,21 +67,18 @@ impl RequestFilterDevice {
 }
 
 impl Device for RequestFilterDevice {
-    /// RequestFilter is a request-only gate by design
-    /// It should only act on ctx.normalized_request
+    /// RequestFilter is primarily an on_request gate by design.
+    /// It should only act on ctx.normalized_request.
     ///
     /// Matching order...
-    /// 1. Size limits
+    /// 1. Header size limit
     /// 2. Methods gates
     /// 3. Header gates
+    /// 4. Body size limit
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         //---------------------------------------------------------------------
-        // 1. Size limits
+        // 1. Header size limit
         //---------------------------------------------------------------------
-        if ctx.body.len() > self.max_body_bytes {
-            return self.deny(ctx, StatusCode::PAYLOAD_TOO_LARGE, "Request body too large");
-        }
-
         if !ctx.headers.is_empty() {
             let header_bytes: usize = ctx
                 .headers
@@ -137,31 +135,53 @@ impl Device for RequestFilterDevice {
         }
 
         // Allowlist headers (only if non-empty)
-        if !self.allow_headers.is_empty()
-            && ctx.headers.keys().any(|h| !self.allow_headers.contains(h))
-        {
-            // Forbidden header.
-            return self.deny(ctx, StatusCode::FORBIDDEN, "Header not allowed");
+        for h in self.allow_headers.iter() {
+            if !ctx.headers.contains_key(h) {
+                return self.deny(
+                    ctx,
+                    StatusCode::FORBIDDEN,
+                    "Required allowed header missing",
+                );
+            }
         }
+
+        // Body size limit
+        // The body itself is not available yet, but it might be available later
+        // when the body is streamed.
+        ctx.extensions.insert(BodyLimit::new(self.max_body_bytes));
 
         // Return normally - no gates tripped.
         DeviceResult::Continue
     }
 
-    fn before_proxy(&self, _: &mut RequestCtx) -> DeviceResult {
-        // RequestFilter is a request-only gate by design
+    /// Do the actual body size limit check.
+    fn on_stream_request_body(
+        &self,
+        ctx: &mut RequestCtx,
+        maybe_chunk: &mut Option<Bytes>,
+        _end_of_stream: bool,
+    ) -> DeviceResult {
+        if let Some(chunk) = maybe_chunk.as_mut()
+            && let Some(limit) = ctx.extensions.get_mut::<BodyLimit>()
+        {
+            limit.seen += chunk.len();
+            if limit.seen > limit.max {
+                return self.deny(ctx, StatusCode::PAYLOAD_TOO_LARGE, "Request body too large");
+            }
+        }
+
         DeviceResult::Continue
     }
+}
 
-    fn after_proxy(&self, _: &mut ResponseCtx) -> DeviceResult {
-        // RequestFilter is a request-only gate by design
-        DeviceResult::Continue
+#[derive(Debug, Clone)]
+struct BodyLimit {
+    seen: usize,
+    max: usize,
+}
+
+impl BodyLimit {
+    fn new(max: usize) -> Self {
+        Self { seen: 0, max }
     }
-
-    fn on_response(&self, _: &mut ResponseCtx) -> DeviceResult {
-        // RequestFilter is a request-only gate by design
-        DeviceResult::Continue
-    }
-
-    fn on_error(&self, _: &crate::device::core::errors::DeviceError) {}
 }
