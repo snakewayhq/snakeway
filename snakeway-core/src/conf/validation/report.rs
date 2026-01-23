@@ -444,4 +444,24 @@ impl ValidationReport {
     pub fn ua_engine_is_empty(&mut self, origin: &Origin) {
         self.error("ua_engine is empty".to_string(), origin, None)
     }
+
+    pub fn identity_device_already_defined(&mut self, origin: &Origin) {
+        self.error("identity device already defined".to_string(), origin, None)
+    }
+
+    pub fn request_filter_device_already_defined(&mut self, origin: &Origin) {
+        self.error(
+            "request filter device already defined".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn structured_logging_device_already_defined(&mut self, origin: &Origin) {
+        self.error(
+            "structured logging device already defined".to_string(),
+            origin,
+            None,
+        )
+    }
 }

@@ -7,6 +7,10 @@ use std::net::IpAddr;
 use std::path::Path;
 
 pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
+    let mut identity_seen = false;
+    let mut request_filter_seen = false;
+    let mut structured_logging_seen = false;
+
     for device in devices {
         match device {
             DeviceSpec::Wasm(cfg) => {
@@ -25,6 +29,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
             }
             DeviceSpec::Identity(cfg) => {
+                if identity_seen {
+                    report.identity_device_already_defined(device.origin());
+                }
+                identity_seen = true;
+
                 if !cfg.enable {
                     return;
                 }
@@ -53,6 +62,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
             }
             DeviceSpec::RequestFilter(cfg) => {
+                if request_filter_seen {
+                    report.request_filter_device_already_defined(device.origin());
+                }
+                request_filter_seen = true;
+
                 if !cfg.enable {
                     return;
                 }
@@ -67,6 +81,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
             }
             DeviceSpec::StructuredLogging(cfg) => {
+                if structured_logging_seen {
+                    report.structured_logging_device_already_defined(device.origin());
+                }
+                structured_logging_seen = true;
+
                 if !cfg.enable {
                     return;
                 }
