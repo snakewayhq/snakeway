@@ -38,6 +38,8 @@ pub struct RequestFilterDeviceSpec {
     pub max_header_bytes: usize,
     #[serde(default = "default_max_body_bytes")]
     pub max_body_bytes: usize,
+    #[serde(default = "default_max_suspicious_body_bytes")]
+    pub max_suspicious_body_bytes: usize,
 
     //-------------------------------------------------------------------------
     // Override the default granular deny status with a device-scoped value.
@@ -50,5 +52,8 @@ fn default_max_header_bytes() -> usize {
 }
 
 fn default_max_body_bytes() -> usize {
-    1 * 1024 * 1024 // 1 MB
+    1024 * 1024 // 1 MB
+}
+fn default_max_suspicious_body_bytes() -> usize {
+    8 * 1024 // 8 KB
 }

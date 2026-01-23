@@ -19,6 +19,7 @@ pub struct RequestFilterDeviceConfig {
     pub required_headers: Vec<HeaderName>,
     pub max_header_bytes: usize,
     pub max_body_bytes: usize,
+    pub max_suspicious_body_bytes: usize,
     pub deny_status: Option<u16>,
 }
 
@@ -92,6 +93,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
             required_headers,
             max_header_bytes: spec.max_header_bytes,
             max_body_bytes: spec.max_body_bytes,
+            max_suspicious_body_bytes: spec.max_suspicious_body_bytes,
             deny_status: spec.deny_status,
         })
     }
@@ -102,7 +104,7 @@ mod serde_header_name_vec {
     use http::HeaderName;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn serialize<S>(headers: &Vec<HeaderName>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(headers: &[HeaderName], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -126,7 +128,7 @@ mod serde_method_vec {
     use http::Method;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn serialize<S>(methods: &Vec<Method>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(methods: &[Method], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

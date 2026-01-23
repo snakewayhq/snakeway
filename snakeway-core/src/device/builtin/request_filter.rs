@@ -29,6 +29,7 @@ pub struct RequestFilterDevice {
     pub required_headers: SmallVec<[HeaderName; 8]>,
     pub max_header_bytes: usize,
     pub max_body_bytes: usize,
+    pub max_suspicious_body_bytes: usize,
     pub deny_status: Option<u16>,
 }
 
@@ -42,6 +43,7 @@ impl RequestFilterDevice {
             required_headers: cfg.required_headers.into_iter().collect(),
             max_header_bytes: cfg.max_header_bytes,
             max_body_bytes: cfg.max_body_bytes,
+            max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
             deny_status: cfg.deny_status,
         })
     }
@@ -149,7 +151,13 @@ impl Device for RequestFilterDevice {
         // The body itself is not available yet, but it might be available later
         // when the body is streamed.
         if ctx.has_defined_body_semantics() {
+            // If there are defined body semantics, apply the limit to the body size.
             ctx.extensions.insert(BodyLimit::new(self.max_body_bytes));
+        } else if ctx.body_is_suspicious_for_method() {
+            // This is a gray area... a body might be present, but not normally used with a method.
+            // It is still technically allowed, but subject to a smaller limit.
+            ctx.extensions
+                .insert(BodyLimit::new(self.max_suspicious_body_bytes));
         }
 
         // Return normally - no gates tripped.
