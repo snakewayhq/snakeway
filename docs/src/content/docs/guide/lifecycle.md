@@ -49,6 +49,7 @@ If a device responds here, no further processing occurs.
 **Runs for:** Proxy routes
 
 This hook is only called if there is a request body.
+This means it may not be called at all if there is no body or if the method (e.g., GET) doesn't expect a body.
 
 Typical uses:
 
