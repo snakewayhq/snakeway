@@ -14,7 +14,7 @@ use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{StatusCode, Version, header};
+use http::{Method, StatusCode, Version, header};
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::sync::Arc;
@@ -279,7 +279,45 @@ impl ProxyHttp for PublicGateway {
         }
     }
 
+    /// This function runs before request_filter().
+    /// It has no access to the normalized request object.
+    /// It should act purely on the session and have no side effects.
+    /// Though possible, allocations are forbidden in this function.
+    async fn early_request_filter(
+        &self,
+        session: &mut Session,
+        _ctx: &mut Self::CTX,
+    ) -> Result<()> {
+        if session.is_body_empty() {
+            // There is no body present anyway, so return early.
+            return Ok(());
+        }
+
+        let method = &session.req_header().method;
+
+        if method == Method::GET || method == Method::HEAD || method == Method::TRACE {
+            // Method has no defined body semantics and should not have a body.
+            return Err(Error::new(Custom(
+                "request body required for GET, HEAD, or TRACE",
+            )));
+        }
+
+        if method == Method::POST || method == Method::PATCH || method == Method::PUT {
+            // Method has defined body semantics and should be allowed to have a body.
+            return Ok(());
+        }
+
+        if method == Method::DELETE || method == Method::OPTIONS {
+            // Method can technically have a body, but probably shouldn't.
+            // It is allowed regardless.
+            return Ok(());
+        }
+
+        Ok(())
+    }
+
     /// A method to filter and process the request body during a streaming session.
+    /// This method is currently used for running device pipeline operations on the request body.
     async fn request_body_filter(
         &self,
         session: &mut Session,
@@ -287,9 +325,6 @@ impl ProxyHttp for PublicGateway {
         end_of_stream: bool,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        if !ctx.can_have_body() {
-            return Ok(());
-        }
         let state = self.gw_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
@@ -443,6 +478,9 @@ impl ProxyHttp for PublicGateway {
         Ok(())
     }
 
+    /// The final step in the Pingora request/response pipeline.
+    /// This function is primarily intended for logging,
+    /// but it is also used for finalizing request guards.
     async fn logging(&self, _session: &mut Session, e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,
