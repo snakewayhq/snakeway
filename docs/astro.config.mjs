@@ -56,6 +56,7 @@ export default defineConfig({
                     {label: 'Overview', link: '/devices/overview/'},
                     {label: 'Built-in Devices', link: '/devices/builtin/'},
                     {label: 'Identity', link: '/devices/identity/'},
+                    {label: 'Request Filter', link: '/devices/request-filter/'},
                     {label: 'Structured Logging', link: '/devices/structured-logging/'},
                     {label: 'WASM Devices', link: '/devices/wasm/'},
                 ],
