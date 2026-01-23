@@ -27,6 +27,7 @@ The core of the interface is the `policy` interface, which includes hooks for th
 ```wit
 interface policy {
   on-request: func(req: request) -> request-result;
+  on-stream-request-body: func(req: request, chunk: body-chunk) -> body-result;
   before-proxy: func(req: request) -> request-result;
   after-proxy: func(resp: response) -> response-result;
   on-response: func(resp: response) -> response-result;
