@@ -51,6 +51,13 @@ pub const REDIRECT_RESPONSE_CODE: RangeConstraint<u16> = RangeConstraint {
     units: None,
 };
 
+pub const REQUEST_FILTER_DENY_STATUS: RangeConstraint<u16> = RangeConstraint {
+    min: 400,
+    max: 599,
+    label: "request_filter_device.deny_status",
+    units: None,
+};
+
 pub fn validate_range<T>(
     value: T,
     constraint: &RangeConstraint<T>,

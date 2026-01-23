@@ -1,5 +1,6 @@
 use crate::conf::types::{DeviceSpec, Origin};
 use crate::conf::validation::ValidationReport;
+use crate::conf::validation::validator::{REQUEST_FILTER_DENY_STATUS, validate_range};
 use ipnet::IpNet;
 use nix::NixPath;
 use std::net::IpAddr;
@@ -54,6 +55,15 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
             DeviceSpec::RequestFilter(cfg) => {
                 if !cfg.enable {
                     return;
+                }
+
+                if let Some(deny_status) = cfg.deny_status {
+                    validate_range(
+                        deny_status,
+                        &REQUEST_FILTER_DENY_STATUS,
+                        report,
+                        device.origin(),
+                    );
                 }
             }
             DeviceSpec::StructuredLogging(cfg) => {
