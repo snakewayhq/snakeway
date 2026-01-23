@@ -19,6 +19,7 @@ A device can hook into several stages of the request and response journey:
 
 - **`on_request`**: Executed as soon as the request headers are received. This is the first opportunity to inspect or
   modify the incoming request.
+- **`on_stream_request_body`**: Executed for every chunk of the streamed request body (if there is one).
 - **`before_proxy`**: Executed immediately before the request is forwarded to an upstream service. This is the last
   chance to enrich the request with headers or perform final routing logic.
 - **`after_proxy`**: Executed after receiving the response headers from the upstream, but before any processing occurs.

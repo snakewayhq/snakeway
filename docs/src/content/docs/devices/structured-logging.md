@@ -27,6 +27,7 @@ The Structured Logging device is built around a few core principles:
 Depending on configuration, the device can emit events for:
 
 * Request arrival (`on_request`)
+* Request body streamed (`on_stream_request_body`)
 * Before proxying upstream (`before_proxy`)
 * After upstream response (`after_proxy`)
 * Final response (`on_response`)

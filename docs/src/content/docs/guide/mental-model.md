@@ -101,10 +101,11 @@ Conceptually:
 
 ```
 1. on_request: Request received
-2. before_proxy: Just before upstream call
-3. after_proxy: Upstream response received
-4. on_response: Final response handling
-5. on_error: Unrecoverable failure
+2. on_stream_request_body: Chunked read of request body (potentially called multiple times per request)  
+3. before_proxy: Just before upstream call
+4. after_proxy: Upstream response received
+5. on_response: Final response handling
+6. on_error: Unrecoverable failure
 ```
 
 Not every device needs every phase.

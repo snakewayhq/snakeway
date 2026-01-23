@@ -36,7 +36,8 @@ When a request enters Snakeway, it follows a deterministic path through the syst
 
 1. **Listener**: The request is accepted by a network listener (HTTP or HTTPS).
 2. **Router**: The router inspects the request path and determines which route and service should handle the request.
-3. **Device Pipeline (Request Phase)**: The request passes through the `on_request` and `before_proxy` hooks of all
+3. **Device Pipeline (Request Phase)**: The request passes through the `on_request`, `on_stream_request_body`, and
+   `before_proxy` hooks of all
    enabled devices.
 4. **Upstream Proxy**: If the route is a service route, the request is forwarded to an upstream service.
 5. **Device Pipeline (Response Phase)**: The response from the upstream (or a static file handler) passes through the
