@@ -16,7 +16,6 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use http::{StatusCode, Version, header};
 use pingora::prelude::*;
-use pingora::proxy::FailToProxy;
 use pingora_http::{RequestHeader, ResponseHeader};
 use std::sync::Arc;
 
@@ -288,6 +287,9 @@ impl ProxyHttp for PublicGateway {
         end_of_stream: bool,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        if !ctx.can_have_body() {
+            return Ok(());
+        }
         let state = self.gw_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {

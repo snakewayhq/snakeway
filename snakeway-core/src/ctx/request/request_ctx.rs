@@ -309,6 +309,12 @@ impl RequestCtx {
             .method()
     }
 
+    /// Returns true if the request is a POST, PATCH, or Put.
+    pub fn can_have_body(&self) -> bool {
+        let method = self.method();
+        method == Method::POST || method == Method::PATCH || method == Method::PUT
+    }
+
     /// Internal canonical representation of the request path.
     pub fn canonical_path(&self) -> &str {
         self.normalized_request
