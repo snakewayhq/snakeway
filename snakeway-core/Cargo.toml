@@ -12,7 +12,6 @@ wasm = [
 
 static_files = [
     "brotli",
-    "bytes",
     "flate2",
     "httpdate",
     "mime_guess",
@@ -25,7 +24,7 @@ anyhow = { workspace = true }
 async-trait = { workspace = true }
 arc-swap = { workspace = true }
 brotli = { workspace = true, optional = true }
-bytes = { workspace = true, optional = true }
+bytes = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 console-subscriber = { workspace = true }
 ctrlc = { workspace = true }
