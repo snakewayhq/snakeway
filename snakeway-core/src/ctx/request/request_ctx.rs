@@ -309,10 +309,33 @@ impl RequestCtx {
             .method()
     }
 
-    /// Returns true if the request is a POST, PATCH, or Put.
-    pub fn can_have_body(&self) -> bool {
+    /// Return true if the method is allowed to have a body.
+    pub fn has_defined_body_semantics(&self) -> bool {
         let method = self.method();
         method == Method::POST || method == Method::PATCH || method == Method::PUT
+    }
+
+    /// Return true if the method is forbidden from having a body.
+    pub fn method_forbids_body(&self) -> bool {
+        let method = self.method();
+        method == Method::GET || method == Method::HEAD || method == Method::TRACE
+    }
+
+    /// Return true if the method can technically have a body,
+    /// but the presence of the body is suspicious.
+    /// This may indicate the request should be filtered with specific rules.
+    pub fn body_is_suspicious_for_method(&self) -> bool {
+        let method = self.method();
+        method == Method::DELETE || method == Method::OPTIONS
+    }
+
+    /// Return true for the special case of CONNECT method
+    /// Conceptually, the presence of a body does not matter for a CONNECT request.
+    /// HTTP semantics are discarded after the CONNECT request is established.
+    /// After that data is actually transferred.
+    pub fn body_presence_is_irrelevant(&self) -> bool {
+        let method = self.method();
+        method == Method::CONNECT
     }
 
     /// Internal canonical representation of the request path.

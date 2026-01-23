@@ -148,7 +148,7 @@ impl Device for RequestFilterDevice {
         // Body size limit
         // The body itself is not available yet, but it might be available later
         // when the body is streamed.
-        if ctx.can_have_body() {
+        if ctx.has_defined_body_semantics() {
             ctx.extensions.insert(BodyLimit::new(self.max_body_bytes));
         }
 
