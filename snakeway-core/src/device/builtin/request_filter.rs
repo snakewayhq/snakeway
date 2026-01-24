@@ -162,7 +162,7 @@ impl Device for RequestFilterDevice {
         if ctx.has_defined_body_semantics() {
             // If there are defined body semantics, apply the limit to the body size.
             ctx.extensions.insert(BodyLimit::new(self.max_body_bytes));
-        } else if ctx.body_is_suspicious_for_method() {
+        } else if !ctx.has_defined_body_semantics() {
             // This is a gray area... a body might be present, but not normally used with a method.
             // It is still technically allowed, but subject to a smaller limit.
             ctx.extensions

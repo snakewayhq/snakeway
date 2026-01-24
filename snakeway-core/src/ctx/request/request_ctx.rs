@@ -315,20 +315,6 @@ impl RequestCtx {
         method == Method::POST || method == Method::PATCH || method == Method::PUT
     }
 
-    /// Return true if the method is forbidden from having a body.
-    pub fn method_forbids_body(&self) -> bool {
-        let method = self.method();
-        method == Method::GET || method == Method::HEAD || method == Method::TRACE
-    }
-
-    /// Return true if the method can technically have a body,
-    /// but the presence of the body is suspicious.
-    /// This may indicate the request should be filtered with specific rules.
-    pub fn body_is_suspicious_for_method(&self) -> bool {
-        let method = self.method();
-        method == Method::DELETE || method == Method::OPTIONS
-    }
-
     /// Return true for the special case of CONNECT method
     /// Conceptually, the presence of a body does not matter for a CONNECT request.
     /// HTTP semantics are discarded after the CONNECT request is established.
