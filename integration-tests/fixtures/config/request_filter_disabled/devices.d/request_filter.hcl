@@ -1,5 +1,5 @@
 request_filter_device {
-  enable = true
+  enable = false
 
   #----------------------------------------------------------------------------
   # Method policy
@@ -16,13 +16,12 @@ request_filter_device {
 
   required_headers = [
     "host",
+    "user-agent",
   ]
 
   #----------------------------------------------------------------------------
   # Size limits
   #----------------------------------------------------------------------------
-  max_header_bytes = 1024           # 1 KB
-  max_body_bytes = 16384            # 16 KB
-  max_suspicious_body_bytes = 1024  # 1 KB
-
+  max_header_bytes = 16384   # 16 KB
+  max_body_bytes = 16384     # 16 KB
 }

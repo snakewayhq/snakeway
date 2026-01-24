@@ -272,6 +272,10 @@ impl StructuredLoggingDevice {
 // Device trait
 // ----------------------------------------------------------------------------
 impl Device for StructuredLoggingDevice {
+    fn name(&self) -> &str {
+        "Structured Logging"
+    }
+
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         if self.phase_enabled(LogPhase::Request) && self.event_enabled(LogEvent::Request) {
             self.emit_http_request(

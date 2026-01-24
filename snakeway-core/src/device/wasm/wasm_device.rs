@@ -47,6 +47,10 @@ impl WasiView for HostState {
 }
 
 impl Device for WasmDevice {
+    fn name(&self) -> &str {
+        "WASM Device"
+    }
+
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         let mut linker = Linker::new(&self.engine);
         add_to_linker_sync(&mut linker).expect("failed to add WASI to linker");

@@ -71,6 +71,10 @@ impl IdentityDevice {
 }
 
 impl Device for IdentityDevice {
+    fn name(&self) -> &str {
+        "Identity"
+    }
+
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         let (client_ip, proxy_chain) =
             resolve_client_ip(&ctx.headers, ctx.peer_ip, &self.trusted_proxies);

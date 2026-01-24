@@ -69,6 +69,10 @@ impl RequestFilterDevice {
 }
 
 impl Device for RequestFilterDevice {
+    fn name(&self) -> &str {
+        "Request Filter"
+    }
+
     /// RequestFilter is primarily an on_request gate by design.
     /// It should only act on ctx.normalized_request.
     ///
@@ -99,6 +103,11 @@ impl Device for RequestFilterDevice {
                     "Request headers too large",
                 );
             }
+        }
+        for header in ctx.headers.iter() {
+            let header_name = header.0.as_str();
+            let header_value = header.1.as_bytes();
+            tracing::info!("Header: {} = {:?}", header_name, header_value);
         }
 
         //---------------------------------------------------------------------

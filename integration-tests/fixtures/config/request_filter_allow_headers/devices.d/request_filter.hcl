@@ -1,8 +1,12 @@
-request_filter_devices {
+request_filter_device {
   enable = true
 
   allow_headers = [
-    "x-forwarded-host",
-    "x-original-url",
+    "host",
+    "x-custom-allowed",
+    "accept",
+    "accept-encoding",
+    "user-agent",
+    "content-length",
   ]
 }
