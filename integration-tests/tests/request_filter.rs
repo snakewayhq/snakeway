@@ -59,14 +59,10 @@ fn request_filter_denies_forbidden_header() {
 }
 
 #[test]
-fn request_filter_requires_a_header() {
-    let srv = TestServer::start_with_http_upstream("request_filter");
+fn request_filter_requires_a_header_that_is_not_provided() {
+    let srv = TestServer::start_with_http_upstream("request_filter_required_headers");
 
-    let res = srv
-        .get("/api")
-        .header("x-required", "need-this")
-        .send()
-        .unwrap();
+    let res = srv.get("/api").send().unwrap();
 
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
