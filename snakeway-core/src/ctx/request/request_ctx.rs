@@ -1,10 +1,10 @@
 use crate::ctx::RequestId;
-use crate::ctx::request::NormalizedRequest;
 use crate::ctx::request::error::RequestRejectError;
 use crate::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
     normalize_query,
 };
+use crate::ctx::request::{NormalizedHeaders, NormalizedRequest};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -205,6 +205,38 @@ impl RequestCtx {
                 return Err(RequestRejectError::InvalidHeaders);
             }
         }
+        let normalized_headers = NormalizedHeaders::new(self.headers.clone());
+
+        // Normalize other parts...
+        let method = self
+            .method
+            .as_ref()
+            .ok_or(RequestRejectError::MissingMethod)?;
+
+        let raw_path = self.route_path.as_str();
+        let normalized_path = match normalize_path(raw_path) {
+            NormalizationOutcome::Accept(p) => p,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidPath);
+            }
+        };
+
+        let raw_query = self.query_string.as_deref().unwrap_or("");
+        let canonical_query = match normalize_query(raw_query) {
+            NormalizationOutcome::Accept(q) => q,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidQueryString);
+            }
+        };
+
+        self.normalized_request = Some(NormalizedRequest::new(
+            method.clone(),
+            normalized_path,
+            canonical_query,
+            normalized_headers,
+        ));
 
         self.normalized = true;
         Ok(())
