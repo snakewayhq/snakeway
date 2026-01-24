@@ -17,6 +17,12 @@ pub enum RequestRejectError {
 
     #[error("invalid method")]
     InvalidMethod,
+
+    #[error("missing method")]
+    MissingMethod,
+
+    #[error("request not normalized")]
+    NotNormalized,
 }
 
 impl RequestRejectError {
@@ -27,6 +33,8 @@ impl RequestRejectError {
             Self::InvalidQueryString => PingoraError::new(Custom("invalid query string")),
             Self::InvalidHeaders => PingoraError::new(Custom("invalid headers")),
             Self::InvalidMethod => PingoraError::new(Custom("invalid method")),
+            Self::MissingMethod => PingoraError::new(Custom("missing method")),
+            Self::NotNormalized => PingoraError::new(Custom("request not normalized")),
         }
     }
 }

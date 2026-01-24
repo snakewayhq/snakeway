@@ -6,13 +6,13 @@ use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteRuntime;
 use crate::runtime::{RuntimeState, UpstreamRuntime};
-
 use crate::traffic_management::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
+use bytes::Bytes;
 use http::{StatusCode, Version, header};
 use pingora::prelude::*;
 use pingora_http::{RequestHeader, ResponseHeader};
@@ -52,38 +52,65 @@ impl PublicGateway {
 /// 1. new_ctx()
 ///    - Allocate empty RequestCtx
 ///
-/// 2. request_filter()
+/// 2. [unused] early_request_filter()
+///    - Earliest hook
+///    - Runs before downstream modules
+///
+/// 3. request_filter()
 ///    - Hydrate ctx from Session
 ///    - Run on_request devices
 ///    - Route match (static vs proxy)
 ///    - Static responses end here
 ///
-/// 3. upstream_peer()
+/// 4. request_body_filter()
+///    - Exists on ProxyHttp but not invoked in the main request path
+///    - Downstream request bodies are streamed directly to upstream
+///
+/// 5. [unused] proxy_upstream_filter()
+///    - Final decision whether request is allowed upstream
+///    - May short-circuit with a response
+///
+/// 6. upstream_peer()
 ///    - Select upstream (TrafficDirector)
 ///    - Circuit admission decision
 ///    - Create AdmissionGuard if admitted
 ///    - Construct HttpPeer
 ///
-/// 4. upstream_request_filter()
-///    - Run before_proxy devices
-///    - Finalize upstream request headers/method
+/// 7. [unused] upstream_request_filter()
+///    - (NOTE: no such hook in Pingora; upstream request mutation is implicit)
 ///
-/// 5. [Pingora upstream I/O]
+/// 8. [Pingora upstream I/O]
 ///    - Connect, TLS, send request, receive response
 ///
-/// 6. upstream_response_filter()
+/// 9. upstream_response_filter()
 ///    - Run after_proxy devices
 ///    - Mutate response headers/status
-///    - Detect WS upgrade (on_ws_open)
 ///
-/// 7. response_filter()
-///    - Run on_response devices
-///    - Classify HTTP outcome (success / 5xx)
+/// 10. [unused] upstream_response_body_filter()
+///     - Run on each upstream response body chunk
 ///
-/// 8. logging()   /// ALWAYS LAST
-///    - Capture transport errors
-///    - Run on_ws_close if needed
-///    - Finalize AdmissionGuard (circuit success/failure)
+/// 11. [unused] upstream_response_trailer_filter()
+///     - Run on upstream response trailers (if any)
+///
+/// 12. [unused] error_while_proxy()
+///     - Called if upstream fails mid-stream
+///
+/// 13. [unused] fail_to_connect()
+///     - Called if upstream connection cannot be established
+///
+/// 14. fail_to_proxy()
+///     - Final error handling hook after retries exhausted
+///
+/// 15. [unused] suppress_error_log()
+///     - Decide whether Pingora logs proxy failure
+///
+/// 16. [unused] response_filter()
+///     - (NOTE: no downstream response hook; handled via Session APIs)
+///
+/// 17. logging() ...ALWAYS LAST
+///     - Capture transport errors
+///     - Run on_ws_close if needed
+///     - Finalize AdmissionGuard (circuit success/failure)
 #[async_trait]
 impl ProxyHttp for PublicGateway {
     type CTX = RequestCtx;
@@ -251,6 +278,27 @@ impl ProxyHttp for PublicGateway {
         }
     }
 
+    /// A method to filter and process the request body during a streaming session.
+    /// This method is currently used for running device pipeline operations on the request body.
+    async fn request_body_filter(
+        &self,
+        session: &mut Session,
+        body: &mut Option<Bytes>,
+        end_of_stream: bool,
+        ctx: &mut Self::CTX,
+    ) -> Result<()> {
+        let state = self.gw_ctx.state();
+        match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
+        {
+            DeviceResult::Continue => Ok(()),
+            DeviceResult::Respond(resp) => session.respond_error(resp.status.as_u16()).await,
+            DeviceResult::Error(err) => {
+                tracing::error!("device error on_stream_request_body: {err}");
+                Err(Error::new(Custom("device error on_stream_request_body")))
+            }
+        }
+    }
+
     /// Snakeway `before_proxy` --> Pingora `upstream_request_filter`
     ///
     /// Intent:
@@ -392,6 +440,9 @@ impl ProxyHttp for PublicGateway {
         Ok(())
     }
 
+    /// The final step in the Pingora request/response pipeline.
+    /// This function is primarily intended for logging,
+    /// but it is also used for finalizing request guards.
     async fn logging(&self, _session: &mut Session, e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,

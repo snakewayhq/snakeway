@@ -1,11 +1,18 @@
 use crate::conf::types::{DeviceSpec, Origin};
 use crate::conf::validation::ValidationReport;
+use crate::conf::validation::validator::{
+    REQUEST_FILTER_DENY_STATUS, validate_http_header_name, validate_http_method, validate_range,
+};
 use ipnet::IpNet;
 use nix::NixPath;
 use std::net::IpAddr;
 use std::path::Path;
 
 pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
+    let mut identity_seen = false;
+    let mut request_filter_seen = false;
+    let mut structured_logging_seen = false;
+
     for device in devices {
         match device {
             DeviceSpec::Wasm(cfg) => {
@@ -24,6 +31,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
             }
             DeviceSpec::Identity(cfg) => {
+                if identity_seen {
+                    report.identity_device_already_defined(device.origin());
+                }
+                identity_seen = true;
+
                 if !cfg.enable {
                     return;
                 }
@@ -51,7 +63,55 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     }
                 }
             }
+            DeviceSpec::RequestFilter(cfg) => {
+                if request_filter_seen {
+                    report.request_filter_device_already_defined(device.origin());
+                }
+                request_filter_seen = true;
+
+                if !cfg.enable {
+                    return;
+                }
+
+                if let Some(deny_status) = cfg.deny_status {
+                    validate_range(
+                        deny_status,
+                        &REQUEST_FILTER_DENY_STATUS,
+                        report,
+                        device.origin(),
+                    );
+                }
+
+                for method in &cfg.allow_methods {
+                    validate_http_method(method, report, device.origin());
+                }
+
+                for method in &cfg.deny_methods {
+                    validate_http_method(method, report, device.origin());
+                }
+
+                for header in &cfg.allow_headers {
+                    validate_http_header_name(header, report, device.origin());
+                }
+
+                for header in &cfg.allow_headers {
+                    validate_http_header_name(header, report, device.origin());
+                }
+
+                for header in &cfg.allow_headers {
+                    validate_http_header_name(header, report, device.origin());
+                }
+
+                if cfg.max_suspicious_body_bytes > cfg.max_body_bytes {
+                    report.warn_max_suspicious_bytes_large_than_max_body_bytes(device.origin());
+                }
+            }
             DeviceSpec::StructuredLogging(cfg) => {
+                if structured_logging_seen {
+                    report.structured_logging_device_already_defined(device.origin());
+                }
+                structured_logging_seen = true;
+
                 if !cfg.enable {
                     return;
                 }
@@ -63,7 +123,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
 fn validate_geoip_db_file(geoip_db: &Path, report: &mut ValidationReport, origin: &Origin) -> bool {
     let mut has_error = false;
     if !geoip_db.is_file() {
-        if geoip_db.is_empty() {
+        if NixPath::is_empty(geoip_db) {
             report.geoip_db_path_is_empty(geoip_db.display(), origin);
             has_error = true;
         }

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use std::path::PathBuf;
 use wasmtime::{
     Engine, Store,
@@ -14,7 +15,7 @@ use crate::device::core::{Device, result::DeviceResult};
 
 use crate::device::wasm::bindings::{
     Snakeway,
-    exports::snakeway::device::policy::{Decision, Header, Request, RequestPatch},
+    exports::snakeway::device::policy::{BodyChunk, Decision, Header, Request, RequestPatch},
 };
 
 /// WASM-backed Snakeway device (stateless, per-call execution)
@@ -46,6 +47,10 @@ impl WasiView for HostState {
 }
 
 impl Device for WasmDevice {
+    fn name(&self) -> &str {
+        "WASM Device"
+    }
+
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         let mut linker = Linker::new(&self.engine);
         add_to_linker_sync(&mut linker).expect("failed to add WASI to linker");
@@ -128,6 +133,72 @@ impl Device for WasmDevice {
             for name in remove_headers {
                 ctx.headers.remove(name.as_str());
             }
+        }
+
+        DeviceResult::Continue
+    }
+
+    fn on_stream_request_body(
+        &self,
+        ctx: &mut RequestCtx,
+        maybe_chunk: &mut Option<Bytes>,
+        end_of_stream: bool,
+    ) -> DeviceResult {
+        let mut linker = Linker::new(&self.engine);
+        add_to_linker_sync(&mut linker).expect("failed to add WASI");
+
+        let mut store = Store::new(
+            &self.engine,
+            HostState {
+                table: ResourceTable::new(),
+                wasi: WasiCtxBuilder::new().build(),
+            },
+        );
+
+        let instance = match Snakeway::instantiate(&mut store, &self.component, &linker) {
+            Ok(i) => i,
+            Err(e) => {
+                tracing::error!("WASM instantiate failed: {e}");
+                return DeviceResult::Continue;
+            }
+        };
+
+        let req = Request {
+            original_path: ctx
+                .original_uri
+                .as_ref()
+                .map(|u| u.path().to_string())
+                .unwrap_or_else(|| "<unset>".into()),
+            route_path: ctx.route_path.clone(),
+            headers: ctx
+                .headers
+                .iter()
+                .map(|(k, v)| Header {
+                    name: k.to_string(),
+                    value: v.to_str().unwrap_or("").to_string(),
+                })
+                .collect(),
+        };
+
+        let chunk = maybe_chunk.take().map(|bytes| BodyChunk {
+            data: bytes.to_vec(),
+            end_of_stream,
+        });
+
+        let result = match instance
+            .snakeway_device_policy()
+            .call_on_stream_request_body(&mut store, &req, chunk.as_ref())
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("WASM body hook failed: {e}");
+                return DeviceResult::Continue;
+            }
+        };
+
+        if matches!(result.decision, Decision::Block) {
+            let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+            return DeviceResult::Respond(block_403(request_id));
         }
 
         DeviceResult::Continue

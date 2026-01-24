@@ -444,4 +444,44 @@ impl ValidationReport {
     pub fn ua_engine_is_empty(&mut self, origin: &Origin) {
         self.error("ua_engine is empty".to_string(), origin, None)
     }
+
+    pub fn identity_device_already_defined(&mut self, origin: &Origin) {
+        self.error("identity device already defined".to_string(), origin, None)
+    }
+
+    pub fn request_filter_device_already_defined(&mut self, origin: &Origin) {
+        self.error(
+            "request filter device already defined".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn structured_logging_device_already_defined(&mut self, origin: &Origin) {
+        self.error(
+            "structured logging device already defined".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn invalid_http_method(&mut self, method: &str, origin: &Origin) {
+        self.error(format!("invalid HTTP method: {}", method), origin, None)
+    }
+
+    pub fn invalid_http_header_name(&mut self, header: &str, origin: &Origin) {
+        self.error(
+            format!("invalid HTTP header name: {}", header),
+            origin,
+            None,
+        )
+    }
+
+    pub fn warn_max_suspicious_bytes_large_than_max_body_bytes(&mut self, origin: &Origin) {
+        self.warning(
+            "max_suspicious_body_bytes should not be larger than max_body_bytes".to_string(),
+            origin,
+            Some("max_suspicious_body_bytes applies to functions that can technically have a body, but should be treated suspiciously (and thus have a lower max size than a regular body)".to_string()),
+        )
+    }
 }

@@ -3,6 +3,10 @@ title: WebAssembly Devices
 ---
 
 
+:::caution
+WASM support is experimental and will not be fully supported until after version 1.0.
+:::
+
 Snakeway can be extended using WebAssembly (WASM), allowing you to write custom traffic logic in a variety of languages
 while maintaining high performance and strong security isolation.
 
@@ -27,6 +31,7 @@ The core of the interface is the `policy` interface, which includes hooks for th
 ```wit
 interface policy {
   on-request: func(req: request) -> request-result;
+  on-stream-request-body: func(req: request, chunk: body-chunk) -> body-result;
   before-proxy: func(req: request) -> request-result;
   after-proxy: func(resp: response) -> response-result;
   on-response: func(resp: response) -> response-result;

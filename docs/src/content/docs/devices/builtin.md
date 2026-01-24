@@ -31,6 +31,7 @@ Builtin devices execute synchronously as part of the request lifecycle.
 Each device may hook into one or more lifecycle phases:
 
 * `on_request`
+* `on_stream_request_body`
 * `before_proxy`
 * `after_proxy`
 * `on_response`

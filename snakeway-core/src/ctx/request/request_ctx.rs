@@ -1,10 +1,10 @@
 use crate::ctx::RequestId;
-use crate::ctx::request::NormalizedRequest;
 use crate::ctx::request::error::RequestRejectError;
 use crate::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
     normalize_query,
 };
+use crate::ctx::request::{NormalizedHeaders, NormalizedRequest};
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -81,10 +81,6 @@ pub struct RequestCtx {
 
     /// Circuit breaker started?
     pub cb_started: bool,
-
-    #[allow(dead_code)]
-    /// Request body
-    pub body: Vec<u8>,
 }
 
 impl Default for RequestCtx {
@@ -108,7 +104,6 @@ impl RequestCtx {
             original_uri: None,
             query_string: None,
             headers: HeaderMap::new(),
-            body: vec![],
 
             // Upstream/routing related.
             route_path: "/".to_string(),
@@ -146,19 +141,19 @@ impl RequestCtx {
             return;
         }
 
-        let req = session.req_header();
+        let request_header = session.req_header();
 
-        self.method = Some(req.method.clone());
-        self.original_uri = Some(req.uri.clone());
-        self.query_string = req
+        self.method = Some(request_header.method.clone());
+        self.original_uri = Some(request_header.uri.clone());
+        self.query_string = request_header
             .uri
             .query()
             .map(ToOwned::to_owned)
             .filter(|s| !s.is_empty());
-        self.headers = req.headers.clone();
-        self.route_path = req.uri.path().to_string();
+        self.headers = request_header.headers.clone();
+        self.route_path = request_header.uri.path().to_string();
         self.is_upgrade_req = session.is_upgrade_req();
-        self.protocol_version = Some(req.version);
+        self.protocol_version = Some(request_header.version);
         self.peer_ip = match session.client_addr() {
             Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
             _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
@@ -174,30 +169,51 @@ impl RequestCtx {
         debug_assert!(self.hydrated, "normalize before hydrate");
         debug_assert!(!self.normalized, "normalize called twice");
 
-        if self.is_upgrade_req {
-            self.normalize_ws_handshake()?;
-        } else {
-            self.normalize_http_request()?;
-        }
+        let method = self
+            .method
+            .as_ref()
+            .ok_or(RequestRejectError::MissingMethod)?;
 
-        Ok(())
-    }
-
-    fn normalize_ws_handshake(&mut self) -> Result<(), RequestRejectError> {
-        // Method must be GET
-        if self.method != Some(Method::GET) {
-            return Err(RequestRejectError::InvalidMethod);
-        }
-
-        // Normalize path (security + routing)
-        let path = match normalize_path(&self.route_path) {
-            NormalizationOutcome::Accept(p) | NormalizationOutcome::Rewrite { value: p, .. } => p,
+        let raw_path = self.route_path.as_str();
+        let normalized_path = match normalize_path(raw_path) {
+            NormalizationOutcome::Accept(p) => p,
+            NormalizationOutcome::Rewrite { value, .. } => value,
             NormalizationOutcome::Reject { .. } => {
                 return Err(RequestRejectError::InvalidPath);
             }
         };
 
-        self.route_path = path.as_str().to_string();
+        let raw_query = self.query_string.as_deref().unwrap_or("");
+        let canonical_query = match normalize_query(raw_query) {
+            NormalizationOutcome::Accept(q) => q,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidQueryString);
+            }
+        };
+
+        let normalized_headers = if self.is_upgrade_req {
+            self.normalize_ws_handshake()?
+        } else {
+            self.normalize_http_request()?
+        };
+
+        self.normalized_request = Some(NormalizedRequest::new(
+            method.clone(),
+            normalized_path,
+            canonical_query,
+            normalized_headers,
+        ));
+
+        self.normalized = true;
+        Ok(())
+    }
+
+    fn normalize_ws_handshake(&self) -> Result<NormalizedHeaders, RequestRejectError> {
+        // Method must be GET
+        if self.method != Some(Method::GET) {
+            return Err(RequestRejectError::InvalidMethod);
+        }
 
         // Header *validation only*
         for (name, value) in self.headers.iter() {
@@ -210,38 +226,14 @@ impl RequestCtx {
                 return Err(RequestRejectError::InvalidHeaders);
             }
         }
+        let normalized_headers = NormalizedHeaders::new(self.headers.clone());
 
-        self.normalized = true;
-        Ok(())
+        Ok(normalized_headers)
     }
 
-    fn normalize_http_request(&mut self) -> Result<(), RequestRejectError> {
+    fn normalize_http_request(&self) -> Result<NormalizedHeaders, RequestRejectError> {
         debug_assert!(self.hydrated, "normalize before hydrate");
         debug_assert!(!self.normalized, "normalize called twice");
-
-        if self.normalized {
-            return Ok(());
-        }
-
-        let raw_path = self.route_path.as_str();
-
-        let normalized_path = match normalize_path(raw_path) {
-            NormalizationOutcome::Accept(p) => p,
-            NormalizationOutcome::Rewrite { value, .. } => value,
-            NormalizationOutcome::Reject { .. } => {
-                return Err(RequestRejectError::InvalidPath);
-            }
-        };
-
-        let raw_query = self.query_string.as_deref().unwrap_or("");
-
-        let canonical_query = match normalize_query(raw_query) {
-            NormalizationOutcome::Accept(q) => q,
-            NormalizationOutcome::Rewrite { value, .. } => value,
-            NormalizationOutcome::Reject { .. } => {
-                return Err(RequestRejectError::InvalidQueryString);
-            }
-        };
 
         // Header normalization is protocol-specific.
         let protocol_normalization_mode = match self.protocol_version {
@@ -258,15 +250,7 @@ impl RequestCtx {
                 }
             };
 
-        self.normalized_request = Some(NormalizedRequest::new(
-            self.method.clone().expect("method missing"),
-            normalized_path,
-            canonical_query,
-            normalized_headers,
-        ));
-
-        self.normalized = true;
-        Ok(())
+        Ok(normalized_headers)
     }
 
     /// Path used when proxying upstream
@@ -284,10 +268,6 @@ impl RequestCtx {
         self.upstream_authority.as_deref()
     }
 
-    pub fn method_str(&self) -> Option<&str> {
-        self.method.as_ref().map(|m| m.as_str())
-    }
-
     pub fn is_http2(&self) -> bool {
         self.protocol_version == Some(Version::HTTP_2)
     }
@@ -296,12 +276,48 @@ impl RequestCtx {
         self.original_uri.as_ref().map(|u| u.to_string())
     }
 
+    pub fn method_str(&self) -> &str {
+        debug_assert!(self.normalized_request.is_some());
+        self.normalized_request
+            .as_ref()
+            .expect("request not normalized. this is a bug.")
+            .method()
+            .as_str()
+    }
+
+    pub fn method(&self) -> &Method {
+        debug_assert!(self.normalized_request.is_some());
+        self.normalized_request
+            .as_ref()
+            .expect("request not normalized. this is a bug.")
+            .method()
+    }
+
+    /// Return true if the method is allowed to have a body.
+    pub fn has_defined_body_semantics(&self) -> bool {
+        let method = self.method();
+        method == Method::POST || method == Method::PATCH || method == Method::PUT
+    }
+
+    /// Return true for the special case of CONNECT method
+    /// Conceptually, the presence of a body does not matter for a CONNECT request.
+    /// HTTP semantics are discarded after the CONNECT request is established.
+    /// After that data is actually transferred.
+    pub fn body_presence_is_irrelevant(&self) -> bool {
+        let method = self.method();
+        method == Method::CONNECT
+    }
+
     /// Internal canonical representation of the request path.
     pub fn canonical_path(&self) -> &str {
         self.normalized_request
             .as_ref()
-            .expect("request not normalized")
+            .expect("request not normalized. this is a bug.")
             .path()
             .as_str()
+    }
+
+    pub fn request_id(&self) -> Option<String> {
+        self.extensions.get::<RequestId>().map(|id| id.0.clone())
     }
 }

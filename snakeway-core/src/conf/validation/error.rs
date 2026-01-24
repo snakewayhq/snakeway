@@ -38,6 +38,12 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     #[error("invalid bind ip string: {0}")]
     InvalidBindIpString(String),
+
+    #[error("invalid method: {value} (origin: {origin})")]
+    InvalidMethod { value: String, origin: String },
+
+    #[error("invalid header name: {value} (origin: {origin})")]
+    InvalidHeaderName { value: String, origin: String },
 }
 
 impl ConfigError {

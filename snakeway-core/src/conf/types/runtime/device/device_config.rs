@@ -1,4 +1,7 @@
-use crate::conf::types::{IdentityDeviceConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig};
+use crate::conf::types::{
+    IdentityDeviceConfig, RequestFilterDeviceConfig, StructuredLoggingDeviceConfig,
+    WasmDeviceConfig,
+};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -6,6 +9,7 @@ use serde::Serialize;
 pub enum DeviceConfig {
     Wasm(WasmDeviceConfig),
     Identity(IdentityDeviceConfig),
+    RequestFilter(RequestFilterDeviceConfig),
     StructuredLogging(StructuredLoggingDeviceConfig),
 }
 
@@ -13,6 +17,7 @@ impl DeviceConfig {
     pub fn is_enabled(&self) -> bool {
         match self {
             DeviceConfig::Identity(i) => i.enable,
+            DeviceConfig::RequestFilter(r) => r.enable,
             DeviceConfig::StructuredLogging(s) => s.enable,
             DeviceConfig::Wasm(w) => w.enable,
         }

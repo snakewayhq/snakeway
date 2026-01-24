@@ -1,6 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::DeviceConfig;
 use crate::device::builtin::identity::IdentityDevice;
+use crate::device::builtin::request_filter::RequestFilterDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
 #[cfg(feature = "wasm")]
@@ -37,6 +38,12 @@ impl DeviceRegistry {
                 DeviceConfig::Identity(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(IdentityDevice::from_config(device_config)?);
+                    self.devices.push(device);
+                }
+
+                DeviceConfig::RequestFilter(cfg) => {
+                    let device_config = cfg.clone();
+                    let device = Arc::new(RequestFilterDevice::from_config(device_config)?);
                     self.devices.push(device);
                 }
 

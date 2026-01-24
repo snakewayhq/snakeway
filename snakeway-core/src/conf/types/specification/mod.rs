@@ -13,7 +13,8 @@ pub use bind::{BindSpec, RedirectSpec};
 pub use bind_admin::BindAdminSpec;
 pub use bind_interface::{BindInterfaceInput, BindInterfaceSpec};
 pub use device::{
-    DeviceSpec, IdentityDeviceSpec, StructuredLoggingDeviceSpec, UaEngineSpec, WasmDeviceSpec,
+    DeviceSpec, IdentityDeviceSpec, RequestFilterDeviceSpec, StructuredLoggingDeviceSpec,
+    UaEngineSpec, WasmDeviceSpec,
 };
 pub use entrypoint::EntrypointSpec;
 pub use origin::Origin;

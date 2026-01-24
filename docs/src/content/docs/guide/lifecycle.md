@@ -16,7 +16,7 @@ Understanding this lifecycle is critical when writing devices or reasoning about
 For **proxied requests**, the full lifecycle is:
 
 ```
-on_request → before_proxy → after_proxy → on_response
+on_request → on_stream_request_body (0 or more times) → before_proxy → after_proxy → on_response
 ```
 
 For **static file requests**, the lifecycle is intentionally shorter:
@@ -40,6 +40,21 @@ This is the earliest hook in the lifecycle. Devices may:
 - Mutate request metadata
 - Enforce authentication or authorization
 - Decide to immediately return a response
+
+If a device responds here, no further processing occurs.
+
+### `on_stream_request_body`
+
+**Purpose:** Inspection and mutation of the request body  
+**Runs for:** Proxy routes
+
+This hook is only called if there is a request body.
+This means it may not be called at all if there is no body or if the method (e.g., GET) doesn't expect a body.
+
+Typical uses:
+
+- Inspect body for specific content
+- Deny request based on body size
 
 If a device responds here, no further processing occurs.
 

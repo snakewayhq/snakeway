@@ -17,6 +17,17 @@ interface policy {
     headers: list<header>,
   }
 
+  /// Request body chunk of bytes with a flag indicating the stream has ended.
+  record body-chunk {
+    data: list<u8>,
+    end-of-stream: bool,
+  }
+
+  /// For every chunk of the request body processed, a decision is returned.
+  record body-result {
+    decision: decision,
+  }
+
   /// Response snapshot passed to devices (read-only)
   record response {
     status: u16,
@@ -70,6 +81,9 @@ interface policy {
 
   /// Called immediately after request acceptance, before routing
   on-request: func(req: request) -> request-result;
+
+  /// Called (potentially multiple times) as the request body is read
+  on-stream-request-body: func(req: request, chunk: option<body-chunk>) -> body-result;
 
   /// Called after routing but before proxying upstream
   before-proxy: func(req: request) -> request-result;

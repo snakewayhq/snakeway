@@ -1,5 +1,6 @@
 use crate::ctx::{RequestCtx, RequestId, RequestRejectError};
 use http::{HeaderMap, HeaderValue, Method, Uri, Version};
+use pretty_assertions::assert_eq;
 
 //-----------------------------------------------------------------------------
 // Test helpers
@@ -207,18 +208,31 @@ fn upstream_authority_getter() {
 }
 
 #[test]
-fn method_and_original_uri_helpers() {
+fn method_str_is_normalized_if_set() {
     // Arrange
     let mut ctx = hydrated_ctx_base();
     ctx.method = Some(Method::PUT);
-    ctx.original_uri = Some(Uri::from_static("http://example.test/hello?x=1"));
+    ctx.normalize_request()
+        .expect("normalize_request should succeed");
+    let expected_str = "PUT";
 
     // Act
     let method_str = ctx.method_str();
+
+    // Assert
+    assert_eq!(method_str, expected_str);
+}
+
+#[test]
+fn original_uri_is_intact() {
+    // Arrange
+    let mut ctx = hydrated_ctx_base();
+    ctx.original_uri = Some(Uri::from_static("http://example.test/hello?x=1"));
+
+    // Act
     let uri_str = ctx.original_uri_str();
 
     // Assert
-    assert_eq!(method_str, Some("PUT"));
     assert_eq!(uri_str.as_deref(), Some("http://example.test/hello?x=1"));
 }
 

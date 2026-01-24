@@ -3891,6 +3891,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml 0.9.34+deprecated",
+ "smallvec",
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
