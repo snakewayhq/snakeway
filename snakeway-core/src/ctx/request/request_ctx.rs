@@ -169,45 +169,6 @@ impl RequestCtx {
         debug_assert!(self.hydrated, "normalize before hydrate");
         debug_assert!(!self.normalized, "normalize called twice");
 
-        if self.is_upgrade_req {
-            self.normalize_ws_handshake()?;
-        } else {
-            self.normalize_http_request()?;
-        }
-
-        Ok(())
-    }
-
-    fn normalize_ws_handshake(&mut self) -> Result<(), RequestRejectError> {
-        // Method must be GET
-        if self.method != Some(Method::GET) {
-            return Err(RequestRejectError::InvalidMethod);
-        }
-
-        // Normalize path (security + routing)
-        let path = match normalize_path(&self.route_path) {
-            NormalizationOutcome::Accept(p) | NormalizationOutcome::Rewrite { value: p, .. } => p,
-            NormalizationOutcome::Reject { .. } => {
-                return Err(RequestRejectError::InvalidPath);
-            }
-        };
-
-        self.route_path = path.as_str().to_string();
-
-        // Header *validation only*
-        for (name, value) in self.headers.iter() {
-            name.as_str(); // validate name
-            value
-                .to_str()
-                .map_err(|_| RequestRejectError::InvalidHeaders)?;
-
-            if value.as_bytes().contains(&0) {
-                return Err(RequestRejectError::InvalidHeaders);
-            }
-        }
-        let normalized_headers = NormalizedHeaders::new(self.headers.clone());
-
-        // Normalize other parts...
         let method = self
             .method
             .as_ref()
@@ -231,6 +192,12 @@ impl RequestCtx {
             }
         };
 
+        let normalized_headers = if self.is_upgrade_req {
+            self.normalize_ws_handshake()?
+        } else {
+            self.normalize_http_request()?
+        };
+
         self.normalized_request = Some(NormalizedRequest::new(
             method.clone(),
             normalized_path,
@@ -242,33 +209,31 @@ impl RequestCtx {
         Ok(())
     }
 
-    fn normalize_http_request(&mut self) -> Result<(), RequestRejectError> {
-        debug_assert!(self.hydrated, "normalize before hydrate");
-        debug_assert!(!self.normalized, "normalize called twice");
-
-        if self.normalized {
-            return Ok(());
+    fn normalize_ws_handshake(&self) -> Result<NormalizedHeaders, RequestRejectError> {
+        // Method must be GET
+        if self.method != Some(Method::GET) {
+            return Err(RequestRejectError::InvalidMethod);
         }
 
-        let raw_path = self.route_path.as_str();
+        // Header *validation only*
+        for (name, value) in self.headers.iter() {
+            name.as_str(); // validate name
+            value
+                .to_str()
+                .map_err(|_| RequestRejectError::InvalidHeaders)?;
 
-        let normalized_path = match normalize_path(raw_path) {
-            NormalizationOutcome::Accept(p) => p,
-            NormalizationOutcome::Rewrite { value, .. } => value,
-            NormalizationOutcome::Reject { .. } => {
-                return Err(RequestRejectError::InvalidPath);
+            if value.as_bytes().contains(&0) {
+                return Err(RequestRejectError::InvalidHeaders);
             }
-        };
+        }
+        let normalized_headers = NormalizedHeaders::new(self.headers.clone());
 
-        let raw_query = self.query_string.as_deref().unwrap_or("");
+        Ok(normalized_headers)
+    }
 
-        let canonical_query = match normalize_query(raw_query) {
-            NormalizationOutcome::Accept(q) => q,
-            NormalizationOutcome::Rewrite { value, .. } => value,
-            NormalizationOutcome::Reject { .. } => {
-                return Err(RequestRejectError::InvalidQueryString);
-            }
-        };
+    fn normalize_http_request(&self) -> Result<NormalizedHeaders, RequestRejectError> {
+        debug_assert!(self.hydrated, "normalize before hydrate");
+        debug_assert!(!self.normalized, "normalize called twice");
 
         // Header normalization is protocol-specific.
         let protocol_normalization_mode = match self.protocol_version {
@@ -285,20 +250,7 @@ impl RequestCtx {
                 }
             };
 
-        let method = self
-            .method
-            .as_ref()
-            .ok_or(RequestRejectError::MissingMethod)?;
-
-        self.normalized_request = Some(NormalizedRequest::new(
-            method.clone(),
-            normalized_path,
-            canonical_query,
-            normalized_headers,
-        ));
-
-        self.normalized = true;
-        Ok(())
+        Ok(normalized_headers)
     }
 
     /// Path used when proxying upstream
