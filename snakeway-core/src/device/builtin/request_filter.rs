@@ -104,11 +104,6 @@ impl Device for RequestFilterDevice {
                 );
             }
         }
-        for header in ctx.headers.iter() {
-            let header_name = header.0.as_str();
-            let header_value = header.1.as_bytes();
-            tracing::info!("Header: {} = {:?}", header_name, header_value);
-        }
 
         //---------------------------------------------------------------------
         // 2. Method gates
