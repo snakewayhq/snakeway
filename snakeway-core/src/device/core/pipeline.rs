@@ -26,22 +26,6 @@ where
     DeviceResult::Continue
 }
 
-fn run_device_chain_no_error<D>(
-    devices: &[D],
-    mut f: impl FnMut(&dyn Device) -> DeviceResult,
-) -> DeviceResult
-where
-    D: AsRef<dyn Device>,
-{
-    for dev in devices {
-        match f(dev.as_ref()) {
-            DeviceResult::Continue => continue,
-            r => return r,
-        }
-    }
-    DeviceResult::Continue
-}
-
 /// Device pipeline for WebSocket events
 impl DevicePipeline {
     pub(crate) fn run_on_ws_open(devices: &[Arc<dyn Device>], ctx: &WsCtx) {
@@ -60,7 +44,7 @@ impl DevicePipeline {
 /// Device pipeline for HTTP events
 impl DevicePipeline {
     pub fn run_on_request(devices: &[Arc<dyn Device>], ctx: &mut RequestCtx) -> DeviceResult {
-        run_device_chain_no_error(devices, |dev| dev.on_request(ctx))
+        run_device_chain(devices, |dev| dev.on_request(ctx))
     }
 
     pub fn on_stream_request_body(
