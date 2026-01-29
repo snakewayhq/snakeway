@@ -77,7 +77,7 @@ impl Device for IdentityDevice {
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         let (client_ip, proxy_chain) =
-            resolve_client_ip(&ctx.headers, ctx.peer_ip, &self.trusted_proxies);
+            resolve_client_ip(ctx.headers(), ctx.peer_ip, &self.trusted_proxies);
 
         let mut identity = ClientIdentity {
             ip: client_ip,
@@ -160,7 +160,7 @@ impl Device for IdentityDevice {
         if self.enable_user_agent {
             // User-Agent parsing
             if let Some((engine, ua)) = self.ua_engine.as_ref().zip(
-                ctx.headers
+                ctx.headers()
                     .get("user-agent")
                     .and_then(|v| v.to_str().ok())
                     .filter(|ua| ua.len() <= MAX_USER_AGENT_LENGTH),

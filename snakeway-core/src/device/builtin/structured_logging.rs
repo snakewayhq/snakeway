@@ -228,11 +228,11 @@ impl StructuredLoggingDevice {
         &self,
         ctx: &RequestCtx,
         event: HttpEvent,
-        method: Option<&str>,
-        uri: Option<&str>,
+        method: &str,
+        uri: &str,
         status: Option<&str>,
     ) {
-        let headers = self.headers_json(&ctx.headers);
+        let headers = self.headers_json(ctx.headers());
         let identity = ctx
             .extensions
             .get::<ClientIdentity>()
@@ -281,8 +281,8 @@ impl Device for StructuredLoggingDevice {
             self.emit_http_request(
                 ctx,
                 HttpEvent::Request,
-                Some(ctx.method_str()),
-                ctx.original_uri_str().as_deref(),
+                ctx.method_str(),
+                ctx.original_uri_string().as_str(),
                 None,
             );
         }
@@ -294,8 +294,8 @@ impl Device for StructuredLoggingDevice {
             self.emit_http_request(
                 ctx,
                 HttpEvent::BeforeProxy,
-                Some(ctx.method_str()),
-                ctx.original_uri_str().as_deref(),
+                ctx.method_str(),
+                ctx.original_uri_string().as_str(),
                 None,
             );
         }

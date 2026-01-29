@@ -186,12 +186,7 @@ impl ProxyHttp for PublicGateway {
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
-        // The request ctx existed before now but had no data.
-        ctx.hydrate_from_session(session);
-        debug_assert!(ctx.method.is_some());
-        debug_assert!(ctx.original_uri.is_some());
-
-        ctx.normalize_request().map_err(|e| {
+        ctx.hydrate_from_session(session).map_err(|e| {
             tracing::warn!(error = %e, "request rejected during normalization");
             e.as_pingora_error()
         })?;
@@ -220,7 +215,7 @@ impl ProxyHttp for PublicGateway {
             .get(self.listener.as_ref())
             .ok_or_else(|| Error::new(Custom("no router for listener")))?;
 
-        let route = match router.match_route(&ctx.route_path) {
+        let route = match router.match_route(ctx.canonical_path()) {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");
@@ -232,7 +227,7 @@ impl ProxyHttp for PublicGateway {
         match &route.kind {
             RouteRuntime::Static { id, .. } => {
                 ctx.route_id = Some(id.clone());
-                if ctx.is_upgrade_req {
+                if ctx.is_upgrade_req() {
                     // Reject websocket upgrade requests for static files.
                     session
                         .respond_error(StatusCode::BAD_REQUEST.as_u16())
@@ -254,7 +249,7 @@ impl ProxyHttp for PublicGateway {
                 ctx.route_id = Some(id.clone());
 
                 // If it is a websocket upgrade request, check if the upstream supports websockets.
-                if ctx.is_upgrade_req {
+                if ctx.is_upgrade_req() {
                     if !allow_websocket {
                         session
                             .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
@@ -323,13 +318,10 @@ impl ProxyHttp for PublicGateway {
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context.
-                let Some(method) = ctx.method.clone() else {
-                    return Err(Error::new(Custom("request method missing")));
-                };
-                upstream.set_method(method);
+                upstream.set_method(ctx.method().to_owned());
                 upstream.set_uri(ctx.upstream_path().parse().unwrap());
 
-                if ctx.is_upgrade_req {
+                if ctx.is_upgrade_req() {
                     // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
                     upstream.set_version(Version::HTTP_11);
 
@@ -381,7 +373,7 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
-        if ctx.is_upgrade_req && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
+        if ctx.is_upgrade_req() && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
             // WS upgrade completed.
             // After this point, HTTP response lifecycle hooks (on_response)
             // must NOT run for this request.
@@ -519,7 +511,7 @@ impl PublicGateway {
         ctx: &RequestCtx,
         upstream: &UpstreamRuntime,
     ) -> Result<(), BError> {
-        if ctx.is_upgrade_req {
+        if ctx.is_upgrade_req() {
             // WebSockets MUST be HTTP/1.1
             peer.options.set_http_version(1, 1);
         } else if ctx.is_http2() {
