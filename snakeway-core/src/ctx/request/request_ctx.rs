@@ -286,11 +286,18 @@ impl RequestCtx {
             .unwrap_or(self.canonical_path())
     }
 
+    /// Will return the full original URI as received the proxy.
+    /// This may include the scheme, host, and port.
+    /// Or, just the path with an optional query string.
     pub fn original_uri_string(&self) -> String {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().to_string()
     }
 
+    /// Will return the original URI path.
+    /// This is the path as it was received by the proxy.
+    /// This may include the path with an optional query string.
+    /// e.g., /foo/bar or /foo/bar?a=b
     pub fn original_uri_path(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().path()

@@ -1,8 +1,9 @@
 use crate::ctx::{RequestCtx, RequestRejectError};
-use http::Method;
+use http::{HeaderMap, HeaderValue, Method, Uri, Version};
 use pingora::prelude::Session;
 use pretty_assertions::assert_eq;
 use tokio::io::{AsyncWriteExt, duplex};
+
 //-----------------------------------------------------------------------------
 // Test helpers
 //-----------------------------------------------------------------------------
@@ -23,11 +24,6 @@ impl RawHttpRequest {
             headers: Vec::new(),
             body: Vec::new(),
         }
-    }
-
-    pub fn with_version(mut self, version: &'static str) -> Self {
-        self.version = version;
-        self
     }
 
     pub fn header(mut self, k: impl AsRef<str>, v: impl AsRef<str>) -> Self {
@@ -75,7 +71,7 @@ impl RawHttpRequest {
     }
 }
 
-async fn make_session(request: &[u8]) -> Session {
+async fn make_h1_session(request: &[u8]) -> Session {
     let (mut client_side, server_side) = duplex(64 * 1024);
     // Build a real Session backed by memory IO.
     let mut session = Session::new_h1(Box::new(server_side));
@@ -97,7 +93,7 @@ async fn hydrate_from_session_basic() {
         .header("Content-Type", "application/json")
         .body(r#"{"a":1}"#)
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
 
     // Act
@@ -116,7 +112,7 @@ async fn ws_handshake_rejects_non_get_method() {
         .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
 
     // Act
@@ -135,7 +131,7 @@ async fn ws_handshake_rejects_invalid_path() {
         .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
 
     // Act
@@ -155,7 +151,7 @@ async fn ws_handshake_rejects_non_utf8_header_value() {
         .header("Upgrade", "websocket")
         .header_bytes("X-Test", b"\xFF\xFE")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
 
     // Act
@@ -174,7 +170,7 @@ async fn ws_handshake_accepts_and_marks_normalized() {
         .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
 
     // Act
@@ -195,7 +191,7 @@ async fn http_normalize_builds_normalized_request_and_marks_normalized() {
     let request = RawHttpRequest::new("GET", "/books?b=2&a=1")
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
 
     // Act
@@ -209,23 +205,29 @@ async fn http_normalize_builds_normalized_request_and_marks_normalized() {
     assert_eq!(ctx.original_uri_path(), "/books");
 }
 
-#[tokio::test]
-async fn http_normalize_uses_http2_mode_when_version_is_http2() {
-    // Arrange
-    let request = RawHttpRequest::new("GET", "/grpc.Service/Method")
-        .with_version("HTTP/2")
-        .header("Host", "example.test")
-        .build();
-    let session = make_session(&request).await;
+#[test]
+fn hydrate_runs_http2_normalization() {
+    let mut headers = HeaderMap::new();
+
+    // intentionally needs rewrite (OWS trim + duplicate folding)
+    headers.append("x-test", HeaderValue::from_static(" a "));
+    headers.append("x-test", HeaderValue::from_static("b"));
+
     let mut ctx = RequestCtx::empty();
 
-    // Act
-    let result = ctx.hydrate_from_session(&session);
+    let _ = ctx.hydrate(
+        &Uri::from_static("https://example.test/grpc.Service/Method"),
+        &Method::GET,
+        &headers,
+        &Version::HTTP_2,
+        false,
+        "127.0.0.1".parse().unwrap(),
+    );
 
     // Assert
-    assert!(result.is_ok());
     assert!(ctx.is_http2());
-    //todo add header specific test
+    assert_eq!(ctx.headers().get("x-test").unwrap(), "a, b");
+
     assert!(ctx.hydrated);
 }
 
@@ -236,10 +238,9 @@ async fn http_normalize_uses_http2_mode_when_version_is_http2() {
 async fn upstream_path_returns_override_when_set() {
     // Arrange
     let request = RawHttpRequest::new("GET", "/from-route")
-        .with_version("HTTP/2")
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
     let _ = ctx.hydrate_from_session(&session);
     ctx.upstream_path = Some("/override".to_string());
@@ -256,10 +257,9 @@ async fn upstream_path_returns_canonical_path_when_not_set() {
     // Arrange
     let expected_path = "/from-route";
     let request = RawHttpRequest::new("GET", expected_path)
-        .with_version("HTTP/2")
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
     let _ = ctx.hydrate_from_session(&session);
 
@@ -276,7 +276,7 @@ async fn upstream_authority_return_none_when_not_set() {
     let request = RawHttpRequest::new("GET", "/books?b=2&a=1")
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
     let _ = ctx.hydrate_from_session(&session);
 
@@ -293,7 +293,7 @@ async fn upstream_authority_getter_should_return_authority_when_set() {
     let request = RawHttpRequest::new("GET", "/books?b=2&a=1")
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
     let _ = ctx.hydrate_from_session(&session);
     let expected_authority = "backend.internal:8443";
@@ -313,7 +313,7 @@ async fn method_str_is_normalized_if_set() {
     let request = RawHttpRequest::new(expected_str, "/books?b=2&a=1")
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
     let _ = ctx.hydrate_from_session(&session);
 
@@ -330,16 +330,54 @@ async fn method_str_is_normalized_if_set() {
 #[tokio::test]
 async fn original_uri_is_intact() {
     // Arrange
-    let request = RawHttpRequest::new("GET", "/hello?x=1")
+    let expected_uri = "http://example.test/hello?x=1";
+    let request = RawHttpRequest::new("GET", expected_uri)
         .header("Host", "example.test")
         .build();
-    let session = make_session(&request).await;
+    let session = make_h1_session(&request).await;
     let mut ctx = RequestCtx::empty();
     let _ = ctx.hydrate_from_session(&session);
 
     // Act
-    let uri_str = ctx.original_uri_string();
+    let result = ctx.original_uri_string();
 
     // Assert
-    assert_eq!(uri_str, "http://example.test/hello?x=1");
+    assert_eq!(result, expected_uri);
+}
+
+#[tokio::test]
+async fn original_uri_path_is_intact() {
+    // Arrange
+    let expected_path = "/hello?x=1";
+    let request = RawHttpRequest::new("GET", expected_path)
+        .header("Host", "example.test")
+        .build();
+    let session = make_h1_session(&request).await;
+    let mut ctx = RequestCtx::empty();
+    let _ = ctx.hydrate_from_session(&session);
+
+    // Act
+    let result = ctx.original_uri_string();
+
+    // Assert
+    assert_eq!(result, expected_path);
+}
+
+#[tokio::test]
+async fn original_uri_path_is_intact_when_targeting_full_uri() {
+    // Arrange
+    let expected_path = "/hello?x=1";
+    let full_uri = format!("http://example.test{}", expected_path);
+    let request = RawHttpRequest::new("GET", full_uri)
+        .header("Host", "example.test")
+        .build();
+    let session = make_h1_session(&request).await;
+    let mut ctx = RequestCtx::empty();
+    let _ = ctx.hydrate_from_session(&session);
+
+    // Act
+    let result = ctx.original_uri_string();
+
+    // Assert
+    assert_eq!(result, expected_path);
 }
