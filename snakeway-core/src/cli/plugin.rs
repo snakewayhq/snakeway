@@ -42,7 +42,7 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
     let device = load_wasm_device(&args.file)?;
 
     let ctx = &mut RequestCtx::empty();
-    ctx.normalized_request = NormalizedPath(args.path).into();
+    ctx.set_normalized_request(NormalizedPath(args.path).into());
     ctx.hydrated = true;
     ctx.service = Some("some service".to_string());
     ctx.peer_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);

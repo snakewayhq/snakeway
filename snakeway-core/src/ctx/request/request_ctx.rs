@@ -45,7 +45,7 @@ pub struct RequestCtx {
     pub extensions: Extensions,
 
     /// Normalized request representation for routing and processing.
-    pub normalized_request: NormalizedRequest,
+    normalized_request: NormalizedRequest,
 
     /// Route ID for routing decisions.
     pub route_id: Option<RouteId>,
@@ -232,6 +232,12 @@ impl RequestCtx {
         };
 
         Ok(normalized_headers)
+    }
+
+    /// Normally this function would not be used outside a unit test or a CLI command
+    /// that makes a synthetic request.
+    pub(crate) fn set_normalized_request(&mut self, request: NormalizedRequest) {
+        self.normalized_request = request;
     }
 }
 
