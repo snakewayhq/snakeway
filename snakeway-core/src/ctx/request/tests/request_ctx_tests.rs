@@ -72,6 +72,7 @@ impl RawHttpRequest {
 }
 
 async fn make_h1_session(request: &[u8]) -> Session {
+    // duplex() creates a pair of in-memory streams that act like two sockets.
     let (mut client_side, server_side) = duplex(64 * 1024);
     // Build a real Session backed by memory IO.
     let mut session = Session::new_h1(Box::new(server_side));
