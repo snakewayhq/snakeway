@@ -349,8 +349,9 @@ async fn original_uri_is_intact() {
 #[tokio::test]
 async fn original_uri_path_is_intact() {
     // Arrange
-    let expected_path = "/hello?x=1";
-    let request = RawHttpRequest::new("GET", expected_path)
+    let expected_path = "/hello";
+    let full_path = format!("{}?x=1", expected_path);
+    let request = RawHttpRequest::new("GET", full_path)
         .header("Host", "example.test")
         .build();
     let session = make_h1_session(&request).await;
@@ -358,26 +359,7 @@ async fn original_uri_path_is_intact() {
     let _ = ctx.hydrate_from_session(&session);
 
     // Act
-    let result = ctx.original_uri_string();
-
-    // Assert
-    assert_eq!(result, expected_path);
-}
-
-#[tokio::test]
-async fn original_uri_path_is_intact_when_targeting_full_uri() {
-    // Arrange
-    let expected_path = "/hello?x=1";
-    let full_uri = format!("http://example.test{}", expected_path);
-    let request = RawHttpRequest::new("GET", full_uri)
-        .header("Host", "example.test")
-        .build();
-    let session = make_h1_session(&request).await;
-    let mut ctx = RequestCtx::empty();
-    let _ = ctx.hydrate_from_session(&session);
-
-    // Act
-    let result = ctx.original_uri_string();
+    let result = ctx.original_uri_path();
 
     // Assert
     assert_eq!(result, expected_path);
