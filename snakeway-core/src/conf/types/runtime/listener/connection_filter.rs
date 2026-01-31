@@ -21,8 +21,8 @@ pub enum OnNoPeerAddr {
 impl From<ConnectionFilterSpec> for ConnectionFilterConfig {
     fn from(spec: ConnectionFilterSpec) -> Self {
         Self {
-            cidr_allow: spec.cidr_allow,
-            cidr_deny: spec.cidr_deny,
+            cidr_allow: spec.cidr.allow,
+            cidr_deny: spec.cidr.deny,
             on_no_peer_addr: spec.on_no_peer_addr.into(),
             ip_family_ipv4: spec.ip_family.ipv4,
             ip_family_ipv6: spec.ip_family.ipv6,
