@@ -156,12 +156,13 @@ impl Device for RequestFilterDevice {
         // when the body is streamed.
         if ctx.has_defined_body_semantics() {
             // If there are defined body semantics, apply the limit to the body size.
-            ctx.extensions.insert(BodyLimit::new(self.max_body_bytes));
+            ctx.extensions
+                .insert(RequestBodyLimit::new(self.max_body_bytes));
         } else if !ctx.has_defined_body_semantics() {
             // This is a gray area... a body might be present, but not normally used with a method.
             // It is still technically allowed, but subject to a smaller limit.
             ctx.extensions
-                .insert(BodyLimit::new(self.max_suspicious_body_bytes));
+                .insert(RequestBodyLimit::new(self.max_suspicious_body_bytes));
         }
 
         // Return normally - no gates tripped.
@@ -179,7 +180,7 @@ impl Device for RequestFilterDevice {
         // 4. Body size limit gate
         //---------------------------------------------------------------------
         if let Some(chunk) = maybe_chunk.as_mut()
-            && let Some(limit) = ctx.extensions.get_mut::<BodyLimit>()
+            && let Some(limit) = ctx.extensions.get_mut::<RequestBodyLimit>()
         {
             limit.seen += chunk.len();
             if limit.seen > limit.max {
@@ -192,12 +193,12 @@ impl Device for RequestFilterDevice {
 }
 
 #[derive(Debug, Clone)]
-struct BodyLimit {
+struct RequestBodyLimit {
     seen: usize,
     max: usize,
 }
 
-impl BodyLimit {
+impl RequestBodyLimit {
     fn new(max: usize) -> Self {
         Self { seen: 0, max }
     }
