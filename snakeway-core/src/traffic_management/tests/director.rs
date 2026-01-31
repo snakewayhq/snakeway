@@ -1,5 +1,5 @@
 use crate::conf::types::LoadBalancingStrategy;
-use crate::ctx::RequestCtx;
+use crate::ctx::{NormalizedPath, RequestCtx};
 use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::traffic_management::circuit::CircuitBreakerParams;
 use crate::traffic_management::decision::TrafficDecision;
@@ -22,7 +22,7 @@ use std::time::Duration;
 fn dummy_request() -> RequestCtx {
     let mut ctx = RequestCtx::empty();
     ctx.peer_ip = std::net::Ipv4Addr::LOCALHOST.into();
-    ctx.original_uri = Some("/".parse().unwrap());
+    ctx.set_normalized_request(NormalizedPath("/".parse().unwrap()).into());
     ctx
 }
 

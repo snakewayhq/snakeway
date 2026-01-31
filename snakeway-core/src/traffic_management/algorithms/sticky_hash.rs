@@ -32,7 +32,7 @@ impl StickyHash {
     /// 3. Raw peer IP (always exists)
     fn resolve_sticky_key(&self, req: &RequestCtx) -> Option<String> {
         if let Some(v) = req
-            .headers
+            .headers()
             .get("x-sticky-key")
             .and_then(|h| h.to_str().ok())
             .filter(|v| !v.is_empty())

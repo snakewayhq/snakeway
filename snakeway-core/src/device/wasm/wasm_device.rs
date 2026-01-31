@@ -73,14 +73,10 @@ impl Device for WasmDevice {
 
         // Build request snapshot for WASM
         let req = Request {
-            original_path: ctx
-                .original_uri
-                .as_ref()
-                .map(|u| u.path().to_string())
-                .unwrap_or_else(|| "<unset>".into()),
-            route_path: ctx.route_path.clone(),
+            original_path: ctx.original_uri_path().to_string(),
+            route_path: ctx.canonical_path().to_string(),
             headers: ctx
-                .headers
+                .headers()
                 .iter()
                 .map(|(k, v)| Header {
                     name: k.to_string(),
@@ -115,7 +111,7 @@ impl Device for WasmDevice {
         }) = result.patch
         {
             if let Some(path) = set_route_path {
-                ctx.route_path = path;
+                ctx.set_canonical_path(path);
             }
 
             if let Some(path) = set_upstream_path {
@@ -126,12 +122,12 @@ impl Device for WasmDevice {
                 if let (Ok(name), Ok(value)) =
                     (header.name.parse::<HeaderName>(), header.value.parse())
                 {
-                    ctx.headers.insert(name, value);
+                    ctx.insert_header(name, value);
                 }
             }
 
             for name in remove_headers {
-                ctx.headers.remove(name.as_str());
+                ctx.remove_header(name.as_str())
             }
         }
 
@@ -164,14 +160,10 @@ impl Device for WasmDevice {
         };
 
         let req = Request {
-            original_path: ctx
-                .original_uri
-                .as_ref()
-                .map(|u| u.path().to_string())
-                .unwrap_or_else(|| "<unset>".into()),
-            route_path: ctx.route_path.clone(),
+            original_path: ctx.original_uri_path().to_string(),
+            route_path: ctx.canonical_path().to_string(),
             headers: ctx
-                .headers
+                .headers()
                 .iter()
                 .map(|(k, v)| Header {
                     name: k.to_string(),

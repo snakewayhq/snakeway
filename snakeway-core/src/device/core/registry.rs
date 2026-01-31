@@ -33,17 +33,20 @@ impl DeviceRegistry {
             }
 
             match device_cfg {
-                // Important: The identity device must always be first, so that it can establish the
-                // context of the request BEFORE all other devices run.
-                DeviceConfig::Identity(cfg) => {
-                    let device_config = cfg.clone();
-                    let device = Arc::new(IdentityDevice::from_config(device_config)?);
-                    self.devices.push(device);
-                }
-
+                // Stateless devices are run before stateful devices as they are cheaper to run.
+                // The request filter device specifically must run before the identity device,
+                // as this allows it to short-circuit the request early to avoid unnecessary allocations.
                 DeviceConfig::RequestFilter(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(RequestFilterDevice::from_config(device_config)?);
+                    self.devices.push(device);
+                }
+
+                // Important: The identity device must always be first AFTER stateless devices,
+                // so that it can establish the context of the request BEFORE all other stateful devices run.
+                DeviceConfig::Identity(cfg) => {
+                    let device_config = cfg.clone();
+                    let device = Arc::new(IdentityDevice::from_config(device_config)?);
                     self.devices.push(device);
                 }
 

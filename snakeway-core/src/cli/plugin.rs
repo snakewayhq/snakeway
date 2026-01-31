@@ -1,4 +1,4 @@
-use crate::ctx::RequestCtx;
+use crate::ctx::{NormalizedPath, RequestCtx};
 use crate::device::load_wasm_device;
 use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
@@ -42,7 +42,8 @@ fn run_test(args: PluginTestArgs) -> Result<()> {
     let device = load_wasm_device(&args.file)?;
 
     let ctx = &mut RequestCtx::empty();
-    ctx.route_path = "/some/route".to_string();
+    ctx.set_normalized_request(NormalizedPath(args.path).into());
+    ctx.hydrated = true;
     ctx.service = Some("some service".to_string());
     ctx.peer_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
 

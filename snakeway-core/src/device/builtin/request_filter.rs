@@ -85,9 +85,9 @@ impl Device for RequestFilterDevice {
         //---------------------------------------------------------------------
         // 1. Header size limit
         //---------------------------------------------------------------------
-        if !ctx.headers.is_empty() {
+        if !ctx.headers().is_empty() {
             let header_bytes: usize = ctx
-                .headers
+                .headers()
                 .iter()
                 .map(|(k, v)| {
                     k.as_str().len()
@@ -124,7 +124,7 @@ impl Device for RequestFilterDevice {
         if self
             .deny_headers
             .iter()
-            .any(|h| ctx.headers.contains_key(h))
+            .any(|h| ctx.headers().contains_key(h))
         {
             // Forbidden header.
             return self.deny(ctx, StatusCode::FORBIDDEN, "Header denied");
@@ -133,7 +133,7 @@ impl Device for RequestFilterDevice {
         // Does the allowlist have headers?
         if !self.allow_headers.is_empty() {
             // For each header in the request, check if it's in the allowlist.
-            for header_name in ctx.headers.keys() {
+            for header_name in ctx.headers().keys() {
                 // If the header is not in the allowlist, deny.
                 if !self.allow_headers.contains(header_name) {
                     return self.deny(ctx, StatusCode::FORBIDDEN, "Allowed header is missing");
@@ -145,7 +145,7 @@ impl Device for RequestFilterDevice {
         if !self
             .required_headers
             .iter()
-            .all(|h| ctx.headers.contains_key(h))
+            .all(|h| ctx.headers().contains_key(h))
         {
             // Missing one or more required headers.
             return self.deny(ctx, StatusCode::BAD_REQUEST, "Required header missing");
