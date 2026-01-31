@@ -1,7 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
-use crate::l4::L4ConnectionFilter;
+use crate::net::NetworkConnectionFilter;
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
@@ -203,7 +203,7 @@ pub fn build_pingora_server(
                 );
 
                 if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
-                    public_svc.set_connection_filter(Arc::new(L4ConnectionFilter::from(
+                    public_svc.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
                         connection_filter_cfg.clone(),
                     )));
                 }
@@ -230,7 +230,7 @@ pub fn build_pingora_server(
             let mut redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
             redirect_scv.add_tcp(&listener_cfg.addr);
             if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
-                redirect_scv.set_connection_filter(Arc::new(L4ConnectionFilter::from(
+                redirect_scv.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
                     connection_filter_cfg.clone(),
                 )));
             }

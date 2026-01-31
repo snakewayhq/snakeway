@@ -4,7 +4,7 @@ use pingora::listeners::ConnectionFilter;
 use std::net::{IpAddr, SocketAddr};
 
 #[derive(Debug, Default, Clone)]
-pub struct L4ConnectionFilter {
+pub struct NetworkConnectionFilter {
     cidr_allow: Vec<IpAddr>,
     cidr_deny: Vec<IpAddr>,
     ip_family_ipv4: bool,
@@ -13,7 +13,7 @@ pub struct L4ConnectionFilter {
 }
 
 #[async_trait]
-impl ConnectionFilter for L4ConnectionFilter {
+impl ConnectionFilter for NetworkConnectionFilter {
     async fn should_accept(&self, addr_opt: Option<&SocketAddr>) -> bool {
         let addr = match addr_opt {
             Some(a) => a,
@@ -40,18 +40,26 @@ impl ConnectionFilter for L4ConnectionFilter {
     }
 }
 
-impl From<ConnectionFilterConfig> for L4ConnectionFilter {
+impl From<ConnectionFilterConfig> for NetworkConnectionFilter {
     fn from(config: ConnectionFilterConfig) -> Self {
         Self {
             cidr_allow: config
                 .cidr_allow
                 .into_iter()
-                .map(|s| s.parse().unwrap())
+                .map(|s| {
+                    s.parse().expect(
+                        "connection_filter.cidr.allow must be validated before runtime construction",
+                    )
+                })
                 .collect(),
             cidr_deny: config
                 .cidr_deny
                 .into_iter()
-                .map(|s| s.parse().unwrap())
+                .map(|s| {
+                    s.parse().expect(
+                        "connection_filter.cidr.deny must be validated before runtime construction",
+                    )
+                })
                 .collect(),
             ip_family_ipv4: config.ip_family_ipv4,
             ip_family_ipv6: config.ip_family_ipv6,
