@@ -14,8 +14,8 @@ use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{StatusCode, Version, header};
+use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
-use pingora_http::{RequestHeader, ResponseHeader};
 use std::sync::Arc;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
@@ -347,7 +347,7 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// MUTATE RESPONSE HEADERS / STATUS
-    fn upstream_response_filter(
+    async fn upstream_response_filter(
         &self,
         _session: &mut Session,
         upstream: &mut ResponseHeader,

@@ -3,9 +3,9 @@ use crate::server::ReloadHandle;
 use crate::traffic_management::TrafficManager;
 use crate::ws_connection_management::WsConnectionManager;
 use http::{StatusCode, header};
+use pingora::http::ResponseHeader;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
-use pingora_http::ResponseHeader;
 use std::str::FromStr;
 use std::sync::Arc;
 

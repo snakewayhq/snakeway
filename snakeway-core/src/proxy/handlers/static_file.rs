@@ -29,7 +29,7 @@ impl StaticFileHandler {
         use crate::ctx::{RequestId, ResponseCtx};
         use crate::device::core::DeviceResult;
         use crate::device::core::pipeline::DevicePipeline;
-        use pingora_http::ResponseHeader;
+        use pingora::http::ResponseHeader;
         use tokio::io::AsyncReadExt;
 
         // Extract conditional headers for cache validation and content negotiation.

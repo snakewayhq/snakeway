@@ -1,8 +1,8 @@
 use crate::ctx::RequestCtx;
 use async_trait::async_trait;
+use pingora::http::ResponseHeader;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
-use pingora_http::ResponseHeader;
 
 pub struct RedirectGateway {
     destination: String,
