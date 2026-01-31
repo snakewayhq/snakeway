@@ -12,6 +12,25 @@ bind = {
     cert = "./integration-tests/certs/server.pem"
     key  = "./integration-tests/certs/server.key"
   }
+
+  connection_filter = {
+    enabled = true
+
+    cidr = {
+      allow = []
+      deny = [
+        "10.0.0.0/8",
+        "192.168.0.0/16"
+      ]
+    }
+
+    ip_family = {
+      ipv4 = true
+      ipv6 = false
+    }
+
+    on_no_peer_addr = "allow" # allow | deny
+  }
 }
 
 services = [
