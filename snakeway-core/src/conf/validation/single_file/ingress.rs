@@ -100,7 +100,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             // Guard against binding the admin API to all interfaces.
             // This is a dangerous situation because the admin API does not currently have
             // authentication and could be used to gain unauthorized access to the server.
-            let iface: BindInterfaceSpec = match bind_admin.interface.clone().try_into() {
+            let bind_interface: BindInterfaceSpec = match bind_admin.interface.clone().try_into() {
                 Ok(i) => i,
                 Err(_) => {
                     report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
@@ -108,7 +108,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 }
             };
 
-            if matches!(iface, BindInterfaceSpec::All) {
+            if matches!(bind_interface, BindInterfaceSpec::All) {
                 report.error(
                     "admin API cannot bind to all interfaces".to_string(),
                     &bind_admin.origin,
