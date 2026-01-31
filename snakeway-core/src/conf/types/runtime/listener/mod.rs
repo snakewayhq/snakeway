@@ -1,5 +1,8 @@
+mod connection_filter;
+
 use crate::conf::types::shared::TlsConfig;
 use crate::conf::types::{BindAdminSpec, BindSpec};
+pub use connection_filter::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -21,6 +24,8 @@ pub struct ListenerConfig {
 
     /// Optional redirect config.
     pub redirect: Option<RedirectConfig>,
+
+    pub connection_filter: Option<ConnectionFilterConfig>,
 }
 
 impl ListenerConfig {
@@ -41,6 +46,7 @@ impl ListenerConfig {
                 addr.to_string(),
                 redirect_response_code,
             )),
+            connection_filter: spec.connection_filter.map(Into::into),
         }
     }
 
@@ -55,6 +61,7 @@ impl ListenerConfig {
             enable_http2: spec.enable_http2,
             enable_admin: false,
             redirect: None,
+            connection_filter: spec.connection_filter.map(Into::into),
         }
     }
 
@@ -69,6 +76,7 @@ impl ListenerConfig {
             enable_http2: false,
             enable_admin: true,
             redirect: None,
+            connection_filter: None,
         }
     }
 }

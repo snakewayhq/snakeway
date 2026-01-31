@@ -1,3 +1,4 @@
+use crate::conf::types::{ConnectionFilterConfig, OnNoPeerAddr};
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
 use std::net::{IpAddr, SocketAddr};
@@ -8,31 +9,15 @@ pub struct L4ConnectionFilter {
     cidr_deny: Vec<IpAddr>,
     ip_family_ipv4: bool,
     ip_family_ipv6: bool,
-    on_no_peer_addr: String,
+    on_no_peer_addr: OnNoPeerAddr,
 }
 
-impl L4ConnectionFilter {
-    pub fn new(
-        cidr_allow: Vec<IpAddr>,
-        cidr_deny: Vec<IpAddr>,
-        ip_family_ipv4: bool,
-        ip_family_ipv6: bool,
-    ) -> Self {
-        Self {
-            cidr_allow,
-            cidr_deny,
-            ip_family_ipv4,
-            ip_family_ipv6,
-            on_no_peer_addr: "allow".to_string(),
-        }
-    }
-}
 #[async_trait]
 impl ConnectionFilter for L4ConnectionFilter {
     async fn should_accept(&self, addr_opt: Option<&SocketAddr>) -> bool {
         let addr = match addr_opt {
             Some(a) => a,
-            None => return self.on_no_peer_addr == "allow",
+            None => return matches!(self.on_no_peer_addr, OnNoPeerAddr::Allow),
         };
 
         let ip = addr.ip();
@@ -52,5 +37,25 @@ impl ConnectionFilter for L4ConnectionFilter {
         }
 
         true
+    }
+}
+
+impl From<ConnectionFilterConfig> for L4ConnectionFilter {
+    fn from(config: ConnectionFilterConfig) -> Self {
+        Self {
+            cidr_allow: config
+                .cidr_allow
+                .into_iter()
+                .map(|s| s.parse().unwrap())
+                .collect(),
+            cidr_deny: config
+                .cidr_deny
+                .into_iter()
+                .map(|s| s.parse().unwrap())
+                .collect(),
+            ip_family_ipv4: config.ip_family_ipv4,
+            ip_family_ipv6: config.ip_family_ipv6,
+            on_no_peer_addr: config.on_no_peer_addr,
+        }
     }
 }

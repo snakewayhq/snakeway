@@ -14,7 +14,7 @@ bind = {
   }
 
   connection_filter = {
-    enabled = true
+    enable = true
 
     cidr = {
       allow = []
