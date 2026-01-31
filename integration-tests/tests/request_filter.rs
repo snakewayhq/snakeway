@@ -4,11 +4,12 @@ use reqwest::StatusCode;
 
 #[test]
 fn request_filter_disabled_allows_request() {
+    let expected = StatusCode::OK;
     let srv = TestServer::start_with_http_upstream("request_filter_disabled");
 
     let res = srv.get("/api").send().unwrap();
 
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), expected);
 }
 
 #[test]
