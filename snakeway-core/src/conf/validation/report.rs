@@ -242,6 +242,30 @@ impl ValidationReport {
             Some("ports must be in the range 1–65535".to_string()),
         );
     }
+
+    pub fn connection_filter_requires_at_least_one_ip_family(&mut self, origin: &Origin) {
+        self.error(
+            "connection_filter must enable at least one IP family".to_string(),
+            origin,
+            Some("Set ip_family.ipv4 and/or ip_family.ipv6 to true.".to_string()),
+        );
+    }
+
+    pub fn invalid_cidr_in_connection_filter_allow_list(&mut self, cidr: &str, origin: &Origin) {
+        self.error(
+            format!("invalid CIDR in connection_filter.cidr.allow: {cidr}"),
+            origin,
+            Some("CIDR must be a valid IPv4 or IPv6 network (e.g. 10.0.0.0/8).".to_string()),
+        );
+    }
+
+    pub fn invalid_cidr_in_connection_filter_deny_list(&mut self, cidr: &str, origin: &Origin) {
+        self.error(
+            format!("invalid CIDR in connection_filter.cidr.deny: {cidr}"),
+            origin,
+            Some("CIDR must be a valid IPv4 or IPv6 network (e.g. 192.168.0.0/16).".to_string()),
+        );
+    }
 }
 
 /// Static Files Spec Validation

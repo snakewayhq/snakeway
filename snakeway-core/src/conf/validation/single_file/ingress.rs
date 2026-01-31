@@ -27,6 +27,27 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 report.invalid_port(bind.port, &bind.origin);
             }
 
+            if let Some(connection_filter) = &bind.connection_filter {
+                // At least one IP family must be enabled
+                if !connection_filter.ip_family.ipv4 && !connection_filter.ip_family.ipv6 {
+                    report.connection_filter_requires_at_least_one_ip_family(&bind.origin);
+                }
+
+                // Validate CIDR allow list
+                for cidr in &connection_filter.cidr.allow {
+                    if cidr.parse::<ipnet::IpNet>().is_err() {
+                        report.invalid_cidr_in_connection_filter_allow_list(cidr, &bind.origin);
+                    }
+                }
+
+                // Validate CIDR deny list
+                for cidr in &connection_filter.cidr.deny {
+                    if cidr.parse::<ipnet::IpNet>().is_err() {
+                        report.invalid_cidr_in_connection_filter_deny_list(cidr, &bind.origin);
+                    }
+                }
+            }
+
             let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
             match interface {
                 Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
