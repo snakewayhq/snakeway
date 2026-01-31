@@ -3,5 +3,5 @@ request_filter_device {
 
   deny_methods = ["DELETE"]
 
-  deny_status = 401
+  deny_status = 406 # Not acceptable
 }

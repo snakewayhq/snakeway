@@ -127,5 +127,5 @@ fn request_filter_uses_custom_deny_status() {
 
     let res = srv.delete("/api").send().unwrap();
 
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(res.status(), StatusCode::NOT_ACCEPTABLE);
 }
