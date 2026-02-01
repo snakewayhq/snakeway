@@ -76,12 +76,14 @@ impl Device for IdentityDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        let (client_ip, proxy_chain) =
+        let (client_ip, proxy_chain, is_forwarded, forwarded_valid) =
             resolve_client_ip(ctx.headers(), ctx.peer_ip, &self.trusted_proxies);
 
         let mut identity = ClientIdentity {
             ip: client_ip,
             proxy_chain,
+            is_forwarded,
+            forwarded_valid,
             geo: None,
             ua: None,
         };
@@ -195,6 +197,8 @@ impl Device for IdentityDevice {
 /// Returns:
 /// - client_ip: the resolved client IP
 /// - proxy_chain: ordered list of proxy IPs (closest first)
+/// - is_forwarded: true if an X-Forwarded-For header was present on the request
+/// - forwarded_valid: true if the forwarded client identity is trusted
 ///
 /// Rules:
 /// - Walk XFF from right → left
@@ -204,25 +208,28 @@ pub fn resolve_client_ip(
     headers: &HeaderMap,
     peer_ip: IpAddr,
     trusted_proxies: &[IpNet],
-) -> (IpAddr, Vec<IpAddr>) {
+) -> (IpAddr, Vec<IpAddr>, bool, bool) {
+    let xff_header = headers.get("x-forwarded-for").and_then(|h| h.to_str().ok());
+    let is_forwarded = xff_header.is_some();
+
     // If there are no trusted proxies, we can't trust XFF, so just return the peer IP.
     if trusted_proxies.is_empty() {
-        return (peer_ip, Vec::new());
+        return (peer_ip, Vec::new(), is_forwarded, false);
     }
 
     // Only trust XFF if the immediate peer is trusted
     if !trusted_proxies.iter().any(|net| net.contains(&peer_ip)) {
-        return (peer_ip, Vec::new());
+        return (peer_ip, Vec::new(), is_forwarded, false);
     }
 
     let xff = match headers.get("x-forwarded-for").and_then(|h| h.to_str().ok()) {
         Some(v) => v,
-        None => return (peer_ip, Vec::new()),
+        None => return (peer_ip, Vec::new(), is_forwarded, false),
     };
 
     // Guard against overly long XFF headers to prevent potential abuse.
     if xff.len() > MAX_X_FORWARDED_FOR_LENGTH {
-        return (peer_ip, Vec::new());
+        return (peer_ip, Vec::new(), is_forwarded, false);
     }
 
     let ips: Vec<IpAddr> = xff
@@ -239,8 +246,8 @@ pub fn resolve_client_ip(
             continue;
         }
 
-        return (*ip, proxy_chain);
+        return (*ip, proxy_chain, true, true);
     }
 
-    (peer_ip, proxy_chain)
+    (peer_ip, proxy_chain, true, true)
 }

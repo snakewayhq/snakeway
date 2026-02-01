@@ -1,12 +1,14 @@
 use crate::conf::types::{ConnectionFilterConfig, OnNoPeerAddr};
+use crate::net::{is_addr_allowed, is_addr_denied};
 use async_trait::async_trait;
+use ipnet::IpNet;
 use pingora::listeners::ConnectionFilter;
 use std::net::{IpAddr, SocketAddr};
 
 #[derive(Debug, Default, Clone)]
 pub struct NetworkConnectionFilter {
-    cidr_allow: Vec<IpAddr>,
-    cidr_deny: Vec<IpAddr>,
+    cidr_allow: Vec<IpNet>,
+    cidr_deny: Vec<IpNet>,
     ip_family_ipv4: bool,
     ip_family_ipv6: bool,
     on_no_peer_addr: OnNoPeerAddr,
@@ -22,21 +24,21 @@ impl ConnectionFilter for NetworkConnectionFilter {
         };
 
         // Check IP family gating before any allow/deny list checks.
-        let ip = addr.ip();
+        let client_ip = addr.ip();
 
-        match ip {
+        match client_ip {
             IpAddr::V4(_) if !self.ip_family_ipv4 => return false,
             IpAddr::V6(_) if !self.ip_family_ipv6 => return false,
             _ => {}
         }
 
         // Any explicit deny entry takes precedence.
-        if self.cidr_deny.iter().any(|d| d == &ip) {
+        if is_addr_denied(client_ip, &self.cidr_deny) {
             return false;
         }
 
         // When an allow list is configured, only addresses on it pass.
-        if !self.cidr_allow.is_empty() && !self.cidr_allow.iter().any(|a| a == &ip) {
+        if !is_addr_allowed(client_ip, &self.cidr_allow) {
             return false;
         }
 
@@ -48,24 +50,8 @@ impl ConnectionFilter for NetworkConnectionFilter {
 impl From<ConnectionFilterConfig> for NetworkConnectionFilter {
     fn from(config: ConnectionFilterConfig) -> Self {
         Self {
-            cidr_allow: config
-                .cidr_allow
-                .into_iter()
-                .map(|s| {
-                    s.parse().expect(
-                        "connection_filter.cidr.allow must be validated before runtime construction",
-                    )
-                })
-                .collect(),
-            cidr_deny: config
-                .cidr_deny
-                .into_iter()
-                .map(|s| {
-                    s.parse().expect(
-                        "connection_filter.cidr.deny must be validated before runtime construction",
-                    )
-                })
-                .collect(),
+            cidr_allow: config.cidr_allow,
+            cidr_deny: config.cidr_deny,
             ip_family_ipv4: config.ip_family_ipv4,
             ip_family_ipv6: config.ip_family_ipv6,
             on_no_peer_addr: config.on_no_peer_addr,
