@@ -21,23 +21,34 @@ device.
 
 ## Execution Order
 
-The Identity device runs **before** all other devices in the pipeline.
+Stateless devices are run before stateful devices.
+They are cheaper to run before stateful devices.
 
-Downstream devices (logging, fraud detection, rate limiting) can safely assume identity data is already present in the
-request context if the Identity device is enabled.
+### Stateless Devices
+
+The Request Filter device runs before all other devices in the pipeline.
+It does not depend on any other devices and no devices depend on it.
+
+In the future, other stateless devices may be added.
+
+### Stateful Devices
+
+The Identity device runs **before** all other stateful devices in the pipeline.
+
+Downstream devices can safely assume identity data is already present in the request context if the Identity device is
+enabled.
+
+For example, the Network Policy requires the client identity to be present in the request context to enforce network
+policies (e.g., is a client IP address allowed to access a service).
 
 ## Request Context Integration
 
 The Identity device inserts a `ClientIdentity` struct into the request context:
 
-```rust
-ctx.extensions.insert(ClientIdentity { /* ... */ });
-```
-
-This data is accessed later via:
+This data is accessed later in a downstream device:
 
 ```rust
-let identity = ctx.extensions.get::<ClientIdentity>();
+let identity = ctx.identity();
 ```
 
 This approach avoids header re-parsing and provides a single source of truth for client identity.
@@ -48,6 +59,8 @@ The identity data attached to each request includes:
 
 * **ip** resolved client IP address
 * **proxy_chain** ordered list of trusted proxies (if any)
+* **is_forwarded** true if an X-Forwarded-For header was present on the request
+* **is_trusted** true if the forwarded client identity is trusted
 * **geo** optional geographic information
 * **ua** optional user-agent classification
 

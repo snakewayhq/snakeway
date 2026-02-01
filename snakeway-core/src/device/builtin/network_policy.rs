@@ -62,8 +62,7 @@ impl Device for NetworkPolicyDevice {
                 return self.deny(ctx);
             }
 
-            if !identity.forwarded_valid
-                && matches!(self.on_invalid_forwarded, OnInvalidForwarded::Deny)
+            if !identity.is_trusted && matches!(self.on_invalid_forwarded, OnInvalidForwarded::Deny)
             {
                 return self.deny(ctx);
             }

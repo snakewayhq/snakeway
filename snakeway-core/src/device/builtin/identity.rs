@@ -75,7 +75,7 @@ impl Device for IdentityDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        let (client_ip, proxy_chain, is_forwarded, forwarded_valid) = resolve_client_ip(
+        let (client_ip, proxy_chain, is_forwarded, is_trusted) = resolve_client_ip(
             ctx.headers(),
             ctx.peer_ip,
             &self.trusted_proxies,
@@ -86,7 +86,7 @@ impl Device for IdentityDevice {
             ip: client_ip,
             proxy_chain,
             is_forwarded,
-            forwarded_valid,
+            is_trusted,
             geo: None,
             ua: None,
         };

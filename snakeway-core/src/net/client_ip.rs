@@ -8,7 +8,7 @@ use std::net::IpAddr;
 /// - client_ip: the resolved client IP
 /// - proxy_chain: ordered list of proxy IPs (closest first)
 /// - is_forwarded: true if an X-Forwarded-For header was present on the request
-/// - forwarded_valid: true if the forwarded client identity is trusted
+/// - is_trusted: true if the forwarded client identity is trusted
 ///
 /// Rules:
 /// - Walk XFF from right → left
