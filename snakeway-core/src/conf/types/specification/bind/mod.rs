@@ -1,3 +1,9 @@
+mod connection_filter;
+mod redirect;
+
+pub use connection_filter::*;
+pub use redirect::*;
+
 use crate::conf::resolution::ResolveError;
 use crate::conf::types::specification::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
 use crate::conf::types::{Origin, TlsSpec};
@@ -13,6 +19,7 @@ pub struct BindSpec {
     pub tls: Option<TlsSpec>,
     pub enable_http2: bool,
     pub redirect_http_to_https: Option<RedirectSpec>,
+    pub connection_filter: Option<ConnectionFilterSpec>,
 }
 
 impl BindSpec {
@@ -30,10 +37,4 @@ impl BindSpec {
         };
         Ok(SocketAddr::new(ip, self.port))
     }
-}
-
-#[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub struct RedirectSpec {
-    pub port: u16,
-    pub status: u16,
 }

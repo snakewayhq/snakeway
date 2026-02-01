@@ -1,6 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
+use crate::net::NetworkConnectionFilter;
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
@@ -175,30 +176,40 @@ pub fn build_pingora_server(
     registry.load_from_config(&config)?;
     tracing::debug!("Loaded device count = {}", registry.all().len());
 
-    for listener in config
+    for listener_cfg in config
         .listeners
         .iter()
         .filter(|l| !l.enable_admin && l.redirect.is_none())
     {
         // Build the public HTTP proxy service from Pingora.
         let public_gateway = PublicGateway::new(
-            Arc::from(listener.name.clone()),
+            Arc::from(listener_cfg.name.clone()),
             state.clone(),
             traffic_manager.clone(),
             connection_manager.clone(),
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
 
-        match &listener.tls {
+        match &listener_cfg.tls {
             Some(tls) => {
                 let mut tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
-                if listener.enable_http2 {
+                if listener_cfg.enable_http2 {
                     tls_settings.enable_h2();
                 }
-                public_svc.add_tls_with_settings(&listener.addr.to_string(), None, tls_settings);
+                public_svc.add_tls_with_settings(
+                    &listener_cfg.addr.to_string(),
+                    None,
+                    tls_settings,
+                );
+
+                if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
+                    public_svc.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
+                        connection_filter_cfg.clone(),
+                    )));
+                }
             }
             None => {
-                public_svc.add_tcp(&listener.addr.to_string());
+                public_svc.add_tcp(&listener_cfg.addr.to_string());
             }
         }
 
@@ -207,24 +218,29 @@ pub fn build_pingora_server(
     }
 
     // Create redirect listener(s).
-    for listener in config
+    for listener_cfg in config
         .listeners
         .iter()
         .filter(|l| !l.enable_admin && l.redirect.is_some())
     {
-        if let Some(redirect) = &listener.redirect {
+        if let Some(redirect) = &listener_cfg.redirect {
             // Build and register the redirect Pingora HTTP proxy service with a standalone listener.
             let redirect_gateway =
                 RedirectGateway::new(redirect.destination.clone(), redirect.response_code);
             let mut redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
-            redirect_scv.add_tcp(&listener.addr);
+            redirect_scv.add_tcp(&listener_cfg.addr);
+            if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
+                redirect_scv.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
+                    connection_filter_cfg.clone(),
+                )));
+            }
             server.add_service(redirect_scv);
         }
     }
 
     // Build the admin HTTP proxy service from Pingora.
-    for listener in config.listeners.iter().filter(|l| l.enable_admin) {
-        if let Some(tls) = &listener.tls {
+    for listener_cfg in config.listeners.iter().filter(|l| l.enable_admin) {
+        if let Some(tls) = &listener_cfg.tls {
             let admin_gateway = AdminGateway::new(
                 traffic_manager.clone(),
                 connection_manager.clone(),
@@ -232,13 +248,13 @@ pub fn build_pingora_server(
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
             let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
-            admin_svc.add_tls_with_settings(&listener.addr, None, tls_settings);
+            admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
             // Register admin service.
             server.add_service(admin_svc);
         } else {
             tracing::warn!(
                 "Admin API listener {} has no TLS configured and will not be bound",
-                listener.name
+                listener_cfg.name
             );
         }
     }
