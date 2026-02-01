@@ -15,11 +15,13 @@ pub struct NetworkConnectionFilter {
 #[async_trait]
 impl ConnectionFilter for NetworkConnectionFilter {
     async fn should_accept(&self, addr_opt: Option<&SocketAddr>) -> bool {
+        // If we do not have a peer address, defer to the configured default behavior.
         let addr = match addr_opt {
             Some(a) => a,
             None => return matches!(self.on_no_peer_addr, OnNoPeerAddr::Allow),
         };
 
+        // Check IP family gating before any allow/deny list checks.
         let ip = addr.ip();
 
         match ip {
@@ -28,14 +30,17 @@ impl ConnectionFilter for NetworkConnectionFilter {
             _ => {}
         }
 
+        // Any explicit deny entry takes precedence.
         if self.cidr_deny.iter().any(|d| d == &ip) {
             return false;
         }
 
+        // When an allow list is configured, only addresses on it pass.
         if !self.cidr_allow.is_empty() && !self.cidr_allow.iter().any(|a| a == &ip) {
             return false;
         }
 
+        // Passed all configured checks.
         true
     }
 }
