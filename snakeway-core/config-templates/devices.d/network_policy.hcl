@@ -1,9 +1,7 @@
 network_policy_device {
   enable = true
-  
-  cidr {
-    allow = ["10.0.0.0/8"]
-  }
+
+  cidr_allow = ["10.0.0.0/8"]
 
   forwarding {
     # Allow forwarded requests at all?
