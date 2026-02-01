@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct NetworkPolicyDeviceConfig {
+    pub enable: bool,
     pub cidr_allow: Vec<IpNet>,
     pub forwarding: ForwardingConfig,
 }
@@ -11,6 +12,7 @@ pub struct NetworkPolicyDeviceConfig {
 impl From<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
     fn from(spec: NetworkPolicyDeviceSpec) -> Self {
         Self {
+            enable: spec.enable,
             cidr_allow: spec
                 .cidr_allow
                 .iter()

@@ -10,59 +10,50 @@ use std::path::Path;
 
 pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     let mut identity_seen = false;
+    let mut network_policy_seen = false;
     let mut request_filter_seen = false;
     let mut structured_logging_seen = false;
 
+    // Validate identity device spec first.
+    for device in devices {
+        if let DeviceSpec::Identity(cfg) = device {
+            if identity_seen {
+                report.identity_device_already_defined(device.origin());
+            }
+            identity_seen = true;
+
+            if !cfg.enable {
+                return;
+            }
+
+            validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
+
+            if cfg.enable_geoip {
+                if cfg.geoip_city_db.is_none()
+                    && cfg.geoip_isp_db.is_none()
+                    && cfg.geoip_connection_type_db.is_none()
+                {
+                    report.geoip_enabled_with_no_dbs_specified(device.origin());
+                }
+
+                if let Some(path) = cfg.geoip_city_db.as_ref() {
+                    validate_geoip_db_file(path, report, device.origin());
+                }
+
+                if let Some(path) = cfg.geoip_isp_db.as_ref() {
+                    validate_geoip_db_file(path, report, device.origin());
+                }
+
+                if let Some(geoip_city_db) = cfg.geoip_connection_type_db.as_ref() {
+                    validate_geoip_db_file(geoip_city_db, report, device.origin());
+                }
+            }
+        };
+    }
+
+    // Validate remaining device specs (some of which may depend on the presence of the identity).
     for device in devices {
         match device {
-            DeviceSpec::Wasm(cfg) => {
-                if !cfg.enable {
-                    return;
-                }
-
-                if cfg.path.is_empty() {
-                    report.wasm_device_path_is_empty(cfg.path.display(), device.origin());
-                }
-                if !cfg.path.exists() {
-                    report.wasm_device_path_does_not_exist(cfg.path.display(), device.origin());
-                }
-                if !cfg.path.is_file() {
-                    report.wasm_device_path_is_not_a_file(cfg.path.display(), device.origin());
-                }
-            }
-            DeviceSpec::Identity(cfg) => {
-                if identity_seen {
-                    report.identity_device_already_defined(device.origin());
-                }
-                identity_seen = true;
-
-                if !cfg.enable {
-                    return;
-                }
-
-                validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
-
-                if cfg.enable_geoip {
-                    if cfg.geoip_city_db.is_none()
-                        && cfg.geoip_isp_db.is_none()
-                        && cfg.geoip_connection_type_db.is_none()
-                    {
-                        report.geoip_enabled_with_no_dbs_specified(device.origin());
-                    }
-
-                    if let Some(path) = cfg.geoip_city_db.as_ref() {
-                        validate_geoip_db_file(path, report, device.origin());
-                    }
-
-                    if let Some(path) = cfg.geoip_isp_db.as_ref() {
-                        validate_geoip_db_file(path, report, device.origin());
-                    }
-
-                    if let Some(geoip_city_db) = cfg.geoip_connection_type_db.as_ref() {
-                        validate_geoip_db_file(geoip_city_db, report, device.origin());
-                    }
-                }
-            }
             DeviceSpec::RequestFilter(cfg) => {
                 if request_filter_seen {
                     report.request_filter_device_already_defined(device.origin());
@@ -106,6 +97,45 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     report.warn_max_suspicious_bytes_large_than_max_body_bytes(device.origin());
                 }
             }
+            DeviceSpec::NetworkPolicy(cfg) => {
+                if network_policy_seen {
+                    report.network_policy_device_already_defined(device.origin());
+                }
+                network_policy_seen = true;
+                if !cfg.enable {
+                    return;
+                }
+
+                if !identity_seen {
+                    // The network policy device requires the identity device to be present.
+                    // It is a no-op internally if the identity device is not present, but it is
+                    // import to validate its presence here to a void network policy silently
+                    // being ignored.
+                    report.network_policy_device_requires_identity(device.origin());
+                    return;
+                }
+
+                for cidr in &cfg.cidr_allow {
+                    if cidr.parse::<IpNet>().is_err() {
+                        report.invalid_network_policy_cidr(cidr, device.origin());
+                    }
+                }
+            }
+            DeviceSpec::Wasm(cfg) => {
+                if !cfg.enable {
+                    return;
+                }
+
+                if cfg.path.is_empty() {
+                    report.wasm_device_path_is_empty(cfg.path.display(), device.origin());
+                }
+                if !cfg.path.exists() {
+                    report.wasm_device_path_does_not_exist(cfg.path.display(), device.origin());
+                }
+                if !cfg.path.is_file() {
+                    report.wasm_device_path_is_not_a_file(cfg.path.display(), device.origin());
+                }
+            }
             DeviceSpec::StructuredLogging(cfg) => {
                 if structured_logging_seen {
                     report.structured_logging_device_already_defined(device.origin());
@@ -116,6 +146,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     return;
                 }
             }
+            _ => {}
         };
     }
 }

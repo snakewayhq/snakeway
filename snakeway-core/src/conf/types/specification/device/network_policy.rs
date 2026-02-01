@@ -1,7 +1,12 @@
+use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct NetworkPolicyDeviceSpec {
+    #[serde(skip)]
+    pub origin: Origin,
+
+    pub enable: bool,
     pub cidr_allow: Vec<String>,
     pub forwarding: ForwardingSpec,
 }

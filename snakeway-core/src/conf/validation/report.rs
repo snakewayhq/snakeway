@@ -473,6 +473,30 @@ impl ValidationReport {
         self.error("identity device already defined".to_string(), origin, None)
     }
 
+    pub fn network_policy_device_already_defined(&mut self, origin: &Origin) {
+        self.error(
+            "network policy device already defined".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn network_policy_device_requires_identity(&mut self, origin: &Origin) {
+        self.error(
+            "network policy device requires identity device".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &Origin) {
+        self.error(
+            format!("invalid network policy CIDR: {}", cidr),
+            origin,
+            None,
+        )
+    }
+
     pub fn request_filter_device_already_defined(&mut self, origin: &Origin) {
         self.error(
             "request filter device already defined".to_string(),
