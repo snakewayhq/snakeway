@@ -1,4 +1,4 @@
-mod config;
+mod runtime_config_patching;
 pub mod server;
 pub mod tracing;
 pub mod upstream;
