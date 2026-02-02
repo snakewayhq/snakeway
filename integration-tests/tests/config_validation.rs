@@ -4,9 +4,8 @@ use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 
 #[test]
-fn should_proxy_to_upstream() {
-    let mut cfg = minimal_http_runtime_config();
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+fn should_load_config_files() {
+    let srv = TestServer::start_with_http_upstream("basic");
 
     let res = srv.get("/api").send().expect("request failed");
 
