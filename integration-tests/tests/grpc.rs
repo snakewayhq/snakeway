@@ -1,3 +1,4 @@
+use integration_tests::conf::minimal_grpc_runtime_config;
 use integration_tests::harness::TestServer;
 use integration_tests::harness::upstream::helloworld;
 use integration_tests::harness::upstream::helloworld::HelloRequest;
@@ -6,7 +7,8 @@ use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 
 #[test]
 fn grpc_unary_call_is_proxied() {
-    let srv = TestServer::start_with_grpc_upstream("minimal_grpc");
+    let mut cfg = minimal_grpc_runtime_config();
+    let srv = TestServer::start_grpc_upstream_with_config(&mut cfg);
 
     let endpoint = format!(
         "https://{}",

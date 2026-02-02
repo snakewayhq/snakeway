@@ -3,8 +3,7 @@ use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_w
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
-use snakeway_core::conf::types::{DeviceSpec, IngressSpec, ServerSpec};
-use snakeway_core::conf::{load_config, load_config_from_specs};
+use snakeway_core::conf::{RuntimeConfig, load_config};
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
 use snakeway_core::traffic_management::{TrafficManager, TrafficSnapshot};
@@ -22,25 +21,19 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    pub fn start_http_upstream_with_config(
-        server_spec: ServerSpec,
-        ingress_specs: Vec<IngressSpec>,
-        device_specs: Vec<DeviceSpec>,
-    ) -> Self {
-        Self::start_with_config(
-            server_spec,
-            ingress_specs,
-            device_specs,
-            start_http_upstream,
-        )
+    pub fn start_grpc_upstream_with_config(cfg: &mut RuntimeConfig) -> Self {
+        Self::start_with_config(cfg, start_grpc_upstream)
     }
 
-    pub fn start_with_config<F>(
-        server_spec: ServerSpec,
-        ingress_specs: Vec<IngressSpec>,
-        device_specs: Vec<DeviceSpec>,
-        start_upstream: F,
-    ) -> Self
+    pub fn start_ws_upstream_with_config(cfg: &mut RuntimeConfig) -> Self {
+        Self::start_with_config(cfg, start_ws_upstream)
+    }
+
+    pub fn start_http_upstream_with_config(cfg: &mut RuntimeConfig) -> Self {
+        Self::start_with_config(cfg, start_http_upstream)
+    }
+
+    pub fn start_with_config<F>(cfg: &mut RuntimeConfig, start_upstream: F) -> Self
     where
         F: Fn(u16),
     {
@@ -51,17 +44,8 @@ impl TestServer {
         events.lock().unwrap().clear();
 
         //---------------------------------------------------------------------
-        // Gather Configs
-        //---------------------------------------------------------------------
-        let validated_cfg = load_config_from_specs(server_spec, ingress_specs, device_specs)
-            .expect("failed to load fixture config");
-
-        let mut cfg = validated_cfg.config;
-
-        //---------------------------------------------------------------------
         // Setup upstreams and listeners, then patch config in-memory.
         //---------------------------------------------------------------------
-
         // Allocate free port(s) for the upstreams(s).
         let upstream_ports = cfg
             .services
@@ -84,7 +68,7 @@ impl TestServer {
 
         // Patch config in memory.
         // This is a bit of magic that ensures all the integration tests can be run in parallel.
-        patch_runtime(&mut cfg, &listener_ports, &upstream_ports);
+        patch_runtime(cfg, &listener_ports, &upstream_ports);
 
         // Build the initial runtime state (static for tests).
         let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
