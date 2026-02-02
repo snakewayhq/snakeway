@@ -1,7 +1,7 @@
 use snakeway_core::conf::types::{
     BindInterfaceInput, BindSpec, DeviceSpec, EndpointSpec, HostSpec, IdentityDeviceSpec,
-    IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, StructuredLoggingDeviceSpec, TlsSpec,
-    UpstreamSpec,
+    IngressSpec, RequestFilterDeviceSpec, ServerSpec, ServiceRouteSpec, ServiceSpec,
+    StructuredLoggingDeviceSpec, TlsSpec, UpstreamSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 use snakeway_core::device::builtin::structured_logging::{
@@ -14,15 +14,23 @@ pub fn minimal_http_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_http_ingress().build()
 }
 
+pub fn minimal_http_runtime_config_with_request_filter() -> RuntimeConfig {
+    ConfigBuilder::default()
+        .with_http_ingress()
+        .with_request_filter_device()
+        .build()
+}
+
 pub fn minimal_grpc_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_grpc_ingress().build()
 }
 
 pub struct ConfigBuilder {
-    server_spec: ServerSpec,
-    ingress_specs: Vec<IngressSpec>,
-    identity_device_spec: Option<IdentityDeviceSpec>,
-    structured_logging_device_spec: Option<StructuredLoggingDeviceSpec>,
+    pub server_spec: ServerSpec,
+    pub ingress_specs: Vec<IngressSpec>,
+    pub identity_device_spec: Option<IdentityDeviceSpec>,
+    pub structured_logging_device_spec: Option<StructuredLoggingDeviceSpec>,
+    pub request_filter_device_spec: Option<RequestFilterDeviceSpec>,
 }
 
 impl Default for ConfigBuilder {
@@ -38,6 +46,7 @@ impl Default for ConfigBuilder {
             ingress_specs: vec![],
             identity_device_spec: Some(Self::make_identity_device()),
             structured_logging_device_spec: Some(Self::make_structured_logging_device()),
+            request_filter_device_spec: None,
         }
     }
 }
@@ -129,6 +138,10 @@ impl ConfigBuilder {
             ));
         }
 
+        if let Some(request_filter_device_spec) = self.request_filter_device_spec {
+            device_specs.push(DeviceSpec::RequestFilter(request_filter_device_spec));
+        }
+
         let validated_cfg =
             load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
                 .expect("failed to load fixture config");
@@ -208,6 +221,66 @@ impl ConfigBuilder {
                 LogEvent::Response,
             ]),
             phases: Some(vec![LogPhase::Request, LogPhase::Response]),
+            ..Default::default()
+        }
+    }
+}
+
+/// Request Filter Device
+impl ConfigBuilder {
+    pub fn with_request_filter_device(mut self) -> Self {
+        self.request_filter_device_spec = Some(Self::make_request_filter_device_spec());
+        self
+    }
+
+    pub fn with_request_filter_device_that_denies_get_method(mut self) -> Self {
+        let mut device_spec = Self::make_request_filter_device_spec();
+        device_spec.deny_methods = vec!["GET".to_string()];
+        self.request_filter_device_spec = Some(device_spec);
+        self
+    }
+
+    pub fn with_request_filter_device_that_requires_header(mut self) -> Self {
+        let mut device_spec = Self::make_request_filter_device_spec();
+        device_spec.required_headers = vec!["x-required".to_string()];
+        self.request_filter_device_spec = Some(device_spec);
+        self
+    }
+
+    pub fn with_request_filter_device_that_allows_specific_headers(mut self) -> Self {
+        let mut device_spec = Self::make_request_filter_device_spec();
+        device_spec.allow_headers = vec![
+            "Host".to_string(),
+            "X-Custom-Allowed".to_string(),
+            "Accept".to_string(),
+            "Accept-Encoding".to_string(),
+            "User-Agent".to_string(),
+            "Content-Length".to_string(),
+        ];
+        self.request_filter_device_spec = Some(device_spec);
+        self
+    }
+
+    pub fn with_request_filter_device_that_overrides_deny_status(mut self) -> Self {
+        let mut device_spec = Self::make_request_filter_device_spec();
+        device_spec.deny_methods = vec!["DELETE".to_string()];
+        device_spec.deny_status = Some(406);
+        self.request_filter_device_spec = Some(device_spec);
+        self
+    }
+
+    pub fn make_request_filter_device_spec() -> RequestFilterDeviceSpec {
+        RequestFilterDeviceSpec {
+            enable: true,
+            allow_methods: vec!["GET".to_string(), "POST".to_string(), "DELETE".to_string()],
+            deny_methods: vec![],
+            deny_headers: vec!["x-forwarded-host".to_string(), "x-original-url".to_string()],
+            allow_headers: vec![],
+            required_headers: vec!["host".to_string()],
+            max_header_bytes: 1024,          // 1 KB
+            max_body_bytes: 16384,           // 16 KB
+            max_suspicious_body_bytes: 1024, // 1 KB
+            deny_status: None,
             ..Default::default()
         }
     }
