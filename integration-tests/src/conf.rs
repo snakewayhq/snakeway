@@ -1,8 +1,12 @@
 use snakeway_core::conf::types::{
     BindInterfaceInput, BindSpec, DeviceSpec, EndpointSpec, HostSpec, IdentityDeviceSpec,
-    IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, TlsSpec, UpstreamSpec,
+    IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, StructuredLoggingDeviceSpec, TlsSpec,
+    UpstreamSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
+use snakeway_core::device::builtin::structured_logging::{
+    IdentityField, LogEvent, LogLevel, LogPhase,
+};
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
@@ -18,6 +22,7 @@ pub struct ConfigBuilder {
     server_spec: ServerSpec,
     ingress_specs: Vec<IngressSpec>,
     identity_device_spec: Option<IdentityDeviceSpec>,
+    structured_logging_device_spec: Option<StructuredLoggingDeviceSpec>,
 }
 
 impl Default for ConfigBuilder {
@@ -32,6 +37,7 @@ impl Default for ConfigBuilder {
             },
             ingress_specs: vec![],
             identity_device_spec: Some(Self::make_identity_device()),
+            structured_logging_device_spec: Some(Self::make_structured_logging_device()),
         }
     }
 }
@@ -111,6 +117,33 @@ impl ConfigBuilder {
         }
     }
 
+    pub fn build(self) -> RuntimeConfig {
+        let mut device_specs = vec![];
+        if let Some(identity_device_spec) = self.identity_device_spec {
+            device_specs.push(DeviceSpec::Identity(identity_device_spec));
+        }
+
+        if let Some(structured_logging_device_spec) = self.structured_logging_device_spec {
+            device_specs.push(DeviceSpec::StructuredLogging(
+                structured_logging_device_spec,
+            ));
+        }
+
+        let validated_cfg =
+            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
+                .expect("failed to load fixture config");
+
+        if validated_cfg.validation_report.has_violations() {
+            validated_cfg.validation_report.render_pretty();
+            panic!("failed to load fixture config");
+        }
+
+        validated_cfg.config
+    }
+}
+
+/// Identity Device
+impl ConfigBuilder {
     pub fn with_identity_device_and_no_geo(mut self) -> Self {
         let mut identity_device = Self::make_identity_device();
         identity_device.enable_geoip = false;
@@ -137,22 +170,45 @@ impl ConfigBuilder {
             ..Default::default()
         }
     }
+}
 
-    pub fn build(self) -> RuntimeConfig {
-        let mut device_specs = vec![];
-        if let Some(identity_device_spec) = self.identity_device_spec {
-            device_specs.push(DeviceSpec::Identity(identity_device_spec));
+/// Structured Logging Device
+impl ConfigBuilder {
+    pub fn with_structured_logging_device(mut self) -> Self {
+        self.structured_logging_device_spec = Some(Self::make_structured_logging_device());
+        self
+    }
+
+    pub fn make_structured_logging_device() -> StructuredLoggingDeviceSpec {
+        StructuredLoggingDeviceSpec {
+            enable: true,
+            level: LogLevel::Info,
+            include_headers: true,
+            allowed_headers: vec![
+                "user-agent".to_string(),
+                "host".to_string(),
+                "x-forwarded-for".to_string(),
+                "x-real-ip".to_string(),
+            ],
+            redacted_headers: vec!["authentication".to_string(), "cookie".to_string()],
+            include_identity: true,
+            identity_fields: vec![
+                IdentityField::Asn,
+                IdentityField::Aso,
+                IdentityField::Bot,
+                IdentityField::Country,
+                IdentityField::Region,
+                IdentityField::Device,
+                IdentityField::ConnectionType,
+            ],
+            events: Some(vec![
+                LogEvent::Request,
+                LogEvent::BeforeProxy,
+                LogEvent::AfterProxy,
+                LogEvent::Response,
+            ]),
+            phases: Some(vec![LogPhase::Request, LogPhase::Response]),
+            ..Default::default()
         }
-
-        let validated_cfg =
-            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
-                .expect("failed to load fixture config");
-
-        if validated_cfg.validation_report.has_violations() {
-            validated_cfg.validation_report.render_pretty();
-            panic!("failed to load fixture config");
-        }
-
-        validated_cfg.config
     }
 }
