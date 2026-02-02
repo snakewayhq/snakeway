@@ -14,8 +14,6 @@ bind = {
   }
 
   connection_filter = {
-    enable = true
-
     cidr = {
       allow = []
       deny = [
