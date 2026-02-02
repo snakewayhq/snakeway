@@ -153,7 +153,7 @@ impl ConfigBuilder {
     }
 
     pub fn with_http_ingress(mut self) -> Self {
-        let bind = Self::make_bind(true);
+        let bind = Self::make_bind(false);
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
                 path: "/api".to_string(),
