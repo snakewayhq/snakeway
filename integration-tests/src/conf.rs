@@ -10,6 +10,10 @@ use snakeway_core::device::builtin::structured_logging::{
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
+pub fn minimal_ws_runtime_config() -> RuntimeConfig {
+    ConfigBuilder::default().with_ws_ingress().build()
+}
+
 pub fn minimal_http_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_http_ingress().build()
 }
@@ -78,14 +82,28 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn with_http_ingress(mut self) -> Self {
-        let bind = BindSpec {
-            origin: Default::default(),
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
-            enable_http2: false,
+    pub fn with_ws_ingress(mut self) -> Self {
+        let bind = Self::make_bind(true);
+        let service = ServiceSpec {
+            routes: vec![ServiceRouteSpec {
+                path: "/ws".to_string(),
+                enable_websocket: true,
+                ..Default::default()
+            }],
+            upstreams: vec![Self::make_tcp_upstream(9000), Self::make_tcp_upstream(9001)],
             ..Default::default()
         };
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services: vec![service],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
+    pub fn with_http_ingress(mut self) -> Self {
+        let bind = Self::make_bind(true);
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
                 path: "/api".to_string(),
