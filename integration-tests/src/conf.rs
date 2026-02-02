@@ -133,6 +133,7 @@ impl ConfigBuilder {
     }
 
     pub fn with_ws_ingress(mut self) -> Self {
+        self.server_spec.ca_file = Some("./certs/ca.pem".to_string());
         let bind = Self::make_bind(true);
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
@@ -186,7 +187,40 @@ impl ConfigBuilder {
 /// Static File Server
 impl ConfigBuilder {
     pub fn with_static_file_ingress(mut self, directory_listing: bool) -> Self {
-        let static_files = StaticFilesSpec {
+        let static_files = Self::make_static_file_spec(directory_listing);
+        let bind = Self::make_bind(false);
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            static_files: vec![static_files],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
+    pub fn with_static_file_and_service_ingress(mut self) -> Self {
+        let static_files = Self::make_static_file_spec(false);
+        let service = ServiceSpec {
+            routes: vec![ServiceRouteSpec {
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![Self::make_tcp_upstream(9000), Self::make_tcp_upstream(9001)],
+            ..Default::default()
+        };
+        let bind = Self::make_bind(false);
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            static_files: vec![static_files],
+            services: vec![service],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
+    fn make_static_file_spec(directory_listing: bool) -> StaticFilesSpec {
+        StaticFilesSpec {
             origin: Default::default(),
             routes: vec![StaticRouteSpec {
                 origin: Default::default(),
@@ -208,15 +242,7 @@ impl ConfigBuilder {
                     immutable: false,
                 },
             }],
-        };
-        let bind = Self::make_bind(true);
-        let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            static_files: vec![static_files],
-            ..Default::default()
-        };
-        self.ingress_specs.push(ingress_spec);
-        self
+        }
     }
 }
 

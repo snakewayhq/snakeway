@@ -35,7 +35,9 @@ fn static_route_does_not_require_upstream() {
 /// Proxy routes should still work when static file serving is enabled
 #[test]
 fn proxy_route_still_works_when_static_is_enabled() {
-    let mut cfg = minimal_static_file_runtime_config();
+    let mut cfg = ConfigBuilder::default()
+        .with_static_file_and_service_ingress()
+        .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv.get("/api").send().unwrap();
