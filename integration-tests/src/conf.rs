@@ -1,9 +1,10 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, DeviceSpec, EndpointSpec, HostSpec, IngressSpec, ServerSpec,
-    ServiceRouteSpec, ServiceSpec, TlsSpec, UpstreamSpec,
+    BindInterfaceInput, BindSpec, DeviceSpec, EndpointSpec, HostSpec, IdentityDeviceSpec,
+    IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, TlsSpec, UpstreamSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 
 pub fn minimal_http_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_http_ingress().build()
@@ -16,7 +17,7 @@ pub fn minimal_grpc_runtime_config() -> RuntimeConfig {
 pub struct ConfigBuilder {
     server_spec: ServerSpec,
     ingress_specs: Vec<IngressSpec>,
-    device_specs: Vec<DeviceSpec>,
+    identity_device_spec: Option<IdentityDeviceSpec>,
 }
 
 impl Default for ConfigBuilder {
@@ -30,7 +31,7 @@ impl Default for ConfigBuilder {
                 ca_file: None,
             },
             ingress_specs: vec![],
-            device_specs: vec![],
+            identity_device_spec: Some(Self::make_identity_device()),
         }
     }
 }
@@ -110,14 +111,41 @@ impl ConfigBuilder {
         }
     }
 
-    pub fn with_device_spec(mut self, device_spec: DeviceSpec) -> Self {
-        self.device_specs.push(device_spec);
+    pub fn with_identity_device_and_no_geo(mut self) -> Self {
+        let mut identity_device = Self::make_identity_device();
+        identity_device.enable_geoip = false;
+        self.identity_device_spec = Some(identity_device);
         self
     }
 
+    pub fn with_identity_device_and_trusted_proxy(mut self) -> Self {
+        let mut identity_device = Self::make_identity_device();
+        identity_device.trusted_proxies = vec!["127.0.0.1/32".to_string()];
+        self.identity_device_spec = Some(identity_device);
+        self
+    }
+
+    fn make_identity_device() -> IdentityDeviceSpec {
+        IdentityDeviceSpec {
+            enable: true,
+            trusted_proxies: vec![],
+            enable_geoip: true,
+            geoip_city_db: Some(PathBuf::from(
+                "fixtures/geoip/dbip-country-lite-2025-12.mmdb",
+            )),
+            enable_user_agent: true,
+            ..Default::default()
+        }
+    }
+
     pub fn build(self) -> RuntimeConfig {
+        let mut device_specs = vec![];
+        if let Some(identity_device_spec) = self.identity_device_spec {
+            device_specs.push(DeviceSpec::Identity(identity_device_spec));
+        }
+
         let validated_cfg =
-            load_config_from_specs(self.server_spec, self.ingress_specs, self.device_specs)
+            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
                 .expect("failed to load fixture config");
 
         if validated_cfg.validation_report.has_violations() {

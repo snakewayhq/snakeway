@@ -1,7 +1,9 @@
 identity_device = {
   enable = true
 
-  enable_geoip = false
+  enable_geoip = true
+
+  geoip_city_db = "fixtures/geoip/dbip-country-lite-2025-12.mmdb"
 
   trusted_proxies = ["10.0.0.0/8"]
 
