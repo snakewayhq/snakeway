@@ -58,6 +58,18 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_connection_filtered_http_ingress(mut self) -> Self {
+        let bind = Self::make_bind_with_connection_filter(false);
+        let service = Self::make_service_spec();
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services: vec![service],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
     pub(crate) fn make_tcp_upstream(port: u16) -> UpstreamSpec {
         UpstreamSpec {
             endpoint: Some(EndpointSpec {

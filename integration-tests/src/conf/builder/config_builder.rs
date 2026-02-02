@@ -1,6 +1,7 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec,
-    RequestFilterDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
+    BindInterfaceInput, BindSpec, CidrSpec, ConnectionFilterSpec, DeviceSpec, IdentityDeviceSpec,
+    IngressSpec, IpFamilySpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec, ServerSpec,
+    StructuredLoggingDeviceSpec, TlsSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 
@@ -46,6 +47,22 @@ impl ConfigBuilder {
             }),
             ..Default::default()
         }
+    }
+
+    pub(crate) fn make_bind_with_connection_filter(include_tls: bool) -> BindSpec {
+        let mut bind = Self::make_bind(include_tls);
+        bind.connection_filter = Some(ConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec![],
+                deny: vec![],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        });
+        bind
     }
 
     pub fn build(self) -> RuntimeConfig {
