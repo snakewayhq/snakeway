@@ -115,6 +115,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     return;
                 }
 
+                if cfg.cidr_allow.is_empty() {
+                    report.network_policy_device_requires_cidr_allow(device.origin());
+                    return;
+                }
+
                 for cidr in &cfg.cidr_allow {
                     if cidr.parse::<IpNet>().is_err() {
                         report.invalid_network_policy_cidr(cidr, device.origin());

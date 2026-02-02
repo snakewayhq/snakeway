@@ -489,6 +489,14 @@ impl ValidationReport {
         )
     }
 
+    pub fn network_policy_device_requires_cidr_allow(&mut self, origin: &Origin) {
+        self.error(
+            "network policy device requires cidr_allow".to_string(),
+            origin,
+            None,
+        )
+    }
+
     pub fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &Origin) {
         self.error(
             format!("invalid network policy CIDR: {}", cidr),
