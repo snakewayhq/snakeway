@@ -11,18 +11,24 @@ use std::fs;
 use std::path::Path;
 
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let (server_spec, device_specs, ingresses) = load_spec_config(root)?;
+    let (server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
+    load_config_from_specs(server_spec, ingress_specs, device_specs)
+}
 
+/// Load configs from spec definitions.
+/// Useful for integration testing where reading files is not necessarily scalable/maintainable.
+pub fn load_config_from_specs(
+    server_spec: ServerSpec,
+    ingress_specs: Vec<IngressSpec>,
+    device_specs: Vec<DeviceSpec>,
+) -> Result<ValidatedConfig, ConfigError> {
     // Semantic validation of DSL config (aggregate all semantic errors)
-    let validation_report = validate_spec(&server_spec, &ingresses, &device_specs);
+    let validation_report = validate_spec(&server_spec, &ingress_specs, &device_specs);
 
     // Convert spec to runtime config.
     let (server, listeners, routes, services, devices) =
-        lower_configs(server_spec, ingresses, device_specs)?;
+        lower_configs(server_spec, ingress_specs, device_specs)?;
 
-    //--------------------------------------------------------------------------
-    // Build runtime config
-    //--------------------------------------------------------------------------
     Ok(ValidatedConfig {
         config: RuntimeConfig {
             server,
@@ -37,7 +43,8 @@ pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
 
 pub type Spec = (ServerSpec, Vec<DeviceSpec>, Vec<IngressSpec>);
 
-pub fn load_spec_config(root: &Path) -> Result<Spec, ConfigError> {
+/// Load spec from files
+pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------
