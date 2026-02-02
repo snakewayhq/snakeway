@@ -8,6 +8,6 @@ mod tests;
 pub mod types;
 pub(crate) mod validation;
 
-pub use loader::{load_config, load_spec_config};
+pub use loader::{load_config, load_config_from_specs, load_spec_files};
 pub use types::RuntimeConfig;
 pub use validation::ValidatedConfig;
