@@ -133,8 +133,7 @@ impl ConfigBuilder {
     }
 
     pub fn with_ws_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some("./certs/ca.pem".to_string());
-        let bind = Self::make_bind(true);
+        let bind = Self::make_bind(false);
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
                 path: "/ws".to_string(),
