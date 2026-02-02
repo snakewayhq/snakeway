@@ -1,7 +1,8 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, DeviceSpec, EndpointSpec, HostSpec, IdentityDeviceSpec,
-    IngressSpec, RequestFilterDeviceSpec, ServerSpec, ServiceRouteSpec, ServiceSpec,
-    StructuredLoggingDeviceSpec, TlsSpec, UpstreamSpec,
+    BindInterfaceInput, BindSpec, CachePolicySpec, CompressionOptsSpec, DeviceSpec, EndpointSpec,
+    HostSpec, IdentityDeviceSpec, IngressSpec, RequestFilterDeviceSpec, ServerSpec,
+    ServiceRouteSpec, ServiceSpec, StaticFilesSpec, StaticRouteSpec, StructuredLoggingDeviceSpec,
+    TlsSpec, UpstreamSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 use snakeway_core::device::builtin::structured_logging::{
@@ -27,6 +28,12 @@ pub fn minimal_http_runtime_config_with_request_filter() -> RuntimeConfig {
 
 pub fn minimal_grpc_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_grpc_ingress().build()
+}
+
+pub fn minimal_static_file_runtime_config() -> RuntimeConfig {
+    ConfigBuilder::default()
+        .with_static_file_ingress(false)
+        .build()
 }
 
 pub struct ConfigBuilder {
@@ -61,6 +68,49 @@ impl ConfigBuilder {
         self
     }
 
+    fn make_bind(include_tls: bool) -> BindSpec {
+        BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
+            tls: include_tls.then_some(TlsSpec {
+                cert: "./certs/server.pem".to_string(),
+                key: "./certs/server.key".to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn build(self) -> RuntimeConfig {
+        let mut device_specs = vec![];
+        if let Some(identity_device_spec) = self.identity_device_spec {
+            device_specs.push(DeviceSpec::Identity(identity_device_spec));
+        }
+
+        if let Some(structured_logging_device_spec) = self.structured_logging_device_spec {
+            device_specs.push(DeviceSpec::StructuredLogging(
+                structured_logging_device_spec,
+            ));
+        }
+
+        if let Some(request_filter_device_spec) = self.request_filter_device_spec {
+            device_specs.push(DeviceSpec::RequestFilter(request_filter_device_spec));
+        }
+
+        let validated_cfg =
+            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
+                .expect("failed to load fixture config");
+
+        if validated_cfg.validation_report.has_violations() {
+            validated_cfg.validation_report.render_pretty();
+            panic!("failed to load fixture config");
+        }
+
+        validated_cfg.config
+    }
+}
+
+/// Upstream Services
+impl ConfigBuilder {
     pub fn with_grpc_ingress(mut self) -> Self {
         self.server_spec.ca_file = Some("./certs/ca.pem".to_string());
         let mut bind = Self::make_bind(true);
@@ -121,18 +171,6 @@ impl ConfigBuilder {
         self
     }
 
-    fn make_bind(include_tls: bool) -> BindSpec {
-        BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
-            tls: include_tls.then_some(TlsSpec {
-                cert: "./certs/server.pem".to_string(),
-                key: "./certs/server.key".to_string(),
-            }),
-            ..Default::default()
-        }
-    }
-
     fn make_tcp_upstream(port: u16) -> UpstreamSpec {
         UpstreamSpec {
             endpoint: Some(EndpointSpec {
@@ -143,33 +181,42 @@ impl ConfigBuilder {
             ..Default::default()
         }
     }
+}
 
-    pub fn build(self) -> RuntimeConfig {
-        let mut device_specs = vec![];
-        if let Some(identity_device_spec) = self.identity_device_spec {
-            device_specs.push(DeviceSpec::Identity(identity_device_spec));
-        }
-
-        if let Some(structured_logging_device_spec) = self.structured_logging_device_spec {
-            device_specs.push(DeviceSpec::StructuredLogging(
-                structured_logging_device_spec,
-            ));
-        }
-
-        if let Some(request_filter_device_spec) = self.request_filter_device_spec {
-            device_specs.push(DeviceSpec::RequestFilter(request_filter_device_spec));
-        }
-
-        let validated_cfg =
-            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
-                .expect("failed to load fixture config");
-
-        if validated_cfg.validation_report.has_violations() {
-            validated_cfg.validation_report.render_pretty();
-            panic!("failed to load fixture config");
-        }
-
-        validated_cfg.config
+/// Static File Server
+impl ConfigBuilder {
+    pub fn with_static_file_ingress(mut self, directory_listing: bool) -> Self {
+        let static_files = StaticFilesSpec {
+            origin: Default::default(),
+            routes: vec![StaticRouteSpec {
+                origin: Default::default(),
+                path: "/".to_string(),
+                file_dir: PathBuf::from("/var/www/html"),
+                index: Some("index.html".to_string()),
+                directory_listing,
+                max_file_size: 1048576,
+                compression: CompressionOptsSpec {
+                    small_file_threshold: 0,
+                    min_gzip_size: 1024,
+                    min_brotli_size: 4096,
+                    enable_gzip: true,
+                    enable_brotli: true,
+                },
+                cache_policy: CachePolicySpec {
+                    max_age_seconds: 60,
+                    public: true,
+                    immutable: false,
+                },
+            }],
+        };
+        let bind = Self::make_bind(true);
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            static_files: vec![static_files],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
     }
 }
 
