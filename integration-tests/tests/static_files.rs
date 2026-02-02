@@ -130,7 +130,10 @@ fn directory_listing_renders_when_enabled() {
 
 #[test]
 fn directory_listing_includes_expected_file() {
-    let srv = TestServer::start_with_http_upstream("static_nondefault");
+    let mut cfg = ConfigBuilder::default()
+        .with_static_file_ingress(true)
+        .build();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let body = srv.get("/images/").send().unwrap().text().unwrap();
 
