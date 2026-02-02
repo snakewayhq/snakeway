@@ -3,7 +3,8 @@ use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_w
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
-use snakeway_core::conf::load_config;
+use snakeway_core::conf::types::{DeviceSpec, IngressSpec, ServerSpec};
+use snakeway_core::conf::{load_config, load_config_from_specs};
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
 use snakeway_core::traffic_management::{TrafficManager, TrafficSnapshot};
@@ -21,6 +22,113 @@ pub struct TestServer {
 }
 
 impl TestServer {
+    pub fn start_http_upstream_with_config(
+        server_spec: ServerSpec,
+        ingress_specs: Vec<IngressSpec>,
+        device_specs: Vec<DeviceSpec>,
+    ) -> Self {
+        Self::start_with_config(
+            server_spec,
+            ingress_specs,
+            device_specs,
+            start_http_upstream,
+        )
+    }
+
+    pub fn start_with_config<F>(
+        server_spec: ServerSpec,
+        ingress_specs: Vec<IngressSpec>,
+        device_specs: Vec<DeviceSpec>,
+        start_upstream: F,
+    ) -> Self
+    where
+        F: Fn(u16),
+    {
+        // Initialize tracing (this must happen first).
+        let events = events();
+        init_test_tracing(events.clone());
+        // Clear events.
+        events.lock().unwrap().clear();
+
+        //---------------------------------------------------------------------
+        // Gather Configs
+        //---------------------------------------------------------------------
+        let validated_cfg = load_config_from_specs(server_spec, ingress_specs, device_specs)
+            .expect("failed to load fixture config");
+
+        let mut cfg = validated_cfg.config;
+
+        //---------------------------------------------------------------------
+        // Setup upstreams and listeners, then patch config in-memory.
+        //---------------------------------------------------------------------
+
+        // Allocate free port(s) for the upstreams(s).
+        let upstream_ports = cfg
+            .services
+            .iter()
+            .flat_map(|(_, c)| c.tcp_upstreams.iter())
+            .map(|_| free_port())
+            .collect::<Vec<_>>();
+
+        // Start upstream services in background threads.
+        for p in upstream_ports.clone() {
+            start_upstream(p);
+        }
+
+        // Allocate free port(s) for the listener(s).
+        let listener_ports = cfg
+            .listeners
+            .iter()
+            .map(|_| free_port())
+            .collect::<Vec<_>>();
+
+        // Patch config in memory.
+        // This is a bit of magic that ensures all the integration tests can be run in parallel.
+        patch_runtime(&mut cfg, &listener_ports, &upstream_ports);
+
+        // Build the initial runtime state (static for tests).
+        let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
+        let state = Arc::new(ArcSwap::from_pointee(runtime_state));
+        let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
+            state.load().as_ref(),
+        )));
+
+        // Build server.
+        let connection_manager = Arc::new(WsConnectionManager::new());
+        let reload = Arc::new(ReloadHandle::new());
+        let server = build_pingora_server(
+            cfg.clone(),
+            state,
+            traffic_manager,
+            connection_manager,
+            reload,
+        )
+        .expect("failed to build snakeway server");
+
+        // Run server in a background thread.
+        thread::spawn(move || {
+            server.run_forever();
+        });
+
+        let base_urls = cfg
+            .listeners
+            .iter()
+            .map(|l| format!("http://{}", l.addr.clone()))
+            .collect::<Vec<_>>();
+
+        // Wait for listeners(s) to accept connections.
+        for base_url in &base_urls {
+            wait_for_listener(base_url);
+        }
+
+        let client = Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("failed to build client");
+
+        Self { base_urls, client }
+    }
+
     fn start_with<F>(fixture: &str, start_upstream: F) -> Self
     where
         F: Fn(u16),
