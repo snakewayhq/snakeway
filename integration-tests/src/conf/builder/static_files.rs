@@ -1,7 +1,6 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
-    CachePolicySpec, CompressionOptsSpec, IngressSpec, ServiceRouteSpec, ServiceSpec,
-    StaticFilesSpec, StaticRouteSpec,
+    CachePolicySpec, CompressionOptsSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec,
 };
 use std::path::PathBuf;
 
