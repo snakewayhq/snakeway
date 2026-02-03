@@ -24,8 +24,8 @@ impl Default for ConfigBuilder {
                 ca_file: None,
             },
             ingress_specs: vec![],
-            identity_device_spec: Some(Self::make_identity_device()),
-            structured_logging_device_spec: Some(Self::make_structured_logging_device()),
+            identity_device_spec: None,
+            structured_logging_device_spec: None,
             request_filter_device_spec: None,
         }
     }
