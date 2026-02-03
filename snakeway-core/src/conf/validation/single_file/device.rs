@@ -103,12 +103,10 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     // import to validate its presence here to a void network policy silently
                     // being ignored.
                     report.network_policy_device_requires_identity(device.origin());
-                    return;
                 }
 
                 if cfg.cidr_allow.is_empty() {
                     report.network_policy_device_requires_cidr_allow(device.origin());
-                    return;
                 }
 
                 for cidr in &cfg.cidr_allow {
