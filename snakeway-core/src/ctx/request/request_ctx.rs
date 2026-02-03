@@ -355,7 +355,7 @@ impl RequestCtx {
         self.extensions.get::<RequestId>().map(|id| id.0.clone())
     }
 
-    pub fn identity(&self) -> Option<ClientIdentity> {
-        self.extensions.get::<ClientIdentity>().cloned()
+    pub fn identity(&self) -> Option<&ClientIdentity> {
+        self.extensions.get::<ClientIdentity>()
     }
 }

@@ -521,6 +521,25 @@ impl ValidationReport {
         )
     }
 
+    pub fn structured_logging_identity_fields_empty(&mut self, origin: &Origin) {
+        self.warning(
+            "structured logging identity fields cannot be empty".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn structured_logging_includes_headers_but_no_headers_set(&mut self, origin: &Origin) {
+        self.warning(
+            "structured logging includes headers but no headers are set".to_string(),
+            origin,
+            Some(
+                "Add headers to allowed_headers or redacted_headers to include headers in structured logs."
+                    .to_string(),
+            ),
+        )
+    }
+
     pub fn invalid_http_method(&mut self, method: &str, origin: &Origin) {
         self.error(format!("invalid HTTP method: {}", method), origin, None)
     }

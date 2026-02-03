@@ -133,6 +133,17 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     report.structured_logging_device_already_defined(device.origin());
                 }
                 structured_logging_seen = true;
+
+                if cfg.include_identity && cfg.identity_fields.is_empty() {
+                    report.structured_logging_identity_fields_empty(device.origin());
+                }
+
+                if cfg.include_headers
+                    && cfg.allowed_headers.is_empty()
+                    && cfg.redacted_headers.is_empty()
+                {
+                    report.structured_logging_includes_headers_but_no_headers_set(device.origin());
+                }
             }
             _ => {}
         };
