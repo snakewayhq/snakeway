@@ -1,4 +1,4 @@
-use crate::harness::runtime_config_patching::patch_runtime;
+use crate::harness::runtime_patch::patch_runtime;
 use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_ws_upstream};
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
