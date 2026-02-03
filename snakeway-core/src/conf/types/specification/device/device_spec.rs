@@ -24,4 +24,13 @@ impl DeviceSpec {
             DeviceSpec::StructuredLogging(s) => &s.origin,
         }
     }
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            DeviceSpec::RequestFilter(s) => s.enable,
+            DeviceSpec::Identity(s) => s.enable,
+            DeviceSpec::NetworkPolicy(s) => s.enable,
+            DeviceSpec::Wasm(s) => s.enable,
+            DeviceSpec::StructuredLogging(s) => s.enable,
+        }
+    }
 }

@@ -60,7 +60,7 @@ cidr_allow = [
 CIDR rules:
 
 * Each entry must be a valid IPv4 or IPv6 CIDR
-* If `cidr_allow` is **empty**, all client IPs are allowed
+* If `cidr_allow` is **empty**, a configuration error is reported
 * If `cidr_allow` is **non‑empty**, the client IP **must** match at least one CIDR
 * Matching is performed against the **resolved client IP**, not the TCP peer
 

@@ -15,16 +15,13 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     let mut structured_logging_seen = false;
 
     // Validate identity device spec first.
-    for device in devices {
+    let enabled_devices = devices.iter().filter(|device| device.is_enabled());
+    for device in enabled_devices {
         if let DeviceSpec::Identity(cfg) = device {
             if identity_seen {
                 report.identity_device_already_defined(device.origin());
             }
             identity_seen = true;
-
-            if !cfg.enable {
-                return;
-            }
 
             validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
 
@@ -52,17 +49,14 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     }
 
     // Validate remaining device specs (some of which may depend on the presence of the identity).
-    for device in devices {
+    let enabled_devices = devices.iter().filter(|device| device.is_enabled());
+    for device in enabled_devices {
         match device {
             DeviceSpec::RequestFilter(cfg) => {
                 if request_filter_seen {
                     report.request_filter_device_already_defined(device.origin());
                 }
                 request_filter_seen = true;
-
-                if !cfg.enable {
-                    return;
-                }
 
                 if let Some(deny_status) = cfg.deny_status {
                     validate_range(
@@ -102,9 +96,6 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     report.network_policy_device_already_defined(device.origin());
                 }
                 network_policy_seen = true;
-                if !cfg.enable {
-                    return;
-                }
 
                 if !identity_seen {
                     // The network policy device requires the identity device to be present.
@@ -127,10 +118,6 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
             }
             DeviceSpec::Wasm(cfg) => {
-                if !cfg.enable {
-                    return;
-                }
-
                 if cfg.path.is_empty() {
                     report.wasm_device_path_is_empty(cfg.path.display(), device.origin());
                 }
@@ -146,10 +133,6 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     report.structured_logging_device_already_defined(device.origin());
                 }
                 structured_logging_seen = true;
-
-                if !cfg.enable {
-                    return;
-                }
             }
             _ => {}
         };
