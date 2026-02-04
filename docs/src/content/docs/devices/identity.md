@@ -12,7 +12,7 @@ When enabled, the Identity device:
 
 * Resolves the **true client IP** using a trusted-proxy-aware algorithm
 * Records the **proxy chain** when traffic passes through known intermediaries
-* Optionally enriches requests with **GeoIP data** (country-only by default)
+* Optionally enriches requests with **GeoIP data**
 * Optionally parses the **User-Agent** using a configurable engine
 * Stores all identity data **internally**, without mutating headers
 

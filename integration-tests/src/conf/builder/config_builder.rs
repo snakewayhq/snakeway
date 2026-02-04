@@ -49,22 +49,6 @@ impl ConfigBuilder {
         }
     }
 
-    pub(crate) fn make_bind_with_connection_filter(include_tls: bool) -> BindSpec {
-        let mut bind = Self::make_bind(include_tls);
-        bind.connection_filter = Some(ConnectionFilterSpec {
-            cidr: CidrSpec {
-                allow: vec![],
-                deny: vec![],
-            },
-            ip_family: IpFamilySpec {
-                ipv4: true,
-                ipv6: true,
-            },
-            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
-        });
-        bind
-    }
-
     pub fn build(self) -> RuntimeConfig {
         let mut device_specs = vec![];
         if let Some(identity_device_spec) = self.identity_device_spec {
@@ -91,5 +75,67 @@ impl ConfigBuilder {
         }
 
         validated_cfg.config
+    }
+}
+
+/// Connection Filter
+impl ConfigBuilder {
+    fn set_connection_filter_on_last_bind(
+        mut self,
+        connection_filter: &ConnectionFilterSpec,
+    ) -> Self {
+        self.ingress_specs
+            .last_mut()
+            .expect("no ingress specs found - cannot set connection filter")
+            .bind
+            .as_mut()
+            .expect("no ingress specs found - cannot set connection filter")
+            .connection_filter = Some(connection_filter.clone());
+        self
+    }
+
+    pub(crate) fn make_connection_filter(
+        cidr_allow: Option<&[&str]>,
+        cidr_deny: Option<&[&str]>,
+        ipv4_enabled: bool,
+        ipv6_enabled: bool,
+        on_no_peer_addr: OnNoPeerAddrSpec,
+    ) -> ConnectionFilterSpec {
+        ConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: cidr_allow
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(|c| c.parse().expect("invalid CIDR in allowlist"))
+                    .collect(),
+                deny: cidr_deny
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(|c| c.parse().expect("invalid CIDR in denylist"))
+                    .collect(),
+            },
+            ip_family: IpFamilySpec {
+                ipv4: ipv4_enabled,
+                ipv6: ipv6_enabled,
+            },
+            on_no_peer_addr,
+        }
+    }
+    pub fn with_connection_filter_cidr_deny_list(self, cidr_deny: &[&str]) -> Self {
+        let connection_filter =
+            Self::make_connection_filter(None, Some(cidr_deny), true, true, OnNoPeerAddrSpec::Deny);
+        self.set_connection_filter_on_last_bind(&connection_filter)
+    }
+
+    pub fn with_connection_filter_deny_when_no_ip(self) -> Self {
+        let connection_filter =
+            Self::make_connection_filter(None, None, true, true, OnNoPeerAddrSpec::Deny);
+        self.set_connection_filter_on_last_bind(&connection_filter)
+    }
+
+    pub fn with_connection_filter_ipv4_disabled(self) -> Self {
+        let connection_filter =
+            Self::make_connection_filter(None, None, false, true, OnNoPeerAddrSpec::Deny);
+        self.set_connection_filter_on_last_bind(&connection_filter)
     }
 }

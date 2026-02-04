@@ -201,16 +201,16 @@ pub fn build_pingora_server(
                     None,
                     tls_settings,
                 );
-
-                if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
-                    public_svc.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
-                        connection_filter_cfg.clone(),
-                    )));
-                }
             }
             None => {
                 public_svc.add_tcp(&listener_cfg.addr.to_string());
             }
+        }
+
+        if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
+            public_svc.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
+                connection_filter_cfg.clone(),
+            )));
         }
 
         // Register public service.
@@ -227,8 +227,12 @@ pub fn build_pingora_server(
             // Build and register the redirect Pingora HTTP proxy service with a standalone listener.
             let redirect_gateway =
                 RedirectGateway::new(redirect.destination.clone(), redirect.response_code);
+
+            // Create a TCP listener for the redirect service.
             let mut redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
             redirect_scv.add_tcp(&listener_cfg.addr);
+
+            // Add a connection filter if configured.
             if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
                 redirect_scv.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
                     connection_filter_cfg.clone(),
