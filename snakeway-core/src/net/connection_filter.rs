@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use ipnet::IpNet;
 use pingora::listeners::ConnectionFilter;
 use std::net::{IpAddr, SocketAddr};
+use tracing::{debug, warn};
 
 #[derive(Debug, Default, Clone)]
 pub struct NetworkConnectionFilter {
@@ -27,18 +28,26 @@ impl ConnectionFilter for NetworkConnectionFilter {
         let client_ip = addr.ip();
 
         match client_ip {
-            IpAddr::V4(_) if !self.ip_family_ipv4 => return false,
-            IpAddr::V6(_) if !self.ip_family_ipv6 => return false,
+            IpAddr::V4(_) if !self.ip_family_ipv4 => {
+                debug!(%client_ip, "Connection denied as IPv4 is disabled in filter config");
+                return false;
+            }
+            IpAddr::V6(_) if !self.ip_family_ipv6 => {
+                debug!(%client_ip, "Connection denied as IPv6 is disabled in filter config");
+                return false;
+            }
             _ => {}
         }
 
         // Any explicit deny entry takes precedence.
         if is_addr_denied(client_ip, &self.cidr_deny) {
+            debug!(%client_ip, "Connection denied by CIDR deny list");
             return false;
         }
 
         // When an allow list is configured, only addresses on it pass.
         if !is_addr_allowed(client_ip, &self.cidr_allow) {
+            debug!(%client_ip, "Connection denied by CIDR allow list");
             return false;
         }
 
