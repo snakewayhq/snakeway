@@ -8,11 +8,11 @@ use tracing::debug;
 
 #[derive(Debug, Default, Clone)]
 pub struct NetworkConnectionFilter {
-    cidr_allow: CidrCollection,
-    cidr_deny: CidrCollection,
-    ip_family_ipv4: bool,
-    ip_family_ipv6: bool,
-    on_no_peer_addr: OnNoPeerAddr,
+    pub(crate) cidr_allow: CidrCollection,
+    pub(crate) cidr_deny: CidrCollection,
+    pub(crate) ip_family_ipv4: bool,
+    pub(crate) ip_family_ipv6: bool,
+    pub(crate) on_no_peer_addr: OnNoPeerAddr,
 }
 
 #[async_trait]
