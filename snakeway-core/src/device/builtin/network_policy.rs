@@ -6,9 +6,9 @@ use tracing::debug;
 
 #[derive(Debug)]
 pub struct NetworkPolicyDevice {
-    cidr_allow: CidrCollection,
-    allow_forwarded: bool,
-    on_invalid_forwarded: OnInvalidForwarded,
+    pub(crate) cidr_allow: CidrCollection,
+    pub(crate) allow_forwarded: bool,
+    pub(crate) on_invalid_forwarded: OnInvalidForwarded,
 }
 
 #[derive(Debug, Clone, Copy)]
