@@ -19,8 +19,8 @@ impl CidrCollection {
     }
 
     pub fn contains(&self, addr: IpAddr) -> bool {
-        let ret = self.table.exact_match(addr).is_some();
-        ret
+        let host_net = IpNet::from(addr);
+        self.table.longest_match(&host_net).is_some()
     }
 
     /// Returns the number of IPv4 and IPv6 networks in the collection.
