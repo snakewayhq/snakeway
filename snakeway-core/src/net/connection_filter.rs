@@ -1,15 +1,15 @@
 use crate::conf::types::{ConnectionFilterConfig, OnNoPeerAddr};
-use crate::net::{is_addr_allowed, is_addr_denied};
+use crate::net::CidrCollection;
 use async_trait::async_trait;
-use ipnet::IpNet;
 use pingora::listeners::ConnectionFilter;
+use std::fmt::Debug;
 use std::net::{IpAddr, SocketAddr};
-use tracing::{debug, warn};
+use tracing::debug;
 
 #[derive(Debug, Default, Clone)]
 pub struct NetworkConnectionFilter {
-    cidr_allow: Vec<IpNet>,
-    cidr_deny: Vec<IpNet>,
+    cidr_allow: CidrCollection,
+    cidr_deny: CidrCollection,
     ip_family_ipv4: bool,
     ip_family_ipv6: bool,
     on_no_peer_addr: OnNoPeerAddr,
@@ -29,38 +29,38 @@ impl ConnectionFilter for NetworkConnectionFilter {
 
         match client_ip {
             IpAddr::V4(_) if !self.ip_family_ipv4 => {
-                debug!(%client_ip, "Connection denied as IPv4 is disabled in filter config");
+                debug!(%client_ip, "Connection rejected as IPv4 is disabled in filter config");
                 return false;
             }
             IpAddr::V6(_) if !self.ip_family_ipv6 => {
-                debug!(%client_ip, "Connection denied as IPv6 is disabled in filter config");
+                debug!(%client_ip, "Connection rejected as IPv6 is disabled in filter config");
                 return false;
             }
             _ => {}
         }
 
         // Any explicit deny entry takes precedence.
-        if is_addr_denied(client_ip, &self.cidr_deny) {
-            debug!(%client_ip, "Connection denied by CIDR deny list");
+        // If there is at least one deny entry and that client IP is in the deny list, reject.
+        if !self.cidr_deny.is_empty() && self.cidr_deny.contains(client_ip) {
+            debug!(%client_ip, "Connection rejected by CIDR deny list");
             return false;
         }
 
-        // When an allow list is configured, only addresses on it pass.
-        if !is_addr_allowed(client_ip, &self.cidr_allow) {
-            debug!(%client_ip, "Connection denied by CIDR allow list");
-            return false;
+        // Finally, if the allow list is empty OR the client IP is in the allow list, accept.
+        if self.cidr_allow.is_empty() || self.cidr_allow.contains(client_ip) {
+            true
+        } else {
+            debug!(%client_ip, "Connection rejected by CIDR allow list");
+            false
         }
-
-        // Passed all configured checks.
-        true
     }
 }
 
 impl From<ConnectionFilterConfig> for NetworkConnectionFilter {
     fn from(config: ConnectionFilterConfig) -> Self {
         Self {
-            cidr_allow: config.cidr_allow,
-            cidr_deny: config.cidr_deny,
+            cidr_allow: CidrCollection::new(&config.cidr_allow),
+            cidr_deny: CidrCollection::new(&config.cidr_deny),
             ip_family_ipv4: config.ip_family_ipv4,
             ip_family_ipv6: config.ip_family_ipv6,
             on_no_peer_addr: config.on_no_peer_addr,

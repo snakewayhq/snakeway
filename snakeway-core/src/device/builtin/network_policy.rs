@@ -1,13 +1,12 @@
 use crate::conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
 use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::{Device, DeviceResult};
-use crate::net::is_addr_allowed;
-use ipnet::IpNet;
+use crate::net::CidrCollection;
 use tracing::debug;
 
 #[derive(Debug)]
 pub struct NetworkPolicyDevice {
-    cidr_allow: Vec<IpNet>,
+    cidr_allow: CidrCollection,
     allow_forwarded: bool,
     on_invalid_forwarded: OnInvalidForwarded,
 }
@@ -21,7 +20,7 @@ pub enum OnInvalidForwarded {
 impl From<NetworkPolicyDeviceConfig> for NetworkPolicyDevice {
     fn from(cfg: NetworkPolicyDeviceConfig) -> Self {
         Self {
-            cidr_allow: cfg.cidr_allow,
+            cidr_allow: cfg.cidr_allow.into(),
             allow_forwarded: cfg.forwarding.allow,
             on_invalid_forwarded: cfg.forwarding.on_invalid.into(),
         }
@@ -60,7 +59,7 @@ impl Device for NetworkPolicyDevice {
         };
 
         // Base admission, the resolved client IP must be allowed, but it is not in the allowlist.
-        if !is_addr_allowed(identity.ip, &self.cidr_allow) {
+        if !self.cidr_allow.contains(identity.ip) {
             return self.deny(ctx, "client ip not in allowlist");
         }
 

@@ -55,6 +55,7 @@ wasmtime = { workspace = true, optional = true }
 wasmtime-wasi = { workspace = true, optional = true, features = ["default"] }
 woothee = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
+ipnet-trie = { workspace = true }
 thiserror = { workspace = true }
 glob = { workspace = true }
 serde_yaml = { workspace = true }
