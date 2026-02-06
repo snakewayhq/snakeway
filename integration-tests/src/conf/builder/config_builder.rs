@@ -67,6 +67,10 @@ impl ConfigBuilder {
             device_specs.push(DeviceSpec::RequestFilter(request_filter_device_spec));
         }
 
+        if let Some(network_policy_device_spec) = self.network_policy_device_spec {
+            device_specs.push(DeviceSpec::NetworkPolicy(network_policy_device_spec));
+        }
+
         let validated_cfg =
             load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
                 .expect("failed to load fixture config");
