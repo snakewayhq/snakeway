@@ -2,6 +2,7 @@ use integration_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
 use integration_tests::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use std::panic;
 
 #[test]
 fn network_policy_disabled_allows_request() {
@@ -52,24 +53,21 @@ fn network_policy_denies_request_from_disallowed_cidr() {
     assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
-/// The identity device is intentionally omitted for this test.
-/// NetworkPolicy becomes a no-op without identity,
-/// but validation should already warn and runtime allows.
 #[test]
 fn network_policy_requires_identity_device() {
-    // Arrange
-    let mut cfg = ConfigBuilder::default()
-        .with_http_ingress()
-        .with_network_policy_allowing_localhost()
-        .build();
-
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
-
     // Act
-    let res = srv.get("/api").send().unwrap();
+    let result = panic::catch_unwind(|| {
+        ConfigBuilder::default()
+            .with_http_ingress()
+            .with_network_policy_allowing_localhost()
+            .build();
+    });
 
     // Assert
-    assert_eq!(res.status(), StatusCode::OK);
+    assert!(
+        result.is_err(),
+        "expected config build to panic without identity device, but it did not"
+    );
 }
 
 #[test]
