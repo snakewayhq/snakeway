@@ -1,5 +1,5 @@
 ---
-title: Server Configuration
+title: Ingress Configuration
 ---
 
 Ingress files are located in the config directory under `CONFIG_ROOT/ingress.d/*.hcl`.
@@ -18,8 +18,113 @@ bind = {
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
   }
+
+  connection_filter = {
+    cidr = {
+      allow = []
+      deny = [
+        "10.0.0.0/8",
+        "192.168.0.0/16"
+      ]
+    }
+
+    ip_family = {
+      ipv4 = true
+      ipv6 = false
+    }
+
+    on_no_peer_addr = "allow" # allow | deny
+  }
 }
 ```
+
+### Top-level Options
+
+#### interface
+
+**Type:** `string`  
+**Default:** `none`
+
+This is the interface to bind to.
+
+#### port
+
+**Type:** `integer`  
+**Default:** `none`
+
+This is the port to bind to, on the specified interface.
+
+#### enable_http2
+
+**Type:** `boolean`  
+**Default:** `false`
+
+Enable HTTP/2 on the ingress instance.
+This has ramifications for TLS configuration (TLS is required) and other settings where noted.
+
+### Connection Filter (connection_filter)
+
+Snakeway supports filtering connections based on their source IP address.
+
+#### cidr
+
+**Type:** `object`  
+**Default:** `none`
+
+The `cidr` block allows you to specify a list of CIDR blocks to allow or deny connections from.
+
+##### allow
+
+**Type:** `list(string)`  
+**Default:** `[]`
+
+CIDR blocks to allow connections from.
+If empty, all connections are allowed.
+
+##### deny
+
+**Type:** `list(string)`  
+**Default:** `[]`
+
+CIDR blocks to deny connections from.
+If empty, no connections are denied.
+
+:::note
+The `deny` list takes precedence over the `allow` list.
+:::
+
+#### ip_family
+
+**Type:** `object`  
+**Default:** `none`
+
+##### ipv4
+
+**Type:** `boolean`  
+**Default:** `false`
+
+If `true`, IPv4 connections are allowed.
+
+##### ipv6
+
+**Type:** `boolean`  
+**Default:** `false`
+
+If `true`, IPv6 connections are allowed.
+
+:::note
+At least one of `ipv4` or `ipv6` must be `true`.
+
+A config error will be reported if both are `false`.
+:::
+
+#### on_no_peer_addr
+
+**Type:** `string`  
+**Default:** `allow`
+
+Controls the behavior when a connection is made without a peer address.
+Default is permissive, i.e., any connection is allowed.
 
 ## Admin Bind
 

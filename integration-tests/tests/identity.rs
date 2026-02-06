@@ -1,3 +1,4 @@
+use integration_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
 use integration_tests::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
@@ -5,7 +6,8 @@ use reqwest::StatusCode;
 /// Baseline: identity device runs when a User-Agent is present
 #[test]
 fn identity_with_user_agent() {
-    let srv = TestServer::start_with_http_upstream("identity");
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv
         .get("/api")
@@ -22,7 +24,8 @@ fn identity_with_user_agent() {
 /// Identity should not break requests without a User-Agent
 #[test]
 fn identity_without_user_agent() {
-    let srv = TestServer::start_with_http_upstream("identity");
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv.get("/api").send().unwrap();
 
@@ -32,7 +35,8 @@ fn identity_without_user_agent() {
 /// Oversized User-Agent headers should be ignored safely
 #[test]
 fn oversized_user_agent_is_ignored() {
-    let srv = TestServer::start_with_http_upstream("identity");
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let long_ua = "a".repeat(10_000);
 
@@ -48,7 +52,8 @@ fn oversized_user_agent_is_ignored() {
 /// Mobile User-Agent should not crash identity parsing
 #[test]
 fn mobile_user_agent_is_handled() {
-    let srv = TestServer::start_with_http_upstream("identity");
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv
         .get("/api")
@@ -65,7 +70,8 @@ fn mobile_user_agent_is_handled() {
 /// Untrusted X-Forwarded-For headers must not affect request handling
 #[test]
 fn untrusted_xff_is_ignored() {
-    let srv = TestServer::start_with_http_upstream("identity");
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv
         .get("/api")
@@ -83,7 +89,11 @@ fn untrusted_xff_is_ignored() {
 /// Trusted proxy config should accept XFF without error
 #[test]
 fn trusted_proxy_allows_xff() {
-    let srv = TestServer::start_with_http_upstream("identity_trusted_proxy");
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_identity_device_and_trusted_proxy()
+        .build();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv
         .get("/api")
@@ -101,7 +111,11 @@ fn trusted_proxy_allows_xff() {
 /// GeoIP-disabled config must not fail identity processing
 #[test]
 fn geoip_disabled_does_not_break_identity() {
-    let srv = TestServer::start_with_http_upstream("identity_no_geo");
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_identity_device_and_no_geo()
+        .build();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let res = srv
         .get("/api")

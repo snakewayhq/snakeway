@@ -242,6 +242,30 @@ impl ValidationReport {
             Some("ports must be in the range 1–65535".to_string()),
         );
     }
+
+    pub fn connection_filter_requires_at_least_one_ip_family(&mut self, origin: &Origin) {
+        self.error(
+            "connection_filter must enable at least one IP family".to_string(),
+            origin,
+            Some("Set ip_family.ipv4 and/or ip_family.ipv6 to true.".to_string()),
+        );
+    }
+
+    pub fn invalid_cidr_in_connection_filter_allow_list(&mut self, cidr: &str, origin: &Origin) {
+        self.error(
+            format!("invalid CIDR in connection_filter.cidr.allow: {cidr}"),
+            origin,
+            Some("CIDR must be a valid IPv4 or IPv6 network (e.g. 10.0.0.0/8).".to_string()),
+        );
+    }
+
+    pub fn invalid_cidr_in_connection_filter_deny_list(&mut self, cidr: &str, origin: &Origin) {
+        self.error(
+            format!("invalid CIDR in connection_filter.cidr.deny: {cidr}"),
+            origin,
+            Some("CIDR must be a valid IPv4 or IPv6 network (e.g. 192.168.0.0/16).".to_string()),
+        );
+    }
 }
 
 /// Static Files Spec Validation
@@ -449,6 +473,38 @@ impl ValidationReport {
         self.error("identity device already defined".to_string(), origin, None)
     }
 
+    pub fn network_policy_device_already_defined(&mut self, origin: &Origin) {
+        self.error(
+            "network policy device already defined".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn network_policy_device_requires_identity(&mut self, origin: &Origin) {
+        self.error(
+            "network policy device requires identity device".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn network_policy_device_requires_cidr_allow(&mut self, origin: &Origin) {
+        self.error(
+            "network policy device requires cidr_allow list to be set".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &Origin) {
+        self.error(
+            format!("invalid network policy CIDR: {}", cidr),
+            origin,
+            None,
+        )
+    }
+
     pub fn request_filter_device_already_defined(&mut self, origin: &Origin) {
         self.error(
             "request filter device already defined".to_string(),
@@ -462,6 +518,25 @@ impl ValidationReport {
             "structured logging device already defined".to_string(),
             origin,
             None,
+        )
+    }
+
+    pub fn structured_logging_identity_fields_empty(&mut self, origin: &Origin) {
+        self.warning(
+            "structured logging identity fields cannot be empty".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn structured_logging_includes_headers_but_no_headers_set(&mut self, origin: &Origin) {
+        self.warning(
+            "structured logging includes headers but no headers are set".to_string(),
+            origin,
+            Some(
+                "Add headers to allowed_headers or redacted_headers to include headers in structured logs."
+                    .to_string(),
+            ),
         )
     }
 

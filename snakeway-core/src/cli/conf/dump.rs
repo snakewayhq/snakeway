@@ -1,4 +1,4 @@
-use crate::conf::{load_config, load_spec_config};
+use crate::conf::{load_config, load_spec_files};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -10,7 +10,7 @@ pub fn dump(
     repr: RepresentationFormat,
 ) -> anyhow::Result<()> {
     if matches!(repr, RepresentationFormat::Spec) {
-        let cfg = load_spec_config(&path)?;
+        let cfg = load_spec_files(&path)?;
         if yaml {
             dump_yaml(&cfg)?;
         } else if json || !yaml {

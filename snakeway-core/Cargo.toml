@@ -35,7 +35,7 @@ maxminddb = { workspace = true, features = ["mmap"] }
 mime_guess = { workspace = true, optional = true }
 nix = { workspace = true, features = ["signal"] }
 percent-encoding = { workspace = true, optional = true }
-pingora = { workspace = true, features = ["proxy", "rustls"] }
+pingora = { workspace = true, features = ["proxy", "rustls", "connection_filter"] }
 rust-embed = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
@@ -54,7 +54,8 @@ uaparser = { workspace = true }
 wasmtime = { workspace = true, optional = true }
 wasmtime-wasi = { workspace = true, optional = true, features = ["default"] }
 woothee = { workspace = true }
-ipnet = { workspace = true }
+ipnet = { workspace = true, features = ["serde"] }
+ipnet-trie = { workspace = true }
 thiserror = { workspace = true }
 glob = { workspace = true }
 serde_yaml = { workspace = true }

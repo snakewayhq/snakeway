@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, Origin,
-    RequestFilterDeviceSpec, ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec,
+    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, NetworkPolicyDeviceSpec,
+    Origin, RequestFilterDeviceSpec, ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec,
     WasmDeviceSpec,
 };
 use crate::conf::validation::ConfigError;
@@ -10,14 +10,12 @@ use std::path::Path;
 
 #[derive(Debug, Deserialize, Default)]
 struct DevicesFile {
-    identity_device: Option<IdentityDeviceSpec>,
-    structured_logging_device: Option<StructuredLoggingDeviceSpec>,
-
-    #[serde(default)]
     request_filter_device: Option<RequestFilterDeviceSpec>,
-
+    identity_device: Option<IdentityDeviceSpec>,
+    network_policy_device: Option<NetworkPolicyDeviceSpec>,
     #[serde(default)]
     wasm_devices: Vec<WasmDeviceSpec>,
+    structured_logging_device: Option<StructuredLoggingDeviceSpec>,
 }
 
 pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
@@ -29,6 +27,11 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     if let Some(mut identity) = parsed.identity_device {
         identity.origin = Origin::new(&path.to_path_buf(), "identity_device", None);
         device_config.push(DeviceSpec::Identity(identity));
+    }
+
+    if let Some(mut network_policy) = parsed.network_policy_device {
+        network_policy.origin = Origin::new(&path.to_path_buf(), "network_policy_device", None);
+        device_config.push(DeviceSpec::NetworkPolicy(network_policy));
     }
 
     if let Some(mut logging) = parsed.structured_logging_device {

@@ -1,25 +1,36 @@
 use crate::conf::types::{
-    IdentityDeviceSpec, Origin, RequestFilterDeviceSpec, StructuredLoggingDeviceSpec,
-    WasmDeviceSpec,
+    IdentityDeviceSpec, NetworkPolicyDeviceSpec, Origin, RequestFilterDeviceSpec,
+    StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DeviceSpec {
-    Wasm(WasmDeviceSpec),
-    Identity(IdentityDeviceSpec),
-    StructuredLogging(StructuredLoggingDeviceSpec),
     RequestFilter(RequestFilterDeviceSpec),
+    Identity(IdentityDeviceSpec),
+    NetworkPolicy(NetworkPolicyDeviceSpec),
+    Wasm(WasmDeviceSpec),
+    StructuredLogging(StructuredLoggingDeviceSpec),
 }
 
 impl DeviceSpec {
     pub fn origin(&self) -> &Origin {
         match self {
-            DeviceSpec::Identity(i) => &i.origin,
-            DeviceSpec::RequestFilter(r) => &r.origin,
+            DeviceSpec::RequestFilter(s) => &s.origin,
+            DeviceSpec::Identity(s) => &s.origin,
+            DeviceSpec::NetworkPolicy(s) => &s.origin,
+            DeviceSpec::Wasm(s) => &s.origin,
             DeviceSpec::StructuredLogging(s) => &s.origin,
-            DeviceSpec::Wasm(w) => &w.origin,
+        }
+    }
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            DeviceSpec::RequestFilter(s) => s.enable,
+            DeviceSpec::Identity(s) => s.enable,
+            DeviceSpec::NetworkPolicy(s) => s.enable,
+            DeviceSpec::Wasm(s) => s.enable,
+            DeviceSpec::StructuredLogging(s) => s.enable,
         }
     }
 }

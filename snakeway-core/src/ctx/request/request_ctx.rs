@@ -5,6 +5,7 @@ use crate::ctx::request::normalization::{
     normalize_query,
 };
 use crate::ctx::request::{NormalizedHeaders, NormalizedRequest};
+use crate::enrichment::user_agent::ClientIdentity;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
@@ -348,9 +349,13 @@ impl RequestCtx {
     }
 }
 
-/// Request ID API
+/// Request Extensions API
 impl RequestCtx {
     pub fn request_id(&self) -> Option<String> {
         self.extensions.get::<RequestId>().map(|id| id.0.clone())
+    }
+
+    pub fn identity(&self) -> Option<&ClientIdentity> {
+        self.extensions.get::<ClientIdentity>()
     }
 }

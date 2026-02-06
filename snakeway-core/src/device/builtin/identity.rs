@@ -3,10 +3,9 @@ use crate::ctx::{RequestCtx, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, DeviceResult};
 use crate::enrichment::user_agent::{ClientIdentity, GeoInfo, UaEngine, build_ua_engine};
-use http::HeaderMap;
+use crate::net::resolve_client_ip;
 use ipnet::IpNet;
 use maxminddb::PathElement;
-use std::net::IpAddr;
 
 const MAX_USER_AGENT_LENGTH: usize = 2048;
 const MAX_X_FORWARDED_FOR_LENGTH: usize = 1024;
@@ -76,12 +75,18 @@ impl Device for IdentityDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        let (client_ip, proxy_chain) =
-            resolve_client_ip(ctx.headers(), ctx.peer_ip, &self.trusted_proxies);
+        let (client_ip, proxy_chain, is_forwarded, is_trusted) = resolve_client_ip(
+            ctx.headers(),
+            ctx.peer_ip,
+            &self.trusted_proxies,
+            MAX_X_FORWARDED_FOR_LENGTH,
+        );
 
         let mut identity = ClientIdentity {
             ip: client_ip,
             proxy_chain,
+            is_forwarded,
+            is_trusted,
             geo: None,
             ua: None,
         };
@@ -188,59 +193,4 @@ impl Device for IdentityDevice {
     }
 
     fn on_error(&self, _: &DeviceError) {}
-}
-
-/// Resolve the true client IP using X-Forwarded-For and a trusted proxy list.
-///
-/// Returns:
-/// - client_ip: the resolved client IP
-/// - proxy_chain: ordered list of proxy IPs (closest first)
-///
-/// Rules:
-/// - Walk XFF from right → left
-/// - Stop at first IP not in trusted_proxies
-/// - If no untrusted IP found, fall back to peer_ip
-pub fn resolve_client_ip(
-    headers: &HeaderMap,
-    peer_ip: IpAddr,
-    trusted_proxies: &[IpNet],
-) -> (IpAddr, Vec<IpAddr>) {
-    // If there are no trusted proxies, we can't trust XFF, so just return the peer IP.
-    if trusted_proxies.is_empty() {
-        return (peer_ip, Vec::new());
-    }
-
-    // Only trust XFF if the immediate peer is trusted
-    if !trusted_proxies.iter().any(|net| net.contains(&peer_ip)) {
-        return (peer_ip, Vec::new());
-    }
-
-    let xff = match headers.get("x-forwarded-for").and_then(|h| h.to_str().ok()) {
-        Some(v) => v,
-        None => return (peer_ip, Vec::new()),
-    };
-
-    // Guard against overly long XFF headers to prevent potential abuse.
-    if xff.len() > MAX_X_FORWARDED_FOR_LENGTH {
-        return (peer_ip, Vec::new());
-    }
-
-    let ips: Vec<IpAddr> = xff
-        .split(',')
-        .map(|s| s.trim())
-        .filter_map(|s| s.parse::<IpAddr>().ok())
-        .collect();
-
-    let mut proxy_chain = Vec::with_capacity(ips.len());
-
-    for ip in ips.iter().rev() {
-        if trusted_proxies.iter().any(|net| net.contains(ip)) {
-            proxy_chain.push(*ip);
-            continue;
-        }
-
-        return (*ip, proxy_chain);
-    }
-
-    (peer_ip, proxy_chain)
 }

@@ -23,4 +23,13 @@ impl ResponseCtx {
             body,
         }
     }
+
+    pub fn forbidden(request_id: Option<String>) -> Self {
+        Self::new(
+            request_id,
+            StatusCode::FORBIDDEN,
+            HeaderMap::new(),
+            b"Forbidden".to_vec(),
+        )
+    }
 }

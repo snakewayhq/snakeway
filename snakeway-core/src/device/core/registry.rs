@@ -1,6 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::DeviceConfig;
 use crate::device::builtin::identity::IdentityDevice;
+use crate::device::builtin::network_policy::NetworkPolicyDevice;
 use crate::device::builtin::request_filter::RequestFilterDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
@@ -47,6 +48,14 @@ impl DeviceRegistry {
                 DeviceConfig::Identity(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(IdentityDevice::from_config(device_config)?);
+                    self.devices.push(device);
+                }
+
+                // Network policy devices are run after the identity device, as they need the client IP.
+                // If the client identity is not available, the NetworkPolicy is ignored.
+                DeviceConfig::NetworkPolicy(cfg) => {
+                    let device_config = cfg.clone();
+                    let device: Arc<NetworkPolicyDevice> = Arc::new(device_config.into());
                     self.devices.push(device);
                 }
 
