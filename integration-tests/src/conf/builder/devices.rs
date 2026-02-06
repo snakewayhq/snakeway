@@ -1,6 +1,7 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
-    IdentityDeviceSpec, RequestFilterDeviceSpec, StructuredLoggingDeviceSpec,
+    ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec,
+    RequestFilterDeviceSpec, StructuredLoggingDeviceSpec,
 };
 use snakeway_core::device::builtin::structured_logging::{
     IdentityField, LogEvent, LogLevel, LogPhase,
@@ -133,6 +134,47 @@ impl ConfigBuilder {
             max_body_bytes: 16384,           // 16 KB
             max_suspicious_body_bytes: 1024, // 1 KB
             deny_status: None,
+            ..Default::default()
+        }
+    }
+}
+
+/// Network Policy Device
+impl ConfigBuilder {
+    pub fn with_network_policy_allowing_localhost(mut self) -> Self {
+        let device = Self::make_network_policy_device_spec(vec!["127.0.0.1/32"]);
+        self.network_policy_device_spec = Some(device);
+        self
+    }
+
+    pub fn with_network_policy_allowing_private_range_only(mut self) -> Self {
+        let device = Self::make_network_policy_device_spec(vec!["10.0.0.0/8"]);
+        self.network_policy_device_spec = Some(device);
+        self
+    }
+
+    pub fn with_network_policy_disallowing_forwarded_requests(mut self) -> Self {
+        let mut device = Self::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+        device.forwarding.allow = false;
+        self.network_policy_device_spec = Some(device);
+        self
+    }
+
+    pub fn with_network_policy_allowing_forwarded_requests(mut self) -> Self {
+        let mut device = Self::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+        device.forwarding.allow = true;
+        self.network_policy_device_spec = Some(device);
+        self
+    }
+
+    pub fn make_network_policy_device_spec(cidrs: Vec<&str>) -> NetworkPolicyDeviceSpec {
+        NetworkPolicyDeviceSpec {
+            enable: true,
+            cidr_allow: cidrs.into_iter().map(|c| c.to_string()).collect(),
+            forwarding: ForwardingSpec {
+                allow: true,
+                on_invalid: OnInvalidForwardedSpec::Deny,
+            },
             ..Default::default()
         }
     }

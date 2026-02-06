@@ -1,7 +1,7 @@
 use snakeway_core::conf::types::{
     BindInterfaceInput, BindSpec, CidrSpec, ConnectionFilterSpec, DeviceSpec, IdentityDeviceSpec,
-    IngressSpec, IpFamilySpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec, ServerSpec,
-    StructuredLoggingDeviceSpec, TlsSpec,
+    IngressSpec, IpFamilySpec, NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
+    ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 
@@ -11,6 +11,7 @@ pub struct ConfigBuilder {
     pub identity_device_spec: Option<IdentityDeviceSpec>,
     pub structured_logging_device_spec: Option<StructuredLoggingDeviceSpec>,
     pub request_filter_device_spec: Option<RequestFilterDeviceSpec>,
+    pub network_policy_device_spec: Option<NetworkPolicyDeviceSpec>,
 }
 
 impl Default for ConfigBuilder {
@@ -27,6 +28,7 @@ impl Default for ConfigBuilder {
             identity_device_spec: None,
             structured_logging_device_spec: None,
             request_filter_device_spec: None,
+            network_policy_device_spec: None,
         }
     }
 }
