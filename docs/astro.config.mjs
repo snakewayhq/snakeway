@@ -26,10 +26,9 @@ export default defineConfig({
         // Sidebar
         sidebar: [
             {
-                label: 'Guide', items: [{label: 'What is Snakeway?', link: '/guide/what-is-snakeway/'},
-                    {label: 'Why Snakeway Exists', link: '/guide/why-snakeway-exists/'},
+                label: 'Guide', items: [
+                    {label: 'What is Snakeway?', link: '/guide/what-is-snakeway/'},
                     {label: 'Mental Model', link: '/guide/mental-model/'},
-                    {label: 'Architecture', link: '/guide/architecture/'},
                     {label: 'Lifecycle', link: '/guide/lifecycle/'},
                     {label: 'Roadmap', link: '/guide/roadmap/'},
                 ],
@@ -71,6 +70,8 @@ export default defineConfig({
             },
             {
                 label: 'Internals', items: [
+                    {label: 'Overview', link: '/internals/overview/'},
+                    {label: 'Architecture', link: '/internals/architecture/'},
                     {label: 'Configuration', link: '/internals/configuration/'},
                 ],
             },

@@ -15,8 +15,6 @@ short-circuit, or enrich traffic as it flows through the system.
 
 ## What Snakeway Is
 
-Snakeway is:
-
 - A **reverse proxy** built on a modern, high-performance runtime
 - A **programmable request/response pipeline**
 - A **host for user-defined logic** (built-in, WASM, or native)
@@ -25,34 +23,7 @@ Snakeway is:
 Snakeway is designed for teams that need **deterministic control over traffic behavior** without embedding that logic
 deep inside every service.
 
-## The Core Extensibility Model: Devices
-
-Everything in Snakeway revolves around **devices**.
-
-A device is a unit of logic that runs at a specific point in the request lifecycle.
-
-Devices can:
-
-- Read or modify request headers and bodies
-- Make routing decisions
-- Short-circuit requests with a response
-- Observe traffic for logging or metrics
-- React to upstream responses or errors
-
-Devices are executed **in a strict, ordered pipeline**.
-
-Order matters. Behavior is deterministic.
-
-This is not middleware in the traditional web-framework sense.
-Devices are closer to **traffic operators** than request handlers.
-
-## Where Snakeway Fits
-
-A typical deployment looks like this:
-
-```
-Web Browser -> Snakeway -> Upstream Web Services
-```
+## Where Snakeway Fits Architecturally
 
 Snakeway sits **between clients and web services**, making decisions at the edge before traffic ever hits application
 code.
@@ -70,38 +41,31 @@ Snakeway keeps this logic **out of your apps** and **out of your infrastructure 
 
 ## Why Snakeway Exists
 
-Existing tools tend to fall into two camps:
+The landscape of reverse proxies and API gateways is vast, ranging from simple, battle-tested tools like Nginx to
+massive, service-mesh architectures like Envoy and Istio. Snakeway exists to fill the gap between these two extremes.
 
-1. **Simple proxies** that are fast but rigid
-2. **Large gateway systems** that are powerful but heavy
+### The Problem: Power vs. Complexity
 
-Snakeway exists in the middle.
+When teams need to add custom logic to their edge (.e.g., request enrichment, custom access rules, or complex
+observability), they often face a challenging choice:
 
-It prioritizes:
+1. **Simple Proxies**: Fast and reliable, but extending them often requires writing C modules or using limited scripting
+   languages (like Lua), which can be challenging to test and maintain.
+2. **Heavy Gateways**: Incredibly powerful, but often come with massive operational overhead, complex DSLs, and a "black
+   box" nature that makes debugging difficult.
 
-- A **clear mental model**
-- **Extensibility without complexity**
-- **Performance without magic**
-- **Configuration that reflects intent**
+### The Snakeway Philosophy
 
-Instead of shipping a fixed feature set, Snakeway ships a **stable execution model** and lets you build what you need on
-top.
+Snakeway was built on a different set of priorities:
 
-## Design Principles
-
-Snakeway is built around a few non-negotiable ideas:
-
-- **Explicit over implicit**  
-  Nothing happens unless you configure it.
-
-- **Programmable, not declarative-only**  
-  Real logic requires real code.
-
-- **Safe by default**  
-  User-defined logic runs in constrained environments.
-
-- **Observable from day one**  
-  Traffic you can't see is traffic you don't control.
+- **Programmability First**: Real logic requires a real programming language. By using Rust and WASM, Snakeway allows
+  developers to write, test, and deploy complex traffic logic using modern tools and workflows.
+- **Deterministic Pipeline**: The order of operations should be explicit and easy to reason about.
+  Snakeway's linear device pipeline eliminates the "magic" of middleware.
+- **Developer Experience**: Configuration should reflect intent. Our directory-based configuration and modular design
+  are built for humans, not just machines.
+- **Native Performance**: Built on Pingora and Rust, Snakeway delivers the performance required for high-traffic
+  environments without compromising on safety or extensibility.
 
 ## How to Read the Docs
 
