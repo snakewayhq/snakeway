@@ -72,6 +72,6 @@ Snakeway was built on a different set of priorities:
 If you're new to Snakeway, read these pages next:
 
 1. **[Mental Model](/guide/mental-model)** how requests flow through the system
-2. **[Architecture](/guide/architecture)** how Snakeway is structured internally
+2. **[Architecture](/internals/architecture)** how Snakeway is structured internally
 3. **[Devices Overview](/devices/overview)** how extensibility works
 4. **[Getting Started](/getting-started/installation)** running your first proxy
