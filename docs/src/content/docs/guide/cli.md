@@ -120,3 +120,74 @@ Sent SIGHUP to Snakeway (pid 77120)
 :::note
 It is also possible to reload with the [admin API](/guide/admin-api/#post-adminreload).
 :::
+
+## logs
+
+The `logs` command formats snakeway's default output.
+
+Without the logs command, you will see raw JSON.
+
+```shell
+snakeway
+{"timestamp":"2026-02-07T19:04:52.546015Z","level":"INFO","message":"pid file written","pid_file":"/tmp/snakeway.pid","target":"snakeway_core::server::setup"}
+{"timestamp":"2026-02-07T19:04:52.547103Z","level":"INFO","message":"Reload loop started","target":"snakeway_core::server::setup"}
+{"timestamp":"2026-02-07T19:04:52.547168Z","level":"INFO","message":"Bootstrap starting","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":431,"target":"pingora_core::server"}
+{"timestamp":"2026-02-07T19:04:52.547203Z","level":"INFO","message":"Bootstrap done","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":451,"target":"pingora_core::server"}
+{"timestamp":"2026-02-07T19:04:52.549202Z","level":"INFO","message":"Server starting","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":492,"target":"pingora_core::server"}
+```
+
+The output of snakeway can be piped into something like [jq](https://jqlang.org/tutorial/) to at least format the JSON
+in the terminal, but the build `logs` command will show something a little nicer:
+
+```shell
+snakeway | snakeway logs
+[INFO] pid file written (snakeway_core::server::setup)
+[INFO] Reload loop started (snakeway_core::server::setup)
+[INFO] Bootstrap starting (pingora_core::server)
+[INFO] Bootstrap done (pingora_core::server)
+[INFO] Server starting (pingora_core::server)
+```
+
+The logs command can also show request stats:
+
+```shell
+snakeway | snakeway logs --stats
+```
+
+The specific output will be different depending on your config, but something like this should be displayed:
+
+```shell
+Snakeway Stats (10s window)
+==========================
+RPS: 100.0 | events: 10 | 5xx: 0
+
+Latency (window):
+0–1ms    ████                  20.0%
+2–5ms    █                      0.0%
+6–10ms   ████████████          60.0%
+11–25ms  ████                  20.0%
+26–50ms  █                      0.0%
+51–100ms █                      0.0%
+101–250ms █                      0.0%
+251–500ms █                      0.0%
+501–1000ms █                      0.0%
+>1000ms  █                      0.0%
+
+Latency p95 ≈ 25ms | p99 ≈ 25ms
+
+
+Status: 2xx=10 4xx=0 5xx=0
+
+ --------------------- 
+Identity: human=7 bot=3 unknown=0
+Devices: bot=3 desktop=2 mobile=3 unknown=2
+Connection types: Cable/DSL=7 Corporate=2
+Countries: AU=2 IE=1 NL=2 RU=3 US=2
+ASNs: 13238=3 13335=2 14907=2 32934=3
+ASOs:
+Cloudflare, Inc.=2
+Facebook, Inc.=3
+Wikimedia Foundation Inc.=2
+YANDEX LLC=3
+
+```
