@@ -1,5 +1,5 @@
 ---
-title: Builtin Devices
+title: Using Devices
 ---
 
 Builtin devices are first‑class, in‑process extensions that run directly inside the Snakeway request pipeline. They are
@@ -37,11 +37,6 @@ Each device may hook into one or more lifecycle phases:
 * `on_response`
 * `on_error`
 
-Devices are executed **in the order they are declared** in configuration.
-
-> **Important**
-> Devices earlier in the list may enrich or modify request context for devices that run later.
-
 ## Request Context and Extensions
 
 Builtin devices operate on a shared `RequestCtx` and `ResponseCtx`.
@@ -66,29 +61,6 @@ Extensions are:
 * Never logged unless explicitly opted in
 
 This pattern is central to how builtin devices cooperate.
-
-## Configuration
-
-The builtin identity device basic configuration:
-
-```hcl
-identity_device = {
-  enable = true
-
-  enable_geoip      = true
-  enable_user_agent = true
-}
-```
-
-Key fields:
-
-| Field               | Description                                                            |
-|---------------------|------------------------------------------------------------------------|
-| `enable`            | Whether the device is active                                           |
-| `enable_geoip`      | Parse the client IP address to determine location                      |
-| `enable_user_agent` | Parse the client user agent to determine browser and device attributes |
-
-Unknown options are rejected to prevent silent misconfiguration.
 
 ## Builtin vs WASM Devices
 

@@ -36,10 +36,11 @@ export default defineConfig({
             {
                 label: 'Guide', items: [
                     {label: 'CLI', link: '/guide/cli/'},
-                    {label: 'Using Devices', link: '/guide/using-devices/'},
-                    {label: 'Serving Static Files', link: '/guide/static-files/'},
-                    {label: 'Logging', link: '/guide/logging/'},
+                    {label: 'Understanding Devices', link: '/guide/understanding-devices/'},
+                    {label: 'Authoring WASM Devices', link: '/guide/authoring-wasm-devices/'},
                     {label: 'Admin API', link: '/guide/admin-api/'},
+                    {label: 'Logging', link: '/guide/logging/'},
+                    {label: 'Serving Static Files', link: '/guide/static-files/'},
                 ],
             },
             {
@@ -47,18 +48,10 @@ export default defineConfig({
                     {label: 'Overview', link: '/configuration/overview/'},
                     {label: 'Server', link: '/configuration/server/'},
                     {label: 'Ingress', link: '/configuration/ingress/'},
-                    {label: 'Devices', link: '/configuration/devices/'},
-                ],
-            },
-            {
-                label: 'Devices', items: [
-                    {label: 'Overview', link: '/devices/overview/'},
-                    {label: 'Built-in Devices', link: '/devices/builtin/'},
-                    {label: 'Request Filter', link: '/devices/request-filter/'},
-                    {label: 'Identity', link: '/devices/identity/'},
-                    {label: 'Network Policy', link: '/devices/network-policy/'},
-                    {label: 'Structured Logging', link: '/devices/structured-logging/'},
-                    {label: 'WASM Devices', link: '/devices/wasm/'},
+                    {label: 'Request Filter (Device)', link: '/configuration/devices/request-filter/'},
+                    {label: 'Identity (Device)', link: '/configuration/devices/identity/'},
+                    {label: 'Network Policy (Device)', link: '/configuration/devices/network-policy/'},
+                    {label: 'Structured Logging (Device)', link: '/configuration/devices/structured-logging/'},
                 ],
             },
             {
