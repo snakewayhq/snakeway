@@ -25,12 +25,13 @@ enum Command {
         cmd: cli::conf::ConfigCmd,
     },
 
-    /// WASM device tooling
+    /// Debug a WASM device in isolation
     WasmDevice {
         #[command(subcommand)]
         cmd: cli::wasm_device::WasmDeviceCmd,
     },
 
+    /// Format logs from standard out
     Logs {
         #[arg(long)]
         pretty: bool,
@@ -101,11 +102,11 @@ fn main() {
             cli::logs::run_logs(mode).expect("Failed to run logs command");
         }
 
-        Some(Command::Plugin { cmd }) => {
+        Some(Command::WasmDevice { cmd }) => {
             init_logging();
 
             if let Err(e) = cli::wasm_device::run(cmd) {
-                eprintln!("plugin error: {e}");
+                eprintln!("WASM device error: {e}");
                 std::process::exit(1);
             }
         }
