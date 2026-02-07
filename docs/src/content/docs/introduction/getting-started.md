@@ -32,27 +32,6 @@ cargo build --release
 
 After the build completes, you'll find the `snakeway` binary in the `target/release` directory.
 
-### The Snakeway Binary
-
-The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to be present to
-define its behavior. By default, it looks for a directory named `config` in the current working directory.
-
-A typical Snakeway deployment consists of:
-
-1. The `snakeway` binary.
-2. A `config` directory containing `snakeway.hcl` and various `.d` directories for modular configuration.
-
-### Running Snakeway
-
-To start the proxy, simply run the binary and point it to your configuration directory:
-
-```bash
-./target/release/snakeway run --config ./config
-```
-
-If your configuration is valid, Snakeway will start and begin listening for incoming traffic based on your defined
-ingress configuration files.
-
 ## Your First Proxy
 
 The best way to understand Snakeway is to see it in action. In this guide, we'll walk through setting up a minimal proxy
@@ -60,7 +39,10 @@ that forwards traffic to a public API.
 
 ### 1. Initialize Your Configuration
 
-First, create a new directory to hold your Snakeway configuration:
+The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to be present to
+define its behavior. By default, it looks for a directory named `config` in the current working directory.
+
+Create a new directory to hold your Snakeway configuration:
 
 ```shell
 snakeway config init ./my-proxy
