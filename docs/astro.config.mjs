@@ -37,7 +37,6 @@ export default defineConfig({
                     {label: 'CLI', link: '/guide/cli/'},
                     {label: 'Using Devices', link: '/guide/using-devices/'},
                     {label: 'Serving Static Files', link: '/guide/static-files/'},
-                    {label: 'Reloads', link: '/guide/reloads/'},
                     {label: 'Logging', link: '/guide/logging/'},
                     {label: 'Metrics', link: '/guide/metrics/'},
                     {label: 'Admin API', link: '/guide/admin-api/'},

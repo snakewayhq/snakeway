@@ -103,7 +103,8 @@ snakeway run --config /etc/snakeway
 
 ## reload
 
-To reload snakeway it must be started with a [pid file](/configuration/server/#pid_file).
+Reloads via the CLI require Snakeway to be started with a [PID file](/configuration/server/#pid_file) (set in
+`snakeway.hcl`).
 
 ```shell
 snakeway reload
