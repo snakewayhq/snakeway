@@ -26,23 +26,25 @@ export default defineConfig({
         // Sidebar
         sidebar: [
             {
-                label: 'Guide', items: [
-                    {label: 'What is Snakeway?', link: '/guide/what-is-snakeway/'},
-                    {label: 'Mental Model', link: '/guide/mental-model/'},
-                    {label: 'Lifecycle', link: '/guide/lifecycle/'},
-                    {label: 'Roadmap', link: '/guide/roadmap/'},
+                label: 'Introduction', items: [
+                    {label: 'Getting Started', link: '/introduction/getting-started/'},
+                    {label: 'Philosophy', link: '/introduction/philosophy/'},
+                    {label: 'Why Snakeway Exists', link: '/introduction/why-snakeway-exists/'},
                 ],
             },
             {
-                label: 'Getting Started', items: [
-                    {label: 'Installation', link: '/getting-started/installation/'},
-                    {label: 'Configuration', link: '/getting-started/configuration/'},
-                    {label: 'Your First Proxy', link: '/getting-started/first-proxy/'},
-                    {label: 'Static Files', link: '/getting-started/static-files/'},
-                    {label: 'Reloads', link: '/getting-started/reloads/'},
+                label: 'Guide', items: [
+                    {label: 'Configuration', link: '/guide/configuration/'},
+                    {label: 'CLI', link: '/guide/cli/'},
+                    {label: 'Devices', link: '/guide/devices/'},
+                    {label: 'Serving Static Files', link: '/guide/static-files/'},
+                    {label: 'Reloads', link: '/guide/reloads/'},
+                    {label: 'Logging', link: '/guide/logging/'},
+                    {label: 'Metrics', link: '/guide/metrics/'},
+                    {label: 'Admin API', link: '/guide/admin-api/'},
+                    {label: 'Roadmap', link: '/guide/roadmap/'},
                 ],
             },
-
             {
                 label: 'Configuration', items: [
                     {label: 'Overview', link: '/configuration/overview/'},
@@ -50,7 +52,8 @@ export default defineConfig({
                     {label: 'Ingress', link: '/configuration/ingress/'},
                     {label: 'Devices', link: '/configuration/devices/'},
                 ],
-            }, {
+            },
+            {
                 label: 'Devices', items: [
                     {label: 'Overview', link: '/devices/overview/'},
                     {label: 'Built-in Devices', link: '/devices/builtin/'},
@@ -62,17 +65,11 @@ export default defineConfig({
                 ],
             },
             {
-                label: 'Observability', items: [
-                    {label: 'Logging', link: '/observability/logging/'},
-                    {label: 'Metrics', link: '/observability/metrics/'},
-                    {label: 'Admin API', link: '/observability/admin-api/'},
-                ],
-            },
-            {
                 label: 'Internals', items: [
                     {label: 'Overview', link: '/internals/overview/'},
                     {label: 'Architecture', link: '/internals/architecture/'},
                     {label: 'Configuration', link: '/internals/configuration/'},
+                    {label: 'Lifecycle', link: '/internals/lifecycle/'},
                 ],
             },
         ],
