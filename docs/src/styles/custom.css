@@ -34,4 +34,5 @@ Theme diagrams
 */
 .diagram {
     color: var(--sl-color-text);
+    margin: 1.4rem 0 2rem;
 }

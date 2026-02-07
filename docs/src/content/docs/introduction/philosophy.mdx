@@ -16,12 +16,11 @@ Snakeway is built around a few ideas:
 
 ## Where Snakeway Fits
 
-A typical deployment looks like this:
+Snakeway sits between the client and the web service, like nginx or any other reverse proxy.
 
 <WhereSnakewayFitsDiagram alt="Where Snakeway fits diagram" class="diagram"/>
 
-Snakeway sits **between clients and web services**, making decisions at the edge before traffic ever hits application
-code.
+This allows Snakeway to make decisions at the edge before traffic ever hits application code.
 
 Common use cases include:
 
@@ -30,8 +29,6 @@ Common use cases include:
 - Header normalization and enrichment
 - Static file serving alongside proxied traffic
 - Structured access logging and observability
-
-Snakeway keeps this logic **out of your apps** and **out of your infrastructure glue code**.
 
 ## The Core Extensibility Model
 
