@@ -28,9 +28,6 @@ install-dev-tools:
     bun i -g wscat
     cargo install tokio-console samply cargo-nextest cargo-llvm-cov
 
-docs:
-    cd docs && bun start
-
 # Make SVG diagrams themeable.
 post-process-diagrams:
     #!/usr/bin/env bash
@@ -40,6 +37,9 @@ post-process-diagrams:
         mv "$f.tmp" "$f"
       done
     ' sh {} +
+
+docs: post-process-diagrams
+    cd docs && bun start
 
 # Install mkcert and nss, then create dev certs.
 setup-tls-dev-cert:
