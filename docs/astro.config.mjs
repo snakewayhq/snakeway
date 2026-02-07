@@ -30,6 +30,7 @@ export default defineConfig({
                     {label: 'Getting Started', link: '/introduction/getting-started/'},
                     {label: 'Philosophy', link: '/introduction/philosophy/'},
                     {label: 'Why Snakeway Exists', link: '/introduction/why-snakeway-exists/'},
+                    {label: 'Roadmap', link: '/introduction/roadmap/'},
                 ],
             },
             {
@@ -38,13 +39,11 @@ export default defineConfig({
                     {label: 'Using Devices', link: '/guide/using-devices/'},
                     {label: 'Serving Static Files', link: '/guide/static-files/'},
                     {label: 'Logging', link: '/guide/logging/'},
-                    {label: 'Metrics', link: '/guide/metrics/'},
                     {label: 'Admin API', link: '/guide/admin-api/'},
-                    {label: 'Roadmap', link: '/guide/roadmap/'},
                 ],
             },
             {
-                label: 'Configuration', items: [
+                label: 'Configuration Reference', items: [
                     {label: 'Overview', link: '/configuration/overview/'},
                     {label: 'Server', link: '/configuration/server/'},
                     {label: 'Ingress', link: '/configuration/ingress/'},
