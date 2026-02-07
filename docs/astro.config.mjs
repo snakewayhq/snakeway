@@ -70,6 +70,7 @@ export default defineConfig({
                     {label: 'Architecture', link: '/internals/architecture/'},
                     {label: 'Configuration', link: '/internals/configuration/'},
                     {label: 'Lifecycle', link: '/internals/lifecycle/'},
+                    {label: 'Mental Model', link: '/internals/mental-model/'},
                 ],
             },
         ],
