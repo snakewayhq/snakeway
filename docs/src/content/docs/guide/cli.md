@@ -100,3 +100,22 @@ A specific config directory can be targeted:
 ```shell
 snakeway run --config /etc/snakeway
 ```
+
+## reload
+
+To reload snakeway it must be started with a [pid file](/configuration/server/#pid_file).
+
+```shell
+snakeway reload
+```
+
+You will see a message like:
+
+```shell
+snakeway reload
+Sent SIGHUP to Snakeway (pid 77120)
+```
+
+:::note
+It is also possible to reload with the [admin API](/guide/admin-api/#post-adminreload).
+:::

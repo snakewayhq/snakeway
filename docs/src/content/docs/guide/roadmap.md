@@ -253,6 +253,10 @@ Todo:
 * Per-route rate limit
 * Per-IP behavior tracking
 
+## Phase 3.5: Odds and ends
+
+* Standardize format options between config dump and config check commands.
+
 ## Phase 4: ACME TLS Automation (v0.7.x)
 
 ### Goals

@@ -78,7 +78,7 @@ If `threads` is **not set**, Snakeway does not select a value on your behalf. In
 Pingora runtime's internal defaults.
 :::
 
-## ca_file
+#### ca_file
 
 **Type:** `string`  
 **Required:** no
