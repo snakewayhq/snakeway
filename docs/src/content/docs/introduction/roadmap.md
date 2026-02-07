@@ -2,7 +2,7 @@
 title: Snakeway Roadmap
 ---
 
-:::caution
+:::note
 In broad strokes, this roadmap is accurate. However, it is subject to change at the whim of the maintainers.
 :::
 
@@ -253,11 +253,12 @@ Todo:
 * Per-route rate limit
 * Per-IP behavior tracking
 
-## Phase 3.5: Odds and ends
+## Phase 3.5: Minor Emergent tasks (v0.7.x)
 
 * Standardize format options between config dump and config check commands.
+* Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
 
-## Phase 4: ACME TLS Automation (v0.7.x)
+## Phase 4: ACME TLS Automation (v0.8.x)
 
 ### Goals
 
@@ -280,9 +281,7 @@ Todo:
 * Cert transparency logs
 * `/admin/certs` endpoint
 
-## Phase 5: Architecture and Test Suite (v0.8.x)
-
-*Take a breath and re-evaluate.*
+## Phase 5: Architecture and Test Suite (v0.9.x)
 
 All core features should be implemented at this stage.   
 It is a good time to pause and re-evaluate the overall architecture and flesh out the holes in the test suite.
@@ -302,7 +301,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 * A document identifying any gaps in features or architecture.
 * Likely 150+ integration tests
 
-## Phase 6: Packaging and Distributions (v0.9.x)
+## Phase 6: Packaging and Distributions (v0.10.x)
 
 ### Goals
 
