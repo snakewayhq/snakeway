@@ -1,5 +1,5 @@
 ---
-title: Using Devices
+title: Understanding Devices
 ---
 
 Builtin devices are first‑class, in‑process extensions that run directly inside the Snakeway request pipeline. They are
