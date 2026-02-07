@@ -25,10 +25,10 @@ enum Command {
         cmd: cli::conf::ConfigCmd,
     },
 
-    /// WASM plugin tooling
-    Plugin {
+    /// WASM device tooling
+    WasmDevice {
         #[command(subcommand)]
-        cmd: cli::plugin::PluginCmd,
+        cmd: cli::wasm_device::WasmDeviceCmd,
     },
 
     Logs {
@@ -104,7 +104,7 @@ fn main() {
         Some(Command::Plugin { cmd }) => {
             init_logging();
 
-            if let Err(e) = cli::plugin::run(cmd) {
+            if let Err(e) = cli::wasm_device::run(cmd) {
                 eprintln!("plugin error: {e}");
                 std::process::exit(1);
             }
