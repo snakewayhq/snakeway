@@ -28,3 +28,10 @@
     --sl-color-gray-7: #f4f7f3;
     --sl-color-black: #ffffff;
 }
+
+/*
+Theme diagrams
+*/
+.diagram {
+    color: var(--sl-color-text);
+}

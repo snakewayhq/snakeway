@@ -20,7 +20,7 @@ What you configure is exactly what happens.
 
 #### For Every Request
 
-![Core loop diagram](../../../assets/mental-model/core-loop.svg)
+![Core loop diagram](../../../assets/diagrams/mental-model/core-loop.svg)
 
 ## Requests Are Context (Not Handlers)
 
