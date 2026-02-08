@@ -249,9 +249,11 @@ Todo:
 * Per-route rate limit
 * Per-IP behavior tracking
 
-## Phase 3.5: Minor Emergent tasks (v0.7.x)
+## Phase 3.5: Emergent tasks (v0.7.x)
 
 * Standardize format options between config dump and config check commands.
+* Add "first proxy" config generation: perhaps via the config init command.
+* Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
 * Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
