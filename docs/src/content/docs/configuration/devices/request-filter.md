@@ -4,47 +4,26 @@ title: Request Filter Device
 
 The **Request Filter device** is a builtin Snakeway device that enforces **cheap, deterministic request gating** rules.
 
-It allows operators to **short-circuit request processing early** based on HTTP semantics such as methods, headers, and
-request size—before a request is proxied upstream.
+## Configuration Example
 
-This device is intentionally **stateless**, **fail-fast**, and safe to run on every request.
+This example configures a specific set of rules to reject invalid requests.
 
-:::note
-This device runs early in the request pipeline and operates only on **normalized requests**.
-:::
+```hcl
+request_filter_device = {
+  enable = true
 
-## Design Goals
+  allow_methods = ["GET", "POST"]
+  deny_methods = ["TRACE"]
 
-The Request Filter device is designed around a few core principles:
+  required_headers = ["host"]
+  deny_headers = ["x-forwarded-host"]
 
-* Filtering should be **deterministic** and easy to reason about
-* All decisions should operate on **normalized input**
-* Rejections should be **cheap** and **early**
-* Configuration should map cleanly to common HTTP security policies
-* No per-request state or memory is retained
+  max_header_bytes = 16384
+  max_body_bytes   = 1048576
 
-This device is not a WAF (web application firewall) and does not perform content inspection beyond size limits.
-
-## What Gets Filtered
-
-Depending on configuration, the Request Filter device can enforce:
-
-* HTTP method allowlists and denylists
-* Header presence requirements
-* Header allowlists and denylists
-* Total request header size limits
-* Request body size limits (including streamed bodies)
-
-Requests that violate configured rules are rejected immediately with an appropriate HTTP status code.
-
-## Lifecycle Hooks
-
-The Request Filter device participates in two lifecycle phases:
-
-* **`on_request`** — validates request metadata (method, headers)
-* **`on_stream_request_body`** — enforces request body size limits during streaming
-
-If a request is rejected at any point, no further devices or upstream logic are executed.
+  deny_status = 403
+}
+```
 
 ## Method Filtering
 
@@ -163,35 +142,3 @@ When set, this status code is used for all denials.
 This allows operators to optionally prevent leaking information about specific rules to clients.
 
 Invalid status codes are rejected at configuration load time.
-
-## Configuration Example
-
-This example configures a specific set of rules to reject invalid requests.
-
-```hcl
-request_filter_device = {
-  enable = true
-
-  allow_methods = ["GET", "POST"]
-  deny_methods = ["TRACE"]
-
-  required_headers = ["host"]
-  deny_headers = ["x-forwarded-host"]
-
-  max_header_bytes = 16384
-  max_body_bytes   = 1048576
-
-  deny_status = 403
-}
-```
-
-## When to Use This Device
-
-The Request Filter device is ideal for:
-
-* API hardening
-* Early bot and abuse mitigation
-* Preventing malformed or unexpected requests
-* Enforcing strict upstream contracts
-
-It is intentionally simple and predictable, and is best used as a **first line of defense** in the request pipeline.

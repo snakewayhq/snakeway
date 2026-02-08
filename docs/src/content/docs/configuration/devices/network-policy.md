@@ -5,23 +5,36 @@ title: Network Policy Device
 The **Network Policy device** is a builtin Snakeway device that enforces **coarse‑grained network trust boundaries**
 based on resolved client identity.
 
-It operates after the **Identity device** and makes **binary allow / deny decisions** using authoritative identity facts
-rather than raw headers or connection metadata.
+:::note
+The **Identity** device is required by the **Network Policy** device.
 
-This device is intentionally **simple**, **fail‑closed**, and designed to express clear operator intent.
+The **Network Policy** device operates after the Identity device and makes **binary allow / deny decisions** using
+authoritative identity facts.
+:::
 
-## Design Goals
+## Configuration Example
 
-The Network Policy device is designed around a small set of strict principles:
+This configuration:
 
-* Enforce **clear network trust boundaries**
-* Operate on **authoritative identity**, not untrusted request headers
-* Fail **early and deterministically**
-* Avoid per‑request state or complex policy logic
-* Remain easy to reason about during audits and incident response
+* Allows only private RFC1918 networks
+* Permits forwarded requests
+* Rejects requests with invalid forwarded identity
 
-It answers the question:
-> *Should this client be allowed to access this service at all?*
+```hcl
+network_policy_device {
+  enable = true
+
+  cidr_allow = [
+    "10.0.0.0/8",
+    "192.168.0.0/16"
+  ]
+
+  forwarding {
+    allow      = true
+    on_invalid = "deny"
+  }
+}
+```
 
 ## What Gets Enforced
 
@@ -32,19 +45,6 @@ Depending on configuration, the Network Policy device can enforce:
 * How invalid forwarded identity claims are handled
 
 All enforcement occurs during **`on_request`**, before the request is proxied upstream.
-
-## Identity Dependency
-
-The Network Policy device consumes the following fields from `ClientIdentity`:
-
-* `ip` — the resolved client IP address
-* `is_forwarded` — whether the request contained forwarded identity
-* `is_trusted` — whether forwarded identity claims are trusted
-
-These fields are produced **once** by the Identity device and are treated as **authoritative and immutable** for the
-lifetime of the request.
-
-If Identity is not present, the Network Policy device does nothing.
 
 ## CIDR Allow List
 
@@ -123,28 +123,3 @@ The Network Policy device evaluates rules in the following order:
 3. **Forwarded validity check** — deny or ignore invalid forwarded identity
 
 If any step denies the request, processing stops immediately.
-
-## Configuration Example
-
-```hcl
-network_policy_device {
-  enable = true
-
-  cidr_allow = [
-    "10.0.0.0/8",
-    "192.168.0.0/16"
-  ]
-
-  forwarding {
-    allow      = true
-    on_invalid = "deny"
-  }
-}
-```
-
-This configuration:
-
-* Allows only private RFC1918 networks
-* Permits forwarded requests
-* Rejects requests with invalid forwarded identity
-
