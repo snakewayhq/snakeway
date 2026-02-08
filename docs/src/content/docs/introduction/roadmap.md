@@ -251,10 +251,12 @@ Todo:
 
 ## Phase 3.5: Emergent tasks (v0.7.x)
 
-* Standardize format options between config dump and config check commands.
-* Add "first proxy" config generation: perhaps via the config init command.
+* Standardize format options between `config dump` and `config check` commands.
+* Add "first proxy" config generation: perhaps via the `config init` command.
 * Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
 * Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
+* Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
+  `on_resonse_body` hooks.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
