@@ -259,6 +259,8 @@ Todo:
   `on_resonse_body` hooks.
 * Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 * Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
+* Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
+* Look into the additional path prefix option Pingora supports.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 

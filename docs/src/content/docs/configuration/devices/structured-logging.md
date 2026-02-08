@@ -79,7 +79,7 @@ Identity logging is:
 * Field-selectable
 * Derived from `ClientIdentity` stored in `ctx.extensions`
 
-This avoids re-parsing headers and ensures consistency with Identity resolution.
+This avoids reparsing headers and ensures consistency with Identity resolution.
 
 ## Header Logging
 
