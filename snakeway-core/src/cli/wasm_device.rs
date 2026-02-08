@@ -6,13 +6,13 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]
-pub enum PluginCmd {
-    /// Test a WASM plugin by invoking its exported hooks with a minimal ctx DTO.
-    Test(PluginTestArgs),
+pub enum WasmDeviceCmd {
+    /// Execute a WASM device by invoking its exported hooks with a minimal ctx DTO.
+    Exec(WasmDeviceExecArgs),
 }
 
 #[derive(Args, Debug)]
-pub struct PluginTestArgs {
+pub struct WasmDeviceExecArgs {
     /// Path to the .wasm file
     pub file: PathBuf,
 
@@ -20,18 +20,18 @@ pub struct PluginTestArgs {
     #[arg(long, default_value = "on_request")]
     pub hook: String,
 
-    /// Request path to send to the plugin (used by on_request / before_proxy)
+    /// Request path to send to the WASM device (used by on_request / before_proxy)
     #[arg(long, default_value = "/")]
     pub path: String,
 }
 
-pub fn run(cmd: PluginCmd) -> Result<()> {
+pub fn run(cmd: WasmDeviceCmd) -> Result<()> {
     match cmd {
-        PluginCmd::Test(args) => run_test(args),
+        WasmDeviceCmd::Exec(args) => run_exec(args),
     }
 }
 
-fn run_test(args: PluginTestArgs) -> Result<()> {
+fn run_exec(args: WasmDeviceExecArgs) -> Result<()> {
     tracing::info!(
         "Loading WASM device {} with hook {} against path {}",
         args.file.display(),

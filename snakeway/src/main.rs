@@ -25,12 +25,13 @@ enum Command {
         cmd: cli::conf::ConfigCmd,
     },
 
-    /// WASM plugin tooling
-    Plugin {
+    /// Debug a WASM device in isolation
+    WasmDevice {
         #[command(subcommand)]
-        cmd: cli::plugin::PluginCmd,
+        cmd: cli::wasm_device::WasmDeviceCmd,
     },
 
+    /// Format logs from standard out
     Logs {
         #[arg(long)]
         pretty: bool,
@@ -80,7 +81,7 @@ fn main() {
             } => {
                 if let Err(e) = cli::conf::dump(path, json, yaml, repr) {
                     eprintln!("Failed to dump configuration: {e}");
-                    std::process::exit(1);
+                    exit(1);
                 }
             }
             cli::conf::ConfigCmd::Init { path } => {
@@ -101,12 +102,12 @@ fn main() {
             cli::logs::run_logs(mode).expect("Failed to run logs command");
         }
 
-        Some(Command::Plugin { cmd }) => {
+        Some(Command::WasmDevice { cmd }) => {
             init_logging();
 
-            if let Err(e) = cli::plugin::run(cmd) {
-                eprintln!("plugin error: {e}");
-                std::process::exit(1);
+            if let Err(e) = cli::wasm_device::run(cmd) {
+                eprintln!("WASM device error: {e}");
+                exit(1);
             }
         }
 
@@ -115,7 +116,7 @@ fn main() {
 
             if let Err(e) = cli::reload::run(&pid_file) {
                 eprintln!("reload failed: {e}");
-                std::process::exit(1);
+                exit(1);
             }
         }
 

@@ -26,52 +26,44 @@ export default defineConfig({
         // Sidebar
         sidebar: [
             {
-                label: 'Guide', items: [{label: 'What is Snakeway?', link: '/guide/what-is-snakeway/'},
-                    {label: 'Why Snakeway Exists', link: '/guide/why-snakeway-exists/'},
-                    {label: 'Mental Model', link: '/guide/mental-model/'},
-                    {label: 'Architecture', link: '/guide/architecture/'},
-                    {label: 'Lifecycle', link: '/guide/lifecycle/'},
-                    {label: 'Roadmap', link: '/guide/roadmap/'},
+                label: 'Introduction', items: [
+                    {label: 'Getting Started', link: '/introduction/getting-started/'},
+                    {label: 'Philosophy', link: '/introduction/philosophy/'},
+                    {label: 'Why Snakeway Exists', link: '/introduction/why-snakeway-exists/'},
+                    {label: 'Roadmap', link: '/introduction/roadmap/'},
                 ],
             },
             {
-                label: 'Getting Started', items: [
-                    {label: 'Installation', link: '/getting-started/installation/'},
-                    {label: 'Configuration', link: '/getting-started/configuration/'},
-                    {label: 'Your First Proxy', link: '/getting-started/first-proxy/'},
-                    {label: 'Static Files', link: '/getting-started/static-files/'},
-                    {label: 'Reloads', link: '/getting-started/reloads/'},
+                label: 'Guide', items: [
+                    {label: 'CLI', link: '/guide/cli/'},
+                    {label: 'Understanding Devices', link: '/guide/understanding-devices/'},
+                    {label: 'Authoring WASM Devices', link: '/guide/authoring-wasm-devices/'},
+                    {label: 'Admin API', link: '/guide/admin-api/'},
+                    {label: 'Logging', link: '/guide/logging/'},
+                    {label: 'Serving Static Files', link: '/guide/static-files/'},
                 ],
             },
-
             {
-                label: 'Configuration', items: [
+                label: 'Configuration Reference', items: [
                     {label: 'Overview', link: '/configuration/overview/'},
                     {label: 'Server', link: '/configuration/server/'},
                     {label: 'Ingress', link: '/configuration/ingress/'},
-                    {label: 'Devices', link: '/configuration/devices/'},
-                ],
-            }, {
-                label: 'Devices', items: [
-                    {label: 'Overview', link: '/devices/overview/'},
-                    {label: 'Built-in Devices', link: '/devices/builtin/'},
-                    {label: 'Request Filter', link: '/devices/request-filter/'},
-                    {label: 'Identity', link: '/devices/identity/'},
-                    {label: 'Network Policy', link: '/devices/network-policy/'},
-                    {label: 'Structured Logging', link: '/devices/structured-logging/'},
-                    {label: 'WASM Devices', link: '/devices/wasm/'},
-                ],
-            },
-            {
-                label: 'Observability', items: [
-                    {label: 'Logging', link: '/observability/logging/'},
-                    {label: 'Metrics', link: '/observability/metrics/'},
-                    {label: 'Admin API', link: '/observability/admin-api/'},
+                    {
+                        label: 'Devices', items: [
+                            {label: 'Request Filter', link: '/configuration/devices/request-filter/'},
+                            {label: 'Identity', link: '/configuration/devices/identity/'},
+                            {label: 'Network Policy', link: '/configuration/devices/network-policy/'},
+                            {label: 'Structured Logging', link: '/configuration/devices/structured-logging/'},
+                        ],
+                    },
                 ],
             },
             {
                 label: 'Internals', items: [
-                    {label: 'Configuration', link: '/internals/configuration/'},
+                    {label: 'Architecture', link: '/internals/architecture/'},
+                    {label: 'Mental Model', link: '/internals/mental-model/'},
+                    {label: 'HTTP Lifecycle', link: '/internals/lifecycle/'},
+                    {label: 'Configuration Subsystem', link: '/internals/configuration/'},
                 ],
             },
         ],

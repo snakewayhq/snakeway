@@ -2,10 +2,6 @@
 title: Snakeway Roadmap
 ---
 
-:::caution
-In broad strokes, this roadmap is accurate. However, it is subject to change at the whim of the maintainers.
-:::
-
 ## Phase 0: Foundation (v0.1.0)
 
 ### Goals
@@ -253,7 +249,18 @@ Todo:
 * Per-route rate limit
 * Per-IP behavior tracking
 
-## Phase 4: ACME TLS Automation (v0.7.x)
+## Phase 3.5: Emergent tasks (v0.7.x)
+
+* Standardize format options between `config dump` and `config check` commands.
+* Add "first proxy" config generation: perhaps via the `config init` command.
+* Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
+* Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
+* Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
+  `on_resonse_body` hooks.
+* Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
+* Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
+
+## Phase 4: ACME TLS Automation (v0.8.x)
 
 ### Goals
 
@@ -276,9 +283,7 @@ Todo:
 * Cert transparency logs
 * `/admin/certs` endpoint
 
-## Phase 5: Architecture and Test Suite (v0.8.x)
-
-*Take a breath and re-evaluate.*
+## Phase 5: Architecture and Test Suite (v0.9.x)
 
 All core features should be implemented at this stage.   
 It is a good time to pause and re-evaluate the overall architecture and flesh out the holes in the test suite.
@@ -298,7 +303,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 * A document identifying any gaps in features or architecture.
 * Likely 150+ integration tests
 
-## Phase 6: Packaging and Distributions (v0.9.x)
+## Phase 6: Packaging and Distributions (v0.10.x)
 
 ### Goals
 
