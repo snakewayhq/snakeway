@@ -83,6 +83,10 @@ This avoids re-parsing headers and ensures consistency with Identity resolution.
 
 ## Header Logging
 
+:::caution
+Headers often contain personal or sensitive data. Enable this only when necessary.
+:::
+
 HTTP headers are **not logged by default**.
 
 If enabled, you can:
@@ -104,5 +108,3 @@ redact_headers = [
   "cookie"
 ]
 ```
-
-> Headers often contain personal or sensitive data. Enable this only when necessary.
