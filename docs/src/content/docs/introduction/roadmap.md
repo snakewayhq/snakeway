@@ -2,10 +2,6 @@
 title: Snakeway Roadmap
 ---
 
-:::note
-In broad strokes, this roadmap is accurate. However, it is subject to change at the whim of the maintainers.
-:::
-
 ## Phase 0: Foundation (v0.1.0)
 
 ### Goals
