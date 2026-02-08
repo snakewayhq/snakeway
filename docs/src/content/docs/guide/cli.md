@@ -4,11 +4,13 @@ title: CLI
 
 Snakeway has a set of commands to help operators:
 
-- config: Inspect configuration
-- run: Run the Snakeway proxy (default)
-- reload: Reload a running Snakeway instance (SIGHUP)
-- logs: Format logs from standard out
-- wasm-device: Debug a WASM device in isolation
+| Command     | Description                                 |
+|-------------|---------------------------------------------|
+| config      | Inspect configuration                       |
+| run         | Run the Snakeway proxy (default)            |
+| reload      | Reload a running Snakeway instance (SIGHUP) |
+| logs        | Format logs from standard out               |
+| wasm-device | Debug a WASM device in isolation            |
 
 ## config init
 
@@ -190,4 +192,19 @@ Facebook, Inc.=3
 Wikimedia Foundation Inc.=2
 YANDEX LLC=3
 
+```
+
+import {Code} from '@astrojs/starlight/components';
+
+## wasm-device test
+
+The `wasm-device test` command allows a WASM file to be executed in isolation.
+
+A hook and a request path can be specified to simulate a request:
+
+```shell
+snakeway wasm-device test \
+  /etc/snakeway/wasm/my_wasm_device.wasm \
+  --hook=on_request \
+  --path="/api/foo/bar"
 ```
