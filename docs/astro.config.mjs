@@ -60,11 +60,10 @@ export default defineConfig({
             },
             {
                 label: 'Internals', items: [
-                    {label: 'Overview', link: '/internals/overview/'},
                     {label: 'Architecture', link: '/internals/architecture/'},
-                    {label: 'Configuration', link: '/internals/configuration/'},
-                    {label: 'Lifecycle', link: '/internals/lifecycle/'},
                     {label: 'Mental Model', link: '/internals/mental-model/'},
+                    {label: 'HTTP Lifecycle', link: '/internals/lifecycle/'},
+                    {label: 'Configuration Subsystem', link: '/internals/configuration/'},
                 ],
             },
         ],
