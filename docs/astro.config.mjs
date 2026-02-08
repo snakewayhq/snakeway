@@ -48,10 +48,14 @@ export default defineConfig({
                     {label: 'Overview', link: '/configuration/overview/'},
                     {label: 'Server', link: '/configuration/server/'},
                     {label: 'Ingress', link: '/configuration/ingress/'},
-                    {label: 'Request Filter (Device)', link: '/configuration/devices/request-filter/'},
-                    {label: 'Identity (Device)', link: '/configuration/devices/identity/'},
-                    {label: 'Network Policy (Device)', link: '/configuration/devices/network-policy/'},
-                    {label: 'Structured Logging (Device)', link: '/configuration/devices/structured-logging/'},
+                    {
+                        label: 'Devices', items: [
+                            {label: 'Request Filter', link: '/configuration/devices/request-filter/'},
+                            {label: 'Identity', link: '/configuration/devices/identity/'},
+                            {label: 'Network Policy', link: '/configuration/devices/network-policy/'},
+                            {label: 'Structured Logging', link: '/configuration/devices/structured-logging/'},
+                        ],
+                    },
                 ],
             },
             {
