@@ -257,6 +257,7 @@ Todo:
 * Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
 * Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
   `on_resonse_body` hooks.
+* Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 

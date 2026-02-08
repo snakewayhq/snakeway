@@ -3,9 +3,10 @@ title: Structured Logging
 ---
 
 
-Snakeway provides deep, structured observability through its `StructuredLogging` device. Instead of traditional
-line-based logs, Snakeway emits rich, JSON-formatted events that are easy to parse and analyze with modern log
-management tools.
+Snakeway provides deep, structured observability through
+its [StructuredLogging](/configuration/devices/structured-logging/) device.
+Instead of traditional line-based logs, Snakeway emits rich, JSON-formatted events that are easy to parse and analyze
+with modern log management tools.
 
 ### Configuring the Logging Device
 
