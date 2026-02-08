@@ -81,7 +81,7 @@ fn main() {
             } => {
                 if let Err(e) = cli::conf::dump(path, json, yaml, repr) {
                     eprintln!("Failed to dump configuration: {e}");
-                    std::process::exit(1);
+                    exit(1);
                 }
             }
             cli::conf::ConfigCmd::Init { path } => {
@@ -107,7 +107,7 @@ fn main() {
 
             if let Err(e) = cli::wasm_device::run(cmd) {
                 eprintln!("WASM device error: {e}");
-                std::process::exit(1);
+                exit(1);
             }
         }
 
@@ -116,7 +116,7 @@ fn main() {
 
             if let Err(e) = cli::reload::run(&pid_file) {
                 eprintln!("reload failed: {e}");
-                std::process::exit(1);
+                exit(1);
             }
         }
 

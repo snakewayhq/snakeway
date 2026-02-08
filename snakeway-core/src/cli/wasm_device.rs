@@ -7,12 +7,12 @@ use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]
 pub enum WasmDeviceCmd {
-    /// Test a WASM device by invoking its exported hooks with a minimal ctx DTO.
-    Test(WasmDeviceTestArgs),
+    /// Execute a WASM device by invoking its exported hooks with a minimal ctx DTO.
+    Exec(WasmDeviceExecArgs),
 }
 
 #[derive(Args, Debug)]
-pub struct WasmDeviceTestArgs {
+pub struct WasmDeviceExecArgs {
     /// Path to the .wasm file
     pub file: PathBuf,
 
@@ -27,11 +27,11 @@ pub struct WasmDeviceTestArgs {
 
 pub fn run(cmd: WasmDeviceCmd) -> Result<()> {
     match cmd {
-        WasmDeviceCmd::Test(args) => run_test(args),
+        WasmDeviceCmd::Exec(args) => run_exec(args),
     }
 }
 
-fn run_test(args: WasmDeviceTestArgs) -> Result<()> {
+fn run_exec(args: WasmDeviceExecArgs) -> Result<()> {
     tracing::info!(
         "Loading WASM device {} with hook {} against path {}",
         args.file.display(),

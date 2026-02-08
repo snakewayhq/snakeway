@@ -196,14 +196,19 @@ YANDEX LLC=3
 
 import {Code} from '@astrojs/starlight/components';
 
-## wasm-device test
+## wasm-device exec
 
-The `wasm-device test` command allows a WASM file to be executed in isolation.
+The `wasm-device exec` command allows a WASM file to be executed in isolation.
 
-A hook and a request path can be specified to simulate a request:
+A hook and a request path can be specified to simulate a request.
+
+The supported hooks are `on_request` and `before_proxy`.
+"Response" phase hooks will be supported at a later time.
+
+Execute
 
 ```shell
-snakeway wasm-device test \
+snakeway wasm-device exec \
   /etc/snakeway/wasm/my_wasm_device.wasm \
   --hook=on_request \
   --path="/api/foo/bar"
