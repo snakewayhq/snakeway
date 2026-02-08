@@ -18,7 +18,6 @@ use crate::device::wasm::bindings::{
     exports::snakeway::device::policy::{BodyChunk, Decision, Header, Request, RequestPatch},
 };
 
-/// WASM-backed Snakeway device (stateless, per-call execution)
 pub struct WasmDevice {
     engine: Engine,
     component: Component,
@@ -29,6 +28,27 @@ impl WasmDevice {
         let engine = Engine::default();
         let component = Component::from_file(&engine, path)?;
         Ok(Self { engine, component })
+    }
+
+    /// Execute a closure with a freshly instantiated WASM component.
+    fn with_instance<F>(&self, f: F) -> Option<DeviceResult>
+    where
+        F: FnOnce(&mut Store<HostState>, &Snakeway) -> Result<DeviceResult>,
+    {
+        let mut linker = Linker::new(&self.engine);
+        add_to_linker_sync(&mut linker).ok()?;
+
+        let mut store = Store::new(
+            &self.engine,
+            HostState {
+                table: ResourceTable::new(),
+                wasi: WasiCtxBuilder::new().build(),
+            },
+        );
+
+        let instance = Snakeway::instantiate(&mut store, &self.component, &linker).ok()?;
+
+        f(&mut store, &instance).ok()
     }
 }
 
@@ -52,86 +72,16 @@ impl Device for WasmDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        let mut linker = Linker::new(&self.engine);
-        add_to_linker_sync(&mut linker).expect("failed to add WASI to linker");
+        self.with_instance(|store, instance| {
+            let req = build_request_snapshot(ctx);
 
-        let mut store = Store::new(
-            &self.engine,
-            HostState {
-                table: ResourceTable::new(),
-                wasi: WasiCtxBuilder::new().build(),
-            },
-        );
+            let result = instance
+                .snakeway_device_policy()
+                .call_on_request(store, &req)?;
 
-        let instance = match Snakeway::instantiate(&mut store, &self.component, &linker) {
-            Ok(i) => i,
-            Err(e) => {
-                tracing::error!("WASM instantiate failed: {e}");
-                return DeviceResult::Continue;
-            }
-        };
-
-        // Build request snapshot for WASM
-        let req = Request {
-            original_path: ctx.original_uri_path().to_string(),
-            route_path: ctx.canonical_path().to_string(),
-            headers: ctx
-                .headers()
-                .iter()
-                .map(|(k, v)| Header {
-                    name: k.to_string(),
-                    value: v.to_str().unwrap_or("").to_string(),
-                })
-                .collect(),
-        };
-
-        let result = match instance
-            .snakeway_device_policy()
-            .call_on_request(&mut store, &req)
-        {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("WASM on_request failed: {e}");
-                return DeviceResult::Continue;
-            }
-        };
-
-        // Enforce decision
-        if matches!(result.decision, Decision::Block) {
-            let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
-            return DeviceResult::Respond(block_403(request_id));
-        }
-
-        // Apply explicit patch intent
-        if let Some(RequestPatch {
-            set_route_path,
-            set_upstream_path,
-            set_headers,
-            remove_headers,
-        }) = result.patch
-        {
-            if let Some(path) = set_route_path {
-                ctx.set_canonical_path(path);
-            }
-
-            if let Some(path) = set_upstream_path {
-                ctx.upstream_path = Some(path);
-            }
-
-            for header in set_headers {
-                if let (Ok(name), Ok(value)) =
-                    (header.name.parse::<HeaderName>(), header.value.parse())
-                {
-                    ctx.insert_header(name, value);
-                }
-            }
-
-            for name in remove_headers {
-                ctx.remove_header(name.as_str())
-            }
-        }
-
-        DeviceResult::Continue
+            apply_request_result(ctx, result)
+        })
+        .unwrap_or(DeviceResult::Continue)
     }
 
     fn on_stream_request_body(
@@ -140,76 +90,112 @@ impl Device for WasmDevice {
         maybe_chunk: &mut Option<Bytes>,
         end_of_stream: bool,
     ) -> DeviceResult {
-        let mut linker = Linker::new(&self.engine);
-        add_to_linker_sync(&mut linker).expect("failed to add WASI");
-
-        let mut store = Store::new(
-            &self.engine,
-            HostState {
-                table: ResourceTable::new(),
-                wasi: WasiCtxBuilder::new().build(),
-            },
-        );
-
-        let instance = match Snakeway::instantiate(&mut store, &self.component, &linker) {
-            Ok(i) => i,
-            Err(e) => {
-                tracing::error!("WASM instantiate failed: {e}");
-                return DeviceResult::Continue;
-            }
-        };
-
-        let req = Request {
-            original_path: ctx.original_uri_path().to_string(),
-            route_path: ctx.canonical_path().to_string(),
-            headers: ctx
-                .headers()
-                .iter()
-                .map(|(k, v)| Header {
-                    name: k.to_string(),
-                    value: v.to_str().unwrap_or("").to_string(),
-                })
-                .collect(),
-        };
-
         let chunk = maybe_chunk.take().map(|bytes| BodyChunk {
             data: bytes.to_vec(),
             end_of_stream,
         });
 
-        let result = match instance
-            .snakeway_device_policy()
-            .call_on_stream_request_body(&mut store, &req, chunk.as_ref())
-        {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("WASM body hook failed: {e}");
-                return DeviceResult::Continue;
+        self.with_instance(|store, instance| {
+            let req = build_request_snapshot(ctx);
+
+            let result = instance
+                .snakeway_device_policy()
+                .call_on_stream_request_body(store, &req, chunk.as_ref())?;
+
+            if matches!(result.decision, Decision::Block) {
+                let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+                return Ok(DeviceResult::Respond(block_403(request_id)));
             }
-        };
 
-        if matches!(result.decision, Decision::Block) {
-            let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
-            return DeviceResult::Respond(block_403(request_id));
-        }
-
-        DeviceResult::Continue
+            Ok(DeviceResult::Continue)
+        })
+        .unwrap_or(DeviceResult::Continue)
     }
 
-    fn before_proxy(&self, _ctx: &mut RequestCtx) -> DeviceResult {
-        DeviceResult::Continue
+    fn before_proxy(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        self.with_instance(|store, instance| {
+            let req = build_request_snapshot(ctx);
+
+            let result = instance
+                .snakeway_device_policy()
+                .call_before_proxy(store, &req)?;
+
+            apply_request_result(ctx, result)
+        })
+        .unwrap_or_else(|| {
+            tracing::debug!("WASM device does not implement before_proxy");
+            DeviceResult::Continue
+        })
     }
 
     fn after_proxy(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
+        tracing::debug!("WASM device does not implement after_proxy");
         DeviceResult::Continue
     }
 
     fn on_response(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
+        tracing::debug!("WASM device does not implement on_response");
         DeviceResult::Continue
     }
 }
 
-/// Standard 403 response for blocked requests
+/// Build a deterministic request snapshot for WASM policy evaluation.
+fn build_request_snapshot(ctx: &RequestCtx) -> Request {
+    Request {
+        original_path: ctx.original_uri_path().to_string(),
+        route_path: ctx.canonical_path().to_string(),
+        headers: ctx
+            .headers()
+            .iter()
+            .map(|(k, v)| Header {
+                name: k.to_string(),
+                value: v.to_str().unwrap_or("").to_string(),
+            })
+            .collect(),
+    }
+}
+
+/// Apply a request_result returned from WASM to the RequestCtx.
+fn apply_request_result(
+    ctx: &mut RequestCtx,
+    result: crate::device::wasm::bindings::exports::snakeway::device::policy::RequestResult,
+) -> Result<DeviceResult> {
+    if matches!(result.decision, Decision::Block) {
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        return Ok(DeviceResult::Respond(block_403(request_id)));
+    }
+
+    if let Some(RequestPatch {
+        set_route_path,
+        set_upstream_path,
+        set_headers,
+        remove_headers,
+    }) = result.patch
+    {
+        if let Some(path) = set_route_path {
+            ctx.set_canonical_path(path);
+        }
+
+        if let Some(path) = set_upstream_path {
+            ctx.upstream_path = Some(path);
+        }
+
+        for header in set_headers {
+            if let (Ok(name), Ok(value)) = (header.name.parse::<HeaderName>(), header.value.parse())
+            {
+                ctx.insert_header(name, value);
+            }
+        }
+
+        for name in remove_headers {
+            ctx.remove_header(name.as_str());
+        }
+    }
+
+    Ok(DeviceResult::Continue)
+}
+
+/// Standard 403 response for blocked requests.
 fn block_403(request_id: Option<String>) -> ResponseCtx {
     ResponseCtx::new(
         request_id,
