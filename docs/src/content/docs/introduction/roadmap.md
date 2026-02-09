@@ -269,7 +269,7 @@ Todo:
 
 ### Logging
 
-* [ ] Document logging output file configuration options.
+* [x] Document logging output file configuration options.
 * [ ] Investigate adding OpenTelemetry support.
 
 ### Devices
@@ -279,6 +279,8 @@ Todo:
 * [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
 * [ ] Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
   `on_resonse_body` hooks.
+* Consider moving the UA Parser regex file out of the executable, making it similar to MMDB files. This is fine because
+  it is not for the default UA engine.
 
 ### API Cleanup
 

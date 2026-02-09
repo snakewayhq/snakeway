@@ -1,6 +1,7 @@
 use crate::conf::types::{DeviceSpec, Origin};
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
+    IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH, IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH,
     REQUEST_FILTER_DENY_STATUS, REQUEST_RATE_LIMITING_DEVICE_MAX_REQUESTS_PER_SECOND,
     REQUEST_RATE_LIMITING_DEVICE_WINDOW_SECONDS, validate_http_header_name, validate_http_method,
     validate_range,
@@ -29,6 +30,21 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
             identity_enabled = cfg.enable;
 
             validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
+            validate_range(
+                cfg.max_x_forwarded_for_length,
+                &IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH,
+                report,
+                device.origin(),
+            );
+
+            if cfg.enable_user_agent {
+                validate_range(
+                    cfg.max_user_agent_length,
+                    &IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH,
+                    report,
+                    device.origin(),
+                );
+            }
 
             if cfg.enable_geoip {
                 if cfg.geoip_city_db.is_none()

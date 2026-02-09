@@ -129,6 +129,7 @@ fn validate_identity_device_valid() {
         trusted_proxies: vec!["127.0.0.1/32".to_string(), "10.0.0.0/8".to_string()],
         enable_geoip: true,
         geoip_city_db: Some(geoip),
+        max_x_forwarded_for_length: 1024,
         ..Default::default()
     });
 

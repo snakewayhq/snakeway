@@ -7,13 +7,13 @@ use crate::net::resolve_client_ip;
 use ipnet::IpNet;
 use maxminddb::PathElement;
 
-const MAX_USER_AGENT_LENGTH: usize = 2048;
-const MAX_X_FORWARDED_FOR_LENGTH: usize = 1024;
-
 pub struct IdentityDevice {
+    // IP Trust
+    trusted_proxies: Vec<IpNet>,
+    max_x_forwarded_for_length: usize,
+
     // GeoIP
     pub enable_geoip: bool,
-    trusted_proxies: Vec<IpNet>,
     city_reader: Option<maxminddb::Reader<maxminddb::Mmap>>,
     isp_reader: Option<maxminddb::Reader<maxminddb::Mmap>>,
     connection_type_reader: Option<maxminddb::Reader<maxminddb::Mmap>>,
@@ -21,14 +21,15 @@ pub struct IdentityDevice {
     // User-agent
     pub enable_user_agent: bool,
     ua_engine: Option<UaEngine>,
+    max_user_agent_length: usize,
 }
 
 impl IdentityDevice {
     pub fn from_config(cfg: IdentityDeviceConfig) -> anyhow::Result<Self> {
         // Safety note on these memory-mapped GeoIP files...
-        // - File is opened read-only
-        // - Lifetime is bound to IdentityDevice
-        // - Snakeway does not mutate the mmdb file
+        // 1. File is opened read-only
+        // 2. Lifetime is bound to IdentityDevice
+        // 3. Snakeway does not mutate the mmdb file
         let geoip_city_db = match (cfg.enable_geoip, &cfg.geoip_city_db) {
             (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
             _ => None,
@@ -56,15 +57,18 @@ impl IdentityDevice {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self {
+            // IP
+            trusted_proxies,
+            max_x_forwarded_for_length: cfg.max_x_forwarded_for_length,
             // GeoIP
             enable_geoip: cfg.enable_geoip,
             city_reader: geoip_city_db,
             isp_reader: geoip_isp_db,
             connection_type_reader: geoip_connection_type_db,
-            trusted_proxies,
             // User-agent
             enable_user_agent: cfg.enable_user_agent,
             ua_engine,
+            max_user_agent_length: cfg.max_user_agent_length,
         })
     }
 }
@@ -79,7 +83,7 @@ impl Device for IdentityDevice {
             ctx.headers(),
             ctx.peer_ip,
             &self.trusted_proxies,
-            MAX_X_FORWARDED_FOR_LENGTH,
+            self.max_x_forwarded_for_length,
         );
 
         let mut identity = ClientIdentity {
@@ -168,7 +172,7 @@ impl Device for IdentityDevice {
                 ctx.headers()
                     .get("user-agent")
                     .and_then(|v| v.to_str().ok())
-                    .filter(|ua| ua.len() <= MAX_USER_AGENT_LENGTH),
+                    .filter(|ua| ua.len() <= self.max_user_agent_length),
             ) {
                 identity.ua = Some(engine.parse(ua));
             }

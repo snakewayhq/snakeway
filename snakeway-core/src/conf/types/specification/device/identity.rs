@@ -12,6 +12,8 @@ pub struct IdentityDeviceSpec {
 
     /// CIDR strings
     pub trusted_proxies: Vec<String>,
+    #[serde(default = "default_max_x_forwarded_for_length")]
+    pub max_x_forwarded_for_length: usize,
 
     pub enable_geoip: bool,
 
@@ -20,8 +22,17 @@ pub struct IdentityDeviceSpec {
     pub geoip_connection_type_db: Option<PathBuf>,
 
     pub enable_user_agent: bool,
-
     pub ua_engine: UaEngineSpec,
+    #[serde(default = "default_max_user_agent_length")]
+    pub max_user_agent_length: usize,
+}
+
+fn default_max_x_forwarded_for_length() -> usize {
+    1024
+}
+
+fn default_max_user_agent_length() -> usize {
+    2048
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]

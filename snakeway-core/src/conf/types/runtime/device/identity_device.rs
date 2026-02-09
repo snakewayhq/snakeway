@@ -10,6 +10,8 @@ pub struct IdentityDeviceConfig {
     /// CIDR strings
     pub trusted_proxies: Vec<String>,
 
+    pub max_x_forwarded_for_length: usize,
+
     pub enable_geoip: bool,
 
     pub geoip_city_db: Option<PathBuf>,
@@ -19,6 +21,8 @@ pub struct IdentityDeviceConfig {
     pub enable_user_agent: bool,
 
     pub ua_engine: UaEngineKind,
+
+    pub max_user_agent_length: usize,
 }
 
 impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
@@ -26,12 +30,14 @@ impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
         Self {
             enable: spec.enable,
             trusted_proxies: spec.trusted_proxies,
+            max_x_forwarded_for_length: spec.max_x_forwarded_for_length,
             enable_geoip: spec.enable_geoip,
             geoip_city_db: spec.geoip_city_db,
             geoip_isp_db: spec.geoip_isp_db,
             geoip_connection_type_db: spec.geoip_connection_type_db,
             enable_user_agent: spec.enable_user_agent,
             ua_engine: spec.ua_engine.into(),
+            max_user_agent_length: spec.max_user_agent_length,
         }
     }
 }
