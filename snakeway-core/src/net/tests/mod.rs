@@ -1,1 +1,2 @@
+mod connection_rate_limiter_filter_tests;
 mod network_connection_filter_tests;
