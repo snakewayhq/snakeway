@@ -263,6 +263,7 @@ Todo:
 * Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
 * Consider moving validation logic into spec files, where appropriate.
 * Look into the additional path prefix option Pingora supports.
+* Review device subsystem inlight of the more mature conf subsystem.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
