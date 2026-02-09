@@ -265,6 +265,7 @@ Todo:
 * Consider moving validation logic into spec files, where appropriate.
 * Look into the additional path prefix option Pingora supports.
 * Review device subsystem inlight of the more mature conf subsystem.
+* Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
