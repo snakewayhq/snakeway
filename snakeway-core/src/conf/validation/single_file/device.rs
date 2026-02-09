@@ -11,7 +11,8 @@ use std::net::IpAddr;
 use std::path::Path;
 
 pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
-    let mut identity_present_and_enabled = false;
+    let mut identity_seen = false;
+    let mut identity_enabled = false;
     let mut network_policy_seen = false;
     let mut request_rate_limiting_device_seen = false;
     let mut request_filter_seen = false;
@@ -21,10 +22,11 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     let enabled_devices = devices.iter().filter(|device| device.is_enabled());
     for device in enabled_devices {
         if let DeviceSpec::Identity(cfg) = device {
-            if identity_present_and_enabled {
+            if identity_seen {
                 report.device_already_defined(device.origin());
             }
-            identity_present_and_enabled = cfg.enable;
+            identity_seen = true;
+            identity_enabled = cfg.enable;
 
             validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
 
@@ -100,7 +102,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
                 network_policy_seen = true;
 
-                if !identity_present_and_enabled {
+                if !identity_enabled {
                     // The network policy device requires the identity device to be present.
                     // It is a no-op internally if the identity device is not present, but it is
                     // import to validate its presence here to a void network policy silently
@@ -124,7 +126,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                 }
                 request_rate_limiting_device_seen = true;
 
-                if !identity_present_and_enabled {
+                if !identity_enabled {
                     // The request rate limiting device requires the identity device to be present.
                     // It is a no-op internally if the identity device is not present, but it is
                     // import to validate its presence here to a void request rate limiting silently
