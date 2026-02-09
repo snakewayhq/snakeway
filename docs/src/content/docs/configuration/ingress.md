@@ -35,6 +35,11 @@ bind = {
 
     on_no_peer_addr = "allow" # allow | deny
   }
+
+  connection_rate_limiting_filter = {
+    max_connections_per_second = 10
+    window_seconds             = 3
+  }
 }
 ```
 
@@ -125,6 +130,37 @@ A config error will be reported if both are `false`.
 
 Controls the behavior when a connection is made without a peer address.
 Default is permissive, i.e., any connection is allowed.
+
+### Rate Limiter (connection_rate_limiting_filter)
+
+Snakeway supports connection rate limiting at the bind level.
+
+This filter applies **soft, time-windowed admission control** to new incoming
+connections on a per-client IP basis.
+
+:::note
+This is a soft limiter.
+
+Short bursts of traffic may be allowed, but sustained high connection rates will eventually trigger rejections.
+:::
+
+#### max_connections_per_second
+
+**Type:** `integer`  
+**Default:** `none`
+
+The maximum allowed **average number of new connections per second**,
+calculated over the configured time window.
+
+#### window_seconds
+
+**Type:** `integer`  
+**Default:** `none`
+
+The duration of the time window, in seconds, used to measure the connection rate.
+
+Shorter windows react faster but allow more burstiness.  
+Longer windows react more slowly but provide smoother enforcement.
 
 ## Admin Bind
 
@@ -434,8 +470,6 @@ Whether to enable directory listings when no index file is present.
 **Optional**
 
 Maximum file size in bytes. Default: `10485760` (10 MiB)
-
---- 
 
 ### Advanced Static Configuration
 
