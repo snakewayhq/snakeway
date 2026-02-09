@@ -1,7 +1,8 @@
 use snakeway_core::conf::types::{
     BindInterfaceInput, BindSpec, CidrSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec,
     IpFamilySpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec, OnNoPeerAddrSpec,
-    RequestFilterDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
+    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
+    StructuredLoggingDeviceSpec, TlsSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 
@@ -12,6 +13,7 @@ pub struct ConfigBuilder {
     pub structured_logging_device_spec: Option<StructuredLoggingDeviceSpec>,
     pub request_filter_device_spec: Option<RequestFilterDeviceSpec>,
     pub network_policy_device_spec: Option<NetworkPolicyDeviceSpec>,
+    pub request_rate_limiting_device_spec: Option<RequestRateLimitingDeviceSpec>,
 }
 
 impl Default for ConfigBuilder {
@@ -29,6 +31,7 @@ impl Default for ConfigBuilder {
             structured_logging_device_spec: None,
             request_filter_device_spec: None,
             network_policy_device_spec: None,
+            request_rate_limiting_device_spec: None,
         }
     }
 }
@@ -53,22 +56,34 @@ impl ConfigBuilder {
 
     pub fn build(self) -> RuntimeConfig {
         let mut device_specs = vec![];
+
+        // Identity
         if let Some(identity_device_spec) = self.identity_device_spec {
             device_specs.push(DeviceSpec::Identity(identity_device_spec));
         }
 
+        // Structured Logging
         if let Some(structured_logging_device_spec) = self.structured_logging_device_spec {
             device_specs.push(DeviceSpec::StructuredLogging(
                 structured_logging_device_spec,
             ));
         }
 
+        // Request Filter
         if let Some(request_filter_device_spec) = self.request_filter_device_spec {
             device_specs.push(DeviceSpec::RequestFilter(request_filter_device_spec));
         }
 
+        // Network Policy
         if let Some(network_policy_device_spec) = self.network_policy_device_spec {
             device_specs.push(DeviceSpec::NetworkPolicy(network_policy_device_spec));
+        }
+
+        // Request Rate Limiting
+        if let Some(request_rate_limiting_device_spec) = self.request_rate_limiting_device_spec {
+            device_specs.push(DeviceSpec::RequestRateLimiting(
+                request_rate_limiting_device_spec,
+            ));
         }
 
         let validated_cfg =

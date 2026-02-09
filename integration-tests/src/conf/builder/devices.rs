@@ -1,7 +1,7 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
     ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec,
-    RequestFilterDeviceSpec, StructuredLoggingDeviceSpec,
+    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
 };
 use snakeway_core::device::builtin::structured_logging::{
     IdentityField, LogEvent, LogLevel, LogPhase,
@@ -177,5 +177,24 @@ impl ConfigBuilder {
             },
             ..Default::default()
         }
+    }
+}
+
+/// Request Rate Limiting Device
+impl ConfigBuilder {
+    pub fn with_request_rate_limiting(
+        mut self,
+        max_requests_per_second: u16,
+        window_seconds: u16,
+    ) -> Self {
+        self.request_rate_limiting_device_spec = Some(RequestRateLimitingDeviceSpec {
+            enable: true,
+
+            max_requests_per_second,
+            window_seconds,
+
+            ..Default::default()
+        });
+        self
     }
 }
