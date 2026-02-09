@@ -1,8 +1,8 @@
-mod connection_filter;
+mod network_connection_filter;
 
 use crate::conf::types::shared::TlsConfig;
 use crate::conf::types::{BindAdminSpec, BindSpec};
-pub use connection_filter::*;
+pub use network_connection_filter::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -25,7 +25,7 @@ pub struct ListenerConfig {
     /// Optional redirect config.
     pub redirect: Option<RedirectConfig>,
 
-    pub connection_filter: Option<ConnectionFilterConfig>,
+    pub connection_filter: Option<NetworkConnectionFilterConfig>,
 }
 
 impl ListenerConfig {

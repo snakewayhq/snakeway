@@ -1,4 +1,4 @@
-use crate::conf::types::{ConnectionFilterConfig, OnNoPeerAddr};
+use crate::conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
 use crate::net::CidrCollection;
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
@@ -56,8 +56,8 @@ impl ConnectionFilter for NetworkConnectionFilter {
     }
 }
 
-impl From<ConnectionFilterConfig> for NetworkConnectionFilter {
-    fn from(config: ConnectionFilterConfig) -> Self {
+impl From<NetworkConnectionFilterConfig> for NetworkConnectionFilter {
+    fn from(config: NetworkConnectionFilterConfig) -> Self {
         Self {
             cidr_allow: CidrCollection::new(&config.cidr_allow),
             cidr_deny: CidrCollection::new(&config.cidr_deny),

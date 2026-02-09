@@ -4,7 +4,7 @@ use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub struct ConnectionFilterConfig {
+pub struct NetworkConnectionFilterConfig {
     pub cidr_allow: Vec<IpNet>,
     pub cidr_deny: Vec<IpNet>,
     pub on_no_peer_addr: OnNoPeerAddr,
@@ -19,7 +19,7 @@ pub enum OnNoPeerAddr {
     Deny,
 }
 
-impl From<ConnectionFilterSpec> for ConnectionFilterConfig {
+impl From<ConnectionFilterSpec> for NetworkConnectionFilterConfig {
     fn from(spec: ConnectionFilterSpec) -> Self {
         Self {
             cidr_allow: spec

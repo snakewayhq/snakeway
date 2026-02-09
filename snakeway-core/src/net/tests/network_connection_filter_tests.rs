@@ -1,5 +1,5 @@
 use super::super::network_connection_filter::NetworkConnectionFilter;
-use crate::conf::types::{ConnectionFilterConfig, OnNoPeerAddr};
+use crate::conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
 use crate::net::CidrCollection;
 use pingora::listeners::ConnectionFilter;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -302,7 +302,7 @@ async fn test_cidr_deny_precedence_with_overlapping_ranges_neither() {
 #[tokio::test]
 async fn test_from_config_default_allow_all_ipv4() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -322,7 +322,7 @@ async fn test_from_config_default_allow_all_ipv4() {
 #[tokio::test]
 async fn test_from_config_default_allow_all_ipv6() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -342,7 +342,7 @@ async fn test_from_config_default_allow_all_ipv6() {
 #[tokio::test]
 async fn test_from_config_ip_family_gating_v4_only_accepts_ipv4() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -362,7 +362,7 @@ async fn test_from_config_ip_family_gating_v4_only_accepts_ipv4() {
 #[tokio::test]
 async fn test_from_config_ip_family_gating_v4_only_rejects_ipv6() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -385,7 +385,7 @@ async fn test_from_config_ip_family_gating_v4_only_rejects_ipv6() {
 #[tokio::test]
 async fn test_from_config_ip_family_gating_v6_only_rejects_ipv4() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -405,7 +405,7 @@ async fn test_from_config_ip_family_gating_v6_only_rejects_ipv4() {
 #[tokio::test]
 async fn test_from_config_ip_family_gating_v6_only_accepts_ipv6() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -429,7 +429,7 @@ async fn test_from_config_ip_family_gating_v6_only_accepts_ipv6() {
 async fn test_from_config_cidr_allow_list_accepts_allowed() {
     // Arrange
     let allow_cidr = "10.0.0.0/8".parse().unwrap();
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![allow_cidr],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -450,7 +450,7 @@ async fn test_from_config_cidr_allow_list_accepts_allowed() {
 async fn test_from_config_cidr_allow_list_rejects_denied() {
     // Arrange
     let allow_cidr = "10.0.0.0/8".parse().unwrap();
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![allow_cidr],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -472,7 +472,7 @@ async fn test_from_config_cidr_deny_precedence_accepts_allowed() {
     // Arrange
     let deny_cidr = "192.168.1.0/24".parse().unwrap();
     let allow_cidr = "192.168.0.0/16".parse().unwrap();
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![allow_cidr],
         cidr_deny: vec![deny_cidr],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -494,7 +494,7 @@ async fn test_from_config_cidr_deny_precedence_rejects_denied() {
     // Arrange
     let deny_cidr = "192.168.1.0/24".parse().unwrap();
     let allow_cidr = "192.168.0.0/16".parse().unwrap();
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![allow_cidr],
         cidr_deny: vec![deny_cidr],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -516,7 +516,7 @@ async fn test_from_config_cidr_deny_precedence_rejects_other() {
     // Arrange
     let deny_cidr = "192.168.1.0/24".parse().unwrap();
     let allow_cidr = "192.168.0.0/16".parse().unwrap();
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![allow_cidr],
         cidr_deny: vec![deny_cidr],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -536,7 +536,7 @@ async fn test_from_config_cidr_deny_precedence_rejects_other() {
 #[tokio::test]
 async fn test_from_config_no_peer_addr_allow() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Allow,
@@ -555,7 +555,7 @@ async fn test_from_config_no_peer_addr_allow() {
 #[tokio::test]
 async fn test_from_config_no_peer_addr_deny() {
     // Arrange
-    let config = ConnectionFilterConfig {
+    let config = NetworkConnectionFilterConfig {
         cidr_allow: vec![],
         cidr_deny: vec![],
         on_no_peer_addr: OnNoPeerAddr::Deny,
