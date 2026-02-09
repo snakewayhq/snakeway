@@ -1,43 +1,26 @@
-use integration_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
+use integration_tests::conf::ConfigBuilder;
 use integration_tests::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use std::panic;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 //-----------------------------------------------------------------------------
-// Disabled / wiring tests
+// Disabled / baseline behavior
 //-----------------------------------------------------------------------------
 
 #[test]
-fn request_rate_limit_disabled_allows_requests() {
+fn connection_rate_limiter_disabled_allows_request() {
     // Arrange
-    let mut cfg = minimal_http_runtime_config();
+    let mut cfg = ConfigBuilder::default().with_http_ingress().build();
+
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     // Act
-    let res = srv.get("/api").send().unwrap();
+    let res = srv.get("/api").send().expect("request failed");
 
     // Assert
     assert_eq!(res.status(), StatusCode::OK);
-}
-
-#[test]
-fn request_rate_limit_requires_identity_device() {
-    // Act
-    let result = panic::catch_unwind(|| {
-        ConfigBuilder::default()
-            .with_http_ingress()
-            .with_connection_rate_limiter_filter(10, 1)
-            .build();
-    });
-
-    // Assert
-    assert!(
-        result.is_err(),
-        "expected config build to panic without identity device, but it did not"
-    );
 }
 
 //-----------------------------------------------------------------------------
@@ -45,18 +28,17 @@ fn request_rate_limit_requires_identity_device() {
 //-----------------------------------------------------------------------------
 
 #[test]
-fn request_rate_limit_allows_single_request_under_limit() {
+fn connection_rate_limiter_allows_single_connection_under_limit() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
         .with_connection_rate_limiter_filter(10, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     // Act
-    let res = srv.get("/api").send().unwrap();
+    let res = srv.get("/api").send().expect("request failed");
 
     // Assert
     assert_eq!(res.status(), StatusCode::OK);
@@ -67,36 +49,36 @@ fn request_rate_limit_allows_single_request_under_limit() {
 //-----------------------------------------------------------------------------
 
 #[test]
-fn request_rate_limit_eventually_rejects_under_sustained_pressure() {
+fn connection_rate_limiter_eventually_rejects_under_sustained_pressure() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
         .with_connection_rate_limiter_filter(3, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    // Act: apply pressure across time
+    // Act: repeatedly create new connections
     let start = Instant::now();
     let mut saw_rejection = false;
 
     while start.elapsed() < Duration::from_secs(3) {
-        let res = srv.get("/api").send().unwrap();
+        let res = srv.get("/api").send();
 
-        if res.status() == StatusCode::TOO_MANY_REQUESTS {
+        // Connection filter rejection manifests as a client-side error.
+        if res.is_err() {
             saw_rejection = true;
             break;
         }
 
-        // Small sleep so time can advance and interval rollover can happen
+        // Small pause so time advances and interval rollover can occur.
         sleep(Duration::from_millis(20));
     }
 
     // Assert
     assert!(
         saw_rejection,
-        "expected request rate limiter to eventually reject under sustained pressure"
+        "expected connection rate limiter to eventually reject under sustained pressure"
     );
 }
 
@@ -105,11 +87,10 @@ fn request_rate_limit_eventually_rejects_under_sustained_pressure() {
 //-----------------------------------------------------------------------------
 
 #[test]
-fn request_rate_limit_does_not_permanently_reject_after_pressure_stops() {
+fn connection_rate_limiter_does_not_permanently_reject_after_pressure_stops() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
         .with_connection_rate_limiter_filter(3, 1)
         .build();
 
@@ -122,23 +103,25 @@ fn request_rate_limit_does_not_permanently_reject_after_pressure_stops() {
         sleep(Duration::from_millis(20));
     }
 
-    // Stop traffic completely
+    // Stop creating connections.
     sleep(Duration::from_secs(2));
 
-    // Act: try until allowed again
-    let mut saw_allow = false;
+    // Act
+    // Attempt connections until one succeeds.
+    let mut saw_success = false;
     for _ in 0..20 {
-        let res = srv.get("/api").send().unwrap();
-        if res.status() == StatusCode::OK {
-            saw_allow = true;
-            break;
+        if let Ok(res) = srv.get("/api").send() {
+            if res.status() == StatusCode::OK {
+                saw_success = true;
+                break;
+            }
         }
         sleep(Duration::from_millis(50));
     }
 
     // Assert
     assert!(
-        saw_allow,
-        "expected request rate limiter to eventually allow after traffic stops"
+        saw_success,
+        "expected connection rate limiter to eventually allow new connections after pressure stops"
     );
 }

@@ -22,7 +22,7 @@ pub struct BindSpec {
     pub enable_http2: bool,
     pub redirect_http_to_https: Option<RedirectSpec>,
     pub connection_filter: Option<NetworkConnectionFilterSpec>,
-    pub rate_limiter_filter: Option<ConnectionRateLimiterFilterSpec>,
+    pub rate_limiter: Option<ConnectionRateLimiterFilterSpec>,
 }
 
 impl BindSpec {

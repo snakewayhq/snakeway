@@ -51,7 +51,7 @@ impl ListenerConfig {
                 redirect_response_code,
             )),
             connection_filter: spec.connection_filter.map(Into::into),
-            rate_limiter_filter: spec.rate_limiter_filter.map(Into::into),
+            rate_limiter_filter: spec.rate_limiter.map(Into::into),
         }
     }
 
@@ -67,7 +67,7 @@ impl ListenerConfig {
             enable_admin: false,
             redirect: None,
             connection_filter: spec.connection_filter.map(Into::into),
-            rate_limiter_filter: spec.rate_limiter_filter.map(Into::into),
+            rate_limiter_filter: spec.rate_limiter.map(Into::into),
         }
     }
 

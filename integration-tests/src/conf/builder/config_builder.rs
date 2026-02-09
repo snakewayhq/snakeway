@@ -1,8 +1,8 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, CidrSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec,
-    IpFamilySpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec, OnNoPeerAddrSpec,
-    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
-    StructuredLoggingDeviceSpec, TlsSpec,
+    BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimiterFilterSpec, DeviceSpec,
+    IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
+    NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
+    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 
@@ -99,7 +99,7 @@ impl ConfigBuilder {
     }
 }
 
-/// Connection Filter
+/// Network Connection Filter
 impl ConfigBuilder {
     fn set_connection_filter_on_last_bind(
         mut self,
@@ -158,5 +158,34 @@ impl ConfigBuilder {
         let connection_filter =
             Self::make_connection_filter(None, None, false, true, OnNoPeerAddrSpec::Deny);
         self.set_connection_filter_on_last_bind(&connection_filter)
+    }
+}
+
+// Rate Limiter
+impl ConfigBuilder {
+    fn set_rate_limiter_on_last_bind(
+        mut self,
+        rate_limiter: &ConnectionRateLimiterFilterSpec,
+    ) -> Self {
+        self.ingress_specs
+            .last_mut()
+            .expect("no ingress specs found - cannot set connection filter")
+            .bind
+            .as_mut()
+            .expect("no ingress specs found - cannot set connection filter")
+            .rate_limiter = Some(rate_limiter.clone());
+        self
+    }
+
+    pub fn with_connection_rate_limiter_filter(
+        self,
+        max_connections_per_second: u16,
+        window_seconds: u16,
+    ) -> Self {
+        let rate_limiter = ConnectionRateLimiterFilterSpec {
+            max_connections_per_second,
+            window_seconds,
+        };
+        self.set_rate_limiter_on_last_bind(&rate_limiter)
     }
 }
