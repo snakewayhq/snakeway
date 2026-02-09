@@ -12,7 +12,7 @@ impl From<ConnectionRateLimiterFilterSpec> for ConnectionRateLimiterFilterConfig
     fn from(spec: ConnectionRateLimiterFilterSpec) -> Self {
         Self {
             max_connections_per_second: spec.max_connections_per_second as f64,
-            reaction_interval: Duration::from_secs(spec.reaction_interval_in_seconds as u64),
+            reaction_interval: Duration::from_secs(spec.window_seconds as u64),
         }
     }
 }

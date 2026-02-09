@@ -52,7 +52,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
 
             if let Some(rate_limiter_filter) = &bind.rate_limiter_filter {
                 validate_range(
-                    rate_limiter_filter.reaction_interval_in_seconds,
+                    rate_limiter_filter.window_seconds,
                     &RATE_LIMITER_FILTER_REACTION_INTERVAL_IN_SECONDS,
                     report,
                     &bind.origin,
