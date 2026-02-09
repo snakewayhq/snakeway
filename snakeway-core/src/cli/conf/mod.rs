@@ -20,7 +20,7 @@ pub enum ConfigCmd {
         #[arg(short, long)]
         quiet: bool,
 
-        /// Emit machine readable diagnostics
+        /// Specify the output format
         #[arg(
             short,
             long,
@@ -36,16 +36,13 @@ pub enum ConfigCmd {
         #[arg(default_value = "config")]
         path: PathBuf,
 
-        #[arg(short, long, default_value = "spec")]
+        /// Specify the output representation: spec -> config files and runtime -> internal state
+        #[arg(short, long, value_enum, default_value = "spec")]
         repr: RepresentationFormat,
 
-        /// Output as JSON
-        #[arg(long, conflicts_with = "yaml")]
-        json: bool,
-
-        /// Output as YAML
-        #[arg(long)]
-        yaml: bool,
+        /// Specify the output format
+        #[arg(short, long, value_enum, default_value = "json")]
+        format: ConfigDumpOutputFormat,
     },
 
     /// Initialize a new config directory
