@@ -1,7 +1,9 @@
 use crate::conf::types::{DeviceSpec, Origin};
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
-    REQUEST_FILTER_DENY_STATUS, validate_http_header_name, validate_http_method, validate_range,
+    REQUEST_FILTER_DENY_STATUS, REQUEST_RATE_LIMITING_DEVICE_MAX_REQUESTS_PER_SECOND,
+    REQUEST_RATE_LIMITING_DEVICE_WINDOW_SECONDS, validate_http_header_name, validate_http_method,
+    validate_range,
 };
 use ipnet::IpNet;
 use nix::NixPath;
@@ -10,7 +12,9 @@ use std::path::Path;
 
 pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     let mut identity_seen = false;
+    let mut identity_enabled = false;
     let mut network_policy_seen = false;
+    let mut request_rate_limiting_device_seen = false;
     let mut request_filter_seen = false;
     let mut structured_logging_seen = false;
 
@@ -19,9 +23,10 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     for device in enabled_devices {
         if let DeviceSpec::Identity(cfg) = device {
             if identity_seen {
-                report.identity_device_already_defined(device.origin());
+                report.device_already_defined(device.origin());
             }
             identity_seen = true;
+            identity_enabled = cfg.enable;
 
             validate_trusted_proxies(&cfg.trusted_proxies, report, device.origin());
 
@@ -54,7 +59,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
         match device {
             DeviceSpec::RequestFilter(cfg) => {
                 if request_filter_seen {
-                    report.request_filter_device_already_defined(device.origin());
+                    report.device_already_defined(device.origin());
                 }
                 request_filter_seen = true;
 
@@ -93,16 +98,16 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
             }
             DeviceSpec::NetworkPolicy(cfg) => {
                 if network_policy_seen {
-                    report.network_policy_device_already_defined(device.origin());
+                    report.device_already_defined(device.origin());
                 }
                 network_policy_seen = true;
 
-                if !identity_seen {
+                if !identity_enabled {
                     // The network policy device requires the identity device to be present.
                     // It is a no-op internally if the identity device is not present, but it is
                     // import to validate its presence here to a void network policy silently
                     // being ignored.
-                    report.network_policy_device_requires_identity(device.origin());
+                    report.device_requires_identity_device(device.origin());
                 }
 
                 if cfg.cidr_allow.is_empty() {
@@ -114,6 +119,33 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                         report.invalid_network_policy_cidr(cidr, device.origin());
                     }
                 }
+            }
+            DeviceSpec::RequestRateLimiting(cfg) => {
+                if request_rate_limiting_device_seen {
+                    report.device_already_defined(device.origin());
+                }
+                request_rate_limiting_device_seen = true;
+
+                if !identity_enabled {
+                    // The request rate limiting device requires the identity device to be present.
+                    // It is a no-op internally if the identity device is not present, but it is
+                    // import to validate its presence here to a void request rate limiting silently
+                    // being ignored.
+                    report.device_requires_identity_device(device.origin());
+                }
+
+                validate_range(
+                    cfg.max_requests_per_second,
+                    &REQUEST_RATE_LIMITING_DEVICE_MAX_REQUESTS_PER_SECOND,
+                    report,
+                    device.origin(),
+                );
+                validate_range(
+                    cfg.window_seconds,
+                    &REQUEST_RATE_LIMITING_DEVICE_WINDOW_SECONDS,
+                    report,
+                    device.origin(),
+                );
             }
             DeviceSpec::Wasm(cfg) => {
                 if cfg.path.is_empty() {
@@ -128,7 +160,7 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
             }
             DeviceSpec::StructuredLogging(cfg) => {
                 if structured_logging_seen {
-                    report.structured_logging_device_already_defined(device.origin());
+                    report.device_already_defined(device.origin());
                 }
                 structured_logging_seen = true;
 
@@ -143,7 +175,9 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
                     report.structured_logging_includes_headers_but_no_headers_set(device.origin());
                 }
             }
-            _ => {}
+            DeviceSpec::Identity(_) => {
+                // No-op, identity device was already validated.
+            }
         };
     }
 }

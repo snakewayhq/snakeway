@@ -5,7 +5,9 @@ use crate::conf::types::{
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    REDIRECT_RESPONSE_CODE, is_valid_hostname, is_valid_port, validate_range,
+    CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
+    CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
+    is_valid_hostname, is_valid_port, validate_range,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -46,6 +48,22 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                         report.invalid_cidr_in_connection_filter_deny_list(cidr, &bind.origin);
                     }
                 }
+            }
+
+            if let Some(connection_rate_limiting_filter) = &bind.connection_rate_limiting_filter {
+                validate_range(
+                    connection_rate_limiting_filter.window_seconds,
+                    &CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS,
+                    report,
+                    &bind.origin,
+                );
+
+                validate_range(
+                    connection_rate_limiting_filter.max_connections_per_second,
+                    &CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
+                    report,
+                    &bind.origin,
+                );
             }
 
             let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();

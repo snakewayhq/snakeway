@@ -152,6 +152,7 @@ pub fn lower_configs(
             DeviceSpec::NetworkPolicy(d) => Ok(DeviceConfig::NetworkPolicy(d.into())),
             DeviceSpec::Wasm(d) => Ok(DeviceConfig::Wasm(d.into())),
             DeviceSpec::StructuredLogging(d) => Ok(DeviceConfig::StructuredLogging(d.into())),
+            DeviceSpec::RequestRateLimiting(d) => Ok(DeviceConfig::RequestRateLimiting(d.into())),
         })
         .collect::<Result<Vec<_>, _>>()?;
 

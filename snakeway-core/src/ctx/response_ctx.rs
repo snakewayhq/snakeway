@@ -32,4 +32,13 @@ impl ResponseCtx {
             b"Forbidden".to_vec(),
         )
     }
+
+    pub fn too_many_requests(request_id: Option<String>) -> Self {
+        Self::new(
+            request_id,
+            StatusCode::TOO_MANY_REQUESTS,
+            HeaderMap::new(),
+            b"Too many requests".to_vec(),
+        )
+    }
 }

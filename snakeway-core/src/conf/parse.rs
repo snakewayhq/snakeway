@@ -1,7 +1,7 @@
 use crate::conf::types::{
     BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, NetworkPolicyDeviceSpec,
-    Origin, RequestFilterDeviceSpec, ServiceSpec, StaticFilesSpec, StructuredLoggingDeviceSpec,
-    WasmDeviceSpec,
+    Origin, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServiceSpec, StaticFilesSpec,
+    StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use crate::conf::validation::ConfigError;
 use serde::Deserialize;
@@ -13,6 +13,7 @@ struct DevicesFile {
     request_filter_device: Option<RequestFilterDeviceSpec>,
     identity_device: Option<IdentityDeviceSpec>,
     network_policy_device: Option<NetworkPolicyDeviceSpec>,
+    request_rate_limiting_device: Option<RequestRateLimitingDeviceSpec>,
     #[serde(default)]
     wasm_devices: Vec<WasmDeviceSpec>,
     structured_logging_device: Option<StructuredLoggingDeviceSpec>,
@@ -32,6 +33,12 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     if let Some(mut network_policy) = parsed.network_policy_device {
         network_policy.origin = Origin::new(&path.to_path_buf(), "network_policy_device", None);
         device_config.push(DeviceSpec::NetworkPolicy(network_policy));
+    }
+
+    if let Some(mut request_rate_limiting) = parsed.request_rate_limiting_device {
+        request_rate_limiting.origin =
+            Origin::new(&path.to_path_buf(), "request_rate_limiting_device", None);
+        device_config.push(DeviceSpec::RequestRateLimiting(request_rate_limiting));
     }
 
     if let Some(mut logging) = parsed.structured_logging_device {

@@ -1,10 +1,10 @@
 use crate::conf::types::OnNoPeerAddrSpec;
-use crate::conf::types::specification::ConnectionFilterSpec;
+use crate::conf::types::specification::NetworkConnectionFilterSpec;
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub struct ConnectionFilterConfig {
+pub struct NetworkConnectionFilterConfig {
     pub cidr_allow: Vec<IpNet>,
     pub cidr_deny: Vec<IpNet>,
     pub on_no_peer_addr: OnNoPeerAddr,
@@ -19,8 +19,8 @@ pub enum OnNoPeerAddr {
     Deny,
 }
 
-impl From<ConnectionFilterSpec> for ConnectionFilterConfig {
-    fn from(spec: ConnectionFilterSpec) -> Self {
+impl From<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
+    fn from(spec: NetworkConnectionFilterSpec) -> Self {
         Self {
             cidr_allow: spec
                 .cidr

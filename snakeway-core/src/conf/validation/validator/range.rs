@@ -58,6 +58,37 @@ pub const REQUEST_FILTER_DENY_STATUS: RangeConstraint<u16> = RangeConstraint {
     units: None,
 };
 
+pub const CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS: RangeConstraint<u16> =
+    RangeConstraint {
+        min: 1,
+        max: 60,
+        label: "window_seconds",
+        units: Some("seconds"),
+    };
+
+pub const CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND: RangeConstraint<u16> =
+    RangeConstraint {
+        min: 1,
+        max: 30_000,
+        label: "max_connections_per_second",
+        units: None,
+    };
+
+pub const REQUEST_RATE_LIMITING_DEVICE_WINDOW_SECONDS: RangeConstraint<u16> = RangeConstraint {
+    min: 1,
+    max: 60,
+    label: "window_seconds",
+    units: Some("seconds"),
+};
+
+pub const REQUEST_RATE_LIMITING_DEVICE_MAX_REQUESTS_PER_SECOND: RangeConstraint<u16> =
+    RangeConstraint {
+        min: 1,
+        max: 30_000,
+        label: "max_requests_per_second",
+        units: None,
+    };
+
 pub fn validate_range<T>(
     value: T,
     constraint: &RangeConstraint<T>,

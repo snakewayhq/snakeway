@@ -1,6 +1,7 @@
 # Contributing to Snakeway
 
-This document outlines the development workflow, code standards, and the cross-compilation setup required for building Snakeway as a static Linux binary.
+This document outlines the development workflow, code standards, and the cross-compilation setup required for building
+Snakeway as a static Linux binary.
 
 ## Prerequisites
 
@@ -15,20 +16,21 @@ Zig is used for cross-compilation to avoid external C toolchains and to provide 
 
 ## Project Layout
 
-The repository uses a standard Rust workspace layout. The Snakeway binary source is located in src, and configuration examples are in the config directory.
+The repository uses a standard Rust workspace layout.
+The Snakeway binary source is located in src, and configuration examples are in the config directory.
 
 ## Building Locally
 
 To build a non-cross-compiled binary:
 
 ```shell
-cargo build
+cargo build -p snakeway
 ```
 
 Release mode:
 
 ```shell
-cargo build --release
+cargo build -r -p snakeway
 ```
 
 To run Snakeway locally with the default configuration:
@@ -37,9 +39,9 @@ To run Snakeway locally with the default configuration:
 just run
 ```
 
-## Cross Compilation Overview
+## Cross-compilation Overview
 
-Snakeway targets Linux environments and supports fully static musl builds for both x86_64 and aarch64 architectures. 
+Snakeway targets Linux environments and supports fully static musl builds for both x86_64 and aarch64 architectures.
 
 These builds work on macOS ARM, macOS Intel, and Linux hosts.
 
@@ -49,7 +51,7 @@ Cross compilation uses:
 2. Zig as the C and C++ compiler
 3. A `.cargo/config.toml` configuration that disables vendored C libraries in dependent crates, including zlib-ng-sys
 
-This approach removes the need for external cross toolchains, wrapper binaries, or Docker images. 
+This approach removes the need for external cross toolchains, wrapper binaries, or Docker images.
 Zig handles all linking and provides compatible libc implementations for musl targets.
 
 `.cargo/config.toml`
@@ -96,13 +98,23 @@ These binaries are suitable for distribution and container deployment.
 
 1. Format all code before submitting a pull request.
 2. Clippy must succeed with the default lint settings.
-3. Unsafe Rust requires clear justification and should be avoided unless necessary.
+3. All integration and unit tests must succeed.
+4. Unsafe Rust requires clear justification and should be avoided unless necessary.
 
-Run formatting and linting:
+Run linter, unit tests, and integration tests.
 
 ```shell
-just lint
+just test-everything
 ```
+
+## Making Changes
+
+A PR should typically include these changes:
+
+1. New unit tests.
+2. New integration tests.
+3. Updated docs.
+4. The code changes for the feature/bug fix.
 
 ## Submitting Changes
 

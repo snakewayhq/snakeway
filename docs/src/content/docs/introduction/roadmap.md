@@ -258,9 +258,12 @@ Todo:
 * Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
   `on_resonse_body` hooks.
 * Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
+* Fully separate remaining shared runtime/spec conf state.
 * Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
 * Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
+* Consider moving validation logic into spec files, where appropriate.
 * Look into the additional path prefix option Pingora supports.
+* Review device subsystem inlight of the more mature conf subsystem.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
