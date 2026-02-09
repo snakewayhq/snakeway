@@ -2,11 +2,17 @@
 title: Request Rate Limiting Device
 ---
 
-The **Request Rate Limiting device** is a builtin Snakeway device that limits the **rate of incoming HTTP requests** on
+The **Request Rate Limiting** device is a builtin Snakeway device that limits the **rate of incoming HTTP requests** on
 a per-client basis.
 
 It is intended to protect upstream services from sustained request floods while allowing short-lived traffic bursts to
 pass.
+
+:::note
+The **Identity** device is required by the **Request Rate Limiting** device.
+
+The **Request Rate Limiting** device operates after the **Identity** device in the device pipeline
+:::
 
 ## Configuration Example
 

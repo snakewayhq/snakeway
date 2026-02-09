@@ -8,7 +8,7 @@ based on resolved client identity.
 :::note
 The **Identity** device is required by the **Network Policy** device.
 
-The **Network Policy** device operates after the Identity device and makes **binary allow / deny decisions** using
+The **Network Policy** device operates after the **Identity** device and makes **binary allow / deny decisions** using
 authoritative identity facts.
 :::
 
