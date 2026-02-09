@@ -53,6 +53,10 @@ export default defineConfig({
                             {label: 'Request Filter', link: '/configuration/devices/request-filter/'},
                             {label: 'Identity', link: '/configuration/devices/identity/'},
                             {label: 'Network Policy', link: '/configuration/devices/network-policy/'},
+                            {
+                                label: 'Request Rate Limiting',
+                                link: '/configuration/devices/request-rate-limiting/'
+                            },
                             {label: 'Structured Logging', link: '/configuration/devices/structured-logging/'},
                         ],
                     },
