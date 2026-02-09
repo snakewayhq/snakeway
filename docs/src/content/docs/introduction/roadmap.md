@@ -252,20 +252,35 @@ Todo:
 
 ## Phase 3.5: Emergent tasks (v0.7.x)
 
-* Standardize format options between `config dump` and `config check` commands.
-* Add "first proxy" config generation: perhaps via the `config init` command.
-* Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
-* Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
-* Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
+### CLI
+
+* [x] Standardize format options between `config dump` and `config check` commands.
+* [ ] Add "first proxy" config generation: perhaps via the `config init` command.
+* [ ] Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
+
+### Conf
+
+* [ ] Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
+* [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
+* [ ] Fully separate remaining shared runtime/spec conf state.
+* [ ] Consider moving validation logic into spec files, where appropriate.
+
+### Devices
+
+* [ ] Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
+* [ ] Review device subsystem inlight of the more mature conf subsystem.
+* [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
+* [ ] Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
   `on_resonse_body` hooks.
-* Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
-* Fully separate remaining shared runtime/spec conf state.
-* Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
-* Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
-* Consider moving validation logic into spec files, where appropriate.
-* Look into the additional path prefix option Pingora supports.
-* Review device subsystem inlight of the more mature conf subsystem.
-* Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
+
+### API Cleanup
+
+* [ ] Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
+
+### Routing
+
+* [ ] Look into the additional path prefix option Pingora supports.
+* [ ] Review routing code for conceptual duplication.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
