@@ -2,9 +2,9 @@ use integration_tests::conf::ConfigBuilder;
 use integration_tests::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use reqwest::blocking::Client;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-
 //-----------------------------------------------------------------------------
 // Disabled / baseline behavior
 //-----------------------------------------------------------------------------
@@ -56,7 +56,13 @@ fn connection_rate_limiter_eventually_rejects_under_sustained_pressure() {
         .with_connection_rate_limiting_filter(3, 1)
         .build();
 
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let mut srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    // Override client to allow multiple connections, which is necessary for this connection test.
+    srv.client = Client::builder()
+        .timeout(Duration::from_secs(10))
+        .pool_max_idle_per_host(0) // Effectively disable connection pooling.
+        .build()
+        .expect("failed to build client");
 
     // Act: repeatedly create new connections
     let start = Instant::now();

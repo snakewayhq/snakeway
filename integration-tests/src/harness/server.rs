@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
     base_urls: Vec<String>,
-    client: Client,
+    pub client: Client,
 }
 
 impl TestServer {
