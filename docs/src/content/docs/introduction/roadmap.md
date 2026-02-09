@@ -262,10 +262,15 @@ Todo:
 
 ### Conf
 
-* [ ] Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
+* [ ] Consider renaming either `ingress.d` to `ingresses.d` or `device.d` to `device.d` for consistency.
 * [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 * [ ] Fully separate remaining shared runtime/spec conf state.
 * [ ] Consider moving validation logic into spec files, where appropriate.
+
+### Logging
+
+* [ ] Document logging output file configuration options.
+* [ ] Investigate adding OpenTelemetry support.
 
 ### Devices
 
@@ -344,7 +349,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 ```shell
 /etc/snakeway/snakeway.hcl
 /etc/snakeway/ingress.d/*.hcl
-/etc/snakeway/devices.d/*.hcl  
+/etc/snakeway/device.d/*.hcl  
 ```
 
 * Systemd unit
