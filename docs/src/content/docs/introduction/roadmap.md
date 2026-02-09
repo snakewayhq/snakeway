@@ -282,7 +282,8 @@ Todo:
 
 ### API Cleanup
 
-* [ ] Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
+* [x] Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
+    * They have been put behind a wasm feature flag as that is the only reason they exist.
 
 ### Routing
 

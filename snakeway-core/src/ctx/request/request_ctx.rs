@@ -272,6 +272,15 @@ impl RequestCtx {
         debug_assert!(self.hydrated);
         self.normalized_request.headers()
     }
+}
+
+/// WASM Device API
+#[cfg(feature = "wasm")]
+impl RequestCtx {
+    pub(crate) fn set_canonical_path(&mut self, path: String) {
+        debug_assert!(self.hydrated);
+        self.normalized_request.set_path(path);
+    }
 
     pub(crate) fn insert_header(&mut self, name: HeaderName, value: HeaderValue) {
         debug_assert!(self.hydrated);
@@ -314,11 +323,6 @@ impl RequestCtx {
     pub fn canonical_path(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.path().as_str()
-    }
-
-    pub(crate) fn set_canonical_path(&mut self, path: String) {
-        debug_assert!(self.hydrated);
-        self.normalized_request.set_path(path);
     }
 }
 
