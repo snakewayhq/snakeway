@@ -50,7 +50,7 @@ Reloads can be triggered in two ways:
 
 Send a `SIGHUP` signal to the Snakeway process.
 
-```bash
+```shell
 snakeway reload
 ```
 
@@ -60,7 +60,7 @@ If enabled the admin API is enable, you can send a `POST` request to the `/admin
 
 For example:
 
-```bash
+```shell
 curl -X POST https://127.0.0.1:8440/admin/reload 
 ```
 
@@ -68,7 +68,7 @@ curl -X POST https://127.0.0.1:8440/admin/reload
 
 You can manually validate your configuration directory at any time using the `config check` command:
 
-```bash
+```shell
 snakeway config check --path /etc/snakeway/
 ```
 

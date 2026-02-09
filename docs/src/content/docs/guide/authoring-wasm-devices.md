@@ -44,7 +44,7 @@ To build a WASM device in Rust, you'll need the `cargo-component` tool and the S
 
 #### 1. Initialize a New Project
 
-```bash
+```shell
 cargo component new my-wasm-device --lib
 ```
 
@@ -80,7 +80,7 @@ bindings::export!(MyDevice with_types_in bindings);
 
 #### 3. Compile to WASM
 
-```bash
+```shell
 cargo component build --release
 ```
 
