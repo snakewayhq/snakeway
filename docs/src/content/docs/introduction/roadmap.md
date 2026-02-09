@@ -262,9 +262,9 @@ Todo:
 
 ### Conf
 
-* [ ] Consider renaming either `ingress.d` to `ingresses.d` or `device.d` to `device.d` for consistency.
-* [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
+* [x] Consider renaming either `ingress.d` to `ingresses.d` or `device.d` to `device.d` for consistency.
 * [ ] Fully separate remaining shared runtime/spec conf state.
+* [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 * [ ] Consider moving validation logic into spec files, where appropriate.
 
 ### Logging

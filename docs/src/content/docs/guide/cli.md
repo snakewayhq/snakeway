@@ -35,8 +35,8 @@ Which will yield...
 ✔ Created:
   - snakeway.hcl
   - ingress.d/default.hcl
-  - devices.d/identity.hcl
-  - devices.d/structured_logging.hcl
+  - device.d/identity.hcl
+  - device.d/structured_logging.hcl
 
 Next steps:
   snakeway config check
@@ -48,7 +48,7 @@ This directory structure should now exist:
 ```shell
 /etc/snakeway/snakeway.hcl
 /etc/snakeway/ingress.d/*.hcl
-/etc/snakeway/devices.d/*.hcl  
+/etc/snakeway/device.d/*.hcl  
 ```
 
 ## config check
@@ -74,10 +74,10 @@ If it fails, you might see something that looks like this:
 ```shell
 configuration validation failed (2 errors, 0 warnings)
 
-/etc/snakeway/devices.d/network_policy.hcl
+/etc/snakeway/device.d/network_policy.hcl
   error: device requires identity device to be present and enabled
 
-/etc/snakeway/devices.d/request_rate_limiting.hcl
+/etc/snakeway/device.d/request_rate_limiting.hcl
   error: device requires identity device to be present and enabled
 ```
 
@@ -96,7 +96,7 @@ Which produces:
       "severity": "Error",
       "message": "device requires identity device to be present and enabled",
       "origin": {
-        "file": "/etc/snakeway/devices.d/network_policy.hcl",
+        "file": "/etc/snakeway/device.d/network_policy.hcl",
         "section": "network_policy_device",
         "index": null
       },
@@ -106,7 +106,7 @@ Which produces:
       "severity": "Error",
       "message": "device requires identity device to be present and enabled",
       "origin": {
-        "file": "/etc/snakeway/devices.d/request_rate_limiting.hcl",
+        "file": "/etc/snakeway/device.d/request_rate_limiting.hcl",
         "section": "request_rate_limiting_device",
         "index": null
       },

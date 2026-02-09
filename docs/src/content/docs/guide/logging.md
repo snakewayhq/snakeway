@@ -10,7 +10,7 @@ with modern log management tools.
 
 ### Configuring the Logging Device
 
-To enable structured logging, add the `structured_logging_device` configuration to your `devices.d/` directory:
+To enable structured logging, add the `structured_logging_device` configuration to your `device.d/` directory:
 
 ```hcl
 structured_logging_device = {

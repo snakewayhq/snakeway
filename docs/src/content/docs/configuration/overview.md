@@ -19,7 +19,7 @@ server {
 }
 
 include {
-  devices = "devices.d/*.hcl"
+  devices = "device.d/*.hcl"
   ingress = "ingress.d/*.hcl"
 }
 ```
@@ -29,7 +29,7 @@ include {
 The `include` section allows you to split your configuration into logical parts using glob patterns.
 
 - **`ingress.d/`**: Define your [Ingress](/configuration/ingress) files.
-- **`devices.d/`**: Define the [Devices](/devices/overview) that should be active in the request pipeline.
+- **`device.d/`**: Define the [Devices](/devices/overview) that should be active in the request pipeline.
 
 When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a
 single unified runtime configuration. This is discussed in more detail

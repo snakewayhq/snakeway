@@ -61,7 +61,7 @@ server {
 
 include {
   ingress = "ingress.d/*.hcl"
-  devices = "devices.d/*.hcl"
+  devices = "device.d/*.hcl"
 }
 ```
 
