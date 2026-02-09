@@ -30,6 +30,7 @@ fn identity(ip: IpAddr) -> ClientIdentity {
 
 fn device() -> RequestRateLimitingDevice {
     let cfg = RequestRateLimitingDeviceConfig {
+        enable: true,
         reaction_interval: Duration::from_secs(1),
         max_requests_per_second: 1.0,
     };

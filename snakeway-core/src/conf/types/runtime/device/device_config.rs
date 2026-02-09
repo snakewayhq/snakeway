@@ -1,6 +1,6 @@
 use crate::conf::types::{
     IdentityDeviceConfig, NetworkPolicyDeviceConfig, RequestFilterDeviceConfig,
-    StructuredLoggingDeviceConfig, WasmDeviceConfig,
+    RequestRateLimitingDeviceConfig, StructuredLoggingDeviceConfig, WasmDeviceConfig,
 };
 use serde::Serialize;
 
@@ -12,6 +12,7 @@ pub enum DeviceConfig {
     NetworkPolicy(NetworkPolicyDeviceConfig),
     Wasm(WasmDeviceConfig),
     StructuredLogging(StructuredLoggingDeviceConfig),
+    RequestRateLimiting(RequestRateLimitingDeviceConfig),
 }
 
 impl DeviceConfig {
@@ -22,6 +23,7 @@ impl DeviceConfig {
             DeviceConfig::NetworkPolicy(i) => i.enable,
             DeviceConfig::Wasm(w) => w.enable,
             DeviceConfig::StructuredLogging(s) => s.enable,
+            DeviceConfig::RequestRateLimiting(r) => r.enable,
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::conf::types::{
     IdentityDeviceSpec, NetworkPolicyDeviceSpec, Origin, RequestFilterDeviceSpec,
-    StructuredLoggingDeviceSpec, WasmDeviceSpec,
+    RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::Serialize;
 
@@ -12,6 +12,7 @@ pub enum DeviceSpec {
     NetworkPolicy(NetworkPolicyDeviceSpec),
     Wasm(WasmDeviceSpec),
     StructuredLogging(StructuredLoggingDeviceSpec),
+    RequestRateLimiting(RequestRateLimitingDeviceSpec),
 }
 
 impl DeviceSpec {
@@ -22,6 +23,7 @@ impl DeviceSpec {
             DeviceSpec::NetworkPolicy(s) => &s.origin,
             DeviceSpec::Wasm(s) => &s.origin,
             DeviceSpec::StructuredLogging(s) => &s.origin,
+            DeviceSpec::RequestRateLimiting(s) => &s.origin,
         }
     }
     pub fn is_enabled(&self) -> bool {
@@ -31,6 +33,7 @@ impl DeviceSpec {
             DeviceSpec::NetworkPolicy(s) => s.enable,
             DeviceSpec::Wasm(s) => s.enable,
             DeviceSpec::StructuredLogging(s) => s.enable,
+            DeviceSpec::RequestRateLimiting(s) => s.enable,
         }
     }
 }

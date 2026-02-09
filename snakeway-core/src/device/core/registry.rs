@@ -3,6 +3,7 @@ use crate::conf::types::DeviceConfig;
 use crate::device::builtin::identity::IdentityDevice;
 use crate::device::builtin::network_policy::NetworkPolicyDevice;
 use crate::device::builtin::request_filter::RequestFilterDevice;
+use crate::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::device::core::Device;
 #[cfg(feature = "wasm")]
@@ -56,6 +57,12 @@ impl DeviceRegistry {
                 DeviceConfig::NetworkPolicy(cfg) => {
                     let device_config = cfg.clone();
                     let device: Arc<NetworkPolicyDevice> = Arc::new(device_config.into());
+                    self.devices.push(device);
+                }
+
+                DeviceConfig::RequestRateLimiting(cfg) => {
+                    let device_config = cfg.clone();
+                    let device: Arc<RequestRateLimitingDevice> = Arc::new(device_config.into());
                     self.devices.push(device);
                 }
 
