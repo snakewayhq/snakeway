@@ -29,7 +29,7 @@ fn request_rate_limit_requires_identity_device() {
     let result = panic::catch_unwind(|| {
         ConfigBuilder::default()
             .with_http_ingress()
-            .with_connection_rate_limiting_filter(10, 1)
+            .with_request_rate_limiting(10, 1)
             .build();
     });
 
@@ -50,7 +50,7 @@ fn request_rate_limit_allows_single_request_under_limit() {
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device_and_trusted_proxy()
-        .with_connection_rate_limiting_filter(10, 1)
+        .with_request_rate_limiting(10, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -72,7 +72,7 @@ fn request_rate_limit_eventually_rejects_under_sustained_pressure() {
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device_and_trusted_proxy()
-        .with_connection_rate_limiting_filter(3, 1)
+        .with_request_rate_limiting(3, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -110,7 +110,7 @@ fn request_rate_limit_does_not_permanently_reject_after_pressure_stops() {
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device_and_trusted_proxy()
-        .with_connection_rate_limiting_filter(3, 1)
+        .with_request_rate_limiting(3, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
