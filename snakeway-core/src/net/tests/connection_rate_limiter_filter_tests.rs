@@ -47,32 +47,33 @@ async fn test_single_connection_under_limit_is_allowed() {
 }
 
 #[tokio::test]
-async fn test_exceeding_rate_eventually_rejects() {
+async fn test_exceeding_rate_eventually_rejects_across_intervals() {
     // Arrange
+    let reaction_interval = Duration::from_millis(200);
     let config = ConnectionRateLimiterFilterConfig {
-        reaction_interval: Duration::from_millis(1),
-        max_connections_per_second: 1.0,
+        reaction_interval,
+        max_connections_per_second: 3.0,
     };
     let filter = ConnectionRateLimiterFilter::from(config);
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
-    // Act
-    let mut accepted = 0;
-    let mut rejected = 0;
-
-    for _ in 0..20 {
-        if filter.should_accept(Some(&addr)).await {
-            accepted += 1;
-            // Artificially slow down the rate limiter
-            sleep(Duration::from_millis(1)).await;
-        } else {
-            rejected += 1;
+    // Act (apply pressure across multiple intervals)
+    let start = std::time::Instant::now();
+    let mut saw_reject = false;
+    while start.elapsed() < reaction_interval * 3 {
+        if !filter.should_accept(Some(&addr)).await {
+            saw_reject = true;
+            break;
         }
+        // Yield to allow time to advance and allow an interval rollover to happen.
+        tokio::task::yield_now().await;
     }
 
     // Assert
-    assert!(accepted > 0, "expected some connections to be accepted");
-    assert!(rejected > 0, "expected some connections to be rejected");
+    assert!(
+        saw_reject,
+        "expected rejection once pressure spans multiple intervals"
+    );
 }
 
 //-----------------------------------------------------------------------------
@@ -101,4 +102,45 @@ async fn test_rate_is_tracked_per_ip() {
 
     // Assert
     assert!(result_b, "rate limiting should be isolated per source IP");
+}
+
+//-----------------------------------------------------------------------------
+// Rate Decay / Recovery
+//-----------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_rate_does_not_permanently_reject_after_pressure() {
+    // Arrange
+    let reaction_interval = Duration::from_millis(100);
+    let config = ConnectionRateLimiterFilterConfig {
+        reaction_interval,
+        max_connections_per_second: 2.0,
+    };
+    let filter = ConnectionRateLimiterFilter::from(config);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
+
+    // Act (apply pressure)
+    // Apply pressure across multiple intervals.
+    let start = std::time::Instant::now();
+    while start.elapsed() < reaction_interval * 3 {
+        let _ = filter.should_accept(Some(&addr)).await;
+        tokio::task::yield_now().await;
+    }
+    // Stop traffic completely.
+    sleep(reaction_interval * 2).await;
+
+    // Try multiple times to see if we ever get an allow/
+    let mut saw_allow = false;
+    for _ in 0..50 {
+        if filter.should_accept(Some(&addr)).await {
+            saw_allow = true;
+            break;
+        }
+        sleep(Duration::from_millis(10)).await;
+    }
+
+    assert!(
+        saw_allow,
+        "expected limiter to eventually allow after traffic stops"
+    );
 }
