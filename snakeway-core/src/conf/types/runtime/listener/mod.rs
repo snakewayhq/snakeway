@@ -1,10 +1,10 @@
+mod connection_rate_limiter_filter;
 mod network_connection_filter;
-mod rate_limiter_filter;
 
 use crate::conf::types::shared::TlsConfig;
 use crate::conf::types::{BindAdminSpec, BindSpec};
+pub use connection_rate_limiter_filter::*;
 pub use network_connection_filter::*;
-pub use rate_limiter_filter::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -29,7 +29,7 @@ pub struct ListenerConfig {
 
     pub connection_filter: Option<NetworkConnectionFilterConfig>,
 
-    pub rate_limiter_filter: Option<RateLimiterFilterConfig>,
+    pub rate_limiter_filter: Option<ConnectionRateLimiterFilterConfig>,
 }
 
 impl ListenerConfig {

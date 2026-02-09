@@ -1,7 +1,7 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
-use crate::net::{NetworkConnectionFilter, RateLimiterFilter};
+use crate::net::{ConnectionRateLimiterFilter, NetworkConnectionFilter};
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
@@ -214,7 +214,7 @@ pub fn build_pingora_server(
         }
 
         if let Some(rate_limiter_filter_cfg) = &listener_cfg.rate_limiter_filter {
-            public_svc.set_connection_filter(Arc::new(RateLimiterFilter::from(
+            public_svc.set_connection_filter(Arc::new(ConnectionRateLimiterFilter::from(
                 rate_limiter_filter_cfg.clone(),
             )));
         }

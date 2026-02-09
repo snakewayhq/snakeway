@@ -1,4 +1,4 @@
-use crate::conf::types::RateLimiterFilterConfig;
+use crate::conf::types::ConnectionRateLimiterFilterConfig;
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
 use pingora_limits::rate::Rate;
@@ -7,14 +7,14 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct RateLimiterFilter {
+pub struct ConnectionRateLimiterFilter {
     /// Rate estimator (per key)
     rate: Arc<Rate>,
     /// Maximum allowed connections per second per IP
     max_connections_per_second: f64,
 }
 
-impl Debug for RateLimiterFilter {
+impl Debug for ConnectionRateLimiterFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ConnectionRateLimiter")
             .field("max_connections_per_sec", &self.max_connections_per_second)
@@ -22,7 +22,7 @@ impl Debug for RateLimiterFilter {
     }
 }
 #[async_trait]
-impl ConnectionFilter for RateLimiterFilter {
+impl ConnectionFilter for ConnectionRateLimiterFilter {
     async fn should_accept(&self, addr_opt: Option<&SocketAddr>) -> bool {
         let addr = match addr_opt {
             Some(addr) => addr,
@@ -45,8 +45,8 @@ impl ConnectionFilter for RateLimiterFilter {
     }
 }
 
-impl From<RateLimiterFilterConfig> for RateLimiterFilter {
-    fn from(config: RateLimiterFilterConfig) -> Self {
+impl From<ConnectionRateLimiterFilterConfig> for ConnectionRateLimiterFilter {
+    fn from(config: ConnectionRateLimiterFilterConfig) -> Self {
         Self {
             rate: Arc::new(Rate::new(config.reaction_interval)),
             max_connections_per_second: config.max_connections_per_second,
