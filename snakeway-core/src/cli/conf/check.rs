@@ -1,6 +1,6 @@
 use crate::conf::load_config;
+use clap::ValueEnum;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> anyhow::Result<()> {
     match load_config(&path) {
@@ -73,22 +73,9 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ValueEnum)]
 pub enum ConfigCheckOutputFormat {
     Pretty,
     Plain,
     Json,
-}
-
-impl FromStr for ConfigCheckOutputFormat {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "pretty" => Ok(Self::Pretty),
-            "plain" => Ok(Self::Plain),
-            "json" => Ok(Self::Json),
-            _ => Err(anyhow::anyhow!("invalid output format: {}", s)),
-        }
-    }
 }

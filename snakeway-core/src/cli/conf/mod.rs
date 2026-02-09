@@ -21,7 +21,13 @@ pub enum ConfigCmd {
         quiet: bool,
 
         /// Emit machine readable diagnostics
-        #[arg(short, long, default_value = "pretty", conflicts_with = "quiet")]
+        #[arg(
+            short,
+            long,
+            value_enum,
+            default_value = "pretty",
+            conflicts_with = "quiet"
+        )]
         format: ConfigCheckOutputFormat,
     },
 
