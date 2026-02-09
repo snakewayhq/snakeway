@@ -29,6 +29,11 @@ bind = {
 
     on_no_peer_addr = "allow" # allow | deny
   }
+
+  rate_limiter = {
+    max_connections_per_second = 50
+    window_seconds             = 3
+  }
 }
 
 services = [
