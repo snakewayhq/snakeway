@@ -30,7 +30,8 @@ bind = {
     on_no_peer_addr = "allow" # allow | deny
   }
 
-  rate_limiter = {
+  // Limit each client IP to a maximum number of new connections per time window (seconds).
+  connection_rate_limiting_filter = {
     max_connections_per_second = 50
     window_seconds             = 3
   }

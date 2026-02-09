@@ -32,7 +32,7 @@ fn connection_rate_limiter_allows_single_connection_under_limit() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_rate_limiter_filter(10, 1)
+        .with_connection_rate_limiting_filter(10, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -53,7 +53,7 @@ fn connection_rate_limiter_eventually_rejects_under_sustained_pressure() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_rate_limiter_filter(3, 1)
+        .with_connection_rate_limiting_filter(3, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -91,7 +91,7 @@ fn connection_rate_limiter_does_not_permanently_reject_after_pressure_stops() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_rate_limiter_filter(3, 1)
+        .with_connection_rate_limiting_filter(3, 1)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);

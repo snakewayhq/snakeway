@@ -1,5 +1,5 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimiterFilterSpec, DeviceSpec,
+    BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
     IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
     NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
@@ -165,7 +165,7 @@ impl ConfigBuilder {
 impl ConfigBuilder {
     fn set_rate_limiter_on_last_bind(
         mut self,
-        rate_limiter: &ConnectionRateLimiterFilterSpec,
+        rate_limiter: &ConnectionRateLimitingFilterSpec,
     ) -> Self {
         self.ingress_specs
             .last_mut()
@@ -173,16 +173,16 @@ impl ConfigBuilder {
             .bind
             .as_mut()
             .expect("no ingress specs found - cannot set connection filter")
-            .rate_limiter = Some(rate_limiter.clone());
+            .connection_rate_limiting_filter = Some(rate_limiter.clone());
         self
     }
 
-    pub fn with_connection_rate_limiter_filter(
+    pub fn with_connection_rate_limiting_filter(
         self,
         max_connections_per_second: u16,
         window_seconds: u16,
     ) -> Self {
-        let rate_limiter = ConnectionRateLimiterFilterSpec {
+        let rate_limiter = ConnectionRateLimitingFilterSpec {
             max_connections_per_second,
             window_seconds,
         };

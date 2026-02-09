@@ -1,8 +1,8 @@
-mod connection_rate_limiter_filter;
+mod connection_rate_limiting_filter;
 mod network_connection_filter;
 mod redirect;
 
-pub use connection_rate_limiter_filter::*;
+pub use connection_rate_limiting_filter::*;
 pub use network_connection_filter::*;
 pub use redirect::*;
 
@@ -22,7 +22,7 @@ pub struct BindSpec {
     pub enable_http2: bool,
     pub redirect_http_to_https: Option<RedirectSpec>,
     pub connection_filter: Option<NetworkConnectionFilterSpec>,
-    pub rate_limiter: Option<ConnectionRateLimiterFilterSpec>,
+    pub connection_rate_limiting_filter: Option<ConnectionRateLimitingFilterSpec>,
 }
 
 impl BindSpec {

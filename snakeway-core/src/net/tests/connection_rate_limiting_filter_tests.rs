@@ -1,5 +1,5 @@
-use super::super::connection_rate_limiter_filter::ConnectionRateLimiterFilter;
-use crate::conf::types::ConnectionRateLimiterFilterConfig;
+use super::super::connection_rate_limiting_filter::ConnectionRateLimitingFilter;
+use crate::conf::types::ConnectionRateLimitingFilterConfig;
 use pingora::listeners::ConnectionFilter;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
@@ -12,11 +12,11 @@ use tokio::time::sleep;
 #[tokio::test]
 async fn test_no_peer_addr_is_rejected() {
     // Arrange
-    let config = ConnectionRateLimiterFilterConfig {
+    let config = ConnectionRateLimitingFilterConfig {
         reaction_interval: Duration::from_secs(1),
         max_connections_per_second: 10.0,
     };
-    let filter = ConnectionRateLimiterFilter::from(config);
+    let filter = ConnectionRateLimitingFilter::from(config);
 
     // Act
     let result = filter.should_accept(None).await;
@@ -32,11 +32,11 @@ async fn test_no_peer_addr_is_rejected() {
 #[tokio::test]
 async fn test_single_connection_under_limit_is_allowed() {
     // Arrange
-    let config = ConnectionRateLimiterFilterConfig {
+    let config = ConnectionRateLimitingFilterConfig {
         reaction_interval: Duration::from_secs(1),
         max_connections_per_second: 10.0,
     };
-    let filter = ConnectionRateLimiterFilter::from(config);
+    let filter = ConnectionRateLimitingFilter::from(config);
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
     // Act
@@ -50,11 +50,11 @@ async fn test_single_connection_under_limit_is_allowed() {
 async fn test_exceeding_rate_eventually_rejects_across_intervals() {
     // Arrange
     let reaction_interval = Duration::from_millis(200);
-    let config = ConnectionRateLimiterFilterConfig {
+    let config = ConnectionRateLimitingFilterConfig {
         reaction_interval,
         max_connections_per_second: 3.0,
     };
-    let filter = ConnectionRateLimiterFilter::from(config);
+    let filter = ConnectionRateLimitingFilter::from(config);
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
     // Act (apply pressure across multiple intervals)
@@ -83,11 +83,11 @@ async fn test_exceeding_rate_eventually_rejects_across_intervals() {
 #[tokio::test]
 async fn test_rate_is_tracked_per_ip() {
     // Arrange
-    let config = ConnectionRateLimiterFilterConfig {
+    let config = ConnectionRateLimitingFilterConfig {
         reaction_interval: Duration::from_secs(1),
         max_connections_per_second: 3.0,
     };
-    let filter = ConnectionRateLimiterFilter::from(config);
+    let filter = ConnectionRateLimitingFilter::from(config);
 
     let addr_a = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)), 80);
     let addr_b = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)), 80);
@@ -112,11 +112,11 @@ async fn test_rate_is_tracked_per_ip() {
 async fn test_rate_does_not_permanently_reject_after_pressure() {
     // Arrange
     let reaction_interval = Duration::from_millis(100);
-    let config = ConnectionRateLimiterFilterConfig {
+    let config = ConnectionRateLimitingFilterConfig {
         reaction_interval,
         max_connections_per_second: 2.0,
     };
-    let filter = ConnectionRateLimiterFilter::from(config);
+    let filter = ConnectionRateLimitingFilter::from(config);
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
 
     // Act (apply pressure)
