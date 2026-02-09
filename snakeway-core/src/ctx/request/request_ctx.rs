@@ -10,7 +10,7 @@ use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
-use http::{Extensions, HeaderMap, HeaderName, HeaderValue, Method, Uri, Version};
+use http::{Extensions, HeaderMap, Method, Uri, Version};
 use pingora::prelude::Session;
 use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
 use std::net::{IpAddr, Ipv4Addr};
@@ -275,6 +275,9 @@ impl RequestCtx {
 }
 
 /// WASM Device API
+///
+#[cfg(feature = "wasm")]
+use http::{HeaderName, HeaderValue};
 #[cfg(feature = "wasm")]
 impl RequestCtx {
     pub(crate) fn set_canonical_path(&mut self, path: String) {
