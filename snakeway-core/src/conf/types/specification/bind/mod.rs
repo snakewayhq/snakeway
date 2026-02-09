@@ -1,7 +1,7 @@
-mod connection_filter;
+mod network_connection_filter;
 mod redirect;
 
-pub use connection_filter::*;
+pub use network_connection_filter::*;
 pub use redirect::*;
 
 use crate::conf::resolution::ResolveError;
@@ -19,7 +19,7 @@ pub struct BindSpec {
     pub tls: Option<TlsSpec>,
     pub enable_http2: bool,
     pub redirect_http_to_https: Option<RedirectSpec>,
-    pub connection_filter: Option<ConnectionFilterSpec>,
+    pub connection_filter: Option<NetworkConnectionFilterSpec>,
 }
 
 impl BindSpec {
