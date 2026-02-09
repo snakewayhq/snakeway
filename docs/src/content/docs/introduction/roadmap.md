@@ -255,8 +255,10 @@ Todo:
 ### CLI
 
 * [x] Standardize format options between `config dump` and `config check` commands.
+* [x] Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
+    * Not bothering to do this (now). The `wasm-device exec` command is effectively feature-gated internally, and the
+      commands are fine to include by default.
 * [ ] Add "first proxy" config generation: perhaps via the `config init` command.
-* [ ] Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
 
 ### Conf
 
