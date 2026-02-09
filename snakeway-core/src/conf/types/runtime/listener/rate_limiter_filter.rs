@@ -11,8 +11,8 @@ pub struct RateLimiterFilterConfig {
 impl From<RateLimiterFilterSpec> for RateLimiterFilterConfig {
     fn from(spec: RateLimiterFilterSpec) -> Self {
         Self {
-            max_connections_per_second: spec.max_connections_per_second,
-            reaction_interval: Duration::from_secs(spec.reaction_interval_in_seconds),
+            max_connections_per_second: spec.max_connections_per_second as f64,
+            reaction_interval: Duration::from_secs(spec.reaction_interval_in_seconds as u64),
         }
     }
 }

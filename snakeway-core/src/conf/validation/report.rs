@@ -266,17 +266,6 @@ impl ValidationReport {
             Some("CIDR must be a valid IPv4 or IPv6 network (e.g. 192.168.0.0/16).".to_string()),
         );
     }
-
-    pub fn rate_limit_max_connections_per_second_must_be_greater_than_zero(
-        &mut self,
-        origin: &Origin,
-    ) {
-        self.error(
-            "max_connections_per_second must be at least 1".to_string(),
-            origin,
-            None,
-        );
-    }
 }
 
 /// Static Files Spec Validation

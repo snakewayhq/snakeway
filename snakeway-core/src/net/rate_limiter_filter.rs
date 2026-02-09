@@ -1,42 +1,20 @@
+use crate::conf::types::RateLimiterFilterConfig;
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
 use pingora_limits::rate::Rate;
 use std::fmt::{Debug, Formatter};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 
 #[derive(Clone)]
-pub struct ConnectionRateLimiter {
+pub struct RateLimiterFilter {
     /// Rate estimator (per key)
     rate: Arc<Rate>,
     /// Maximum allowed connections per second per IP
     max_connections_per_second: f64,
 }
 
-impl ConnectionRateLimiter {
-    /// Create a new connection rate limiter.
-    ///
-    /// `interval` controls how quickly the estimator reacts.
-    /// `max_connections_per_second` is the enforcement threshold.
-    pub fn new(interval: Duration, max_connections_per_second: f64) -> Self {
-        Self {
-            rate: Arc::new(Rate::new(interval)),
-            max_connections_per_second,
-        }
-    }
-}
-
-impl Default for ConnectionRateLimiter {
-    fn default() -> Self {
-        // Sensible, conservative defaults:
-        // 1 second window
-        // 50 new connections/sec per IP
-        Self::new(Duration::from_secs(1), 50.0)
-    }
-}
-
-impl Debug for ConnectionRateLimiter {
+impl Debug for RateLimiterFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ConnectionRateLimiter")
             .field("max_connections_per_sec", &self.max_connections_per_second)
@@ -44,7 +22,7 @@ impl Debug for ConnectionRateLimiter {
     }
 }
 #[async_trait]
-impl ConnectionFilter for ConnectionRateLimiter {
+impl ConnectionFilter for RateLimiterFilter {
     async fn should_accept(&self, addr_opt: Option<&SocketAddr>) -> bool {
         let addr = match addr_opt {
             Some(addr) => addr,
@@ -67,8 +45,11 @@ impl ConnectionFilter for ConnectionRateLimiter {
     }
 }
 
-// impl From<ConnectionRateLimiterConfig> for ConnectionRateLimiter {
-//     fn from(config: ConnectionFilterConfig) -> Self {
-//         Self {}
-//     }
-// }
+impl From<RateLimiterFilterConfig> for RateLimiterFilter {
+    fn from(config: RateLimiterFilterConfig) -> Self {
+        Self {
+            rate: Arc::new(Rate::new(config.reaction_interval)),
+            max_connections_per_second: config.max_connections_per_second,
+        }
+    }
+}

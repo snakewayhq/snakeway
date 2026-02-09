@@ -5,6 +5,7 @@ use crate::conf::types::{
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
+    RATE_LIMITER_FILTER_MAX_CONNECTIONS_PER_SECOND,
     RATE_LIMITER_FILTER_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE, is_valid_hostname,
     is_valid_port, validate_range,
 };
@@ -57,11 +58,12 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                     &bind.origin,
                 );
 
-                if rate_limiter_filter.max_connections_per_second == 0.0 {
-                    report.rate_limit_max_connections_per_second_must_be_greater_than_zero(
-                        &bind.origin,
-                    );
-                }
+                validate_range(
+                    rate_limiter_filter.max_connections_per_second,
+                    &RATE_LIMITER_FILTER_MAX_CONNECTIONS_PER_SECOND,
+                    report,
+                    &bind.origin,
+                );
             }
 
             let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
