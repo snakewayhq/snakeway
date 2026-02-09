@@ -1932,7 +1932,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "arc-swap",
  "futures-util",
@@ -3799,7 +3799,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "clap",
  "snakeway-core",
@@ -3807,7 +3807,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-core"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "ahash",
  "anyhow",
