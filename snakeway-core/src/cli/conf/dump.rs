@@ -13,12 +13,14 @@ pub fn dump(
         match format {
             ConfigDumpOutputFormat::Json => dump_json(&cfg)?,
             ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg)?,
+            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg)?,
         }
     } else if matches!(repr, RepresentationFormat::Runtime) {
         let cfg = load_config(&path)?;
         match format {
             ConfigDumpOutputFormat::Json => dump_json(&cfg.config)?,
             ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg.config)?,
+            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg.config)?,
         }
     }
 
@@ -37,6 +39,12 @@ fn dump_yaml<T: Serialize>(value: &T) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn dump_hcl<T: Serialize>(value: &T) -> anyhow::Result<()> {
+    let s = hcl::to_string(value)?;
+    println!("{s}");
+    Ok(())
+}
+
 #[derive(Clone, Debug, ValueEnum)]
 pub enum RepresentationFormat {
     Spec,
@@ -45,6 +53,7 @@ pub enum RepresentationFormat {
 
 #[derive(Clone, Debug, ValueEnum)]
 pub enum ConfigDumpOutputFormat {
+    Hcl,
     Json,
     Yaml,
 }
