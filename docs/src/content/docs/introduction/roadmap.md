@@ -245,9 +245,10 @@ Todo:
 ### Deliverables
 
 * Built-in security devices
-* Global rate limit device
-* Per-route rate limit
-* Per-IP behavior tracking
+* L4 connection rate limit filter
+* L4 network connection filter
+* L7 request rate limit device
+* L7 network policy device
 
 ## Phase 3.5: Emergent tasks (v0.7.x)
 
