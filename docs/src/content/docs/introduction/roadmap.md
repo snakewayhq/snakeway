@@ -274,13 +274,14 @@ Todo:
 
 ### Devices
 
-* [ ] Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
+* [x] Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
+    * These constants have been moved to range-validated configuration options.
+* [ ] Consider moving the UA Parser regex file out of the executable, making it similar to MMDB files. This is fine
+  because it is not for the default UA engine.
 * [ ] Review device subsystem inlight of the more mature conf subsystem.
 * [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
 * [ ] Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
   `on_resonse_body` hooks.
-* Consider moving the UA Parser regex file out of the executable, making it similar to MMDB files. This is fine because
-  it is not for the default UA engine.
 
 ### API Cleanup
 
