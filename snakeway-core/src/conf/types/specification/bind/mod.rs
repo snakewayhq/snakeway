@@ -1,7 +1,9 @@
 mod network_connection_filter;
+mod rate_limiter_filter;
 mod redirect;
 
 pub use network_connection_filter::*;
+pub use rate_limiter_filter::*;
 pub use redirect::*;
 
 use crate::conf::resolution::ResolveError;
@@ -20,6 +22,7 @@ pub struct BindSpec {
     pub enable_http2: bool,
     pub redirect_http_to_https: Option<RedirectSpec>,
     pub connection_filter: Option<NetworkConnectionFilterSpec>,
+    pub rate_limiter_filter: Option<RateLimiterFilterSpec>,
 }
 
 impl BindSpec {

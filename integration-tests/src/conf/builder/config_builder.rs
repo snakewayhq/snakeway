@@ -1,7 +1,7 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, CidrSpec, ConnectionFilterSpec, DeviceSpec, IdentityDeviceSpec,
-    IngressSpec, IpFamilySpec, NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
-    ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
+    BindInterfaceInput, BindSpec, CidrSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec,
+    IpFamilySpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec, OnNoPeerAddrSpec,
+    RequestFilterDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 
@@ -88,7 +88,7 @@ impl ConfigBuilder {
 impl ConfigBuilder {
     fn set_connection_filter_on_last_bind(
         mut self,
-        connection_filter: &ConnectionFilterSpec,
+        connection_filter: &NetworkConnectionFilterSpec,
     ) -> Self {
         self.ingress_specs
             .last_mut()
@@ -106,8 +106,8 @@ impl ConfigBuilder {
         ipv4_enabled: bool,
         ipv6_enabled: bool,
         on_no_peer_addr: OnNoPeerAddrSpec,
-    ) -> ConnectionFilterSpec {
-        ConnectionFilterSpec {
+    ) -> NetworkConnectionFilterSpec {
+        NetworkConnectionFilterSpec {
             cidr: CidrSpec {
                 allow: cidr_allow
                     .unwrap_or(&[])

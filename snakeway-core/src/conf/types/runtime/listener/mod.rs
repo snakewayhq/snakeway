@@ -1,8 +1,10 @@
 mod network_connection_filter;
+mod rate_limiter_filter;
 
 use crate::conf::types::shared::TlsConfig;
 use crate::conf::types::{BindAdminSpec, BindSpec};
 pub use network_connection_filter::*;
+pub use rate_limiter_filter::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -26,6 +28,8 @@ pub struct ListenerConfig {
     pub redirect: Option<RedirectConfig>,
 
     pub connection_filter: Option<NetworkConnectionFilterConfig>,
+
+    pub rate_limiter_filter: Option<RateLimiterFilterConfig>,
 }
 
 impl ListenerConfig {
@@ -47,6 +51,7 @@ impl ListenerConfig {
                 redirect_response_code,
             )),
             connection_filter: spec.connection_filter.map(Into::into),
+            rate_limiter_filter: spec.rate_limiter_filter.map(Into::into),
         }
     }
 
@@ -62,6 +67,7 @@ impl ListenerConfig {
             enable_admin: false,
             redirect: None,
             connection_filter: spec.connection_filter.map(Into::into),
+            rate_limiter_filter: spec.rate_limiter_filter.map(Into::into),
         }
     }
 
@@ -77,6 +83,7 @@ impl ListenerConfig {
             enable_admin: true,
             redirect: None,
             connection_filter: None,
+            rate_limiter_filter: None,
         }
     }
 }

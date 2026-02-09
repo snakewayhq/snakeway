@@ -58,6 +58,14 @@ pub const REQUEST_FILTER_DENY_STATUS: RangeConstraint<u16> = RangeConstraint {
     units: None,
 };
 
+pub const RATE_LIMITER_FILTER_REACTION_INTERVAL_IN_SECONDS: RangeConstraint<u64> =
+    RangeConstraint {
+        min: 1,
+        max: 60,
+        label: "reaction_interval_in_seconds",
+        units: Some("seconds"),
+    };
+
 pub fn validate_range<T>(
     value: T,
     constraint: &RangeConstraint<T>,

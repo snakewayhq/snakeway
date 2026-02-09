@@ -5,7 +5,8 @@ use crate::conf::types::{
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    REDIRECT_RESPONSE_CODE, is_valid_hostname, is_valid_port, validate_range,
+    RATE_LIMITER_FILTER_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE, is_valid_hostname,
+    is_valid_port, validate_range,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -45,6 +46,21 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                     if cidr.parse::<ipnet::IpNet>().is_err() {
                         report.invalid_cidr_in_connection_filter_deny_list(cidr, &bind.origin);
                     }
+                }
+            }
+
+            if let Some(rate_limiter_filter) = &bind.rate_limiter_filter {
+                validate_range(
+                    rate_limiter_filter.reaction_interval_in_seconds,
+                    &RATE_LIMITER_FILTER_REACTION_INTERVAL_IN_SECONDS,
+                    report,
+                    &bind.origin,
+                );
+
+                if rate_limiter_filter.max_connections_per_second == 0.0 {
+                    report.rate_limit_max_connections_per_second_must_be_greater_than_zero(
+                        &bind.origin,
+                    );
                 }
             }
 
