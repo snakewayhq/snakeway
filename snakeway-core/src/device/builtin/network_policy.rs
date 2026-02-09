@@ -53,6 +53,9 @@ impl Device for NetworkPolicyDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        // No identity, then short-circuit the device.
+        // However, this should never happen, as the identity device must run before this device.
+        // A config validation error would have been caught earlier.
         let identity = match ctx.identity() {
             Some(id) => id,
             None => return DeviceResult::Continue,
