@@ -33,6 +33,8 @@ impl ConfigBuilder {
                 "fixtures/geoip/dbip-country-lite-2025-12.mmdb",
             )),
             enable_user_agent: true,
+            max_x_forwarded_for_length: 1024,
+            max_user_agent_length: 2048,
             ..Default::default()
         }
     }
