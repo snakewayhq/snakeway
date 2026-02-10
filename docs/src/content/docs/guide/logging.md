@@ -1,74 +1,77 @@
 ---
-title: Structured Logging
+title: Logging
 ---
 
 
-Snakeway provides deep, structured observability through
-its [StructuredLogging](/configuration/devices/structured-logging/) device.
-Instead of traditional line-based logs, Snakeway emits rich, JSON-formatted events that are easy to parse and analyze
-with modern log management tools.
+This page describes how to configure and operate logging at runtime.
 
-### Configuring the Logging Device
+---
 
-To enable structured logging, add the `structured_logging_device` configuration to your `devices.d/` directory:
+:::note
+For information on structured observability see the
+Snakeway [Structured Logging](/configuration/devices/structured-logging/) device.
+:::
 
-```hcl
-structured_logging_device = {
-  enable           = true
-  level            = "info"
-  include_headers  = true
-  allowed_headers = ["User-Agent", "X-Request-Id"]
-  redacted_headers = ["Authorization", "Cookie"]
-  include_identity = true
-  identity_fields = ["country", "device", "bot"]
-}
+## Default Behavior
+
+* Log format: JSON
+* Log level: `info`
+* Output: stdout
+
+## Environment Variables
+
+#### `RUST_LOG`
+
+Controls log filtering.
+
+Examples:
+
+```shell
+export RUST_LOG=info
+export RUST_LOG=warn,snakeway=info
+export RUST_LOG=warn,snakeway=debug,pingora=error 
 ```
 
-### Log Format
+If unset or invalid, logging defaults to:
 
-By default, Snakeway emits logs to `stdout` in JSON format. Each log entry represents a specific event in the
-request/response lifecycle.
-
-A typical request log looks like this:
-
-```json
-{
-  "timestamp": "2024-05-20T10:00:00Z",
-  "level": "INFO",
-  "event": "request",
-  "method": "GET",
-  "uri": "/api/users/1",
-  "headers": "{\"user-agent\":\"Mozilla/5.0...\", \"x-request-id\":\"abc-123\"}",
-  "identity": "{\"country\":\"US\", \"device\":\"desktop\", \"bot\":\"false\"}"
-}
+```text
+info
 ```
 
-### Key Fields
+#### `SNAKEWAY_LOG_DIR`
 
-- **`event`**: The lifecycle phase of the request (`request`, `before_proxy`, `after_proxy`, `response`).
-- **`method`**: The HTTP method (GET, POST, etc.).
-- **`uri`**: The request URI.
-- **`status`**: The HTTP status code (present in response phases).
-- **`headers`**: A JSON string containing the allowed request/response headers.
-- **`identity`**: Information extracted by the `Identity` device, such as GeoIP and User-Agent data.
+Enables file-based logging with daily rotation.
 
-### Filtering and Redaction
+When set:
 
-To keep your logs clean and secure, Snakeway offers fine-grained control over header logging:
+* Logs are written to `snakeway.log` in the specified directory.
+* Logs rotate daily.
+* Output is written to files instead of stdout.
 
-- **`allowed_headers`**: Only log headers explicitly listed in this array. If empty, all headers (except redacted ones)
-  are logged.
-- **`redacted_headers`**: Any header listed here will have its value replaced with `<redacted>` in the logs. Use this
-  for sensitive information like `Authorization` or `Cookie` headers.
+Example:
 
-### Controlling Log Volume
+```shell
+export SNAKEWAY_LOG_DIR=/var/log/snakeway
+```
 
-You can control which phases of the request/response lifecycle are logged using the `phases` and `events` settings. This
-is useful for reducing log volume in high-traffic environments:
+#### `TOKIO_CONSOLE`
 
-```hcl
-structured_logging_device = {
-  phases = ["response"]
-  events = ["response"]
-}
+Enables Tokio Console mode for interactive debugging.
+
+When set:
+
+* Normal logging is disabled.
+* Tokio Console instrumentation is enabled.
+* Intended for interactive debugging only.
+
+Example:
+
+```shell
+export TOKIO_CONSOLE=1
+```
+
+This is flag is most useful inline:
+
+```shell
+TOKIO_CONSOLE=1 snakeway /etc/snakeway/ 
 ```

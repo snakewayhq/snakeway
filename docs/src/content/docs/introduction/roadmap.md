@@ -252,19 +252,39 @@ Todo:
 
 ## Phase 3.5: Emergent tasks (v0.7.x)
 
-* Standardize format options between `config dump` and `config check` commands.
-* Add "first proxy" config generation: perhaps via the `config init` command.
-* Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
-* Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
-* Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
-  `on_resonse_body` hooks.
-* Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
-* Fully separate remaining shared runtime/spec conf state.
-* Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
-* Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
-* Consider moving validation logic into spec files, where appropriate.
-* Look into the additional path prefix option Pingora supports.
-* Review device subsystem inlight of the more mature conf subsystem.
+### CLI
+
+* [x] Standardize format options between `config dump` and `config check` commands.
+* [x] Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
+    * Not bothering to do this (now). The `wasm-device exec` command is effectively feature-gated internally, and the
+      commands are fine to include by default.
+* [ ] Add "first proxy" config generation: perhaps via the `config init` command.
+
+### Conf
+
+* [x] Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
+    * `devices.d` has been changed to `device.d`
+* [x] Fully separate remaining shared runtime/spec conf state.
+
+### Logging
+
+* [x] Document logging output file configuration options.
+* [ ] Investigate adding OpenTelemetry support.
+
+### Devices
+
+* [x] Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
+    * These constants have been moved to range-validated configuration options.
+* [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
+
+### API Cleanup
+
+* [x] Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
+    * They have been put behind a wasm feature flag as that is the only reason they exist.
+
+### Routing
+
+* [ ] Look into the additional path prefix option Pingora supports.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
@@ -309,6 +329,23 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 * A document identifying any gaps in features or architecture.
 * Likely 150+ integration tests
 
+#### Conf
+
+* [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
+* [ ] Consider moving validation logic into spec files, where appropriate.
+
+#### Devices
+
+* [ ] Consider moving the UA Parser regex file out of the executable, making it similar to MMDB files. This is fine
+  because it is not for the default UA engine.
+* [ ] Review device subsystem inlight of the more mature conf subsystem.
+* [ ] Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
+  `on_resonse_body` hooks.
+
+#### Routing
+
+* [ ] Review routing code for conceptual duplication.
+
 ## Phase 6: Packaging and Distributions (v0.10.x)
 
 ### Goals
@@ -326,7 +363,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 ```shell
 /etc/snakeway/snakeway.hcl
 /etc/snakeway/ingress.d/*.hcl
-/etc/snakeway/devices.d/*.hcl  
+/etc/snakeway/device.d/*.hcl  
 ```
 
 * Systemd unit

@@ -1,8 +1,7 @@
 mod connection_rate_limiting_filter;
 mod network_connection_filter;
 
-use crate::conf::types::shared::TlsConfig;
-use crate::conf::types::{BindAdminSpec, BindSpec};
+use crate::conf::types::{BindAdminSpec, BindSpec, TlsConfig};
 pub use connection_rate_limiting_filter::*;
 pub use network_connection_filter::*;
 use serde::{Deserialize, Serialize};

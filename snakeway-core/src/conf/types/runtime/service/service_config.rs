@@ -38,8 +38,8 @@ impl ServiceConfig {
             load_balancing_strategy: spec.load_balancing_strategy.clone().into(),
             tcp_upstreams,
             unix_upstreams,
-            circuit_breaker: spec.circuit_breaker.clone().unwrap_or_default(),
-            health_check: spec.health_check.clone().unwrap_or_default(),
+            circuit_breaker: spec.circuit_breaker.clone().unwrap_or_default().into(),
+            health_check: spec.health_check.clone().unwrap_or_default().into(),
         }
     }
 }

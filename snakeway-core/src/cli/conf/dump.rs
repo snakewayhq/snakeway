@@ -1,27 +1,26 @@
 use crate::conf::{load_config, load_spec_files};
+use clap::ValueEnum;
 use serde::Serialize;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 pub fn dump(
     path: PathBuf,
-    json: bool,
-    yaml: bool,
+    format: ConfigDumpOutputFormat,
     repr: RepresentationFormat,
 ) -> anyhow::Result<()> {
     if matches!(repr, RepresentationFormat::Spec) {
         let cfg = load_spec_files(&path)?;
-        if yaml {
-            dump_yaml(&cfg)?;
-        } else if json || !yaml {
-            dump_json(&cfg)?;
+        match format {
+            ConfigDumpOutputFormat::Json => dump_json(&cfg)?,
+            ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg)?,
+            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg)?,
         }
     } else if matches!(repr, RepresentationFormat::Runtime) {
         let cfg = load_config(&path)?;
-        if yaml {
-            dump_yaml(&cfg.config)?;
-        } else if json || !yaml {
-            dump_json(&cfg.config)?;
+        match format {
+            ConfigDumpOutputFormat::Json => dump_json(&cfg.config)?,
+            ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg.config)?,
+            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg.config)?,
         }
     }
 
@@ -40,20 +39,21 @@ fn dump_yaml<T: Serialize>(value: &T) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Clone, Debug)]
+fn dump_hcl<T: Serialize>(value: &T) -> anyhow::Result<()> {
+    let s = hcl::to_string(value)?;
+    println!("{s}");
+    Ok(())
+}
+
+#[derive(Clone, Debug, ValueEnum)]
 pub enum RepresentationFormat {
     Spec,
     Runtime,
 }
 
-impl FromStr for RepresentationFormat {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "spec" => Ok(Self::Spec),
-            "runtime" => Ok(Self::Runtime),
-            _ => Err(anyhow::anyhow!("invalid output format: {}", s)),
-        }
-    }
+#[derive(Clone, Debug, ValueEnum)]
+pub enum ConfigDumpOutputFormat {
+    Hcl,
+    Json,
+    Yaml,
 }

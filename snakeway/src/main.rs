@@ -70,16 +70,11 @@ fn main() {
             } => {
                 if let Err(e) = cli::conf::check(path, quiet, format) {
                     eprintln!("Invalid configuration\n\n{e}");
-                    std::process::exit(1);
+                    exit(1);
                 }
             }
-            cli::conf::ConfigCmd::Dump {
-                path,
-                json,
-                yaml,
-                repr,
-            } => {
-                if let Err(e) = cli::conf::dump(path, json, yaml, repr) {
+            cli::conf::ConfigCmd::Dump { path, format, repr } => {
+                if let Err(e) = cli::conf::dump(path, format, repr) {
                     eprintln!("Failed to dump configuration: {e}");
                     exit(1);
                 }

@@ -89,6 +89,20 @@ pub const REQUEST_RATE_LIMITING_DEVICE_MAX_REQUESTS_PER_SECOND: RangeConstraint<
         units: None,
     };
 
+pub const IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH: RangeConstraint<usize> = RangeConstraint {
+    min: 1,
+    max: 2024,
+    label: "max_x_forwarded_for_length",
+    units: None,
+};
+
+pub const IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH: RangeConstraint<usize> = RangeConstraint {
+    min: 1,
+    max: 4096,
+    label: "max_user_agent_length",
+    units: None,
+};
+
 pub fn validate_range<T>(
     value: T,
     constraint: &RangeConstraint<T>,

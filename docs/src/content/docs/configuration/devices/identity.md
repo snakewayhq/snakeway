@@ -12,7 +12,9 @@ the request context.
 identity_device = {
   enable = true
 
+  # IP Trust
   trusted_proxies = ["10.0.0.0/8"]
+  max_x_forwarded_for_length = 1024
 
   # Enable GeoIP...
   enable_geoip = true
@@ -24,10 +26,11 @@ identity_device = {
   geoip_connection_type_db = "/path/to/connection_type.mmdb"
 
   # Enable user agent enrichment...
-  enable_user_agent = true
+  enable_user_agent     = true
   # If user-agent parsing is enabled,
   # set an engine...
-  ua_engine         = "woothee" # or "uaparser"
+  ua_engine = "woothee" # or "uaparser"
+  max_user_agent_length = 2048
 }
 ```
 

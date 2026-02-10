@@ -19,7 +19,7 @@ server {
 }
 
 include {
-  devices = "devices.d/*.hcl"
+  devices = "device.d/*.hcl"
   ingress = "ingress.d/*.hcl"
 }
 ```
@@ -29,7 +29,7 @@ include {
 The `include` section allows you to split your configuration into logical parts using glob patterns.
 
 - **`ingress.d/`**: Define your [Ingress](/configuration/ingress) files.
-- **`devices.d/`**: Define the [Devices](/devices/overview) that should be active in the request pipeline.
+- **`device.d/`**: Define the [Devices](/devices/overview) that should be active in the request pipeline.
 
 When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a
 single unified runtime configuration. This is discussed in more detail
@@ -50,7 +50,7 @@ Reloads can be triggered in two ways:
 
 Send a `SIGHUP` signal to the Snakeway process.
 
-```bash
+```shell
 snakeway reload
 ```
 
@@ -60,7 +60,7 @@ If enabled the admin API is enable, you can send a `POST` request to the `/admin
 
 For example:
 
-```bash
+```shell
 curl -X POST https://127.0.0.1:8440/admin/reload 
 ```
 
@@ -68,7 +68,7 @@ curl -X POST https://127.0.0.1:8440/admin/reload
 
 You can manually validate your configuration directory at any time using the `config check` command:
 
-```bash
+```shell
 snakeway config check --path /etc/snakeway/
 ```
 

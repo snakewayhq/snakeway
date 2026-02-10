@@ -10,7 +10,7 @@ static content without needing a separate web server.
 
 Static file serving is an optional feature. To enable it, compile Snakeway with the `static_files` feature:
 
-```bash
+```shell
 cargo build --release --features static_files
 ```
 

@@ -14,7 +14,7 @@ All Admin API endpoints return JSON-formatted responses.
 
 Returns the overall health status of the Snakeway instance and its registered upstream services.
 
-```bash
+```shell
 curl http://localhost:8081/admin/health
 ```
 
@@ -22,7 +22,7 @@ curl http://localhost:8081/admin/health
 
 Provides a detailed view of all registered upstreams, including their current health status and load balancing metrics.
 
-```bash
+```shell
 curl http://localhost:8081/admin/upstreams
 ```
 
@@ -31,7 +31,7 @@ curl http://localhost:8081/admin/upstreams
 Returns real-time performance statistics, including request and response counters, error rates, and active connection
 counts per service.
 
-```bash
+```shell
 curl http://localhost:8081/admin/stats
 ```
 
@@ -40,7 +40,7 @@ curl http://localhost:8081/admin/stats
 Triggers an immediate hot reload of the Snakeway configuration. The server will validate the new configuration before
 applying it.
 
-```bash
+```shell
 curl -X POST http://localhost:8081/admin/reload
 ```
 

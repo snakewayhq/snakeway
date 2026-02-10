@@ -35,8 +35,8 @@ Which will yield...
 ✔ Created:
   - snakeway.hcl
   - ingress.d/default.hcl
-  - devices.d/identity.hcl
-  - devices.d/structured_logging.hcl
+  - device.d/identity.hcl
+  - device.d/structured_logging.hcl
 
 Next steps:
   snakeway config check
@@ -48,7 +48,7 @@ This directory structure should now exist:
 ```shell
 /etc/snakeway/snakeway.hcl
 /etc/snakeway/ingress.d/*.hcl
-/etc/snakeway/devices.d/*.hcl  
+/etc/snakeway/device.d/*.hcl  
 ```
 
 ## config check
@@ -69,6 +69,54 @@ And if everything looks good, something like this will be displayed:
 ✔ 2 devices enabled
 ```
 
+If it fails, you might see something that looks like this:
+
+```shell
+configuration validation failed (2 errors, 0 warnings)
+
+/etc/snakeway/device.d/network_policy.hcl
+  error: device requires identity device to be present and enabled
+
+/etc/snakeway/device.d/request_rate_limiting.hcl
+  error: device requires identity device to be present and enabled
+```
+
+For more structure output, use the `JSON` output format:
+
+```shell
+snakeway config check /etc/snakeway --format=json
+```
+
+Which produces:
+
+```json
+{
+  "errors": [
+    {
+      "severity": "Error",
+      "message": "device requires identity device to be present and enabled",
+      "origin": {
+        "file": "/etc/snakeway/device.d/network_policy.hcl",
+        "section": "network_policy_device",
+        "index": null
+      },
+      "help": null
+    },
+    {
+      "severity": "Error",
+      "message": "device requires identity device to be present and enabled",
+      "origin": {
+        "file": "/etc/snakeway/device.d/request_rate_limiting.hcl",
+        "section": "request_rate_limiting_device",
+        "index": null
+      },
+      "help": null
+    }
+  ],
+  "warnings": []
+}
+```
+
 ## config dump
 
 Dump the configuration to stdout:
@@ -77,10 +125,22 @@ Dump the configuration to stdout:
 snakeway config dump /etc/snakeway
 ```
 
-Or, as yaml:
+Various formats are support, i.e., `JSON`, `YAML`, and `HCL`.
+
+To dump as `YAML`:
 
 ```shell
-snakeway config dump /etc/snakeway --yaml
+snakeway config dump /etc/snakeway --format=yaml
+```
+
+By default, the output should match the configuration files.
+However, the internal runtime representation can also be examined, i.e., the lower level internal primitives used
+by Snakeway. This is useful for debugging.
+
+Print the internal representation out as JSON:
+
+```shell
+snakeway config dump /etc/snakeway --format=json --repr=runtime
 ```
 
 ## run

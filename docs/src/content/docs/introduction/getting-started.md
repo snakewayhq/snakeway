@@ -24,7 +24,7 @@ via [rustup](https://rustup.rs/).
 
 Once Rust is ready, clone the Snakeway repository and build the project using Cargo:
 
-```bash
+```shell
 git clone https://github.com/snakewayhq/snakeway.git
 cd snakeway
 cargo build --release
@@ -61,7 +61,7 @@ server {
 
 include {
   ingress = "ingress.d/*.hcl"
-  devices = "devices.d/*.hcl"
+  devices = "device.d/*.hcl"
 }
 ```
 
@@ -102,7 +102,7 @@ With this configuration, any request sent to `http://localhost:8080/get` will be
 
 Run Snakeway, pointing it to your new configuration directory:
 
-```bash
+```shell
 snakeway run --config ./my-proxy
 ```
 
@@ -110,7 +110,7 @@ snakeway run --config ./my-proxy
 
 Finally, open a new terminal and send a request to your local proxy:
 
-```bash
+```shell
 curl -i http://localhost:8080/get
 ```
 

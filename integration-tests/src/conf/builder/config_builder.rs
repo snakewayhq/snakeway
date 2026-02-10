@@ -92,7 +92,7 @@ impl ConfigBuilder {
 
         if validated_cfg.validation_report.has_violations() {
             validated_cfg.validation_report.render_pretty();
-            panic!("failed to load fixture config");
+            panic!("failed to load fixture config - check above for violations");
         }
 
         validated_cfg.config
