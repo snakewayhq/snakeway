@@ -1,5 +1,5 @@
 use crate::conf::resolution::ResolveError;
-use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, Origin};
+use crate::conf::types::{CircuitBreakerSpec, HealthCheckSpec, Origin};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -12,8 +12,8 @@ pub struct ServiceSpec {
     pub load_balancing_strategy: LoadBalancingStrategySpec,
     pub routes: Vec<ServiceRouteSpec>,
     pub upstreams: Vec<UpstreamSpec>,
-    pub health_check: Option<HealthCheckConfig>,
-    pub circuit_breaker: Option<CircuitBreakerConfig>,
+    pub health_check: Option<HealthCheckSpec>,
+    pub circuit_breaker: Option<CircuitBreakerSpec>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]

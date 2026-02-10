@@ -264,7 +264,7 @@ Todo:
 
 * [x] Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
     * `devices.d` has been changed to `device.d`
-* [ ] Fully separate remaining shared runtime/spec conf state.
+* [x] Fully separate remaining shared runtime/spec conf state.
 * [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 * [ ] Consider moving validation logic into spec files, where appropriate.
 

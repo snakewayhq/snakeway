@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindInterfaceInput, BindSpec, CircuitBreakerConfig, EndpointSpec, HostSpec, IngressSpec,
-    Origin, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+    BindInterfaceInput, BindSpec, CircuitBreakerSpec, EndpointSpec, HostSpec, IngressSpec, Origin,
+    ServiceRouteSpec, ServiceSpec, UpstreamSpec,
 };
 use crate::conf::validation::{ValidationReport, validate_ingresses, validate_services};
 use pretty_assertions::assert_eq;
@@ -252,7 +252,7 @@ fn validate_service_circuit_breaker_valid() {
 
     let services = vec![ServiceSpec {
         upstreams: vec![minimal_upstream()],
-        circuit_breaker: Some(CircuitBreakerConfig {
+        circuit_breaker: Some(CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
             open_duration_milliseconds: 1000,
@@ -277,7 +277,7 @@ fn validate_service_circuit_breaker_failure_threshold_out_of_range() {
     let mut report = ValidationReport::default();
     let services = vec![ServiceSpec {
         upstreams: vec![minimal_upstream()],
-        circuit_breaker: Some(CircuitBreakerConfig {
+        circuit_breaker: Some(CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 0, // Min is 1
             open_duration_milliseconds: 1000,
@@ -303,7 +303,7 @@ fn validate_service_circuit_breaker_open_duration_out_of_range() {
     let mut report = ValidationReport::default();
     let services = vec![ServiceSpec {
         upstreams: vec![minimal_upstream()],
-        circuit_breaker: Some(CircuitBreakerConfig {
+        circuit_breaker: Some(CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
             open_duration_milliseconds: 0, // Min is 1
@@ -333,7 +333,7 @@ fn validate_service_circuit_breaker_half_open_max_requests_out_of_range() {
     let mut report = ValidationReport::default();
     let services = vec![ServiceSpec {
         upstreams: vec![minimal_upstream()],
-        circuit_breaker: Some(CircuitBreakerConfig {
+        circuit_breaker: Some(CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
             open_duration_milliseconds: 1000,
@@ -363,7 +363,7 @@ fn validate_service_circuit_breaker_success_threshold_out_of_range() {
     let mut report = ValidationReport::default();
     let services = vec![ServiceSpec {
         upstreams: vec![minimal_upstream()],
-        circuit_breaker: Some(CircuitBreakerConfig {
+        circuit_breaker: Some(CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
             open_duration_milliseconds: 1000,
