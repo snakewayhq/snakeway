@@ -1,8 +1,8 @@
 use crate::conf::types::ServerSpec;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Represents the top-level configuration file.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct EntrypointSpec {
     pub server: ServerSpec,
     pub include: IncludeSpec,
@@ -10,8 +10,17 @@ pub struct EntrypointSpec {
 
 /// Represents the include section of the top-level config file.
 /// The members are directory paths where sub-configuration files are located.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct IncludeSpec {
     pub devices: String,
     pub ingress: String,
+}
+
+impl Default for IncludeSpec {
+    fn default() -> Self {
+        Self {
+            devices: "device.d/*.hcl".to_string(),
+            ingress: "ingress.d/*.hcl".to_string(),
+        }
+    }
 }
