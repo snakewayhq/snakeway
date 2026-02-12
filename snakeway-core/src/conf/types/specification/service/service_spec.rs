@@ -34,6 +34,7 @@ pub struct ServiceRouteSpec {
     pub path: String,
     #[serde(default)]
     pub enable_websocket: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ws_max_connections: Option<usize>,
 }
 
@@ -42,6 +43,7 @@ pub struct UpstreamSpec {
     #[serde(skip)]
     pub origin: Origin,
     pub endpoint: Option<EndpointSpec>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sock: Option<String>,
     #[serde(default = "default_weight")]
     pub weight: u32,

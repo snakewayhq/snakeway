@@ -17,8 +17,13 @@ pub struct IdentityDeviceSpec {
 
     pub enable_geoip: bool,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub geoip_city_db: Option<PathBuf>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub geoip_isp_db: Option<PathBuf>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub geoip_connection_type_db: Option<PathBuf>,
 
     pub enable_user_agent: bool,
