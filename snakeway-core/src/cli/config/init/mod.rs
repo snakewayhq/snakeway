@@ -1,10 +1,11 @@
-use crate::conf::types::{
-    BindInterfaceInput, BindSpec, EndpointSpec, EntrypointSpec, HostSpec, IdentityDeviceSpec,
-    IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
-};
-use ahash::{HashMap, HashMapExt};
+mod default;
+mod dev;
+mod httpbin;
+
+use crate::conf::types::{EntrypointSpec, ServerSpec};
 use anyhow::{Context, Result};
 use clap::ValueEnum;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -43,55 +44,26 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     files_to_create.insert(entrypoint_file_path, hcl::to_string(&entrypoint_spec)?);
 
     match template {
-        ConfigInitTemplate::Default => {}
+        ConfigInitTemplate::Default => {
+            default::generate(
+                device_dir_path.clone(),
+                ingress_dir_path.clone(),
+                &mut files_to_create,
+            )?;
+        }
         ConfigInitTemplate::Httpbin => {
-            let identity_device_spec = IdentityDeviceSpec {
-                enable: true,
-                trusted_proxies: vec![],
-                max_x_forwarded_for_length: 1024,
-                enable_geoip: false,
-                geoip_city_db: None,
-                geoip_isp_db: None,
-                geoip_connection_type_db: None,
-                enable_user_agent: true,
-                max_user_agent_length: 2048,
-                ..Default::default()
-            };
-
-            files_to_create.insert(
-                device_dir_path.join("identity_device.hcl"),
-                hcl::to_string(&identity_device_spec)?,
-            );
-
-            let httpbin_ingress_spec = IngressSpec {
-                bind: Some(BindSpec {
-                    interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                    port: 8080,
-                    ..Default::default()
-                }),
-                services: vec![{
-                    ServiceSpec {
-                        routes: vec![ServiceRouteSpec {
-                            path: "/get".to_string(),
-                            ..Default::default()
-                        }],
-                        upstreams: vec![UpstreamSpec {
-                            endpoint: Some(EndpointSpec {
-                                host: HostSpec::Hostname("httpbin.org".to_string()),
-                                port: 80,
-                            }),
-                            weight: 1,
-                            ..Default::default()
-                        }],
-                        ..Default::default()
-                    }
-                }],
-                ..Default::default()
-            };
-            files_to_create.insert(
-                ingress_dir_path.join("httpbin_ingress.hcl"),
-                hcl::to_string(&httpbin_ingress_spec)?,
-            );
+            httpbin::generate(
+                device_dir_path.clone(),
+                ingress_dir_path.clone(),
+                &mut files_to_create,
+            )?;
+        }
+        ConfigInitTemplate::Dev => {
+            dev::generate(
+                device_dir_path.clone(),
+                ingress_dir_path.clone(),
+                &mut files_to_create,
+            )?;
         }
     }
 
@@ -131,4 +103,5 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 pub enum ConfigInitTemplate {
     Default,
     Httpbin,
+    Dev,
 }

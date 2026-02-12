@@ -2,7 +2,7 @@ use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct IdentityDeviceSpec {
     #[serde(skip)]
@@ -38,6 +38,16 @@ fn default_max_x_forwarded_for_length() -> usize {
 
 fn default_max_user_agent_length() -> usize {
     2048
+}
+
+impl Default for IdentityDeviceSpec {
+    fn default() -> Self {
+        Self {
+            max_x_forwarded_for_length: default_max_x_forwarded_for_length(),
+            max_user_agent_length: default_max_user_agent_length(),
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
