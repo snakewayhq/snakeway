@@ -37,7 +37,6 @@ nix = { workspace = true, features = ["signal"] }
 percent-encoding = { workspace = true, optional = true }
 pingora = { workspace = true, features = ["proxy", "rustls", "connection_filter"] }
 pingora-limits = { workspace = true }
-rust-embed = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = [
