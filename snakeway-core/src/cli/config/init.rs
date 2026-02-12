@@ -1,13 +1,14 @@
+use crate::conf::types::{
+    BindInterfaceInput, BindSpec, EndpointSpec, EntrypointSpec, HostSpec, IdentityDeviceSpec,
+    IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+};
+use ahash::{HashMap, HashMapExt};
 use anyhow::{Context, Result};
-use rust_embed::RustEmbed;
+use clap::ValueEnum;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(RustEmbed)]
-#[folder = "config-templates/"]
-pub struct ConfigTemplates;
-
-pub fn init(path: PathBuf) -> Result<()> {
+pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     use anyhow::bail;
 
     // Refuse to overwrite an existing non-empty directory
@@ -25,30 +26,90 @@ pub fn init(path: PathBuf) -> Result<()> {
         }
     }
 
+    let entrypoint_file_path = path.join("snakeway.hcl");
+    let device_dir_path = path.join("device.d");
+    let ingress_dir_path = path.join("ingress.d");
+
     // Map embedded templates to their destination paths
     let mut created_files = Vec::new();
-    for template_path in ConfigTemplates::iter() {
-        let template_path = template_path.as_ref();
-        let file = ConfigTemplates::get(template_path)
-            .with_context(|| format!("missing embedded template: {template_path}"))?;
+    let mut files_to_create = HashMap::new();
+    let entrypoint_spec = EntrypointSpec {
+        server: ServerSpec {
+            threads: Some(8),
+            pid_file: Some(PathBuf::from("/var/run/snakeway.pid")),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    files_to_create.insert(entrypoint_file_path, hcl::to_string(&entrypoint_spec)?);
 
-        // Destination path matches template path (keeping .d suffixes)
-        let dest_rel_path = template_path.to_string();
-        let dest_path = path.join(&dest_rel_path);
+    match template {
+        ConfigInitTemplate::Default => {}
+        ConfigInitTemplate::Httpbin => {
+            let identity_device_spec = IdentityDeviceSpec {
+                enable: true,
+                trusted_proxies: vec![],
+                max_x_forwarded_for_length: 1024,
+                enable_geoip: false,
+                geoip_city_db: None,
+                geoip_isp_db: None,
+                geoip_connection_type_db: None,
+                enable_user_agent: true,
+                max_user_agent_length: 2048,
+                ..Default::default()
+            };
 
+            files_to_create.insert(
+                device_dir_path.join("identity_device.hcl"),
+                hcl::to_string(&identity_device_spec)?,
+            );
+
+            let httpbin_ingress_spec = IngressSpec {
+                bind: Some(BindSpec {
+                    interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                    port: 8080,
+                    ..Default::default()
+                }),
+                services: vec![{
+                    ServiceSpec {
+                        routes: vec![ServiceRouteSpec {
+                            path: "/get".to_string(),
+                            ..Default::default()
+                        }],
+                        upstreams: vec![UpstreamSpec {
+                            endpoint: Some(EndpointSpec {
+                                host: HostSpec::Hostname("httpbin.org".to_string()),
+                                port: 80,
+                            }),
+                            weight: 1,
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }
+                }],
+                ..Default::default()
+            };
+            files_to_create.insert(
+                ingress_dir_path.join("httpbin_ingress.hcl"),
+                hcl::to_string(&httpbin_ingress_spec)?,
+            );
+        }
+    }
+
+    for (dest_path, contents) in files_to_create {
         if let Some(parent) = dest_path.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("failed to create directory {}", parent.display()))?;
         }
 
-        let contents = std::str::from_utf8(file.data.as_ref())
+        let contents = std::str::from_utf8(contents.as_ref())
             .context("config template is not valid UTF-8")?
             .trim_start();
 
         fs::write(&dest_path, contents.as_bytes())
             .with_context(|| format!("failed to write {}", dest_path.display()))?;
 
-        created_files.push(dest_rel_path);
+        created_files.push(dest_path);
     }
 
     // Sort for deterministic output
@@ -58,12 +119,17 @@ pub fn init(path: PathBuf) -> Result<()> {
     println!("✔ Initialized Snakeway config in {}", path.display());
     println!("✔ Created:");
     for file in created_files {
-        println!("  - {file}");
+        println!("  - {}", file.display());
     }
     println!();
     println!("Next steps:");
-    println!("  snakeway config check");
-    println!("  snakeway run");
-
+    println!("  snakeway config check {}", path.display());
+    println!("  snakeway run --config {}", path.display());
     Ok(())
+}
+
+#[derive(Debug, ValueEnum, Clone)]
+pub enum ConfigInitTemplate {
+    Default,
+    Httpbin,
 }

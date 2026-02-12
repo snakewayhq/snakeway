@@ -47,8 +47,12 @@ pub enum ConfigCmd {
 
     /// Initialize a new config directory
     Init {
-        /// Path to config directory
+        /// Where the new config directory should be created
         #[arg(default_value = "config")]
         path: PathBuf,
+
+        /// Specify the template to use
+        #[arg(short, long, value_enum, default_value = "default")]
+        template: ConfigInitTemplate,
     },
 }
