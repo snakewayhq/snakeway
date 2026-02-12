@@ -30,7 +30,6 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     let device_dir_path = path.join("device.d");
     let ingress_dir_path = path.join("ingress.d");
 
-    // Map embedded templates to their destination paths
     let mut created_files = Vec::new();
     let mut files_to_create = HashMap::new();
     let entrypoint_spec = EntrypointSpec {
