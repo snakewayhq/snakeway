@@ -42,68 +42,37 @@ that forwards traffic to a public API.
 The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to be present to
 define its behavior. By default, it looks for a directory named `config` in the current working directory.
 
-Create a new directory to hold your Snakeway configuration:
+Generate a Snakeway configuration directory called "my-first-proxy" using the `httpbin` template:
 
 ```shell
-snakeway config init ./my-proxy
+snakeway config init ./my-first-proxy --template=httpbin  
 ```
-
-### 2. Configure the Server
-
-The entrypoint config file should exist: `./my-proxy/snakeway.hcl`.
-
-It should have something that looks like this:
-
-```hcl
-server {
-  version = 1
-}
-
-include {
-  ingress = "ingress.d/*.hcl"
-  devices = "device.d/*.hcl"
-}
-```
-
-### 3. Define the Ingress
-
-Next, we'll define the ingress we want to proxy to. Create `my-proxy/ingress.d/httpbin.hcl`:
-
-```hcl
-bind = {
-  interface = "127.0.0.1"
-  port      = 8080
-}
-
-services = [
-  {
-    load_balancing_strategy = "round_robin"
-
-    routes = [
-      {
-        path = "/get"
-      }
-    ]
-
-    upstreams = [
-      {
-        endpoint = { host = "httpbin.org" port = 443 }
-      }
-    ]
-  }
-]
-```
-
-This tells Snakeway that there is a service that handles requests to `/get` and forwards them to `httpbin.org`.
 
 With this configuration, any request sent to `http://localhost:8080/get` will be proxied to `https://httpbin.org/get`.
 
-### 5. Launch the Proxy
+You should now see a directory structure that looks like this:
+
+```shell
+my-first-proxy
+├── device.d
+│ └── identity.hcl
+├── ingress.d
+│ └── httpbin.hcl
+└── snakeway.hcl
+```
+
+:::note
+The `httpbin` template causes snakeway to https://httpbin.org/.
+
+This is just an example to get you started.
+:::
+
+### 2. Launch the Proxy
 
 Run Snakeway, pointing it to your new configuration directory:
 
 ```shell
-snakeway run --config ./my-proxy
+snakeway run --config ./my-first-proxy
 ```
 
 ### 6. Verify with Curl

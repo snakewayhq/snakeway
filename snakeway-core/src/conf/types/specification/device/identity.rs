@@ -43,9 +43,17 @@ fn default_max_user_agent_length() -> usize {
 impl Default for IdentityDeviceSpec {
     fn default() -> Self {
         Self {
+            origin: Default::default(),
+            enable: false,
+            trusted_proxies: vec![],
             max_x_forwarded_for_length: default_max_x_forwarded_for_length(),
+            enable_geoip: false,
+            geoip_city_db: None,
+            geoip_isp_db: None,
+            geoip_connection_type_db: None,
+            enable_user_agent: false,
+            ua_engine: Default::default(),
             max_user_agent_length: default_max_user_agent_length(),
-            ..Default::default()
         }
     }
 }

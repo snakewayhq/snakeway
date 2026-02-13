@@ -13,7 +13,7 @@ pub(crate) fn generate(
     let identity_device_spec = IdentityDeviceSpec::default();
 
     files_to_create.insert(
-        device_dir_path.join("identity_device.hcl"),
+        device_dir_path.join("identity.hcl"),
         hcl::to_string(&identity_device_spec)?,
     );
 

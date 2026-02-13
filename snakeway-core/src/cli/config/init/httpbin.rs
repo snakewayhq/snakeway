@@ -17,7 +17,7 @@ pub(crate) fn generate(
     };
 
     files_to_create.insert(
-        device_dir_path.join("identity_device.hcl"),
+        device_dir_path.join("identity.hcl"),
         hcl::to_string(&identity_device_spec)?,
     );
 
@@ -48,7 +48,7 @@ pub(crate) fn generate(
     };
 
     files_to_create.insert(
-        ingress_dir_path.join("httpbin_ingress.hcl"),
+        ingress_dir_path.join("httpbin.hcl"),
         hcl::to_string(&httpbin_ingress_spec)?,
     );
 
