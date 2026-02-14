@@ -13,14 +13,14 @@ pub struct EntrypointSpec {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct IncludeSpec {
     pub devices: String,
-    pub ingress: String,
+    pub ingresses: String,
 }
 
 impl Default for IncludeSpec {
     fn default() -> Self {
         Self {
             devices: "device.d/*.hcl".to_string(),
-            ingress: "ingress.d/*.hcl".to_string(),
+            ingresses: "ingress.d/*.hcl".to_string(),
         }
     }
 }
