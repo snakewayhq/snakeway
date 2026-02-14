@@ -166,8 +166,8 @@ dump-config:
     cargo run -q --all-features -- config dump|jq
 
 generate-all-templates:
-    mkdir -p ./dev/templates
-    rm -fr ./dev/templates/*
+    @mkdir -p ./dev/templates
+    @rm -fr ./dev/templates/*
     cargo run -q --all-features -- config init ./dev/templates/minimal --template=minimal
     cargo run -q --all-features -- config init ./dev/templates/httpbin --template=httpbin
     cargo run -q --all-features -- config init ./dev/templates/dev --template=dev
