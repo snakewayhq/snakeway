@@ -63,6 +63,11 @@ export default defineConfig({
                 ],
             },
             {
+                label: 'Release Notes', items: [
+                    {label: 'v0.7.0', link: '/releases/v0_7_0/'},
+                ],
+            },
+            {
                 label: 'Internals', items: [
                     {label: 'Architecture', link: '/internals/architecture/'},
                     {label: 'Mental Model', link: '/internals/mental-model/'},
