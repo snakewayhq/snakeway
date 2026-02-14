@@ -1,23 +1,7 @@
-use crate::conf::types::{
-    BindAdminSpec, BindSpec, DeviceSpec, IdentityDeviceSpec, IngressSpec, NetworkPolicyDeviceSpec,
-    Origin, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServiceSpec, StaticFilesSpec,
-    StructuredLoggingDeviceSpec, WasmDeviceSpec,
-};
+use crate::conf::types::{DeviceSpec, DevicesFile, IngressFile, IngressSpec, Origin};
 use crate::conf::validation::ConfigError;
-use serde::Deserialize;
 use std::fs;
 use std::path::Path;
-
-#[derive(Debug, Deserialize, Default)]
-struct DevicesFile {
-    request_filter_device: Option<RequestFilterDeviceSpec>,
-    identity_device: Option<IdentityDeviceSpec>,
-    network_policy_device: Option<NetworkPolicyDeviceSpec>,
-    request_rate_limiting_device: Option<RequestRateLimitingDeviceSpec>,
-    #[serde(default)]
-    wasm_devices: Vec<WasmDeviceSpec>,
-    structured_logging_device: Option<StructuredLoggingDeviceSpec>,
-}
 
 pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
@@ -57,19 +41,6 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     }
 
     Ok(device_config)
-}
-
-#[derive(Debug, Deserialize)]
-struct IngressFile {
-    bind: Option<BindSpec>,
-
-    bind_admin: Option<BindAdminSpec>,
-
-    #[serde(default)]
-    services: Vec<ServiceSpec>,
-
-    #[serde(default)]
-    static_files: Vec<StaticFilesSpec>,
 }
 
 pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {

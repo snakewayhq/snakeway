@@ -22,7 +22,7 @@ enum Command {
     /// Inspect configuration
     Config {
         #[command(subcommand)]
-        cmd: cli::conf::ConfigCmd,
+        cmd: cli::config::ConfigCmd,
     },
 
     /// Debug a WASM device in isolation
@@ -63,24 +63,24 @@ fn main() {
 
     match cli.command {
         Some(Command::Config { cmd }) => match cmd {
-            cli::conf::ConfigCmd::Check {
+            cli::config::ConfigCmd::Check {
                 path,
                 quiet,
                 format,
             } => {
-                if let Err(e) = cli::conf::check(path, quiet, format) {
+                if let Err(e) = cli::config::check(path, quiet, format) {
                     eprintln!("Invalid configuration\n\n{e}");
                     exit(1);
                 }
             }
-            cli::conf::ConfigCmd::Dump { path, format, repr } => {
-                if let Err(e) = cli::conf::dump(path, format, repr) {
+            cli::config::ConfigCmd::Dump { path, format, repr } => {
+                if let Err(e) = cli::config::dump(path, format, repr) {
                     eprintln!("Failed to dump configuration: {e}");
                     exit(1);
                 }
             }
-            cli::conf::ConfigCmd::Init { path } => {
-                cli::conf::init(path).expect("Failed to initialize config directory");
+            cli::config::ConfigCmd::Init { path, template } => {
+                cli::config::init(path, template).expect("Failed to initialize config directory");
             }
         },
 

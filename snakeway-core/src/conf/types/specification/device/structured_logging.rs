@@ -28,7 +28,9 @@ pub struct StructuredLoggingDeviceSpec {
     /// Identity fields to include in the request context (and possibly log).
     pub identity_fields: Vec<IdentityField>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub events: Option<Vec<LogEvent>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub phases: Option<Vec<LogPhase>>,
 }

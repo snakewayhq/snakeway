@@ -65,7 +65,7 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
     let device_files = discover(root, &entry.include.devices)?;
-    let ingress_files = discover(root, &entry.include.ingress)?;
+    let ingress_files = discover(root, &entry.include.ingresses)?;
 
     //--------------------------------------------------------------------------
     // Parse devices (hard fail)

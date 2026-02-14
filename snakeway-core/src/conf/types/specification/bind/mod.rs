@@ -18,10 +18,14 @@ pub struct BindSpec {
     pub origin: Origin,
     pub interface: BindInterfaceInput,
     pub port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<TlsSpec>,
     pub enable_http2: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub redirect_http_to_https: Option<RedirectSpec>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_filter: Option<NetworkConnectionFilterSpec>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_rate_limiting_filter: Option<ConnectionRateLimitingFilterSpec>,
 }
 

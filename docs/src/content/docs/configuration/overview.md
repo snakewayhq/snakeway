@@ -19,8 +19,8 @@ server {
 }
 
 include {
-  devices = "device.d/*.hcl"
-  ingress = "ingress.d/*.hcl"
+  devices   = "device.d/*.hcl"
+  ingresses = "ingress.d/*.hcl"
 }
 ```
 

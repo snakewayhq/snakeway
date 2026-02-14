@@ -22,10 +22,10 @@ A new configuration directory can be easily generated in the current directory:
 snakeway config init
 ```
 
-Or, with a custom directory path:
+Or, with a custom directory path and template:
 
 ```shell
-snakeway config init /etc/snakeway
+snakeway config init /etc/snakeway --template=httpbin
 ```
 
 Which will yield...
@@ -33,23 +33,24 @@ Which will yield...
 ```shell                                                                                                                  ✔ 
 ✔ Initialized Snakeway config in /etc/snakeway
 ✔ Created:
-  - snakeway.hcl
-  - ingress.d/default.hcl
-  - device.d/identity.hcl
-  - device.d/structured_logging.hcl
+  - /etc/snakeway/device.d/identity.hcl
+  - /etc/snakeway/ingress.d/minimal.hcl
+  - /etc/snakeway/snakeway.hcl
 
 Next steps:
-  snakeway config check
-  snakeway run
+  snakeway config check /etc/snakeway
+  snakeway run --config /etc/snakeway
 ```
 
-This directory structure should now exist:
+By default, the `minimal` template is used by the init command.
 
-```shell
-/etc/snakeway/snakeway.hcl
-/etc/snakeway/ingress.d/*.hcl
-/etc/snakeway/device.d/*.hcl  
-```
+Other templates are available.
+
+| Template | Description                                                   |
+|----------|---------------------------------------------------------------|
+| minimal  | A barebones starting point                                    |
+| httpbin  | A simple test configuration to verify the proxy is functional |
+| dev      | Used for internal development                                 |
 
 ## config check
 
