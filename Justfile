@@ -162,14 +162,15 @@ debug-file-descriptors:
     @echo "\nCurrent descriptors in use:"
     @lsof -p $(pgrep snakeway) | wc -l
 
-dump-whole-config:
-    #!/usr/bin/env bash
-    find config -type f -name "*.hcl" | sort | while read -r f; do
-      echo
-      echo "##### FILE: $f #####"
-      echo
-      cat "$f"
-    done
+dump-config:
+    cargo run -q --all-features -- config dump|jq
+
+generate-all-templates:
+    mkdir -p ./dev/templates
+    rm -fr ./dev/templates/*
+    cargo run -q --all-features -- config init ./dev/templates/default --template=default
+    cargo run -q --all-features -- config init ./dev/templates/httpbin --template=httpbin
+    cargo run -q --all-features -- config init ./dev/templates/dev --template=dev
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS
