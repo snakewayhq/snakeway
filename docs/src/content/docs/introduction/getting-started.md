@@ -27,7 +27,7 @@ Once Rust is ready, clone the Snakeway repository and build the project using Ca
 ```shell
 git clone https://github.com/snakewayhq/snakeway.git
 cd snakeway
-cargo build --release
+cargo build --release -p snakeway
 ```
 
 After the build completes, you'll find the `snakeway` binary in the `target/release` directory.
@@ -48,8 +48,6 @@ Generate a Snakeway configuration directory called "my-first-proxy" using the `h
 snakeway config init ./my-first-proxy --template=httpbin  
 ```
 
-With this configuration, any request sent to `http://localhost:8080/get` will be proxied to `https://httpbin.org/get`.
-
 You should now see a directory structure that looks like this:
 
 ```shell
@@ -62,9 +60,10 @@ my-first-proxy
 ```
 
 :::note
-The `httpbin` template causes snakeway to https://httpbin.org/.
+The `httpbin` template creates a configuration that forwards `http://localhost:8080/get` requests to
+`https://httpbin.org/get`.
 
-This is just an example to get you started.
+Use `snakeway config init -h` to see other template options.
 :::
 
 ### 2. Launch the Proxy
@@ -75,7 +74,7 @@ Run Snakeway, pointing it to your new configuration directory:
 snakeway run --config ./my-first-proxy
 ```
 
-### 6. Verify with Curl
+### 3. Verify with Curl
 
 Finally, open a new terminal and send a request to your local proxy:
 
@@ -100,4 +99,5 @@ Content-Type: application/json
 ```
 
 Congratulations! You've just configured and launched your first Snakeway proxy. From here, you can begin exploring more
-advanced features like [Devices](/devices/overview) and [Static File Serving](/guide/static-files).
+advanced features like [Devices](/configuration/overview), [Devices](/devices/overview),
+and [Static File Serving](/guide/static-files).
