@@ -168,9 +168,20 @@ dump-config:
 generate-all-templates:
     @mkdir -p ./dev/templates
     @rm -fr ./dev/templates/*
-    cargo run -q --all-features -- config init ./dev/templates/minimal --template=minimal
-    cargo run -q --all-features -- config init ./dev/templates/httpbin --template=httpbin
-    cargo run -q --all-features -- config init ./dev/templates/dev --template=dev
+    @echo "Creating minimal conf..."
+    @cargo run -q --all-features -- config init ./dev/templates/minimal --template=minimal
+    @echo "\nValidating minimal conf..."
+    @cargo run -q --all-features -- config check ./dev/templates/minimal
+
+    @echo "\nCreating dev conf..."
+    @cargo run -q --all-features -- config init ./dev/templates/dev --template=dev
+    @echo "\nValidating dev conf..."
+    @cargo run -q --all-features -- config check ./dev/templates/dev
+
+    @echo "\nCreating httpbin conf..."
+    @cargo run -q --all-features -- config init ./dev/templates/httpbin --template=httpbin
+    @echo "\nValidating httpbin conf..."
+    @cargo run -q --all-features -- config check ./dev/templates/httpbin
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS
