@@ -52,7 +52,7 @@ pub enum ConfigCmd {
         path: PathBuf,
 
         /// Specify the template to use
-        #[arg(short, long, value_enum, default_value = "default")]
+        #[arg(short, long, value_enum, default_value = "minimal")]
         template: ConfigInitTemplate,
     },
 }

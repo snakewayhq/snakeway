@@ -41,8 +41,8 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     files_to_create.insert(entrypoint_file_path, hcl::to_string(&entrypoint_spec)?);
 
     match template {
-        ConfigInitTemplate::Default => {
-            templates::default_template::generate(
+        ConfigInitTemplate::Minimal => {
+            templates::minimal_template::generate(
                 device_dir_path.clone(),
                 ingress_dir_path.clone(),
                 &mut files_to_create,
@@ -98,7 +98,7 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 
 #[derive(Debug, ValueEnum, Clone)]
 pub enum ConfigInitTemplate {
-    Default,
+    Minimal,
     Httpbin,
     Dev,
 }
