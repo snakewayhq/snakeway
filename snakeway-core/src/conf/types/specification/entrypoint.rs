@@ -1,4 +1,8 @@
-use crate::conf::types::ServerSpec;
+use crate::conf::types::{
+    BindAdminSpec, BindSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
+    RequestRateLimitingDeviceSpec, ServerSpec, ServiceSpec, StaticFilesSpec,
+    StructuredLoggingDeviceSpec, WasmDeviceSpec,
+};
 use serde::{Deserialize, Serialize};
 
 /// Represents the top-level configuration file.
@@ -23,4 +27,28 @@ impl Default for IncludeSpec {
             ingresses: "ingress.d/*.hcl".to_string(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub(crate) struct DevicesFile {
+    pub(crate) request_filter_device: Option<RequestFilterDeviceSpec>,
+    pub(crate) identity_device: Option<IdentityDeviceSpec>,
+    pub(crate) network_policy_device: Option<NetworkPolicyDeviceSpec>,
+    pub(crate) request_rate_limiting_device: Option<RequestRateLimitingDeviceSpec>,
+    #[serde(default)]
+    pub(crate) wasm_devices: Vec<WasmDeviceSpec>,
+    pub(crate) structured_logging_device: Option<StructuredLoggingDeviceSpec>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub(crate) struct IngressFile {
+    pub(crate) bind: Option<BindSpec>,
+
+    pub(crate) bind_admin: Option<BindAdminSpec>,
+
+    #[serde(default)]
+    pub(crate) services: Vec<ServiceSpec>,
+
+    #[serde(default)]
+    pub(crate) static_files: Vec<StaticFilesSpec>,
 }
