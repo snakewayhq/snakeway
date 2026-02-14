@@ -250,7 +250,7 @@ Todo:
 * L7 request rate limit device
 * L7 network policy device
 
-## Phase 3.5: Emergent tasks (v0.7.x)
+## Phase 3.1: Emergent tasks (v0.7.x)
 
 ### CLI
 
@@ -258,7 +258,7 @@ Todo:
 * [x] Consider putting CLI commands behind a feature gate or move them to an entirely separate binary.
     * Not bothering to do this (now). The `wasm-device exec` command is effectively feature-gated internally, and the
       commands are fine to include by default.
-* [ ] Add "first proxy" config generation: perhaps via the `config init` command.
+* [x] Add "first proxy" config generation: perhaps via the `config init` command.
 
 ### Conf
 
@@ -270,25 +270,33 @@ Todo:
 ### Logging
 
 * [x] Document logging output file configuration options.
-* [ ] Investigate adding OpenTelemetry support.
 
 ### Devices
 
 * [x] Consider making `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable for the identity device.
     * These constants have been moved to range-validated configuration options.
-* [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
 
 ### API Cleanup
 
 * [x] Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
     * They have been put behind a wasm feature flag as that is the only reason they exist.
 
+## Phase 3.2: Emergent tasks (v0.8.x)
+
+### Logging
+
+* [ ] Investigate adding OpenTelemetry support.
+
+### Devices
+
+* [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
+
 ### Pingora
 
 * [ ] Look into the additional path prefix option Pingora supports.
 * [ ] Look into making the additional Pingora threading model an option.
 
-## Phase 4: ACME TLS Automation (v0.8.x)
+## Phase 4: ACME TLS Automation (v0.x.x)
 
 ### Goals
 
@@ -311,7 +319,7 @@ Todo:
 * Cert transparency logs
 * `/admin/certs` endpoint
 
-## Phase 5: Architecture and Test Suite (v0.9.x)
+## Phase 5: Architecture and Test Suite (v0.x.x)
 
 All core features should be implemented at this stage.   
 It is a good time to pause and re-evaluate the overall architecture and flesh out the holes in the test suite.
@@ -348,7 +356,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 * [ ] Review routing code for conceptual duplication.
 
-## Phase 6: Packaging and Distributions (v0.10.x)
+## Phase 6: Packaging and Distributions (v0.x.x)
 
 ### Goals
 
