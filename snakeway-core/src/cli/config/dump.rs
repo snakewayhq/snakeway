@@ -1,4 +1,5 @@
 use crate::conf::{load_config, load_spec_files};
+use crate::serialization::to_hcl_string;
 use clap::ValueEnum;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -40,7 +41,7 @@ fn dump_yaml<T: Serialize>(value: &T) -> anyhow::Result<()> {
 }
 
 fn dump_hcl<T: Serialize>(value: &T) -> anyhow::Result<()> {
-    let s = hcl::to_string(value)?;
+    let s = to_hcl_string(value)?;
     println!("{s}");
     Ok(())
 }

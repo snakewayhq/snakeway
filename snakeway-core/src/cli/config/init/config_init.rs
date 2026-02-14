@@ -1,5 +1,6 @@
 use crate::cli::config::init::templates;
 use crate::conf::types::{EntrypointSpec, ServerSpec};
+use crate::serialization::to_hcl_string;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
 use std::collections::HashMap;
@@ -38,7 +39,7 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
         },
         ..Default::default()
     };
-    files_to_create.insert(entrypoint_file_path, hcl::to_string(&entrypoint_spec)?);
+    files_to_create.insert(entrypoint_file_path, to_hcl_string(&entrypoint_spec)?);
 
     match template {
         ConfigInitTemplate::Minimal => {

@@ -1,6 +1,7 @@
 use crate::conf::types::{
     BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
 };
+use crate::serialization::to_hcl_string;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -16,7 +17,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         device_dir_path.join("identity.hcl"),
-        hcl::to_string(&identity_device_file)?,
+        to_hcl_string(&identity_device_file)?,
     );
 
     let httpbin_ingress_spec = IngressSpec {
@@ -30,7 +31,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         ingress_dir_path.join("minimal.hcl"),
-        hcl::to_string(&httpbin_ingress_spec)?,
+        to_hcl_string(&httpbin_ingress_spec)?,
     );
 
     Ok(())
