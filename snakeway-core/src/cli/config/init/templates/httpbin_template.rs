@@ -1,4 +1,4 @@
-use super::device_spec_root::IdentityDeviceSpecRoot;
+use crate::cli::config::init::device_spec_root::IdentityDeviceSpecRoot;
 use crate::conf::types::{
     BindInterfaceInput, BindSpec, EndpointSpec, HostSpec, IdentityDeviceSpec, IngressSpec,
     ServiceRouteSpec, ServiceSpec, UpstreamSpec,

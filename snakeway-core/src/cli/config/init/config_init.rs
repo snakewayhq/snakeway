@@ -1,4 +1,4 @@
-use crate::cli::config::init::{default_template, dev_template, httpbin_template};
+use crate::cli::config::init::templates;
 use crate::conf::types::{EntrypointSpec, ServerSpec};
 use anyhow::{Context, Result};
 use clap::ValueEnum;
@@ -42,21 +42,21 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 
     match template {
         ConfigInitTemplate::Default => {
-            default_template::generate(
+            templates::default_template::generate(
                 device_dir_path.clone(),
                 ingress_dir_path.clone(),
                 &mut files_to_create,
             )?;
         }
         ConfigInitTemplate::Httpbin => {
-            httpbin_template::generate(
+            templates::httpbin_template::generate(
                 device_dir_path.clone(),
                 ingress_dir_path.clone(),
                 &mut files_to_create,
             )?;
         }
         ConfigInitTemplate::Dev => {
-            dev_template::generate(
+            templates::dev_template::generate(
                 device_dir_path.clone(),
                 ingress_dir_path.clone(),
                 &mut files_to_create,
