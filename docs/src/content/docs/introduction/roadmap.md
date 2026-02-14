@@ -262,8 +262,9 @@ Todo:
 
 ### Conf
 
-* [x] Consider renaming either `ingress.d` to `ingresses.d` or `devices.d` to `device.d` for consistency.
+* [x] Consider renaming `ingress.d` to `ingresses.d` or `devices.d` to `device.d` in snakeway.hcl for consistency.
     * `devices.d` has been changed to `device.d`
+    * `ingress` has been renamed `ingresses`
 * [x] Fully separate remaining shared runtime/spec conf state.
 
 ### Logging
@@ -282,9 +283,10 @@ Todo:
 * [x] Consider putting insert_header, remove_header, and set_canonical_path behind feature flags.
     * They have been put behind a wasm feature flag as that is the only reason they exist.
 
-### Routing
+### Pingora
 
 * [ ] Look into the additional path prefix option Pingora supports.
+* [ ] Look into making the additional Pingora threading model an option.
 
 ## Phase 4: ACME TLS Automation (v0.8.x)
 
