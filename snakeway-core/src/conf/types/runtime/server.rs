@@ -16,4 +16,7 @@ pub struct ServerConfig {
     /// CA file path.
     /// If set/not empty, Pingora will use this file to verify upstream certificates.
     pub ca_file: String,
+
+    /// Enable work stealing between threads.
+    pub work_stealing: bool,
 }

@@ -21,6 +21,13 @@ pub struct ServerSpec {
     /// Optional CA file path. If set, Pingora will use this file to verify upstream certificates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ca_file: Option<String>,
+
+    #[serde(default = "default_work_stealing")]
+    pub work_stealing: bool,
+}
+
+fn default_work_stealing() -> bool {
+    true
 }
 
 impl Default for ServerSpec {
@@ -31,6 +38,7 @@ impl Default for ServerSpec {
             threads: None,
             pid_file: None,
             ca_file: None,
+            work_stealing: true,
         }
     }
 }

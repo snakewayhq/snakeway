@@ -30,6 +30,7 @@ pub fn lower_configs(
         threads: server_spec.threads,
         pid_file: server_spec.pid_file.unwrap_or_default(),
         ca_file: server_spec.ca_file.unwrap_or_default(),
+        work_stealing: server_spec.work_stealing,
     };
 
     let mut listeners = Vec::new();

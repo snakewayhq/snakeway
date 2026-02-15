@@ -46,7 +46,7 @@ export default defineConfig({
             {
                 label: 'Configuration Reference', items: [
                     {label: 'Overview', link: '/configuration/overview/'},
-                    {label: 'Server', link: '/configuration/server/'},
+                    {label: 'Entry Point', link: '/configuration/entry-point/'},
                     {label: 'Ingress', link: '/configuration/ingress/'},
                     {
                         label: 'Devices', items: [
