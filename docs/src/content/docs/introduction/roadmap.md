@@ -293,8 +293,11 @@ Todo:
 
 ### Pingora
 
-* [ ] Look into the additional path prefix option Pingora supports.
 * [ ] Look into making the additional Pingora threading model an option.
+
+### Routing
+
+* [ ] Implement more robust path matching options.
 
 ## Phase 4: ACME TLS Automation (v0.x.x)
 
