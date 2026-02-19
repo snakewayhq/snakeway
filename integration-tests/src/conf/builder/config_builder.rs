@@ -20,11 +20,9 @@ impl Default for ConfigBuilder {
     fn default() -> Self {
         Self {
             server_spec: ServerSpec {
-                origin: Default::default(),
                 version: 1,
                 threads: Some(1),
-                pid_file: None,
-                ca_file: None,
+                ..Default::default()
             },
             ingress_specs: vec![],
             identity_device_spec: None,
