@@ -283,18 +283,7 @@ Todo:
 
 ## Phase 3.2: Emergent tasks (v0.8.x)
 
-### Logging
-
-* [ ] Investigate adding OpenTelemetry support.
-
-### Devices
-
-* [ ] Consider optionally scoping **Network Policy** device and **Request Rate Limit** device to specific paths.
-
-### Pingora
-
-* [ ] Look into the additional path prefix option Pingora supports.
-* [ ] Look into making the additional Pingora threading model an option.
+Add work_stealing option.
 
 ## Phase 4: ACME TLS Automation (v0.x.x)
 
@@ -332,7 +321,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ### Features
 
-* None
+* none
 
 ### Deliverables
 
@@ -351,10 +340,13 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 * [ ] Review device subsystem inlight of the more mature conf subsystem.
 * [ ] Consider implementing the `on_response` hook for WASM and Builtin Devices to discrete `on_response_header` and
   `on_resonse_body` hooks.
+* [ ] Consider scoping network policy and request rate limiting device to paths as an option.
 
 #### Routing
 
 * [ ] Review routing code for conceptual duplication.
+* [ ] Implement more robust path matching.
+
 
 ## Phase 6: Packaging and Distributions (v0.x.x)
 
@@ -395,6 +387,37 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 The following is pushed out past the v1.0.x release, because it is not in the critical path.
 
+### Enhanced Hot reload
+
+Zero-drop reload support.
+
+### Full WASM Device Functionality
+
+- Pre-instantiate components (no per-request instantiation)
+- Implement bounded Store pool
+- Enable Wasmtime caching and pooling allocator
+- Enforce memory and execution limits
+- Add per-hook timeouts
+- Make fail-open / fail-closed configurable
+- Add WASM metrics and structured error logging
+- Remove body chunk copying
+- Cache request snapshot per request
+- Reduce host <-> WASM call frequency
+- Enforce header and path mutation guardrails
+- Add plugin versioning and reload validation
+
+### Traffic Management
+
+Active health checks (passive health checks already exist).
+
+### Kubernetes Ingress Controller
+
+Add an optional k8s feature that allows snakeway to function as an ingress controller.
+
+An additional loop needs to run in the background that actively polls for configuration changes 
+and applies the runtime snapshots.
+This fits naturally into the conf pipeline.
+
 ### Static file server
 
 The additional static file features range from nice-to-haves to critical for a static file server, but static files are
@@ -423,11 +446,3 @@ Standalone backpressure monitoring tool that integrates with the core proxy.
 ### Observability
 
 Native Prometheus/OpenTelemetry support.
-
-### Enhanced Hot reload
-
-Zero-drop reload support.
-
-### Traffic Management
-
-Active health checks (passive health checks already exist).
