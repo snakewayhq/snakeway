@@ -9,11 +9,11 @@ These blocks are located in the config directory under `CONFIG_ROOT/snakeway.hcl
 
 ```hcl
 server {
-  version         = 1
-  pid_file        = "/var/run/snakeway.pid"
-  threads         = 8
-  worker_stealing = true
-  ca_file         = "/path/to/certs/ca.pem"
+  version       = 1
+  pid_file      = "/var/run/snakeway.pid"
+  threads       = 8
+  work_stealing = true
+  ca_file       = "/path/to/certs/ca.pem"
 }
 
 include {
@@ -27,7 +27,7 @@ Summary:
 - `version` the version of the configuration file format.
 - `pid_file` enables external process control and supervision.
 - `threads` is optional and intended for advanced tuning.
-- `worker_stealing` is an optional and intended for advanced tuning.
+- `work_stealing` is an optional and intended for advanced tuning.
 - `ca_file` is optional and used to verify upstream certificates.
 - `include` tells snakeway where to look for device an ingress files.
 
@@ -91,11 +91,12 @@ Pingora runtime's internal defaults.
 
 #### work_stealing
 
-**Type:** `bool`
+**Type:** `boolean`  
 **Default:** `true`
-**Required:** no
 
 Allow work stealing between threads.
+
+Defaults to `true` - as in work stealing is enabled.
 
 This should be left enabled unless there is a good reason not to.
 
