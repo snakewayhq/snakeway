@@ -1,3 +1,5 @@
-pub mod challenge_trait;
-pub mod dns01;
-pub mod http01;
+mod challenge_trait;
+mod dns01;
+mod http01;
+
+pub use challenge_trait::*;

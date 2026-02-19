@@ -12,7 +12,7 @@ pub enum CertState {
 
 pub fn compute_state(
     cert_id: &str,
-    actual: &[(String, super::store::store_trait::CertificateMeta)],
+    actual: &[(String, super::store::CertificateMeta)],
 ) -> CertState {
     todo!()
 }

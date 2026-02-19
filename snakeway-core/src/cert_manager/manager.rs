@@ -1,9 +1,7 @@
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
-use crate::cert_manager::{
-    reconcile::Reconciler, scheduler::Scheduler, store::store_trait::CertStore,
-};
+use crate::cert_manager::{reconcile::Reconciler, scheduler::Scheduler, store::CertStore};
 use crate::conf::RuntimeConfig;
 
 pub struct CertManager {

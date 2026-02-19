@@ -1,7 +1,6 @@
+use crate::cert_manager::store::{CertStore, CertificateMeta, StoredCertificate};
 use std::collections::HashMap;
 use std::sync::RwLock;
-
-use super::store_trait::{CertStore, CertificateMeta, StoredCertificate};
 
 pub struct MemoryCertStore {
     inner: RwLock<HashMap<String, StoredCertificate>>,

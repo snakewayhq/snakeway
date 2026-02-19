@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio::time::sleep;
 
-use crate::cert_manager::store::store_trait::CertStore;
+use crate::cert_manager::store::CertStore;
 use crate::cert_manager::{
     scheduler::Scheduler,
     state::{CertState, compute_state},

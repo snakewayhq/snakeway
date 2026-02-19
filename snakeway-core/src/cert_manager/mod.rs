@@ -12,3 +12,6 @@ mod reconcile;
 mod scheduler;
 mod state;
 mod store;
+
+pub use manager::CertManager;
+pub use store::{CertStore, FilesystemCertStore, MemoryCertStore};
