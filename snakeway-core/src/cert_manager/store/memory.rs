@@ -1,0 +1,41 @@
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+use super::store_trait::{CertStore, CertificateMeta, StoredCertificate};
+
+pub struct MemoryCertStore {
+    inner: RwLock<HashMap<String, StoredCertificate>>,
+}
+
+impl MemoryCertStore {
+    pub fn new() -> Self {
+        Self {
+            inner: RwLock::new(HashMap::new()),
+        }
+    }
+}
+
+impl CertStore for MemoryCertStore {
+    fn get(&self, id: &str) -> Option<StoredCertificate> {
+        self.inner.read().unwrap().get(id).cloned()
+    }
+
+    fn put(&self, id: String, cert: StoredCertificate) -> Result<(), std::io::Error> {
+        self.inner.write().unwrap().insert(id, cert);
+        Ok(())
+    }
+
+    fn delete(&self, id: &str) -> Result<(), std::io::Error> {
+        self.inner.write().unwrap().remove(id);
+        Ok(())
+    }
+
+    fn list(&self) -> Vec<(String, CertificateMeta)> {
+        self.inner
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.meta.clone()))
+            .collect()
+    }
+}

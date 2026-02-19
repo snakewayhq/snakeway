@@ -1,0 +1,14 @@
+//! Control-plane subsystem responsible for:
+//! 1. ACME orchestration
+//! 2. Certificate storage
+//! 3. Renewal scheduling
+
+mod acme;
+mod admin;
+mod challenge;
+mod errors;
+mod manager;
+mod reconcile;
+mod scheduler;
+mod state;
+mod store;

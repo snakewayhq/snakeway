@@ -1,5 +1,6 @@
 extern crate core;
 
+mod cert_manager;
 pub mod cli;
 pub mod conf;
 pub mod ctx;

@@ -260,6 +260,7 @@ pub fn build_pingora_server(
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
             let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
+
             admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
             // Register admin service.
             server.add_service(admin_svc);
