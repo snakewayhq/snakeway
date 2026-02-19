@@ -156,6 +156,8 @@ pub fn build_pingora_server(
         pingora_server_conf.ca_file = Some(config.server.ca_file.clone());
     }
 
+    pingora_server_conf.work_stealing = config.server.work_stealing;
+
     let mut server = if let Some(threads) = config.server.threads {
         tracing::debug!(
             threads,
