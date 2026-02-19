@@ -1,3 +1,4 @@
+use crate::cert_manager::{CertManager, CertStore, FilesystemCertStore};
 use crate::conf::RuntimeConfig;
 use crate::conf::types::ListenerConfig;
 use crate::device::core::registry::DeviceRegistry;
@@ -6,6 +7,7 @@ use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
+use crate::server::tls::build_tls_callbacks;
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result};
@@ -112,7 +114,15 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         }
     });
 
+    // Setup WS Connection Manager
     let connection_manager = Arc::new(WsConnectionManager::new());
+
+    // Setup Cert Store and Manager
+    let cert_store: Arc<dyn CertStore> = Arc::new(FilesystemCertStore::new(PathBuf::from(
+        "/var/lib/snakeway/certs",
+    )));
+    let mut cert_manager = CertManager::new(cert_store.clone());
+    cert_manager.start(Arc::new(config.clone()));
 
     // Build Pingora server (Pingora owns its own runtimes)
     let server = build_pingora_server(
@@ -121,6 +131,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         Arc::clone(&traffic_manager),
         Arc::clone(&connection_manager),
         reload.clone(),
+        Arc::clone(&cert_store),
     )
     .map_err(|e| {
         tracing::error!(error = %e, "failed to build Pingora server");
@@ -149,6 +160,7 @@ pub fn build_pingora_server(
     traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
+    cert_store: Arc<dyn CertStore>,
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
@@ -194,15 +206,29 @@ pub fn build_pingora_server(
 
         match &listener_cfg.tls {
             Some(tls) => {
-                let mut tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
-                if listener_cfg.enable_http2 {
-                    tls_settings.enable_h2();
+                if let Some(static_options) = &tls.static_options {
+                    let mut tls_settings =
+                        TlsSettings::intermediate(&static_options.cert, &static_options.key)?;
+                    if listener_cfg.enable_http2 {
+                        tls_settings.enable_h2();
+                    }
+                    public_svc.add_tls_with_settings(
+                        &listener_cfg.addr.to_string(),
+                        None,
+                        tls_settings,
+                    );
+                } else if let Some(acme_options) = &tls.acme_options {
+                    let callbacks = build_tls_callbacks(cert_store.clone());
+                    let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    if listener_cfg.enable_http2 {
+                        tls_settings.enable_h2();
+                    }
+                    public_svc.add_tls_with_settings(
+                        &listener_cfg.addr.to_string(),
+                        None,
+                        tls_settings,
+                    );
                 }
-                public_svc.add_tls_with_settings(
-                    &listener_cfg.addr.to_string(),
-                    None,
-                    tls_settings,
-                );
             }
             None => {
                 public_svc.add_tcp(&listener_cfg.addr.to_string());
@@ -259,9 +285,10 @@ pub fn build_pingora_server(
                 reload.clone(),
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
-            let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
 
+            let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
             admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
+
             // Register admin service.
             server.add_service(admin_svc);
         } else {
