@@ -3,6 +3,7 @@ mod normalization;
 mod normalized_request;
 mod request_ctx;
 mod request_id;
+mod sni;
 #[cfg(test)]
 mod tests;
 

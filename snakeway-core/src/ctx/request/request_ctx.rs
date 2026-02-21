@@ -120,6 +120,7 @@ impl RequestCtx {
             &request_header.method,
             &request_header.headers,
             &request_header.version,
+            &request_header.extensions,
             is_upgrade_req,
             peer_ip,
         )?;
@@ -133,6 +134,7 @@ impl RequestCtx {
         method: &Method,
         headers: &HeaderMap,
         protocol_version: &Version,
+        extensions: &Extensions,
         is_upgrade_req: bool,
         peer_ip: IpAddr,
     ) -> Result<(), RequestRejectError> {
@@ -163,6 +165,8 @@ impl RequestCtx {
             .unwrap_or(raw_host)
             .to_ascii_lowercase();
 
+        let sni_host = extensions.get::<DownstreamSni>().map(|v| v.0.clone());
+
         // Normalize the path.
         let normalized_path = match normalize_path(uri.path()) {
             NormalizationOutcome::Accept(p) => p,
@@ -184,6 +188,7 @@ impl RequestCtx {
 
         self.normalized_request = NormalizedRequest::new(
             host,
+            sni_host,
             uri.clone(),
             method.clone(),
             normalized_path,
@@ -287,6 +292,7 @@ impl RequestCtx {
     }
 }
 
+use crate::ctx::request::sni::DownstreamSni;
 use http::header::HOST;
 /// WASM Device API
 ///
@@ -343,9 +349,10 @@ impl RequestCtx {
         self.normalized_request.path().as_str()
     }
 
-    pub fn host(&self) -> &str {
+    /// The SNI if present, otherwise HOST header value.
+    pub fn effective_host(&self) -> &str {
         debug_assert!(self.hydrated);
-        self.normalized_request.host()
+        self.normalized_request.effective_host()
     }
 }
 

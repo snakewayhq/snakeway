@@ -4,6 +4,7 @@ use http::{HeaderMap, Method, Uri, Version};
 pub struct NormalizedRequest {
     original_uri: Uri,
     host: String,
+    sni_host: Option<String>,
     method: Method,
     path: NormalizedPath,
     query: CanonicalQuery,
@@ -15,6 +16,7 @@ pub struct NormalizedRequest {
 impl NormalizedRequest {
     pub fn new(
         host: String,
+        sni_host: Option<String>,
         original_uri: Uri,
         method: Method,
         path: NormalizedPath,
@@ -25,6 +27,7 @@ impl NormalizedRequest {
     ) -> Self {
         Self {
             host,
+            sni_host,
             original_uri,
             method,
             path,
@@ -39,8 +42,8 @@ impl NormalizedRequest {
         &self.original_uri
     }
 
-    pub fn host(&self) -> &str {
-        &self.host
+    pub fn effective_host(&self) -> &str {
+        self.sni_host.as_deref().unwrap_or(&self.host)
     }
 
     pub fn method(&self) -> &Method {

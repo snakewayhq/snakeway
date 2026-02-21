@@ -1,12 +1,12 @@
+use crate::cert_manager::state::compute_state;
+use crate::cert_manager::store::CertStore;
+use crate::cert_manager::{scheduler::Scheduler, state::CertState};
+use crate::conf::RuntimeConfig;
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
-use crate::cert_manager::state::compute_state;
-use crate::cert_manager::store::CertStore;
-use crate::cert_manager::{scheduler::Scheduler, state::CertState};
-use crate::conf::RuntimeConfig;
 
 pub struct Reconciler {
     store: Arc<dyn CertStore>,
@@ -60,8 +60,6 @@ impl Reconciler {
         //     if !desired.contains(id) { ... }
         // }
     }
-
-    use tracing::{debug, info, warn};
 
     async fn step(&self, cert_id: String, state: CertState) -> anyhow::Result<()> {
         match state {
