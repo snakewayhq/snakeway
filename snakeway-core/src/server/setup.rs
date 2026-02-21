@@ -7,12 +7,13 @@ use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
-use crate::server::tls::build_tls_callbacks;
+use crate::server::tls_handshake::{CertMode, build_tls_callbacks};
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result};
 use arc_swap::ArcSwap;
 use nix::NixPath;
+use openssl::ssl::SslFiletype;
 use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::server::Server;
@@ -207,8 +208,10 @@ pub fn build_pingora_server(
         match &listener_cfg.tls {
             Some(tls) => {
                 if let Some(static_options) = &tls.static_options {
-                    let mut tls_settings =
-                        TlsSettings::intermediate(&static_options.cert, &static_options.key)?;
+                    let callbacks = build_tls_callbacks(CertMode::Static);
+                    let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    tls_settings.set_private_key_file(&static_options.key, SslFiletype::PEM)?;
+                    tls_settings.set_certificate_chain_file(&static_options.cert)?;
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
                     }
@@ -218,7 +221,7 @@ pub fn build_pingora_server(
                         tls_settings,
                     );
                 } else if let Some(acme_options) = &tls.acme_options {
-                    let callbacks = build_tls_callbacks(cert_store.clone());
+                    let callbacks = build_tls_callbacks(CertMode::Acme(cert_store.clone()));
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
@@ -289,15 +292,18 @@ pub fn build_pingora_server(
             match &listener_cfg.tls {
                 Some(tls) => {
                     if let Some(static_options) = &tls.static_options {
-                        let tls_settings =
-                            TlsSettings::intermediate(&static_options.cert, &static_options.key)?;
+                        let callbacks = build_tls_callbacks(CertMode::Static);
+                        let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                        tls_settings.set_private_key_file(&static_options.key, SslFiletype::PEM)?;
+                        tls_settings.set_certificate_chain_file(&static_options.cert)?;
+
                         admin_svc.add_tls_with_settings(
                             &listener_cfg.addr.to_string(),
                             None,
                             tls_settings,
                         );
                     } else if let Some(acme_options) = &tls.acme_options {
-                        let callbacks = build_tls_callbacks(cert_store.clone());
+                        let callbacks = build_tls_callbacks(CertMode::Acme(cert_store.clone()));
                         let tls_settings = TlsSettings::with_callbacks(callbacks)?;
                         admin_svc.add_tls_with_settings(
                             &listener_cfg.addr.to_string(),
