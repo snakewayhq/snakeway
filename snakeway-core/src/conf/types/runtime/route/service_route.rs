@@ -3,6 +3,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServiceRouteConfig {
+    /// Host names allowed to access this route.
+    pub hosts: Vec<String>,
+
     /// Path prefix (longest-prefix match).
     pub path: String,
 
@@ -19,6 +22,7 @@ impl ServiceRouteConfig {
         Self {
             service: service.to_string(),
             listener: listener.to_string(),
+            hosts: spec.hosts,
             path: spec.path,
             allow_websocket: spec.enable_websocket,
             ws_max_connections: spec.ws_max_connections,

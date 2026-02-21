@@ -1,6 +1,7 @@
 use crate::conf::resolution::ResolveError;
 use crate::conf::types::EndpointSpec;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamTcpConfig {
@@ -8,17 +9,28 @@ pub struct UpstreamTcpConfig {
     pub url: String,
 
     pub weight: u32,
+
+    pub tls: Option<UpstreamTlsConfig>,
 }
 
 impl UpstreamTcpConfig {
-    pub fn new(use_tls: bool, weight: u32, spec: &EndpointSpec) -> Result<Self, ResolveError> {
-        let protocol = if use_tls { "https" } else { "http" };
+    pub fn new(weight: u32, spec: &EndpointSpec) -> Result<Self, ResolveError> {
+        let protocol = "http";
         let addr = spec.resolve()?;
         Ok(Self {
             weight,
+            tls: None,
             url: format!("{protocol}://{addr}"),
         })
     }
+}
+
+/// Represent TLS settings for origin server connections.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpstreamTlsConfig {
+    pub sni: Option<String>,
+    pub verify: bool,
+    pub ca_cert: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

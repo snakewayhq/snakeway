@@ -5,10 +5,13 @@
 //! the `CertStore` to retrieve certificates at runtime and configures the TLS
 //! connection with the appropriate certificate chain and private key.
 //!
+
 use crate::cert_manager::CertStore;
+use crate::server::sni::DownstreamSni;
 use async_trait::async_trait;
 use pingora::listeners::{TlsAccept, TlsAcceptCallbacks};
-use pingora::protocols::tls::TlsRef;
+use pingora::protocols::tls::{SslDigest, TlsRef};
+use std::any::Any;
 use std::sync::Arc;
 
 pub fn build_tls_callbacks(store: Arc<dyn CertStore>) -> TlsAcceptCallbacks {
@@ -94,5 +97,26 @@ impl TlsAccept for SnakewayTlsAccept {
 
         // Success.
         tracing::debug!("TLS certificate installed successfully for {}", hostname);
+    }
+
+    async fn handshake_complete_callback(
+        &self,
+        ssl: &TlsRef,
+    ) -> Option<Arc<dyn Any + Send + Sync>> {
+        // Extract SNI.
+        let hostname = match ssl.servername(openssl::ssl::NameType::HOST_NAME) {
+            Some(name) => match std::str::from_utf8(name.as_bytes()) {
+                Ok(s) => s.to_string(),
+                Err(_) => {
+                    tracing::warn!("Invalid UTF-8 in SNI");
+                    return None;
+                }
+            },
+            None => {
+                tracing::debug!("No SNI provided");
+                return None;
+            }
+        };
+        Some(Arc::new(DownstreamSni(hostname.clone())))
     }
 }

@@ -10,7 +10,8 @@ use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
-use http::{Extensions, HeaderMap, Method, Uri, Version};
+use http::header::HOST;
+use http::{Extensions, HeaderMap, Method, Uri, Version, uri::Authority};
 use pingora::prelude::Session;
 use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
 use std::net::{IpAddr, Ipv4Addr};
@@ -114,13 +115,14 @@ impl RequestCtx {
             Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
             _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
         };
+        let maybe_digest = session.digest();
 
         self.hydrate(
             &request_header.uri,
             &request_header.method,
             &request_header.headers,
             &request_header.version,
-            &request_header.extensions,
+            maybe_digest,
             is_upgrade_req,
             peer_ip,
         )?;
@@ -134,7 +136,7 @@ impl RequestCtx {
         method: &Method,
         headers: &HeaderMap,
         protocol_version: &Version,
-        extensions: &Extensions,
+        maybe_digest: Option<&Digest>,
         is_upgrade_req: bool,
         peer_ip: IpAddr,
     ) -> Result<(), RequestRejectError> {
@@ -159,13 +161,34 @@ impl RequestCtx {
             .and_then(|h| h.to_str().ok())
             .ok_or(RequestRejectError::InvalidHeaders)?;
 
+        // todo finish implementing ipv6 save host header extraction.
+        // let host = Authority::from_static(&raw_host)
+        //     .host()
+        //     .to_ascii_lowercase();
+
         let host = raw_host
             .split(':')
             .next()
             .unwrap_or(raw_host)
             .to_ascii_lowercase();
 
-        let sni_host = extensions.get::<DownstreamSni>().map(|v| v.0.clone());
+        // Extract SNI, if present, from the SSL digest.
+        let mut sni_host: Option<String> = None;
+        if let Some(digest) = maybe_digest
+            && let Some(ssl_digest) = &digest.ssl_digest
+        {
+            let maybe_sni = &ssl_digest.extension.get::<DownstreamSni>();
+            if let Some(sni) = maybe_sni {
+                sni_host = Some(sni.to_ascii_lowercase());
+            }
+        }
+
+        // Enforce SNI/Host matching - they must match if SNI is present.
+        if let Some(sni) = sni_host.clone() {
+            if sni.as_str() != host {
+                return Err(RequestRejectError::HostSniMismatch);
+            }
+        }
 
         // Normalize the path.
         let normalized_path = match normalize_path(uri.path()) {
@@ -292,12 +315,12 @@ impl RequestCtx {
     }
 }
 
-use crate::ctx::request::sni::DownstreamSni;
-use http::header::HOST;
+use crate::server::DownstreamSni;
 /// WASM Device API
 ///
 #[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
+use pingora::protocols::Digest;
 
 #[cfg(feature = "wasm")]
 impl RequestCtx {

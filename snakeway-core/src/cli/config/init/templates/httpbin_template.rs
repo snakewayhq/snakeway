@@ -41,6 +41,7 @@ pub(crate) fn generate(
                     endpoint: Some(EndpointSpec {
                         host: HostSpec::Hostname("httpbin.org".to_string()),
                         port: 80,
+                        tls: None,
                     }),
                     weight: 1,
                     ..Default::default()

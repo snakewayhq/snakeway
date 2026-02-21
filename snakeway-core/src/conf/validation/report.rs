@@ -187,26 +187,34 @@ impl ValidationReport {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub fn static_tls_requires_cert_file(&mut self, cert_file: Option<&str>, origin: &Origin) {
+    pub fn static_tls_requires_cert_file(&mut self, cert_file: &Option<String>, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid cert file: {}",
-                cert_file.unwrap_or("<none>")
+                cert_file.clone().unwrap_or("<none>".to_string())
             ),
             origin,
             None,
         );
     }
 
-    pub fn static_tls_requires_key_file(&mut self, key_file: Option<&str>, origin: &Origin) {
+    pub fn static_tls_requires_key_file(&mut self, key_file: &Option<String>, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid key file: {}",
-                key_file.unwrap_or("<none>")
+                key_file.clone().unwrap_or("<none>".to_string())
             ),
             origin,
             None,
         );
+    }
+
+    pub fn acme_tls_requires_challenge(&mut self, origin: &Origin) {
+        self.error("missing challenge for ACME TLS".to_string(), origin, None);
+    }
+
+    pub fn acme_tls_requires_domains(&mut self, origin: &Origin) {
+        self.error("missing domains for ACME TLS".to_string(), origin, None);
     }
 
     pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
@@ -344,6 +352,30 @@ impl ValidationReport {
 
     pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
+    }
+
+    pub fn route_has_no_hosts(&mut self, origin: &Origin) {
+        self.error("route has no hosts".to_string(), origin, None)
+    }
+
+    pub fn upstream_tls_sni_required(&mut self, origin: &Origin) {
+        self.error("upstream TLS SNI required".to_string(), origin, None)
+    }
+
+    pub fn upstream_tls_sni_must_be_dns(&mut self, origin: &Origin) {
+        self.error(
+            "upstream TLS SNI must be DNS name".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn upstream_tls_missing_ca(&mut self, origin: &Origin) {
+        self.error(
+            "upstream TLS missing CA certificate".to_string(),
+            origin,
+            None,
+        )
     }
 
     pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {

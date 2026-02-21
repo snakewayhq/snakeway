@@ -47,7 +47,7 @@ distinguished_name = dn
 req_extensions = v3_req
 
 [dn]
-CN = localhost
+CN = snakeway.test
 
 [v3_req]
 basicConstraints = critical, CA:FALSE
@@ -57,7 +57,8 @@ subjectAltName = @alt_names
 subjectKeyIdentifier = hash
 
 [alt_names]
-DNS.1 = localhost
+DNS.1 = snakeway.test
+DNS.2 = *.test
 IP.1  = 127.0.0.1
 EOF
 

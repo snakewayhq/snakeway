@@ -83,7 +83,7 @@ pub fn lower_configs(
                     .filter_map(|u| {
                         u.endpoint
                             .as_ref()
-                            .map(|endpoint| UpstreamTcpConfig::new(use_tls, u.weight, endpoint))
+                            .map(|endpoint| UpstreamTcpConfig::new(u.weight, endpoint))
                     })
                     .collect::<Result<Vec<_>, _>>()
                     .expect("upstream.resolve() must not fail");

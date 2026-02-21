@@ -9,7 +9,9 @@ use crate::conf::validation::validator::{
     CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
     is_valid_hostname, is_valid_port, validate_range,
 };
+use owo_colors::OwoColorize;
 use std::collections::{HashMap, HashSet};
+use std::net::IpAddr;
 use std::path::Path;
 
 /// Validate listener definitions.
@@ -83,26 +85,23 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             }
 
             if let Some(tls) = &bind.tls {
-                // Have to check mode if tls is some
                 match tls.mode {
                     TlsManagementModeSpec::Static => {
-                        if let Some(cert) = &tls.cert
-                            && !Path::new(cert).is_file()
-                        {
-                            report.static_tls_requires_cert_file(Some(cert), &bind.origin);
-                        } else if tls.cert.is_none() {
-                            report.static_tls_requires_cert_file(None, &bind.origin);
+                        if !tls.cert.as_ref().is_some_and(|c| Path::new(c).is_file()) {
+                            report.static_tls_requires_cert_file(&tls.cert, &bind.origin);
                         }
-
-                        if let Some(key) = &tls.key
-                            && !Path::new(key).is_file()
-                        {
-                            report.static_tls_requires_key_file(Some(key), &bind.origin);
-                        } else if tls.key.is_none() {
-                            report.static_tls_requires_key_file(None, &bind.origin);
+                        if !tls.key.as_ref().is_some_and(|k| Path::new(k).is_file()) {
+                            report.static_tls_requires_key_file(&tls.key, &bind.origin);
                         }
                     }
-                    TlsManagementModeSpec::Acme => {}
+                    TlsManagementModeSpec::Acme => {
+                        if tls.challenge.is_none() {
+                            report.acme_tls_requires_challenge(&bind.origin);
+                        }
+                        if !tls.domains.as_ref().is_some_and(|d| !d.is_empty()) {
+                            report.acme_tls_requires_domains(&bind.origin);
+                        }
+                    }
                 }
             }
 
@@ -232,6 +231,10 @@ pub fn validate_services(
 
         // Routes
         for route in &service.routes {
+            if route.hosts.is_empty() {
+                report.route_has_no_hosts(&service.origin);
+            }
+
             if bind_uses_http2 && route.enable_websocket {
                 report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
             }
@@ -271,6 +274,21 @@ pub fn validate_services(
 
                 if !is_valid_port(endpoint.port) {
                     report.invalid_port(endpoint.port, &service.origin);
+                }
+
+                // Validate upstream TLS.
+                if let Some(tls) = &endpoint.tls {
+                    if tls.sni.trim().is_empty() {
+                        report.upstream_tls_sni_required(&service.origin);
+                    }
+
+                    if tls.verify && tls.sni.parse::<IpAddr>().is_ok() {
+                        report.upstream_tls_sni_must_be_dns(&service.origin);
+                    }
+
+                    if tls.verify && !tls.ca_cert.exists() {
+                        report.upstream_tls_missing_ca(&service.origin);
+                    }
                 }
             }
 

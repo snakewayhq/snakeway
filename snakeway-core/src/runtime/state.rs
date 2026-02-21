@@ -136,7 +136,7 @@ pub fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>,
             },
         };
 
-        router.add_route(route.path(), route_runtime)?;
+        router.add_route(route.hosts(), route.path(), route_runtime)?;
     }
 
     Ok(routers)
@@ -149,34 +149,50 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
         .parse()
         .map_err(|_| anyhow!("invalid upstream URL: {}", cfg.url))?;
 
-    let scheme = uri.scheme_str().unwrap_or("http");
-
     let authority = uri
         .authority()
         .ok_or_else(|| anyhow!("upstream URL missing authority: {}", cfg.url))?;
 
     let host = authority.host().to_string();
 
-    let port = authority.port_u16().unwrap_or(match scheme {
-        "https" => 443,
-        _ => 80,
-    });
+    let port = authority.port_u16().unwrap_or(80);
 
     let addr = UpstreamAddr::Tcp {
         host: host.clone(),
         port,
     };
 
+    // TLS is explicit now
+    let use_tls = cfg.tls.is_some();
+
+    // Determine SNI
+    let sni = if let Some(tls_cfg) = &cfg.tls {
+        // Explicit SNI overrides everything
+        if let Some(explicit) = &tls_cfg.sni {
+            explicit.clone()
+        } else if host.parse::<std::net::IpAddr>().is_ok() {
+            // If the host is an IP and there is no explicit SNI, do not send SNI.
+            // This should be impossible because the conf system should have validated it before
+            // the runtime config is created.
+            String::new()
+        } else {
+            // Host is DNS, this the safe default if TLS is enabled and no explicit SNI is set.
+            host.clone()
+        }
+    } else {
+        // No TLS, then no SNI.
+        String::new()
+    };
+
     Ok(UpstreamRuntime::Tcp(UpstreamTcpRuntime {
         id: make_upstream_id(&addr),
-        host: host.clone(),
+        host,
         port,
-        use_tls: scheme == "https",
-        sni: host.clone(),
+        use_tls,
+        sni,
         weight: cfg.weight,
     }))
 }
-
 /// Factory function to make a unix upstream runtime.
 fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRuntime> {
     let addr = UpstreamAddr::Unix {

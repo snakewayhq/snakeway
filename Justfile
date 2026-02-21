@@ -265,7 +265,8 @@ uninstall-dev-ca:
     @echo "✓ Snakeway dev CA removed"
 
 generate-dev-certs:
-    [ ! -d "integration-tests/certs" ] && ./gen-test-certs.sh || true
+    mkdir -p integration-tests/certs/
+    ./gen-test-certs.sh
 
 test:
     cargo nextest run -p snakeway-core --features static_files,wasm
