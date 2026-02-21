@@ -15,6 +15,7 @@ use http::{Extensions, HeaderMap, Method, Uri, Version, uri::Authority};
 use pingora::prelude::Session;
 use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
 use std::net::{IpAddr, Ipv4Addr};
+use std::str::FromStr;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
@@ -145,7 +146,9 @@ impl RequestCtx {
         self.extensions.insert(RequestId::default());
 
         // Set the client IP.
-        self.peer_ip = self.peer_ip.max(peer_ip);
+        if self.peer_ip.is_unspecified() {
+            self.peer_ip = peer_ip;
+        }
 
         // Do header normalization early as it may produce a protocol-related violation.
         // This will short-circuit the request if it's invalid while preventing unused allocations.
@@ -155,22 +158,23 @@ impl RequestCtx {
             self.normalize_http_request(protocol_version, headers)?
         };
 
-        let raw_host = normalized_headers
+        // Extract the host header.
+        // This is a fairly strict implementation that ensures the host header is present and valid.
+        // An exception is made for trailing dots in the host header, which are allowed by RFC 3986.
+        let host_header = normalized_headers
             .as_map()
             .get(HOST)
-            .and_then(|h| h.to_str().ok())
-            .ok_or(RequestRejectError::InvalidHeaders)?;
-
-        // todo finish implementing ipv6 save host header extraction.
-        // let host = Authority::from_static(&raw_host)
-        //     .host()
-        //     .to_ascii_lowercase();
-
-        let host = raw_host
-            .split(':')
-            .next()
-            .unwrap_or(raw_host)
-            .to_ascii_lowercase();
+            .ok_or(RequestRejectError::InvalidHostHeader)?;
+        let host_str = host_header
+            .to_str()
+            .map_err(|_| RequestRejectError::InvalidHostHeader)?;
+        let host_str = host_str.trim_end_matches('.');
+        if host_str.is_empty() {
+            return Err(RequestRejectError::InvalidHostHeader);
+        }
+        let authority =
+            Authority::from_str(host_str).map_err(|_| RequestRejectError::InvalidHostHeader)?;
+        let host = authority.host().to_ascii_lowercase();
 
         // Extract SNI, if present, from the SSL digest.
         let mut sni_host: Option<String> = None;

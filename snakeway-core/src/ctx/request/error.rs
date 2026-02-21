@@ -27,8 +27,8 @@ pub enum RequestRejectError {
     #[error("host and SNI must match if SNI is present")]
     HostSniMismatch,
 
-    #[error("invalid host")]
-    InvalidHost,
+    #[error("invalid host header")]
+    InvalidHostHeader,
 }
 
 impl RequestRejectError {
@@ -44,7 +44,7 @@ impl RequestRejectError {
             Self::HostSniMismatch => {
                 PingoraError::new(Custom("host and SNI must match if SNI is present"))
             }
-            Self::InvalidHost => PingoraError::new(Custom("invalid host")),
+            Self::InvalidHostHeader => PingoraError::new(Custom("invalid host header")),
         }
     }
 }
