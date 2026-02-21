@@ -64,6 +64,7 @@ export default defineConfig({
             },
             {
                 label: 'Release Notes', items: [
+                    {label: 'v0.9.0 (dev)', link: '/releases/v0_9_0/'},
                     {label: 'v0.8.0 (latest)', link: '/releases/v0_8_0/'},
                     {label: 'v0.7.0', link: '/releases/v0_7_0/'},
                     {label: 'v0.6.0', link: '/releases/v0_6_0/'},
