@@ -1,3 +1,10 @@
+//! TLS certificate management and SNI handling for Snakeway.
+//!
+//! This module provides the implementation for dynamic TLS certificate selection
+//! based on Server Name Indication (SNI) during TLS handshakes. It integrates with
+//! the `CertStore` to retrieve certificates at runtime and configures the TLS
+//! connection with the appropriate certificate chain and private key.
+
 use crate::cert_manager::CertStore;
 use async_trait::async_trait;
 use pingora::listeners::{TlsAccept, TlsAcceptCallbacks};
