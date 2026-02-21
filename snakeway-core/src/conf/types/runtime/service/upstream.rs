@@ -15,13 +15,9 @@ pub struct UpstreamTcpConfig {
 
 impl UpstreamTcpConfig {
     pub fn new(weight: u32, spec: &EndpointSpec) -> Result<Self, ResolveError> {
-        let protocol = spec.tls.is_some().then(|| "https").unwrap_or("http");
+        let protocol = if spec.tls.is_some() { "https" } else { "http" };
         let addr = spec.resolve()?;
-        let maybe_tls_config: Option<UpstreamTlsConfig> = if let Some(tls) = spec.tls.clone() {
-            Some(tls.into())
-        } else {
-            None
-        };
+        let maybe_tls_config: Option<UpstreamTlsConfig> = spec.tls.clone().map(|tls| tls.into());
         Ok(Self {
             weight,
             tls: maybe_tls_config,

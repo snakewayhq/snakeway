@@ -184,10 +184,10 @@ impl RequestCtx {
         }
 
         // Enforce SNI/Host matching - they must match if SNI is present.
-        if let Some(sni) = sni_host.clone() {
-            if sni.as_str() != host {
-                return Err(RequestRejectError::HostSniMismatch);
-            }
+        if let Some(sni) = sni_host.clone()
+            && sni.as_str() != host
+        {
+            return Err(RequestRejectError::HostSniMismatch);
         }
 
         // Normalize the path.

@@ -98,7 +98,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                         if tls.challenge.is_none() {
                             report.acme_tls_requires_challenge(&bind.origin);
                         }
-                        if !tls.domains.as_ref().is_some_and(|d| !d.is_empty()) {
+                        if tls.domains.as_ref().is_none_or(|d| d.is_empty()) {
                             report.acme_tls_requires_domains(&bind.origin);
                         }
                     }
