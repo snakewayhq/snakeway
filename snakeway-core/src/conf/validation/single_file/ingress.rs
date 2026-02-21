@@ -264,30 +264,32 @@ pub fn validate_services(
             if let Some(endpoint) = &upstream.endpoint {
                 match &endpoint.host {
                     HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-                        report.invalid_upstream_ip(ip, &service.origin);
+                        report.invalid_upstream_ip(ip, &upstream.origin);
                     }
                     HostSpec::Hostname(name) if !is_valid_hostname(name) => {
-                        report.invalid_upstream_hostname(name, &service.origin);
+                        report.invalid_upstream_hostname(name, &upstream.origin);
                     }
                     _ => {}
                 }
 
                 if !is_valid_port(endpoint.port) {
-                    report.invalid_port(endpoint.port, &service.origin);
+                    report.invalid_port(endpoint.port, &upstream.origin);
                 }
 
                 // Validate upstream TLS.
                 if let Some(tls) = &endpoint.tls {
                     if tls.sni.trim().is_empty() {
-                        report.upstream_tls_sni_required(&service.origin);
+                        report.upstream_tls_sni_required(&upstream.origin);
                     }
 
-                    if tls.verify && tls.sni.parse::<IpAddr>().is_ok() {
-                        report.upstream_tls_sni_must_be_dns(&service.origin);
-                    }
+                    if tls.verify {
+                        if tls.sni.parse::<IpAddr>().is_ok() {
+                            report.upstream_tls_sni_must_be_dns(&upstream.origin);
+                        }
 
-                    if tls.verify && !tls.ca_cert.exists() {
-                        report.upstream_tls_missing_ca(&service.origin);
+                        if !tls.ca_cert.exists() {
+                            report.upstream_tls_missing_ca(&upstream.origin);
+                        }
                     }
                 }
             }
@@ -295,7 +297,7 @@ pub fn validate_services(
             if let Some(sock) = &upstream.sock
                 && seen_sock_values.insert(sock.clone(), ()).is_some()
             {
-                report.duplicate_upstream_sock(sock, &service.origin);
+                report.duplicate_upstream_sock(sock, &upstream.origin);
             }
         }
 
