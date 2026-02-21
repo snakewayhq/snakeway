@@ -215,7 +215,7 @@ impl ProxyHttp for PublicGateway {
             .get(self.listener.as_ref())
             .ok_or_else(|| Error::new(Custom("no router for listener")))?;
 
-        let route = match router.match_route(ctx.canonical_path()) {
+        let route = match router.match_route(ctx.host(), ctx.canonical_path()) {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");

@@ -286,8 +286,30 @@ pub fn build_pingora_server(
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
 
-            let tls_settings = TlsSettings::intermediate(&tls.cert, &tls.key)?;
-            admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
+            match &listener_cfg.tls {
+                Some(tls) => {
+                    if let Some(static_options) = &tls.static_options {
+                        let tls_settings =
+                            TlsSettings::intermediate(&static_options.cert, &static_options.key)?;
+                        admin_svc.add_tls_with_settings(
+                            &listener_cfg.addr.to_string(),
+                            None,
+                            tls_settings,
+                        );
+                    } else if let Some(acme_options) = &tls.acme_options {
+                        let callbacks = build_tls_callbacks(cert_store.clone());
+                        let tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                        admin_svc.add_tls_with_settings(
+                            &listener_cfg.addr.to_string(),
+                            None,
+                            tls_settings,
+                        );
+                    }
+                }
+                None => {
+                    admin_svc.add_tcp(&listener_cfg.addr.to_string());
+                }
+            }
 
             // Register admin service.
             server.add_service(admin_svc);

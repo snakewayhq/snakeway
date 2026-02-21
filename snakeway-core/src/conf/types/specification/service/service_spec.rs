@@ -31,6 +31,7 @@ pub enum LoadBalancingStrategySpec {
 pub struct ServiceRouteSpec {
     #[serde(skip)]
     pub origin: Origin,
+    pub host: Vec<String>,
     pub path: String,
     #[serde(default)]
     pub enable_websocket: bool,

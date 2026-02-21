@@ -14,6 +14,7 @@ pub struct TlsSpec {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum TlsManagementModeSpec {
     #[default]
     Static,
@@ -21,6 +22,7 @@ pub enum TlsManagementModeSpec {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum ChallengeSpec {
     #[default]
     Http01,

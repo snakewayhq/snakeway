@@ -3,6 +3,7 @@ use http::{HeaderMap, Method, Uri, Version};
 #[derive(Debug, Default)]
 pub struct NormalizedRequest {
     original_uri: Uri,
+    host: String,
     method: Method,
     path: NormalizedPath,
     query: CanonicalQuery,
@@ -13,6 +14,7 @@ pub struct NormalizedRequest {
 
 impl NormalizedRequest {
     pub fn new(
+        host: String,
         original_uri: Uri,
         method: Method,
         path: NormalizedPath,
@@ -22,6 +24,7 @@ impl NormalizedRequest {
         is_upgrade_req: bool,
     ) -> Self {
         Self {
+            host,
             original_uri,
             method,
             path,
@@ -34,6 +37,10 @@ impl NormalizedRequest {
 
     pub fn original_uri(&self) -> &Uri {
         &self.original_uri
+    }
+
+    pub fn host(&self) -> &str {
+        &self.host
     }
 
     pub fn method(&self) -> &Method {

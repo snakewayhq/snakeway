@@ -43,7 +43,7 @@ impl Router {
         Ok(())
     }
 
-    pub fn match_route(&self, request_path: &str) -> Result<&RouteEntry> {
+    pub fn match_route(&self, host: &str, request_path: &str) -> Result<&RouteEntry> {
         if !request_path.starts_with('/') {
             return Err(anyhow!("invalid request path: {}", request_path));
         }

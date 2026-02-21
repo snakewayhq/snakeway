@@ -1,6 +1,6 @@
 use crate::conf::types::{
     BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
-    StaticFilesSpec,
+    StaticFilesSpec, TlsManagementModeSpec,
 };
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
@@ -83,11 +83,26 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             }
 
             if let Some(tls) = &bind.tls {
-                if !Path::new(&tls.cert).is_file() {
-                    report.missing_cert_file(&tls.cert, &bind.origin);
-                }
-                if !Path::new(&tls.key).is_file() {
-                    report.missing_key_file(&tls.key, &bind.origin);
+                // Have to check mode if tls is some
+                match tls.mode {
+                    TlsManagementModeSpec::Static => {
+                        if let Some(cert) = &tls.cert
+                            && !Path::new(cert).is_file()
+                        {
+                            report.static_tls_requires_cert_file(Some(cert), &bind.origin);
+                        } else if tls.cert.is_none() {
+                            report.static_tls_requires_cert_file(None, &bind.origin);
+                        }
+
+                        if let Some(key) = &tls.key
+                            && !Path::new(key).is_file()
+                        {
+                            report.static_tls_requires_key_file(Some(key), &bind.origin);
+                        } else if tls.key.is_none() {
+                            report.static_tls_requires_key_file(None, &bind.origin);
+                        }
+                    }
+                    TlsManagementModeSpec::Acme => {}
                 }
             }
 

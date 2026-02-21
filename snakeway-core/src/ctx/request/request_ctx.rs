@@ -151,6 +151,18 @@ impl RequestCtx {
             self.normalize_http_request(protocol_version, headers)?
         };
 
+        let raw_host = normalized_headers
+            .as_map()
+            .get(HOST)
+            .and_then(|h| h.to_str().ok())
+            .ok_or(RequestRejectError::InvalidHeaders)?;
+
+        let host = raw_host
+            .split(':')
+            .next()
+            .unwrap_or(raw_host)
+            .to_ascii_lowercase();
+
         // Normalize the path.
         let normalized_path = match normalize_path(uri.path()) {
             NormalizationOutcome::Accept(p) => p,
@@ -171,6 +183,7 @@ impl RequestCtx {
         };
 
         self.normalized_request = NormalizedRequest::new(
+            host,
             uri.clone(),
             method.clone(),
             normalized_path,
@@ -274,10 +287,12 @@ impl RequestCtx {
     }
 }
 
+use http::header::HOST;
 /// WASM Device API
 ///
 #[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
+
 #[cfg(feature = "wasm")]
 impl RequestCtx {
     pub(crate) fn set_canonical_path(&mut self, path: String) {
@@ -326,6 +341,11 @@ impl RequestCtx {
     pub fn canonical_path(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.path().as_str()
+    }
+
+    pub fn host(&self) -> &str {
+        debug_assert!(self.hydrated);
+        self.normalized_request.host()
     }
 }
 

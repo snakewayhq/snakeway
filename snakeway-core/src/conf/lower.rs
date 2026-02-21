@@ -1,6 +1,7 @@
 use crate::conf::types::{
     DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
     ServiceConfig, ServiceRouteConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    listener,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
@@ -47,7 +48,9 @@ pub fn lower_configs(
         // Admin bind
         // -------------------------------------------------------------
         if let Some(bind_admin) = ingress.bind_admin {
-            listeners.push(ListenerConfig::from_bind_admin(&listener_name, bind_admin));
+            let listener_cfg = ListenerConfig::from_bind_admin(&listener_name, bind_admin)
+                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+            listeners.push(listener_cfg);
         }
 
         //--------------------------------------------------------------------
@@ -121,7 +124,9 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             // Listener
             //-----------------------------------------------------------------
-            listeners.push(ListenerConfig::from_bind(&listener_name, bind.clone()));
+            let listener_cfg = ListenerConfig::from_bind(&listener_name, bind.clone())
+                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+            listeners.push(listener_cfg);
 
             //-----------------------------------------------------------------
             // Redirect listener
@@ -132,12 +137,15 @@ pub fn lower_configs(
                 let mut socket: SocketAddr = bind_addr;
                 socket.set_port(redirect.port);
 
-                listeners.push(ListenerConfig::from_redirect(
+                let listener_cfg = ListenerConfig::from_redirect(
                     &redirect_listener_name,
                     socket.to_string(),
                     redirect.status,
                     bind,
-                ));
+                )
+                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+
+                listeners.push(listener_cfg);
             }
         }
     }

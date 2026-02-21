@@ -36,6 +36,9 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Validation during transformation
     //-------------------------------------------------------------------------
+    #[error("invalid bind address: {message}")]
+    InvalidBindAddress { message: String },
+
     #[error("invalid bind ip string: {0}")]
     InvalidBindIpString(String),
 

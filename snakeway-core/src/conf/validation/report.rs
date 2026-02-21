@@ -187,12 +187,26 @@ impl ValidationReport {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub fn missing_cert_file(&mut self, cert_file: &str, origin: &Origin) {
-        self.error(format!("missing cert file: {}", cert_file), origin, None);
+    pub fn static_tls_requires_cert_file(&mut self, cert_file: Option<&str>, origin: &Origin) {
+        self.error(
+            format!(
+                "missing or invalid cert file: {}",
+                cert_file.unwrap_or("<none>")
+            ),
+            origin,
+            None,
+        );
     }
 
-    pub fn missing_key_file(&mut self, key_file: &str, origin: &Origin) {
-        self.error(format!("missing key file: {}", key_file), origin, None);
+    pub fn static_tls_requires_key_file(&mut self, key_file: Option<&str>, origin: &Origin) {
+        self.error(
+            format!(
+                "missing or invalid key file: {}",
+                key_file.unwrap_or("<none>")
+            ),
+            origin,
+            None,
+        );
     }
 
     pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
