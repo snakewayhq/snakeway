@@ -22,13 +22,12 @@ impl CertManager {
     }
 
     /// Start background reconciliation loop.
-    pub fn start(&mut self, config: Arc<RuntimeConfig>) {
+    pub fn start(&mut self, runtime: &tokio::runtime::Runtime, config: Arc<RuntimeConfig>) {
         let store = self.store.clone();
         let scheduler = self.scheduler.clone();
 
-        self.worker = Some(tokio::spawn(async move {
+        self.worker = Some(runtime.spawn(async move {
             let mut reconciler = Reconciler::new(store, scheduler);
-
             reconciler.run(config).await;
         }));
     }

@@ -122,7 +122,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         "/var/lib/snakeway/certs",
     )));
     let mut cert_manager = CertManager::new(cert_store.clone());
-    cert_manager.start(Arc::new(config.clone()));
+    cert_manager.start(&control_rt, Arc::new(config.clone()));
 
     // Build Pingora server (Pingora owns its own runtimes)
     let server = build_pingora_server(
