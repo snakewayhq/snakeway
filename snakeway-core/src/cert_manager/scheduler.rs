@@ -18,7 +18,8 @@ impl Scheduler {
         self.tick
     }
 
-    pub fn renewal_threshold(&self) -> Duration {
-        Duration::from_secs(60 * 60 * 24 * 14) // 14 days
+    /// Hardcoding a sane window for now: renew when < 30 days left.
+    pub fn renew_within(&self) -> Duration {
+        Duration::from_secs(60 * 60 * 24 * 30)
     }
 }
