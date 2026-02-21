@@ -1,7 +1,7 @@
 use crate::conf::resolution::ResolveError;
-use crate::conf::types::EndpointSpec;
+use crate::conf::types::{EndpointSpec, EndpointTlsSpec, TlsConfig};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamTcpConfig {
@@ -15,11 +15,16 @@ pub struct UpstreamTcpConfig {
 
 impl UpstreamTcpConfig {
     pub fn new(weight: u32, spec: &EndpointSpec) -> Result<Self, ResolveError> {
-        let protocol = "http";
+        let protocol = spec.tls.is_some().then(|| "https").unwrap_or("http");
         let addr = spec.resolve()?;
+        let maybe_tls_config: Option<UpstreamTlsConfig> = if let Some(tls) = spec.tls.clone() {
+            Some(tls.into())
+        } else {
+            None
+        };
         Ok(Self {
             weight,
-            tls: None,
+            tls: maybe_tls_config,
             url: format!("{protocol}://{addr}"),
         })
     }
@@ -28,9 +33,19 @@ impl UpstreamTcpConfig {
 /// Represent TLS settings for origin server connections.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamTlsConfig {
-    pub sni: Option<String>,
+    pub sni: String,
     pub verify: bool,
-    pub ca_cert: Option<PathBuf>,
+    pub ca_cert: PathBuf,
+}
+
+impl From<EndpointTlsSpec> for UpstreamTlsConfig {
+    fn from(spec: EndpointTlsSpec) -> Self {
+        Self {
+            sni: spec.sni,
+            verify: spec.verify,
+            ca_cert: spec.ca_cert,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -168,8 +168,8 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
     // Determine SNI
     let sni = if let Some(tls_cfg) = &cfg.tls {
         // Explicit SNI overrides everything
-        if let Some(explicit) = &tls_cfg.sni {
-            explicit.clone()
+        if tls_cfg.sni.trim().len() > 0 {
+            tls_cfg.sni.clone()
         } else if host.parse::<std::net::IpAddr>().is_ok() {
             // If the host is an IP and there is no explicit SNI, do not send SNI.
             // This should be impossible because the conf system should have validated it before
