@@ -436,6 +436,14 @@ impl ValidationReport {
             None,
         )
     }
+
+    pub fn server_tls_filesystem_cert_store_must_have_a_cert_directory(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS filesystem cert store must have a certificate directory".to_string(),
+            origin,
+            None,
+        )
+    }
 }
 
 /// Wasm Device Spec Validation

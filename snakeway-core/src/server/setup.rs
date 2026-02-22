@@ -1,6 +1,6 @@
-use crate::cert_manager::{CertManager, CertStore, FilesystemCertStore};
+use crate::cert_manager::{CertManager, CertStore, FilesystemCertStore, MemoryCertStore};
 use crate::conf::RuntimeConfig;
-use crate::conf::types::ListenerConfig;
+use crate::conf::types::{CertStoreConfig, ListenerConfig};
 use crate::device::core::registry::DeviceRegistry;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
@@ -119,9 +119,16 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let connection_manager = Arc::new(WsConnectionManager::new());
 
     // Setup Cert Store and Manager
-    let cert_store: Arc<dyn CertStore> = Arc::new(FilesystemCertStore::new(PathBuf::from(
-        "/var/lib/snakeway/certs",
-    )));
+    let cert_store: Arc<dyn CertStore> = if let Some(tls) = &config.server.tls {
+        match &tls.cert_store {
+            CertStoreConfig::Filesystem(cert_dir) => {
+                Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir)))
+            }
+            CertStoreConfig::Memory => Arc::new(MemoryCertStore::new()),
+        }
+    } else {
+        Arc::new(MemoryCertStore::new())
+    };
     let mut cert_manager = CertManager::new(cert_store.clone());
     cert_manager.start(&control_rt, Arc::new(config.clone()));
 

@@ -26,13 +26,7 @@ pub fn lower_configs(
     // ---------------------------------------------------------------------
     // Server
     // ---------------------------------------------------------------------
-    let server = ServerConfig {
-        version: server_spec.version,
-        threads: server_spec.threads,
-        pid_file: server_spec.pid_file.unwrap_or_default(),
-        ca_file: server_spec.ca_file.unwrap_or_default(),
-        work_stealing: server_spec.work_stealing,
-    };
+    let server = ServerConfig::from(server_spec);
 
     let mut listeners = Vec::new();
     let mut routes = Vec::new();

@@ -1,3 +1,4 @@
+use crate::conf::types::{CertStoreSpec, ServerSpec, TlsServerSpec};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -19,4 +20,49 @@ pub struct ServerConfig {
 
     /// Enable work stealing between threads.
     pub work_stealing: bool,
+
+    pub tls: Option<TlsServerConfig>,
+}
+
+impl From<ServerSpec> for ServerConfig {
+    fn from(spec: ServerSpec) -> Self {
+        Self {
+            version: spec.version,
+            threads: spec.threads,
+            pid_file: spec.pid_file.unwrap_or_default(),
+            ca_file: spec.ca_file.unwrap_or_default(),
+            work_stealing: spec.work_stealing,
+            tls: spec.tls.map(Into::into),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TlsServerConfig {
+    pub cert_store: CertStoreConfig,
+    pub path: Option<PathBuf>,
+}
+
+impl From<TlsServerSpec> for TlsServerConfig {
+    fn from(spec: TlsServerSpec) -> Self {
+        Self {
+            cert_store: spec.cert_store.into(),
+            path: spec.path,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum CertStoreConfig {
+    Filesystem(PathBuf),
+    Memory,
+}
+
+impl From<CertStoreSpec> for CertStoreConfig {
+    fn from(spec: CertStoreSpec) -> Self {
+        match spec {
+            CertStoreSpec::Filesystem(path) => Self::Filesystem(path),
+            CertStoreSpec::Memory => Self::Memory,
+        }
+    }
 }

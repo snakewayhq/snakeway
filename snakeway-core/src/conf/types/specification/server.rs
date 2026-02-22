@@ -24,6 +24,8 @@ pub struct ServerSpec {
 
     #[serde(default = "default_work_stealing")]
     pub work_stealing: bool,
+
+    pub tls: Option<TlsServerSpec>,
 }
 
 fn default_work_stealing() -> bool {
@@ -39,6 +41,19 @@ impl Default for ServerSpec {
             pid_file: None,
             ca_file: None,
             work_stealing: true,
+            tls: None,
         }
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TlsServerSpec {
+    pub cert_store: CertStoreSpec,
+    pub path: Option<PathBuf>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum CertStoreSpec {
+    Filesystem(PathBuf),
+    Memory,
 }

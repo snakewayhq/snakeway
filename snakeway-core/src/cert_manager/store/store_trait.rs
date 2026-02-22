@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::SystemTime;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CertificateMeta {
     pub domains: Vec<String>,
     pub not_after: SystemTime,
