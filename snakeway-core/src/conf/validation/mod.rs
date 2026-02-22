@@ -1,4 +1,5 @@
 mod error;
+mod multi_file;
 mod report;
 mod single_file;
 mod validate;
@@ -6,6 +7,7 @@ mod validated_config;
 pub mod validator;
 
 pub use error::ConfigError;
+pub use multi_file::*;
 pub use report::*;
 #[cfg(test)]
 pub use single_file::*;

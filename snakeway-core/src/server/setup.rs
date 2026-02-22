@@ -35,9 +35,9 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     if !&config.server.pid_file.is_empty() {
         let pid_file = config.server.pid_file.clone();
         if let Err(e) = pid::write_pid(&pid_file) {
-            tracing::warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file; continuing");
+            warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file; continuing");
         } else {
-            tracing::info!(pid_file = %pid_file.display(), "pid file written");
+            info!(pid_file = %pid_file.display(), "pid file written");
         }
     }
 
