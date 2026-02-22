@@ -1,15 +1,21 @@
-use std::sync::Arc;
+use openssl::pkey::{PKey, Private};
+use openssl::x509::X509;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 
-use crate::cert_manager::{reconcile::Reconciler, renewal_policy::RenewalPolicy, store::CertStore};
+use crate::cert_manager::error::CertManagerError;
+use crate::cert_manager::{
+    ParsedCert, reconcile::Reconciler, renewal_policy::RenewalPolicy, store::CertStore,
+};
 use crate::conf::RuntimeConfig;
 
 pub struct CertManager {
     store: Arc<dyn CertStore>,
     scheduler: RenewalPolicy,
 
-    // Worker lifecycle
-    worker: Option<JoinHandle<()>>,
+    // Worker lifecycle (interior mutable because manager lives behind Arc)
+    worker: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl CertManager {
@@ -17,41 +23,94 @@ impl CertManager {
         Self {
             store,
             scheduler: RenewalPolicy::new(renew_within_days),
-            worker: None,
+            worker: Mutex::new(None),
         }
     }
 
     /// Start background reconciliation loop.
-    pub fn start(&mut self, runtime: &tokio::runtime::Runtime, config: Arc<RuntimeConfig>) {
+    /// Safe to call multiple times — will only start once.
+    pub fn start(self: &Arc<Self>, runtime: &tokio::runtime::Runtime, config: Arc<RuntimeConfig>) {
+        let mut guard = self.worker.lock().unwrap();
+
+        if guard.is_some() {
+            // Already started
+            return;
+        }
+
         let store = self.store.clone();
         let scheduler = self.scheduler.clone();
 
-        self.worker = Some(runtime.spawn(async move {
+        let handle = runtime.spawn(async move {
             let mut reconciler = Reconciler::new(store, scheduler);
             reconciler.run(config).await;
-        }));
+        });
+
+        *guard = Some(handle);
     }
 
     /// Called during hot reload.
     ///
-    /// This must NOT restart the whole subsystem.
-    /// It simply provides new desired state.
-    pub fn reload(&self, new_config: Arc<RuntimeConfig>) {
-        // In v1 this may update an Arc<AtomicConfig> that Reconciler reads.
-        // Avoid killing the worker unless absolutely necessary.
-        //
-        // Implementation detail handled inside Reconciler.
-        todo!("wire config update into reconciler");
+    /// Does not restart worker. Intended to update shared config.
+    pub fn reload(&self, _new_config: Arc<RuntimeConfig>) {
+        // TODO: wire into reconciler via shared atomic config
     }
 
     /// Graceful shutdown.
-    pub async fn shutdown(&mut self) {
-        if let Some(handle) = self.worker.take() {
+    pub async fn shutdown(&self) {
+        let mut guard = self.worker.lock().unwrap();
+
+        if let Some(handle) = guard.take() {
             handle.abort();
         }
     }
 
     pub fn store(&self) -> Arc<dyn CertStore> {
         self.store.clone()
+    }
+
+    /// Load and parse a certificate from the store.
+    pub fn load_parsed_cert(&self, cert_id: &str) -> Result<Option<ParsedCert>, CertManagerError> {
+        let Some(stored) = self.store.get(cert_id) else {
+            return Ok(None);
+        };
+
+        let mut chain = X509::stack_from_pem(&stored.cert_chain_pem)
+            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
+
+        if chain.is_empty() {
+            return Err(CertManagerError::EmptyChain);
+        }
+
+        let leaf = chain.remove(0);
+
+        let key = PKey::<Private>::private_key_from_pem(&stored.private_key_pem)
+            .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?;
+
+        let public_key = leaf
+            .public_key()
+            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
+
+        if !public_key.public_eq(&key) {
+            return Err(CertManagerError::KeyMismatch);
+        }
+
+        Ok(Some(ParsedCert { leaf, chain, key }))
+    }
+
+    /// Build SNI to ParsedCert map from store.
+    pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
+        let mut map = HashMap::new();
+
+        for (cert_id, meta) in self.store.list() {
+            if let Some(parsed) = self.load_parsed_cert(&cert_id)? {
+                let parsed = Arc::new(parsed);
+
+                for domain in meta.domains {
+                    map.insert(domain, parsed.clone());
+                }
+            }
+        }
+
+        Ok(map)
     }
 }

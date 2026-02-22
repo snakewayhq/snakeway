@@ -1,3 +1,5 @@
+use crate::cert_manager;
+use crate::cert_manager::CertManager;
 use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
@@ -17,6 +19,7 @@ use std::sync::Arc;
 pub async fn reload_runtime_state(
     config_path: &Path,
     state: &ArcSwap<RuntimeState>,
+    cert_manager: &Option<Arc<CertManager>>,
 ) -> Result<(), ReloadError> {
     // Parse and validate config.
     let validated = load_config(config_path)?;
@@ -28,7 +31,7 @@ pub async fn reload_runtime_state(
     }
 
     // Build a new runtime state OFFLINE.
-    let new_state = build_runtime_state(&validated.config)?;
+    let new_state = build_runtime_state(&validated.config, cert_manager)?;
 
     // Log comparison against current state.
     let old = state.load();
@@ -47,9 +50,12 @@ pub async fn reload_runtime_state(
     Ok(())
 }
 
-pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
+pub fn build_runtime_state(
+    cfg: &RuntimeConfig,
+    cert_manager: &Option<Arc<CertManager>>,
+) -> Result<RuntimeState> {
     // TLS Certificates
-    let tls = build_tls_runtime(cfg)?;
+    let tls: Option<TlsRuntime> = cert_manager.as_ref().map(build_tls_runtime).transpose()?;
 
     // Routers
     let routers = build_runtime_routers(&cfg.routes)?;
@@ -70,18 +76,11 @@ pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
     })
 }
 
-fn build_tls_runtime(cfg: &RuntimeConfig) -> Result<TlsRuntime> {
-    let mut map = HashMap::new();
-
-    for hostname in collect_tls_hostnames(cfg) {
-        if let Some(stored) = load_cert_from_store(&hostname)? {
-            let parsed = parse_cert(stored)?;
-            map.insert(hostname, Arc::new(parsed));
-        }
-    }
-
+/// Build the TLS SNI -> Cert runtime map.
+fn build_tls_runtime(cert_manager: &Arc<CertManager>) -> Result<TlsRuntime> {
+    let sni_map = cert_manager.build_sni_map()?;
     Ok(TlsRuntime {
-        sni_map: ArcSwap::new(Arc::new(map)),
+        sni_map: ArcSwap::new(Arc::new(sni_map)),
     })
 }
 

@@ -41,8 +41,18 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         }
     }
 
+    // Setup Cert Store and Manager
+    let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
+    let cert_manager = if has_tls && let Some(tls) = &config.server.tls {
+        let store = build_cert_store(tls)?;
+        let manager = Arc::new(CertManager::new(store, tls.renew_within_days));
+        Some(manager)
+    } else {
+        None
+    };
+
     // Build initial runtime state (reloadable)
-    let initial_state = build_runtime_state(&config)?;
+    let initial_state = build_runtime_state(&config, &cert_manager)?;
     let state = Arc::new(ArcSwap::from_pointee(initial_state));
     let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
         state.load().as_ref(),
@@ -73,6 +83,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         let state = state.clone();
         let config_path = config_path.clone();
         let traffic = Arc::clone(&traffic_manager);
+        let cert_manager_for_reload = cert_manager.clone();
 
         async move {
             info!("Reload loop started");
@@ -89,7 +100,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
 
                 last_epoch = epoch;
 
-                match reload_runtime_state(&config_path, &state).await {
+                match reload_runtime_state(&config_path, &state, &cert_manager_for_reload).await {
                     Ok(_) => {
                         info!("reload successful");
                         let new_snapshot = TrafficSnapshot::from_runtime(state.load().as_ref());
@@ -119,16 +130,10 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     // Setup WS Connection Manager
     let connection_manager = Arc::new(WsConnectionManager::new());
 
-    // Setup Cert Store and Manager
-    let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
-    let cert_store = if has_tls && let Some(tls) = &config.server.tls {
-        let store = build_cert_store(tls)?;
-        let mut manager = CertManager::new(store.clone(), tls.renew_within_days);
+    // // start manager
+    if let Some(manager) = &cert_manager {
         manager.start(&control_rt, Arc::new(config.clone()));
-        Some(store)
-    } else {
-        None
-    };
+    }
 
     // Build Pingora server (Pingora owns its own runtimes)
     let server = build_pingora_server(
@@ -137,7 +142,6 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         Arc::clone(&traffic_manager),
         Arc::clone(&connection_manager),
         reload.clone(),
-        cert_store,
     )
     .map_err(|e| {
         error!(error = %e, "failed to build Pingora server");
@@ -178,7 +182,6 @@ pub fn build_pingora_server(
     traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
-    maybe_cert_store: Option<Arc<dyn CertStore>>,
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
@@ -237,10 +240,8 @@ pub fn build_pingora_server(
                         None,
                         tls_settings,
                     );
-                } else if let Some(acme_options) = &tls.acme_options
-                    && let Some(ref cert_store) = maybe_cert_store
-                {
-                    let callbacks = build_tls_callbacks(CertMode::Acme(cert_store.clone()));
+                } else if let Some(acme_options) = &tls.acme_options {
+                    let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
@@ -321,10 +322,8 @@ pub fn build_pingora_server(
                             None,
                             tls_settings,
                         );
-                    } else if let Some(acme_options) = &tls.acme_options
-                        && let Some(ref cert_store) = maybe_cert_store
-                    {
-                        let callbacks = build_tls_callbacks(CertMode::Acme(cert_store.clone()));
+                    } else if let Some(acme_options) = &tls.acme_options {
+                        let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
                         let tls_settings = TlsSettings::with_callbacks(callbacks)?;
                         admin_svc.add_tls_with_settings(
                             &listener_cfg.addr.to_string(),

@@ -4,14 +4,15 @@
 //! 3. Renewal scheduling
 
 mod acme_client;
-mod cert;
 mod challenge;
+mod error;
 mod manager;
+mod parsed_cert;
 mod reconcile;
 mod renewal_policy;
 mod state;
 mod store;
 
-pub use cert::ParsedCert;
 pub use manager::CertManager;
+pub use parsed_cert::ParsedCert;
 pub use store::*;

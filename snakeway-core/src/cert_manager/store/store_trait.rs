@@ -6,12 +6,13 @@ use std::time::SystemTime;
 pub struct CertificateMeta {
     pub domains: Vec<String>,
     pub not_after: SystemTime,
+    pub issued_at: SystemTime,
 }
 
 #[derive(Clone)]
 pub struct StoredCertificate {
-    pub private_key_pem: Arc<Vec<u8>>,
-    pub cert_chain_pem: Arc<Vec<u8>>,
+    pub private_key_pem: Vec<u8>,
+    pub cert_chain_pem: Vec<u8>,
     pub meta: CertificateMeta,
 }
 

@@ -1,5 +1,7 @@
 use crate::cert_manager::CertStore;
+use crate::runtime::RuntimeState;
 use crate::server::tls_handshake::DownstreamSni;
+use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use pingora::listeners::TlsAccept;
 use pingora::protocols::tls::TlsRef;
@@ -8,7 +10,7 @@ use std::sync::Arc;
 
 pub enum CertMode {
     Static,
-    Acme(Arc<dyn CertStore>),
+    Acme(Arc<ArcSwap<RuntimeState>>),
 }
 
 pub struct SnakewayTlsAccept {
@@ -28,9 +30,9 @@ impl TlsAccept for SnakewayTlsAccept {
             CertMode::Static => {
                 // Do nothing. Cert already configured in settings file.
             }
-            CertMode::Acme(store) => {
+            CertMode::Acme(state) => {
                 // Perform dynamic lookup and install cert based on SNI
-                acme_lookup_and_set_cert(store, ssl).await
+                acme_lookup_and_set_cert(state, ssl).await
             }
         }
     }
@@ -47,67 +49,51 @@ impl TlsAccept for SnakewayTlsAccept {
 }
 
 // Perform dynamic lookup and install cert based on SNI
-async fn acme_lookup_and_set_cert(store: &Arc<dyn CertStore>, ssl: &mut TlsRef) {
+async fn acme_lookup_and_set_cert(state: &Arc<ArcSwap<RuntimeState>>, ssl: &mut TlsRef) {
     // Extract SNI.
     let Some(hostname) = extract_sni(ssl).filter(|s| !s.is_empty()) else {
         return;
     };
+
     tracing::debug!("TLS handshake: SNI = {}", hostname);
 
-    // Attempt to lookup the cert in the store.
-    let cert = match store.get(&hostname) {
-        Some(c) => c,
-        None => {
-            tracing::warn!("No certificate found for SNI {}", hostname);
-            // Handshake will fail naturally if the certificate is not found.
-            return;
-        }
+    // Load current runtime state (lock-free).
+    let runtime = state.load();
+
+    // If TLS runtime does not exist, nothing to do.
+    let Some(tls_runtime) = &runtime.tls else {
+        tracing::warn!("TLS requested but runtime has no TLS state");
+        return;
     };
 
-    // Parse full certificate chain.
-    let cert_chain = match openssl::x509::X509::stack_from_pem(&cert.cert_chain_pem) {
-        Ok(certs) if !certs.is_empty() => certs,
-        _ => {
-            tracing::error!("Failed to parse certificate chain for {}", hostname);
-            // Handshake will fail naturally if the certificate chain is invalid.
-            return;
-        }
+    // Load SNI map (lock-free).
+    let sni_map = tls_runtime.sni_map.load();
+
+    let Some(cert) = sni_map.get(&hostname) else {
+        tracing::warn!("No certificate found for SNI {}", hostname);
+        return;
     };
 
-    // The first cert is the leaf member in the chain.
-    if let Err(e) = ssl.set_certificate(&cert_chain[0]) {
+    // Install leaf certificate.
+    if let Err(e) = ssl.set_certificate(&cert.leaf) {
         tracing::error!("Failed to install leaf certificate: {}", e);
-        // Handshake will fail naturally if the leaf cert is invalid.
         return;
     }
 
-    // Add intermediates.
-    for intermediate in cert_chain.iter().skip(1) {
+    // Install intermediate chain.
+    for intermediate in &cert.chain {
         if let Err(e) = ssl.add_chain_cert(intermediate.clone()) {
-            tracing::error!("Failed to add intermediate cert: {}", e);
-            // Handshake will fail naturally if any intermediate cert is invalid.
+            tracing::error!("Failed to add intermediate certificate: {}", e);
             return;
         }
     }
 
-    // Parse private key.
-    let pkey = match openssl::pkey::PKey::private_key_from_pem(&cert.private_key_pem) {
-        Ok(k) => k,
-        Err(e) => {
-            tracing::error!("Failed to parse private key for {}: {}", hostname, e);
-            // Handshake will fail naturally if the private key is invalid.
-            return;
-        }
-    };
-
-    // Attempt to install the private key.
-    if let Err(e) = ssl.set_private_key(&pkey) {
+    // Install private key.
+    if let Err(e) = ssl.set_private_key(&cert.key) {
         tracing::error!("Failed to install private key: {}", e);
-        // Handshake will fail naturally if the private key cannot be installed.
         return;
     }
 
-    // Success.
     tracing::debug!("TLS certificate installed successfully for {}", hostname);
 }
 

@@ -8,7 +8,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 pub struct RuntimeState {
-    pub tls: TlsRuntime,
+    pub tls: Option<TlsRuntime>,
     pub routers: HashMap<Arc<str>, Router>,
     pub devices: DeviceRegistry,
     pub services: HashMap<String, ServiceRuntime>,

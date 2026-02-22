@@ -74,3 +74,4 @@ uuid = { workspace = true, features = ["v4"] }
 smallvec = { workspace = true }
 instant-acme = { workspace = true }
 rcgen = { workspace = true }
+sha2 = { workspace = true }

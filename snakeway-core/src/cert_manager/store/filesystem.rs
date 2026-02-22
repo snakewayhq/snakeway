@@ -29,8 +29,8 @@ impl CertStore for FilesystemCertStore {
         let meta: CertificateMeta = serde_json::from_slice(&meta_bytes).ok()?;
 
         Some(StoredCertificate {
-            private_key_pem: Arc::new(key),
-            cert_chain_pem: Arc::new(cert),
+            private_key_pem: key,
+            cert_chain_pem: cert,
             meta,
         })
     }
