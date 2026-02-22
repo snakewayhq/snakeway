@@ -40,40 +40,18 @@ impl TlsAccept for SnakewayTlsAccept {
         ssl: &TlsRef,
     ) -> Option<Arc<dyn Any + Send + Sync>> {
         // Extract SNI.
-        let hostname = match ssl.servername(openssl::ssl::NameType::HOST_NAME) {
-            Some(name) => match std::str::from_utf8(name.as_bytes()) {
-                Ok(s) => s.to_string(),
-                Err(_) => {
-                    tracing::warn!("Invalid UTF-8 in SNI");
-                    return None;
-                }
-            },
-            None => {
-                tracing::debug!("No SNI provided");
-                return None;
-            }
-        };
-        Some(Arc::new(DownstreamSni(hostname.clone())))
+        let hostname = extract_sni(ssl).filter(|s| !s.is_empty())?;
+        let hostname = Arc::new(DownstreamSni(hostname.clone()));
+        Some(hostname)
     }
 }
 
 // Perform dynamic lookup and install cert based on SNI
 async fn acme_lookup_and_set_cert(store: &Arc<dyn CertStore>, ssl: &mut TlsRef) {
     // Extract SNI.
-    let hostname = match ssl.servername(openssl::ssl::NameType::HOST_NAME) {
-        Some(name) => match std::str::from_utf8(name.as_bytes()) {
-            Ok(s) => s.to_string(),
-            Err(_) => {
-                tracing::warn!("Invalid UTF-8 in SNI");
-                return;
-            }
-        },
-        None => {
-            tracing::debug!("No SNI provided");
-            return;
-        }
+    let Some(hostname) = extract_sni(ssl).filter(|s| !s.is_empty()) else {
+        return;
     };
-
     tracing::debug!("TLS handshake: SNI = {}", hostname);
 
     // Attempt to lookup the cert in the store.
@@ -131,4 +109,21 @@ async fn acme_lookup_and_set_cert(store: &Arc<dyn CertStore>, ssl: &mut TlsRef) 
 
     // Success.
     tracing::debug!("TLS certificate installed successfully for {}", hostname);
+}
+
+fn extract_sni(ssl: &TlsRef) -> Option<String> {
+    let hostname = match ssl.servername(openssl::ssl::NameType::HOST_NAME) {
+        Some(name) => match std::str::from_utf8(name.as_bytes()) {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                tracing::warn!("Invalid UTF-8 in SNI");
+                return None;
+            }
+        },
+        None => {
+            tracing::debug!("No SNI provided");
+            return None;
+        }
+    };
+    Some(hostname)
 }
