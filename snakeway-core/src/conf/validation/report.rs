@@ -437,9 +437,33 @@ impl ValidationReport {
         )
     }
 
+    pub fn acme_requires_durable_cert_store(&mut self, origin: &Origin) {
+        self.error(
+            "ACME requires a durable cert store; memory store is not allowed".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn acme_configured_in_ingress_but_server_tls_not_configured(&mut self, origin: &Origin) {
+        self.error(
+            "ACME configured in ingress but server.tls is not configured".to_string(),
+            origin,
+            None,
+        )
+    }
+
     pub fn server_tls_filesystem_cert_store_must_have_a_cert_directory(&mut self, origin: &Origin) {
         self.error(
             "server TLS filesystem cert store must have a certificate directory".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &Origin) {
+        self.warning(
+            "server.tls configured but no TLS listeners defined".to_string(),
             origin,
             None,
         )
