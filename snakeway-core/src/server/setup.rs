@@ -1,8 +1,6 @@
-use crate::cert_manager::{
-    CertManager, CertStore, FilesystemCertStore, MemoryCertStore, NullCertStore,
-};
+use crate::cert_manager::{CertManager, CertStore, FilesystemCertStore, MemoryCertStore};
 use crate::conf::RuntimeConfig;
-use crate::conf::types::{CertStoreConfig, ListenerConfig};
+use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsServerConfig};
 use crate::device::core::registry::DeviceRegistry;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
@@ -122,22 +120,15 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let connection_manager = Arc::new(WsConnectionManager::new());
 
     // Setup Cert Store and Manager
-    let cert_store: Arc<dyn CertStore> = if let Some(tls) = &config.server.tls {
-        match &tls.cert_store {
-            CertStoreConfig::Filesystem(cert_dir) => {
-                // Attempt to create the cert store dir if it doesn't exist.
-                std::fs::create_dir_all(&cert_dir)
-                    .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
-                Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir)))
-            }
-            CertStoreConfig::Memory => Arc::new(MemoryCertStore::new()),
-        }
+    let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
+    let cert_store = if has_tls && let Some(tls) = &config.server.tls {
+        let store = build_cert_store(tls)?;
+        let mut manager = CertManager::new(store.clone());
+        manager.start(&control_rt, Arc::new(config.clone()));
+        Some(store)
     } else {
-        info!("No TLS configured, using in-memory cert store. This is essentially a no-op");
-        Arc::new(NullCertStore)
+        None
     };
-    let mut cert_manager = CertManager::new(cert_store.clone());
-    cert_manager.start(&control_rt, Arc::new(config.clone()));
 
     // Build Pingora server (Pingora owns its own runtimes)
     let server = build_pingora_server(
@@ -146,7 +137,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         Arc::clone(&traffic_manager),
         Arc::clone(&connection_manager),
         reload.clone(),
-        Arc::clone(&cert_store),
+        cert_store,
     )
     .map_err(|e| {
         error!(error = %e, "failed to build Pingora server");
@@ -168,6 +159,18 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     server.run_forever();
 }
 
+fn build_cert_store(tls_server_cfg: &TlsServerConfig) -> Result<Arc<dyn CertStore>> {
+    match &tls_server_cfg.cert_store {
+        CertStoreConfig::Filesystem(cert_dir) => {
+            // Attempt to create the cert store dir if it doesn't exist.
+            std::fs::create_dir_all(&cert_dir)
+                .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
+            Ok(Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir))))
+        }
+        CertStoreConfig::Memory => Ok(Arc::new(MemoryCertStore::new())),
+    }
+}
+
 /// Build the Pingora server.
 pub fn build_pingora_server(
     config: RuntimeConfig,
@@ -175,7 +178,7 @@ pub fn build_pingora_server(
     traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
-    cert_store: Arc<dyn CertStore>,
+    maybe_cert_store: Option<Arc<dyn CertStore>>,
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
@@ -234,7 +237,9 @@ pub fn build_pingora_server(
                         None,
                         tls_settings,
                     );
-                } else if let Some(acme_options) = &tls.acme_options {
+                } else if let Some(acme_options) = &tls.acme_options
+                    && let Some(ref cert_store) = maybe_cert_store
+                {
                     let callbacks = build_tls_callbacks(CertMode::Acme(cert_store.clone()));
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     if listener_cfg.enable_http2 {
@@ -316,7 +321,9 @@ pub fn build_pingora_server(
                             None,
                             tls_settings,
                         );
-                    } else if let Some(acme_options) = &tls.acme_options {
+                    } else if let Some(acme_options) = &tls.acme_options
+                        && let Some(ref cert_store) = maybe_cert_store
+                    {
                         let callbacks = build_tls_callbacks(CertMode::Acme(cert_store.clone()));
                         let tls_settings = TlsSettings::with_callbacks(callbacks)?;
                         admin_svc.add_tls_with_settings(
