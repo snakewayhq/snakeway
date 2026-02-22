@@ -453,14 +453,6 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_renew_within_days_must_be_set(&mut self, origin: &Origin) {
-        self.error(
-            "server.tls.renew_within_days must be set".to_string(),
-            origin,
-            None,
-        )
-    }
-
     pub fn server_tls_filesystem_cert_store_must_have_a_cert_directory(&mut self, origin: &Origin) {
         self.error(
             "server TLS filesystem cert store must have a certificate directory".to_string(),

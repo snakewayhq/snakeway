@@ -50,7 +50,12 @@ impl Default for ServerSpec {
 pub struct TlsServerSpec {
     pub cert_store: CertStoreSpec,
     pub path: Option<PathBuf>,
-    pub renew_within_days: Option<u64>,
+    #[serde(default = "default_renew_within_days")]
+    pub renew_within_days: u64,
+}
+
+fn default_renew_within_days() -> u64 {
+    30
 }
 
 #[derive(Debug, Deserialize, Serialize)]
