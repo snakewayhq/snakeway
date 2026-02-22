@@ -6,7 +6,6 @@
 mod acme;
 mod admin;
 mod challenge;
-mod errors;
 mod manager;
 mod reconcile;
 mod renewal_policy;

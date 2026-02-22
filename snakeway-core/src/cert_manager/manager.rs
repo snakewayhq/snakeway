@@ -38,7 +38,7 @@ impl CertManager {
     /// It simply provides new desired state.
     pub fn reload(&self, new_config: Arc<RuntimeConfig>) {
         // In v1 this may update an Arc<AtomicConfig> that Reconciler reads.
-        // We avoid killing the worker unless absolutely necessary.
+        // Avoid killing the worker unless absolutely necessary.
         //
         // Implementation detail handled inside Reconciler.
         todo!("wire config update into reconciler");
