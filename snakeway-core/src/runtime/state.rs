@@ -4,7 +4,7 @@ use crate::device::core::registry::DeviceRegistry;
 use crate::route::types::RouteId;
 use crate::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;
-use crate::runtime::types::{UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
+use crate::runtime::types::{TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
 use anyhow::{Result, anyhow};
@@ -48,6 +48,9 @@ pub async fn reload_runtime_state(
 }
 
 pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
+    // TLS Certificates
+    let tls = build_tls_runtime(cfg)?;
+
     // Routers
     let routers = build_runtime_routers(&cfg.routes)?;
 
@@ -60,9 +63,25 @@ pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
     let services = build_runtime_services(&cfg.services)?;
 
     Ok(RuntimeState {
+        tls,
         routers,
         devices,
         services,
+    })
+}
+
+fn build_tls_runtime(cfg: &RuntimeConfig) -> Result<TlsRuntime> {
+    let mut map = HashMap::new();
+
+    for hostname in collect_tls_hostnames(cfg) {
+        if let Some(stored) = load_cert_from_store(&hostname)? {
+            let parsed = parse_cert(stored)?;
+            map.insert(hostname, Arc::new(parsed));
+        }
+    }
+
+    Ok(TlsRuntime {
+        sni_map: ArcSwap::new(Arc::new(map)),
     })
 }
 
