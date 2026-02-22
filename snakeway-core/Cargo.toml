@@ -72,3 +72,4 @@ tempfile = { workspace = true }
 pretty_assertions = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 smallvec = { workspace = true }
+instant-acme = { workspace = true }
