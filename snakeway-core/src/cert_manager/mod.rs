@@ -3,8 +3,7 @@
 //! 2. Certificate storage
 //! 3. Renewal scheduling
 
-mod acme;
-mod admin;
+mod acme_client;
 mod challenge;
 mod manager;
 mod reconcile;
