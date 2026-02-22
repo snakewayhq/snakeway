@@ -14,4 +14,4 @@ mod state;
 mod store;
 
 pub use manager::CertManager;
-pub use store::{CertStore, FilesystemCertStore, MemoryCertStore};
+pub use store::*;

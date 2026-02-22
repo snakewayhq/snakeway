@@ -1,4 +1,6 @@
-use crate::cert_manager::{CertManager, CertStore, FilesystemCertStore, MemoryCertStore};
+use crate::cert_manager::{
+    CertManager, CertStore, FilesystemCertStore, MemoryCertStore, NullCertStore,
+};
 use crate::conf::RuntimeConfig;
 use crate::conf::types::{CertStoreConfig, ListenerConfig};
 use crate::device::core::registry::DeviceRegistry;
@@ -10,7 +12,7 @@ use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::tls_handshake::{CertMode, build_tls_callbacks};
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;
 use nix::NixPath;
 use openssl::ssl::SslFiletype;
@@ -21,6 +23,7 @@ use pingora::server::configuration::ServerConf;
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tracing::{debug, error, info, warn};
 
 /// Run the Pingora server with the given configuration.
 pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
@@ -74,11 +77,11 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         let traffic = Arc::clone(&traffic_manager);
 
         async move {
-            tracing::info!("Reload loop started");
+            info!("Reload loop started");
 
             loop {
                 let _ = reload_rx.changed().await;
-                tracing::info!("Reload requested");
+                info!("Reload requested");
 
                 let ReloadEvent { epoch } = *reload_rx.borrow();
                 if epoch <= last_epoch {
@@ -90,16 +93,16 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
 
                 match reload_runtime_state(&config_path, &state).await {
                     Ok(_) => {
-                        tracing::info!("reload successful");
+                        info!("reload successful");
                         let new_snapshot = TrafficSnapshot::from_runtime(state.load().as_ref());
                         traffic.update(new_snapshot);
                     }
                     Err(reload_err) => match reload_err {
                         ReloadError::Load(e) => {
-                            tracing::error!(error = %e, "failed to reload config");
+                            error!(error = %e, "failed to reload config");
                         }
                         ReloadError::InvalidConfig { report } => {
-                            tracing::error!(
+                            error!(
                                 error = "configuration validation failed",
                                 error_count = report.errors.len(),
                                 warning_count = report.warnings.len(),
@@ -107,7 +110,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
                             )
                         }
                         ReloadError::Build(e) => {
-                            tracing::error!(error = %e, "failed to build runtime state");
+                            error!(error = %e, "failed to build runtime state");
                         }
                     },
                 }
@@ -122,12 +125,16 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let cert_store: Arc<dyn CertStore> = if let Some(tls) = &config.server.tls {
         match &tls.cert_store {
             CertStoreConfig::Filesystem(cert_dir) => {
+                // Attempt to create the cert store dir if it doesn't exist.
+                std::fs::create_dir_all(&cert_dir)
+                    .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
                 Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir)))
             }
             CertStoreConfig::Memory => Arc::new(MemoryCertStore::new()),
         }
     } else {
-        Arc::new(MemoryCertStore::new())
+        info!("No TLS configured, using in-memory cert store. This is essentially a no-op");
+        Arc::new(NullCertStore)
     };
     let mut cert_manager = CertManager::new(cert_store.clone());
     cert_manager.start(&control_rt, Arc::new(config.clone()));
@@ -142,14 +149,14 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         Arc::clone(&cert_store),
     )
     .map_err(|e| {
-        tracing::error!(error = %e, "failed to build Pingora server");
+        error!(error = %e, "failed to build Pingora server");
         e
     })?;
 
     // Ensure pid file cleanup on shutdown
     if !config.server.pid_file.is_empty() {
         ctrlc::set_handler(move || {
-            tracing::info!("shutdown requested, removing pid file");
+            info!("shutdown requested, removing pid file");
             pid::remove_pid(&config.server.pid_file);
             std::process::exit(0);
         })?;
@@ -179,7 +186,7 @@ pub fn build_pingora_server(
     pingora_server_conf.work_stealing = config.server.work_stealing;
 
     let mut server = if let Some(threads) = config.server.threads {
-        tracing::debug!(
+        debug!(
             threads,
             "Creating Pingora server with overridden worker threads"
         );
@@ -196,7 +203,7 @@ pub fn build_pingora_server(
     // Load devices
     let mut registry = DeviceRegistry::new();
     registry.load_from_config(&config)?;
-    tracing::debug!("Loaded device count = {}", registry.all().len());
+    debug!("Loaded device count = {}", registry.all().len());
 
     for listener_cfg in config
         .listeners
@@ -327,7 +334,7 @@ pub fn build_pingora_server(
             // Register admin service.
             server.add_service(admin_svc);
         } else {
-            tracing::warn!(
+            warn!(
                 "Admin API listener {} has no TLS configured and will not be bound",
                 listener_cfg.name
             );
@@ -342,7 +349,7 @@ fn bail_if_port_is_in_use(listeners: &[ListenerConfig]) -> Result<()> {
     let mut has_error = false;
     for cfg in listeners.iter() {
         if TcpListener::bind(&cfg.addr).is_err() {
-            tracing::error!("Listener {} ({}) already in use", cfg.name, cfg.addr);
+            error!("Listener {} ({}) already in use", cfg.name, cfg.addr);
             has_error = true;
         }
     }
