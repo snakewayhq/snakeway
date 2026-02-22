@@ -1,4 +1,4 @@
-use crate::cert_manager::scheduler::Scheduler;
+use crate::cert_manager::renewal_policy::RenewalPolicy;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,13 +60,13 @@ pub enum CertState {
 pub fn compute_state(
     cert_id: &str,
     meta: Option<&crate::cert_manager::store::CertificateMeta>,
-    scheduler: &Scheduler,
+    renewal_policy: &RenewalPolicy,
 ) -> CertState {
     let Some(meta) = meta else {
         return CertState::Absent;
     };
 
-    let renew_within = scheduler.renew_within();
+    let renew_within = renewal_policy.renew_within;
 
     let now = SystemTime::now();
     match meta.not_after.duration_since(now) {

@@ -44,6 +44,13 @@ pub const SERVER_THREADS: RangeConstraint<usize> = RangeConstraint {
     units: None,
 };
 
+pub const SERVER_TLS_RENEW_WITHIN_DAYS: RangeConstraint<u64> = RangeConstraint {
+    min: 7,
+    max: 30,
+    label: "server.tls.renew_within_days",
+    units: Some("days"),
+};
+
 pub const REDIRECT_RESPONSE_CODE: RangeConstraint<u16> = RangeConstraint {
     min: 300,
     max: 399,

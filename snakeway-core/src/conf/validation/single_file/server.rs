@@ -1,6 +1,8 @@
 use crate::conf::types::{CertStoreSpec, ServerSpec};
 use crate::conf::validation::report::ValidationReport;
-use crate::conf::validation::validator::{SERVER_THREADS, validate_range};
+use crate::conf::validation::validator::{
+    SERVER_THREADS, SERVER_TLS_RENEW_WITHIN_DAYS, validate_range,
+};
 use nix::NixPath;
 
 /// Validate top-level config version.
@@ -46,6 +48,17 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
     }
 
     if let Some(tls) = &server_spec.tls {
+        if let Some(renew_within_days) = &tls.renew_within_days {
+            validate_range(
+                *renew_within_days,
+                &SERVER_TLS_RENEW_WITHIN_DAYS,
+                report,
+                &server_spec.origin,
+            );
+        } else {
+            report.server_tls_renew_within_days_must_be_set(&server_spec.origin);
+        }
+
         match &tls.cert_store {
             CertStoreSpec::Filesystem(cert_dir) => {
                 if cert_dir.is_empty() {

@@ -1,6 +1,6 @@
 use crate::cert_manager::state::compute_state;
 use crate::cert_manager::store::CertStore;
-use crate::cert_manager::{scheduler::Scheduler, state::CertState};
+use crate::cert_manager::{renewal_policy::RenewalPolicy, state::CertState};
 use crate::conf::RuntimeConfig;
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
@@ -10,18 +10,21 @@ use tracing::{debug, error, info, warn};
 
 pub struct Reconciler {
     store: Arc<dyn CertStore>,
-    scheduler: Scheduler,
+    renewal_policy: RenewalPolicy,
 }
 
 impl Reconciler {
-    pub fn new(store: Arc<dyn CertStore>, scheduler: Scheduler) -> Self {
-        Self { store, scheduler }
+    pub fn new(store: Arc<dyn CertStore>, renewal_policy: RenewalPolicy) -> Self {
+        Self {
+            store,
+            renewal_policy,
+        }
     }
 
     pub async fn run(&mut self, config: Arc<RuntimeConfig>) {
         loop {
             self.tick(&config).await;
-            sleep(self.scheduler.tick_interval()).await;
+            sleep(self.renewal_policy.reconcile_interval).await;
         }
     }
 
@@ -49,7 +52,7 @@ impl Reconciler {
 
         // Reconcile desired ids
         for cert_id in desired.iter().cloned() {
-            let state = compute_state(&cert_id, actual.get(&cert_id), &self.scheduler);
+            let state = compute_state(&cert_id, actual.get(&cert_id), &self.renewal_policy);
             if let Err(e) = self.step(cert_id, state).await {
                 warn!(error = %e, "cert_manager: reconcile step failed");
             }

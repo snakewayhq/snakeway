@@ -9,7 +9,7 @@ mod challenge;
 mod errors;
 mod manager;
 mod reconcile;
-mod scheduler;
+mod renewal_policy;
 mod state;
 mod store;
 

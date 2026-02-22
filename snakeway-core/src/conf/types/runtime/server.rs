@@ -41,6 +41,7 @@ impl From<ServerSpec> for ServerConfig {
 pub struct TlsServerConfig {
     pub cert_store: CertStoreConfig,
     pub path: Option<PathBuf>,
+    pub renew_within_days: Option<u64>,
 }
 
 impl From<TlsServerSpec> for TlsServerConfig {
@@ -48,6 +49,7 @@ impl From<TlsServerSpec> for TlsServerConfig {
         Self {
             cert_store: spec.cert_store.into(),
             path: spec.path,
+            renew_within_days: spec.renew_within_days,
         }
     }
 }

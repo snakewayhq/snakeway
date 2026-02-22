@@ -50,9 +50,11 @@ impl Default for ServerSpec {
 pub struct TlsServerSpec {
     pub cert_store: CertStoreSpec,
     pub path: Option<PathBuf>,
+    pub renew_within_days: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CertStoreSpec {
     Filesystem(PathBuf),
     Memory,

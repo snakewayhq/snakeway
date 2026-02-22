@@ -123,7 +123,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
     let cert_store = if has_tls && let Some(tls) = &config.server.tls {
         let store = build_cert_store(tls)?;
-        let mut manager = CertManager::new(store.clone());
+        let mut manager = CertManager::new(store.clone(), 30);
         manager.start(&control_rt, Arc::new(config.clone()));
         Some(store)
     } else {

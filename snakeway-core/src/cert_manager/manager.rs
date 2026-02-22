@@ -1,22 +1,22 @@
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
-use crate::cert_manager::{reconcile::Reconciler, scheduler::Scheduler, store::CertStore};
+use crate::cert_manager::{reconcile::Reconciler, renewal_policy::RenewalPolicy, store::CertStore};
 use crate::conf::RuntimeConfig;
 
 pub struct CertManager {
     store: Arc<dyn CertStore>,
-    scheduler: Scheduler,
+    scheduler: RenewalPolicy,
 
     // Worker lifecycle
     worker: Option<JoinHandle<()>>,
 }
 
 impl CertManager {
-    pub fn new(store: Arc<dyn CertStore>) -> Self {
+    pub fn new(store: Arc<dyn CertStore>, renew_within_days: u64) -> Self {
         Self {
             store,
-            scheduler: Scheduler::default(),
+            scheduler: RenewalPolicy::new(renew_within_days),
             worker: None,
         }
     }
