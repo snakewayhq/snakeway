@@ -16,15 +16,15 @@ pub enum HostMatcher {
     Any,
 }
 
-impl FromStr for HostMatcher {
-    type Err = anyhow::Error;
-    fn from_str(host: &str) -> Result<Self, Self::Err> {
+impl From<String> for HostMatcher {
+    fn from(host: String) -> Self {
+        let host = host.to_ascii_lowercase();
         if host == "*" {
-            Ok(HostMatcher::Any)
+            HostMatcher::Any
         } else if host.starts_with("*.") {
-            Ok(HostMatcher::Wildcard(host.to_ascii_lowercase()))
+            HostMatcher::Wildcard(host)
         } else {
-            Ok(HostMatcher::Exact(host.to_ascii_lowercase()))
+            HostMatcher::Exact(host)
         }
     }
 }
@@ -56,10 +56,7 @@ impl Router {
             return Err(anyhow!("duplicate route path: {}", path));
         }
 
-        let hosts = hosts
-            .into_iter()
-            .map(|h: String| parse_host(h.as_str()))
-            .collect();
+        let hosts = hosts.into_iter().map(HostMatcher::from).collect();
 
         self.routes.push(RouteEntry {
             hosts,
@@ -112,28 +109,27 @@ fn route_matches_host(host: &str, route: &RouteEntry) -> bool {
         .any(|matcher| host_matches(matcher, host))
 }
 
-/// todo move this deeper into config subsystem
-fn parse_host(host: &str) -> HostMatcher {
-    if host == "*" {
-        HostMatcher::Any
-    } else if host.starts_with("*.") {
-        HostMatcher::Wildcard(host.to_ascii_lowercase())
-    } else {
-        HostMatcher::Exact(host.to_ascii_lowercase())
-    }
-}
-
 fn host_matches(matcher: &HostMatcher, host: &str) -> bool {
     match matcher {
         HostMatcher::Exact(h) => h.eq_ignore_ascii_case(host),
 
         HostMatcher::Wildcard(pattern) => {
-            // pattern = "*.example.com"
-            if let Some(stripped) = pattern.strip_prefix("*.") {
-                host.ends_with(stripped) && host.split('.').count() > stripped.split('.').count()
-            } else {
-                false
-            }
+            // Stored as "*.example.com" — strip the wildcard prefix to get the base domain.
+            let Some(suffix) = pattern.strip_prefix("*.") else {
+                return false;
+            };
+
+            // The request host must end with ".example.com" (dot-anchored to prevent
+            // "xnotexample.com" from matching "*.example.com").
+            let ends_with_suffix = host.ends_with(&format!(".{suffix}"));
+
+            // Wildcards cover exactly one label (RFC 6125).
+            // "foo.example.com" matches, but "deep.sub.example.com" does not.
+            let expected_label_count = suffix.split('.').count() + 1;
+            let actual_label_count = host.split('.').count();
+            let is_single_label_wildcard = actual_label_count == expected_label_count;
+
+            ends_with_suffix && is_single_label_wildcard
         }
 
         HostMatcher::Any => true,
