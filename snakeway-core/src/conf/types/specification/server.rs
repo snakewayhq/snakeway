@@ -59,8 +59,8 @@ fn default_renew_within_days() -> u64 {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(tag = "type", rename_all = "lowercase")]
 pub enum CertStoreSpec {
-    Filesystem(PathBuf),
+    Filesystem { cert_dir: PathBuf },
     Memory,
 }

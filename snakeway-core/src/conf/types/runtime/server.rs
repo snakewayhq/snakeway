@@ -40,7 +40,6 @@ impl From<ServerSpec> for ServerConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TlsServerConfig {
     pub cert_store: CertStoreConfig,
-    pub path: Option<PathBuf>,
     pub renew_within_days: u64,
 }
 
@@ -48,7 +47,6 @@ impl From<TlsServerSpec> for TlsServerConfig {
     fn from(spec: TlsServerSpec) -> Self {
         Self {
             cert_store: spec.cert_store.into(),
-            path: spec.path,
             renew_within_days: spec.renew_within_days,
         }
     }
@@ -56,14 +54,14 @@ impl From<TlsServerSpec> for TlsServerConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum CertStoreConfig {
-    Filesystem(PathBuf),
+    Filesystem { cert_dir: PathBuf },
     Memory,
 }
 
 impl From<CertStoreSpec> for CertStoreConfig {
     fn from(spec: CertStoreSpec) -> Self {
         match spec {
-            CertStoreSpec::Filesystem(path) => Self::Filesystem(path),
+            CertStoreSpec::Filesystem { cert_dir } => Self::Filesystem { cert_dir },
             CertStoreSpec::Memory => Self::Memory,
         }
     }

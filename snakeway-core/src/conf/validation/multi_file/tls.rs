@@ -43,8 +43,8 @@ pub fn validate_tls(server: &ServerSpec, ingresses: &[IngressSpec], report: &mut
             CertStoreSpec::Memory => {
                 report.acme_requires_durable_cert_store(&server.origin);
             }
-            CertStoreSpec::Filesystem(path) => {
-                if path.as_os_str().is_empty() {
+            CertStoreSpec::Filesystem { cert_dir } => {
+                if cert_dir.as_os_str().is_empty() {
                     report.server_tls_filesystem_cert_store_must_have_a_cert_directory(
                         &server.origin,
                     );

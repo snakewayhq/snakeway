@@ -161,7 +161,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
 
 fn build_cert_store(tls_server_cfg: &TlsServerConfig) -> Result<Arc<dyn CertStore>> {
     match &tls_server_cfg.cert_store {
-        CertStoreConfig::Filesystem(cert_dir) => {
+        CertStoreConfig::Filesystem { cert_dir } => {
             // Attempt to create the cert store dir if it doesn't exist.
             std::fs::create_dir_all(&cert_dir)
                 .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
