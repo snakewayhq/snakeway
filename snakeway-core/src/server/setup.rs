@@ -211,6 +211,9 @@ pub fn build_pingora_server(
     registry.load_from_config(&config)?;
     debug!("Loaded device count = {}", registry.all().len());
 
+    //-------------------------------------------------------------------------
+    // Public Proxy: Create public listener(s).
+    //-------------------------------------------------------------------------
     for listener_cfg in config
         .listeners
         .iter()
@@ -274,7 +277,9 @@ pub fn build_pingora_server(
         server.add_service(public_svc);
     }
 
-    // Create redirect listener(s).
+    //-------------------------------------------------------------------------
+    // Redirect Proxy: Create redirect listener(s).
+    //-------------------------------------------------------------------------
     for listener_cfg in config
         .listeners
         .iter()
@@ -299,7 +304,9 @@ pub fn build_pingora_server(
         }
     }
 
-    // Build the admin HTTP proxy service from Pingora.
+    //-------------------------------------------------------------------------
+    // Admin Proxy: Create the admin API listener(s).
+    //-------------------------------------------------------------------------
     for listener_cfg in config.listeners.iter().filter(|l| l.enable_admin) {
         if let Some(tls) = &listener_cfg.tls {
             let admin_gateway = AdminGateway::new(
