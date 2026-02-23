@@ -171,7 +171,7 @@ fn build_cert_store(tls_server_cfg: &TlsServerConfig) -> Result<Arc<dyn CertStor
                 .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
             Ok(Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir))))
         }
-        CertStoreConfig::Memory => Ok(Arc::new(MemoryCertStore::new())),
+        CertStoreConfig::Memory => Ok(Arc::new(MemoryCertStore::default())),
     }
 }
 

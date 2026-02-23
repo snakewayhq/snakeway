@@ -6,8 +6,8 @@ pub struct MemoryCertStore {
     inner: RwLock<HashMap<String, StoredCertificate>>,
 }
 
-impl MemoryCertStore {
-    pub fn new() -> Self {
+impl Default for MemoryCertStore {
+    fn default() -> Self {
         Self {
             inner: RwLock::new(HashMap::new()),
         }
