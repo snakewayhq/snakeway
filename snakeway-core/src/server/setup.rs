@@ -176,6 +176,12 @@ fn build_cert_store(tls_server_cfg: &TlsServerConfig) -> Result<Arc<dyn CertStor
 }
 
 /// Build the Pingora server.
+///
+/// There are three types of proxy services constructed:
+///
+/// 1. Public: Services defined in ingress.d/* configuration files.
+/// 2. Redirect: Services created from optional redirect settings in ingress file bind blocks.
+/// 3. Admin: The Snakeway Admin API
 pub fn build_pingora_server(
     config: RuntimeConfig,
     state: Arc<ArcSwap<RuntimeState>>,
