@@ -438,8 +438,8 @@ impl ValidationReport {
     }
 
     pub fn acme_requires_durable_cert_store(&mut self, origin: &Origin) {
-        self.error(
-            "ACME requires a durable cert store; memory store is not allowed".to_string(),
+        self.warning(
+            "ACME requires a durable cert store; certs will be discarded on restart with memory store".to_string(),
             origin,
             None,
         )
