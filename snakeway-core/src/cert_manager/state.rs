@@ -1,3 +1,4 @@
+use crate::cert_manager::order_store::{OrderState, OrderStatus};
 use crate::cert_manager::renewal_policy::RenewalPolicy;
 use std::time::SystemTime;
 
@@ -55,20 +56,47 @@ pub enum CertState {
     Failed,
 }
 
-/// v1 state computation based on presence and expiry.
-/// Later fold in "pending orders" and failure counters from a separate order store.
 pub fn compute_state(
     cert_id: &str,
     meta: Option<&crate::cert_manager::store::CertificateMeta>,
+    order_state: Option<&OrderState>,
     renewal_policy: &RenewalPolicy,
 ) -> CertState {
+    // If an ACME order exists, it overrides everything.
+    if let Some(order) = order_state {
+        return match order.status {
+            OrderStatus::Ordering => CertState::Ordering,
+            OrderStatus::ChallengeInit => CertState::ChallengeInit,
+            OrderStatus::Challenging => CertState::Challenging,
+            OrderStatus::Finalizing => CertState::Finalizing,
+            OrderStatus::Failed => {
+                // Apply simple exponential backoff
+                let backoff_secs = (1u64 << order.failure_count.min(16)) * 60;
+                let retry_after = order
+                    .updated_at
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .ok()
+                    .and_then(|_| order.updated_at.elapsed().ok())
+                    .map(|elapsed| elapsed.as_secs() >= backoff_secs)
+                    .unwrap_or(false);
+
+                if retry_after {
+                    CertState::Absent
+                } else {
+                    CertState::Failed
+                }
+            }
+        };
+    }
+
+    // No order in flight, derive from certificate presence and expiry.
     let Some(meta) = meta else {
         return CertState::Absent;
     };
 
     let renew_within = renewal_policy.renew_within;
-
     let now = SystemTime::now();
+
     match meta.not_after.duration_since(now) {
         Ok(time_left) => {
             if time_left <= renew_within {
@@ -78,7 +106,7 @@ pub fn compute_state(
             }
         }
         Err(_) => {
-            // not_after is in the past
+            // expired
             CertState::Renewing
         }
     }

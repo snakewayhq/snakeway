@@ -1,4 +1,6 @@
-use crate::cert_manager::{CertManager, CertStore, FilesystemCertStore, MemoryCertStore};
+use crate::cert_manager::{
+    CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
+};
 use crate::conf::RuntimeConfig;
 use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsServerConfig};
 use crate::device::core::registry::DeviceRegistry;
@@ -20,6 +22,7 @@ use pingora::server::Server;
 use pingora::server::configuration::ServerConf;
 use std::net::TcpListener;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
@@ -45,8 +48,10 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
     let cert_manager = if has_tls && let Some(tls) = &config.server.tls {
         let store = build_cert_store(tls)?;
+        let order_store = build_order_store()?;
         let manager = Arc::new(CertManager::new(
             store,
+            order_store,
             tls.renew_within_days,
             Arc::new(config.clone()),
         ));
@@ -184,6 +189,13 @@ fn build_cert_store(tls_server_cfg: &TlsServerConfig) -> Result<Arc<dyn CertStor
         }
         CertStoreConfig::Memory => Ok(Arc::new(MemoryCertStore::default())),
     }
+}
+
+fn build_order_store() -> Result<Arc<dyn OrderStore>> {
+    let order_store_dir = PathBuf::from_str("/tmp/snakeway/orders")?;
+    std::fs::create_dir_all(&order_store_dir)
+        .map_err(|e| anyhow!("failed to create order store dir: {}", e))?;
+    Ok(Arc::new(FilesystemOrderStore::new(order_store_dir)))
 }
 
 /// Build the Pingora server.

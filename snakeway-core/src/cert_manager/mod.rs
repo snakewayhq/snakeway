@@ -7,6 +7,7 @@ mod acme_client;
 mod challenge;
 mod error;
 mod manager;
+mod order_store;
 mod parsed_cert;
 mod reconcile;
 mod renewal_policy;
@@ -14,5 +15,6 @@ mod state;
 mod store;
 
 pub use manager::CertManager;
+pub use order_store::*;
 pub use parsed_cert::ParsedCert;
 pub use store::*;

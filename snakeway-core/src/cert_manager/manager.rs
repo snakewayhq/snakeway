@@ -7,65 +7,60 @@ use tokio::task::JoinHandle;
 
 use crate::cert_manager::error::CertManagerError;
 use crate::cert_manager::{
-    ParsedCert, reconcile::Reconciler, renewal_policy::RenewalPolicy, store::CertStore,
+    ParsedCert, order_store::OrderStore, reconcile::Reconciler, renewal_policy::RenewalPolicy,
+    store::CertStore,
 };
 use crate::conf::RuntimeConfig;
 
 pub struct CertManager {
-    store: Arc<dyn CertStore>,
+    cert_store: Arc<dyn CertStore>,
+    order_store: Arc<dyn OrderStore>,
     scheduler: RenewalPolicy,
 
-    // Worker lifecycle (interior mutable because manager lives behind Arc)
     worker: Mutex<Option<JoinHandle<()>>>,
-
-    // Reloadable config.
     config: Arc<ArcSwap<RuntimeConfig>>,
 }
 
 impl CertManager {
     pub fn new(
-        store: Arc<dyn CertStore>,
+        cert_store: Arc<dyn CertStore>,
+        order_store: Arc<dyn OrderStore>,
         renew_within_days: u64,
         config: Arc<RuntimeConfig>,
     ) -> Self {
         Self {
-            store,
+            cert_store,
+            order_store,
             scheduler: RenewalPolicy::new(renew_within_days),
             worker: Mutex::new(None),
             config: Arc::new(ArcSwap::from(config)),
         }
     }
 
-    /// Start background reconciliation loop.
-    /// Safe to call multiple times — will only start once.
     pub fn start(self: &Arc<Self>, runtime: &tokio::runtime::Runtime) {
         let mut guard = self.worker.lock().unwrap();
 
         if guard.is_some() {
-            // Already started
             return;
         }
 
-        let store = self.store.clone();
+        let cert_store = self.cert_store.clone();
+        let order_store = self.order_store.clone();
         let scheduler = self.scheduler.clone();
         let config = self.config.clone();
 
         let handle = runtime.spawn(async move {
-            let mut reconciler = Reconciler::new(store, scheduler, config);
+            let mut reconciler = Reconciler::new(order_store, cert_store, scheduler, config);
             reconciler.run().await;
         });
 
         *guard = Some(handle);
     }
 
-    /// Called during hot reload.
-    ///
-    /// Does not restart worker. Intended to update shared config.
     pub fn reload(&self, new_config: Arc<RuntimeConfig>) {
         self.config.store(new_config);
     }
 
-    /// Graceful shutdown.
     pub async fn shutdown(&self) {
         let mut guard = self.worker.lock().unwrap();
 
@@ -74,13 +69,12 @@ impl CertManager {
         }
     }
 
-    pub fn store(&self) -> Arc<dyn CertStore> {
-        self.store.clone()
+    pub fn cert_store(&self) -> Arc<dyn CertStore> {
+        self.cert_store.clone()
     }
 
-    /// Load and parse a certificate from the store.
     pub fn load_parsed_cert(&self, cert_id: &str) -> Result<Option<ParsedCert>, CertManagerError> {
-        let Some(stored) = self.store.get(cert_id) else {
+        let Some(stored) = self.cert_store.get(cert_id) else {
             return Ok(None);
         };
 
@@ -107,11 +101,10 @@ impl CertManager {
         Ok(Some(ParsedCert { leaf, chain, key }))
     }
 
-    /// Build SNI to ParsedCert map from store.
     pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
         let mut map = HashMap::new();
 
-        for (cert_id, meta) in self.store.list() {
+        for (cert_id, meta) in self.cert_store.list() {
             if let Some(parsed) = self.load_parsed_cert(&cert_id)? {
                 let parsed = Arc::new(parsed);
 
