@@ -1,7 +1,6 @@
 use crate::conf::types::{
     DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
     ServiceConfig, ServiceRouteConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
-    listener,
 };
 use crate::conf::validation::ConfigError;
 use std::collections::HashMap;

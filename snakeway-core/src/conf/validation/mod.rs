@@ -7,6 +7,7 @@ mod validated_config;
 pub mod validator;
 
 pub use error::ConfigError;
+#[cfg(test)]
 pub use multi_file::*;
 pub use report::*;
 #[cfg(test)]

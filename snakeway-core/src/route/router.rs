@@ -1,6 +1,5 @@
 use crate::route::types::RouteRuntime;
 use anyhow::{Result, anyhow};
-use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Router {

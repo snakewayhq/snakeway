@@ -1,4 +1,3 @@
-use crate::cert_manager;
 use crate::cert_manager::CertManager;
 use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use crate::conf::{RuntimeConfig, load_config};

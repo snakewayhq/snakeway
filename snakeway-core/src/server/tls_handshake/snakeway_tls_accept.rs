@@ -1,4 +1,3 @@
-use crate::cert_manager::CertStore;
 use crate::runtime::RuntimeState;
 use crate::server::tls_handshake::DownstreamSni;
 use arc_swap::ArcSwap;

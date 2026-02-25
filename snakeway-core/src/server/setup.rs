@@ -26,7 +26,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
-/// Run the Pingora server with the given configuration.
+/// Start the Snakeway control plane, the start the Pingora data plane.
 pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     bail_if_port_is_in_use(&config.listeners)?;
 
@@ -345,32 +345,17 @@ pub fn build_pingora_server(
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
 
-            match &listener_cfg.tls {
-                Some(tls) => {
-                    if let Some(static_options) = &tls.static_options {
-                        let callbacks = build_tls_callbacks(CertMode::Static);
-                        let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                        tls_settings.set_private_key_file(&static_options.key, SslFiletype::PEM)?;
-                        tls_settings.set_certificate_chain_file(&static_options.cert)?;
+            if let Some(static_options) = &tls.static_options {
+                let callbacks = build_tls_callbacks(CertMode::Static);
+                let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                tls_settings.set_private_key_file(&static_options.key, SslFiletype::PEM)?;
+                tls_settings.set_certificate_chain_file(&static_options.cert)?;
 
-                        admin_svc.add_tls_with_settings(
-                            &listener_cfg.addr.to_string(),
-                            None,
-                            tls_settings,
-                        );
-                    } else if let Some(acme_options) = &tls.acme_options {
-                        let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
-                        let tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                        admin_svc.add_tls_with_settings(
-                            &listener_cfg.addr.to_string(),
-                            None,
-                            tls_settings,
-                        );
-                    }
-                }
-                None => {
-                    admin_svc.add_tcp(&listener_cfg.addr.to_string());
-                }
+                admin_svc.add_tls_with_settings(&listener_cfg.addr.to_string(), None, tls_settings);
+            } else if let Some(acme_options) = &tls.acme_options {
+                let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
+                let tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                admin_svc.add_tls_with_settings(&listener_cfg.addr.to_string(), None, tls_settings);
             }
 
             // Register admin service.
