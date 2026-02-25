@@ -1,3 +1,4 @@
+use arc_swap::ArcSwap;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
 use std::collections::HashMap;
@@ -16,20 +17,28 @@ pub struct CertManager {
 
     // Worker lifecycle (interior mutable because manager lives behind Arc)
     worker: Mutex<Option<JoinHandle<()>>>,
+
+    // Reloadable config.
+    config: Arc<ArcSwap<RuntimeConfig>>,
 }
 
 impl CertManager {
-    pub fn new(store: Arc<dyn CertStore>, renew_within_days: u64) -> Self {
+    pub fn new(
+        store: Arc<dyn CertStore>,
+        renew_within_days: u64,
+        config: Arc<RuntimeConfig>,
+    ) -> Self {
         Self {
             store,
             scheduler: RenewalPolicy::new(renew_within_days),
             worker: Mutex::new(None),
+            config: Arc::new(ArcSwap::from(config)),
         }
     }
 
     /// Start background reconciliation loop.
     /// Safe to call multiple times — will only start once.
-    pub fn start(self: &Arc<Self>, runtime: &tokio::runtime::Runtime, config: Arc<RuntimeConfig>) {
+    pub fn start(self: &Arc<Self>, runtime: &tokio::runtime::Runtime) {
         let mut guard = self.worker.lock().unwrap();
 
         if guard.is_some() {
@@ -39,10 +48,11 @@ impl CertManager {
 
         let store = self.store.clone();
         let scheduler = self.scheduler.clone();
+        let config = self.config.clone();
 
         let handle = runtime.spawn(async move {
-            let mut reconciler = Reconciler::new(store, scheduler);
-            reconciler.run(config).await;
+            let mut reconciler = Reconciler::new(store, scheduler, config);
+            reconciler.run().await;
         });
 
         *guard = Some(handle);
@@ -51,8 +61,8 @@ impl CertManager {
     /// Called during hot reload.
     ///
     /// Does not restart worker. Intended to update shared config.
-    pub fn reload(&self, _new_config: Arc<RuntimeConfig>) {
-        // TODO: wire into reconciler via shared atomic config
+    pub fn reload(&self, new_config: Arc<RuntimeConfig>) {
+        self.config.store(new_config);
     }
 
     /// Graceful shutdown.

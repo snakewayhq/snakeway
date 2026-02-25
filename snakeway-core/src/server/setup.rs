@@ -45,7 +45,11 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
     let cert_manager = if has_tls && let Some(tls) = &config.server.tls {
         let store = build_cert_store(tls)?;
-        let manager = Arc::new(CertManager::new(store, tls.renew_within_days));
+        let manager = Arc::new(CertManager::new(
+            store,
+            tls.renew_within_days,
+            Arc::new(config.clone()),
+        ));
         Some(manager)
     } else {
         None
@@ -101,8 +105,15 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
                 last_epoch = epoch;
 
                 match reload_runtime_state(&config_path, &state, &cert_manager_for_reload).await {
-                    Ok(_) => {
+                    Ok(reloaded_runtime_cfg) => {
                         info!("reload successful");
+
+                        // Update the cert manager with the new runtime configuration.
+                        if let Some(manager) = &cert_manager_for_reload {
+                            manager.reload(Arc::new(reloaded_runtime_cfg.clone()));
+                        }
+
+                        // Generate a traffic snapshot.
                         let new_snapshot = TrafficSnapshot::from_runtime(state.load().as_ref());
                         traffic.update(new_snapshot);
                     }
@@ -132,7 +143,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
 
     // // start manager
     if let Some(manager) = &cert_manager {
-        manager.start(&control_rt, Arc::new(config.clone()));
+        manager.start(&control_rt);
     }
 
     // Build Pingora server (Pingora owns its own runtimes)

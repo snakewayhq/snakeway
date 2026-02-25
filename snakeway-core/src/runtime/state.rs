@@ -20,7 +20,7 @@ pub async fn reload_runtime_state(
     config_path: &Path,
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,
-) -> Result<(), ReloadError> {
+) -> Result<RuntimeConfig, ReloadError> {
     // Parse and validate config.
     let validated = load_config(config_path)?;
 
@@ -47,7 +47,7 @@ pub async fn reload_runtime_state(
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
-    Ok(())
+    Ok(validated.config)
 }
 
 pub fn build_runtime_state(

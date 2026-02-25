@@ -2,6 +2,7 @@ use crate::cert_manager::state::compute_state;
 use crate::cert_manager::store::CertStore;
 use crate::cert_manager::{renewal_policy::RenewalPolicy, state::CertState};
 use crate::conf::RuntimeConfig;
+use arc_swap::ArcSwap;
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -11,18 +12,25 @@ use tracing::{debug, error, info, warn};
 pub struct Reconciler {
     store: Arc<dyn CertStore>,
     renewal_policy: RenewalPolicy,
+    config: Arc<ArcSwap<RuntimeConfig>>,
 }
 
 impl Reconciler {
-    pub fn new(store: Arc<dyn CertStore>, renewal_policy: RenewalPolicy) -> Self {
+    pub fn new(
+        store: Arc<dyn CertStore>,
+        renewal_policy: RenewalPolicy,
+        config: Arc<ArcSwap<RuntimeConfig>>,
+    ) -> Self {
         Self {
             store,
             renewal_policy,
+            config,
         }
     }
 
-    pub async fn run(&mut self, config: Arc<RuntimeConfig>) {
+    pub async fn run(&mut self) {
         loop {
+            let config = self.config.load();
             self.tick(&config).await;
             sleep(self.renewal_policy.reconcile_interval).await;
         }
