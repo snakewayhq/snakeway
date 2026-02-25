@@ -1,6 +1,6 @@
+use crate::cert_manager::cert_store::{CertStore, CertificateMeta};
 use crate::cert_manager::order_store::{OrderState, OrderStore};
 use crate::cert_manager::state::compute_state;
-use crate::cert_manager::store::{CertStore, CertificateMeta};
 use crate::cert_manager::{renewal_policy::RenewalPolicy, state::CertState};
 use crate::conf::RuntimeConfig;
 

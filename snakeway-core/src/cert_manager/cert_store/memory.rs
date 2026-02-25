@@ -1,4 +1,4 @@
-use crate::cert_manager::store::{CertStore, CertificateMeta, StoredCertificate};
+use crate::cert_manager::cert_store::{CertStore, CertificateMeta, StoredCertificate};
 use std::collections::HashMap;
 use std::sync::RwLock;
 

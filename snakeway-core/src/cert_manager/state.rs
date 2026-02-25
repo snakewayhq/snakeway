@@ -58,7 +58,7 @@ pub enum CertState {
 
 pub fn compute_state(
     cert_id: &str,
-    meta: Option<&crate::cert_manager::store::CertificateMeta>,
+    meta: Option<&crate::cert_manager::cert_store::CertificateMeta>,
     order_state: Option<&OrderState>,
     renewal_policy: &RenewalPolicy,
 ) -> CertState {

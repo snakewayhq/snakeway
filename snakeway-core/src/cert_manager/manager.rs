@@ -7,8 +7,8 @@ use tokio::task::JoinHandle;
 
 use crate::cert_manager::error::CertManagerError;
 use crate::cert_manager::{
-    ParsedCert, order_store::OrderStore, reconcile::Reconciler, renewal_policy::RenewalPolicy,
-    store::CertStore,
+    ParsedCert, cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
+    renewal_policy::RenewalPolicy,
 };
 use crate::conf::RuntimeConfig;
 
