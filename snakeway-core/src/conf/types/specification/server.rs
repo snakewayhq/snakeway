@@ -25,7 +25,7 @@ pub struct ServerSpec {
     #[serde(default = "default_work_stealing")]
     pub work_stealing: bool,
 
-    pub tls: Option<TlsServerSpec>,
+    pub certificates: Option<CertificatesSpec>,
 }
 
 fn default_work_stealing() -> bool {
@@ -41,15 +41,15 @@ impl Default for ServerSpec {
             pid_file: None,
             ca_file: None,
             work_stealing: true,
-            tls: None,
+            certificates: None,
         }
     }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct TlsServerSpec {
+pub struct CertificatesSpec {
+    pub acme: AcmeServerSpec,
     pub cert_store: CertStoreSpec,
-    pub path: Option<PathBuf>,
     #[serde(default = "default_renew_within_days")]
     pub renew_within_days: u64,
 }
@@ -63,4 +63,12 @@ fn default_renew_within_days() -> u64 {
 pub enum CertStoreSpec {
     Filesystem { cert_dir: PathBuf },
     Memory,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub struct AcmeServerSpec {
+    pub directory_url: String,
+    pub data_dir: PathBuf,
+    pub contact_email: Vec<String>,
 }

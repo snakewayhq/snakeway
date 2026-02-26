@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
-    StaticFilesSpec, TlsManagementModeSpec,
+    BindInterfaceSpec, BindSpec, CertificateSpec, HostSpec, IngressSpec, Origin, RedirectSpec,
+    ServiceSpec, StaticFilesSpec,
 };
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
@@ -9,10 +9,8 @@ use crate::conf::validation::validator::{
     CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
     is_valid_hostname, is_valid_port, validate_range,
 };
-use owo_colors::OwoColorize;
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
-use std::path::Path;
 
 /// Validate listener definitions.
 ///
@@ -84,21 +82,18 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 }
             }
 
-            if let Some(tls) = &bind.tls {
-                match tls.mode {
-                    TlsManagementModeSpec::Static => {
-                        if !tls.cert.as_ref().is_some_and(|c| Path::new(c).is_file()) {
-                            report.static_tls_requires_cert_file(&tls.cert, &bind.origin);
+            if let Some(certificate_spec) = &bind.tls {
+                match certificate_spec {
+                    CertificateSpec::Static { cert, key } => {
+                        if !cert.is_file() {
+                            report.static_tls_requires_cert_file(&cert, &bind.origin);
                         }
-                        if !tls.key.as_ref().is_some_and(|k| Path::new(k).is_file()) {
-                            report.static_tls_requires_key_file(&tls.key, &bind.origin);
+                        if !key.is_file() {
+                            report.static_tls_requires_key_file(&key, &bind.origin);
                         }
                     }
-                    TlsManagementModeSpec::Acme => {
-                        if tls.challenge.is_none() {
-                            report.acme_tls_requires_challenge(&bind.origin);
-                        }
-                        if tls.domains.as_ref().is_none_or(|d| d.is_empty()) {
+                    CertificateSpec::Acme { domains, .. } => {
+                        if domains.is_empty() {
                             report.acme_tls_requires_domains(&bind.origin);
                         }
                     }

@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum CertManagerError {
+    #[error("cert manager already initialized")]
+    AlreadyInitialized,
+
     #[error("certificate not found: {0}")]
     NotFound(String),
 
@@ -16,4 +19,10 @@ pub enum CertManagerError {
 
     #[error("certificate and private key do not match")]
     KeyMismatch,
+
+    #[error("cannot create acme client: {0}")]
+    CannotCreateAcmeClient(String),
+
+    #[error("acme client not initialized")]
+    AcmeNotInitialized,
 }

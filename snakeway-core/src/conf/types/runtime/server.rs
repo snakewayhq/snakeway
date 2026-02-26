@@ -1,4 +1,4 @@
-use crate::conf::types::{CertStoreSpec, ServerSpec, TlsServerSpec};
+use crate::conf::types::{AcmeServerSpec, CertStoreSpec, CertificatesSpec, ServerSpec};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -21,7 +21,7 @@ pub struct ServerConfig {
     /// Enable work stealing between threads.
     pub work_stealing: bool,
 
-    pub tls: Option<TlsServerConfig>,
+    pub certificates: Option<CertificatesConfig>,
 }
 
 impl From<ServerSpec> for ServerConfig {
@@ -32,22 +32,24 @@ impl From<ServerSpec> for ServerConfig {
             pid_file: spec.pid_file.unwrap_or_default(),
             ca_file: spec.ca_file.unwrap_or_default(),
             work_stealing: spec.work_stealing,
-            tls: spec.tls.map(Into::into),
+            certificates: spec.certificates.map(Into::into),
         }
     }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct TlsServerConfig {
+pub struct CertificatesConfig {
+    pub acme: AcmeServerConfig,
     pub cert_store: CertStoreConfig,
     pub renew_within_days: u64,
 }
 
-impl From<TlsServerSpec> for TlsServerConfig {
-    fn from(spec: TlsServerSpec) -> Self {
+impl From<CertificatesSpec> for CertificatesConfig {
+    fn from(spec: CertificatesSpec) -> Self {
         Self {
             cert_store: spec.cert_store.into(),
             renew_within_days: spec.renew_within_days,
+            acme: spec.acme.into(),
         }
     }
 }
@@ -63,6 +65,23 @@ impl From<CertStoreSpec> for CertStoreConfig {
         match spec {
             CertStoreSpec::Filesystem { cert_dir } => Self::Filesystem { cert_dir },
             CertStoreSpec::Memory => Self::Memory,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AcmeServerConfig {
+    pub directory_url: String,
+    pub data_dir: PathBuf,
+    pub contact_email: Vec<String>,
+}
+
+impl From<AcmeServerSpec> for AcmeServerConfig {
+    fn from(spec: AcmeServerSpec) -> Self {
+        Self {
+            directory_url: spec.directory_url,
+            data_dir: spec.data_dir,
+            contact_email: spec.contact_email,
         }
     }
 }

@@ -19,6 +19,7 @@ fn minimal_upstream() -> UpstreamSpec {
         endpoint: Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
             port: 3000,
+            tls: None,
         }),
         weight: 1,
         ..Default::default()
@@ -92,8 +93,11 @@ fn validate_websocket_service() {
     let mut report = ValidationReport::default();
     let mut service = minimal_service();
     service.routes.push(ServiceRouteSpec {
+        origin: Default::default(),
+        hosts: vec!["ws.example.com".to_string()],
+        path: "/ws".to_string(),
         enable_websocket: true,
-        ..Default::default()
+        ws_max_connections: Some(1_000),
     });
     let services = vec![service];
     let maybe_bind = minimal_maybe_bind_addr();
@@ -180,6 +184,7 @@ fn validate_service_upstream_cannot_have_both_endpoint_and_sock() {
     service.upstreams[0].endpoint = Some(EndpointSpec {
         host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
         port: 3000,
+        tls: None,
     });
     service.upstreams[0].sock = Some("/tmp/test.sock".to_string());
     let services = vec![service];

@@ -10,12 +10,14 @@ fn minimal_service() -> ServiceSpec {
     ServiceSpec {
         routes: vec![ServiceRouteSpec {
             path: "/".to_string(),
+            hosts: vec!["example.com".to_string()],
             ..Default::default()
         }],
         upstreams: vec![UpstreamSpec {
             endpoint: Some(EndpointSpec {
                 host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
                 port: 8080,
+                tls: None,
             }),
             weight: 1,
             ..Default::default()
@@ -87,14 +89,11 @@ fn validate_ingress_tls_missing_cert_and_key() {
     // Arrange
     let cert = PathBuf::from("/non/existent/cert.pem");
     let key = PathBuf::from("/non/existent/key.pem");
-    let expected_cert_error = format!("missing cert file: {}", cert.display());
-    let expected_key_error = format!("missing key file: {}", key.display());
+    let expected_cert_error = format!("missing or invalid cert file: {}", cert.display());
+    let expected_key_error = format!("missing or invalid key file: {}", key.display());
     let mut report = ValidationReport::default();
     let mut bind = minimal_bind();
-    bind.tls = Some(TlsSpec {
-        cert: cert.to_string_lossy().to_string(),
-        key: key.to_string_lossy().to_string(),
-    });
+    bind.tls = Some(CertificateSpec::Static { cert, key });
     let ingress = IngressSpec {
         bind: Some(bind),
         ..Default::default()

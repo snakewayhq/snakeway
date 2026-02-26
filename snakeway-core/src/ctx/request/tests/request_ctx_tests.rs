@@ -1,4 +1,5 @@
 use crate::ctx::{RequestCtx, RequestRejectError};
+use http::header::HOST;
 use http::{HeaderMap, HeaderValue, Method, Uri, Version};
 use pingora::prelude::Session;
 use pretty_assertions::assert_eq;
@@ -209,6 +210,7 @@ async fn http_normalize_builds_normalized_request_and_marks_normalized() {
 #[test]
 fn hydrate_runs_http2_normalization() {
     let mut headers = HeaderMap::new();
+    headers.append(HOST, HeaderValue::from_static("example.test"));
 
     // intentionally needs rewrite (OWS trim + duplicate folding)
     headers.append("x-test", HeaderValue::from_static(" a "));
@@ -221,15 +223,15 @@ fn hydrate_runs_http2_normalization() {
         &Method::GET,
         &headers,
         &Version::HTTP_2,
+        None,
         false,
         "127.0.0.1".parse().unwrap(),
     );
 
     // Assert
+    assert!(ctx.hydrated);
     assert!(ctx.is_http2());
     assert_eq!(ctx.headers().get("x-test").unwrap(), "a, b");
-
-    assert!(ctx.hydrated);
 }
 
 //-----------------------------------------------------------------------------

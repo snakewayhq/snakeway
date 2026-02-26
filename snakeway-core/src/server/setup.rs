@@ -1,8 +1,8 @@
 use crate::cert_manager::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
-use crate::conf::RuntimeConfig;
-use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsServerConfig};
+use crate::conf::types::{CertStoreConfig, CertificatesConfig, ListenerConfig};
+use crate::conf::{CertificateConfig, RuntimeConfig};
 use crate::device::core::registry::DeviceRegistry;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
@@ -44,21 +44,30 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         }
     }
 
-    // Setup Cert Store and Manager
-    let has_tls = config.listeners.iter().any(|l| l.tls.is_some());
-    let cert_manager = if has_tls && let Some(tls) = &config.server.tls {
-        let store = build_cert_store(tls)?;
-        let order_store = build_order_store()?;
-        let manager = Arc::new(CertManager::new(
-            store,
-            order_store,
-            tls.renew_within_days,
-            Arc::new(config.clone()),
-        ));
-        Some(manager)
-    } else {
-        None
-    };
+    // Control-plane runtime (signals and reload only)
+    let control_rt = Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_all()
+        .build()
+        .expect("failed to build control-plane Tokio runtime");
+
+    // Set up the Cert Store and Manager.
+    let has_tls = config.listeners.iter().any(|l| l.certificates.is_some());
+    let cert_manager: Option<Arc<CertManager>> =
+        if has_tls && let Some(certificates_cfg) = &config.server.certificates {
+            let cert_store = build_cert_store(certificates_cfg)?;
+            let order_store = build_order_store()?;
+            let manager = Arc::new(CertManager::new(
+                cert_store,
+                order_store,
+                Arc::new(config.clone()),
+                certificates_cfg,
+            ));
+            control_rt.block_on(manager.initialize(&certificates_cfg.acme))?;
+            Some(manager)
+        } else {
+            None
+        };
 
     // Build initial runtime state (reloadable)
     let initial_state = build_runtime_state(&config, &cert_manager)?;
@@ -66,13 +75,6 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
         state.load().as_ref(),
     )));
-
-    // Control-plane runtime (signals + reload only)
-    let control_rt = Builder::new_multi_thread()
-        .worker_threads(1)
-        .enable_all()
-        .build()
-        .expect("failed to build control-plane Tokio runtime");
 
     // Reload wiring
     let reload = Arc::new(ReloadHandle::new());
@@ -118,7 +120,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
                             manager.reload(Arc::new(reloaded_runtime_cfg.clone()));
                         }
 
-                        // Generate a traffic snapshot.
+                        // Generate traffic snapshot.
                         let new_snapshot = TrafficSnapshot::from_runtime(state.load().as_ref());
                         traffic.update(new_snapshot);
                     }
@@ -143,12 +145,12 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         }
     });
 
-    // Setup WS Connection Manager
+    // Set up WS Connection Manager
     let connection_manager = Arc::new(WsConnectionManager::new());
 
-    // // start manager
+    // start manager
     if let Some(manager) = &cert_manager {
-        manager.start(&control_rt);
+        control_rt.spawn(manager.clone().run_reconciliation());
     }
 
     // Build Pingora server (Pingora owns its own runtimes)
@@ -179,11 +181,11 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     server.run_forever();
 }
 
-fn build_cert_store(tls_server_cfg: &TlsServerConfig) -> Result<Arc<dyn CertStore>> {
-    match &tls_server_cfg.cert_store {
+fn build_cert_store(certificates_cfg: &CertificatesConfig) -> Result<Arc<dyn CertStore>> {
+    match &certificates_cfg.cert_store {
         CertStoreConfig::Filesystem { cert_dir } => {
             // Attempt to create the cert store dir if it doesn't exist.
-            std::fs::create_dir_all(&cert_dir)
+            std::fs::create_dir_all(cert_dir)
                 .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
             Ok(Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir))))
         }
@@ -257,13 +259,13 @@ pub fn build_pingora_server(
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
 
-        match &listener_cfg.tls {
-            Some(tls) => {
-                if let Some(static_options) = &tls.static_options {
+        match &listener_cfg.certificates {
+            Some(certificate_cfg) => match certificate_cfg {
+                CertificateConfig::Static { key, cert } => {
                     let callbacks = build_tls_callbacks(CertMode::Static);
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                    tls_settings.set_private_key_file(&static_options.key, SslFiletype::PEM)?;
-                    tls_settings.set_certificate_chain_file(&static_options.cert)?;
+                    tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
+                    tls_settings.set_certificate_chain_file(cert)?;
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
                     }
@@ -272,7 +274,8 @@ pub fn build_pingora_server(
                         None,
                         tls_settings,
                     );
-                } else if let Some(acme_options) = &tls.acme_options {
+                }
+                CertificateConfig::Acme { .. } => {
                     let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     if listener_cfg.enable_http2 {
@@ -284,7 +287,7 @@ pub fn build_pingora_server(
                         tls_settings,
                     );
                 }
-            }
+            },
             None => {
                 public_svc.add_tcp(&listener_cfg.addr.to_string());
             }
@@ -337,7 +340,7 @@ pub fn build_pingora_server(
     // Admin Proxy: Create the admin API listener(s).
     //-------------------------------------------------------------------------
     for listener_cfg in config.listeners.iter().filter(|l| l.enable_admin) {
-        if let Some(tls) = &listener_cfg.tls {
+        if let Some(certificate_cfg) = &listener_cfg.certificates {
             let admin_gateway = AdminGateway::new(
                 traffic_manager.clone(),
                 connection_manager.clone(),
@@ -345,17 +348,28 @@ pub fn build_pingora_server(
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
 
-            if let Some(static_options) = &tls.static_options {
-                let callbacks = build_tls_callbacks(CertMode::Static);
-                let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                tls_settings.set_private_key_file(&static_options.key, SslFiletype::PEM)?;
-                tls_settings.set_certificate_chain_file(&static_options.cert)?;
+            match certificate_cfg {
+                CertificateConfig::Static { key, cert } => {
+                    let callbacks = build_tls_callbacks(CertMode::Static);
+                    let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
+                    tls_settings.set_certificate_chain_file(cert)?;
 
-                admin_svc.add_tls_with_settings(&listener_cfg.addr.to_string(), None, tls_settings);
-            } else if let Some(acme_options) = &tls.acme_options {
-                let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
-                let tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                admin_svc.add_tls_with_settings(&listener_cfg.addr.to_string(), None, tls_settings);
+                    admin_svc.add_tls_with_settings(
+                        &listener_cfg.addr.to_string(),
+                        None,
+                        tls_settings,
+                    );
+                }
+                CertificateConfig::Acme { .. } => {
+                    let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
+                    let tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    admin_svc.add_tls_with_settings(
+                        &listener_cfg.addr.to_string(),
+                        None,
+                        tls_settings,
+                    );
+                }
             }
 
             // Register admin service.

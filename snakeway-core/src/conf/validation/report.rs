@@ -4,7 +4,7 @@ use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::net::IpAddr;
-use std::path::Display;
+use std::path::{Display, PathBuf};
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct ValidationIssue {
@@ -187,30 +187,26 @@ impl ValidationReport {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub fn static_tls_requires_cert_file(&mut self, cert_file: &Option<String>, origin: &Origin) {
+    pub fn static_tls_requires_cert_file(&mut self, cert_file: &PathBuf, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid cert file: {}",
-                cert_file.clone().unwrap_or("<none>".to_string())
+                cert_file.to_string_lossy()
             ),
             origin,
             None,
         );
     }
 
-    pub fn static_tls_requires_key_file(&mut self, key_file: &Option<String>, origin: &Origin) {
+    pub fn static_tls_requires_key_file(&mut self, key_file: &PathBuf, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid key file: {}",
-                key_file.clone().unwrap_or("<none>".to_string())
+                key_file.to_string_lossy()
             ),
             origin,
             None,
         );
-    }
-
-    pub fn acme_tls_requires_challenge(&mut self, origin: &Origin) {
-        self.error("missing challenge for ACME TLS".to_string(), origin, None);
     }
 
     pub fn acme_tls_requires_domains(&mut self, origin: &Origin) {
@@ -448,6 +444,22 @@ impl ValidationReport {
     pub fn acme_configured_in_ingress_but_server_tls_not_configured(&mut self, origin: &Origin) {
         self.error(
             "ACME configured in ingress but server.tls is not configured".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_acme_directory_url_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME directory URL cannot be empty".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_acme_directory_url_must_be_https(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME directory URL must be a valid URL".to_string(),
             origin,
             None,
         )

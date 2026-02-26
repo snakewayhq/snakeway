@@ -47,7 +47,13 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
         validate_range(t, &SERVER_THREADS, report, &server_spec.origin);
     }
 
-    if let Some(tls) = &server_spec.tls {
+    if let Some(tls) = &server_spec.certificates {
+        if tls.acme.directory_url.is_empty() {
+            report.server_tls_acme_directory_url_cannot_be_empty(&server_spec.origin);
+        } else if !tls.acme.directory_url.starts_with("https://") {
+            report.server_tls_acme_directory_url_must_be_https(&server_spec.origin);
+        }
+
         validate_range(
             tls.renew_within_days,
             &SERVER_TLS_RENEW_WITHIN_DAYS,

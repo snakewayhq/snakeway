@@ -1,8 +1,8 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
-    IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
+    BindCertificateSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
+    DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
     NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsSpec,
+    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
 
@@ -44,7 +44,7 @@ impl ConfigBuilder {
         BindSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 8080,
-            tls: include_tls.then_some(TlsSpec {
+            tls: include_tls.then_some(BindCertificateSpec {
                 cert: "./certs/server.pem".to_string(),
                 key: "./certs/server.key".to_string(),
             }),

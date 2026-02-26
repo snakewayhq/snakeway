@@ -1,0 +1,12 @@
+services:
+  pebble:
+    container_name: snakeway-pebble
+    image: ghcr.io/letsencrypt/pebble:latest
+    command: -config /test/pebble.json
+    ports:
+      - "14000:14000"  # ACME port
+      - "15000:15000"  # Management port
+    environment:
+      - PEBBLE_VA_NOSLEEP=1
+    volumes:
+      - ./pebble.json:/test/pebble.json

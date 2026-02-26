@@ -17,6 +17,7 @@ bind = {
   port = 8080
   enable_http2 = true
   tls = {
+    mode = "static"
     cert = "cert.pem"
     key  = "key.pem"
   }
@@ -46,6 +47,7 @@ bind_admin = {
   interface = "127.0.0.1"
   port = 8080
   tls = {
+    mode = "static"
     cert = "cert.pem"
     key  = "key.pem"
   }
@@ -74,8 +76,14 @@ fn parse_ingress_services_and_routes_have_origin() {
 services = [
   {
     routes = [
-      { path = "/api" },
-      { path = "/ws" }
+      {
+        hosts = ["api.example.com"]
+        path = "/api"
+      },
+      {
+        hosts = ["ws.example.com"]
+        path = "/ws"
+      }
     ]
 
     upstreams = [

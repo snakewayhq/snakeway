@@ -1,7 +1,7 @@
 use crate::conf::resolution::ResolveError;
-use crate::conf::types::{EndpointSpec, EndpointTlsSpec, TlsConfig};
+use crate::conf::types::{EndpointSpec, EndpointTlsSpec};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamTcpConfig {

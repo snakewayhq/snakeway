@@ -1,9 +1,12 @@
+mod certificate;
 mod connection_rate_limiting_filter;
 mod network_connection_filter;
 
-use crate::conf::types::{BindAdminSpec, BindSpec, TlsConfig};
+pub use certificate::*;
 pub use connection_rate_limiting_filter::*;
 pub use network_connection_filter::*;
+
+use crate::conf::types::{BindAdminSpec, BindSpec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -15,7 +18,7 @@ pub struct ListenerConfig {
     pub addr: String,
 
     /// Optional TLS config.
-    pub tls: Option<TlsConfig>,
+    pub certificates: Option<CertificateConfig>,
 
     /// Enable HTTP/2 on this listener.
     pub enable_http2: bool,
@@ -42,7 +45,7 @@ impl ListenerConfig {
         Ok(Self {
             name: name.to_string(),
             addr: from_addr,
-            tls: None,
+            certificates: None,
             enable_http2: false,
             enable_admin: false,
             redirect: Some(RedirectConfig::new(
@@ -57,14 +60,14 @@ impl ListenerConfig {
     pub fn from_bind(name: &str, spec: BindSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
         let maybe_tls = if let Some(tls) = spec.tls {
-            Some(TlsConfig::try_from(tls).map_err(|err| err.to_string())?)
+            Some(CertificateConfig::try_from(tls).map_err(|err| err.to_string())?)
         } else {
             None
         };
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
-            tls: maybe_tls,
+            certificates: maybe_tls,
             enable_http2: spec.enable_http2,
             enable_admin: false,
             redirect: None,
@@ -75,11 +78,11 @@ impl ListenerConfig {
 
     pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let tls = TlsConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
+        let tls = CertificateConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
-            tls: Some(tls),
+            certificates: Some(tls),
             enable_http2: false,
             enable_admin: true,
             redirect: None,

@@ -1,9 +1,12 @@
+use crate::conf::types::CertificateChallengeConfig;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderState {
     pub cert_id: String,
+    pub domains: Vec<String>,
+    pub challenge: CertificateChallengeConfig,
 
     pub status: OrderStatus,
 

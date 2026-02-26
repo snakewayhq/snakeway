@@ -119,6 +119,20 @@ impl ProxyHttp for PublicGateway {
         RequestCtx::empty()
     }
 
+    // async fn early_request_filter(
+    //     &self,
+    //     _session: &mut Session,
+    //     _ctx: &mut Self::CTX,
+    // ) -> Result<()> {
+    //     if path.starts_with("/.well-known/acme-challenge/") {
+    //         let token = path.trim_start_matches("/.well-known/acme-challenge/");
+    //         if let Some(body) = registry.get(token) {
+    //             return "200 text/plain with body";
+    //         }
+    //     }
+    //     Ok(())
+    // }
+
     /// Select upstream and enforce protocol rules
     async fn upstream_peer(
         &self,
