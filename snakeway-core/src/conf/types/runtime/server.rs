@@ -1,4 +1,4 @@
-use crate::conf::types::{AcmeServerSpec, CertStoreSpec, CertificatesSpec, ServerSpec};
+use crate::conf::types::{AcmeServerSpec, CertStoreSpec, ServerSpec, TlsAutomationSpec};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -14,38 +14,43 @@ pub struct ServerConfig {
     /// If empty, Snakeway will not write a pid file.
     pub pid_file: PathBuf,
 
-    /// CA file path.
-    /// If set/not empty, Pingora will use this file to verify upstream certificates.
-    pub ca_file: String,
-
     /// Enable work stealing between threads.
     pub work_stealing: bool,
 
-    pub certificates: Option<CertificatesConfig>,
+    pub ca_file: Option<String>,
+
+    pub tls_automation: Option<TlsAutomationConfig>,
 }
 
-impl From<ServerSpec> for ServerConfig {
-    fn from(spec: ServerSpec) -> Self {
-        Self {
+impl TryFrom<ServerSpec> for ServerConfig {
+    type Error = String;
+    fn try_from(spec: ServerSpec) -> Result<Self, Self::Error> {
+        Ok(Self {
             version: spec.version,
             threads: spec.threads,
             pid_file: spec.pid_file.unwrap_or_default(),
-            ca_file: spec.ca_file.unwrap_or_default(),
             work_stealing: spec.work_stealing,
-            certificates: spec.certificates.map(Into::into),
-        }
+            ca_file: spec
+                .ca_file
+                .map(|p| p.into_os_string().into_string())
+                .transpose()
+                .map_err(|_| {
+                    "invalid ca_file path. this likely a bug as it should have been caught by validation".to_string()
+                })?,
+            tls_automation: spec.tls_automation.map(Into::into),
+        })
     }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CertificatesConfig {
+pub struct TlsAutomationConfig {
     pub acme: AcmeServerConfig,
     pub cert_store: CertStoreConfig,
     pub renew_within_days: u64,
 }
 
-impl From<CertificatesSpec> for CertificatesConfig {
-    fn from(spec: CertificatesSpec) -> Self {
+impl From<TlsAutomationSpec> for TlsAutomationConfig {
+    fn from(spec: TlsAutomationSpec) -> Self {
         Self {
             cert_store: spec.cert_store.into(),
             renew_within_days: spec.renew_within_days,

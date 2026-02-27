@@ -93,7 +93,7 @@ fn validate_ingress_tls_missing_cert_and_key() {
     let expected_key_error = format!("missing or invalid key file: {}", key.display());
     let mut report = ValidationReport::default();
     let mut bind = minimal_bind();
-    bind.tls = Some(CertificateSpec::Static { cert, key });
+    bind.tls = Some(TlsTerminationSpec::Manual { cert, key });
     let ingress = IngressSpec {
         bind: Some(bind),
         ..Default::default()

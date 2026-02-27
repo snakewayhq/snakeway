@@ -32,7 +32,7 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
         }
     }
 
-    if let Some(ca_file) = server_spec.ca_file.clone() {
+    if let Some(ca_file) = &server_spec.ca_file {
         if !std::path::Path::new(&ca_file).exists() {
             report.root_ca_file_does_not_exist(&ca_file, &server_spec.origin);
         }
@@ -47,21 +47,25 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
         validate_range(t, &SERVER_THREADS, report, &server_spec.origin);
     }
 
-    if let Some(tls) = &server_spec.certificates {
-        if tls.acme.directory_url.is_empty() {
+    if let Some(tls_automation_cfg) = &server_spec.tls_automation {
+        if tls_automation_cfg.acme.directory_url.is_empty() {
             report.server_tls_acme_directory_url_cannot_be_empty(&server_spec.origin);
-        } else if !tls.acme.directory_url.starts_with("https://") {
+        } else if !tls_automation_cfg
+            .acme
+            .directory_url
+            .starts_with("https://")
+        {
             report.server_tls_acme_directory_url_must_be_https(&server_spec.origin);
         }
 
         validate_range(
-            tls.renew_within_days,
+            tls_automation_cfg.renew_within_days,
             &SERVER_TLS_RENEW_WITHIN_DAYS,
             report,
             &server_spec.origin,
         );
 
-        match &tls.cert_store {
+        match &tls_automation_cfg.cert_store {
             CertStoreSpec::Filesystem { cert_dir } => {
                 if cert_dir.is_empty() {
                     report.server_tls_filesystem_cert_store_must_have_a_cert_directory(

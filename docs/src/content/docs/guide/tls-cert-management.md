@@ -68,7 +68,7 @@ For manual certificate management, an ingress file should have a bind block that
 bind = {
   // ...
   tls = {
-    mode = "static" // <- "static" for local file certs.
+    mode = "manual" // <- "static" for local file certs.
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
   }

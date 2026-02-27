@@ -3,9 +3,9 @@ use http::{HeaderMap, Method, Uri, Version};
 #[derive(Debug, Default)]
 pub struct NormalizedRequest {
     original_uri: Uri,
+    method: Method,
     host: String,
     sni_host: Option<String>,
-    method: Method,
     path: NormalizedPath,
     query: CanonicalQuery,
     normalized_headers: NormalizedHeaders,

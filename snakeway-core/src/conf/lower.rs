@@ -25,7 +25,10 @@ pub fn lower_configs(
     // ---------------------------------------------------------------------
     // Server
     // ---------------------------------------------------------------------
-    let server = ServerConfig::from(server_spec);
+    let server =
+        ServerConfig::try_from(server_spec).map_err(|e| ConfigError::InvalidServerConfig {
+            message: e.to_string(),
+        })?;
 
     let mut listeners = Vec::new();
     let mut routes = Vec::new();

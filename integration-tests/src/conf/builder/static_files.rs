@@ -35,6 +35,7 @@ impl ConfigBuilder {
         StaticFilesSpec {
             origin: Default::default(),
             routes: vec![StaticRouteSpec {
+                hosts: vec!["snakeway.test".to_string()],
                 origin: Default::default(),
                 path: "/".to_string(),
                 file_dir: PathBuf::from("/var/www/html"),

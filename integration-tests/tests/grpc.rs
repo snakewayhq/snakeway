@@ -24,8 +24,7 @@ fn grpc_unary_call_is_proxied() {
 
         let tls = ClientTlsConfig::new()
             .ca_certificate(ca_cert)
-            // Optional but recommended for local tests
-            .domain_name("localhost");
+            .domain_name("snakeway.test");
 
         let channel = Channel::from_shared(endpoint)
             .expect("invalid endpoint")

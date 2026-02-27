@@ -4,16 +4,14 @@ use crate::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
     normalize_query,
 };
-use crate::ctx::request::{NormalizedHeaders, NormalizedRequest};
+use crate::ctx::request::{NormalizedHeaders, NormalizedRequest, RequestSource};
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
 use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
 use http::header::HOST;
-use http::{Extensions, HeaderMap, Method, Uri, Version, uri::Authority};
-use pingora::prelude::Session;
-use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
+use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 
@@ -108,77 +106,63 @@ impl RequestCtx {
 
     /// Create a boundary to decouple session from logic.
     /// This makes testing the hydration/normalization code easier.
-    pub fn hydrate_from_session(&mut self, session: &Session) -> Result<(), RequestRejectError> {
-        let request_header = session.req_header();
-        let is_upgrade_req = session.is_upgrade_req();
-        // Get the client IP from Pingora.
-        let peer_ip = match session.client_addr() {
-            Some(PingoraSocketAddr::Inet(addr)) => addr.ip(),
-            _ => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-        };
-        let maybe_digest = session.digest();
-
-        self.hydrate(
-            &request_header.uri,
-            &request_header.method,
-            &request_header.headers,
-            &request_header.version,
-            maybe_digest,
-            is_upgrade_req,
-            peer_ip,
-        )?;
-
-        Ok(())
-    }
-
-    pub(crate) fn hydrate(
+    pub fn hydrate_from_session<S: RequestSource>(
         &mut self,
-        uri: &Uri,
-        method: &Method,
-        headers: &HeaderMap,
-        protocol_version: &Version,
-        maybe_digest: Option<&Digest>,
-        is_upgrade_req: bool,
-        peer_ip: IpAddr,
+        src: &S,
     ) -> Result<(), RequestRejectError> {
         debug_assert!(!self.hydrated, "Already hydrated, cannot hydrate again");
+
         // Generate a new request ID.
         self.extensions.insert(RequestId::default());
 
         // Set the client IP.
         if self.peer_ip.is_unspecified() {
-            self.peer_ip = peer_ip;
+            self.peer_ip = src.net_peer_ip();
         }
 
+        //---------------------------------------------------------------------
+        // Header normalization.
+        //---------------------------------------------------------------------
         // Do header normalization early as it may produce a protocol-related violation.
         // This will short-circuit the request if it's invalid while preventing unused allocations.
-        let normalized_headers = if is_upgrade_req {
-            self.normalize_ws_handshake(method, headers)?
+        let normalized_headers = if src.http_is_upgrade_req() {
+            self.normalize_ws_handshake(&src.http_method(), &src.http_headers())?
         } else {
-            self.normalize_http_request(protocol_version, headers)?
+            self.normalize_http_request(&src.http_version(), &src.http_headers())?
         };
 
-        // Extract the host header.
-        // This is a fairly strict implementation that ensures the host header is present and valid.
-        // An exception is made for trailing dots in the host header, which are allowed by RFC 3986.
-        let host_header = normalized_headers
-            .as_map()
-            .get(HOST)
-            .ok_or(RequestRejectError::InvalidHostHeader)?;
-        let host_str = host_header
-            .to_str()
-            .map_err(|_| RequestRejectError::InvalidHostHeader)?;
-        let host_str = host_str.trim_end_matches('.');
-        if host_str.is_empty() {
+        //---------------------------------------------------------------------
+        // Extract canonical authority (H2 first, H1 fallback)
+        //---------------------------------------------------------------------
+        let authority_str = if let Some(auth) = src.http_uri().authority() {
+            auth.as_str()
+        } else if let Some(host_header) = normalized_headers.as_map().get(HOST) {
+            host_header
+                .to_str()
+                .map_err(|_| RequestRejectError::InvalidHostHeader)?
+        } else {
+            return Err(RequestRejectError::InvalidHostHeader);
+        };
+
+        // Strip trailing dot (RFC 3986 allowance)
+        let authority_str = authority_str.trim_end_matches('.');
+
+        if authority_str.is_empty() {
             return Err(RequestRejectError::InvalidHostHeader);
         }
-        let authority =
-            Authority::from_str(host_str).map_err(|_| RequestRejectError::InvalidHostHeader)?;
+
+        // Parse safely (handles host:port and IPv6 correctly)
+        let authority = Authority::from_str(authority_str)
+            .map_err(|_| RequestRejectError::InvalidHostHeader)?;
+
         let host = authority.host().to_ascii_lowercase();
 
+        //---------------------------------------------------------------------
+        // SNI
+        //---------------------------------------------------------------------
         // Extract SNI, if present, from the SSL digest.
         let mut sni_host: Option<String> = None;
-        if let Some(digest) = maybe_digest
+        if let Some(digest) = src.net_digest()
             && let Some(ssl_digest) = &digest.ssl_digest
         {
             let maybe_sni = &ssl_digest.extension.get::<DownstreamSni>();
@@ -194,8 +178,10 @@ impl RequestCtx {
             return Err(RequestRejectError::HostSniMismatch);
         }
 
+        //---------------------------------------------------------------------
         // Normalize the path.
-        let normalized_path = match normalize_path(uri.path()) {
+        //---------------------------------------------------------------------
+        let normalized_path = match normalize_path(src.http_uri().path()) {
             NormalizationOutcome::Accept(p) => p,
             NormalizationOutcome::Rewrite { value, .. } => value,
             NormalizationOutcome::Reject { .. } => {
@@ -203,8 +189,10 @@ impl RequestCtx {
             }
         };
 
+        //---------------------------------------------------------------------
         // Normalize the query string.
-        let raw_query = uri.query().unwrap_or_default();
+        //---------------------------------------------------------------------
+        let raw_query = src.http_uri().query().unwrap_or_default();
         let canonical_query = match normalize_query(raw_query) {
             NormalizationOutcome::Accept(q) => q,
             NormalizationOutcome::Rewrite { value, .. } => value,
@@ -216,13 +204,13 @@ impl RequestCtx {
         self.normalized_request = NormalizedRequest::new(
             host,
             sni_host,
-            uri.clone(),
-            method.clone(),
+            src.http_uri().clone(),
+            src.http_method().clone(),
             normalized_path,
             canonical_query,
             normalized_headers,
-            *protocol_version,
-            is_upgrade_req,
+            src.http_version(),
+            src.http_is_upgrade_req(),
         );
 
         self.hydrated = true;
@@ -324,7 +312,6 @@ use crate::server::DownstreamSni;
 ///
 #[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
-use pingora::protocols::Digest;
 
 #[cfg(feature = "wasm")]
 impl RequestCtx {

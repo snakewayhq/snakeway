@@ -1,8 +1,8 @@
 use crate::cert_manager::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
-use crate::conf::types::{CertStoreConfig, CertificatesConfig, ListenerConfig};
-use crate::conf::{CertificateConfig, RuntimeConfig};
+use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsAutomationConfig};
+use crate::conf::{RuntimeConfig, TlsTerminationConfig};
 use crate::device::core::registry::DeviceRegistry;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
@@ -52,18 +52,18 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         .expect("failed to build control-plane Tokio runtime");
 
     // Set up the Cert Store and Manager.
-    let has_tls = config.listeners.iter().any(|l| l.certificates.is_some());
+    let has_tls = config.listeners.iter().any(|l| l.tls_termination.is_some());
     let cert_manager: Option<Arc<CertManager>> =
-        if has_tls && let Some(certificates_cfg) = &config.server.certificates {
-            let cert_store = build_cert_store(certificates_cfg)?;
+        if has_tls && let Some(tls_automation_cfg) = &config.server.tls_automation {
+            let cert_store = build_cert_store(tls_automation_cfg)?;
             let order_store = build_order_store()?;
             let manager = Arc::new(CertManager::new(
                 cert_store,
                 order_store,
                 Arc::new(config.clone()),
-                certificates_cfg,
+                tls_automation_cfg,
             ));
-            control_rt.block_on(manager.initialize(&certificates_cfg.acme))?;
+            control_rt.block_on(manager.initialize(&tls_automation_cfg.acme))?;
             Some(manager)
         } else {
             None
@@ -181,7 +181,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     server.run_forever();
 }
 
-fn build_cert_store(certificates_cfg: &CertificatesConfig) -> Result<Arc<dyn CertStore>> {
+fn build_cert_store(certificates_cfg: &TlsAutomationConfig) -> Result<Arc<dyn CertStore>> {
     match &certificates_cfg.cert_store {
         CertStoreConfig::Filesystem { cert_dir } => {
             // Attempt to create the cert store dir if it doesn't exist.
@@ -216,10 +216,8 @@ pub fn build_pingora_server(
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
-    if !config.server.ca_file.is_empty() {
-        pingora_server_conf.ca_file = Some(config.server.ca_file.clone());
-    }
 
+    pingora_server_conf.ca_file = config.server.ca_file.clone();
     pingora_server_conf.work_stealing = config.server.work_stealing;
 
     let mut server = if let Some(threads) = config.server.threads {
@@ -259,9 +257,9 @@ pub fn build_pingora_server(
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
 
-        match &listener_cfg.certificates {
+        match &listener_cfg.tls_termination {
             Some(certificate_cfg) => match certificate_cfg {
-                CertificateConfig::Static { key, cert } => {
+                TlsTerminationConfig::Manual { key, cert } => {
                     let callbacks = build_tls_callbacks(CertMode::Static);
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
@@ -275,7 +273,7 @@ pub fn build_pingora_server(
                         tls_settings,
                     );
                 }
-                CertificateConfig::Acme { .. } => {
+                TlsTerminationConfig::Acme { .. } => {
                     let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     if listener_cfg.enable_http2 {
@@ -340,7 +338,7 @@ pub fn build_pingora_server(
     // Admin Proxy: Create the admin API listener(s).
     //-------------------------------------------------------------------------
     for listener_cfg in config.listeners.iter().filter(|l| l.enable_admin) {
-        if let Some(certificate_cfg) = &listener_cfg.certificates {
+        if let Some(certificate_cfg) = &listener_cfg.tls_termination {
             let admin_gateway = AdminGateway::new(
                 traffic_manager.clone(),
                 connection_manager.clone(),
@@ -349,7 +347,7 @@ pub fn build_pingora_server(
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
 
             match certificate_cfg {
-                CertificateConfig::Static { key, cert } => {
+                TlsTerminationConfig::Manual { key, cert } => {
                     let callbacks = build_tls_callbacks(CertMode::Static);
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
@@ -361,7 +359,7 @@ pub fn build_pingora_server(
                         tls_settings,
                     );
                 }
-                CertificateConfig::Acme { .. } => {
+                TlsTerminationConfig::Acme { .. } => {
                     let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
                     let tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     admin_svc.add_tls_with_settings(

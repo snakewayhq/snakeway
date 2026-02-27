@@ -3,7 +3,7 @@ use crate::cert_manager::order_store::OrderState;
 use crate::cert_manager::state::{CertState, compute_state};
 use crate::cert_manager::{CertManager, OrderStatus};
 use crate::conf::RuntimeConfig;
-use crate::conf::types::{CertificateChallengeConfig, CertificateConfig};
+use crate::conf::types::{AcmeChallengeConfig, TlsTerminationConfig};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
@@ -411,7 +411,7 @@ impl Reconciler {
 #[derive(Debug, Clone)]
 pub struct DesiredCertificate {
     pub domains: Vec<String>,
-    pub challenge: CertificateChallengeConfig,
+    pub challenge: AcmeChallengeConfig,
 }
 
 fn desired_certificates_from_config(
@@ -420,11 +420,11 @@ fn desired_certificates_from_config(
     let mut out = BTreeMap::new();
 
     for l in &config.listeners {
-        let Some(certificate_config) = &l.certificates else {
+        let Some(certificate_config) = &l.tls_termination else {
             continue;
         };
 
-        if let CertificateConfig::Acme { domains, challenge } = certificate_config {
+        if let TlsTerminationConfig::Acme { domains, challenge } = certificate_config {
             let cert_id = compute_cert_id(domains, challenge);
             out.insert(
                 cert_id,
@@ -439,7 +439,7 @@ fn desired_certificates_from_config(
     out
 }
 
-fn compute_cert_id(domains: &[String], challenge: &CertificateChallengeConfig) -> String {
+fn compute_cert_id(domains: &[String], challenge: &AcmeChallengeConfig) -> String {
     let mut hasher = Sha256::new();
 
     for d in domains {

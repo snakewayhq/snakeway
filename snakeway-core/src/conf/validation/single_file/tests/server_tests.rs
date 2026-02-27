@@ -84,7 +84,7 @@ fn validate_server_ca_file_does_not_exist() {
     // Arrange
     let mut report = ValidationReport::default();
     let server = ServerSpec {
-        ca_file: Some("/non/existent/ca.pem".to_string()),
+        ca_file: Some(PathBuf::from("/non/existent/ca.pem")),
         ..Default::default()
     };
 
@@ -177,7 +177,7 @@ fn validate_server_ca_file_is_not_a_file() {
     let dir = tempfile::tempdir().unwrap();
 
     let server = ServerSpec {
-        ca_file: Some(dir.path().to_string_lossy().to_string()),
+        ca_file: Some(PathBuf::from(dir.path())),
         ..Default::default()
     };
 
@@ -208,7 +208,7 @@ fn validate_server_valid_pid_and_ca_files() {
 
     let server = ServerSpec {
         pid_file: Some(pid_dir.join("snakeway.pid")),
-        ca_file: Some(ca_file.to_string_lossy().to_string()),
+        ca_file: Some(ca_file),
         ..Default::default()
     };
 

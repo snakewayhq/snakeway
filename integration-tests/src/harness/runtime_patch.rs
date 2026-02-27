@@ -32,7 +32,7 @@ fn patch_listener_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16]) {
 
     // Patch listener addresses.
     for (i, port) in listener_ports.iter().enumerate() {
-        cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{port}");
+        cfg.listeners.get_mut(i).unwrap().addr = format!("snakeway.test:{port}");
     }
 }
 

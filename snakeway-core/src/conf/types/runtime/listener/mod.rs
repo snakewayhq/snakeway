@@ -1,10 +1,10 @@
-mod certificate;
 mod connection_rate_limiting_filter;
 mod network_connection_filter;
+mod tls_termination;
 
-pub use certificate::*;
 pub use connection_rate_limiting_filter::*;
 pub use network_connection_filter::*;
+pub use tls_termination::*;
 
 use crate::conf::types::{BindAdminSpec, BindSpec};
 use serde::{Deserialize, Serialize};
@@ -17,8 +17,8 @@ pub struct ListenerConfig {
     /// Address to bind, e.g. "0.0.0.0:8080"
     pub addr: String,
 
-    /// Optional TLS config.
-    pub certificates: Option<CertificateConfig>,
+    /// Optional TLS termination config.
+    pub tls_termination: Option<TlsTerminationConfig>,
 
     /// Enable HTTP/2 on this listener.
     pub enable_http2: bool,
@@ -45,7 +45,7 @@ impl ListenerConfig {
         Ok(Self {
             name: name.to_string(),
             addr: from_addr,
-            certificates: None,
+            tls_termination: None,
             enable_http2: false,
             enable_admin: false,
             redirect: Some(RedirectConfig::new(
@@ -60,14 +60,14 @@ impl ListenerConfig {
     pub fn from_bind(name: &str, spec: BindSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
         let maybe_tls = if let Some(tls) = spec.tls {
-            Some(CertificateConfig::try_from(tls).map_err(|err| err.to_string())?)
+            Some(TlsTerminationConfig::try_from(tls).map_err(|err| err.to_string())?)
         } else {
             None
         };
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
-            certificates: maybe_tls,
+            tls_termination: maybe_tls,
             enable_http2: spec.enable_http2,
             enable_admin: false,
             redirect: None,
@@ -78,11 +78,11 @@ impl ListenerConfig {
 
     pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let tls = CertificateConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
+        let tls = TlsTerminationConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
-            certificates: Some(tls),
+            tls_termination: Some(tls),
             enable_http2: false,
             enable_admin: true,
             redirect: None,

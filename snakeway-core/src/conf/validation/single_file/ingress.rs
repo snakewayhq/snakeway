@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindInterfaceSpec, BindSpec, CertificateSpec, HostSpec, IngressSpec, Origin, RedirectSpec,
-    ServiceSpec, StaticFilesSpec,
+    BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
+    StaticFilesSpec, TlsTerminationSpec,
 };
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
@@ -84,7 +84,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
 
             if let Some(certificate_spec) = &bind.tls {
                 match certificate_spec {
-                    CertificateSpec::Static { cert, key } => {
+                    TlsTerminationSpec::Manual { cert, key } => {
                         if !cert.is_file() {
                             report.static_tls_requires_cert_file(&cert, &bind.origin);
                         }
@@ -92,7 +92,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                             report.static_tls_requires_key_file(&key, &bind.origin);
                         }
                     }
-                    CertificateSpec::Acme { domains, .. } => {
+                    TlsTerminationSpec::Acme { domains, .. } => {
                         if domains.is_empty() {
                             report.acme_tls_requires_domains(&bind.origin);
                         }

@@ -1,10 +1,11 @@
 use snakeway_core::conf::types::{
-    BindCertificateSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
-    DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
+    BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
+    IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
     NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec,
+    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
+use std::path::PathBuf;
 
 pub struct ConfigBuilder {
     pub server_spec: ServerSpec,
@@ -44,9 +45,9 @@ impl ConfigBuilder {
         BindSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 8080,
-            tls: include_tls.then_some(BindCertificateSpec {
-                cert: "./certs/server.pem".to_string(),
-                key: "./certs/server.key".to_string(),
+            tls: include_tls.then_some(TlsTerminationSpec::Manual {
+                cert: PathBuf::from("./certs/server.pem".to_string()),
+                key: PathBuf::from("./certs/server.key".to_string()),
             }),
             ..Default::default()
         }

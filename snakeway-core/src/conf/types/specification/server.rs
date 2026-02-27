@@ -18,14 +18,12 @@ pub struct ServerSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid_file: Option<PathBuf>,
 
-    /// Optional CA file path. If set, Pingora will use this file to verify upstream certificates.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ca_file: Option<String>,
-
     #[serde(default = "default_work_stealing")]
     pub work_stealing: bool,
 
-    pub certificates: Option<CertificatesSpec>,
+    pub ca_file: Option<PathBuf>,
+
+    pub tls_automation: Option<TlsAutomationSpec>,
 }
 
 fn default_work_stealing() -> bool {
@@ -39,15 +37,15 @@ impl Default for ServerSpec {
             version: 1,
             threads: None,
             pid_file: None,
-            ca_file: None,
             work_stealing: true,
-            certificates: None,
+            ca_file: None,
+            tls_automation: None,
         }
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct CertificatesSpec {
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct TlsAutomationSpec {
     pub acme: AcmeServerSpec,
     pub cert_store: CertStoreSpec,
     #[serde(default = "default_renew_within_days")]
@@ -58,14 +56,17 @@ fn default_renew_within_days() -> u64 {
     30
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum CertStoreSpec {
-    Filesystem { cert_dir: PathBuf },
+    Filesystem {
+        cert_dir: PathBuf,
+    },
+    #[default]
     Memory,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub struct AcmeServerSpec {
     pub directory_url: String,

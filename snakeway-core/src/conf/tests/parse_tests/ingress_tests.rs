@@ -17,7 +17,7 @@ bind = {
   port = 8080
   enable_http2 = true
   tls = {
-    mode = "static"
+    mode = "manual"
     cert = "cert.pem"
     key  = "key.pem"
   }
@@ -47,7 +47,7 @@ bind_admin = {
   interface = "127.0.0.1"
   port = 8080
   tls = {
-    mode = "static"
+    mode = "manual"
     cert = "cert.pem"
     key  = "key.pem"
   }

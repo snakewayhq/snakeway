@@ -106,7 +106,7 @@ fn network_policy_allows_forwarded_request_when_allowed() {
     // Act
     let res = srv
         .get("/api")
-        .header("x-forwarded-for", "127.0.0.1")
+        .header("x-forwarded-for", "snakeway.test")
         .send()
         .unwrap();
 

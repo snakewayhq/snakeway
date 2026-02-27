@@ -3,6 +3,7 @@ use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_w
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
+use snakeway_core::cert_manager::CertManager;
 use snakeway_core::conf::{RuntimeConfig, load_config};
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
@@ -71,7 +72,9 @@ impl TestServer {
         patch_runtime(cfg, &listener_ports, &upstream_ports);
 
         // Build the initial runtime state (static for tests).
-        let runtime_state = build_runtime_state(&cfg).expect("failed to build runtime state");
+        let cert_manager: Option<Arc<CertManager>> = None;
+        let runtime_state =
+            build_runtime_state(&cfg, &cert_manager).expect("failed to build runtime state");
         let state = Arc::new(ArcSwap::from_pointee(runtime_state));
         let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
             state.load().as_ref(),
@@ -150,19 +153,27 @@ impl TestServer {
 
     /// Convenience helper for GET requests.
     pub fn get(&self, path: &str) -> RequestBuilder {
-        self.client.get(format!("{}{}", self.base_url(), path))
+        self.client
+            .get(format!("{}{}", self.base_url(), path))
+            .header("Host", "snakeway.test")
     }
 
     pub fn put(&self, path: &str) -> RequestBuilder {
-        self.client.put(format!("{}{}", self.base_url(), path))
+        self.client
+            .put(format!("{}{}", self.base_url(), path))
+            .header("Host", "snakeway.test")
     }
 
     pub fn post(&self, path: &str) -> RequestBuilder {
-        self.client.post(format!("{}{}", self.base_url(), path))
+        self.client
+            .post(format!("{}{}", self.base_url(), path))
+            .header("Host", "snakeway.test")
     }
 
     pub fn delete(&self, path: &str) -> RequestBuilder {
-        self.client.delete(format!("{}{}", self.base_url(), path))
+        self.client
+            .delete(format!("{}{}", self.base_url(), path))
+            .header("Host", "snakeway.test")
     }
 
     /// Returns the first configured base URL.

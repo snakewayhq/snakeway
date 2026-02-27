@@ -13,7 +13,7 @@ use crate::cert_manager::{
     renewal_policy::RenewalPolicy,
 };
 use crate::conf::RuntimeConfig;
-use crate::conf::types::{AcmeServerConfig, CertificatesConfig};
+use crate::conf::types::{AcmeServerConfig, TlsAutomationConfig};
 
 pub struct CertManager {
     acme_client: OnceLock<Arc<AcmeClient>>,
@@ -31,7 +31,7 @@ impl CertManager {
         cert_store: Arc<dyn CertStore>,
         order_store: Arc<dyn OrderStore>,
         config: Arc<RuntimeConfig>,
-        certificates_config: &CertificatesConfig,
+        certificates_config: &TlsAutomationConfig,
     ) -> Self {
         Self {
             acme_client: Default::default(),

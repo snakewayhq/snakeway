@@ -1,4 +1,4 @@
-use crate::conf::types::{CertificateChallengeSpec, CertificateSpec};
+use crate::conf::types::{AcmeChallengeSpec, TlsTerminationSpec};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -6,25 +6,27 @@ use std::path::PathBuf;
 /// Runtime code assumes these values are valid.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
-pub enum CertificateConfig {
-    Static {
+pub enum TlsTerminationConfig {
+    Manual {
         cert: PathBuf,
         key: PathBuf,
     },
     Acme {
         domains: Vec<String>,
-        challenge: CertificateChallengeConfig,
+        challenge: AcmeChallengeConfig,
     },
 }
 
-impl TryFrom<CertificateSpec> for CertificateConfig {
+impl TryFrom<TlsTerminationSpec> for TlsTerminationConfig {
     type Error = String;
 
-    fn try_from(spec: CertificateSpec) -> Result<Self, Self::Error> {
+    fn try_from(spec: TlsTerminationSpec) -> Result<Self, Self::Error> {
         match spec {
-            CertificateSpec::Static { cert, key } => Ok(CertificateConfig::Static { cert, key }),
+            TlsTerminationSpec::Manual { cert, key } => {
+                Ok(TlsTerminationConfig::Manual { cert, key })
+            }
 
-            CertificateSpec::Acme { domains, challenge } => {
+            TlsTerminationSpec::Acme { domains, challenge } => {
                 let mut canonicalize_domains: Vec<String> = domains
                     .iter()
                     .map(|d| d.trim().to_ascii_lowercase())
@@ -34,7 +36,7 @@ impl TryFrom<CertificateSpec> for CertificateConfig {
                 canonicalize_domains.sort();
                 canonicalize_domains.dedup();
 
-                Ok(CertificateConfig::Acme {
+                Ok(TlsTerminationConfig::Acme {
                     domains: canonicalize_domains,
                     challenge: challenge.into(),
                 })
@@ -44,14 +46,14 @@ impl TryFrom<CertificateSpec> for CertificateConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum CertificateChallengeConfig {
+pub enum AcmeChallengeConfig {
     Http01,
 }
 
-impl From<CertificateChallengeSpec> for CertificateChallengeConfig {
-    fn from(config: CertificateChallengeSpec) -> Self {
+impl From<AcmeChallengeSpec> for AcmeChallengeConfig {
+    fn from(config: AcmeChallengeSpec) -> Self {
         match config {
-            CertificateChallengeSpec::Http01 => CertificateChallengeConfig::Http01,
+            AcmeChallengeSpec::Http01 => AcmeChallengeConfig::Http01,
         }
     }
 }

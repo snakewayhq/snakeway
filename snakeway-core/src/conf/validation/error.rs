@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -20,6 +21,13 @@ pub enum ConfigError {
         source: glob::PatternError,
     },
 
+    #[error("failed to resolve glob pattern {pattern} relative to {root}: {os_string:?}")]
+    ResolveGlob {
+        root: String,
+        pattern: String,
+        os_string: OsString,
+    },
+
     #[error("message")]
     Custom { message: String },
 
@@ -36,6 +44,9 @@ pub enum ConfigError {
     //-------------------------------------------------------------------------
     // Validation during transformation
     //-------------------------------------------------------------------------
+    #[error("invalid server configuration: {message}")]
+    InvalidServerConfig { message: String },
+
     #[error("invalid bind address: {message}")]
     InvalidBindAddress { message: String },
 

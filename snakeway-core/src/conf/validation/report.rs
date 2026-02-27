@@ -417,17 +417,17 @@ impl ValidationReport {
         )
     }
 
-    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &str, origin: &Origin) {
+    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &PathBuf, origin: &Origin) {
         self.error(
-            format!("root CA file does not exist: {}", ca_file),
+            format!("root CA file does not exist: {}", ca_file.to_string_lossy()),
             origin,
             None,
         )
     }
 
-    pub fn root_ca_file_not_a_file(&mut self, ca_file: &str, origin: &Origin) {
+    pub fn root_ca_file_not_a_file(&mut self, ca_file: &PathBuf, origin: &Origin) {
         self.error(
-            format!("root CA file is not a file: {}", ca_file),
+            format!("root CA file is not a file: {}", ca_file.to_string_lossy()),
             origin,
             None,
         )

@@ -1,4 +1,4 @@
-use crate::conf::types::CertificateChallengeConfig;
+use crate::conf::types::AcmeChallengeConfig;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
@@ -6,7 +6,7 @@ use std::time::SystemTime;
 pub struct OrderState {
     pub cert_id: String,
     pub domains: Vec<String>,
-    pub challenge: CertificateChallengeConfig,
+    pub challenge: AcmeChallengeConfig,
 
     pub status: OrderStatus,
 
