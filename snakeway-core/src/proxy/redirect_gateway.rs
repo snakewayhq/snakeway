@@ -57,19 +57,19 @@ impl ProxyHttp for RedirectGateway {
 
             const PREFIX: &str = "/.well-known/acme-challenge/";
 
-            if let Some(token) = path.strip_prefix(PREFIX) {
-                if let Some(key_auth) = cert_manager.http01().get(token) {
-                    let mut resp = ResponseHeader::build(200, None)?;
-                    resp.insert_header("Content-Type", "text/plain")?;
-                    resp.insert_header("Content-Length", key_auth.len().to_string())?;
-                    resp.insert_header("Connection", "close")?;
+            if let Some(token) = path.strip_prefix(PREFIX)
+                && let Some(key_auth) = cert_manager.http01().get(token)
+            {
+                let mut resp = ResponseHeader::build(200, None)?;
+                resp.insert_header("Content-Type", "text/plain")?;
+                resp.insert_header("Content-Length", key_auth.len().to_string())?;
+                resp.insert_header("Connection", "close")?;
 
-                    session.write_response_header(Box::new(resp), false).await?;
-                    let body = Bytes::from(key_auth);
-                    session.write_response_body(Some(body), true).await?;
+                session.write_response_header(Box::new(resp), false).await?;
+                let body = Bytes::from(key_auth);
+                session.write_response_body(Some(body), true).await?;
 
-                    return Ok(true);
-                }
+                return Ok(true);
             }
         }
 
