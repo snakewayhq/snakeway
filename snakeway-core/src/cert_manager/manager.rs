@@ -1,19 +1,20 @@
-use arc_swap::ArcSwap;
-use openssl::pkey::{PKey, Private};
-use openssl::x509::X509;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
-use tokio::task::JoinHandle;
-
 use crate::cert_manager::acme_client::AcmeClient;
 use crate::cert_manager::challenge::Http01Registry;
 use crate::cert_manager::error::CertManagerError;
+use crate::cert_manager::sni_registry::{SniMap, SniRegistry};
 use crate::cert_manager::{
     ParsedCert, cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
     renewal_policy::RenewalPolicy,
 };
 use crate::conf::RuntimeConfig;
 use crate::conf::types::{AcmeServerConfig, TlsAutomationConfig};
+use arc_swap::ArcSwap;
+use arc_swap::ArcSwapOption;
+use openssl::pkey::{PKey, Private};
+use openssl::x509::X509;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+use tokio::task::JoinHandle;
 
 pub struct CertManager {
     acme_client: OnceLock<Arc<AcmeClient>>,
@@ -21,9 +22,9 @@ pub struct CertManager {
     cert_store: Arc<dyn CertStore>,
     order_store: Arc<dyn OrderStore>,
     renewal_policy: RenewalPolicy,
-
     worker: Mutex<Option<JoinHandle<()>>>,
     config: Arc<ArcSwap<RuntimeConfig>>,
+    tls_sni_map: ArcSwapOption<SniRegistry>,
 }
 
 impl CertManager {
@@ -41,6 +42,7 @@ impl CertManager {
             renewal_policy: RenewalPolicy::new(certificates_config.renew_within_days),
             worker: Mutex::new(None),
             config: Arc::new(ArcSwap::from(config)),
+            tls_sni_map: ArcSwapOption::from(None),
         }
     }
 
@@ -119,6 +121,22 @@ impl CertManager {
         }
 
         Ok(map)
+    }
+
+    pub fn attach_tls_sni_map(&self, registry: Arc<SniRegistry>) {
+        self.tls_sni_map.store(Some(registry));
+    }
+
+    pub fn tls_sni_map(&self) -> Option<Arc<SniRegistry>> {
+        self.tls_sni_map.load_full()
+    }
+
+    pub fn publish_sni_map(&self, new_map: SniMap) {
+        if let Some(registry) = self.tls_sni_map() {
+            registry.publish(new_map);
+        } else {
+            tracing::warn!("acme: tls sni registry not attached; cannot publish");
+        }
     }
 
     pub fn cert_store(&self) -> Arc<dyn CertStore> {

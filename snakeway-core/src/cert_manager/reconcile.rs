@@ -466,6 +466,18 @@ impl Reconciler {
 
         debug!(%cert_id, "acme: order state cleaned up");
 
+        // Rebuild and publish SNI map so new handshakes see the cert immediately.
+        let cm = self.cert_manager.clone();
+        let new_map = tokio::task::spawn_blocking(move || cm.build_sni_map())
+            .await
+            .map_err(|e| ReconcilerError::CertStore(format!("join error rebuilding sni map: {e}")))?
+            .map_err(|e| ReconcilerError::CertStore(format!("rebuild sni map: {e}")))?;
+
+        // Publish on the data plane boundary (lock-free for handshakes).
+        self.cert_manager.publish_sni_map(new_map);
+
+        info!(%cert_id, "acme: published updated SNI map");
+
         Ok(())
     }
 }

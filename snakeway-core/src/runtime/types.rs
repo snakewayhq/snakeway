@@ -1,8 +1,7 @@
-use crate::cert_manager::ParsedCert;
+use crate::cert_manager::SniRegistry;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::Router;
-use arc_swap::ArcSwap;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -20,7 +19,7 @@ pub struct RuntimeState {
 /// but also when the cert store is updated.
 pub struct TlsRuntime {
     /// Represent an SNI and a parsed certificate.
-    pub sni_map: ArcSwap<HashMap<String, Arc<ParsedCert>>>,
+    pub sni_map: Arc<SniRegistry>,
 }
 
 /// ServiceRuntime encapsulates the state of a service, including its

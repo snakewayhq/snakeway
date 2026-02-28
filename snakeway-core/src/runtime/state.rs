@@ -1,4 +1,4 @@
-use crate::cert_manager::CertManager;
+use crate::cert_manager::{CertManager, SniRegistry};
 use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
@@ -78,9 +78,10 @@ pub fn build_runtime_state(
 /// Build the TLS SNI -> Cert runtime map.
 fn build_tls_runtime(cert_manager: &Arc<CertManager>) -> Result<TlsRuntime> {
     let sni_map = cert_manager.build_sni_map()?;
-    Ok(TlsRuntime {
-        sni_map: ArcSwap::new(Arc::new(sni_map)),
-    })
+
+    let registry = Arc::new(SniRegistry::new(sni_map));
+
+    Ok(TlsRuntime { sni_map: registry })
 }
 
 /// Build service runtimes from config services.

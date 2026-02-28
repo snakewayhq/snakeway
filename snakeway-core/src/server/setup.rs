@@ -70,6 +70,10 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
 
     // Build initial runtime state (reloadable)
     let initial_state = build_runtime_state(&config, &cert_manager)?;
+    if let (Some(manager), Some(tls)) = (cert_manager.as_ref(), initial_state.tls.as_ref()) {
+        // Attach the SNI map to the cert manager.
+        manager.attach_tls_sni_map(tls.sni_map.clone());
+    }
     let state = Arc::new(ArcSwap::from_pointee(initial_state));
     let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
         state.load().as_ref(),
@@ -117,6 +121,13 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
                         // Update the cert manager with the new runtime configuration.
                         if let Some(manager) = &cert_manager_for_reload {
                             manager.reload(Arc::new(reloaded_runtime_cfg.clone()));
+                        }
+
+                        // Update SNI map with the new runtime configuration.
+                        if let (Some(manager), Some(tls)) =
+                            (cert_manager_for_reload.as_ref(), state.load().tls.as_ref())
+                        {
+                            manager.attach_tls_sni_map(tls.sni_map.clone());
                         }
 
                         // Generate traffic snapshot.
