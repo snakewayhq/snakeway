@@ -3885,6 +3885,7 @@ dependencies = [
  "wasmtime",
  "wasmtime-wasi",
  "woothee",
+ "x509-parser",
 ]
 
 [[package]]

@@ -10,6 +10,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
+use x509_parser::prelude::*;
 
 #[derive(Debug, Error)]
 pub enum ReconcilerError {
@@ -52,7 +53,7 @@ impl Reconciler {
                 error!(error = %e, "cert_manager: reconcile tick failed");
             }
 
-            sleep(self.cert_manager.renewal_policy().reconcile_interval).await;
+            sleep(self.cert_manager.renewal_policy().reconcile_tick_interval).await;
         }
     }
 
@@ -121,8 +122,12 @@ impl Reconciler {
                 self.step_finalize_and_store(cert_id, desired, order_state)
                     .await?;
             }
-            CertState::Valid => {}
-            CertState::Failed => {}
+            CertState::Valid => {
+                info!(%cert_id, "acme: certificate is valid");
+            }
+            CertState::Failed => {
+                error!(%cert_id, "acme: certificate failed");
+            }
         }
         Ok(())
     }
@@ -385,9 +390,16 @@ impl Reconciler {
             .await
             .map_err(|e| ReconcilerError::Acme(e.to_string()))?;
 
+        let not_after = parse_not_after(&cert_chain_pem).map_err(|e| {
+            ReconcilerError::Acme(format!(
+                "cannot parse certificate to extract expiration: {e}"
+            ))
+        })?;
+        info!(%cert_id, "acme: certificate not_after: {:?}", not_after);
+
         let meta = CertificateMeta {
             domains: desired.domains,
-            not_after: std::time::SystemTime::now(),
+            not_after,
             issued_at: std::time::SystemTime::now(),
         };
 
@@ -466,4 +478,12 @@ fn compute_cert_id(domains: &[String], challenge: &AcmeChallengeConfig) -> Strin
 
     let digest = hasher.finalize();
     format!("{:x}", digest)[..32].to_string()
+}
+
+fn parse_not_after(cert_chain_pem: &str) -> anyhow::Result<std::time::SystemTime> {
+    let (_, pem) = parse_x509_pem(cert_chain_pem.as_bytes())?;
+    let (_, cert) = parse_x509_certificate(&pem.contents)?;
+    let not_after = cert.validity().not_after.to_datetime();
+    let secs = not_after.unix_timestamp();
+    Ok(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs as u64))
 }

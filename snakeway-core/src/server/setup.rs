@@ -22,7 +22,6 @@ use pingora::server::Server;
 use pingora::server::configuration::ServerConf;
 use std::net::TcpListener;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
@@ -56,7 +55,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     let cert_manager: Option<Arc<CertManager>> =
         if has_tls && let Some(tls_automation_cfg) = &config.server.tls_automation {
             let cert_store = build_cert_store(tls_automation_cfg)?;
-            let order_store = build_order_store()?;
+            let order_store = build_order_store(tls_automation_cfg)?;
             let manager = Arc::new(CertManager::new(
                 cert_store,
                 order_store,
@@ -159,6 +158,7 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         state,
         Arc::clone(&traffic_manager),
         Arc::clone(&connection_manager),
+        cert_manager,
         reload.clone(),
     )
     .map_err(|e| {
@@ -181,8 +181,8 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
     server.run_forever();
 }
 
-fn build_cert_store(certificates_cfg: &TlsAutomationConfig) -> Result<Arc<dyn CertStore>> {
-    match &certificates_cfg.cert_store {
+fn build_cert_store(tls_automation_cfg: &TlsAutomationConfig) -> Result<Arc<dyn CertStore>> {
+    match &tls_automation_cfg.cert_store {
         CertStoreConfig::Filesystem { cert_dir } => {
             // Attempt to create the cert store dir if it doesn't exist.
             std::fs::create_dir_all(cert_dir)
@@ -193,9 +193,9 @@ fn build_cert_store(certificates_cfg: &TlsAutomationConfig) -> Result<Arc<dyn Ce
     }
 }
 
-fn build_order_store() -> Result<Arc<dyn OrderStore>> {
-    let order_store_dir = PathBuf::from_str("/tmp/snakeway/orders")?;
-    std::fs::create_dir_all(&order_store_dir)
+fn build_order_store(tls_automation_cfg: &TlsAutomationConfig) -> Result<Arc<dyn OrderStore>> {
+    let order_store_dir = tls_automation_cfg.acme.data_dir.clone();
+    std::fs::create_dir_all(order_store_dir.clone())
         .map_err(|e| anyhow!("failed to create order store dir: {}", e))?;
     Ok(Arc::new(FilesystemOrderStore::new(order_store_dir)))
 }
@@ -212,6 +212,7 @@ pub fn build_pingora_server(
     state: Arc<ArcSwap<RuntimeState>>,
     traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<WsConnectionManager>,
+    cert_manager: Option<Arc<CertManager>>,
     reload: Arc<ReloadHandle>,
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
@@ -317,8 +318,11 @@ pub fn build_pingora_server(
     {
         if let Some(redirect) = &listener_cfg.redirect {
             // Build and register the redirect Pingora HTTP proxy service with a standalone listener.
-            let redirect_gateway =
-                RedirectGateway::new(redirect.destination.clone(), redirect.response_code);
+            let redirect_gateway = RedirectGateway::new(
+                redirect.destination.clone(),
+                redirect.response_code,
+                cert_manager.clone(),
+            );
 
             // Create a TCP listener for the redirect service.
             let mut redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
