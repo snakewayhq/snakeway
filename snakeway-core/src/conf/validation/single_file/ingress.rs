@@ -86,10 +86,10 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 match certificate_spec {
                     TlsTerminationSpec::Manual { cert, key } => {
                         if !cert.is_file() {
-                            report.static_tls_requires_cert_file(&cert, &bind.origin);
+                            report.static_tls_requires_cert_file(cert, &bind.origin);
                         }
                         if !key.is_file() {
-                            report.static_tls_requires_key_file(&key, &bind.origin);
+                            report.static_tls_requires_key_file(key, &bind.origin);
                         }
                     }
                     TlsTerminationSpec::Acme { domains, .. } => {

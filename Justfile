@@ -247,9 +247,18 @@ lint: fmt clippy
 # TESTS
 # -----------------------------------------------------------------------------
 
+start-docker:
+    docker compose -f docker-compose-dev.yml up -d --remove-orphans
+
+stop-docker:
+    docker compose -f docker-compose-dev.yml down
+
+fetch-pebble-ca:
+    docker cp snakeway-pebble:/test/certs/pebble.minica.pem ./integration-tests/certs/pebble-ca.pem
+
 # Install Snakeway dev CA into macOS System keychain
-install-dev-ca:
-    @echo "Installing Snakeway dev CA (macOS system trust)…"
+install-dev-ca: generate-dev-certs
+    @echo "Installing Snakeway dev CA (macOS system trust)..."
     sudo security add-trusted-cert \
       -d -r trustRoot \
       -k /Library/Keychains/System.keychain \
@@ -258,7 +267,7 @@ install-dev-ca:
 
 # Remove Snakeway dev CA from macOS System keychain
 uninstall-dev-ca:
-    @echo "Removing Snakeway dev CA from macOS system trust…"
+    @echo "Removing Snakeway dev CA from macOS system trust..."
     sudo security delete-certificate \
       -c "Snakeway Dev Root CA (DO NOT TRUST IN PROD)" \
       /Library/Keychains/System.keychain
@@ -274,7 +283,7 @@ test:
 integration-test: generate-dev-certs
     cargo nextest run -p integration-tests
 
-test-everything: lint test integration-test
+test-everything: lint test integration-test generate-all-templates
     @echo "All good."
 
 test-with-coverage:

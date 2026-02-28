@@ -1,4 +1,4 @@
-use crate::conf::types::{CertStoreSpec, ServerSpec};
+use crate::conf::types::{AcmeServerSpec, CertStoreSpec, ServerSpec};
 use crate::conf::validation::report::ValidationReport;
 use crate::conf::validation::validator::{
     SERVER_THREADS, SERVER_TLS_RENEW_WITHIN_DAYS, validate_range,
@@ -33,11 +33,11 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
     }
 
     if let Some(ca_file) = &server_spec.ca_file {
-        if !std::path::Path::new(&ca_file).exists() {
-            report.root_ca_file_does_not_exist(&ca_file, &server_spec.origin);
+        if !std::path::Path::new(ca_file).exists() {
+            report.root_ca_file_does_not_exist(ca_file, &server_spec.origin);
         }
-        if !std::path::Path::new(&ca_file).is_file() {
-            report.root_ca_file_not_a_file(&ca_file, &server_spec.origin);
+        if !std::path::Path::new(ca_file).is_file() {
+            report.root_ca_file_not_a_file(ca_file, &server_spec.origin);
         }
     }
 
@@ -48,16 +48,35 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
     }
 
     if let Some(tls_automation_cfg) = &server_spec.tls_automation {
-        if tls_automation_cfg.acme.directory_url.is_empty() {
+        // ACME.
+        let AcmeServerSpec {
+            directory_url,
+            contact_email,
+            ca_file,
+            data_dir,
+        } = &tls_automation_cfg.acme;
+
+        if directory_url.is_empty() {
             report.server_tls_acme_directory_url_cannot_be_empty(&server_spec.origin);
-        } else if !tls_automation_cfg
-            .acme
-            .directory_url
-            .starts_with("https://")
-        {
+        } else if !directory_url.starts_with("https://") {
             report.server_tls_acme_directory_url_must_be_https(&server_spec.origin);
         }
 
+        if contact_email.is_empty() {
+            report.server_tls_acme_contact_email_cannot_be_empty(&server_spec.origin);
+        }
+
+        if let Some(ca_file) = &ca_file
+            && !ca_file.is_file()
+        {
+            report.server_tls_acme_ca_file_is_invalid(ca_file, &server_spec.origin);
+        }
+
+        if !data_dir.is_dir() {
+            report.server_tls_acme_data_dir_is_invalid(data_dir, &server_spec.origin);
+        }
+
+        // Renewal period.
         validate_range(
             tls_automation_cfg.renew_within_days,
             &SERVER_TLS_RENEW_WITHIN_DAYS,
@@ -65,6 +84,7 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
             &server_spec.origin,
         );
 
+        // Cert store.
         match &tls_automation_cfg.cert_store {
             CertStoreSpec::Filesystem { cert_dir } => {
                 if cert_dir.is_empty() {

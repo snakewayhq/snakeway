@@ -47,8 +47,7 @@ impl CertStore for FilesystemCertStore {
         std::fs::write(tmp_dir.join("key.pem"), &*cert.private_key_pem)?;
         std::fs::write(tmp_dir.join("cert.pem"), &*cert.cert_chain_pem)?;
 
-        let meta_json =
-            serde_json::to_vec(&cert.meta).map_err(|e| Error::new(std::io::ErrorKind::Other, e))?;
+        let meta_json = serde_json::to_vec(&cert.meta).map_err(Error::other)?;
 
         std::fs::write(tmp_dir.join("meta.json"), meta_json)?;
 
@@ -83,10 +82,10 @@ impl CertStore for FilesystemCertStore {
 
                 let meta_path = entry.path().join("meta.json");
 
-                if let Ok(meta_bytes) = std::fs::read(meta_path) {
-                    if let Ok(meta) = serde_json::from_slice::<CertificateMeta>(&meta_bytes) {
-                        results.push((id, meta));
-                    }
+                if let Ok(meta_bytes) = std::fs::read(meta_path)
+                    && let Ok(meta) = serde_json::from_slice::<CertificateMeta>(&meta_bytes)
+                {
+                    results.push((id, meta));
                 }
             }
         }

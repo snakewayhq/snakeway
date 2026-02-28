@@ -58,8 +58,6 @@ subjectKeyIdentifier = hash
 
 [alt_names]
 DNS.1 = snakeway.test
-DNS.2 = *.test
-IP.1  = 127.0.0.1
 EOF
 
 # Generate server key

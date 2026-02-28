@@ -291,14 +291,16 @@ Add work_stealing toggle.
 
 * Let's Encrypt automation
 * Automatic cert renewal
+* Host-based route matching
 
 ### Features
 
 * ACMEv2 support:
     * http-01
-    * dns-01 (optional)
+    * dns-01 (maybe)
 * certificate storage
 * renewal worker
+* Routes configurable with a host list
 
 ### Deliverables
 

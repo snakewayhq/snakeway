@@ -4,7 +4,9 @@ use crate::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
     normalize_query,
 };
-use crate::ctx::request::{NormalizedHeaders, NormalizedRequest, RequestSource};
+use crate::ctx::request::{
+    NormalizedHeaders, NormalizedRequest, NormalizedRequestParams, RequestSource,
+};
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
@@ -126,9 +128,9 @@ impl RequestCtx {
         // Do header normalization early as it may produce a protocol-related violation.
         // This will short-circuit the request if it's invalid while preventing unused allocations.
         let normalized_headers = if src.http_is_upgrade_req() {
-            self.normalize_ws_handshake(&src.http_method(), &src.http_headers())?
+            self.normalize_ws_handshake(src.http_method(), src.http_headers())?
         } else {
-            self.normalize_http_request(&src.http_version(), &src.http_headers())?
+            self.normalize_http_request(&src.http_version(), src.http_headers())?
         };
 
         //---------------------------------------------------------------------
@@ -201,17 +203,18 @@ impl RequestCtx {
             }
         };
 
-        self.normalized_request = NormalizedRequest::new(
+        self.normalized_request = NormalizedRequestParams {
             host,
             sni_host,
-            src.http_uri().clone(),
-            src.http_method().clone(),
-            normalized_path,
-            canonical_query,
-            normalized_headers,
-            src.http_version(),
-            src.http_is_upgrade_req(),
-        );
+            original_uri: src.http_uri().clone(),
+            method: src.http_method().clone(),
+            path: normalized_path,
+            query: canonical_query,
+            headers: normalized_headers,
+            protocol_version: src.http_version(),
+            is_upgrade_req: src.http_is_upgrade_req(),
+        }
+        .into();
 
         self.hydrated = true;
         Ok(())

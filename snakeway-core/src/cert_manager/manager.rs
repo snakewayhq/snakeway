@@ -49,6 +49,7 @@ impl CertManager {
             cfg.directory_url.clone(),
             cfg.data_dir.clone(),
             cfg.contact_email.clone(),
+            &cfg.ca_file,
         )
         .await
         .map_err(|e| CertManagerError::CannotCreateAcmeClient(e.to_string()))?;
@@ -59,11 +60,9 @@ impl CertManager {
         Ok(())
     }
 
-    pub fn run_reconciliation(self: Arc<Self>) -> impl Future<Output = ()> {
-        async move {
-            let mut reconciler = Reconciler::new(self.clone());
-            reconciler.run().await;
-        }
+    pub async fn run_reconciliation(self: Arc<Self>) {
+        let mut reconciler = Reconciler::new(self.clone());
+        reconciler.run().await;
     }
 
     pub fn reload(&self, new_config: Arc<RuntimeConfig>) {

@@ -79,6 +79,7 @@ pub struct AcmeServerConfig {
     pub directory_url: String,
     pub data_dir: PathBuf,
     pub contact_email: Vec<String>,
+    pub ca_file: Option<PathBuf>,
 }
 
 impl From<AcmeServerSpec> for AcmeServerConfig {
@@ -87,6 +88,7 @@ impl From<AcmeServerSpec> for AcmeServerConfig {
             directory_url: spec.directory_url,
             data_dir: spec.data_dir,
             contact_email: spec.contact_email,
+            ca_file: spec.ca_file,
         }
     }
 }

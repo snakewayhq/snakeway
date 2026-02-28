@@ -1,12 +1,14 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
-    EndpointSpec, EndpointTlsSpec, HostSpec, IngressSpec, ServiceRouteSpec, ServiceSpec,
-    UpstreamSpec,
+    AcmeServerSpec, CertStoreSpec, EndpointSpec, EndpointTlsSpec, HostSpec, IngressSpec,
+    ServiceRouteSpec, ServiceSpec, UpstreamSpec,
 };
+use std::path::PathBuf;
 
 impl ConfigBuilder {
     pub fn with_grpc_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some("./certs/ca.pem".to_string());
+        self.server_spec.ca_file = Some(PathBuf::from("./certs/ca.pem"));
+
         let mut bind = Self::make_bind(true);
         bind.enable_http2 = true;
         EndpointTlsSpec {
@@ -61,6 +63,31 @@ impl ConfigBuilder {
 
     pub fn with_http_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
+        let service = Self::make_service_spec();
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services: vec![service],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
+    pub fn with_https_ingress(mut self) -> Self {
+        self.server_spec.ca_file = Some(PathBuf::from("./certs/ca.pem"));
+        self.server_spec.tls_automation = Some(snakeway_core::conf::types::TlsAutomationSpec {
+            acme: AcmeServerSpec {
+                directory_url: "https://localhost:14000/dir".to_string(),
+                data_dir: PathBuf::from("./certs/acme"),
+                contact_email: vec!["barryallen@example.com".to_string()],
+                ca_file: Some(PathBuf::from("./integration-tests/certs/pebble-ca.pem")),
+            },
+            cert_store: CertStoreSpec::Filesystem {
+                cert_dir: PathBuf::from("./certs/acme"),
+            },
+            renew_within_days: 30,
+        });
+        let bind = Self::make_bind(true);
         let service = Self::make_service_spec();
         let ingress_spec = IngressSpec {
             bind: Some(bind),

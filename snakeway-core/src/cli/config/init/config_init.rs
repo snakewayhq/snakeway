@@ -1,5 +1,7 @@
 use crate::cli::config::init::templates;
-use crate::conf::types::{EntrypointSpec, ServerSpec};
+use crate::conf::types::{
+    AcmeServerSpec, CertStoreSpec, EntrypointSpec, ServerSpec, TlsAutomationSpec,
+};
 use crate::serialization::to_hcl_string;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
@@ -31,7 +33,7 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 
     let mut created_files = Vec::new();
     let mut files_to_create = HashMap::new();
-    let entrypoint_spec = EntrypointSpec {
+    let mut entrypoint_spec = EntrypointSpec {
         server: ServerSpec {
             threads: Some(8),
             pid_file: Some(PathBuf::from("/var/run/snakeway.pid")),
@@ -39,6 +41,22 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
         },
         ..Default::default()
     };
+    if matches!(template, ConfigInitTemplate::Dev) {
+        entrypoint_spec.server.threads = Some(8);
+        entrypoint_spec.server.pid_file = Some(PathBuf::from("/tmp/snakeway.pid"));
+        entrypoint_spec.server.tls_automation = Some(TlsAutomationSpec {
+            acme: AcmeServerSpec {
+                directory_url: "https://127.0.0.1:14000/dir".to_string(),
+                data_dir: PathBuf::from("data/acme/orders"),
+                contact_email: vec!["admin@snakeway.test".to_string()],
+                ca_file: Some(PathBuf::from("integration-tests/certs/pebble-ca.pem")),
+            },
+            cert_store: CertStoreSpec::Filesystem {
+                cert_dir: PathBuf::from("data/acme/certs"),
+            },
+            renew_within_days: 30,
+        });
+    }
     files_to_create.insert(entrypoint_file_path, to_hcl_string(&entrypoint_spec)?);
 
     match template {

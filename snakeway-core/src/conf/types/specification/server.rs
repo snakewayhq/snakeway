@@ -72,4 +72,5 @@ pub struct AcmeServerSpec {
     pub directory_url: String,
     pub data_dir: PathBuf,
     pub contact_email: Vec<String>,
+    pub ca_file: Option<PathBuf>,
 }

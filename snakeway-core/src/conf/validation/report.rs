@@ -4,7 +4,7 @@ use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::net::IpAddr;
-use std::path::{Display, PathBuf};
+use std::path::{Display, Path};
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct ValidationIssue {
@@ -187,7 +187,7 @@ impl ValidationReport {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub fn static_tls_requires_cert_file(&mut self, cert_file: &PathBuf, origin: &Origin) {
+    pub fn static_tls_requires_cert_file(&mut self, cert_file: &Path, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid cert file: {}",
@@ -198,7 +198,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn static_tls_requires_key_file(&mut self, key_file: &PathBuf, origin: &Origin) {
+    pub fn static_tls_requires_key_file(&mut self, key_file: &Path, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid key file: {}",
@@ -417,7 +417,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &PathBuf, origin: &Origin) {
+    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &Path, origin: &Origin) {
         self.error(
             format!("root CA file does not exist: {}", ca_file.to_string_lossy()),
             origin,
@@ -425,7 +425,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn root_ca_file_not_a_file(&mut self, ca_file: &PathBuf, origin: &Origin) {
+    pub fn root_ca_file_not_a_file(&mut self, ca_file: &Path, origin: &Origin) {
         self.error(
             format!("root CA file is not a file: {}", ca_file.to_string_lossy()),
             origin,
@@ -460,6 +460,43 @@ impl ValidationReport {
     pub fn server_tls_acme_directory_url_must_be_https(&mut self, origin: &Origin) {
         self.error(
             "server TLS ACME directory URL must be a valid URL".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_acme_contact_email_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME contact email cannot be empty".to_string(),
+            origin,
+            Some("It must be a list of 1 or more email addresses".to_string()),
+        )
+    }
+
+    pub fn server_tls_acme_ca_file_is_invalid(&mut self, ca_file: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "server TLS ACME CA file does not exist or is not a file: {}",
+                ca_file.to_string_lossy()
+            ),
+            origin,
+            Some(
+                "In most production scenarios, this should not be set. \
+            For example, Let's Encrypt will use a root CA that is already \
+            trusted by your operating system. \
+            If you are using a custom CA in production or pebble for local development, you should \
+            set the server.tls.acme.ca_file option."
+                    .to_string(),
+            ),
+        )
+    }
+
+    pub fn server_tls_acme_data_dir_is_invalid(&mut self, data_dir: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "server TLS ACME data directory does not exist or is not a directory: {}",
+                data_dir.to_string_lossy()
+            ),
             origin,
             None,
         )

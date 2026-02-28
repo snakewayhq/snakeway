@@ -1,5 +1,6 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::RuntimeConfig;
+use snakeway_core::conf::types::ServerSpec;
 
 pub fn minimal_ws_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_ws_ingress().build()
@@ -24,4 +25,8 @@ pub fn minimal_static_file_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default()
         .with_static_file_ingress(false)
         .build()
+}
+
+pub fn minimal_https_runtime_config_with_acme() -> RuntimeConfig {
+    ConfigBuilder::default().with_https_ingress().build()
 }

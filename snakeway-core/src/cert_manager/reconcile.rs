@@ -81,10 +81,9 @@ impl Reconciler {
                 .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
 
             let state = compute_state(
-                &cert_id,
                 actual.get(&cert_id),
                 order_state.as_ref(),
-                &self.cert_manager.renewal_policy(),
+                self.cert_manager.renewal_policy(),
             );
 
             if let Err(e) = self
@@ -186,6 +185,7 @@ impl Reconciler {
             .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
             .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
 
+        info!(%cert_id, "acme: order persisted; entering Ordering state");
         Ok(())
     }
 
@@ -195,6 +195,8 @@ impl Reconciler {
         order_state: Option<OrderState>,
     ) -> Result<(), ReconcilerError> {
         use instant_acme::{AuthorizationStatus, ChallengeType};
+
+        info!(%cert_id, "acme: http-01 challenge selected; registering token");
 
         let order_state =
             order_state.ok_or_else(|| ReconcilerError::OrderStore("missing order state".into()))?;
@@ -244,6 +246,8 @@ impl Reconciler {
                 .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
                 .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
 
+            info!(%cert_id, "acme: challenge initialized; entering ChallengeInit state");
+
             return Ok(());
         }
 
@@ -255,6 +259,8 @@ impl Reconciler {
         cert_id: String,
         order_state: Option<OrderState>,
     ) -> Result<(), ReconcilerError> {
+        info!(%cert_id, "acme: setting challenge to ready");
+
         let order_state =
             order_state.ok_or_else(|| ReconcilerError::OrderStore("missing order state".into()))?;
 
@@ -290,6 +296,7 @@ impl Reconciler {
                     .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
                     .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
 
+                info!(%cert_id, "acme: challenge initialized; entering ChallengeInit state");
                 return Ok(());
             }
         }
@@ -303,6 +310,8 @@ impl Reconciler {
         order_state: Option<OrderState>,
     ) -> Result<(), ReconcilerError> {
         use instant_acme::{OrderStatus as AcmeOrderStatus, RetryPolicy};
+
+        debug!(%cert_id, "acme: polling order readiness");
 
         let order_state =
             order_state.ok_or_else(|| ReconcilerError::OrderStore("missing order state".into()))?;
@@ -324,6 +333,7 @@ impl Reconciler {
             .map_err(|e| ReconcilerError::Acme(e.to_string()))?;
 
         if status != AcmeOrderStatus::Ready {
+            debug!(%cert_id, "acme: order not ready yet; will retry");
             return Ok(());
         }
 
@@ -337,6 +347,7 @@ impl Reconciler {
             .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
             .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
 
+        info!(%cert_id, "acme: order ready; entering Finalizing state");
         Ok(())
     }
 
@@ -347,6 +358,8 @@ impl Reconciler {
         order_state: Option<OrderState>,
     ) -> Result<(), ReconcilerError> {
         use instant_acme::RetryPolicy;
+
+        info!(%cert_id, "acme: finalizing order");
 
         let order_state =
             order_state.ok_or_else(|| ReconcilerError::OrderStore("missing order state".into()))?;
@@ -391,6 +404,8 @@ impl Reconciler {
             .map_err(|e| ReconcilerError::CertStore(format!("join error: {e}")))?
             .map_err(|e| ReconcilerError::CertStore(format!("io error: {e}")))?;
 
+        info!(%cert_id, "acme: certificate stored successfully");
+
         if let Some(token) = order_state.challenge_token {
             self.cert_manager.http01().remove(&token);
         }
@@ -402,7 +417,7 @@ impl Reconciler {
             .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
             .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
 
-        info!(%cert_id, "certificate successfully issued and stored");
+        debug!(%cert_id, "acme: order state cleaned up");
 
         Ok(())
     }

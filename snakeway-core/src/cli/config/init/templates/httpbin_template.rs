@@ -35,6 +35,7 @@ pub(crate) fn generate(
             ServiceSpec {
                 routes: vec![ServiceRouteSpec {
                     path: "/get".to_string(),
+                    hosts: vec!["*".to_string()],
                     ..Default::default()
                 }],
                 upstreams: vec![UpstreamSpec {

@@ -1,43 +1,42 @@
 use http::{HeaderMap, Method, Uri, Version};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Default)]
-pub struct NormalizedRequest {
-    original_uri: Uri,
-    method: Method,
-    host: String,
-    sni_host: Option<String>,
-    path: NormalizedPath,
-    query: CanonicalQuery,
-    normalized_headers: NormalizedHeaders,
-    protocol_version: Version,
-    is_upgrade_req: bool,
+pub struct NormalizedRequestParams {
+    pub original_uri: Uri,
+    pub method: Method,
+    pub host: String,
+    pub path: NormalizedPath,
+    pub query: CanonicalQuery,
+    pub headers: NormalizedHeaders,
+    pub sni_host: Option<String>,
+    pub protocol_version: Version,
+    pub is_upgrade_req: bool,
+}
+
+#[derive(Debug, Default)]
+pub struct NormalizedRequest(NormalizedRequestParams);
+
+impl From<NormalizedRequestParams> for NormalizedRequest {
+    fn from(params: NormalizedRequestParams) -> Self {
+        Self(params)
+    }
+}
+
+impl Deref for NormalizedRequest {
+    type Target = NormalizedRequestParams;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for NormalizedRequest {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 impl NormalizedRequest {
-    pub fn new(
-        host: String,
-        sni_host: Option<String>,
-        original_uri: Uri,
-        method: Method,
-        path: NormalizedPath,
-        query: CanonicalQuery,
-        headers: NormalizedHeaders,
-        protocol_version: Version,
-        is_upgrade_req: bool,
-    ) -> Self {
-        Self {
-            host,
-            sni_host,
-            original_uri,
-            method,
-            path,
-            query,
-            normalized_headers: headers,
-            protocol_version,
-            is_upgrade_req,
-        }
-    }
-
     pub fn original_uri(&self) -> &Uri {
         &self.original_uri
     }
@@ -63,7 +62,7 @@ impl NormalizedRequest {
     }
 
     pub fn headers(&self) -> &HeaderMap {
-        &self.normalized_headers.header_map
+        &self.headers.header_map
     }
 
     pub fn insert_header(
@@ -71,11 +70,11 @@ impl NormalizedRequest {
         name: http::header::HeaderName,
         value: http::header::HeaderValue,
     ) {
-        self.normalized_headers.header_map.insert(name, value);
+        self.headers.header_map.insert(name, value);
     }
 
     pub fn remove_header(&mut self, name: &str) {
-        self.normalized_headers.header_map.remove(name);
+        self.headers.header_map.remove(name);
     }
 
     pub fn is_upgrade_req(&self) -> bool {
@@ -91,17 +90,26 @@ impl NormalizedRequest {
     }
 
     pub fn into_inner(self) -> (Method, NormalizedPath, CanonicalQuery, NormalizedHeaders) {
-        (self.method, self.path, self.query, self.normalized_headers)
+        let NormalizedRequestParams {
+            method,
+            path,
+            query,
+            headers,
+            ..
+        } = self.0;
+
+        (method, path, query, headers)
     }
 }
 
 /// Used for testing purposes only.
 impl From<NormalizedPath> for NormalizedRequest {
     fn from(path: NormalizedPath) -> Self {
-        NormalizedRequest {
+        NormalizedRequestParams {
             path,
             ..Default::default()
         }
+        .into()
     }
 }
 

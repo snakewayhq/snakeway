@@ -6,22 +6,22 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum AcmeClientError {
     #[error("cannot read acme account file: {0}")]
-    CannotReadAcmeAccountFile(String),
+    ReadAcmeAccountFile(String),
 
     #[error("cannot deserialize existing acme account: {0}")]
-    CannotDeserializeAcmeAccountFile(String),
+    DeserializeAcmeAccountFile(String),
 
     #[error("cannot restore existing acme account: {0}")]
-    CannotRestoreAcmeAccount(String),
+    RestoreAcmeAccount(String),
 
     #[error("cannot serialize acme account file: {0}")]
-    CannotSerializeAcmeAccountFile(String),
+    SerializeAcmeAccountFile(String),
 
     #[error("cannot create acme account: {0}")]
-    CannotCreateAcmeAccount(String),
+    CreateAcmeAccount(String),
 
     #[error("cannot write acme account file: {0}")]
-    CannotWriteAcmeAccountFile(String),
+    WriteAcmeAccountFile(String),
 }
 
 pub struct AcmeClient {
@@ -33,22 +33,28 @@ impl AcmeClient {
         directory_url: String,
         order_dir: PathBuf,
         contact_email: Vec<String>,
+        ca_file: &Option<PathBuf>,
     ) -> Result<Self, AcmeClientError> {
         let account_path = order_dir.join("acme_account.json");
+
+        let account_builder = ca_file
+            .as_ref()
+            .map(Account::builder_with_root)
+            .unwrap_or_else(Account::builder);
 
         // Restore existing account
         if account_path.exists() {
             let bytes = fs::read(&account_path)
-                .map_err(|e| AcmeClientError::CannotReadAcmeAccountFile(e.to_string()))?;
+                .map_err(|e| AcmeClientError::ReadAcmeAccountFile(e.to_string()))?;
 
             let creds: AccountCredentials = serde_json::from_slice(&bytes)
-                .map_err(|e| AcmeClientError::CannotDeserializeAcmeAccountFile(e.to_string()))?;
+                .map_err(|e| AcmeClientError::DeserializeAcmeAccountFile(e.to_string()))?;
 
-            let account = Account::builder()
-                .map_err(|e| AcmeClientError::CannotRestoreAcmeAccount(e.to_string()))?
+            let account = account_builder
+                .map_err(|e| AcmeClientError::RestoreAcmeAccount(e.to_string()))?
                 .from_credentials(creds)
                 .await
-                .map_err(|e| AcmeClientError::CannotRestoreAcmeAccount(e.to_string()))?;
+                .map_err(|e| AcmeClientError::RestoreAcmeAccount(e.to_string()))?;
 
             return Ok(Self { account });
         }
@@ -61,8 +67,8 @@ impl AcmeClient {
 
         let contact_refs: Vec<&str> = contact_uris.iter().map(|s| s.as_str()).collect();
 
-        let (account, credentials) = Account::builder()
-            .map_err(|e| AcmeClientError::CannotCreateAcmeAccount(e.to_string()))?
+        let (account, credentials) = account_builder
+            .map_err(|e| AcmeClientError::CreateAcmeAccount(e.to_string()))?
             .create(
                 &NewAccount {
                     contact: &contact_refs,
@@ -73,14 +79,15 @@ impl AcmeClient {
                 None,
             )
             .await
-            .map_err(|e| AcmeClientError::CannotCreateAcmeAccount(e.to_string()))?;
+            .map_err(|e| AcmeClientError::CreateAcmeAccount(e.to_string()))?;
 
-        // Persist credentials (this is the durable identity)
+        // Persist credentials
+        // This is the durable ACME identity account file.
         let serialized = serde_json::to_vec_pretty(&credentials)
-            .map_err(|e| AcmeClientError::CannotSerializeAcmeAccountFile(e.to_string()))?;
+            .map_err(|e| AcmeClientError::SerializeAcmeAccountFile(e.to_string()))?;
 
         atomic_write(&account_path, &serialized)
-            .map_err(|e| AcmeClientError::CannotWriteAcmeAccountFile(e.to_string()))?;
+            .map_err(|e| AcmeClientError::WriteAcmeAccountFile(e.to_string()))?;
 
         Ok(Self { account })
     }
