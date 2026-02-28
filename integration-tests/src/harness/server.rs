@@ -88,6 +88,7 @@ impl TestServer {
             state,
             traffic_manager,
             connection_manager,
+            cert_manager,
             reload,
         )
         .expect("failed to build snakeway server");

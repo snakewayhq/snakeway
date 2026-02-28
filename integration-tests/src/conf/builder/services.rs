@@ -80,7 +80,7 @@ impl ConfigBuilder {
                 directory_url: "https://localhost:14000/dir".to_string(),
                 data_dir: PathBuf::from("./certs/acme"),
                 contact_email: vec!["barryallen@example.com".to_string()],
-                ca_file: Some(PathBuf::from("./integration-tests/certs/pebble-ca.pem")),
+                ca_file: Some(PathBuf::from("./certs/pebble-ca.pem")),
             },
             cert_store: CertStoreSpec::Filesystem {
                 cert_dir: PathBuf::from("./certs/acme"),

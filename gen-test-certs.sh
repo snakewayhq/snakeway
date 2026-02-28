@@ -34,7 +34,7 @@ openssl req -x509 -new -nodes \
   -key "${CERT_DIR}/ca.key" \
   -sha256 \
   -days "${DAYS}" \
-  -out "${CERT_DIR}/ca.pem" \
+  -out "${CERT_DIR}/origin-ca.pem" \
   -config "${CERT_DIR}/ca.cnf"
 
 #------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ openssl req -new \
 # Sign server cert with CA
 openssl x509 -req \
   -in "${CERT_DIR}/server.csr" \
-  -CA "${CERT_DIR}/ca.pem" \
+  -CA "${CERT_DIR}/origin-ca.pem" \
   -CAkey "${CERT_DIR}/ca.key" \
   -CAcreateserial \
   -out "${CERT_DIR}/server.pem" \
@@ -95,5 +95,5 @@ rm -f \
   "${CERT_DIR}/ca.srl"
 
 echo "✔ Test certificates generated"
-echo "  CA:     ${CERT_DIR}/ca.pem"
+echo "  CA:     ${CERT_DIR}/origin-ca.pem"
 echo "  Server: ${CERT_DIR}/server.pem"

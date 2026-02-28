@@ -53,8 +53,41 @@ impl Reconciler {
                 error!(error = %e, "cert_manager: reconcile tick failed");
             }
 
-            sleep(self.cert_manager.renewal_policy().reconcile_tick_interval).await;
+            let sleep_interval = if self.has_active_orders(&config).await {
+                self.cert_manager.renewal_policy().order_poll_interval
+            } else {
+                self.cert_manager.renewal_policy().reconcile_interval
+            };
+
+            sleep(sleep_interval).await;
         }
+    }
+
+    async fn has_active_orders(&self, config: &RuntimeConfig) -> bool {
+        let desired = desired_certificates_from_config(config);
+
+        for cert_id in desired.keys() {
+            let order_store = self.cert_manager.order_store();
+            let id = cert_id.clone();
+
+            let order_state = tokio::task::spawn_blocking(move || order_store.get(&id))
+                .await
+                .ok()
+                .and_then(|r| r.ok())
+                .flatten();
+
+            if let Some(state) = order_state {
+                match state.status {
+                    OrderStatus::Ordering
+                    | OrderStatus::ChallengeInit
+                    | OrderStatus::Challenging
+                    | OrderStatus::Finalizing => return true,
+                    _ => {}
+                }
+            }
+        }
+
+        false
     }
 
     async fn tick(&self, config: &RuntimeConfig) -> Result<(), ReconcilerError> {
@@ -161,15 +194,17 @@ impl Reconciler {
         let order_url = order.url().to_string();
         let order_state = order.state();
 
-        if order_state.status != instant_acme::OrderStatus::Pending {
-            return Err(ReconcilerError::UnexpectedOrderStatus(order_state.status));
-        }
+        let new_status = match order_state.status {
+            instant_acme::OrderStatus::Pending => OrderStatus::Ordering,
+            instant_acme::OrderStatus::Ready => OrderStatus::Finalizing,
+            other => return Err(ReconcilerError::UnexpectedOrderStatus(other)),
+        };
 
         let new_state = OrderState {
             cert_id: cert_id.clone(),
             domains: desired.domains,
             challenge: desired.challenge,
-            status: OrderStatus::Ordering,
+            status: new_status,
             order_url,
             authorization_urls: order_state
                 .authorizations
