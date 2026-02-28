@@ -57,9 +57,7 @@ impl ProxyHttp for RedirectGateway {
 
             const PREFIX: &str = "/.well-known/acme-challenge/";
 
-            if path.starts_with(PREFIX) {
-                let token = &path[PREFIX.len()..];
-
+            if let Some(token) = path.strip_prefix(PREFIX) {
                 if let Some(key_auth) = cert_manager.http01().get(token) {
                     let mut resp = ResponseHeader::build(200, None)?;
                     resp.insert_header("Content-Type", "text/plain")?;
@@ -74,6 +72,7 @@ impl ProxyHttp for RedirectGateway {
                 }
             }
         }
+
         //---------------------------------------------------------------------
         // RedirectGateway is terminal: it always handles the request.
         //---------------------------------------------------------------------

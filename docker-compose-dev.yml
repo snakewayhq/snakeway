@@ -8,5 +8,6 @@ services:
       - "15000:15000"  # Management port
     environment:
       - PEBBLE_VA_NOSLEEP=1
+      - PEBBLE_VA_ALWAYS_VALID=1
     volumes:
       - ./pebble.json:/test/pebble.json
