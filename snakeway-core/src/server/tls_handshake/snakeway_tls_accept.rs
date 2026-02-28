@@ -8,7 +8,7 @@ use std::any::Any;
 use std::sync::Arc;
 
 pub enum CertMode {
-    Static,
+    Manual,
     Acme(Arc<ArcSwap<RuntimeState>>),
 }
 
@@ -26,7 +26,7 @@ impl SnakewayTlsAccept {
 impl TlsAccept for SnakewayTlsAccept {
     async fn certificate_callback(&self, ssl: &mut TlsRef) {
         match &self.cert_mode {
-            CertMode::Static => {
+            CertMode::Manual => {
                 // Do nothing. Cert already configured in settings file.
             }
             CertMode::Acme(state) => {

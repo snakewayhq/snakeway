@@ -261,7 +261,7 @@ pub fn build_pingora_server(
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => match certificate_cfg {
                 TlsTerminationConfig::Manual { key, cert } => {
-                    let callbacks = build_tls_callbacks(CertMode::Static);
+                    let callbacks = build_tls_callbacks(CertMode::Manual);
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
                     tls_settings.set_certificate_chain_file(cert)?;
@@ -352,7 +352,7 @@ pub fn build_pingora_server(
 
             match certificate_cfg {
                 TlsTerminationConfig::Manual { key, cert } => {
-                    let callbacks = build_tls_callbacks(CertMode::Static);
+                    let callbacks = build_tls_callbacks(CertMode::Manual);
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
                     tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
                     tls_settings.set_certificate_chain_file(cert)?;
