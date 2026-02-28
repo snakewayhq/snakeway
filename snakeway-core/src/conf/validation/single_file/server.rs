@@ -1,7 +1,7 @@
 use crate::conf::types::{AcmeServerSpec, CertStoreSpec, ServerSpec};
 use crate::conf::validation::report::ValidationReport;
 use crate::conf::validation::validator::{
-    SERVER_THREADS, SERVER_TLS_RENEW_WITHIN_DAYS, validate_range,
+    SERVER_THREADS, SERVER_TLS_RENEW_WITHIN_DAYS, validate_cert_pem, validate_range,
 };
 use nix::NixPath;
 
@@ -33,11 +33,8 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
     }
 
     if let Some(ca_file) = &server_spec.ca_file {
-        if !std::path::Path::new(ca_file).exists() {
-            report.root_ca_file_does_not_exist(ca_file, &server_spec.origin);
-        }
-        if !std::path::Path::new(ca_file).is_file() {
-            report.root_ca_file_not_a_file(ca_file, &server_spec.origin);
+        if let Err(e) = validate_cert_pem(ca_file) {
+            report.server_ca_file_invalid(ca_file, &e, &server_spec.origin);
         }
     }
 
@@ -66,10 +63,10 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
             report.server_tls_acme_contact_email_cannot_be_empty(&server_spec.origin);
         }
 
-        if let Some(ca_file) = &ca_file
-            && !ca_file.is_file()
-        {
-            report.server_tls_acme_ca_file_is_invalid(ca_file, &server_spec.origin);
+        if let Some(ca_file) = &ca_file {
+            if let Err(e) = validate_cert_pem(ca_file) {
+                report.server_tls_acme_ca_file_invalid(ca_file, &e, &server_spec.origin);
+            }
         }
 
         if !data_dir.is_dir() {

@@ -209,6 +209,25 @@ impl ValidationReport {
         );
     }
 
+    pub fn ingress_tls_manual_cert_pair_invalid(
+        &mut self,
+        cert_file: &Path,
+        key_file: &Path,
+        message: &str,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!(
+                "invalid TLS manual cert pair (key: {} ; cert: {}):  {} ",
+                cert_file.to_string_lossy(),
+                key_file.to_string_lossy(),
+                message
+            ),
+            origin,
+            None,
+        );
+    }
+
     pub fn acme_tls_requires_domains(&mut self, origin: &Origin) {
         self.error("missing domains for ACME TLS".to_string(), origin, None);
     }
@@ -417,17 +436,13 @@ impl ValidationReport {
         )
     }
 
-    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &Path, origin: &Origin) {
+    pub fn server_ca_file_invalid(&mut self, ca_file: &Path, message: &str, origin: &Origin) {
         self.error(
-            format!("root CA file does not exist: {}", ca_file.to_string_lossy()),
-            origin,
-            None,
-        )
-    }
-
-    pub fn root_ca_file_not_a_file(&mut self, ca_file: &Path, origin: &Origin) {
-        self.error(
-            format!("root CA file is not a file: {}", ca_file.to_string_lossy()),
+            format!(
+                "server CA file is invalid: {} - {}",
+                ca_file.to_string_lossy(),
+                message
+            ),
             origin,
             None,
         )
@@ -473,11 +488,17 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_acme_ca_file_is_invalid(&mut self, ca_file: &Path, origin: &Origin) {
+    pub fn server_tls_acme_ca_file_invalid(
+        &mut self,
+        ca_file: &Path,
+        message: &str,
+        origin: &Origin,
+    ) {
         self.error(
             format!(
-                "server TLS ACME CA file does not exist or is not a file: {}",
-                ca_file.to_string_lossy()
+                "server TLS ACME CA file is invalid: {} - {}",
+                ca_file.to_string_lossy(),
+                message
             ),
             origin,
             Some(

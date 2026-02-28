@@ -7,7 +7,7 @@ use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
     CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
     CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
-    is_valid_hostname, is_valid_port, validate_range,
+    is_valid_hostname, is_valid_port, validate_cert_key_pair, validate_range,
 };
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
@@ -85,11 +85,13 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
             if let Some(certificate_spec) = &bind.tls {
                 match certificate_spec {
                     TlsTerminationSpec::Manual { cert, key } => {
-                        if !cert.is_file() {
-                            report.static_tls_requires_cert_file(cert, &bind.origin);
-                        }
-                        if !key.is_file() {
-                            report.static_tls_requires_key_file(key, &bind.origin);
+                        if let Err(e) = validate_cert_key_pair(cert, key) {
+                            report.ingress_tls_manual_cert_pair_invalid(
+                                cert,
+                                key,
+                                &e,
+                                &bind.origin,
+                            );
                         }
                     }
                     TlsTerminationSpec::Acme { domains, .. } => {
