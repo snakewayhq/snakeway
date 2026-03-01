@@ -211,9 +211,7 @@ impl Reconciler {
                 .iter()
                 .map(|a| a.url.clone())
                 .collect(),
-            challenge_url: None,
-            challenge_token: None,
-            challenge_key_authorization: None,
+            challenge_tokens: Vec::new(),
             failure_count: 0,
             last_error: None,
             updated_at: std::time::SystemTime::now(),
@@ -236,7 +234,7 @@ impl Reconciler {
     ) -> Result<(), ReconcilerError> {
         use instant_acme::{AuthorizationStatus, ChallengeType};
 
-        info!(%cert_id, "acme: http-01 challenge selected; registering token");
+        info!(%cert_id, "acme: registering http-01 challenge token(s)");
 
         let order_state =
             order_state.ok_or_else(|| ReconcilerError::OrderStore("missing order state".into()))?;
@@ -253,6 +251,11 @@ impl Reconciler {
             .map_err(|e| ReconcilerError::Acme(e.to_string()))?;
 
         let mut authzs = order.authorizations();
+
+        // Collect a (token, keyAuthorization) pair for every pending authorization.
+        // For single-domain orders this produces one entry; for SAN orders covering
+        // N domains it produces N entries, one per domain that still needs validation.
+        let mut challenge_tokens: Vec<(String, String)> = Vec::new();
 
         while let Some(res) = authzs.next().await {
             let mut authz = res.map_err(|e| ReconcilerError::Acme(e.to_string()))?;
@@ -267,31 +270,31 @@ impl Reconciler {
 
             let token = challenge.token.to_string();
             let key_auth = challenge.key_authorization().as_str().to_string();
-            let challenge_url = challenge.url.to_string();
 
             self.cert_manager
                 .http01()
                 .put(token.clone(), key_auth.clone());
 
-            let mut new_state = order_state.clone();
-            new_state.status = OrderStatus::ChallengeInit;
-            new_state.challenge_token = Some(token);
-            new_state.challenge_key_authorization = Some(key_auth);
-            new_state.challenge_url = Some(challenge_url);
-            new_state.updated_at = std::time::SystemTime::now();
-
-            let store = self.cert_manager.order_store();
-            tokio::task::spawn_blocking(move || store.put(&new_state))
-                .await
-                .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
-                .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
-
-            info!(%cert_id, "acme: challenge initialized; entering ChallengeInit state");
-
-            return Ok(());
+            challenge_tokens.push((token, key_auth));
         }
 
-        Err(ReconcilerError::NoPendingAuthorization)
+        if challenge_tokens.is_empty() {
+            return Err(ReconcilerError::NoPendingAuthorization);
+        }
+
+        let mut new_state = order_state.clone();
+        new_state.status = OrderStatus::ChallengeInit;
+        new_state.challenge_tokens = challenge_tokens;
+        new_state.updated_at = std::time::SystemTime::now();
+
+        let store = self.cert_manager.order_store();
+        tokio::task::spawn_blocking(move || store.put(&new_state))
+            .await
+            .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
+            .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
+
+        info!(%cert_id, "acme: all pending challenge tokens registered; entering ChallengeInit state");
+        Ok(())
     }
 
     async fn step_set_ready(
@@ -299,10 +302,20 @@ impl Reconciler {
         cert_id: String,
         order_state: Option<OrderState>,
     ) -> Result<(), ReconcilerError> {
-        info!(%cert_id, "acme: setting challenge to ready");
+        use instant_acme::AuthorizationStatus;
+
+        info!(%cert_id, "acme: setting challenge(s) to ready");
 
         let order_state =
             order_state.ok_or_else(|| ReconcilerError::OrderStore("missing order state".into()))?;
+
+        // Re-register all challenge tokens so the CA can reach them even if the
+        // process restarted between step_select_http01 and this step.
+        for (token, key_auth) in &order_state.challenge_tokens {
+            self.cert_manager
+                .http01()
+                .put(token.clone(), key_auth.clone());
+        }
 
         let client = self
             .cert_manager
@@ -317,8 +330,18 @@ impl Reconciler {
 
         let mut authzs = order.authorizations();
 
+        // Notify the CA that every pending HTTP-01 challenge is ready.
+        // For SAN orders with N domains all N pending authorizations must be
+        // signalled; skipping any of them causes the CA to time-out on those
+        // domains and eventually fail the entire order.
+        let mut ready_count = 0usize;
+
         while let Some(res) = authzs.next().await {
             let mut authz = res.map_err(|e| ReconcilerError::Acme(e.to_string()))?;
+
+            if authz.status != AuthorizationStatus::Pending {
+                continue;
+            }
 
             if let Some(mut challenge) = authz.challenge(instant_acme::ChallengeType::Http01) {
                 challenge
@@ -326,22 +349,26 @@ impl Reconciler {
                     .await
                     .map_err(|e| ReconcilerError::Acme(e.to_string()))?;
 
-                let mut new_state = order_state.clone();
-                new_state.status = OrderStatus::Challenging;
-                new_state.updated_at = std::time::SystemTime::now();
-
-                let store = self.cert_manager.order_store();
-                tokio::task::spawn_blocking(move || store.put(&new_state))
-                    .await
-                    .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
-                    .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
-
-                info!(%cert_id, "acme: challenge initialized; entering ChallengeInit state");
-                return Ok(());
+                ready_count += 1;
             }
         }
 
-        Err(ReconcilerError::NoHttp01Challenge)
+        if ready_count == 0 {
+            return Err(ReconcilerError::NoHttp01Challenge);
+        }
+
+        let mut new_state = order_state.clone();
+        new_state.status = OrderStatus::Challenging;
+        new_state.updated_at = std::time::SystemTime::now();
+
+        let store = self.cert_manager.order_store();
+        tokio::task::spawn_blocking(move || store.put(&new_state))
+            .await
+            .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
+            .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
+
+        info!(%cert_id, ready_count, "acme: all pending challenges set to ready; entering Challenging state");
+        Ok(())
     }
 
     async fn step_poll_ready(
@@ -453,8 +480,8 @@ impl Reconciler {
 
         info!(%cert_id, "acme: certificate stored successfully");
 
-        if let Some(token) = order_state.challenge_token {
-            self.cert_manager.http01().remove(&token);
+        for (token, _) in &order_state.challenge_tokens {
+            self.cert_manager.http01().remove(token);
         }
 
         let order_store = self.cert_manager.order_store();
@@ -531,6 +558,9 @@ fn parse_not_after(cert_chain_pem: &str) -> anyhow::Result<std::time::SystemTime
     let (_, pem) = parse_x509_pem(cert_chain_pem.as_bytes())?;
     let (_, cert) = parse_x509_certificate(&pem.contents)?;
     let not_after = cert.validity().not_after.to_datetime();
-    let secs = not_after.unix_timestamp();
+    let secs = not_after.unix_timestamp(); // i64
+    if secs < 0 {
+        anyhow::bail!("certificate not_after predates Unix epoch: {secs}s");
+    }
     Ok(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs as u64))
 }

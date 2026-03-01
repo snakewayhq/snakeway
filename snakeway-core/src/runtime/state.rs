@@ -46,6 +46,14 @@ pub async fn reload_runtime_state(
         "runtime state reloaded"
     );
 
+    // Attach the cert manager to the new SniRegistry BEFORE making the new
+    // state live. This closes the window where a freshly issued cert could be
+    // published into the old registry while handshakes already read from the
+    // new one.
+    if let (Some(manager), Some(tls)) = (cert_manager.as_ref(), new_state.tls.as_ref()) {
+        manager.attach_tls_sni_map(tls.sni_map.clone());
+    }
+
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
@@ -189,8 +197,8 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
         && tls_cfg.verify
         && let Some(ca_file) = &tls_cfg.ca_file
     {
-        let ca = load_ca_from_path(&ca_file)?;
-        let group_key = calculate_group_key(&ca_file);
+        let ca = load_ca_from_path(ca_file)?;
+        let group_key = calculate_group_key(ca_file);
         (true, Some(Arc::new(ca)), group_key)
     } else {
         (false, None, 0)

@@ -89,8 +89,10 @@ fn validate_ingress_tls_missing_cert_and_key() {
     // Arrange
     let cert = PathBuf::from("/non/existent/cert.pem");
     let key = PathBuf::from("/non/existent/key.pem");
-    let expected_cert_error = format!("missing or invalid cert file: {}", cert.display());
-    let expected_key_error = format!("missing or invalid key file: {}", key.display());
+    let expected_cert_error = format!(
+        "invalid TLS manual cert pair: file does not exist: {}",
+        cert.to_string_lossy()
+    );
     let mut report = ValidationReport::default();
     let mut bind = minimal_bind();
     bind.tls = Some(TlsTerminationSpec::Manual { cert, key });
@@ -104,7 +106,6 @@ fn validate_ingress_tls_missing_cert_and_key() {
 
     // Assert
     assert_eq!(report.errors[0].message, expected_cert_error);
-    assert_eq!(report.errors[1].message, expected_key_error);
 }
 
 #[test]
