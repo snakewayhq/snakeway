@@ -35,7 +35,7 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
     if let Some(ca_file) = &server_spec.ca_file
         && let Err(e) = validate_cert_pem(ca_file)
     {
-        report.server_ca_file_invalid(ca_file, &e, &server_spec.origin);
+        report.server_ca_file_invalid(&e, &server_spec.origin);
     }
 
     if let Some(t) = server_spec.threads

@@ -209,20 +209,9 @@ impl ValidationReport {
         );
     }
 
-    pub fn ingress_tls_manual_cert_pair_invalid(
-        &mut self,
-        cert_file: &Path,
-        key_file: &Path,
-        message: &str,
-        origin: &Origin,
-    ) {
+    pub fn ingress_tls_manual_cert_pair_invalid(&mut self, message: &str, origin: &Origin) {
         self.error(
-            format!(
-                "invalid TLS manual cert pair (key: {} ; cert: {}):  {} ",
-                cert_file.to_string_lossy(),
-                key_file.to_string_lossy(),
-                message
-            ),
+            format!("invalid TLS manual cert pair: {}", message),
             origin,
             None,
         );
@@ -440,13 +429,9 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_ca_file_invalid(&mut self, ca_file: &Path, message: &str, origin: &Origin) {
+    pub fn server_ca_file_invalid(&mut self, message: &str, origin: &Origin) {
         self.error(
-            format!(
-                "server CA file is invalid: {} - {}",
-                ca_file.to_string_lossy(),
-                message
-            ),
+            format!("server CA file is invalid: {}", message),
             origin,
             None,
         )

@@ -86,12 +86,7 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 match certificate_spec {
                     TlsTerminationSpec::Manual { cert, key } => {
                         if let Err(e) = validate_cert_key_pair(cert, key) {
-                            report.ingress_tls_manual_cert_pair_invalid(
-                                cert,
-                                key,
-                                &e,
-                                &bind.origin,
-                            );
+                            report.ingress_tls_manual_cert_pair_invalid(&e, &bind.origin);
                         }
                     }
                     TlsTerminationSpec::Acme { domains, .. } => {
