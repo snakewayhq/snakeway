@@ -308,6 +308,12 @@ Add work_stealing toggle.
 * Cert transparency logs
 * `/admin/certs` endpoint
 
+## Phase 4.1: Emergent tasks (v0.x.x)
+
+1. Implement `route check` command for debugging routes.
+2. Implement 3rd cert store, postgres or S3 (but probably postgres).
+3. Implement DNS challenge (maybe).
+
 ## Phase 5: Architecture and Test Suite (v0.x.x)
 
 All core features should be implemented at this stage.   
