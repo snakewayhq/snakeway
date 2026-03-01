@@ -1,4 +1,5 @@
 use crate::cert_manager::acme_client::AcmeClient;
+use crate::cert_manager::admin::CertView;
 use crate::cert_manager::challenge::Http01Registry;
 use crate::cert_manager::error::CertManagerError;
 use crate::cert_manager::sni_registry::{SniMap, SniRegistry};
@@ -14,6 +15,7 @@ use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, SystemTime};
 use tokio::task::JoinHandle;
 
 pub struct CertManager {
@@ -164,5 +166,39 @@ impl CertManager {
 
     pub fn http01(&self) -> Arc<Http01Registry> {
         self.http01.clone()
+    }
+}
+
+/// Admin API
+impl CertManager {
+    pub fn snapshot(&self) -> Vec<CertView> {
+        let now = SystemTime::now();
+
+        self.cert_store
+            .list()
+            .into_iter()
+            .map(|(id, meta)| {
+                let expires_in = meta
+                    .not_after
+                    .duration_since(now)
+                    .unwrap_or(Duration::ZERO)
+                    .as_secs() as i64;
+
+                let state = if meta.not_after <= now {
+                    "Expired"
+                } else {
+                    "Valid"
+                };
+
+                CertView {
+                    id,
+                    domains: meta.domains,
+                    issued_at: meta.issued_at,
+                    not_after: meta.not_after,
+                    expires_in_seconds: expires_in,
+                    state: state.to_string(),
+                }
+            })
+            .collect()
     }
 }

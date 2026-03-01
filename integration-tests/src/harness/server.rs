@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
     base_urls: Vec<String>,
+    listener_addrs: Vec<String>,
     pub client: Client,
 }
 
@@ -98,6 +99,12 @@ impl TestServer {
             server.run_forever();
         });
 
+        let listener_addrs = cfg
+            .listeners
+            .iter()
+            .map(|l| l.addr.clone())
+            .collect::<Vec<_>>();
+
         let base_urls = cfg
             .listeners
             .iter()
@@ -114,7 +121,11 @@ impl TestServer {
             .build()
             .expect("failed to build client");
 
-        Self { base_urls, client }
+        Self {
+            base_urls,
+            listener_addrs,
+            client,
+        }
     }
 
     fn start_with<F>(fixture: &str, start_upstream: F) -> Self
@@ -180,6 +191,16 @@ impl TestServer {
     /// Returns the first configured base URL.
     pub fn base_url(&self) -> &str {
         self.base_urls.first().expect("no base url")
+    }
+
+    /// Returns the first configured listener address (host:port).
+    pub fn https_addr(&self) -> &str {
+        self.listener_addrs.first().expect("no listener addr")
+    }
+
+    /// Returns https://host:port for the first listener.
+    pub fn https_url(&self) -> String {
+        format!("https://{}", self.https_addr())
     }
 }
 

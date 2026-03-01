@@ -1,8 +1,9 @@
 use crate::cert_manager::order_store::{OrderState, OrderStatus};
 use crate::cert_manager::renewal_policy::RenewalPolicy;
+use serde::Serialize;
 use std::time::SystemTime;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum CertState {
     /// No certificate exists in the store and no ACME order is active.
     ///

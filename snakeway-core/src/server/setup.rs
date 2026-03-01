@@ -349,6 +349,7 @@ pub fn build_pingora_server(
                 traffic_manager.clone(),
                 connection_manager.clone(),
                 reload.clone(),
+                cert_manager.clone(),
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
 

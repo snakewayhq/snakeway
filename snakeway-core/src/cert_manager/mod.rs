@@ -4,6 +4,7 @@
 //! 3. Renewal scheduling
 
 mod acme_client;
+mod admin;
 mod cert_store;
 mod challenge;
 mod error;

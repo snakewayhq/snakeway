@@ -2,6 +2,7 @@ use integration_tests::conf::minimal_https_runtime_config_with_acme;
 use integration_tests::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::{Client, StatusCode};
+use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 /// Assumes:
@@ -48,8 +49,6 @@ async fn should_issue_certificate_via_http01_and_serve_tls() {
 
         let body = resp.text().await.unwrap();
 
-        // Keep this simple. If you return structured JSON,
-        // deserialize and inspect state properly instead.
         if body.contains("\"state\":\"Valid\"") {
             break;
         }
@@ -60,14 +59,18 @@ async fn should_issue_certificate_via_http01_and_serve_tls() {
     //-------------------------------------------------------------------------
     // Assert: verify real TLS handshake works
     //-------------------------------------------------------------------------
+
+    let socket: SocketAddr = srv.https_addr().parse().expect("invalid listener addr");
+
     let https_client = Client::builder()
-        // .danger_accept_invalid_certs(true) // Pebble CA
+        .danger_accept_invalid_certs(true) // Pebble CA
+        .resolve(domain, socket) // override DNS → localhost:port
         .build()
         .expect("TLS client builder failed");
 
+    // Use domain in URL so SNI is correct
     let res = https_client
-        .get(format!("https://{}{}", domain, srv.base_url()))
-        .header("Host", domain)
+        .get(format!("https://{}/", domain))
         .send()
         .await
         .expect("TLS request failed");

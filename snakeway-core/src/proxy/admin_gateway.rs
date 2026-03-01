@@ -1,3 +1,4 @@
+use crate::cert_manager::CertManager;
 use crate::ctx::RequestCtx;
 use crate::proxy::handlers::AdminHandler;
 use crate::server::ReloadHandle;
@@ -17,9 +18,15 @@ impl AdminGateway {
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,
+        cert_manager: Option<Arc<CertManager>>,
     ) -> Self {
         Self {
-            admin_handler: AdminHandler::new(traffic_manager, connection_manager, reload),
+            admin_handler: AdminHandler::new(
+                traffic_manager,
+                connection_manager,
+                reload,
+                cert_manager,
+            ),
         }
     }
 }
