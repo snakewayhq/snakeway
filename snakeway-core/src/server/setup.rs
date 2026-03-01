@@ -119,15 +119,10 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
                         info!("reload successful");
 
                         // Update the cert manager with the new runtime configuration.
+                        // Note: attach_tls_sni_map is called inside reload_runtime_state
+                        // before the state swap, so no separate call is needed here.
                         if let Some(manager) = &cert_manager_for_reload {
                             manager.reload(Arc::new(reloaded_runtime_cfg.clone()));
-                        }
-
-                        // Update SNI map with the new runtime configuration.
-                        if let (Some(manager), Some(tls)) =
-                            (cert_manager_for_reload.as_ref(), state.load().tls.as_ref())
-                        {
-                            manager.attach_tls_sni_map(tls.sni_map.clone());
                         }
 
                         // Generate traffic snapshot.

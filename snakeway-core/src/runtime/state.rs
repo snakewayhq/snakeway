@@ -46,6 +46,14 @@ pub async fn reload_runtime_state(
         "runtime state reloaded"
     );
 
+    // Attach the cert manager to the new SniRegistry BEFORE making the new
+    // state live. This closes the window where a freshly issued cert could be
+    // published into the old registry while handshakes already read from the
+    // new one.
+    if let (Some(manager), Some(tls)) = (cert_manager.as_ref(), new_state.tls.as_ref()) {
+        manager.attach_tls_sni_map(tls.sni_map.clone());
+    }
+
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
