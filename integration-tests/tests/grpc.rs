@@ -18,7 +18,7 @@ fn grpc_unary_call_is_proxied() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         // Load the CA cert that signed the Pingora test cert
-        let ca_pem = std::fs::read("certs/ca.pem").expect("failed to read ca.pem");
+        let ca_pem = std::fs::read("certs/origin-ca.pem").expect("failed to read ca.pem");
 
         let ca_cert = Certificate::from_pem(ca_pem);
 
