@@ -27,7 +27,7 @@ pub fn validate_tls(server: &ServerSpec, ingresses: &[IngressSpec], report: &mut
         }
     }
 
-    // If ACME is configured anywhere, server.tls must exist
+    // If ACME is configured anywhere, server.tls_automation must exist
     if any_acme_listener {
         let Some(tls_automation_cfg) = &server.tls_automation else {
             report.acme_configured_in_ingress_but_server_tls_not_configured(&server.origin);
@@ -48,7 +48,7 @@ pub fn validate_tls(server: &ServerSpec, ingresses: &[IngressSpec], report: &mut
         }
     }
 
-    // Optional: warn if server.tls exists but no TLS listeners
+    // Optional: warn if server.tls_automation exists but no TLS listeners
     if server.tls_automation.is_some() && !any_tls_listener {
         report.warn_server_tls_configured_with_no_tls_listeners(&server.origin);
     }

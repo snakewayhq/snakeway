@@ -354,25 +354,24 @@ pub fn build_pingora_server(
 
             match certificate_cfg {
                 TlsTerminationConfig::Manual { key, cert } => {
-                    let callbacks = build_tls_callbacks(CertMode::Manual);
-                    let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                    tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
-                    tls_settings.set_certificate_chain_file(cert)?;
-
-                    admin_svc.add_tls_with_settings(
-                        &listener_cfg.addr.to_string(),
-                        None,
-                        tls_settings,
-                    );
+                    // This may seem a little dicey, but the configuration layer validates the file
+                    // pair and reports errors long before this code is ever called.
+                    // If these errors are produced, it means there is a bug in validation,
+                    // or the cert files were deleted a microsecond between validation and use.
+                    let cert_str = cert
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Certificate path is not valid UTF-8"))?;
+                    let key_str = key
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
+                    let tls_settings = TlsSettings::intermediate(&cert_str, &key_str)?;
+                    admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
                 }
                 TlsTerminationConfig::Acme { .. } => {
-                    let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
-                    let tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                    admin_svc.add_tls_with_settings(
-                        &listener_cfg.addr.to_string(),
-                        None,
-                        tls_settings,
-                    );
+                    // ACME is not supported for admin API.
+                    return Err(anyhow!(
+                        "ACME TLS is not supported for admin API. This is a bug as it should have been caught by validation."
+                    ));
                 }
             }
 

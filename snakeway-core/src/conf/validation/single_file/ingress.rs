@@ -160,6 +160,17 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                     Some("Use loopback or a specific IP address.".to_string()),
                 );
             }
+
+            match &bind_admin.tls {
+                TlsTerminationSpec::Manual { cert, key } => {
+                    if let Err(e) = validate_cert_key_pair(cert, key) {
+                        report.ingress_tls_manual_cert_pair_invalid(&e, &bind_admin.origin);
+                    }
+                }
+                TlsTerminationSpec::Acme { .. } => {
+                    report.admin_bind_does_not_support_acme(&bind_admin.origin);
+                }
+            }
         }
 
         if ingress.bind.is_none() && ingress.bind_admin.is_none() {

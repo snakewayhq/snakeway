@@ -213,12 +213,20 @@ impl ValidationReport {
         self.error(
             format!("invalid TLS manual cert pair: {}", message),
             origin,
-            None,
+            Some("Use manual mode instead".to_string()),
         );
     }
 
     pub fn acme_tls_requires_domains(&mut self, origin: &Origin) {
         self.error("missing domains for ACME TLS".to_string(), origin, None);
+    }
+
+    pub fn admin_bind_does_not_support_acme(&mut self, origin: &Origin) {
+        self.error(
+            "admin bind does not support ACME TLS".to_string(),
+            origin,
+            None,
+        );
     }
 
     pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
@@ -447,7 +455,7 @@ impl ValidationReport {
 
     pub fn acme_configured_in_ingress_but_server_tls_not_configured(&mut self, origin: &Origin) {
         self.error(
-            "ACME configured in ingress but server.tls is not configured".to_string(),
+            "ACME configured in ingress but server.tls_automation is not configured".to_string(),
             origin,
             None,
         )
@@ -522,7 +530,7 @@ impl ValidationReport {
 
     pub fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &Origin) {
         self.warning(
-            "server.tls configured but no TLS listeners defined".to_string(),
+            "server.tls_automation configured but no TLS listeners defined".to_string(),
             origin,
             None,
         )
