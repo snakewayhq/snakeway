@@ -364,7 +364,7 @@ pub fn build_pingora_server(
                     let key_str = key
                         .to_str()
                         .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
-                    let tls_settings = TlsSettings::intermediate(&cert_str, &key_str)?;
+                    let tls_settings = TlsSettings::intermediate(cert_str, key_str)?;
                     admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
                 }
                 TlsTerminationConfig::Acme { .. } => {

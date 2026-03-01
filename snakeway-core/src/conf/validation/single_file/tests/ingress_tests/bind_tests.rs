@@ -1,9 +1,13 @@
 use crate::conf::types::*;
 use crate::conf::validation::{ValidationReport, validate_ingresses, validate_redirect};
 use pretty_assertions::assert_eq;
+use rcgen::generate_simple_self_signed;
+use std::fs::File;
+use std::io::Write;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tempfile::tempdir;
 
 /// Minimal valid service used to satisfy ingress validation
 fn minimal_service() -> ServiceSpec {
@@ -154,11 +158,39 @@ fn admin_bind_cannot_bind_to_all_interfaces() {
     // Arrange
     let mut report = ValidationReport::default();
 
+    // Create temp directory
+    let dir = tempdir().expect("failed to create temp dir");
+
+    // Generate real self-signed certificate
+    let cert = generate_simple_self_signed(vec!["localhost".into()])
+        .expect("failed to generate self-signed cert");
+
+    let cert_pem = cert.cert.pem();
+    let key_pem = cert.signing_key.serialize_pem();
+
+    // Write cert file
+    let cert_path = dir.path().join("tmp-cert.pem");
+    let mut cert_file = File::create(&cert_path).expect("failed to create cert file");
+    cert_file
+        .write_all(cert_pem.as_bytes())
+        .expect("failed to write cert");
+
+    // Write key file
+    let key_path = dir.path().join("tmp-key.pem");
+    let mut key_file = File::create(&key_path).expect("failed to create key file");
+    key_file
+        .write_all(key_pem.as_bytes())
+        .expect("failed to write key");
+
     let ingress = IngressSpec {
         bind_admin: Some(BindAdminSpec {
+            origin: Default::default(),
             interface: BindInterfaceInput::Keyword("all".to_string()),
             port: 9000,
-            ..Default::default()
+            tls: TlsTerminationSpec::Manual {
+                cert: cert_path,
+                key: key_path,
+            },
         }),
         services: vec![minimal_service()],
         ..Default::default()
