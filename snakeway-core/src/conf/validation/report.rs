@@ -385,9 +385,13 @@ impl ValidationReport {
         )
     }
 
-    pub fn upstream_tls_missing_ca(&mut self, origin: &Origin) {
+    pub fn upstream_tls_has_invalid_ca_file(&mut self, ca_file: &Path, err: &str, origin: &Origin) {
         self.error(
-            "upstream TLS missing CA certificate".to_string(),
+            format!(
+                "upstream TLS has invalid CA file ({}): {}",
+                ca_file.to_string_lossy(),
+                err
+            ),
             origin,
             None,
         )

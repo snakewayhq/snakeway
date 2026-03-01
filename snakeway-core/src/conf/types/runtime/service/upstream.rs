@@ -31,7 +31,7 @@ impl UpstreamTcpConfig {
 pub struct UpstreamTlsConfig {
     pub sni: String,
     pub verify: bool,
-    pub ca_cert: PathBuf,
+    pub ca_file: Option<PathBuf>,
 }
 
 impl From<EndpointTlsSpec> for UpstreamTlsConfig {
@@ -39,7 +39,7 @@ impl From<EndpointTlsSpec> for UpstreamTlsConfig {
         Self {
             sni: spec.sni,
             verify: spec.verify,
-            ca_cert: spec.ca_cert,
+            ca_file: spec.ca_file,
         }
     }
 }

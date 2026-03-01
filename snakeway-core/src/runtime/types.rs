@@ -2,6 +2,7 @@ use crate::cert_manager::SniRegistry;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::Router;
+use pingora::protocols::tls::CaType;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -92,6 +93,11 @@ pub struct UpstreamTcpRuntime {
     pub use_tls: bool,
     pub sni: String,
     pub weight: u32,
+    pub verify: bool,
+    /// Preloaded when the runtime snapshot is created.
+    pub ca: Option<Arc<CaType>>,
+    /// Precomputed when the runtime snapshot is created.
+    pub group_key: u64,
 }
 
 impl UpstreamTcpRuntime {

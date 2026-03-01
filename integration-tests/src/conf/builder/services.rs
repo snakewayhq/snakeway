@@ -14,7 +14,7 @@ impl ConfigBuilder {
         EndpointTlsSpec {
             sni: "".to_string(),
             verify: false,
-            ca_cert: Default::default(),
+            ca_file: Default::default(),
         };
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
@@ -107,7 +107,7 @@ impl ConfigBuilder {
                     Some(EndpointTlsSpec {
                         sni: "snakeway.test".to_string(),
                         verify: false,
-                        ca_cert: Default::default(),
+                        ca_file: Default::default(),
                     })
                 } else {
                     None

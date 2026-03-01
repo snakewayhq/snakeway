@@ -82,7 +82,7 @@ pub struct EndpointSpec {
 pub struct EndpointTlsSpec {
     pub sni: String,
     pub verify: bool,
-    pub ca_cert: PathBuf,
+    pub ca_file: Option<PathBuf>,
 }
 
 impl EndpointSpec {

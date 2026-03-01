@@ -119,20 +119,6 @@ impl ProxyHttp for PublicGateway {
         RequestCtx::empty()
     }
 
-    // async fn early_request_filter(
-    //     &self,
-    //     _session: &mut Session,
-    //     _ctx: &mut Self::CTX,
-    // ) -> Result<()> {
-    //     if path.starts_with("/.well-known/acme-challenge/") {
-    //         let token = path.trim_start_matches("/.well-known/acme-challenge/");
-    //         if let Some(body) = registry.get(token) {
-    //             return "200 text/plain with body";
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
     /// Select upstream and enforce protocol rules
     async fn upstream_peer(
         &self,
@@ -154,11 +140,17 @@ impl ProxyHttp for PublicGateway {
         // it is merely a sort of configuration object that is used by Pingora
         // to compute a hash later when its internal pooling logic runs.
         let mut peer = match upstream {
-            UpstreamRuntime::Tcp(tcp) => Ok(HttpPeer::new(
-                tcp.http_peer_addr(),
-                tcp.use_tls,
-                tcp.sni.clone(),
-            )),
+            UpstreamRuntime::Tcp(tcp) => {
+                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.use_tls, tcp.sni.clone());
+                if tcp.use_tls {
+                    // Wire-up per-upstream TLS settings.
+                    peer.options.verify_cert = tcp.verify;
+                    peer.options.verify_hostname = tcp.verify;
+                    peer.options.ca = tcp.ca.clone();
+                    peer.group_key = tcp.group_key;
+                }
+                Ok(peer)
+            }
             UpstreamRuntime::Unix(unix) => {
                 HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
                     anyhow::anyhow!(

@@ -7,7 +7,7 @@ use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
     CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
     CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
-    is_valid_hostname, is_valid_port, validate_cert_key_pair, validate_range,
+    is_valid_hostname, is_valid_port, validate_cert_key_pair, validate_cert_pem, validate_range,
 };
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
@@ -284,8 +284,14 @@ pub fn validate_services(
                             report.upstream_tls_sni_must_be_dns(&upstream.origin);
                         }
 
-                        if !tls.ca_cert.exists() {
-                            report.upstream_tls_missing_ca(&upstream.origin);
+                        if let Some(ca_file) = &tls.ca_file {
+                            if let Err(e) = validate_cert_pem(ca_file) {
+                                report.upstream_tls_has_invalid_ca_file(
+                                    ca_file,
+                                    &e,
+                                    &upstream.origin,
+                                );
+                            }
                         }
                     }
                 }

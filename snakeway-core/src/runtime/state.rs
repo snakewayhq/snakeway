@@ -8,10 +8,13 @@ use crate::runtime::error::ReloadError;
 use crate::runtime::types::{TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
+use openssl::x509::X509;
+use pingora::protocols::tls::CaType;
 use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -180,10 +183,20 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
         port,
     };
 
-    // TLS is explicit now
+    // Handle per-endpoint TLS settings.
     let use_tls = cfg.tls.is_some();
+    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
+        && tls_cfg.verify
+        && let Some(ca_file) = &tls_cfg.ca_file
+    {
+        let ca = load_ca_from_path(&ca_file)?;
+        let group_key = calculate_group_key(&ca_file);
+        (true, Some(Arc::new(ca)), group_key)
+    } else {
+        (false, None, 0)
+    };
 
-    // Determine SNI
+    // Determine SNI.
     let sni = if let Some(tls_cfg) = &cfg.tls {
         // Explicit SNI overrides everything
         if !tls_cfg.sni.trim().is_empty() {
@@ -209,8 +222,58 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
         use_tls,
         sni,
         weight: cfg.weight,
+        verify,
+        ca,
+        group_key,
     }))
 }
+
+/// Load a per-upstream CA file.
+/// This happens when the runtime state is recomputed,
+/// keeping it out of the data plane.
+pub fn load_ca_from_path(path: &Path) -> Result<CaType> {
+    if !path.exists() {
+        anyhow::bail!("CA file does not exist: {}", path.display());
+    }
+    if !path.is_file() {
+        anyhow::bail!("CA path is not a file: {}", path.display());
+    }
+
+    let pem =
+        fs::read(path).with_context(|| format!("failed to read CA file: {}", path.display()))?;
+    if pem.is_empty() {
+        anyhow::bail!("CA file is empty: {}", path.display());
+    }
+
+    // Parse ALL certs in the PEM bundle.
+    // stack_from_pem returns Vec<X509> (OpenSSL) / equivalent for boringssl shim.
+    let certs = X509::stack_from_pem(&pem).with_context(|| {
+        format!(
+            "failed to parse PEM certificates in CA file: {}",
+            path.display()
+        )
+    })?;
+
+    if certs.is_empty() {
+        anyhow::bail!(
+            "CA file contained no certificates (parsed 0 certs): {}",
+            path.display()
+        );
+    }
+
+    Ok(certs.into_boxed_slice())
+}
+
+/// Hash a path to a u64.
+/// This is used to group per-upstream CAs,
+/// keeping them out of the data plane.
+fn calculate_group_key(path: &Path) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = ahash::AHasher::default();
+    path.as_os_str().hash(&mut h);
+    h.finish()
+}
+
 /// Factory function to make a unix upstream runtime.
 fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRuntime> {
     let addr = UpstreamAddr::Unix {
@@ -225,10 +288,7 @@ fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRu
     }))
 }
 
-// Fixed-seed ahash:
-// - deterministic across restarts
-// - fast
-// - not used for security
+/// Fixed-seed ahash - fast and deterministic across restarts.
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 

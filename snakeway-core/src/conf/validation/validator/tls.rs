@@ -12,15 +12,6 @@ pub fn validate_cert_pem(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-pub fn validate_private_key_pem(path: &Path) -> Result<(), String> {
-    let bytes = read_nonempty_file(path)?;
-
-    PKey::<Private>::private_key_from_pem(&bytes)
-        .map_err(|e| format!("invalid PEM private key {}: {e}", path.display()))?;
-
-    Ok(())
-}
-
 pub fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Result<(), String> {
     let cert_bytes = read_nonempty_file(cert_path)?;
     let key_bytes = read_nonempty_file(key_path)?;
