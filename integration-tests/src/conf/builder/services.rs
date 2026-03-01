@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 impl ConfigBuilder {
     pub fn with_grpc_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some(PathBuf::from("./certs/ca.pem"));
+        self.server_spec.ca_file = Some(PathBuf::from("./certs/origin-ca.pem"));
 
         let mut bind = Self::make_bind(true);
         bind.enable_http2 = true;
@@ -74,7 +74,7 @@ impl ConfigBuilder {
     }
 
     pub fn with_https_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some(PathBuf::from("./certs/ca.pem"));
+        self.server_spec.ca_file = Some(PathBuf::from("./certs/origin-ca.pem"));
         self.server_spec.tls_automation = Some(snakeway_core::conf::types::TlsAutomationSpec {
             acme: AcmeServerSpec {
                 directory_url: "https://localhost:14000/dir".to_string(),
