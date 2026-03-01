@@ -7,6 +7,7 @@ Snakeway has a set of commands to help operators:
 | Command     | Description                                 |
 |-------------|---------------------------------------------|
 | config      | Inspect configuration                       |
+| route       | Route debugging tools                       |
 | run         | Run the Snakeway proxy (default)            |
 | reload      | Reload a running Snakeway instance (SIGHUP) |
 | logs        | Format logs from standard out               |
@@ -142,6 +143,116 @@ Print the internal representation out as JSON:
 
 ```shell
 snakeway config dump /etc/snakeway --format=json --repr=runtime
+```
+
+## route solve
+
+The `route solve` command resolves a URL through the routing table without starting a server. It uses the exact same
+config loading, lowering, and routing code as the running proxy, making it ideal for debugging routing issues.
+
+```shell
+snakeway route solve http://example.com/api/v1/users --config /etc/snakeway
+```
+
+Example output (pretty format):
+
+```shell
+Route Solve Result:
+  status:    RESOLVED
+  route:     service:/api:my-api-service
+  kind:      service
+  service:   my-api-service
+  upstream:  10.0.0.1:8080
+```
+
+### Options
+
+| Option            | Default         | Description                                             |
+|-------------------|-----------------|---------------------------------------------------------|
+| `--config`        | `config`        | Path to config directory                                |
+| `--method`        | `GET`           | HTTP method                                             |
+| `--header`        | (none)          | Request header (repeatable, format: `KEY:VALUE`)        |
+| `--client-ip`     | (none)          | Client IP for policy evaluation                         |
+| `--scheme`        | from URL        | Override URL scheme (`http` or `https`)                 |
+| `--path`          | from URL        | Override URL path                                       |
+| `--query`         | from URL        | Override URL query string                               |
+| `--body-size`     | `0`             | Simulated body size in bytes                            |
+| `--lb-key`        | (none)          | Deterministic key for hash-based upstream selection     |
+| `--lb-index`      | (none)          | Force upstream index selection                          |
+| `--format`        | `pretty`        | Output format: `pretty` or `json`                       |
+| `--trace`         | `false`         | Include evaluation trace steps                          |
+| `--verbose`       | `false`         | Verbose output (implies `--trace`)                      |
+
+### JSON output
+
+For machine-readable output, use `--format=json`:
+
+```shell
+snakeway route solve http://example.com/api/v1 --config /etc/snakeway --format=json
+```
+
+```json
+{
+  "matched_route": "service:/api:my-api-service",
+  "route_kind": "service",
+  "upstream_service": "my-api-service",
+  "selected_upstream": "10.0.0.1:8080",
+  "static_file_dir": null,
+  "rejection": null,
+  "normalized": {
+    "scheme": "http",
+    "host": "example.com",
+    "method": "GET",
+    "path": "/api/v1",
+    "query": null,
+    "client_ip": null,
+    "body_size": 0
+  }
+}
+```
+
+### Deterministic upstream selection
+
+Upstream selection is fully deterministic and does not use randomness or clock-based logic.
+
+- **`--lb-index N`**: selects the upstream at index `N % upstream_count`
+- **`--lb-key STRING`**: hashes the key with FNV-1a and selects `hash % upstream_count`
+- **Default**: always selects index 0
+
+`--lb-index` takes precedence over `--lb-key`.
+
+### Exit codes
+
+| Code | Meaning                    |
+|------|----------------------------|
+| `0`  | Resolved (upstream found)  |
+| `1`  | Invalid CLI input          |
+| `2`  | Config load/parse failure  |
+| `3`  | No route matched           |
+| `4`  | Rejected by policy         |
+
+### Debugging workflow
+
+A recommended workflow for diagnosing routing issues:
+
+```shell
+# 1. Validate config first
+snakeway config check /etc/snakeway
+
+# 2. Test basic route resolution
+snakeway route solve http://example.com/api/v1 --config /etc/snakeway
+
+# 3. Trace the full evaluation path
+snakeway route solve http://example.com/api/v1 --config /etc/snakeway --trace
+
+# 4. Verbose output with normalized request details
+snakeway route solve http://example.com/api/v1 --config /etc/snakeway --verbose
+
+# 5. Test specific upstream selection
+snakeway route solve http://example.com/api/v1 --config /etc/snakeway --lb-index 1
+
+# 6. Machine-readable output for scripting
+snakeway route solve http://example.com/api/v1 --config /etc/snakeway --format=json
 ```
 
 ## run

@@ -50,6 +50,12 @@ enum Command {
         pid_file: String,
     },
 
+    /// Route debugging tools
+    Route {
+        #[command(subcommand)]
+        cmd: cli::route::RouteCmd,
+    },
+
     /// Run the Snakeway proxy (default)
     Run {
         /// Path to the Snakeway config directory
@@ -104,6 +110,10 @@ fn main() {
                 eprintln!("WASM device error: {e}");
                 exit(1);
             }
+        }
+
+        Some(Command::Route { cmd }) => {
+            cli::route::run(cmd);
         }
 
         Some(Command::Reload { pid_file }) => {
