@@ -284,14 +284,10 @@ pub fn validate_services(
                             report.upstream_tls_sni_must_be_dns(&upstream.origin);
                         }
 
-                        if let Some(ca_file) = &tls.ca_file {
-                            if let Err(e) = validate_cert_pem(ca_file) {
-                                report.upstream_tls_has_invalid_ca_file(
-                                    ca_file,
-                                    &e,
-                                    &upstream.origin,
-                                );
-                            }
+                        if let Some(ca_file) = &tls.ca_file
+                            && let Err(e) = validate_cert_pem(ca_file)
+                        {
+                            report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
                         }
                     }
                 }

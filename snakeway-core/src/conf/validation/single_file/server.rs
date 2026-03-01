@@ -32,10 +32,10 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
         }
     }
 
-    if let Some(ca_file) = &server_spec.ca_file {
-        if let Err(e) = validate_cert_pem(ca_file) {
-            report.server_ca_file_invalid(ca_file, &e, &server_spec.origin);
-        }
+    if let Some(ca_file) = &server_spec.ca_file
+        && let Err(e) = validate_cert_pem(ca_file)
+    {
+        report.server_ca_file_invalid(ca_file, &e, &server_spec.origin);
     }
 
     if let Some(t) = server_spec.threads
@@ -63,10 +63,10 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
             report.server_tls_acme_contact_email_cannot_be_empty(&server_spec.origin);
         }
 
-        if let Some(ca_file) = &ca_file {
-            if let Err(e) = validate_cert_pem(ca_file) {
-                report.server_tls_acme_ca_file_invalid(ca_file, &e, &server_spec.origin);
-            }
+        if let Some(ca_file) = &ca_file
+            && let Err(e) = validate_cert_pem(ca_file)
+        {
+            report.server_tls_acme_ca_file_invalid(ca_file, &e, &server_spec.origin);
         }
 
         if !data_dir.is_dir() {

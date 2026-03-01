@@ -197,8 +197,8 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
         && tls_cfg.verify
         && let Some(ca_file) = &tls_cfg.ca_file
     {
-        let ca = load_ca_from_path(&ca_file)?;
-        let group_key = calculate_group_key(&ca_file);
+        let ca = load_ca_from_path(ca_file)?;
+        let group_key = calculate_group_key(ca_file);
         (true, Some(Arc::new(ca)), group_key)
     } else {
         (false, None, 0)
