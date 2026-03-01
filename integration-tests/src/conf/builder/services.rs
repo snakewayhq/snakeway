@@ -1,7 +1,8 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
-    AcmeServerSpec, CertStoreSpec, EndpointSpec, EndpointTlsSpec, HostSpec, IngressSpec,
-    ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+    AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec, EndpointTlsSpec,
+    HostSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec, TlsTerminationSpec,
+    UpstreamSpec,
 };
 use std::path::PathBuf;
 
@@ -82,12 +83,18 @@ impl ConfigBuilder {
                 contact_email: vec!["barryallen@example.com".to_string()],
                 ca_file: Some(PathBuf::from("./certs/pebble-ca.pem")),
             },
-            cert_store: CertStoreSpec::Filesystem {
-                cert_dir: PathBuf::from("./certs/acme"),
-            },
+            // Memory store avoids filesystem path concerns in tests.
+            cert_store: CertStoreSpec::Memory,
             renew_within_days: 30,
         });
-        let bind = Self::make_bind(true);
+
+        // Public HTTPS listener.  Port 5002 is Pebble's httpPort (see pebble.json):
+        // the redirect listener on that port answers HTTP-01 challenges during ACME issuance.
+        let mut bind = Self::make_bind(true);
+        bind.redirect_http_to_https = Some(RedirectSpec {
+            port: 5002,
+            status: 301,
+        });
         let service = Self::make_service_spec();
         let ingress_spec = IngressSpec {
             bind: Some(bind),
@@ -95,6 +102,22 @@ impl ConfigBuilder {
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
+
+        // Admin API listener (manual TLS with the test server cert).
+        let admin_ingress = IngressSpec {
+            bind_admin: Some(BindAdminSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: 9443,
+                tls: TlsTerminationSpec::Manual {
+                    cert: PathBuf::from("./certs/server.pem"),
+                    key: PathBuf::from("./certs/server.key"),
+                },
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        self.ingress_specs.push(admin_ingress);
+
         self
     }
 

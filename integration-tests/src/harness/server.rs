@@ -3,7 +3,7 @@ use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_w
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
-use snakeway_core::cert_manager::CertManager;
+use snakeway_core::cert_manager::{CertManager, FilesystemOrderStore, MemoryCertStore};
 use snakeway_core::conf::{RuntimeConfig, load_config};
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 pub struct TestServer {
     base_urls: Vec<String>,
     listener_addrs: Vec<String>,
+    admin_addrs: Vec<String>,
     pub client: Client,
 }
 
@@ -61,10 +62,13 @@ impl TestServer {
             start_upstream(p);
         }
 
-        // Allocate free port(s) for the listener(s).
+        // Allocate free ports only for non-redirect listeners.
+        // Redirect listeners (e.g. the ACME HTTP-01 challenge listener) use fixed ports
+        // that match external tooling configuration (see pebble.json httpPort = 5002).
         let listener_ports = cfg
             .listeners
             .iter()
+            .filter(|l| l.redirect.is_none())
             .map(|_| free_port())
             .collect::<Vec<_>>();
 
@@ -72,10 +76,60 @@ impl TestServer {
         // This is a bit of magic that ensures all the integration tests can be run in parallel.
         patch_runtime(cfg, &listener_ports, &upstream_ports);
 
-        // Build the initial runtime state (static for tests).
-        let cert_manager: Option<Arc<CertManager>> = None;
+        // Build CertManager when TLS automation is configured.
+        let cert_manager: Option<Arc<CertManager>> = {
+            let has_tls = cfg.listeners.iter().any(|l| l.tls_termination.is_some());
+            if has_tls && let Some(tls_auto) = &cfg.server.tls_automation {
+                let order_dir = std::env::temp_dir().join("snakeway-test-acme-orders");
+                std::fs::create_dir_all(&order_dir)
+                    .expect("failed to create ACME order store dir");
+                let cert_store = Arc::new(MemoryCertStore::default());
+                let order_store = Arc::new(FilesystemOrderStore::new(order_dir));
+                let mgr = Arc::new(CertManager::new(
+                    cert_store,
+                    order_store,
+                    Arc::new(cfg.clone()),
+                    tls_auto,
+                ));
+
+                // Initialize the ACME client and launch the reconciliation loop in a dedicated
+                // thread with its own Tokio runtime.  We cannot call block_on() on the current
+                // runtime (the test's multi-thread scheduler), so we spin up a separate one.
+                let (tx, rx) = std::sync::mpsc::channel::<()>();
+                let cfg_arc = Arc::new(cfg.clone());
+                let mgr_thread = mgr.clone();
+                thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("failed to build cert-manager runtime");
+                    rt.block_on(async {
+                        let acme = &cfg_arc.server.tls_automation.as_ref().unwrap().acme;
+                        mgr_thread
+                            .initialize(acme)
+                            .await
+                            .expect("cert manager initialization failed");
+                        // Signal that initialization is done before entering the reconcile loop.
+                        tx.send(()).unwrap();
+                        mgr_thread.run_reconciliation().await;
+                    });
+                });
+                rx.recv().expect("cert manager init thread exited unexpectedly");
+
+                Some(mgr)
+            } else {
+                None
+            }
+        };
+
         let runtime_state =
-            build_runtime_state(&cfg, &cert_manager).expect("failed to build runtime state");
+            build_runtime_state(cfg, &cert_manager).expect("failed to build runtime state");
+
+        // Attach the SNI map so issued ACME certs are served for TLS handshakes.
+        if let (Some(manager), Some(tls)) = (cert_manager.as_ref(), runtime_state.tls.as_ref()) {
+            manager.attach_tls_sni_map(tls.sni_map.clone());
+        }
+
         let state = Arc::new(ArcSwap::from_pointee(runtime_state));
         let traffic_manager = Arc::new(TrafficManager::new(TrafficSnapshot::from_runtime(
             state.load().as_ref(),
@@ -99,21 +153,28 @@ impl TestServer {
             server.run_forever();
         });
 
-        let listener_addrs = cfg
+        let listener_addrs: Vec<String> = cfg
             .listeners
             .iter()
+            .filter(|l| !l.enable_admin && l.redirect.is_none())
             .map(|l| l.addr.clone())
-            .collect::<Vec<_>>();
+            .collect();
 
-        let base_urls = cfg
+        let admin_addrs: Vec<String> = cfg
             .listeners
             .iter()
-            .map(|l| format!("http://{}", l.addr.clone()))
-            .collect::<Vec<_>>();
+            .filter(|l| l.enable_admin)
+            .map(|l| l.addr.clone())
+            .collect();
 
-        // Wait for listeners(s) to accept connections.
-        for base_url in &base_urls {
-            wait_for_listener(base_url);
+        let base_urls: Vec<String> = listener_addrs
+            .iter()
+            .map(|a| format!("http://{a}"))
+            .collect();
+
+        // Wait for all listeners (public, redirect, admin) to accept TCP connections.
+        for l in cfg.listeners.iter() {
+            wait_for_listener(&l.addr);
         }
 
         let client = Client::builder()
@@ -124,6 +185,7 @@ impl TestServer {
         Self {
             base_urls,
             listener_addrs,
+            admin_addrs,
             client,
         }
     }
@@ -202,13 +264,25 @@ impl TestServer {
     pub fn https_url(&self) -> String {
         format!("https://{}", self.https_addr())
     }
+
+    /// Returns https://host:port for the admin API listener.
+    pub fn admin_url(&self) -> String {
+        format!(
+            "https://{}",
+            self.admin_addrs.first().expect("no admin listener")
+        )
+    }
 }
 
-/// Poll until the server responds (or panic).
+/// Poll until the TCP port accepts connections (or panic).
+/// Accepts either a raw "host:port" address or one with an http(s):// scheme prefix.
 fn wait_for_listener(listen_addr: &str) {
-    let addr = listen_addr.strip_prefix("http://").unwrap_or(listen_addr);
+    let addr = listen_addr
+        .strip_prefix("https://")
+        .or_else(|| listen_addr.strip_prefix("http://"))
+        .unwrap_or(listen_addr);
 
-    let deadline = Instant::now() + Duration::from_secs(2);
+    let deadline = Instant::now() + Duration::from_secs(5);
 
     loop {
         match TcpStream::connect(addr) {
