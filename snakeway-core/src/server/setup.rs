@@ -232,18 +232,14 @@ pub fn build_pingora_server(
     pingora_server_conf.ca_file = config.server.ca_file.clone();
     pingora_server_conf.work_stealing = config.server.work_stealing;
 
-    let mut server = if let Some(threads) = config.server.threads {
+    if let Some(threads) = config.server.threads {
         debug!(
             threads,
             "Creating Pingora server with overridden worker threads"
         );
         pingora_server_conf.threads = threads;
-        Server::new_with_opt_and_conf(None, pingora_server_conf)
-    } else {
-        // Create a Pingora server with default settings.
-        // "None" is required here to truly tell Pingora to use its default settings.
-        Server::new(None)?
-    };
+    }
+    let mut server = Server::new_with_opt_and_conf(None, pingora_server_conf);
 
     server.bootstrap();
 

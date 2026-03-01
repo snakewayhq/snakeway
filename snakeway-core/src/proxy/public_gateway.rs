@@ -146,8 +146,10 @@ impl ProxyHttp for PublicGateway {
                     // Wire-up per-upstream TLS settings.
                     peer.options.verify_cert = tcp.verify;
                     peer.options.verify_hostname = tcp.verify;
-                    peer.options.ca = tcp.ca.clone();
-                    peer.group_key = tcp.group_key;
+                    if tcp.verify {
+                        peer.options.ca = tcp.ca.clone();
+                        peer.group_key = tcp.group_key;
+                    }
                 }
                 Ok(peer)
             }
