@@ -25,7 +25,11 @@ fn patch_paths(cfg: &mut RuntimeConfig) {
 fn patch_listener_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16]) {
     // Redirect listeners use fixed ports (e.g. 5002 for Pebble HTTP-01 challenges)
     // and must not be reassigned.
-    let non_redirect_count = cfg.listeners.iter().filter(|l| l.redirect.is_none()).count();
+    let non_redirect_count = cfg
+        .listeners
+        .iter()
+        .filter(|l| l.redirect.is_none())
+        .count();
     assert_eq!(
         listener_ports.len(),
         non_redirect_count,

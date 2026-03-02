@@ -81,8 +81,7 @@ impl TestServer {
             let has_tls = cfg.listeners.iter().any(|l| l.tls_termination.is_some());
             if has_tls && let Some(tls_auto) = &cfg.server.tls_automation {
                 let order_dir = std::env::temp_dir().join("snakeway-test-acme-orders");
-                std::fs::create_dir_all(&order_dir)
-                    .expect("failed to create ACME order store dir");
+                std::fs::create_dir_all(&order_dir).expect("failed to create ACME order store dir");
                 let cert_store = Arc::new(MemoryCertStore::default());
                 let order_store = Arc::new(FilesystemOrderStore::new(order_dir));
                 let mgr = Arc::new(CertManager::new(
@@ -114,7 +113,8 @@ impl TestServer {
                         mgr_thread.run_reconciliation().await;
                     });
                 });
-                rx.recv().expect("cert manager init thread exited unexpectedly");
+                rx.recv()
+                    .expect("cert manager init thread exited unexpectedly");
 
                 Some(mgr)
             } else {
