@@ -40,7 +40,7 @@ async fn should_issue_certificate_via_http01_and_serve_tls() {
         }
 
         let resp = admin_client
-            .get(format!("{}/admin/certs", srv.base_url()))
+            .get(format!("{}/admin/certs", srv.admin_url()))
             .send()
             .await
             .expect("admin request failed");

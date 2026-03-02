@@ -116,11 +116,11 @@ fn connection_rate_limiter_does_not_permanently_reject_after_pressure_stops() {
     // Attempt connections until one succeeds.
     let mut saw_success = false;
     for _ in 0..20 {
-        if let Ok(res) = srv.get("/api").send() {
-            if res.status() == StatusCode::OK {
-                saw_success = true;
-                break;
-            }
+        if let Ok(res) = srv.get("/api").send()
+            && res.status() == StatusCode::OK
+        {
+            saw_success = true;
+            break;
         }
         sleep(Duration::from_millis(50));
     }
