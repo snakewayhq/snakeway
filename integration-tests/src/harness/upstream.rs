@@ -59,7 +59,7 @@ pub fn start_grpc_upstream(port: u16) {
             Server::builder()
                 .tls_config(ServerTlsConfig::new().identity(identity))
                 .expect("failed to configure TLS")
-                .add_service(GreeterServer::new(GreeterSvc::default()))
+                .add_service(GreeterServer::new(GreeterSvc))
                 .serve(addr)
                 .await
                 .expect("gRPC server failed");

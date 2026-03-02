@@ -1,8 +1,8 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
-    AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec, EndpointTlsSpec,
-    HostSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec, TlsTerminationSpec,
-    UpstreamSpec,
+    AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec,
+    EndpointTlsSpec, HostSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec,
+    TlsTerminationSpec, UpstreamSpec,
 };
 use std::path::PathBuf;
 
@@ -12,11 +12,6 @@ impl ConfigBuilder {
 
         let mut bind = Self::make_bind(true);
         bind.enable_http2 = true;
-        EndpointTlsSpec {
-            sni: "".to_string(),
-            verify: false,
-            ca_file: Default::default(),
-        };
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
                 hosts: vec!["snakeway.test".to_string()],
