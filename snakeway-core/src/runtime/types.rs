@@ -1,18 +1,32 @@
+use crate::cert_manager::SniRegistry;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::Router;
+use pingora::protocols::tls::CaType;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
 
 pub struct RuntimeState {
+    pub tls: Option<TlsRuntime>,
     pub routers: HashMap<Arc<str>, Router>,
     pub devices: DeviceRegistry,
     pub services: HashMap<String, ServiceRuntime>,
 }
 
-/// ServiceRuntime encapsulates the state of a service, including its upstream(s) and load balancing strategy.
-/// It is not just a collection of data, but also a behavioral unit distinct from RuntimeState.
+/// TlsRuntime encapsulates the state of TLS configuration.
+/// It is reloadable independent of RuntimeState (hence the ArcSwap).
+/// This is because it is reloadable not just during a config reload,
+/// but also when the cert store is updated.
+pub struct TlsRuntime {
+    /// Represent an SNI and a parsed certificate.
+    pub sni_map: Arc<SniRegistry>,
+}
+
+/// ServiceRuntime encapsulates the state of a service, including its
+/// upstream(s) and load balancing strategy.
+/// It is not just a collection of data, but also a behavioral unit distinct
+/// from RuntimeState.
 pub struct ServiceRuntime {
     pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamRuntime>,
@@ -79,6 +93,11 @@ pub struct UpstreamTcpRuntime {
     pub use_tls: bool,
     pub sni: String,
     pub weight: u32,
+    pub verify: bool,
+    /// Preloaded when the runtime snapshot is created.
+    pub ca: Option<Arc<CaType>>,
+    /// Precomputed when the runtime snapshot is created.
+    pub group_key: u64,
 }
 
 impl UpstreamTcpRuntime {

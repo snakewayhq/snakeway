@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 ///
 /// Returns `ConfigError::Glob` if the pattern is malformed or cannot be parsed.
 pub fn discover(root: &Path, glob_pattern: &str) -> Result<Vec<PathBuf>, ConfigError> {
-    let pattern = &resolve_glob(root, glob_pattern);
+    let pattern = &resolve_glob(root, glob_pattern)?;
     let mut paths: Vec<_> = glob(pattern)
         .map_err(|e| ConfigError::Glob {
             pattern: pattern.to_string(),
@@ -46,6 +46,16 @@ pub fn discover(root: &Path, glob_pattern: &str) -> Result<Vec<PathBuf>, ConfigE
 /// # Returns
 ///
 /// A `String` containing the resolved absolute path pattern
-pub fn resolve_glob(root: &Path, pattern: &str) -> String {
-    root.join(pattern).to_string_lossy().into_owned()
+pub fn resolve_glob(root: &Path, pattern: &str) -> Result<String, ConfigError> {
+    let joined = root.join(pattern);
+
+    if let Some(s) = joined.to_str() {
+        return Ok(s.to_owned());
+    }
+
+    Err(ConfigError::ResolveGlob {
+        root: root.to_string_lossy().into_owned(),
+        pattern: pattern.to_string(),
+        os_string: joined.into_os_string(),
+    })
 }

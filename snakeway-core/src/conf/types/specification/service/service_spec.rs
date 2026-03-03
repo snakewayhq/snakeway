@@ -3,6 +3,7 @@ use crate::conf::types::{CircuitBreakerSpec, HealthCheckSpec, Origin};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ServiceSpec {
@@ -31,6 +32,7 @@ pub enum LoadBalancingStrategySpec {
 pub struct ServiceRouteSpec {
     #[serde(skip)]
     pub origin: Origin,
+    pub hosts: Vec<String>,
     pub path: String,
     #[serde(default)]
     pub enable_websocket: bool,
@@ -72,6 +74,15 @@ impl fmt::Display for HostSpec {
 pub struct EndpointSpec {
     pub host: HostSpec,
     pub port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls: Option<EndpointTlsSpec>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct EndpointTlsSpec {
+    pub sni: String,
+    pub verify: bool,
+    pub ca_file: Option<PathBuf>,
 }
 
 impl EndpointSpec {

@@ -1,23 +1,28 @@
+use crate::cert_manager::{CertManager, SniRegistry};
 use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::types::RouteId;
 use crate::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;
-use crate::runtime::types::{UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
+use crate::runtime::types::{TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
+use openssl::x509::X509;
+use pingora::protocols::tls::CaType;
 use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 pub async fn reload_runtime_state(
     config_path: &Path,
     state: &ArcSwap<RuntimeState>,
-) -> Result<(), ReloadError> {
+    cert_manager: &Option<Arc<CertManager>>,
+) -> Result<RuntimeConfig, ReloadError> {
     // Parse and validate config.
     let validated = load_config(config_path)?;
 
@@ -28,7 +33,7 @@ pub async fn reload_runtime_state(
     }
 
     // Build a new runtime state OFFLINE.
-    let new_state = build_runtime_state(&validated.config)?;
+    let new_state = build_runtime_state(&validated.config, cert_manager)?;
 
     // Log comparison against current state.
     let old = state.load();
@@ -41,13 +46,27 @@ pub async fn reload_runtime_state(
         "runtime state reloaded"
     );
 
+    // Attach the cert manager to the new SniRegistry BEFORE making the new
+    // state live. This closes the window where a freshly issued cert could be
+    // published into the old registry while handshakes already read from the
+    // new one.
+    if let (Some(manager), Some(tls)) = (cert_manager.as_ref(), new_state.tls.as_ref()) {
+        manager.attach_tls_sni_map(tls.sni_map.clone());
+    }
+
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
-    Ok(())
+    Ok(validated.config)
 }
 
-pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
+pub fn build_runtime_state(
+    cfg: &RuntimeConfig,
+    cert_manager: &Option<Arc<CertManager>>,
+) -> Result<RuntimeState> {
+    // TLS Certificates
+    let tls: Option<TlsRuntime> = cert_manager.as_ref().map(build_tls_runtime).transpose()?;
+
     // Routers
     let routers = build_runtime_routers(&cfg.routes)?;
 
@@ -60,10 +79,20 @@ pub fn build_runtime_state(cfg: &RuntimeConfig) -> Result<RuntimeState> {
     let services = build_runtime_services(&cfg.services)?;
 
     Ok(RuntimeState {
+        tls,
         routers,
         devices,
         services,
     })
+}
+
+/// Build the TLS SNI -> Cert runtime map.
+fn build_tls_runtime(cert_manager: &Arc<CertManager>) -> Result<TlsRuntime> {
+    let sni_map = cert_manager.build_sni_map()?;
+
+    let registry = Arc::new(SniRegistry::new(sni_map));
+
+    Ok(TlsRuntime { sni_map: registry })
 }
 
 /// Build service runtimes from config services.
@@ -136,7 +165,7 @@ pub fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>,
             },
         };
 
-        router.add_route(route.path(), route_runtime)?;
+        router.add_route(route.hosts(), route.path(), route_runtime)?;
     }
 
     Ok(routers)
@@ -149,32 +178,108 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
         .parse()
         .map_err(|_| anyhow!("invalid upstream URL: {}", cfg.url))?;
 
-    let scheme = uri.scheme_str().unwrap_or("http");
-
     let authority = uri
         .authority()
         .ok_or_else(|| anyhow!("upstream URL missing authority: {}", cfg.url))?;
 
     let host = authority.host().to_string();
 
-    let port = authority.port_u16().unwrap_or(match scheme {
-        "https" => 443,
-        _ => 80,
-    });
+    let port = authority.port_u16().unwrap_or(80);
 
     let addr = UpstreamAddr::Tcp {
         host: host.clone(),
         port,
     };
 
+    // Handle per-endpoint TLS settings.
+    let use_tls = cfg.tls.is_some();
+    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
+        && tls_cfg.verify
+        && let Some(ca_file) = &tls_cfg.ca_file
+    {
+        let ca = load_ca_from_path(ca_file)?;
+        let group_key = calculate_group_key(ca_file);
+        (true, Some(Arc::new(ca)), group_key)
+    } else {
+        (false, None, 0)
+    };
+
+    // Determine SNI.
+    let sni = if let Some(tls_cfg) = &cfg.tls {
+        // Explicit SNI overrides everything
+        if !tls_cfg.sni.trim().is_empty() {
+            tls_cfg.sni.clone()
+        } else if host.parse::<std::net::IpAddr>().is_ok() {
+            // If the host is an IP and there is no explicit SNI, do not send SNI.
+            // This should be impossible because the conf system should have validated it before
+            // the runtime config is created.
+            String::new()
+        } else {
+            // Host is DNS, this the safe default if TLS is enabled and no explicit SNI is set.
+            host.clone()
+        }
+    } else {
+        // No TLS, then no SNI.
+        String::new()
+    };
+
     Ok(UpstreamRuntime::Tcp(UpstreamTcpRuntime {
         id: make_upstream_id(&addr),
-        host: host.clone(),
+        host,
         port,
-        use_tls: scheme == "https",
-        sni: host.clone(),
+        use_tls,
+        sni,
         weight: cfg.weight,
+        verify,
+        ca,
+        group_key,
     }))
+}
+
+/// Load a per-upstream CA file.
+/// This happens when the runtime state is recomputed,
+/// keeping it out of the data plane.
+pub fn load_ca_from_path(path: &Path) -> Result<CaType> {
+    if !path.exists() {
+        anyhow::bail!("CA file does not exist: {}", path.display());
+    }
+    if !path.is_file() {
+        anyhow::bail!("CA path is not a file: {}", path.display());
+    }
+
+    let pem =
+        fs::read(path).with_context(|| format!("failed to read CA file: {}", path.display()))?;
+    if pem.is_empty() {
+        anyhow::bail!("CA file is empty: {}", path.display());
+    }
+
+    // Parse ALL certs in the PEM bundle.
+    // stack_from_pem returns Vec<X509> (OpenSSL) / equivalent for boringssl shim.
+    let certs = X509::stack_from_pem(&pem).with_context(|| {
+        format!(
+            "failed to parse PEM certificates in CA file: {}",
+            path.display()
+        )
+    })?;
+
+    if certs.is_empty() {
+        anyhow::bail!(
+            "CA file contained no certificates (parsed 0 certs): {}",
+            path.display()
+        );
+    }
+
+    Ok(certs.into_boxed_slice())
+}
+
+/// Hash a path to a u64.
+/// This is used to group per-upstream CAs,
+/// keeping them out of the data plane.
+fn calculate_group_key(path: &Path) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = ahash::AHasher::default();
+    path.as_os_str().hash(&mut h);
+    h.finish()
 }
 
 /// Factory function to make a unix upstream runtime.
@@ -191,10 +296,7 @@ fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRu
     }))
 }
 
-// Fixed-seed ahash:
-// - deterministic across restarts
-// - fast
-// - not used for security
+/// Fixed-seed ahash - fast and deterministic across restarts.
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 

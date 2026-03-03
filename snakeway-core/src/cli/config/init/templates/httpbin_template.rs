@@ -35,12 +35,14 @@ pub(crate) fn generate(
             ServiceSpec {
                 routes: vec![ServiceRouteSpec {
                     path: "/get".to_string(),
+                    hosts: vec!["*".to_string()],
                     ..Default::default()
                 }],
                 upstreams: vec![UpstreamSpec {
                     endpoint: Some(EndpointSpec {
                         host: HostSpec::Hostname("httpbin.org".to_string()),
                         port: 80,
+                        tls: None,
                     }),
                     weight: 1,
                     ..Default::default()

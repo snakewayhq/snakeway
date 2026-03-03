@@ -23,6 +23,12 @@ pub enum RequestRejectError {
 
     #[error("request not normalized")]
     NotNormalized,
+
+    #[error("host and SNI must match if SNI is present")]
+    HostSniMismatch,
+
+    #[error("invalid host header")]
+    InvalidHostHeader,
 }
 
 impl RequestRejectError {
@@ -35,6 +41,10 @@ impl RequestRejectError {
             Self::InvalidMethod => PingoraError::new(Custom("invalid method")),
             Self::MissingMethod => PingoraError::new(Custom("missing method")),
             Self::NotNormalized => PingoraError::new(Custom("request not normalized")),
+            Self::HostSniMismatch => {
+                PingoraError::new(Custom("host and SNI must match if SNI is present"))
+            }
+            Self::InvalidHostHeader => PingoraError::new(Custom("invalid host header")),
         }
     }
 }

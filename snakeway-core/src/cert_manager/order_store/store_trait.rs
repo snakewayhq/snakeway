@@ -1,0 +1,48 @@
+use crate::conf::types::AcmeChallengeConfig;
+use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderState {
+    pub cert_id: String,
+    pub domains: Vec<String>,
+    pub challenge: AcmeChallengeConfig,
+
+    pub status: OrderStatus,
+
+    /// ACME order URL
+    pub order_url: String,
+
+    /// Authorization URLs returned by ACME
+    pub authorization_urls: Vec<String>,
+
+    /// HTTP-01 challenge tokens: each entry is a (token, keyAuthorization) pair,
+    /// one per pending ACME authorization. A single-domain order has one entry;
+    /// a SAN order covering N domains has N entries.
+    pub challenge_tokens: Vec<(String, String)>,
+
+    /// Failure count for backoff
+    pub failure_count: u32,
+
+    /// Last error string
+    pub last_error: Option<String>,
+
+    /// Last update timestamp
+    pub updated_at: SystemTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum OrderStatus {
+    Ordering,
+    ChallengeInit,
+    Challenging,
+    Finalizing,
+    Failed,
+}
+
+pub trait OrderStore: Send + Sync {
+    fn get(&self, cert_id: &str) -> std::io::Result<Option<OrderState>>;
+    fn put(&self, state: &OrderState) -> std::io::Result<()>;
+    fn delete(&self, cert_id: &str) -> std::io::Result<()>;
+    fn list(&self) -> std::io::Result<Vec<OrderState>>;
+}

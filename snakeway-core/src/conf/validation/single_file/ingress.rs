@@ -1,16 +1,16 @@
 use crate::conf::types::{
     BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
-    StaticFilesSpec,
+    StaticFilesSpec, TlsTerminationSpec,
 };
 use crate::conf::validation::ValidationReport;
 use crate::conf::validation::validator::{
     CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
     CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
     CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
-    is_valid_hostname, is_valid_port, validate_range,
+    is_valid_hostname, is_valid_port, validate_cert_key_pair, validate_cert_pem, validate_range,
 };
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::net::IpAddr;
 
 /// Validate listener definitions.
 ///
@@ -82,12 +82,18 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                 }
             }
 
-            if let Some(tls) = &bind.tls {
-                if !Path::new(&tls.cert).is_file() {
-                    report.missing_cert_file(&tls.cert, &bind.origin);
-                }
-                if !Path::new(&tls.key).is_file() {
-                    report.missing_key_file(&tls.key, &bind.origin);
+            if let Some(certificate_spec) = &bind.tls {
+                match certificate_spec {
+                    TlsTerminationSpec::Manual { cert, key } => {
+                        if let Err(e) = validate_cert_key_pair(cert, key) {
+                            report.ingress_tls_manual_cert_pair_invalid(&e, &bind.origin);
+                        }
+                    }
+                    TlsTerminationSpec::Acme { domains, .. } => {
+                        if domains.is_empty() {
+                            report.acme_tls_requires_domains(&bind.origin);
+                        }
+                    }
                 }
             }
 
@@ -154,6 +160,17 @@ pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationRepo
                     Some("Use loopback or a specific IP address.".to_string()),
                 );
             }
+
+            match &bind_admin.tls {
+                TlsTerminationSpec::Manual { cert, key } => {
+                    if let Err(e) = validate_cert_key_pair(cert, key) {
+                        report.ingress_tls_manual_cert_pair_invalid(&e, &bind_admin.origin);
+                    }
+                }
+                TlsTerminationSpec::Acme { .. } => {
+                    report.admin_bind_does_not_support_acme(&bind_admin.origin);
+                }
+            }
         }
 
         if ingress.bind.is_none() && ingress.bind_admin.is_none() {
@@ -217,6 +234,10 @@ pub fn validate_services(
 
         // Routes
         for route in &service.routes {
+            if route.hosts.is_empty() {
+                report.route_has_no_hosts(&service.origin);
+            }
+
             if bind_uses_http2 && route.enable_websocket {
                 report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
             }
@@ -246,23 +267,42 @@ pub fn validate_services(
             if let Some(endpoint) = &upstream.endpoint {
                 match &endpoint.host {
                     HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-                        report.invalid_upstream_ip(ip, &service.origin);
+                        report.invalid_upstream_ip(ip, &upstream.origin);
                     }
                     HostSpec::Hostname(name) if !is_valid_hostname(name) => {
-                        report.invalid_upstream_hostname(name, &service.origin);
+                        report.invalid_upstream_hostname(name, &upstream.origin);
                     }
                     _ => {}
                 }
 
                 if !is_valid_port(endpoint.port) {
-                    report.invalid_port(endpoint.port, &service.origin);
+                    report.invalid_port(endpoint.port, &upstream.origin);
+                }
+
+                // Validate upstream TLS.
+                if let Some(tls) = &endpoint.tls {
+                    if tls.sni.trim().is_empty() {
+                        report.upstream_tls_sni_required(&upstream.origin);
+                    }
+
+                    if tls.verify {
+                        if tls.sni.parse::<IpAddr>().is_ok() {
+                            report.upstream_tls_sni_must_be_dns(&upstream.origin);
+                        }
+
+                        if let Some(ca_file) = &tls.ca_file
+                            && let Err(e) = validate_cert_pem(ca_file)
+                        {
+                            report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
+                        }
+                    }
                 }
             }
 
             if let Some(sock) = &upstream.sock
                 && seen_sock_values.insert(sock.clone(), ()).is_some()
             {
-                report.duplicate_upstream_sock(sock, &service.origin);
+                report.duplicate_upstream_sock(sock, &upstream.origin);
             }
         }
 

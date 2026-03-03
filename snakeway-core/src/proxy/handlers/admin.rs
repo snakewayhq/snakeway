@@ -1,3 +1,4 @@
+use crate::cert_manager::CertManager;
 use crate::runtime::UpstreamRuntime;
 use crate::server::ReloadHandle;
 use crate::traffic_management::TrafficManager;
@@ -15,6 +16,7 @@ enum AdminEndpoint {
     Upstreams,
     Stats,
     Reload,
+    Certs,
 }
 
 impl FromStr for AdminEndpoint {
@@ -26,6 +28,7 @@ impl FromStr for AdminEndpoint {
             "/admin/upstreams" => Ok(AdminEndpoint::Upstreams),
             "/admin/stats" => Ok(AdminEndpoint::Stats),
             "/admin/reload" => Ok(AdminEndpoint::Reload),
+            "/admin/certs" => Ok(AdminEndpoint::Certs),
             _ => Err("invalid admin endpoint"),
         }
     }
@@ -35,6 +38,7 @@ pub struct AdminHandler {
     traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
+    cert_manager: Option<Arc<CertManager>>,
 }
 
 impl AdminHandler {
@@ -42,11 +46,13 @@ impl AdminHandler {
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,
+        cert_manager: Option<Arc<CertManager>>,
     ) -> Self {
         Self {
             traffic_manager,
             connection_manager,
             reload,
+            cert_manager,
         }
     }
 
@@ -170,6 +176,29 @@ impl AdminHandler {
                 let body = serde_json::to_vec(&serde_json::json!({
                     "message": "reload requested",
                     "epoch": epoch
+                }))
+                .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
+                self.send_json_response(session, StatusCode::OK, body)
+                    .await?;
+                Ok(true)
+            }
+            AdminEndpoint::Certs => {
+                let Some(cert_manager) = &self.cert_manager else {
+                    let body = serde_json::to_vec(&serde_json::json!({
+                        "certs": []
+                    }))
+                    .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
+                    self.send_json_response(session, StatusCode::OK, body)
+                        .await?;
+                    return Ok(true);
+                };
+
+                let certs = cert_manager.snapshot();
+
+                let body = serde_json::to_vec(&serde_json::json!({
+                    "certs": certs
                 }))
                 .map_err(|_| Error::new(Custom("json serialization failed")))?;
 

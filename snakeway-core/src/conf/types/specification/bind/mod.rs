@@ -1,14 +1,16 @@
 mod connection_rate_limiting_filter;
 mod network_connection_filter;
 mod redirect;
+mod tls_termination;
 
 pub use connection_rate_limiting_filter::*;
 pub use network_connection_filter::*;
 pub use redirect::*;
+pub use tls_termination::*;
 
 use crate::conf::resolution::ResolveError;
+use crate::conf::types::Origin;
 use crate::conf::types::specification::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
-use crate::conf::types::{Origin, TlsSpec};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -19,7 +21,7 @@ pub struct BindSpec {
     pub interface: BindInterfaceInput,
     pub port: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tls: Option<TlsSpec>,
+    pub tls: Option<TlsTerminationSpec>,
     pub enable_http2: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redirect_http_to_https: Option<RedirectSpec>,

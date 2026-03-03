@@ -283,7 +283,7 @@ Todo:
 
 ## Phase 3.2: Emergent tasks (v0.8.x)
 
-Add work_stealing option.
+Add work_stealing toggle.
 
 ## Phase 4: ACME TLS Automation (v0.x.x)
 
@@ -291,22 +291,28 @@ Add work_stealing option.
 
 * Let's Encrypt automation
 * Automatic cert renewal
-* Integration with devices
+* Host-based route matching
 
 ### Features
 
 * ACMEv2 support:
     * http-01
-    * dns-01 (via device plugin)
-
+    * dns-01 (maybe)
 * certificate storage
 * renewal worker
+* Routes configurable with a host list
 
 ### Deliverables
 
 * Fully automated TLS
 * Cert transparency logs
 * `/admin/certs` endpoint
+
+## Phase 4.1: Emergent tasks (v0.x.x)
+
+1. Implement `route check` command for debugging routes.
+2. Implement 3rd cert store, postgres or S3 (but probably postgres).
+3. Implement DNS challenge (maybe).
 
 ## Phase 5: Architecture and Test Suite (v0.x.x)
 
@@ -346,7 +352,6 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 * [ ] Review routing code for conceptual duplication.
 * [ ] Implement more robust path matching.
-
 
 ## Phase 6: Packaging and Distributions (v0.x.x)
 
@@ -414,7 +419,7 @@ Active health checks (passive health checks already exist).
 
 Add an optional k8s feature that allows snakeway to function as an ingress controller.
 
-An additional loop needs to run in the background that actively polls for configuration changes 
+An additional loop needs to run in the background that actively polls for configuration changes
 and applies the runtime snapshots.
 This fits naturally into the conf pipeline.
 

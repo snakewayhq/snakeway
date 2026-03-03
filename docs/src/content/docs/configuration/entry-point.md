@@ -27,7 +27,7 @@ Summary:
 - `version` the version of the configuration file format.
 - `pid_file` enables external process control and supervision.
 - `threads` is optional and intended for advanced tuning.
-- `work_stealing` is an optional and intended for advanced tuning.
+- `work_stealing` is optional and intended for advanced tuning.
 - `ca_file` is optional and used to verify upstream certificates.
 - `include` tells snakeway where to look for device an ingress files.
 

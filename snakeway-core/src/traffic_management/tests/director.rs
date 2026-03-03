@@ -35,6 +35,9 @@ fn upstream(id: u16) -> UpstreamSnapshot {
             use_tls: false,
             sni: "localhost".to_string(),
             weight: 1,
+            verify: false,
+            ca: None,
+            group_key: 0,
         }),
         latency: Some(LatencyStats {
             ewma: Duration::from_millis(10),

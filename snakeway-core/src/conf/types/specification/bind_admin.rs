@@ -1,6 +1,6 @@
 use crate::conf::resolution::ResolveError;
 use crate::conf::types::specification::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
-use crate::conf::types::{Origin, TlsSpec};
+use crate::conf::types::{Origin, TlsTerminationSpec};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -10,7 +10,7 @@ pub struct BindAdminSpec {
     pub origin: Origin,
     pub interface: BindInterfaceInput,
     pub port: u16,
-    pub tls: TlsSpec,
+    pub tls: TlsTerminationSpec,
 }
 
 impl BindAdminSpec {

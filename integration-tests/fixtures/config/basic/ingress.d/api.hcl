@@ -25,9 +25,11 @@ services = [
 
     routes = [
       {
+        hosts = ["snakeway.test"]
         path = "/api"
       },
       {
+        hosts = ["snakeway.test"]
         path               = "/ws"
         enable_websocket   = true
         ws_max_connections = 10000
@@ -37,11 +39,11 @@ services = [
     upstreams = [
       {
         weight = 1
-        endpoint = { host = "127.0.0.1", port = 9001 }
+        endpoint = { host = "snakeway.test", port = 3001 }
       },
       {
         weight = 1
-        endpoint = { host = "127.0.0.1", port = 9002 }
+        endpoint = { host = "snakeway.test", port = 3002 }
       },
     ]
   }
@@ -51,6 +53,7 @@ static_files = [
   {
     routes = [
       {
+        hosts = ["snakeway.test"]
         path              = "/assets"
         file_dir          = "/var/www/html"
         index             = "index.html"

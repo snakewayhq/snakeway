@@ -13,6 +13,7 @@ pub struct StaticFilesSpec {
 pub struct StaticRouteSpec {
     #[serde(skip)]
     pub origin: Origin,
+    pub hosts: Vec<String>,
     pub path: String,
     pub file_dir: PathBuf,
     pub index: Option<String>,

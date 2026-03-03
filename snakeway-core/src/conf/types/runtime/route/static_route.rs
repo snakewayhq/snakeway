@@ -7,8 +7,12 @@ pub struct StaticRouteConfig {
     /// The listener this route is attached to.
     pub listener: String,
 
+    /// Host names allowed to access this route.
+    pub hosts: Vec<String>,
+
     /// Path prefix (longest-prefix match).
     pub path: String,
+
     pub file_dir: PathBuf,
 
     pub index: Option<String>,
@@ -25,6 +29,7 @@ impl StaticRouteConfig {
     pub fn new(listener: &str, spec: StaticRouteSpec) -> Self {
         Self {
             listener: listener.to_string(),
+            hosts: spec.hosts,
             path: spec.path,
             file_dir: spec.file_dir,
             index: spec.index,

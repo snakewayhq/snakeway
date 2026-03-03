@@ -82,22 +82,23 @@ fn validate_server_pid_file_parent_dir_does_not_exist() {
 #[test]
 fn validate_server_ca_file_does_not_exist() {
     // Arrange
+    let ca_file = PathBuf::from("/non/existent/ca.pem");
     let mut report = ValidationReport::default();
     let server = ServerSpec {
-        ca_file: Some("/non/existent/ca.pem".to_string()),
+        ca_file: Some(ca_file.clone()),
         ..Default::default()
     };
+    let expected = format!(
+        "server CA file is invalid: file does not exist: {}",
+        ca_file.to_string_lossy()
+    );
 
     // Act
     validate_server(&server, &mut report);
 
     // Assert
     assert!(report.has_violations());
-    assert!(
-        report.errors[0]
-            .message
-            .contains("root CA file does not exist")
-    );
+    assert!(report.errors[0].message.contains(&expected));
 }
 
 #[test]
@@ -173,11 +174,15 @@ fn validate_server_pid_file_parent_is_not_a_dir() {
 #[test]
 fn validate_server_ca_file_is_not_a_file() {
     // Arrange
-    let mut report = ValidationReport::default();
     let dir = tempfile::tempdir().unwrap();
-
+    let ca_file = PathBuf::from(dir.path());
+    let expected = format!(
+        "server CA file is invalid: file does not exist: {}",
+        ca_file.to_string_lossy()
+    );
+    let mut report = ValidationReport::default();
     let server = ServerSpec {
-        ca_file: Some(dir.path().to_string_lossy().to_string()),
+        ca_file: Some(ca_file.clone()),
         ..Default::default()
     };
 
@@ -186,12 +191,7 @@ fn validate_server_ca_file_is_not_a_file() {
 
     // Assert
     assert!(report.has_violations());
-    assert!(
-        report
-            .errors
-            .iter()
-            .any(|e| e.message.contains("root CA file is not a file"))
-    );
+    assert!(report.errors.iter().any(|e| e.message.contains(&expected)));
 }
 
 #[test]
@@ -208,7 +208,7 @@ fn validate_server_valid_pid_and_ca_files() {
 
     let server = ServerSpec {
         pid_file: Some(pid_dir.join("snakeway.pid")),
-        ca_file: Some(ca_file.to_string_lossy().to_string()),
+        ca_file: Some(ca_file),
         ..Default::default()
     };
 

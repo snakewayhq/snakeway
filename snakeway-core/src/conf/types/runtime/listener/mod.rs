@@ -1,9 +1,12 @@
 mod connection_rate_limiting_filter;
 mod network_connection_filter;
+mod tls_termination;
 
-use crate::conf::types::{BindAdminSpec, BindSpec, TlsConfig};
 pub use connection_rate_limiting_filter::*;
 pub use network_connection_filter::*;
+pub use tls_termination::*;
+
+use crate::conf::types::{BindAdminSpec, BindSpec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -14,8 +17,8 @@ pub struct ListenerConfig {
     /// Address to bind, e.g. "0.0.0.0:8080"
     pub addr: String,
 
-    /// Optional TLS config.
-    pub tls: Option<TlsConfig>,
+    /// Optional TLS termination config.
+    pub tls_termination: Option<TlsTerminationConfig>,
 
     /// Enable HTTP/2 on this listener.
     pub enable_http2: bool,
@@ -37,12 +40,12 @@ impl ListenerConfig {
         from_addr: String,
         redirect_response_code: u16,
         spec: BindSpec,
-    ) -> Self {
-        let addr = spec.resolve().expect("failed to resolve bind address");
-        Self {
+    ) -> Result<Self, String> {
+        let addr = spec.resolve().map_err(|err| err.to_string())?;
+        Ok(Self {
             name: name.to_string(),
             addr: from_addr,
-            tls: None,
+            tls_termination: None,
             enable_http2: false,
             enable_admin: false,
             redirect: Some(RedirectConfig::new(
@@ -51,39 +54,41 @@ impl ListenerConfig {
             )),
             connection_filter: spec.connection_filter.map(Into::into),
             connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
-        }
+        })
     }
 
-    pub fn from_bind(name: &str, spec: BindSpec) -> Self {
-        Self {
+    pub fn from_bind(name: &str, spec: BindSpec) -> Result<Self, String> {
+        let addr = spec.resolve().map_err(|err| err.to_string())?;
+        let maybe_tls = if let Some(tls) = spec.tls {
+            Some(TlsTerminationConfig::try_from(tls).map_err(|err| err.to_string())?)
+        } else {
+            None
+        };
+        Ok(Self {
             name: name.to_string(),
-            addr: spec
-                .resolve()
-                .expect("failed to resolve bind address")
-                .to_string(),
-            tls: spec.tls.map(Into::into),
+            addr: addr.to_string(),
+            tls_termination: maybe_tls,
             enable_http2: spec.enable_http2,
             enable_admin: false,
             redirect: None,
             connection_filter: spec.connection_filter.map(Into::into),
             connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
-        }
+        })
     }
 
-    pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Self {
-        Self {
+    pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
+        let addr = spec.resolve().map_err(|err| err.to_string())?;
+        let tls = TlsTerminationConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
+        Ok(Self {
             name: name.to_string(),
-            addr: spec
-                .resolve()
-                .expect("failed to resolve bind address")
-                .to_string(),
-            tls: Some(spec.tls.into()),
+            addr: addr.to_string(),
+            tls_termination: Some(tls),
             enable_http2: false,
             enable_admin: true,
             redirect: None,
             connection_filter: None,
             connection_rate_limiting_filter: None,
-        }
+        })
     }
 }
 

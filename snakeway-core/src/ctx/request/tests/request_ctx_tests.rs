@@ -1,12 +1,52 @@
+use crate::ctx::request::RequestSource;
 use crate::ctx::{RequestCtx, RequestRejectError};
+use http::header::HOST;
 use http::{HeaderMap, HeaderValue, Method, Uri, Version};
 use pingora::prelude::Session;
+use pingora::protocols::Digest;
 use pretty_assertions::assert_eq;
+use std::net::IpAddr;
 use tokio::io::{AsyncWriteExt, duplex};
 
 //-----------------------------------------------------------------------------
 // Test helpers
 //-----------------------------------------------------------------------------
+struct FakeRequest {
+    uri: Uri,
+    method: Method,
+    headers: HeaderMap,
+    version: Version,
+    upgrade: bool,
+    peer_ip: IpAddr,
+    digest: Option<Digest>,
+}
+
+impl RequestSource for FakeRequest {
+    fn http_uri(&self) -> &Uri {
+        &self.uri
+    }
+    fn http_method(&self) -> &Method {
+        &self.method
+    }
+    fn http_headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+    fn http_version(&self) -> Version {
+        self.version
+    }
+    fn http_is_upgrade_req(&self) -> bool {
+        self.upgrade
+    }
+
+    fn net_peer_ip(&self) -> IpAddr {
+        self.peer_ip
+    }
+
+    fn net_digest(&self) -> Option<&Digest> {
+        self.digest.as_ref()
+    }
+}
+
 pub struct RawHttpRequest {
     method: String,
     target: String,
@@ -209,6 +249,7 @@ async fn http_normalize_builds_normalized_request_and_marks_normalized() {
 #[test]
 fn hydrate_runs_http2_normalization() {
     let mut headers = HeaderMap::new();
+    headers.append(HOST, HeaderValue::from_static("example.test"));
 
     // intentionally needs rewrite (OWS trim + duplicate folding)
     headers.append("x-test", HeaderValue::from_static(" a "));
@@ -216,20 +257,21 @@ fn hydrate_runs_http2_normalization() {
 
     let mut ctx = RequestCtx::empty();
 
-    let _ = ctx.hydrate(
-        &Uri::from_static("https://example.test/grpc.Service/Method"),
-        &Method::GET,
-        &headers,
-        &Version::HTTP_2,
-        false,
-        "127.0.0.1".parse().unwrap(),
-    );
+    let req = FakeRequest {
+        uri: Uri::from_static("https://example.test/grpc.Service/Method"),
+        method: Method::GET,
+        headers,
+        version: Version::HTTP_2,
+        upgrade: false,
+        peer_ip: "127.0.0.1".parse().unwrap(),
+        digest: None,
+    };
+    let _ = ctx.hydrate_from_session(&req);
 
     // Assert
+    assert!(ctx.hydrated);
     assert!(ctx.is_http2());
     assert_eq!(ctx.headers().get("x-test").unwrap(), "a, b");
-
-    assert!(ctx.hydrated);
 }
 
 //-----------------------------------------------------------------------------

@@ -8,6 +8,7 @@ pub fn patch_runtime(cfg: &mut RuntimeConfig, listener_ports: &[u16], upstream_p
     patch_listener_ports(cfg, listener_ports);
     patch_upstream_ports(cfg, upstream_ports);
     patch_paths(cfg);
+    patch_acme_paths(cfg);
 }
 
 fn patch_paths(cfg: &mut RuntimeConfig) {
@@ -22,17 +23,43 @@ fn patch_paths(cfg: &mut RuntimeConfig) {
 }
 
 fn patch_listener_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16]) {
+    // Redirect listeners use fixed ports (e.g. 5002 for Pebble HTTP-01 challenges)
+    // and must not be reassigned.
+    let non_redirect_count = cfg
+        .listeners
+        .iter()
+        .filter(|l| l.redirect.is_none())
+        .count();
     assert_eq!(
         listener_ports.len(),
-        cfg.listeners.len(),
+        non_redirect_count,
         "invalid number of ports allocated for listeners {} {}",
         listener_ports.len(),
-        cfg.listeners.len()
+        non_redirect_count
     );
 
-    // Patch listener addresses.
-    for (i, port) in listener_ports.iter().enumerate() {
-        cfg.listeners.get_mut(i).unwrap().addr = format!("127.0.0.1:{port}");
+    // Patch only non-redirect listener addresses.
+    let mut port_iter = listener_ports.iter();
+    for listener in cfg.listeners.iter_mut() {
+        if listener.redirect.is_some() {
+            continue;
+        }
+        if let Some(port) = port_iter.next() {
+            listener.addr = format!("snakeway.test:{port}");
+        }
+    }
+}
+
+fn patch_acme_paths(cfg: &mut RuntimeConfig) {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let Some(tls_auto) = cfg.server.tls_automation.as_mut() else {
+        return;
+    };
+    // Absolutize the ACME data dir so the test process can find it regardless of cwd.
+    tls_auto.acme.data_dir = manifest_dir.join("acme/orders/");
+    // Absolutize the Pebble CA file path.
+    if tls_auto.acme.ca_file.is_some() {
+        tls_auto.acme.ca_file = Some(manifest_dir.join("certs/pebble-ca.pem"));
     }
 }
 

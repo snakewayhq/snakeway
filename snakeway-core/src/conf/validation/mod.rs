@@ -1,4 +1,5 @@
 mod error;
+mod multi_file;
 mod report;
 mod single_file;
 mod validate;

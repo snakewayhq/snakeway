@@ -25,13 +25,10 @@ pub fn lower_configs(
     // ---------------------------------------------------------------------
     // Server
     // ---------------------------------------------------------------------
-    let server = ServerConfig {
-        version: server_spec.version,
-        threads: server_spec.threads,
-        pid_file: server_spec.pid_file.unwrap_or_default(),
-        ca_file: server_spec.ca_file.unwrap_or_default(),
-        work_stealing: server_spec.work_stealing,
-    };
+    let server =
+        ServerConfig::try_from(server_spec).map_err(|e| ConfigError::InvalidServerConfig {
+            message: e.to_string(),
+        })?;
 
     let mut listeners = Vec::new();
     let mut routes = Vec::new();
@@ -47,7 +44,9 @@ pub fn lower_configs(
         // Admin bind
         // -------------------------------------------------------------
         if let Some(bind_admin) = ingress.bind_admin {
-            listeners.push(ListenerConfig::from_bind_admin(&listener_name, bind_admin));
+            let listener_cfg = ListenerConfig::from_bind_admin(&listener_name, bind_admin)
+                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+            listeners.push(listener_cfg);
         }
 
         //--------------------------------------------------------------------
@@ -80,7 +79,7 @@ pub fn lower_configs(
                     .filter_map(|u| {
                         u.endpoint
                             .as_ref()
-                            .map(|endpoint| UpstreamTcpConfig::new(use_tls, u.weight, endpoint))
+                            .map(|endpoint| UpstreamTcpConfig::new(u.weight, endpoint))
                     })
                     .collect::<Result<Vec<_>, _>>()
                     .expect("upstream.resolve() must not fail");
@@ -121,7 +120,9 @@ pub fn lower_configs(
             //-----------------------------------------------------------------
             // Listener
             //-----------------------------------------------------------------
-            listeners.push(ListenerConfig::from_bind(&listener_name, bind.clone()));
+            let listener_cfg = ListenerConfig::from_bind(&listener_name, bind.clone())
+                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+            listeners.push(listener_cfg);
 
             //-----------------------------------------------------------------
             // Redirect listener
@@ -132,12 +133,15 @@ pub fn lower_configs(
                 let mut socket: SocketAddr = bind_addr;
                 socket.set_port(redirect.port);
 
-                listeners.push(ListenerConfig::from_redirect(
+                let listener_cfg = ListenerConfig::from_redirect(
                     &redirect_listener_name,
                     socket.to_string(),
                     redirect.status,
                     bind,
-                ));
+                )
+                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+
+                listeners.push(listener_cfg);
             }
         }
     }

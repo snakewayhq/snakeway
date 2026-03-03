@@ -25,3 +25,7 @@ pub fn minimal_static_file_runtime_config() -> RuntimeConfig {
         .with_static_file_ingress(false)
         .build()
 }
+
+pub fn minimal_https_runtime_config_with_acme() -> RuntimeConfig {
+    ConfigBuilder::default().with_https_ingress().build()
+}

@@ -4,7 +4,7 @@ use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::net::IpAddr;
-use std::path::Display;
+use std::path::{Display, Path};
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct ValidationIssue {
@@ -187,12 +187,46 @@ impl ValidationReport {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub fn missing_cert_file(&mut self, cert_file: &str, origin: &Origin) {
-        self.error(format!("missing cert file: {}", cert_file), origin, None);
+    pub fn static_tls_requires_cert_file(&mut self, cert_file: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "missing or invalid cert file: {}",
+                cert_file.to_string_lossy()
+            ),
+            origin,
+            None,
+        );
     }
 
-    pub fn missing_key_file(&mut self, key_file: &str, origin: &Origin) {
-        self.error(format!("missing key file: {}", key_file), origin, None);
+    pub fn static_tls_requires_key_file(&mut self, key_file: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "missing or invalid key file: {}",
+                key_file.to_string_lossy()
+            ),
+            origin,
+            None,
+        );
+    }
+
+    pub fn ingress_tls_manual_cert_pair_invalid(&mut self, message: &str, origin: &Origin) {
+        self.error(
+            format!("invalid TLS manual cert pair: {}", message),
+            origin,
+            Some("Use manual mode instead".to_string()),
+        );
+    }
+
+    pub fn acme_tls_requires_domains(&mut self, origin: &Origin) {
+        self.error("missing domains for ACME TLS".to_string(), origin, None);
+    }
+
+    pub fn admin_bind_does_not_support_acme(&mut self, origin: &Origin) {
+        self.error(
+            "admin bind does not support ACME TLS".to_string(),
+            origin,
+            None,
+        );
     }
 
     pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
@@ -332,6 +366,34 @@ impl ValidationReport {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
     }
 
+    pub fn route_has_no_hosts(&mut self, origin: &Origin) {
+        self.error("route has no hosts".to_string(), origin, None)
+    }
+
+    pub fn upstream_tls_sni_required(&mut self, origin: &Origin) {
+        self.error("upstream TLS SNI required".to_string(), origin, None)
+    }
+
+    pub fn upstream_tls_sni_must_be_dns(&mut self, origin: &Origin) {
+        self.error(
+            "upstream TLS SNI must be DNS name".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn upstream_tls_has_invalid_ca_file(&mut self, ca_file: &Path, err: &str, origin: &Origin) {
+        self.error(
+            format!(
+                "upstream TLS has invalid CA file ({}): {}",
+                ca_file.to_string_lossy(),
+                err
+            ),
+            origin,
+            None,
+        )
+    }
+
     pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {
         self.error(
             format!("websocket route cannot be used with HTTP2: {}", path),
@@ -375,17 +437,92 @@ impl ValidationReport {
         )
     }
 
-    pub fn root_ca_file_does_not_exist(&mut self, ca_file: &str, origin: &Origin) {
+    pub fn server_ca_file_invalid(&mut self, message: &str, origin: &Origin) {
         self.error(
-            format!("root CA file does not exist: {}", ca_file),
+            format!("server CA file is invalid: {}", message),
             origin,
             None,
         )
     }
 
-    pub fn root_ca_file_not_a_file(&mut self, ca_file: &str, origin: &Origin) {
+    pub fn acme_configured_in_ingress_but_server_tls_not_configured(&mut self, origin: &Origin) {
         self.error(
-            format!("root CA file is not a file: {}", ca_file),
+            "ACME configured in ingress but server.tls_automation is not configured".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_acme_directory_url_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME directory URL cannot be empty".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_acme_directory_url_must_be_https(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME directory URL must be a valid URL".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_acme_contact_email_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME contact email cannot be empty".to_string(),
+            origin,
+            Some("It must be a list of 1 or more email addresses".to_string()),
+        )
+    }
+
+    pub fn server_tls_acme_ca_file_invalid(
+        &mut self,
+        ca_file: &Path,
+        message: &str,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!(
+                "server TLS ACME CA file is invalid: {} - {}",
+                ca_file.to_string_lossy(),
+                message
+            ),
+            origin,
+            Some(
+                "In most production scenarios, this should not be set. \
+            For example, Let's Encrypt will use a root CA that is already \
+            trusted by your operating system. \
+            If you are using a custom CA in production or pebble for local development, you should \
+            set the server.tls.acme.ca_file option."
+                    .to_string(),
+            ),
+        )
+    }
+
+    pub fn server_tls_acme_data_dir_is_invalid(&mut self, data_dir: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "server TLS ACME data directory does not exist or is not a directory: {}",
+                data_dir.to_string_lossy()
+            ),
+            origin,
+            None,
+        )
+    }
+
+    pub fn server_tls_filesystem_cert_store_must_have_a_cert_directory(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS filesystem cert store must have a certificate directory".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &Origin) {
+        self.warning(
+            "server.tls_automation configured but no TLS listeners defined".to_string(),
             origin,
             None,
         )

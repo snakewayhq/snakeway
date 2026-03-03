@@ -121,7 +121,7 @@ fn resolve_glob_joins_root_and_pattern() {
     let root = Path::new("/tmp/config");
 
     // Act
-    let resolved = resolve_glob(root, "*.hcl");
+    let resolved = resolve_glob(root, "*.hcl").expect("resolve_glob should not fail");
 
     // Assert
     assert_eq!(resolved, "/tmp/config/*.hcl");
@@ -133,7 +133,7 @@ fn resolve_glob_preserves_subdirectories() {
     let root = Path::new("/etc/snakeway");
 
     // Act
-    let resolved = resolve_glob(root, "routes/**/*.hcl");
+    let resolved = resolve_glob(root, "routes/**/*.hcl").expect("resolve_glob should not fail");
 
     // Assert
     assert_eq!(resolved, "/etc/snakeway/routes/**/*.hcl");

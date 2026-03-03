@@ -1,7 +1,7 @@
 use crate::conf::types::{
-    BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
-    NetworkPolicyDeviceSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
-    StructuredLoggingDeviceSpec,
+    AcmeChallengeSpec, BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
+    NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
+    StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use crate::serialization::to_hcl_string;
 use std::collections::HashMap;
@@ -60,7 +60,16 @@ pub(crate) fn generate(
     let httpbin_ingress_spec = IngressSpec {
         bind: Some(BindSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
+            port: 8443,
+            tls: Some(TlsTerminationSpec::Acme {
+                domains: vec!["snakeway.test".to_string()],
+                challenge: AcmeChallengeSpec::Http01,
+            }),
+            enable_http2: false,
+            redirect_http_to_https: Some(RedirectSpec {
+                port: 5002,
+                status: 308,
+            }),
             ..Default::default()
         }),
         ..Default::default()

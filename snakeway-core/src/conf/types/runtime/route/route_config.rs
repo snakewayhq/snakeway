@@ -8,6 +8,12 @@ pub enum RouteConfig {
 }
 
 impl RouteConfig {
+    pub fn hosts(&self) -> Vec<String> {
+        match self {
+            RouteConfig::Service(cfg) => cfg.hosts.clone(),
+            RouteConfig::Static(cfg) => cfg.hosts.clone(),
+        }
+    }
     pub fn path(&self) -> &str {
         match self {
             RouteConfig::Service(cfg) => &cfg.path,
