@@ -54,10 +54,98 @@ jobs:
             -p snakeway-core \
             --features static_files,wasm
 
+  integration-test:
+    name: Integration tests (Pebble / ACME)
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # snakeway.test is the canonical test hostname used as Host header, SNI, and listener
+      # address throughout the integration test suite.  It must resolve to loopback so that
+      # Pingora can bind to it and reqwest can connect to it.
+      - name: Configure test hostname
+        run: echo "127.0.0.1 snakeway.test" | sudo tee -a /etc/hosts
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Use a dedicated cache key so this job's compiled artifacts (integration-tests crate
+      # and its unique dependencies such as tonic, reqwest) are stored separately from the
+      # unit-test job's cache.  Both jobs run in parallel after lint, so sharing a single key
+      # would cause last-writer-wins cache collisions with no benefit.
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: integration-test
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      # Generate the non-ACME TLS material (server.pem, server.key, origin-ca.pem).
+      # These certificates are created by our own test CA and are used by the proxy
+      # tests that exercise manual TLS termination.  They do not depend on Pebble.
+      - name: Generate TLS test certificates
+        run: bash ./gen-test-certs.sh
+
+      # Reuse the same docker-compose-dev.yml that developers use locally so that
+      # CI behaviour is identical to local behaviour.  --remove-orphans ensures a
+      # clean slate on re-runs without requiring an explicit down step beforehand.
+      - name: Start Pebble (ACME test server)
+        run: docker compose -f docker-compose-dev.yml up -d --remove-orphans
+
+      # Pebble takes a moment to generate its ephemeral CA and start its HTTPS
+      # listener.  We poll the ACME directory endpoint (which is the same URL
+      # the cert-manager uses) so the readiness check exercises the real path.
+      # 30 attempts × 2 s = 60 s maximum wait; failure is surfaced immediately
+      # with container logs so the root cause is visible in the CI run.
+      - name: Wait for Pebble to be ready
+        run: |
+          set -euo pipefail
+          echo "Polling Pebble ACME directory at https://localhost:14000/dir ..."
+          for i in $(seq 1 30); do
+            if curl --silent --fail --insecure \
+                --output /dev/null \
+                https://localhost:14000/dir 2>/dev/null; then
+              echo "Pebble is ready (attempt ${i}/30)"
+              exit 0
+            fi
+            echo "  attempt ${i}/30 — not ready yet, sleeping 2s"
+            sleep 2
+          done
+          echo "::error::Pebble did not become ready within 60 seconds"
+          docker compose -f docker-compose-dev.yml logs pebble
+          exit 1
+
+      # The integration tests configure instant-acme with Pebble's self-signed CA
+      # so that TLS connections to the ACME directory are trusted.  We fetch this
+      # cert from the running container (same as `just fetch-pebble-ca` locally).
+      # A quick openssl sanity-check ensures the file is a valid PEM certificate
+      # before we proceed to run the tests.
+      - name: Fetch Pebble CA certificate
+        run: |
+          mkdir -p integration-tests/certs
+          docker cp snakeway-pebble:/test/certs/pebble.minica.pem \
+            integration-tests/certs/pebble-ca.pem
+          openssl x509 -noout -subject \
+            -in integration-tests/certs/pebble-ca.pem
+
+      - name: Run integration tests
+        run: cargo nextest run -p integration-tests
+
+      # Always tear down containers, even when tests fail, to prevent port and
+      # resource leaks between CI runs on the same runner.  --volumes removes
+      # any anonymous volumes created by the Pebble container.
+      - name: Tear down Pebble
+        if: always()
+        run: docker compose -f docker-compose-dev.yml down --volumes --remove-orphans
+
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, integration-test]
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
