@@ -17,6 +17,11 @@ codegen-units = 1           # More aggressive optimization by reducing paralleli
 panic = "abort"             # Reduce panic handling code
 incremental = false         # Ensure no incremental compilation
 
+[profile.dist]
+inherits = "release"
+debug = false               # No debug symbols in distributed binaries
+strip = "symbols"           # Strip symbols to minimize binary size
+
 
 [workspace.dependencies]
 
