@@ -1,3 +1,4 @@
+use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
 use snakeway_core::conf::types::{
     AcmeChallengeSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
     DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
@@ -44,10 +45,10 @@ impl ConfigBuilder {
     pub(crate) fn make_bind(include_tls: bool) -> BindSpec {
         BindSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
+            port: DEFAULT_LISTENER_PORT,
             tls: include_tls.then_some(TlsTerminationSpec::Manual {
-                cert: PathBuf::from("./certs/server.pem".to_string()),
-                key: PathBuf::from("./certs/server.key".to_string()),
+                cert: PathBuf::from(CERT_SERVER_PEM),
+                key: PathBuf::from(CERT_SERVER_KEY),
             }),
             ..Default::default()
         }
@@ -56,9 +57,9 @@ impl ConfigBuilder {
     pub(crate) fn make_bind_with_acme() -> BindSpec {
         BindSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
+            port: DEFAULT_LISTENER_PORT,
             tls: Some(TlsTerminationSpec::Acme {
-                domains: vec!["snakeway.test".to_string()],
+                domains: vec![TEST_HOST.to_string()],
                 challenge: AcmeChallengeSpec::Http01,
             }),
             ..Default::default()

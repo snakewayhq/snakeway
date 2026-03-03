@@ -1,4 +1,5 @@
 use integration_tests::conf::{ConfigBuilder, minimal_static_file_runtime_config};
+use integration_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API};
 use integration_tests::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
@@ -40,13 +41,13 @@ fn proxy_route_still_works_when_static_is_enabled() {
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let res = srv.get("/api").send().unwrap();
+    let res = srv.get(ROUTE_PATH_API).send().unwrap();
 
     let status = res.status();
     let body = res.text().unwrap();
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body, "hello world");
+    assert_eq!(body, HTTP_RESPONSE_BODY);
 }
 
 #[test]

@@ -1,4 +1,5 @@
 use crate::conf::ConfigBuilder;
+use crate::constants::TEST_HOST;
 use snakeway_core::conf::types::{
     CachePolicySpec, CompressionOptsSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec,
 };
@@ -35,7 +36,7 @@ impl ConfigBuilder {
         StaticFilesSpec {
             origin: Default::default(),
             routes: vec![StaticRouteSpec {
-                hosts: vec!["snakeway.test".to_string()],
+                hosts: vec![TEST_HOST.to_string()],
                 origin: Default::default(),
                 path: "/".to_string(),
                 file_dir: PathBuf::from("/var/www/html"),
