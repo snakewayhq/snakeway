@@ -81,6 +81,7 @@ impl TestServer {
             let has_tls = cfg.listeners.iter().any(|l| l.tls_termination.is_some());
             if has_tls && let Some(tls_auto) = &cfg.server.tls_automation {
                 let order_dir = PathBuf::from("./acme/orders/");
+                std::fs::remove_dir_all(&order_dir).expect("failed to remove ACME order store dir");
                 std::fs::create_dir_all(&order_dir).expect("failed to create ACME order store dir");
                 let cert_store = Arc::new(MemoryCertStore::default());
                 let order_store = Arc::new(FilesystemOrderStore::new(order_dir));
