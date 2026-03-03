@@ -219,7 +219,7 @@ fn upstream_authority(u: &UpstreamRuntime) -> String {
 }
 
 /// FNV-1a (32-bit) with a fixed implementation - fully deterministic.
-fn fnv1a_hash(data: &[u8]) -> u32 {
+pub(crate) fn fnv1a_hash(data: &[u8]) -> u32 {
     const FNV_OFFSET: u32 = 2166136261;
     const FNV_PRIME: u32 = 16777619;
     let mut hash = FNV_OFFSET;

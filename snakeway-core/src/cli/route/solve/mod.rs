@@ -6,3 +6,5 @@ mod types;
 mod tests;
 
 pub use route_solve::run;
+pub use solver::solve;
+pub use types::*;

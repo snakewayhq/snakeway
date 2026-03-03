@@ -1,5 +1,4 @@
-use super::*;
-use crate::cli::route::solve::solver::solve;
+use crate::cli::route::solve::solver::{fnv1a_hash, solve};
 use crate::cli::route::solve::types::{RouteSolveOptions, SyntheticRequest};
 use crate::conf::types::LoadBalancingStrategy;
 use crate::device::core::registry::DeviceRegistry;
@@ -8,7 +7,6 @@ use crate::route::{RouteRuntime, Router};
 use crate::runtime::{
     RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
 };
-use http::HeaderMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -79,7 +77,6 @@ fn make_req(path: &str) -> SyntheticRequest {
         method: http::Method::GET,
         path: path.to_string(),
         query: None,
-        headers: HeaderMap::new(),
         client_ip: None,
         body_size: 0,
     }
@@ -310,7 +307,6 @@ fn solve_normalized_populated() {
         method: http::Method::POST,
         path: "/api/data".into(),
         query: Some("x=1".into()),
-        headers: HeaderMap::new(),
         client_ip: Some("192.168.1.1".parse().unwrap()),
         body_size: 1024,
     };
