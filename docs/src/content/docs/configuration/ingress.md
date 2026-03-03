@@ -15,6 +15,7 @@ bind = {
   enable_http2 = true
 
   tls = {
+    mode = "manual"
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
   }
@@ -172,6 +173,7 @@ bind_admin = {
   interface = "127.0.0.1"
   port      = 8440
   tls = {
+    mode = "manual"
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
   }
@@ -215,9 +217,11 @@ services = [
 
     routes = [
       {
-        path = "/api"
+        hosts = ["example.com"]
+        path  = "/api"
       },
       {
+        hosts              = ["example.com"]
         path               = "/ws"
         enable_websocket   = true
         ws_max_connections = 10000
@@ -226,11 +230,11 @@ services = [
 
     upstreams = [
       {
-        weight = 1
+        weight   = 1
         endpoint = { host = "127.0.0.1", port = 3443 }
       },
       {
-        weight = 1
+        weight   = 1
         endpoint = { host = "127.0.0.1", port = 3444 }
       },
       {
@@ -320,9 +324,22 @@ Supported strategies:
 
 ### Routes
 
+##### hosts
+
+**Type:** `list(string)`
+**Required:** `true`
+
+The list of hostnames this route applies to. Requests are only matched if the `Host` header matches one of the specified values.
+
+Use `["*"]` to match all hostnames.
+
+```hcl
+hosts = ["example.com", "www.example.com"]
+```
+
 ##### path
 
-**Type:** `string`  
+**Type:** `string`
 **Required:** `true`
 
 The URL path prefix to match. Must:
@@ -356,18 +373,41 @@ but a single service may have mixed upstreams.
 
 #### endpoint
 
-**Type:** `object`  
+**Type:** `object`
 **Required:** `false`
 
-The address of the upstream server: host, and port).
+The address of the upstream server (host and port).
 
 Example:
 
 ```hcl
-endpoint = { host = "10.0.0.1" port = 8080 } 
+endpoint = { host = "10.0.0.1", port = 8080 }
 ```
 
-The protocol is inferred from the `bind` block's TLS settings (no settings mean HTTP, TLS means HTTPS).
+By default, the upstream connection uses plain HTTP. To connect to the upstream over TLS, add a `tls` block:
+
+```hcl
+endpoint = {
+  host = "10.0.0.1"
+  port = 8443
+  tls = {
+    sni     = "backend.internal"
+    verify  = true
+    ca_file = "/path/to/certs/ca.pem" // optional
+  }
+}
+```
+
+##### endpoint.tls
+
+**Type:** `object`
+**Optional**
+
+Enables TLS for the upstream connection.
+
+- `sni` — The SNI hostname sent during the TLS handshake.
+- `verify` — Whether to verify the upstream's certificate. Set to `false` only in controlled environments.
+- `ca_file` — Optional path to a CA certificate file used to verify the upstream's certificate. Falls back to the global `server.ca_file` if not set.
 
 #### sock
 
@@ -402,11 +442,12 @@ static_files = [
   {
     routes = [
       {
+        hosts             = ["example.com"]
         path              = "/assets"
         file_dir          = "/var/www/html"
         index             = "index.html"
         directory_listing = false
-        max_file_size = 10485760 // 10 MiB
+        max_file_size     = 10485760 // 10 MiB
 
         compression = {
           enable_gzip     = false
@@ -429,9 +470,18 @@ static_files = [
 
 ### Fields
 
+#### hosts
+
+**Type:** `list(string)`
+**Required:** `true`
+
+The list of hostnames this static route applies to. Requests are only matched if the `Host` header matches one of the specified values.
+
+Use `["*"]` to match all hostnames.
+
 #### path
 
-**Type:** `string`  
+**Type:** `string`
 **Required:** `true`
 
 The URL path prefix to match.

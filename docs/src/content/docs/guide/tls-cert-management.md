@@ -11,7 +11,7 @@ Snakeway also supports manual certificate management.
 ## Let's Encrypt (ACME protocol)
 
 Out-of-the-box, `filesystem` and `memory` stores are supported.
-You would use `filesystem` in practive.
+You would use `filesystem` in practice.
 The `memory` store is for development and testing.
 In the future, other stores (e.g., S3, Consul) will be supported.
 
@@ -23,8 +23,13 @@ The `filesystem` store configuration:
 ```hcl
 server {
   // ...
-  tls = {
+  tls_automation = {
     renew_within_days = 30
+    acme = {
+      directory_url = "https://acme-v02.api.letsencrypt.org/directory"
+      data_dir      = "/var/lib/snakeway/acme"
+      contact_email = ["admin@example.com"]
+    }
     cert_store = {
       type     = "filesystem"
       cert_dir = "/var/lib/snakeway/acme/certs"
@@ -38,8 +43,13 @@ The `memory` store configuration:
 ```hcl
 server {
   // ...
-  tls = {
+  tls_automation = {
     renew_within_days = 30
+    acme = {
+      directory_url = "https://acme-v02.api.letsencrypt.org/directory"
+      data_dir      = "/var/lib/snakeway/acme"
+      contact_email = ["admin@example.com"]
+    }
     cert_store = {
       type = "memory"
     }
@@ -53,9 +63,9 @@ Your ingress files must be configured appropriately.
 bind = {
   // ...
   tls = {
-    mode = "acme" // <- "acme" for automatic cert renewal.
-    domains = ["example.com", "api.example.com"]
-    challenge = "http-01"
+    mode      = "acme"
+    domains   = ["example.com", "api.example.com"]
+    challenge = "http01"
   }
 }
 ```
@@ -68,7 +78,7 @@ For manual certificate management, an ingress file should have a bind block that
 bind = {
   // ...
   tls = {
-    mode = "manual" // <- "static" for local file certs.
+    mode = "manual"
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
   }
