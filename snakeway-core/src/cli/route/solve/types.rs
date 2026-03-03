@@ -1,4 +1,3 @@
-use http::HeaderMap;
 use serde::Serialize;
 use std::net::IpAddr;
 
@@ -10,7 +9,6 @@ pub struct SyntheticRequest {
     pub method: http::Method,
     pub path: String,
     pub query: Option<String>,
-    pub headers: HeaderMap,
     pub client_ip: Option<IpAddr>,
     pub body_size: usize,
 }

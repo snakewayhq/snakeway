@@ -115,7 +115,6 @@ pub fn run(args: RouteSolveArgs) {
         method,
         path,
         query,
-        headers,
         client_ip,
         body_size: args.body_size,
     };
