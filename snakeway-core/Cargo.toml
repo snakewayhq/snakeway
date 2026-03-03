@@ -76,3 +76,4 @@ instant-acme = { workspace = true }
 rcgen = { workspace = true }
 sha2 = { workspace = true }
 x509-parser = { workspace = true }
+url = { workspace = true }
