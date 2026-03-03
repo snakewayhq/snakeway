@@ -93,13 +93,13 @@ fn opts_default() -> RouteSolveOptions {
 
 #[test]
 fn solve_lb_key_deterministic() {
+    // Arrange
     let state = make_state_with_service_route(
         "/api",
         "api-svc",
         vec![("10.0.0.1", 8080), ("10.0.0.2", 8080), ("10.0.0.3", 8080)],
     );
     let req = make_req("/api/foo");
-
     let opts = RouteSolveOptions {
         lb_key: Some("user-42".into()),
         lb_index: None,
@@ -107,9 +107,10 @@ fn solve_lb_key_deterministic() {
         verbose: false,
     };
 
-    let d1 = solve(&state, &req, &opts);
-    let d2 = solve(&state, &req, &opts);
+    // Act
+    let (d1, d2) = (solve(&state, &req, &opts), solve(&state, &req, &opts));
 
+    // Assert
     assert_eq!(
         d1.selected_upstream, d2.selected_upstream,
         "same lb_key must produce same upstream"
@@ -119,13 +120,13 @@ fn solve_lb_key_deterministic() {
 
 #[test]
 fn solve_lb_index_overrides_lb_key() {
+    // Arrange
     let state = make_state_with_service_route(
         "/api",
         "api-svc",
         vec![("10.0.0.1", 8080), ("10.0.0.2", 8080)],
     );
     let req = make_req("/api");
-
     let opts = RouteSolveOptions {
         lb_key: Some("some-key".into()),
         lb_index: Some(1),
@@ -133,29 +134,40 @@ fn solve_lb_index_overrides_lb_key() {
         verbose: false,
     };
 
+    // Act
     let d = solve(&state, &req, &opts);
+
+    // Assert
     assert_eq!(d.selected_upstream.as_deref(), Some("10.0.0.2:8080"));
 }
 
 #[test]
 fn solve_default_selects_index_0() {
+    // Arrange
     let state = make_state_with_service_route(
         "/api",
         "api-svc",
         vec![("10.0.0.1", 8080), ("10.0.0.2", 8080)],
     );
     let req = make_req("/api");
+
+    // Act
     let d = solve(&state, &req, &opts_default());
 
+    // Assert
     assert_eq!(d.selected_upstream.as_deref(), Some("10.0.0.1:8080"));
 }
 
 #[test]
 fn solve_no_match() {
+    // Arrange
     let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
     let req = make_req("/other");
+
+    // Act
     let d = solve(&state, &req, &opts_default());
 
+    // Assert
     assert!(d.matched_route.is_none());
     assert!(d.rejection.is_some());
     assert_eq!(d.rejection.as_ref().unwrap().stage, "route_match");
@@ -163,6 +175,7 @@ fn solve_no_match() {
 
 #[test]
 fn solve_longest_prefix() {
+    // Arrange
     let mut router = Router::new();
     router
         .add_route(
@@ -223,18 +236,22 @@ fn solve_longest_prefix() {
         services,
     };
 
-    let d = solve(&state, &make_req("/api/v2/users"), &opts_default());
-    assert_eq!(d.upstream_service.as_deref(), Some("v2-svc"));
+    // Act
+    let (d, d2) = (
+        solve(&state, &make_req("/api/v2/users"), &opts_default()),
+        solve(&state, &make_req("/api/v1/users"), &opts_default()),
+    );
 
-    let d2 = solve(&state, &make_req("/api/v1/users"), &opts_default());
+    // Assert
+    assert_eq!(d.upstream_service.as_deref(), Some("v2-svc"));
     assert_eq!(d2.upstream_service.as_deref(), Some("generic-svc"));
 }
 
 #[test]
 fn solve_trace_stable() {
+    // Arrange
     let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
     let req = make_req("/api/test");
-
     let opts = RouteSolveOptions {
         lb_key: None,
         lb_index: None,
@@ -242,12 +259,12 @@ fn solve_trace_stable() {
         verbose: false,
     };
 
-    let d1 = solve(&state, &req, &opts);
-    let d2 = solve(&state, &req, &opts);
+    // Act
+    let (d1, d2) = (solve(&state, &req, &opts), solve(&state, &req, &opts));
 
+    // Assert
     let t1 = d1.trace.unwrap();
     let t2 = d2.trace.unwrap();
-
     assert_eq!(t1.len(), t2.len());
     for (a, b) in t1.iter().zip(t2.iter()) {
         assert_eq!(a.stage, b.stage);
@@ -258,12 +275,17 @@ fn solve_trace_stable() {
 
 #[test]
 fn solve_rejection_stable() {
+    // Arrange
     let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
     let req = make_req("/nope");
 
-    let d1 = solve(&state, &req, &opts_default());
-    let d2 = solve(&state, &req, &opts_default());
+    // Act
+    let (d1, d2) = (
+        solve(&state, &req, &opts_default()),
+        solve(&state, &req, &opts_default()),
+    );
 
+    // Assert
     let r1 = d1.rejection.unwrap();
     let r2 = d2.rejection.unwrap();
     assert_eq!(r1.stage, r2.stage);
@@ -272,21 +294,23 @@ fn solve_rejection_stable() {
 
 #[test]
 fn fnv1a_deterministic() {
-    let a = fnv1a_hash(b"hello");
-    let b = fnv1a_hash(b"hello");
+    // Arrange and Act
+    let (a, b) = (fnv1a_hash(b"hello"), fnv1a_hash(b"hello"));
+
+    // Assert
     assert_eq!(a, b);
     assert_ne!(fnv1a_hash(b"hello"), fnv1a_hash(b"world"));
 }
 
 #[test]
 fn solve_lb_index_wraps() {
+    // Arrange
     let state = make_state_with_service_route(
         "/api",
         "api-svc",
         vec![("10.0.0.1", 8080), ("10.0.0.2", 8080)],
     );
     let req = make_req("/api");
-
     let opts = RouteSolveOptions {
         lb_key: None,
         lb_index: Some(5), // 5 % 2 = 1
@@ -294,12 +318,16 @@ fn solve_lb_index_wraps() {
         verbose: false,
     };
 
+    // Act
     let d = solve(&state, &req, &opts);
+
+    // Assert
     assert_eq!(d.selected_upstream.as_deref(), Some("10.0.0.2:8080"));
 }
 
 #[test]
 fn solve_normalized_populated() {
+    // Arrange
     let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
     let req = SyntheticRequest {
         scheme: "https".into(),
@@ -311,7 +339,10 @@ fn solve_normalized_populated() {
         body_size: 1024,
     };
 
+    // Act
     let d = solve(&state, &req, &opts_default());
+
+    // Assert
     assert_eq!(d.normalized.scheme, "https");
     assert_eq!(d.normalized.host, "myhost.com");
     assert_eq!(d.normalized.method, "POST");
