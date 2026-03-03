@@ -75,6 +75,11 @@ impl ConfigBuilder {
     }
 
     pub fn with_https_ingress(mut self) -> Self {
+        // Ensure the ACME orders directory exists before build() triggers config
+        // validation.  Validation requires data_dir.is_dir() to be true, and the
+        // directory is otherwise only created inside TestServer::start_with_config.
+        std::fs::create_dir_all(ACME_ORDERS_DIR).expect("failed to create ACME orders directory");
+
         self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
         self.server_spec.tls_automation = Some(snakeway_core::conf::types::TlsAutomationSpec {
             acme: AcmeServerSpec {
