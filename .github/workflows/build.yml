@@ -84,6 +84,9 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
+      - name: Install protoc
+        run: sudo apt-get update -y && sudo apt-get install -y protobuf-compiler
+
       # Generate the non-ACME TLS material (server.pem, server.key, origin-ca.pem).
       # These certificates are created by our own test CA and are used by the proxy
       # tests that exercise manual TLS termination.  They do not depend on Pebble.
