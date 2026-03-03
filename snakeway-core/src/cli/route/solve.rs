@@ -65,10 +65,7 @@ pub fn run(args: RouteSolveArgs) {
         .clone()
         .unwrap_or_else(|| parsed_url.scheme().to_string());
 
-    let host = parsed_url
-        .host_str()
-        .unwrap_or("localhost")
-        .to_string();
+    let host = parsed_url.host_str().unwrap_or("localhost").to_string();
 
     let path = args
         .path
@@ -84,7 +81,11 @@ pub fn run(args: RouteSolveArgs) {
     let validated = match load_config(&args.config) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("error: failed to load config from '{}': {}", args.config.display(), e);
+            eprintln!(
+                "error: failed to load config from '{}': {}",
+                args.config.display(),
+                e
+            );
             process::exit(EXIT_CONFIG_FAILURE);
         }
     };
@@ -148,8 +149,8 @@ fn parse_header(raw: &str) -> Result<(HeaderName, HeaderValue), String> {
     let key = raw[..colon_pos].trim();
     let value = raw[colon_pos + 1..].trim();
 
-    let name =
-        HeaderName::from_bytes(key.as_bytes()).map_err(|e| format!("invalid header name: {}", e))?;
+    let name = HeaderName::from_bytes(key.as_bytes())
+        .map_err(|e| format!("invalid header name: {}", e))?;
     let val = HeaderValue::from_str(value).map_err(|e| format!("invalid header value: {}", e))?;
 
     Ok((name, val))
@@ -164,19 +165,11 @@ fn render_pretty(decision: &RouteSolveDecision, verbose: bool) {
         println!("  path:      {}", decision.normalized.path);
         println!(
             "  query:     {}",
-            decision
-                .normalized
-                .query
-                .as_deref()
-                .unwrap_or("(none)")
+            decision.normalized.query.as_deref().unwrap_or("(none)")
         );
         println!(
             "  client_ip: {}",
-            decision
-                .normalized
-                .client_ip
-                .as_deref()
-                .unwrap_or("(none)")
+            decision.normalized.client_ip.as_deref().unwrap_or("(none)")
         );
         println!("  body_size: {}", decision.normalized.body_size);
         println!();

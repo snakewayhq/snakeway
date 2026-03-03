@@ -1,6 +1,6 @@
 use crate::route::types::{
-    RouteRuntime, RouteSolveDecision, RouteSolveNormalized, RouteSolveOptions,
-    RouteSolveRejection, RouteSolveTraceStep, SyntheticRequest,
+    RouteRuntime, RouteSolveDecision, RouteSolveNormalized, RouteSolveOptions, RouteSolveRejection,
+    RouteSolveTraceStep, SyntheticRequest,
 };
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamRuntime};
 use anyhow::{Result, anyhow};
@@ -179,7 +179,10 @@ pub fn solve(
             trace.push(RouteSolveTraceStep {
                 stage: "route_match".into(),
                 outcome: "trying".into(),
-                detail: format!("listener={}, host={}, path={}", listener_key, req.host, req.path),
+                detail: format!(
+                    "listener={}, host={}, path={}",
+                    listener_key, req.host, req.path
+                ),
             });
         }
         match router.match_route(&req.host, &req.path) {
@@ -204,7 +207,10 @@ pub fn solve(
                     trace.push(RouteSolveTraceStep {
                         stage: "route_match".into(),
                         outcome: "no_match".into(),
-                        detail: format!("listener={}, host={}, path={}", listener_key, req.host, req.path),
+                        detail: format!(
+                            "listener={}, host={}, path={}",
+                            listener_key, req.host, req.path
+                        ),
                     });
                 }
             }
@@ -273,18 +279,12 @@ pub fn solve(
                 trace: if record_trace { Some(trace) } else { None },
             }
         }
-        RouteRuntime::Static {
-            file_dir, path, ..
-        } => {
+        RouteRuntime::Static { file_dir, path, .. } => {
             if record_trace {
                 trace.push(RouteSolveTraceStep {
                     stage: "static_resolve".into(),
                     outcome: "resolved".into(),
-                    detail: format!(
-                        "path={}, file_dir={}",
-                        path,
-                        file_dir.display()
-                    ),
+                    detail: format!("path={}, file_dir={}", path, file_dir.display()),
                 });
             }
             RouteSolveDecision {
@@ -323,7 +323,10 @@ fn select_upstream(
 
     let (idx, rule) = if let Some(forced) = opts.lb_index {
         let idx = forced % upstreams.len();
-        (idx, format!("lb_index={} (mod {})", forced, upstreams.len()))
+        (
+            idx,
+            format!("lb_index={} (mod {})", forced, upstreams.len()),
+        )
     } else if let Some(ref key) = opts.lb_key {
         let hash = fnv1a_hash(key.as_bytes());
         let idx = (hash as usize) % upstreams.len();
@@ -406,6 +409,9 @@ mod tests {
                     use_tls: false,
                     sni: host.to_string(),
                     weight: 1,
+                    verify: false,
+                    ca: None,
+                    group_key: 0,
                 })
             })
             .collect();
@@ -569,6 +575,9 @@ mod tests {
                         use_tls: false,
                         sni: "127.0.0.1".into(),
                         weight: 1,
+                        verify: false,
+                        ca: None,
+                        group_key: 0,
                     })],
                     circuit_breaker_cfg: Default::default(),
                     health_check_cfg: Default::default(),
@@ -593,8 +602,7 @@ mod tests {
 
     #[test]
     fn solve_trace_stable() {
-        let state =
-            make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
+        let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
         let req = make_req("/api/test");
 
         let opts = RouteSolveOptions {
@@ -620,8 +628,7 @@ mod tests {
 
     #[test]
     fn solve_rejection_stable() {
-        let state =
-            make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
+        let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
         let req = make_req("/nope");
 
         let d1 = solve(&state, &req, &opts_default());
@@ -663,8 +670,7 @@ mod tests {
 
     #[test]
     fn solve_normalized_populated() {
-        let state =
-            make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
+        let state = make_state_with_service_route("/api", "api-svc", vec![("10.0.0.1", 8080)]);
         let req = SyntheticRequest {
             scheme: "https".into(),
             host: "myhost.com".into(),

@@ -36,7 +36,10 @@ fn route_solve_matches_service_route() {
 
     assert!(decision.matched_route.is_some(), "should match a route");
     assert_eq!(decision.route_kind.as_deref(), Some("service"));
-    assert!(decision.selected_upstream.is_some(), "should select an upstream");
+    assert!(
+        decision.selected_upstream.is_some(),
+        "should select an upstream"
+    );
     assert!(decision.rejection.is_none(), "should not be rejected");
 }
 
