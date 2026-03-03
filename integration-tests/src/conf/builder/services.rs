@@ -1,4 +1,9 @@
 use crate::conf::ConfigBuilder;
+use crate::constants::{
+    ACME_CERTS_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDERS_DIR, CERT_ORIGIN_CA_PEM,
+    CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM, ROUTE_PATH_API, ROUTE_PATH_GRPC,
+    ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
+};
 use snakeway_core::conf::types::{
     AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec,
     EndpointTlsSpec, HostSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec,
@@ -8,19 +13,19 @@ use std::path::PathBuf;
 
 impl ConfigBuilder {
     pub fn with_grpc_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some(PathBuf::from("./certs/origin-ca.pem"));
+        self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
 
         let mut bind = Self::make_bind(true);
         bind.enable_http2 = true;
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
-                hosts: vec!["snakeway.test".to_string()],
-                path: "/helloworld.Greeter/SayHello".to_string(),
+                hosts: vec![TEST_HOST.to_string()],
+                path: ROUTE_PATH_GRPC.to_string(),
                 ..Default::default()
             }],
             upstreams: vec![
-                Self::make_tcp_upstream(9000, true),
-                Self::make_tcp_upstream(9001, true),
+                Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, true),
+                Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, true),
             ],
             ..Default::default()
         };
@@ -37,14 +42,14 @@ impl ConfigBuilder {
         let bind = Self::make_bind(false);
         let service = ServiceSpec {
             routes: vec![ServiceRouteSpec {
-                hosts: vec!["snakeway.test".to_string()],
-                path: "/ws".to_string(),
+                hosts: vec![TEST_HOST.to_string()],
+                path: ROUTE_PATH_WS.to_string(),
                 enable_websocket: true,
                 ..Default::default()
             }],
             upstreams: vec![
-                Self::make_tcp_upstream(9000, false),
-                Self::make_tcp_upstream(9001, false),
+                Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
+                Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
             ],
             ..Default::default()
         };
@@ -70,17 +75,17 @@ impl ConfigBuilder {
     }
 
     pub fn with_https_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some(PathBuf::from("./certs/origin-ca.pem"));
+        self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
         self.server_spec.tls_automation = Some(snakeway_core::conf::types::TlsAutomationSpec {
             acme: AcmeServerSpec {
-                directory_url: "https://localhost:14000/dir".to_string(),
-                data_dir: PathBuf::from("./acme/orders/"),
-                contact_email: vec!["barryallen@example.com".to_string()],
-                ca_file: Some(PathBuf::from("./certs/pebble-ca.pem")),
+                directory_url: ACME_DIRECTORY_URL.to_string(),
+                data_dir: PathBuf::from(ACME_ORDERS_DIR),
+                contact_email: vec![ACME_CONTACT_EMAIL.to_string()],
+                ca_file: Some(PathBuf::from(CERT_PEBBLE_CA_PEM)),
             },
             // Memory store avoids filesystem path concerns in tests.
             cert_store: CertStoreSpec::Filesystem {
-                cert_dir: PathBuf::from("./acme/certs/"),
+                cert_dir: PathBuf::from(ACME_CERTS_DIR),
             },
             renew_within_days: 30,
         });
@@ -106,8 +111,8 @@ impl ConfigBuilder {
                 interface: BindInterfaceInput::Keyword("loopback".to_string()),
                 port: 9443,
                 tls: TlsTerminationSpec::Manual {
-                    cert: PathBuf::from("./certs/server.pem"),
-                    key: PathBuf::from("./certs/server.key"),
+                    cert: PathBuf::from(CERT_SERVER_PEM),
+                    key: PathBuf::from(CERT_SERVER_KEY),
                 },
                 ..Default::default()
             }),
@@ -121,11 +126,11 @@ impl ConfigBuilder {
     pub(crate) fn make_tcp_upstream(port: u16, use_tls: bool) -> UpstreamSpec {
         UpstreamSpec {
             endpoint: Some(EndpointSpec {
-                host: HostSpec::Hostname("snakeway.test".to_string()),
+                host: HostSpec::Hostname(TEST_HOST.to_string()),
                 port,
                 tls: if use_tls {
                     Some(EndpointTlsSpec {
-                        sni: "snakeway.test".to_string(),
+                        sni: TEST_HOST.to_string(),
                         verify: false,
                         ca_file: Default::default(),
                     })
@@ -141,13 +146,13 @@ impl ConfigBuilder {
     pub(crate) fn make_service_spec() -> ServiceSpec {
         ServiceSpec {
             routes: vec![ServiceRouteSpec {
-                hosts: vec!["snakeway.test".to_string()],
-                path: "/api".to_string(),
+                hosts: vec![TEST_HOST.to_string()],
+                path: ROUTE_PATH_API.to_string(),
                 ..Default::default()
             }],
             upstreams: vec![
-                Self::make_tcp_upstream(9000, false),
-                Self::make_tcp_upstream(9001, false),
+                Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
+                Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
             ],
             ..Default::default()
         }
