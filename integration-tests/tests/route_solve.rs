@@ -1,7 +1,6 @@
 use integration_tests::conf::ConfigBuilder;
 use pretty_assertions::assert_eq;
-use snakeway_core::route::router::solve;
-use snakeway_core::route::{RouteSolveOptions, SyntheticRequest};
+use snakeway_core::cli::route::solve::{RouteSolveOptions, SyntheticRequest, solve};
 use snakeway_core::runtime::build_runtime_state;
 
 fn make_req(scheme: &str, host: &str, path: &str) -> SyntheticRequest {
@@ -11,7 +10,6 @@ fn make_req(scheme: &str, host: &str, path: &str) -> SyntheticRequest {
         method: http::Method::GET,
         path: path.to_string(),
         query: None,
-        headers: http::HeaderMap::new(),
         client_ip: None,
         body_size: 0,
     }
@@ -29,7 +27,7 @@ fn opts(trace: bool) -> RouteSolveOptions {
 #[test]
 fn route_solve_matches_service_route() {
     let cfg = ConfigBuilder::default().with_http_ingress().build();
-    let state = build_runtime_state(&cfg).expect("build_runtime_state failed");
+    let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
 
     let req = make_req("http", "example.com", "/api/users");
     let decision = solve(&state, &req, &opts(false));
@@ -46,7 +44,7 @@ fn route_solve_matches_service_route() {
 #[test]
 fn route_solve_no_match_returns_rejection() {
     let cfg = ConfigBuilder::default().with_http_ingress().build();
-    let state = build_runtime_state(&cfg).expect("build_runtime_state failed");
+    let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
 
     let req = make_req("http", "example.com", "/nonexistent");
     let decision = solve(&state, &req, &opts(false));
@@ -59,7 +57,7 @@ fn route_solve_no_match_returns_rejection() {
 #[test]
 fn route_solve_json_output_is_stable() {
     let cfg = ConfigBuilder::default().with_http_ingress().build();
-    let state = build_runtime_state(&cfg).expect("build_runtime_state failed");
+    let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
 
     let req = make_req("http", "example.com", "/api/test");
     let d1 = solve(&state, &req, &opts(true));
@@ -73,7 +71,7 @@ fn route_solve_json_output_is_stable() {
 #[test]
 fn route_solve_lb_index_selects_correct_upstream() {
     let cfg = ConfigBuilder::default().with_http_ingress().build();
-    let state = build_runtime_state(&cfg).expect("build_runtime_state failed");
+    let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
 
     let req = make_req("http", "example.com", "/api");
 
@@ -104,7 +102,7 @@ fn route_solve_lb_index_selects_correct_upstream() {
 #[test]
 fn route_solve_lb_key_deterministic_across_calls() {
     let cfg = ConfigBuilder::default().with_http_ingress().build();
-    let state = build_runtime_state(&cfg).expect("build_runtime_state failed");
+    let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
 
     let req = make_req("http", "example.com", "/api");
     let opts = RouteSolveOptions {
@@ -126,7 +124,7 @@ fn route_solve_lb_key_deterministic_across_calls() {
 #[test]
 fn route_solve_trace_contains_expected_stages() {
     let cfg = ConfigBuilder::default().with_http_ingress().build();
-    let state = build_runtime_state(&cfg).expect("build_runtime_state failed");
+    let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
 
     let req = make_req("http", "example.com", "/api");
     let decision = solve(&state, &req, &opts(true));
