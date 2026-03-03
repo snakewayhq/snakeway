@@ -26,12 +26,15 @@ fn opts(trace: bool) -> RouteSolveOptions {
 
 #[test]
 fn route_solve_matches_service_route() {
+    // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-
     let req = make_req("http", "example.com", "/api/users");
+
+    // Act
     let decision = solve(&state, &req, &opts(false));
 
+    // Assert
     assert!(decision.matched_route.is_some(), "should match a route");
     assert_eq!(decision.route_kind.as_deref(), Some("service"));
     assert!(
@@ -43,12 +46,15 @@ fn route_solve_matches_service_route() {
 
 #[test]
 fn route_solve_no_match_returns_rejection() {
+    // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-
     let req = make_req("http", "example.com", "/nonexistent");
+
+    // Act
     let decision = solve(&state, &req, &opts(false));
 
+    // Assert
     assert!(decision.matched_route.is_none());
     assert!(decision.rejection.is_some());
     assert_eq!(decision.rejection.as_ref().unwrap().stage, "route_match");
@@ -56,13 +62,16 @@ fn route_solve_no_match_returns_rejection() {
 
 #[test]
 fn route_solve_json_output_is_stable() {
+    // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-
     let req = make_req("http", "example.com", "/api/test");
+
+    // Act
     let d1 = solve(&state, &req, &opts(true));
     let d2 = solve(&state, &req, &opts(true));
 
+    // Assert
     let json1 = serde_json::to_string_pretty(&d1).unwrap();
     let json2 = serde_json::to_string_pretty(&d2).unwrap();
     assert_eq!(json1, json2, "JSON output must be deterministic");
@@ -70,11 +79,10 @@ fn route_solve_json_output_is_stable() {
 
 #[test]
 fn route_solve_lb_index_selects_correct_upstream() {
+    // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-
     let req = make_req("http", "example.com", "/api");
-
     let opts_0 = RouteSolveOptions {
         lb_key: None,
         lb_index: Some(0),
@@ -88,9 +96,11 @@ fn route_solve_lb_index_selects_correct_upstream() {
         verbose: false,
     };
 
+    // Act
     let d0 = solve(&state, &req, &opts_0);
     let d1 = solve(&state, &req, &opts_1);
 
+    // Assert
     assert!(d0.selected_upstream.is_some());
     assert!(d1.selected_upstream.is_some());
     assert_ne!(
@@ -101,9 +111,9 @@ fn route_solve_lb_index_selects_correct_upstream() {
 
 #[test]
 fn route_solve_lb_key_deterministic_across_calls() {
+    // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-
     let req = make_req("http", "example.com", "/api");
     let opts = RouteSolveOptions {
         lb_key: Some("session-abc-123".into()),
@@ -112,9 +122,11 @@ fn route_solve_lb_key_deterministic_across_calls() {
         verbose: false,
     };
 
+    // Act
     let d1 = solve(&state, &req, &opts);
     let d2 = solve(&state, &req, &opts);
 
+    // Assert
     assert_eq!(
         d1.selected_upstream, d2.selected_upstream,
         "same lb_key must yield same upstream"
@@ -123,12 +135,15 @@ fn route_solve_lb_key_deterministic_across_calls() {
 
 #[test]
 fn route_solve_trace_contains_expected_stages() {
+    // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-
     let req = make_req("http", "example.com", "/api");
+
+    // Act
     let decision = solve(&state, &req, &opts(true));
 
+    // Assert
     let trace = decision.trace.expect("trace should be present");
     assert!(!trace.is_empty(), "trace should have entries");
 
