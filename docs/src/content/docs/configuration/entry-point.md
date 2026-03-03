@@ -29,7 +29,8 @@ Summary:
 - `threads` is optional and intended for advanced tuning.
 - `work_stealing` is optional and intended for advanced tuning.
 - `ca_file` is optional and used to verify upstream certificates.
-- `include` tells snakeway where to look for device an ingress files.
+- `tls_automation` is optional and configures automatic ACME certificate management.
+- `include` tells snakeway where to look for device and ingress files.
 
 ## Server
 
@@ -119,18 +120,9 @@ server {
 }
 ```
 
-:::tip
-For most deployments, leaving this option unset is likely not the right choice.
-
-You most likely want to make it match the number of cores on your server.
-
-If `threads` is **not set**, Snakeway does not select a value on your behalf. Instead, it *defers entirely* to the
-Pingora runtime's internal defaults.
-:::
-
 #### ca_file
 
-**Type:** `string`  
+**Type:** `string`
 **Required:** no
 
 Certificate Authority file used to verify upstream certificates.
@@ -140,5 +132,76 @@ This is not optional if upstreams are configured with TLS.
 ```hcl
 server {
   ca_file = "/path/to/certs/ca.pem"
+}
+```
+
+#### tls_automation
+
+**Type:** `object`
+**Required:** no
+
+Configures automatic TLS certificate issuance and renewal via the ACME protocol (e.g., Let's Encrypt).
+
+When set, Snakeway will automatically obtain and renew certificates for any `bind` blocks configured with `mode = "acme"`.
+
+See the [TLS Cert Management](/guide/tls-cert-management) guide for full details.
+
+```hcl
+server {
+  tls_automation = {
+    renew_within_days = 30
+    acme = {
+      directory_url = "https://acme-v02.api.letsencrypt.org/directory"
+      data_dir      = "/var/lib/snakeway/acme"
+      contact_email = ["admin@example.com"]
+    }
+    cert_store = {
+      type     = "filesystem"
+      cert_dir = "/var/lib/snakeway/acme/certs"
+    }
+  }
+}
+```
+
+##### renew_within_days
+
+**Type:** `integer`
+**Default:** `30`
+
+How many days before expiry to begin attempting renewal. Recommended range: 7–30.
+
+##### acme
+
+**Type:** `object`
+**Required:** yes (when `tls_automation` is set)
+
+ACME server connection details.
+
+- `directory_url` — The ACME directory URL (e.g., Let's Encrypt's production or staging endpoint).
+- `data_dir` — Directory where ACME account keys and order state are persisted.
+- `contact_email` — One or more contact email addresses registered with the ACME provider.
+- `ca_file` — Optional CA certificate file for verifying the ACME server's TLS certificate (useful for staging/testing environments).
+
+##### cert_store
+
+**Type:** `object`
+**Required:** yes (when `tls_automation` is set)
+
+Determines where issued certificates are stored. Two types are supported:
+
+`filesystem` — persists certificates to disk across restarts (recommended for production):
+
+```hcl
+cert_store = {
+  type     = "filesystem"
+  cert_dir = "/var/lib/snakeway/acme/certs"
+}
+```
+
+`memory` — stores certificates in memory only; certificates are lost on restart (useful for development and testing):
+
+```hcl
+cert_store = {
+  type = "memory"
 }
 ```
