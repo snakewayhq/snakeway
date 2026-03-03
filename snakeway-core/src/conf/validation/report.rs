@@ -445,14 +445,6 @@ impl ValidationReport {
         )
     }
 
-    pub fn acme_requires_durable_cert_store(&mut self, origin: &Origin) {
-        self.warning(
-            "ACME requires a durable cert store; certs will be discarded on restart with memory store".to_string(),
-            origin,
-            None,
-        )
-    }
-
     pub fn acme_configured_in_ingress_but_server_tls_not_configured(&mut self, origin: &Origin) {
         self.error(
             "ACME configured in ingress but server.tls_automation is not configured".to_string(),

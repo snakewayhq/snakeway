@@ -121,10 +121,10 @@ impl Reconciler {
             );
 
             if let Err(e) = self
-                .step(cert_id.clone(), desired_cert, state, order_state)
+                .step(cert_id.clone(), desired_cert, &state, order_state)
                 .await
             {
-                warn!(error = %e, "cert_manager: reconcile step failed");
+                warn!(error = %e, state = %state, "cert_manager: reconcile step failed");
             }
         }
 
@@ -135,7 +135,7 @@ impl Reconciler {
         &self,
         cert_id: String,
         desired: DesiredCertificate,
-        state: CertState,
+        state: &CertState,
         order_state: Option<OrderState>,
     ) -> Result<(), ReconcilerError> {
         match state {

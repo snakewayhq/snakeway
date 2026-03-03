@@ -1,6 +1,7 @@
 use crate::cert_manager::order_store::{OrderState, OrderStatus};
 use crate::cert_manager::renewal_policy::RenewalPolicy;
 use serde::Serialize;
+use std::fmt;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -55,6 +56,21 @@ pub enum CertState {
     /// The system should apply backoff before retrying.
     /// Must not continuously retry every tick.
     Failed,
+}
+
+impl fmt::Display for CertState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CertState::Absent => write!(f, "Absent"),
+            CertState::Ordering => write!(f, "Ordering"),
+            CertState::ChallengeInit => write!(f, "ChallengeInit"),
+            CertState::Challenging => write!(f, "Challenging"),
+            CertState::Finalizing => write!(f, "Finalizing"),
+            CertState::Valid => write!(f, "Valid"),
+            CertState::Renewing => write!(f, "Renewing"),
+            CertState::Failed => write!(f, "Failed"),
+        }
+    }
 }
 
 pub fn compute_state(

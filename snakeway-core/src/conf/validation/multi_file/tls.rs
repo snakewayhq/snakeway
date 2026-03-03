@@ -36,7 +36,12 @@ pub fn validate_tls(server: &ServerSpec, ingresses: &[IngressSpec], report: &mut
 
         match &tls_automation_cfg.cert_store {
             CertStoreSpec::Memory => {
-                report.acme_requires_durable_cert_store(&server.origin);
+                // Nothing to validate, but should drop a warning directly here.
+                // Adding a warning to the report will fail validation.
+                // This is kind of a gray area.
+                tracing::warn!(
+                    "ACME configured with memory store. Certs will be discarded on restart."
+                );
             }
             CertStoreSpec::Filesystem { cert_dir } => {
                 if cert_dir.as_os_str().is_empty() {
