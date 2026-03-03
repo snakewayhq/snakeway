@@ -21,6 +21,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: cargo fmt
         run: cargo fmt -- --check
 
@@ -39,17 +42,11 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-test-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run unit tests (snakeway-core)
         run: |
@@ -75,25 +72,30 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
           version: "0.12.0"
 
-      - name: Install cargo-zigbuild
-        run: cargo install cargo-zigbuild
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
-      - name: Cache cargo registry
+      - name: Cache cargo-zigbuild
+        id: cache-zigbuild
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          path: ~/.cargo/bin/cargo-zigbuild
+          key: cargo-zigbuild-${{ runner.os }}
+          restore-keys: cargo-zigbuild-${{ runner.os }}
 
-      - name: Add Rust target
-        run: rustup target add ${{ matrix.target }}
+      - name: Install cargo-zigbuild
+        if: steps.cache-zigbuild.outputs.cache-hit != 'true'
+        run: cargo install cargo-zigbuild
 
       - name: Build with zigbuild
         run: cargo zigbuild --release --target ${{ matrix.target }}
