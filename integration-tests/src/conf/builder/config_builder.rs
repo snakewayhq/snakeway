@@ -1,6 +1,6 @@
 use snakeway_core::conf::types::{
-    BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
-    IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
+    AcmeChallengeSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
+    DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
     NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
@@ -48,6 +48,18 @@ impl ConfigBuilder {
             tls: include_tls.then_some(TlsTerminationSpec::Manual {
                 cert: PathBuf::from("./certs/server.pem".to_string()),
                 key: PathBuf::from("./certs/server.key".to_string()),
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub(crate) fn make_bind_with_acme() -> BindSpec {
+        BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
+            tls: Some(TlsTerminationSpec::Acme {
+                domains: vec!["snakeway.test".to_string()],
+                challenge: AcmeChallengeSpec::Http01,
             }),
             ..Default::default()
         }

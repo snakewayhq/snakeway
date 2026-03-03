@@ -10,7 +10,7 @@ use snakeway_core::server::{ReloadHandle, build_pingora_server};
 use snakeway_core::traffic_management::{TrafficManager, TrafficSnapshot};
 use snakeway_core::ws_connection_management::WsConnectionManager;
 use std::net::TcpStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -80,7 +80,7 @@ impl TestServer {
         let cert_manager: Option<Arc<CertManager>> = {
             let has_tls = cfg.listeners.iter().any(|l| l.tls_termination.is_some());
             if has_tls && let Some(tls_auto) = &cfg.server.tls_automation {
-                let order_dir = std::env::temp_dir().join("snakeway-test-acme-orders");
+                let order_dir = PathBuf::from("./acme/orders/");
                 std::fs::create_dir_all(&order_dir).expect("failed to create ACME order store dir");
                 let cert_store = Arc::new(MemoryCertStore::default());
                 let order_store = Arc::new(FilesystemOrderStore::new(order_dir));

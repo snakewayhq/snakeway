@@ -74,18 +74,20 @@ impl ConfigBuilder {
         self.server_spec.tls_automation = Some(snakeway_core::conf::types::TlsAutomationSpec {
             acme: AcmeServerSpec {
                 directory_url: "https://localhost:14000/dir".to_string(),
-                data_dir: PathBuf::from("./certs/acme"),
+                data_dir: PathBuf::from("./acme/orders/"),
                 contact_email: vec!["barryallen@example.com".to_string()],
                 ca_file: Some(PathBuf::from("./certs/pebble-ca.pem")),
             },
             // Memory store avoids filesystem path concerns in tests.
-            cert_store: CertStoreSpec::Memory,
+            cert_store: CertStoreSpec::Filesystem {
+                cert_dir: PathBuf::from("./acme/certs/"),
+            },
             renew_within_days: 30,
         });
 
         // Public HTTPS listener.  Port 5002 is Pebble's httpPort (see pebble.json):
         // the redirect listener on that port answers HTTP-01 challenges during ACME issuance.
-        let mut bind = Self::make_bind(true);
+        let mut bind = Self::make_bind_with_acme();
         bind.redirect_http_to_https = Some(RedirectSpec {
             port: 5002,
             status: 301,

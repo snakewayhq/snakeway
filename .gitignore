@@ -21,6 +21,7 @@ dist/
 /config/
 /dev/
 /integration-tests/certs/
+/integration-tests/acme/
 /plugins/
 profile.json.gz
 /.snapshots/

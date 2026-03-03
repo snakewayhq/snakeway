@@ -56,7 +56,7 @@ fn patch_acme_paths(cfg: &mut RuntimeConfig) {
         return;
     };
     // Absolutize the ACME data dir so the test process can find it regardless of cwd.
-    tls_auto.acme.data_dir = manifest_dir.join("certs/acme");
+    tls_auto.acme.data_dir = manifest_dir.join("acme/orders/");
     // Absolutize the Pebble CA file path.
     if tls_auto.acme.ca_file.is_some() {
         tls_auto.acme.ca_file = Some(manifest_dir.join("certs/pebble-ca.pem"));
