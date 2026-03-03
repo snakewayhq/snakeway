@@ -198,7 +198,9 @@ fn make_upstream_runtime_from_tcp(
 
     // Handle per-endpoint TLS settings.
     let use_tls = cfg.tls.is_some();
-    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls && tls_cfg.verify {
+    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
+        && tls_cfg.verify
+    {
         // Prefer the per-endpoint ca_file; fall back to the global server.ca_file.
         let effective_ca = tls_cfg.ca_file.as_deref().or(global_ca_file);
         if let Some(ca_file) = effective_ca {
