@@ -7,9 +7,11 @@ use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
 use anyhow::Result;
 use http::HeaderMap;
+use opentelemetry::{global, metrics::{Counter, Histogram}};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
-use tracing::{debug, error, info, trace, warn};
+use std::time::Instant;
+use tracing::{Span, debug, error, field, info, trace, warn};
 
 // ----------------------------------------------------------------------------
 // Logging level & config enums
@@ -43,6 +45,18 @@ pub enum LogPhase {
 }
 
 // ----------------------------------------------------------------------------
+// Marker types stored in ctx.extensions for OTel span lifecycle
+// ----------------------------------------------------------------------------
+
+/// Stored in extensions at request start to compute duration at response time.
+#[derive(Clone)]
+struct OtelRequestStart(Instant);
+
+/// Stored in extensions so the span can be finalized on response.
+#[derive(Clone)]
+struct OtelRequestSpan(Span);
+
+// ----------------------------------------------------------------------------
 // Emit macro ...to DRY-out logging calls.
 // ----------------------------------------------------------------------------
 
@@ -74,10 +88,25 @@ pub struct StructuredLoggingDevice {
 
     events: Option<Vec<LogEvent>>,
     phases: Option<Vec<LogPhase>>,
+
+    otel_metrics: bool,
+    request_counter: Counter<u64>,
+    request_duration: Histogram<f64>,
 }
 
 impl StructuredLoggingDevice {
     pub fn from_config(cfg: StructuredLoggingDeviceConfig) -> Result<Self> {
+        let meter = global::meter("snakeway");
+        let request_counter = meter
+            .u64_counter("http.server.request.count")
+            .with_description("Total HTTP requests processed")
+            .build();
+        let request_duration = meter
+            .f64_histogram("http.server.request.duration")
+            .with_description("HTTP request duration in seconds")
+            .with_unit("s")
+            .build();
+
         Ok(Self {
             level: cfg.level,
 
@@ -98,6 +127,10 @@ impl StructuredLoggingDevice {
 
             events: cfg.events,
             phases: cfg.phases,
+
+            otel_metrics: cfg.otel_metrics,
+            request_counter,
+            request_duration,
         })
     }
 
@@ -275,6 +308,26 @@ impl Device for StructuredLoggingDevice {
                 None,
             );
         }
+
+        if self.otel_metrics {
+            ctx.extensions.insert(OtelRequestStart(Instant::now()));
+
+            let span = tracing::info_span!(
+                "http.request",
+                otel.kind = "server",
+                "http.request.method" = ctx.method_str(),
+                "url.path" = ctx.original_uri_path(),
+                "http.response.status_code" = field::Empty,
+                "request_id" = field::Empty,
+            );
+
+            if let Some(rid) = ctx.extensions.get::<RequestId>() {
+                span.record("request_id", rid.0.as_str());
+            }
+
+            ctx.extensions.insert(OtelRequestSpan(span));
+        }
+
         DeviceResult::Continue
     }
 
@@ -302,6 +355,24 @@ impl Device for StructuredLoggingDevice {
         if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::Response) {
             self.emit_http_response(ctx, HttpEvent::Response);
         }
+
+        if self.otel_metrics {
+            let status = ctx.status.as_u16();
+
+            if let Some(otel_span) = ctx.extensions.get::<OtelRequestSpan>() {
+                otel_span.0.record("http.response.status_code", status as i64);
+            }
+
+            use opentelemetry::KeyValue;
+            let attrs = [KeyValue::new("http.response.status_code", status as i64)];
+
+            self.request_counter.add(1, &attrs);
+
+            if let Some(start) = ctx.extensions.get::<OtelRequestStart>() {
+                self.request_duration.record(start.0.elapsed().as_secs_f64(), &attrs);
+            }
+        }
+
         DeviceResult::Continue
     }
 

@@ -29,6 +29,8 @@ pub struct StructuredLoggingDeviceConfig {
     pub events: Option<Vec<LogEvent>>,
 
     pub phases: Option<Vec<LogPhase>>,
+
+    pub otel_metrics: bool,
 }
 
 impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
@@ -43,6 +45,7 @@ impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
             identity_fields: spec.identity_fields,
             events: spec.events,
             phases: spec.phases,
+            otel_metrics: spec.otel_metrics,
         }
     }
 }

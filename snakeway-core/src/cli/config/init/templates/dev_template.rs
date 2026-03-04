@@ -1,9 +1,8 @@
 use crate::conf::types::{
     AcmeChallengeSpec, BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
-    NetworkPolicyDeviceSpec, OtelDeviceSpec, RedirectSpec, RequestFilterDeviceSpec,
+    NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
-use crate::enrichment::identity_field::IdentityField;
 use crate::serialization::to_hcl_string;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -46,23 +45,6 @@ pub(crate) fn generate(
             "structured_logging.hcl",
             DevicesFile {
                 structured_logging_device: Some(StructuredLoggingDeviceSpec::default()),
-                ..Default::default()
-            },
-        ),
-        (
-            "otel.hcl",
-            DevicesFile {
-                otel_device: Some(OtelDeviceSpec {
-                    enable: true,
-                    endpoint: Some("http://localhost:4317".to_string()),
-                    service_name: "snakeway".to_string(),
-                    identity_fields: vec![
-                        IdentityField::Country,
-                        IdentityField::Device,
-                        IdentityField::Bot,
-                    ],
-                    ..Default::default()
-                }),
                 ..Default::default()
             },
         ),

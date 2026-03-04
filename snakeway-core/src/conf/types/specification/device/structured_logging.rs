@@ -34,4 +34,9 @@ pub struct StructuredLoggingDeviceSpec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phases: Option<Vec<LogPhase>>,
+
+    /// Emit OTel spans and metrics for each request/response.
+    /// Requires OTEL_EXPORTER_OTLP_ENDPOINT to be set at startup.
+    #[serde(default)]
+    pub otel_metrics: bool,
 }

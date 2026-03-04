@@ -25,11 +25,6 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
         device_config.push(DeviceSpec::RequestRateLimiting(request_rate_limiting));
     }
 
-    if let Some(mut otel) = parsed.otel_device {
-        otel.origin = Origin::new(&path.to_path_buf(), "otel_device", None);
-        device_config.push(DeviceSpec::Otel(otel));
-    }
-
     if let Some(mut logging) = parsed.structured_logging_device {
         logging.origin = Origin::new(&path.to_path_buf(), "structured_logging_device", None);
         device_config.push(DeviceSpec::StructuredLogging(logging));
