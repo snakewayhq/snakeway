@@ -2,7 +2,7 @@ use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, 
 use snakeway_core::conf::types::{
     AcmeChallengeSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
     DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
-    NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
+    NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, OtelDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
@@ -12,6 +12,7 @@ pub struct ConfigBuilder {
     pub server_spec: ServerSpec,
     pub ingress_specs: Vec<IngressSpec>,
     pub identity_device_spec: Option<IdentityDeviceSpec>,
+    pub otel_device_spec: Option<OtelDeviceSpec>,
     pub structured_logging_device_spec: Option<StructuredLoggingDeviceSpec>,
     pub request_filter_device_spec: Option<RequestFilterDeviceSpec>,
     pub network_policy_device_spec: Option<NetworkPolicyDeviceSpec>,
@@ -28,6 +29,7 @@ impl Default for ConfigBuilder {
             },
             ingress_specs: vec![],
             identity_device_spec: None,
+            otel_device_spec: None,
             structured_logging_device_spec: None,
             request_filter_device_spec: None,
             network_policy_device_spec: None,
@@ -72,6 +74,11 @@ impl ConfigBuilder {
         // Identity
         if let Some(identity_device_spec) = self.identity_device_spec {
             device_specs.push(DeviceSpec::Identity(identity_device_spec));
+        }
+
+        // OTel (runs after identity so ClientIdentity is available, before logging)
+        if let Some(otel_device_spec) = self.otel_device_spec {
+            device_specs.push(DeviceSpec::Otel(otel_device_spec));
         }
 
         // Structured Logging

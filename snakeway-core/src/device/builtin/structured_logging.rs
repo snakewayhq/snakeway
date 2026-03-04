@@ -2,7 +2,7 @@ use crate::conf::types::StructuredLoggingDeviceConfig;
 use crate::ctx::{RequestCtx, RequestId, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
-use crate::enrichment::identity_field::IdentityField;
+pub use crate::enrichment::identity_field::IdentityField;
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
 use anyhow::Result;

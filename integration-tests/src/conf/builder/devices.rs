@@ -1,7 +1,8 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
     ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec,
-    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
+    OtelDeviceSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
+    StructuredLoggingDeviceSpec,
 };
 use snakeway_core::device::builtin::structured_logging::{
     IdentityField, LogEvent, LogLevel, LogPhase,
@@ -195,6 +196,19 @@ impl ConfigBuilder {
             max_requests_per_second,
             window_seconds,
 
+            ..Default::default()
+        });
+        self
+    }
+}
+
+/// OTel Device
+impl ConfigBuilder {
+    pub fn with_otel_device(mut self) -> Self {
+        self.otel_device_spec = Some(OtelDeviceSpec {
+            enable: true,
+            endpoint: Some("http://localhost:4317".to_string()),
+            service_name: "snakeway".to_string(),
             ..Default::default()
         });
         self
