@@ -1,8 +1,7 @@
 use crate::conf::ConfigBuilder;
 use snakeway_core::conf::types::{
     ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec,
-    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
-    StructuredLoggingDeviceSpec,
+    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
 };
 use snakeway_core::device::builtin::structured_logging::{
     IdentityField, LogEvent, LogLevel, LogPhase,
@@ -201,4 +200,3 @@ impl ConfigBuilder {
         self
     }
 }
-
