@@ -54,10 +54,11 @@ pub fn lower_configs(
         //--------------------------------------------------------------------
         if let Some(bind) = ingress.bind {
             let use_tls = bind.tls.is_some();
-            // safe - validated already
             let bind_addr = bind
                 .resolve()
-                .expect("bind.resolve() must not fail after validation");
+                .map_err(|e| ConfigError::InvalidBindAddress {
+                    message: e.to_string(),
+                })?;
 
             //-----------------------------------------------------------------
             // Services
@@ -82,7 +83,9 @@ pub fn lower_configs(
                             .map(|endpoint| UpstreamTcpConfig::new(u.weight, endpoint))
                     })
                     .collect::<Result<Vec<_>, _>>()
-                    .expect("upstream.resolve() must not fail");
+                    .map_err(|e| ConfigError::InvalidUpstream {
+                        message: e.to_string(),
+                    })?;
 
                 let service_name = format!("{}-service", bind_addr);
 
@@ -154,7 +157,7 @@ pub fn lower_configs(
         .map(|spec| match spec {
             DeviceSpec::RequestFilter(d) => d.try_into().map(DeviceConfig::RequestFilter),
             DeviceSpec::Identity(d) => Ok(DeviceConfig::Identity(d.into())),
-            DeviceSpec::NetworkPolicy(d) => Ok(DeviceConfig::NetworkPolicy(d.into())),
+            DeviceSpec::NetworkPolicy(d) => d.try_into().map(DeviceConfig::NetworkPolicy),
             DeviceSpec::Wasm(d) => Ok(DeviceConfig::Wasm(d.into())),
             DeviceSpec::StructuredLogging(d) => Ok(DeviceConfig::StructuredLogging(d.into())),
             DeviceSpec::RequestRateLimiting(d) => Ok(DeviceConfig::RequestRateLimiting(d.into())),

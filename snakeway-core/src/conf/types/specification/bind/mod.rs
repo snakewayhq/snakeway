@@ -11,6 +11,7 @@ pub use tls_termination::*;
 use crate::conf::resolution::ResolveError;
 use crate::conf::types::Origin;
 use crate::conf::types::specification::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
+use crate::conf::validation::ConfigError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -37,7 +38,7 @@ impl BindSpec {
             .interface
             .clone()
             .try_into()
-            .expect("BindInterfaceSpec must be validated before resolve()");
+            .map_err(|e: ConfigError| ResolveError::InvalidInterface(e.to_string()))?;
 
         let ip = match interface {
             BindInterfaceSpec::Loopback => std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),

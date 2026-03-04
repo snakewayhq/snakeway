@@ -1,4 +1,5 @@
 use integration_tests::conf::ConfigBuilder;
+use integration_tests::constants::{ROUTE_PATH_API, TEST_HOST};
 use pretty_assertions::assert_eq;
 use snakeway_core::cli::route::solve::{RouteSolveOptions, SyntheticRequest, solve};
 use snakeway_core::runtime::build_runtime_state;
@@ -29,7 +30,7 @@ fn route_solve_matches_service_route() {
     // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-    let req = make_req("http", "snakeway.test", "/api/users");
+    let req = make_req("http", TEST_HOST, "/api/users");
 
     // Act
     let decision = solve(&state, &req, &opts(false));
@@ -49,7 +50,7 @@ fn route_solve_no_match_returns_rejection() {
     // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-    let req = make_req("http", "snakeway.test", "/nonexistent");
+    let req = make_req("http", TEST_HOST, "/nonexistent");
 
     // Act
     let decision = solve(&state, &req, &opts(false));
@@ -65,7 +66,7 @@ fn route_solve_json_output_is_stable() {
     // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-    let req = make_req("http", "snakeway.test", "/api/test");
+    let req = make_req("http", TEST_HOST, "/api/test");
 
     // Act
     let d1 = solve(&state, &req, &opts(true));
@@ -82,7 +83,7 @@ fn route_solve_lb_index_selects_correct_upstream() {
     // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-    let req = make_req("http", "snakeway.test", "/api");
+    let req = make_req("http", TEST_HOST, ROUTE_PATH_API);
     let opts_0 = RouteSolveOptions {
         lb_key: None,
         lb_index: Some(0),
@@ -114,7 +115,7 @@ fn route_solve_lb_key_deterministic_across_calls() {
     // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-    let req = make_req("http", "snakeway.test", "/api");
+    let req = make_req("http", TEST_HOST, ROUTE_PATH_API);
     let opts = RouteSolveOptions {
         lb_key: Some("session-abc-123".into()),
         lb_index: None,
@@ -138,7 +139,7 @@ fn route_solve_trace_contains_expected_stages() {
     // Arrange
     let cfg = ConfigBuilder::default().with_http_ingress().build();
     let state = build_runtime_state(&cfg, &None).expect("build_runtime_state failed");
-    let req = make_req("http", "snakeway.test", "/api");
+    let req = make_req("http", TEST_HOST, ROUTE_PATH_API);
 
     // Act
     let decision = solve(&state, &req, &opts(true));

@@ -16,6 +16,14 @@ An implementation of the `CertStore` trait determines where certificates are sto
 
 ### TLS Automation
 
+When `tls_automation` is configured in `snakeway.hcl`, Snakeway starts a background `CertManager` task.
+
+On startup (and periodically thereafter), the `CertManager` checks each ACME-managed domain. If a certificate is
+missing or due to expire within `renew_within_days`, it initiates the ACME renewal flow described above.
+
+The renewed certificate is stored and immediately made available to new TLS handshakes without requiring a server
+restart or reload.
+
 ### SNI
 
 The SNI handling is a bit tricky.

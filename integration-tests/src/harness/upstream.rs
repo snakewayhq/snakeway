@@ -1,3 +1,5 @@
+use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, HTTP_UPSTREAM_RESPONSE};
+
 pub fn start_http_upstream(port: u16) {
     use std::io::Write;
     use std::net::TcpListener;
@@ -10,7 +12,7 @@ pub fn start_http_upstream(port: u16) {
         let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let mut stream = stream.expect("stream error");
-            let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world");
+            let _ = stream.write_all(HTTP_UPSTREAM_RESPONSE);
         }
     });
 
@@ -49,8 +51,8 @@ pub fn start_grpc_upstream(port: u16) {
         let addr = format!("127.0.0.1:{port}").parse().unwrap();
 
         // Load TLS identity (server cert + key)
-        let cert = std::fs::read("certs/server.pem").expect("failed to read server.pem");
-        let key = std::fs::read("certs/server.key").expect("failed to read server.key");
+        let cert = std::fs::read(CERT_SERVER_PEM).expect("failed to read server.pem");
+        let key = std::fs::read(CERT_SERVER_KEY).expect("failed to read server.key");
 
         let identity = Identity::from_pem(cert, key);
 

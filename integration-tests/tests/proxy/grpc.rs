@@ -1,4 +1,5 @@
 use integration_tests::conf::minimal_grpc_runtime_config;
+use integration_tests::constants::{CERT_ORIGIN_CA_PEM, TEST_HOST};
 use integration_tests::harness::TestServer;
 use integration_tests::harness::upstream::helloworld;
 use integration_tests::harness::upstream::helloworld::HelloRequest;
@@ -18,13 +19,13 @@ fn grpc_unary_call_is_proxied() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         // Load the CA cert that signed the Pingora test cert
-        let ca_pem = std::fs::read("certs/origin-ca.pem").expect("failed to read ca.pem");
+        let ca_pem = std::fs::read(CERT_ORIGIN_CA_PEM).expect("failed to read ca.pem");
 
         let ca_cert = Certificate::from_pem(ca_pem);
 
         let tls = ClientTlsConfig::new()
             .ca_certificate(ca_cert)
-            .domain_name("snakeway.test");
+            .domain_name(TEST_HOST);
 
         let channel = Channel::from_shared(endpoint)
             .expect("invalid endpoint")

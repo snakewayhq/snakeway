@@ -1,3 +1,4 @@
+use crate::constants::{ACME_ORDERS_DIR, CERT_PEBBLE_CA_PEM, TEST_HOST};
 use snakeway_core::conf::RuntimeConfig;
 use url::Url;
 
@@ -45,7 +46,7 @@ fn patch_listener_ports(cfg: &mut RuntimeConfig, listener_ports: &[u16]) {
             continue;
         }
         if let Some(port) = port_iter.next() {
-            listener.addr = format!("snakeway.test:{port}");
+            listener.addr = format!("{TEST_HOST}:{port}");
         }
     }
 }
@@ -56,10 +57,10 @@ fn patch_acme_paths(cfg: &mut RuntimeConfig) {
         return;
     };
     // Absolutize the ACME data dir so the test process can find it regardless of cwd.
-    tls_auto.acme.data_dir = manifest_dir.join("acme/orders/");
+    tls_auto.acme.data_dir = manifest_dir.join(ACME_ORDERS_DIR);
     // Absolutize the Pebble CA file path.
     if tls_auto.acme.ca_file.is_some() {
-        tls_auto.acme.ca_file = Some(manifest_dir.join("certs/pebble-ca.pem"));
+        tls_auto.acme.ca_file = Some(manifest_dir.join(CERT_PEBBLE_CA_PEM));
     }
 }
 

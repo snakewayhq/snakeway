@@ -76,7 +76,8 @@ pub fn build_runtime_state(
     tracing::debug!("Loaded device count = {}", devices.all().len());
 
     // Services
-    let services = build_runtime_services(&cfg.services)?;
+    let global_ca_file = cfg.server.ca_file.as_deref().map(Path::new);
+    let services = build_runtime_services(&cfg.services, global_ca_file)?;
 
     Ok(RuntimeState {
         tls,
@@ -99,6 +100,7 @@ fn build_tls_runtime(cert_manager: &Arc<CertManager>) -> Result<TlsRuntime> {
 /// The output is a map of service names to their respective runtimes.
 fn build_runtime_services(
     services: &HashMap<String, ServiceConfig>,
+    global_ca_file: Option<&Path>,
 ) -> Result<HashMap<String, ServiceRuntime>> {
     let mut out = HashMap::new();
 
@@ -107,7 +109,7 @@ fn build_runtime_services(
             .tcp_upstreams
             .iter()
             .map(|u| {
-                let rt = make_upstream_runtime_from_tcp(u)?;
+                let rt = make_upstream_runtime_from_tcp(u, global_ca_file)?;
                 Ok(rt)
             })
             .collect::<Result<Vec<_>>>()?;
@@ -172,7 +174,10 @@ pub fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>,
 }
 
 /// Factory function to make a TCP upstream runtime.
-fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRuntime> {
+fn make_upstream_runtime_from_tcp(
+    cfg: &UpstreamTcpConfig,
+    global_ca_file: Option<&Path>,
+) -> Result<UpstreamRuntime> {
     let uri: Uri = cfg
         .url
         .parse()
@@ -195,11 +200,16 @@ fn make_upstream_runtime_from_tcp(cfg: &UpstreamTcpConfig) -> Result<UpstreamRun
     let use_tls = cfg.tls.is_some();
     let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
         && tls_cfg.verify
-        && let Some(ca_file) = &tls_cfg.ca_file
     {
-        let ca = load_ca_from_path(ca_file)?;
-        let group_key = calculate_group_key(ca_file);
-        (true, Some(Arc::new(ca)), group_key)
+        // Prefer the per-endpoint ca_file; fall back to the global server.ca_file.
+        let effective_ca = tls_cfg.ca_file.as_deref().or(global_ca_file);
+        if let Some(ca_file) = effective_ca {
+            let ca = load_ca_from_path(ca_file)?;
+            let group_key = calculate_group_key(ca_file);
+            (true, Some(Arc::new(ca)), group_key)
+        } else {
+            (false, None, 0)
+        }
     } else {
         (false, None, 0)
     };
