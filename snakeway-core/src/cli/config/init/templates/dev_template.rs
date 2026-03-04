@@ -1,7 +1,7 @@
 use crate::conf::types::{
     AcmeChallengeSpec, BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
-    NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
+    NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
+    StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use crate::serialization::to_hcl_string;
 use std::collections::HashMap;

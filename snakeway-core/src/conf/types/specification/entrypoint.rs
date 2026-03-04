@@ -1,7 +1,7 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec,
-    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec, ServiceSpec,
-    StaticFilesSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
+    BindAdminSpec, BindSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
+    RequestRateLimitingDeviceSpec, ServerSpec, ServiceSpec, StaticFilesSpec,
+    StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::{Deserialize, Serialize};
 

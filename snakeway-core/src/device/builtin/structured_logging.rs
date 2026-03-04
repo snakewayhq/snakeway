@@ -7,7 +7,10 @@ use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
 use anyhow::Result;
 use http::HeaderMap;
-use opentelemetry::{global, metrics::{Counter, Histogram}};
+use opentelemetry::{
+    global,
+    metrics::{Counter, Histogram},
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::time::Instant;
@@ -360,7 +363,9 @@ impl Device for StructuredLoggingDevice {
             let status = ctx.status.as_u16();
 
             if let Some(otel_span) = ctx.extensions.get::<OtelRequestSpan>() {
-                otel_span.0.record("http.response.status_code", status as i64);
+                otel_span
+                    .0
+                    .record("http.response.status_code", status as i64);
             }
 
             use opentelemetry::KeyValue;
@@ -369,7 +374,8 @@ impl Device for StructuredLoggingDevice {
             self.request_counter.add(1, &attrs);
 
             if let Some(start) = ctx.extensions.get::<OtelRequestStart>() {
-                self.request_duration.record(start.0.elapsed().as_secs_f64(), &attrs);
+                self.request_duration
+                    .record(start.0.elapsed().as_secs_f64(), &attrs);
             }
         }
 
