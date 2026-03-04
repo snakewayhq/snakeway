@@ -245,7 +245,6 @@ impl ProxyHttp for PublicGateway {
                 self.static_file_handler
                     .handle(session, ctx, route, &state.devices)
                     .await
-
             }
 
             RouteRuntime::Service {

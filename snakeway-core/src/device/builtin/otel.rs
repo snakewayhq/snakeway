@@ -6,8 +6,7 @@ use crate::enrichment::identity_field::IdentityField;
 use crate::enrichment::user_agent::ClientIdentity;
 use anyhow::Result;
 use opentelemetry::{
-    KeyValue,
-    global,
+    KeyValue, global,
     metrics::{Counter, Histogram},
 };
 use std::time::Instant;
@@ -204,7 +203,9 @@ impl Device for OtelDevice {
 
         // Record status on the span before it's finalized.
         if let Some(otel_span) = ctx.extensions.get::<OtelRequestSpan>() {
-            otel_span.0.record("http.response.status_code", status as i64);
+            otel_span
+                .0
+                .record("http.response.status_code", status as i64);
         }
 
         // Build metric attributes (low-cardinality only).

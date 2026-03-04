@@ -51,8 +51,8 @@ pub fn init_normal_logging() {
 /// is not set or setup fails.
 fn try_init_otel_providers() -> Option<opentelemetry_sdk::trace::SdkTracer> {
     let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok()?;
-    let service_name = std::env::var("OTEL_SERVICE_NAME")
-        .unwrap_or_else(|_| "snakeway".to_string());
+    let service_name =
+        std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "snakeway".to_string());
 
     match init_otel_providers(&endpoint, &service_name) {
         Ok(tracer) => Some(tracer),
