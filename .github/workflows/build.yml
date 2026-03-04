@@ -55,7 +55,7 @@ jobs:
             --features static_files,wasm
 
   integration-test:
-    name: Integration tests (Pebble / ACME)
+    name: Integration tests
     runs-on: ubuntu-latest
     needs: lint
 
