@@ -1,5 +1,6 @@
 pub mod identity;
 pub mod network_policy;
+pub mod otel;
 pub mod request_filter;
 pub mod request_rate_limiting;
 pub mod structured_logging;

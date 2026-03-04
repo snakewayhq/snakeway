@@ -11,7 +11,7 @@ impl StaticFileHandler {
     pub async fn handle(
         &self,
         _session: &mut Session,
-        _ctx: &RequestCtx,
+        _ctx: &mut RequestCtx,
         _route: &RouteEntry,
         _devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
@@ -22,7 +22,7 @@ impl StaticFileHandler {
     pub async fn handle(
         &self,
         session: &mut Session,
-        ctx: &RequestCtx,
+        ctx: &mut RequestCtx,
         route: &RouteEntry,
         devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
@@ -165,6 +165,7 @@ impl StaticFileHandler {
             static_resp.headers,
             Vec::new(),
         );
+        resp_ctx.extensions = std::mem::take(&mut ctx.extensions);
 
         match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}

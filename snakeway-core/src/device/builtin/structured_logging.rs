@@ -2,6 +2,7 @@ use crate::conf::types::StructuredLoggingDeviceConfig;
 use crate::ctx::{RequestCtx, RequestId, ResponseCtx};
 use crate::device::core::errors::DeviceError;
 use crate::device::core::{Device, result::DeviceResult};
+use crate::enrichment::identity_field::IdentityField;
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
 use anyhow::Result;
@@ -39,18 +40,6 @@ pub enum LogEvent {
 pub enum LogPhase {
     Request,
     Response,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum IdentityField {
-    Asn,
-    Aso,
-    Country,
-    Region,
-    ConnectionType,
-    Bot,
-    Device,
 }
 
 // ----------------------------------------------------------------------------

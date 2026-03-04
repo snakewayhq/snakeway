@@ -1,4 +1,4 @@
-use http::{HeaderMap, StatusCode};
+use http::{Extensions, HeaderMap, StatusCode};
 
 #[derive(Debug)]
 pub struct ResponseCtx {
@@ -7,6 +7,8 @@ pub struct ResponseCtx {
     pub headers: HeaderMap,
     #[allow(dead_code)]
     pub body: Vec<u8>,
+    /// Request-scoped typed extensions propagated from RequestCtx.
+    pub extensions: Extensions,
 }
 
 impl ResponseCtx {
@@ -21,6 +23,7 @@ impl ResponseCtx {
             status,
             headers,
             body,
+            extensions: Extensions::new(),
         }
     }
 

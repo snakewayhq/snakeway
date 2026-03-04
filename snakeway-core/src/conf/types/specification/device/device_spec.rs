@@ -1,5 +1,5 @@
 use crate::conf::types::{
-    IdentityDeviceSpec, NetworkPolicyDeviceSpec, Origin, RequestFilterDeviceSpec,
+    IdentityDeviceSpec, NetworkPolicyDeviceSpec, Origin, OtelDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::Serialize;
@@ -10,6 +10,7 @@ pub enum DeviceSpec {
     RequestFilter(RequestFilterDeviceSpec),
     Identity(IdentityDeviceSpec),
     NetworkPolicy(NetworkPolicyDeviceSpec),
+    Otel(OtelDeviceSpec),
     Wasm(WasmDeviceSpec),
     StructuredLogging(StructuredLoggingDeviceSpec),
     RequestRateLimiting(RequestRateLimitingDeviceSpec),
@@ -21,6 +22,7 @@ impl DeviceSpec {
             DeviceSpec::RequestFilter(s) => &s.origin,
             DeviceSpec::Identity(s) => &s.origin,
             DeviceSpec::NetworkPolicy(s) => &s.origin,
+            DeviceSpec::Otel(s) => &s.origin,
             DeviceSpec::Wasm(s) => &s.origin,
             DeviceSpec::StructuredLogging(s) => &s.origin,
             DeviceSpec::RequestRateLimiting(s) => &s.origin,
@@ -31,6 +33,7 @@ impl DeviceSpec {
             DeviceSpec::RequestFilter(s) => s.enable,
             DeviceSpec::Identity(s) => s.enable,
             DeviceSpec::NetworkPolicy(s) => s.enable,
+            DeviceSpec::Otel(s) => s.enable,
             DeviceSpec::Wasm(s) => s.enable,
             DeviceSpec::StructuredLogging(s) => s.enable,
             DeviceSpec::RequestRateLimiting(s) => s.enable,

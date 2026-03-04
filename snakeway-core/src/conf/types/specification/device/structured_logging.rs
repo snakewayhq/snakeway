@@ -1,5 +1,6 @@
 use crate::conf::types::Origin;
-use crate::device::builtin::structured_logging::{IdentityField, LogEvent, LogLevel, LogPhase};
+use crate::device::builtin::structured_logging::{LogEvent, LogLevel, LogPhase};
+use crate::enrichment::identity_field::IdentityField;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]

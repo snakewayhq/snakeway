@@ -194,6 +194,9 @@ pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
             DeviceSpec::Identity(_) => {
                 // No-op, identity device was already validated.
             }
+            DeviceSpec::Otel(_) => {
+                // No-op, OTel device requires no structural validation here.
+            }
         };
     }
 }

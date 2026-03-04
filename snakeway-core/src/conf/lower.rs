@@ -155,6 +155,7 @@ pub fn lower_configs(
             DeviceSpec::RequestFilter(d) => d.try_into().map(DeviceConfig::RequestFilter),
             DeviceSpec::Identity(d) => Ok(DeviceConfig::Identity(d.into())),
             DeviceSpec::NetworkPolicy(d) => Ok(DeviceConfig::NetworkPolicy(d.into())),
+            DeviceSpec::Otel(d) => Ok(DeviceConfig::Otel(d.into())),
             DeviceSpec::Wasm(d) => Ok(DeviceConfig::Wasm(d.into())),
             DeviceSpec::StructuredLogging(d) => Ok(DeviceConfig::StructuredLogging(d.into())),
             DeviceSpec::RequestRateLimiting(d) => Ok(DeviceConfig::RequestRateLimiting(d.into())),

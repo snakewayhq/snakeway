@@ -245,6 +245,7 @@ impl ProxyHttp for PublicGateway {
                 self.static_file_handler
                     .handle(session, ctx, route, &state.devices)
                     .await
+
             }
 
             RouteRuntime::Service {
@@ -418,6 +419,7 @@ impl ProxyHttp for PublicGateway {
             upstream.headers.clone(),
             Vec::new(),
         );
+        resp_ctx.extensions = std::mem::take(&mut ctx.extensions);
         let state = self.gw_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}

@@ -1,6 +1,6 @@
 use crate::conf::types::{
-    BindAdminSpec, BindSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, ServerSpec, ServiceSpec, StaticFilesSpec,
+    BindAdminSpec, BindSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OtelDeviceSpec,
+    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec, ServiceSpec, StaticFilesSpec,
     StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,8 @@ pub(crate) struct DevicesFile {
     pub(crate) network_policy_device: Option<NetworkPolicyDeviceSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) request_rate_limiting_device: Option<RequestRateLimitingDeviceSpec>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) otel_device: Option<OtelDeviceSpec>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub(crate) wasm_devices: Vec<WasmDeviceSpec>,

@@ -2,6 +2,7 @@ use crate::conf::RuntimeConfig;
 use crate::conf::types::DeviceConfig;
 use crate::device::builtin::identity::IdentityDevice;
 use crate::device::builtin::network_policy::NetworkPolicyDevice;
+use crate::device::builtin::otel::OtelDevice;
 use crate::device::builtin::request_filter::RequestFilterDevice;
 use crate::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
 use crate::device::builtin::structured_logging::StructuredLoggingDevice;
@@ -63,6 +64,14 @@ impl DeviceRegistry {
                 DeviceConfig::RequestRateLimiting(cfg) => {
                     let device_config = cfg.clone();
                     let device: Arc<RequestRateLimitingDevice> = Arc::new(device_config.into());
+                    self.devices.push(device);
+                }
+
+                // OTel device runs after identity (so ClientIdentity is available) but
+                // before Wasm and StructuredLogging (to maintain logging as the final observer).
+                DeviceConfig::Otel(cfg) => {
+                    let device_config = cfg.clone();
+                    let device = Arc::new(OtelDevice::from_config(device_config)?);
                     self.devices.push(device);
                 }
 
