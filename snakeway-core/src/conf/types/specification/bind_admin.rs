@@ -1,7 +1,7 @@
 use crate::conf::resolution::ResolveError;
 use crate::conf::types::specification::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
-use crate::conf::validation::ConfigError;
 use crate::conf::types::{Origin, TlsTerminationSpec};
+use crate::conf::validation::ConfigError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 

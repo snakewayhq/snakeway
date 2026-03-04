@@ -18,9 +18,10 @@ impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
             .cidr_allow
             .iter()
             .map(|c| {
-                c.parse::<IpNet>().map_err(|e| ConfigError::InvalidUpstream {
-                    message: format!("invalid network policy CIDR '{}': {}", c, e),
-                })
+                c.parse::<IpNet>()
+                    .map_err(|e| ConfigError::InvalidUpstream {
+                        message: format!("invalid network policy CIDR '{}': {}", c, e),
+                    })
             })
             .collect::<Result<Vec<_>, _>>()?;
 

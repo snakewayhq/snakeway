@@ -42,10 +42,7 @@ impl ListenerConfig {
         spec: BindSpec,
     ) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let connection_filter = spec
-            .connection_filter
-            .map(TryInto::try_into)
-            .transpose()?;
+        let connection_filter = spec.connection_filter.map(TryInto::try_into).transpose()?;
         Ok(Self {
             name: name.to_string(),
             addr: from_addr,
@@ -68,10 +65,7 @@ impl ListenerConfig {
         } else {
             None
         };
-        let connection_filter = spec
-            .connection_filter
-            .map(TryInto::try_into)
-            .transpose()?;
+        let connection_filter = spec.connection_filter.map(TryInto::try_into).transpose()?;
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),

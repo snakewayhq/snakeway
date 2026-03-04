@@ -56,7 +56,9 @@ pub fn lower_configs(
             let use_tls = bind.tls.is_some();
             let bind_addr = bind
                 .resolve()
-                .map_err(|e| ConfigError::InvalidBindAddress { message: e.to_string() })?;
+                .map_err(|e| ConfigError::InvalidBindAddress {
+                    message: e.to_string(),
+                })?;
 
             //-----------------------------------------------------------------
             // Services
@@ -81,7 +83,9 @@ pub fn lower_configs(
                             .map(|endpoint| UpstreamTcpConfig::new(u.weight, endpoint))
                     })
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| ConfigError::InvalidUpstream { message: e.to_string() })?;
+                    .map_err(|e| ConfigError::InvalidUpstream {
+                        message: e.to_string(),
+                    })?;
 
                 let service_name = format!("{}-service", bind_addr);
 
