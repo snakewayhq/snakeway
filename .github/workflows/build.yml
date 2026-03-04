@@ -122,6 +122,28 @@ jobs:
           docker compose -f docker-compose-dev.yml logs pebble
           exit 1
 
+      # Jaeger all-in-one exposes its HTTP query API on port 16686.  We poll
+      # that endpoint to confirm the container is fully up before the tests
+      # attempt to export spans and query for them.
+      # 30 attempts × 2 s = 60 s maximum wait.
+      - name: Wait for Jaeger to be ready
+        run: |
+          set -euo pipefail
+          echo "Polling Jaeger HTTP query API at http://localhost:16686/api/services ..."
+          for i in $(seq 1 30); do
+            if curl --silent --fail \
+                --output /dev/null \
+                http://localhost:16686/api/services 2>/dev/null; then
+              echo "Jaeger is ready (attempt ${i}/30)"
+              exit 0
+            fi
+            echo "  attempt ${i}/30 — not ready yet, sleeping 2s"
+            sleep 2
+          done
+          echo "::error::Jaeger did not become ready within 60 seconds"
+          docker compose -f docker-compose-dev.yml logs jaeger
+          exit 1
+
       # The integration tests configure instant-acme with Pebble's self-signed CA
       # so that TLS connections to the ACME directory are trusted.  We fetch this
       # cert from the running container (same as `just fetch-pebble-ca` locally).
