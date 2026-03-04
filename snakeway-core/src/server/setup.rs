@@ -50,6 +50,16 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         .build()
         .expect("failed to build control-plane Tokio runtime");
 
+    // Enable OTel tracing from environment variables
+    // Note that this HAS to be done after control_rt is created,
+    // as internally otel requires that a tokio runtime exists.
+    let _guard = control_rt.enter();
+    crate::logging::enable_otel_from_env();
+
+    tracing::info_span!("snakeway_startup").in_scope(|| {
+        info!("Snakeway control plane created");
+    });
+
     // Set up the Cert Store and Manager.
     let has_tls = config.listeners.iter().any(|l| l.tls_termination.is_some());
     let cert_manager: Option<Arc<CertManager>> =
