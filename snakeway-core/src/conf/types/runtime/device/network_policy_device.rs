@@ -1,4 +1,5 @@
 use crate::conf::types::{NetworkPolicyDeviceSpec, OnInvalidForwardedSpec};
+use crate::conf::validation::ConfigError;
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
@@ -9,20 +10,28 @@ pub struct NetworkPolicyDeviceConfig {
     pub forwarding: ForwardingConfig,
 }
 
-impl From<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
-    fn from(spec: NetworkPolicyDeviceSpec) -> Self {
-        Self {
+impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
+    type Error = ConfigError;
+
+    fn try_from(spec: NetworkPolicyDeviceSpec) -> Result<Self, Self::Error> {
+        let cidr_allow = spec
+            .cidr_allow
+            .iter()
+            .map(|c| {
+                c.parse::<IpNet>().map_err(|e| ConfigError::InvalidUpstream {
+                    message: format!("invalid network policy CIDR '{}': {}", c, e),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self {
             enable: spec.enable,
-            cidr_allow: spec
-                .cidr_allow
-                .iter()
-                .map(|c| c.parse().expect("validated CIDR"))
-                .collect(),
+            cidr_allow,
             forwarding: ForwardingConfig {
                 allow: spec.forwarding.allow,
                 on_invalid: spec.forwarding.on_invalid.into(),
             },
-        }
+        })
     }
 }
 

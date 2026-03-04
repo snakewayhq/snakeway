@@ -16,4 +16,7 @@ pub enum ResolveError {
 
     #[error("io error during resolution: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("invalid bind interface: {0}")]
+    InvalidInterface(String),
 }

@@ -42,6 +42,10 @@ impl ListenerConfig {
         spec: BindSpec,
     ) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
+        let connection_filter = spec
+            .connection_filter
+            .map(TryInto::try_into)
+            .transpose()?;
         Ok(Self {
             name: name.to_string(),
             addr: from_addr,
@@ -52,7 +56,7 @@ impl ListenerConfig {
                 addr.to_string(),
                 redirect_response_code,
             )),
-            connection_filter: spec.connection_filter.map(Into::into),
+            connection_filter,
             connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
         })
     }
@@ -64,6 +68,10 @@ impl ListenerConfig {
         } else {
             None
         };
+        let connection_filter = spec
+            .connection_filter
+            .map(TryInto::try_into)
+            .transpose()?;
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
@@ -71,7 +79,7 @@ impl ListenerConfig {
             enable_http2: spec.enable_http2,
             enable_admin: false,
             redirect: None,
-            connection_filter: spec.connection_filter.map(Into::into),
+            connection_filter,
             connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
         })
     }

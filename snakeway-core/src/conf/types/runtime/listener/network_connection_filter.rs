@@ -19,25 +19,37 @@ pub enum OnNoPeerAddr {
     Deny,
 }
 
-impl From<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
-    fn from(spec: NetworkConnectionFilterSpec) -> Self {
-        Self {
-            cidr_allow: spec
-                .cidr
-                .allow
-                .iter()
-                .map(|c| c.parse().expect("validated CIDR"))
-                .collect(),
-            cidr_deny: spec
-                .cidr
-                .deny
-                .iter()
-                .map(|c| c.parse().expect("validated CIDR"))
-                .collect(),
+impl TryFrom<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
+    type Error = String;
+
+    fn try_from(spec: NetworkConnectionFilterSpec) -> Result<Self, Self::Error> {
+        let cidr_allow = spec
+            .cidr
+            .allow
+            .iter()
+            .map(|c| {
+                c.parse::<IpNet>()
+                    .map_err(|e| format!("invalid CIDR in allow list '{}': {}", c, e))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let cidr_deny = spec
+            .cidr
+            .deny
+            .iter()
+            .map(|c| {
+                c.parse::<IpNet>()
+                    .map_err(|e| format!("invalid CIDR in deny list '{}': {}", c, e))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self {
+            cidr_allow,
+            cidr_deny,
             on_no_peer_addr: spec.on_no_peer_addr.into(),
             ip_family_ipv4: spec.ip_family.ipv4,
             ip_family_ipv6: spec.ip_family.ipv6,
-        }
+        })
     }
 }
 
