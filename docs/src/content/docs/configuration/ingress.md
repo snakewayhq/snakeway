@@ -309,19 +309,6 @@ How many successful probes are required in `HalfOpen` to close the circuit again
 
 Whether HTTP 5xx responses from the upstream count as failures for the circuit breaker.
 
-#### Load Balancing Strategy
-
-**Type:** `string`  
-**Default:** `failover`
-
-Supported strategies:
-
-- `failover`: Always picks the first healthy upstream in the list.
-- `round_robin`: Distributes requests evenly across upstreams.
-- `request_pressure`: Picks the upstream with the lowest recent request pressure (heuristic-based, not transport-level).
-- `random`: Picks a random healthy upstream.
-- `sticky_hash`: Consistent hashing based on request characteristics.
-
 ### Routes
 
 ##### hosts

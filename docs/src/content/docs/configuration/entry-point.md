@@ -127,7 +127,7 @@ server {
 
 Certificate Authority file used to verify upstream certificates.
 
-This is not optional if upstreams are configured with TLS.
+When an upstream endpoint has TLS configured without its own `ca_file`, this global value is used as a fallback.
 
 ```hcl
 server {
