@@ -60,8 +60,7 @@ fn structured_logging_otel_metrics_exports_trace_to_jaeger() {
     sleep(Duration::from_secs(3));
 
     // Poll the Jaeger HTTP query API until the trace appears or we time out.
-    let jaeger_url =
-        "http://localhost:16686/api/traces?service=snakeway-integration-test&limit=1";
+    let jaeger_url = "http://localhost:16686/api/traces?service=snakeway-integration-test&limit=1";
     let client = reqwest::blocking::Client::new();
     let deadline = Instant::now() + Duration::from_secs(15);
 
