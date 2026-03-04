@@ -336,7 +336,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 #### Conf
 
-* [ ] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
+* [x] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 * [ ] Consider moving validation logic into spec files, where appropriate.
 
 #### Devices

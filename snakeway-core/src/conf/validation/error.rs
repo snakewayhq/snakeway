@@ -58,6 +58,9 @@ pub enum ConfigError {
 
     #[error("invalid header name: {value} (origin: {origin})")]
     InvalidHeaderName { value: String, origin: String },
+
+    #[error("invalid upstream: {message}")]
+    InvalidUpstream { message: String },
 }
 
 impl ConfigError {

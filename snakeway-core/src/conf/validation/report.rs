@@ -65,10 +65,10 @@ impl ValidationReport {
             warnings: &self.warnings,
         };
 
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&json).expect("failed to serialize validation report")
-        );
+        match serde_json::to_string_pretty(&json) {
+            Ok(output) => println!("{}", output),
+            Err(e) => eprintln!("failed to serialize validation report: {}", e),
+        }
     }
 
     pub fn render_plain(&self) {
