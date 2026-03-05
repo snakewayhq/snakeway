@@ -2,6 +2,8 @@
 title: TLS Certificate Renewal
 ---
 
+## Certificate Issuance Flow
+
 The following happens when a certificate is issued with Let's Encrypt:
 
 1. Generate a new private key (usually)
@@ -14,7 +16,7 @@ The `CertManager` is responsible for this.
 
 An implementation of the `CertStore` trait determines where certificates are stored.
 
-### TLS Automation
+## TLS Automation
 
 When `tls_automation` is configured in `snakeway.hcl`, Snakeway starts a background `CertManager` task.
 
@@ -24,7 +26,7 @@ missing or due to expire within `renew_within_days`, it initiates the ACME renew
 The renewed certificate is stored and immediately made available to new TLS handshakes without requiring a server
 restart or reload.
 
-### SNI
+## SNI
 
 The SNI handling is a bit tricky.
 

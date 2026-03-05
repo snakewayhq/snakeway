@@ -218,10 +218,10 @@ services = [
     routes = [
       {
         hosts = ["example.com"]
-        path  = "/api"
+        path = "/api"
       },
       {
-        hosts              = ["example.com"]
+        hosts = ["example.com"]
         path               = "/ws"
         enable_websocket   = true
         ws_max_connections = 10000
@@ -230,11 +230,11 @@ services = [
 
     upstreams = [
       {
-        weight   = 1
+        weight = 1
         endpoint = { host = "127.0.0.1", port = 3443 }
       },
       {
-        weight   = 1
+        weight = 1
         endpoint = { host = "127.0.0.1", port = 3444 }
       },
       {
@@ -309,19 +309,6 @@ How many successful probes are required in `HalfOpen` to close the circuit again
 
 Whether HTTP 5xx responses from the upstream count as failures for the circuit breaker.
 
-#### Load Balancing Strategy
-
-**Type:** `string`  
-**Default:** `failover`
-
-Supported strategies:
-
-- `failover`: Always picks the first healthy upstream in the list.
-- `round_robin`: Distributes requests evenly across upstreams.
-- `request_pressure`: Picks the upstream with the lowest recent request pressure (heuristic-based, not transport-level).
-- `random`: Picks a random healthy upstream.
-- `sticky_hash`: Consistent hashing based on request characteristics.
-
 ### Routes
 
 ##### hosts
@@ -329,7 +316,8 @@ Supported strategies:
 **Type:** `list(string)`
 **Required:** `true`
 
-The list of hostnames this route applies to. Requests are only matched if the `Host` header matches one of the specified values.
+The list of hostnames this route applies to. Requests are only matched if the `Host` header matches one of the specified
+values.
 
 Use `["*"]` to match all hostnames.
 
@@ -407,7 +395,8 @@ Enables TLS for the upstream connection.
 
 - `sni` — The SNI hostname sent during the TLS handshake.
 - `verify` — Whether to verify the upstream's certificate. Set to `false` only in controlled environments.
-- `ca_file` — Optional path to a CA certificate file used to verify the upstream's certificate. Falls back to the global `server.ca_file` if not set.
+- `ca_file` — Optional path to a CA certificate file used to verify the upstream's certificate. Falls back to the global
+  `server.ca_file` if not set.
 
 #### sock
 
@@ -442,12 +431,12 @@ static_files = [
   {
     routes = [
       {
-        hosts             = ["example.com"]
+        hosts = ["example.com"]
         path              = "/assets"
         file_dir          = "/var/www/html"
         index             = "index.html"
         directory_listing = false
-        max_file_size     = 10485760 // 10 MiB
+        max_file_size = 10485760 // 10 MiB
 
         compression = {
           enable_gzip     = false
@@ -475,7 +464,8 @@ static_files = [
 **Type:** `list(string)`
 **Required:** `true`
 
-The list of hostnames this static route applies to. Requests are only matched if the `Host` header matches one of the specified values.
+The list of hostnames this static route applies to. Requests are only matched if the `Host` header matches one of the
+specified values.
 
 Use `["*"]` to match all hostnames.
 
