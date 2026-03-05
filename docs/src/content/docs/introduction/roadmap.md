@@ -306,14 +306,14 @@ Add work_stealing toggle.
 
 * [x] Fully automated TLS (http-01 challenge)
 * [x] Host-based route matching
-* [ ] Cert transparency logs
-* [ ] `/admin/certs` endpoint
+* [x] `/admin/certs` endpoint
 
 ## Phase 4.1: Emergent tasks (v0.9.x)
 
 1. [x] Implement `route solve` command for debugging routes.
-2. Implement 3rd cert store, postgres or S3 (but probably postgres).
-3. Implement DNS challenge (maybe).
+2. [ ] Cert transparency logs
+3. [ ] Implement 3rd cert store, postgres or S3 (but probably postgres).
+4. [ ] Implement DNS challenge (maybe).
 
 ## Phase 5: Architecture and Test Suite (v0.x.x)
 

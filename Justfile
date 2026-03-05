@@ -102,7 +102,10 @@ run-load-against-static:
 
 # Generate some spoofed traffic for the identity device
 run-spoofed-traffic:
-    k6 run --vus 10 --duration 30s spoof-traffic.js
+    k6 run --vus 10 --duration 30s ./k6/spoof-traffic.js
+
+run-load-test:
+    k6 run --vus 10 --duration 30s ./k6/load-test.js
 
 # Build and run the origin server.
 start-origin:

@@ -10,7 +10,8 @@ The project uses the following tools:
 1. Rust toolchain (rustup)
 2. Zig 0.12 or later (Install using Homebrew on macOS: `brew install zig`)
 3. cargo-zigbuild (Install with `cargo install cargo-zigbuild`)
-4. Just command runner (Install using Homebrew on macOS `brew install just`)
+4. Protoc for integration tests (Install using Homebrew on macOS `brew install protobuf`)
+5. Just command runner (Install using Homebrew on macOS `brew install just`)
 
 Zig is used for cross-compilation to avoid external C toolchains and to provide consistent builds across environments.
 
