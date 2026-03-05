@@ -99,5 +99,5 @@ Content-Type: application/json
 ```
 
 Congratulations! You've just configured and launched your first Snakeway proxy. From here, you can begin exploring more
-advanced features like [Devices](/configuration/overview), [Devices](/devices/overview),
+advanced features like [Devices](/configuration/overview), [Devices](/guide/understanding-devices),
 and [Static File Serving](/guide/static-files).
