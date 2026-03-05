@@ -167,21 +167,21 @@ Route Solve Result:
 
 ### Options
 
-| Option            | Default         | Description                                             |
-|-------------------|-----------------|---------------------------------------------------------|
-| `--config`        | `config`        | Path to config directory                                |
-| `--method`        | `GET`           | HTTP method                                             |
-| `--header`        | (none)          | Request header (repeatable, format: `KEY:VALUE`)        |
-| `--client-ip`     | (none)          | Client IP for policy evaluation                         |
-| `--scheme`        | from URL        | Override URL scheme (`http` or `https`)                 |
-| `--path`          | from URL        | Override URL path                                       |
-| `--query`         | from URL        | Override URL query string                               |
-| `--body-size`     | `0`             | Simulated body size in bytes                            |
-| `--lb-key`        | (none)          | Deterministic key for hash-based upstream selection     |
-| `--lb-index`      | (none)          | Force upstream index selection                          |
-| `--format`        | `pretty`        | Output format: `pretty` or `json`                       |
-| `--trace`         | `false`         | Include evaluation trace steps                          |
-| `--verbose`       | `false`         | Verbose output (implies `--trace`)                      |
+| Option        | Default  | Description                                         |
+|---------------|----------|-----------------------------------------------------|
+| `--config`    | `config` | Path to config directory                            |
+| `--method`    | `GET`    | HTTP method                                         |
+| `--header`    | (none)   | Request header (repeatable, format: `KEY:VALUE`)    |
+| `--client-ip` | (none)   | Client IP for policy evaluation                     |
+| `--scheme`    | from URL | Override URL scheme (`http` or `https`)             |
+| `--path`      | from URL | Override URL path                                   |
+| `--query`     | from URL | Override URL query string                           |
+| `--body-size` | `0`      | Simulated body size in bytes                        |
+| `--lb-key`    | (none)   | Deterministic key for hash-based upstream selection |
+| `--lb-index`  | (none)   | Force upstream index selection                      |
+| `--format`    | `pretty` | Output format: `pretty` or `json`                   |
+| `--trace`     | `false`  | Include evaluation trace steps                      |
+| `--verbose`   | `false`  | Verbose output (implies `--trace`)                  |
 
 ### JSON output
 
@@ -223,13 +223,13 @@ Upstream selection is fully deterministic and does not use randomness or clock-b
 
 ### Exit codes
 
-| Code | Meaning                    |
-|------|----------------------------|
-| `0`  | Resolved (upstream found)  |
-| `1`  | Invalid CLI input          |
-| `2`  | Config load/parse failure  |
-| `3`  | No route matched           |
-| `4`  | Rejected by policy         |
+| Code | Meaning                   |
+|------|---------------------------|
+| `0`  | Resolved (upstream found) |
+| `1`  | Invalid CLI input         |
+| `2`  | Config load/parse failure |
+| `3`  | No route matched          |
+| `4`  | Rejected by policy        |
 
 ### Debugging workflow
 
