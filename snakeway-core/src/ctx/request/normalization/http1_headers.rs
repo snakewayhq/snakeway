@@ -1,5 +1,5 @@
 use crate::ctx::request::NormalizedHeaders;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
+use crate::ctx::request::normalization::{NormalizationOutcome, RewriteReason};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::collections::HashSet;
 
@@ -46,15 +46,14 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
     for (name, value) in raw.iter() {
         let name_str = name.as_str();
 
-        // RFC 9110 §7.6.1: Reject standard hop-by-hop headers and Connection-listed headers.
+        // RFC 9110 §7.6.1: Strip standard hop-by-hop headers and Connection-listed headers.
         // These headers are specific to a single transport-level connection and must not
         // be forwarded by proxies or stored by caches.
         // SECURITY: Lowercased comparison is critical - check against lowercased name_str
         let name_lower = name_str.to_ascii_lowercase();
         if is_standard_hop_by_hop(&name_lower) || connection_tokens.contains(&name_lower) {
-            return NormalizationOutcome::Reject {
-                reason: RejectReason::HopByHopHeader,
-            };
+            rewritten = true;
+            continue;
         }
 
         // RFC 9110 §5.1: Header field names are case-insensitive. Canonicalize to lowercase
