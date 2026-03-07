@@ -42,6 +42,32 @@ pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<Normaliz
         }
     }
 
+    // RFC 9112 §6.3: Reject requests that carry both Transfer-Encoding and Content-Length.
+    // When both are present the message framing is ambiguous: different intermediaries may
+    // disagree on which header governs the body length, enabling request smuggling.
+    // Silently stripping one header and forwarding would mask the attack; reject instead.
+    let has_te = raw.contains_key("transfer-encoding");
+    let has_cl = raw.contains_key("content-length");
+    if has_te && has_cl {
+        return NormalizationOutcome::reject_for_smuggling_attempt();
+    }
+
+    // RFC 9112 §6.3: Reject duplicate Content-Length headers with differing values.
+    // A proxy that picks the first value and a backend that picks the last (or vice-versa)
+    // will disagree on where the first request ends, allowing a hidden second request.
+    {
+        let cl_values: Vec<_> = raw.get_all("content-length").iter().collect();
+        if cl_values.len() > 1 {
+            let first = cl_values[0].to_str().unwrap_or("").trim();
+            let all_equal = cl_values
+                .iter()
+                .all(|v| v.to_str().unwrap_or("").trim() == first);
+            if !all_equal {
+                return NormalizationOutcome::reject_for_smuggling_attempt();
+            }
+        }
+    }
+
     // RFC 9110 §5.1-5.3: Process and normalize each header field
     for (name, value) in raw.iter() {
         let name_str = name.as_str();
