@@ -96,3 +96,7 @@ harness = false
 [[bench]]
 name = "identity"
 harness = false
+
+[[bench]]
+name = "header_scaling"
+harness = false

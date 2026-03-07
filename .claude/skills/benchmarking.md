@@ -73,13 +73,14 @@ Good candidates (all synchronous, no I/O):
 |---|---|---|
 | Router matching | `Router::match_route()` | `route/router.rs` |
 | Device pipeline dispatch | `DevicePipeline::run_on_request()` | `device/core/pipeline.rs` |
+| Header normalization | `normalize_headers()` | `ctx/normalization` |
 | Request filter device | `RequestFilterDevice::on_request()` | `device/builtin/request_filter.rs` |
 | Identity device | `IdentityDevice::on_request()` | `device/builtin/identity.rs` |
 
-> **Note on private functions**: internal helpers such as `normalize_headers()` and
-> `resolve_client_ip()` are not re-exported publicly. Benchmark them indirectly through
-> the device or ctx APIs that call them, or via a thin `#[cfg(test)]` / feature-gated
-> re-export if direct measurement is essential.
+> **Note on private functions**: `normalize_headers()` is accessible via the public
+> `snakeway_core::ctx::normalization` re-export. Functions still private to the crate
+> (e.g. `resolve_client_ip` in `net::client_ip`) should be benchmarked indirectly through
+> the device or ctx APIs that call them.
 
 ### Step 2 — Name the file after the component
 
