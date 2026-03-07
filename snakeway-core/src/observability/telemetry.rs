@@ -17,7 +17,7 @@ static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
 ///
 /// This must be called **after configuration is loaded**
 /// but **before Pingora worker threads start**.
-pub fn init(config: &RuntimeConfig) -> Option<Tracer> {
+pub fn init_telemetry(config: &RuntimeConfig) -> Option<Tracer> {
     let Some(obs) = &config.server.observability else {
         return None;
     };

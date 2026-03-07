@@ -3,7 +3,7 @@ use crate::cli::logs::parse::parse_event;
 use crate::cli::logs::render::{redraw, render_pretty, render_stats};
 use crate::cli::logs::stats_aggregation::StatsAggregator;
 use crate::cli::logs::types::LogEvent;
-use crate::logging::LogMode;
+use crate::observability::LogMode;
 use anyhow::Result;
 use serde_json::Value;
 use std::io::{self, BufRead, Write};

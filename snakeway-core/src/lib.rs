@@ -16,7 +16,7 @@ pub mod ctx;
 pub mod device;
 mod enrichment;
 pub mod http_event;
-pub mod logging;
+pub mod observability;
 pub mod route;
 pub mod runtime;
 mod serialization;
@@ -29,4 +29,3 @@ pub mod ws_connection_management;
 //-----------------------------------------------------------------------------
 #[cfg(feature = "static_files")]
 pub mod static_files;
-pub mod telemetry;

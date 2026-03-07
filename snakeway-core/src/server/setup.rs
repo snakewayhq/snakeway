@@ -5,12 +5,12 @@ use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsAutomationConfig};
 use crate::conf::{RuntimeConfig, TlsTerminationConfig};
 use crate::device::core::registry::DeviceRegistry;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
+use crate::observability;
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::tls_handshake::{CertMode, build_tls_callbacks};
-use crate::telemetry;
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result, anyhow};
@@ -51,7 +51,9 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         .build()
         .expect("failed to build control-plane Tokio runtime");
 
-    telemetry::init(&config);
+    // Load telemetry and logging
+    let tracer = control_rt.block_on(async { observability::init_telemetry(&config) });
+    observability::init_logging(tracer);
 
     // Set up the Cert Store and Manager.
     let has_tls = config.listeners.iter().any(|l| l.tls_termination.is_some());
