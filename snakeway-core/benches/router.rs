@@ -25,7 +25,7 @@ fn build_router(n: usize) -> Router {
 fn bench_router_matching(c: &mut Criterion) {
     let mut group = c.benchmark_group("router_matching");
 
-    for n in [1usize, 10, 100] {
+    for n in [1usize, 10, 100, 500, 1000] {
         let router = build_router(n);
         // Target the shortest path so the longest-prefix sort puts it last (worst-case scan).
         let target_path = "/route/0".to_string();
