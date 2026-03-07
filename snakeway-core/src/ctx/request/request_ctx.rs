@@ -61,6 +61,9 @@ pub struct RequestCtx {
 
     /// Circuit breaker started?
     pub cb_started: bool,
+
+    /// Root tracing request span.
+    pub request_span: Option<Span>,
 }
 
 impl Default for RequestCtx {
@@ -103,6 +106,9 @@ impl RequestCtx {
 
             // Request normalization
             normalized_request: NormalizedRequest::default(),
+
+            // Observability.
+            request_span: None,
         }
     }
 
@@ -409,13 +415,5 @@ impl RequestCtx {
 
     pub fn identity(&self) -> Option<&ClientIdentity> {
         self.extensions.get::<ClientIdentity>()
-    }
-
-    pub fn request_span(&self) -> Option<&Span> {
-        self.extensions.get::<Span>()
-    }
-
-    pub fn enter_request_span(&self) -> Option<tracing::span::Entered<'_>> {
-        self.request_span().map(|s| s.enter())
     }
 }

@@ -126,6 +126,7 @@ impl ProxyHttp for PublicGateway {
         _session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
+        let _enter = ctx.request_span.as_ref().map(|s| s.enter());
         let state = self.gw_ctx.state();
 
         let service_name = ctx
@@ -214,7 +215,9 @@ impl ProxyHttp for PublicGateway {
             listener = %self.listener,
             route = tracing::field::Empty,
         );
-        ctx.extensions.insert(span.clone());
+        ctx.request_span = Some(span);
+
+        tracing::info!("test span event");
 
         // Grab state.
         let state = self.gw_ctx.state();
@@ -308,6 +311,8 @@ impl ProxyHttp for PublicGateway {
         end_of_stream: bool,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        let span = ctx.request_span.clone();
+        let _enter = span.as_ref().map(|s| s.enter());
         let state = self.gw_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
@@ -330,6 +335,9 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        let span = ctx.request_span.clone();
+        let _enter = span.as_ref().map(|s| s.enter());
+
         if upstream.version == Version::HTTP_2 {
             let authority = ctx
                 .upstream_authority()
@@ -422,6 +430,7 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        let _enter = ctx.request_span.as_ref().map(|s| s.enter());
         if ctx.ws_opened || ctx.is_http2() {
             // Do not run on_response devices for WebSockets or HTTP/2.
             // For WebSockets and HTTP/2, this is not a real "response."
@@ -465,6 +474,9 @@ impl ProxyHttp for PublicGateway {
     where
         Self::CTX: Send + Sync,
     {
+        let span = ctx.request_span.clone();
+        let _enter = span.as_ref().map(|s| s.enter());
+
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.6.0.
