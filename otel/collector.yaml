@@ -10,8 +10,13 @@ exporters:
   debug:
     verbosity: detailed
 
+  otlp/tempo:
+    endpoint: snakeway-tempo:4317
+    tls:
+      insecure: true
+
 service:
   pipelines:
     traces:
       receivers: [ otlp ]
-      exporters: [ debug ]
+      exporters: [ debug, otlp/tempo ]
