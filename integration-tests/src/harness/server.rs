@@ -1,4 +1,5 @@
 use crate::constants::{ACME_ORDERS_DIR, TEST_HOST};
+use crate::harness::replay_http::replay_http_fixture;
 use crate::harness::runtime_patch::patch_runtime;
 use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_ws_upstream};
 use crate::harness::{CapturedEvent, init_test_tracing};
@@ -15,6 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
+use url::Url;
 
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
@@ -257,6 +259,12 @@ impl TestServer {
         self.base_urls.first().expect("no base url")
     }
 
+    /// Returns the first configured listener port.
+    pub fn port(self) -> u16 {
+        let url = Url::parse(self.base_url()).expect("invalid URL");
+        url.port_or_known_default().expect("invalid port")
+    }
+
     /// Returns the first configured listener address (host:port).
     pub fn https_addr(&self) -> &str {
         self.listener_addrs.first().expect("no listener addr")
@@ -273,6 +281,11 @@ impl TestServer {
             "https://{}",
             self.admin_addrs.first().expect("no admin listener")
         )
+    }
+
+    pub fn replay_http_fixture(self, path: &str) -> String {
+        let port = self.port().clone();
+        replay_http_fixture(path, port)
     }
 }
 

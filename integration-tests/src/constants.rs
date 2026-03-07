@@ -5,6 +5,14 @@
 //! propagates everywhere automatically.
 
 // ---------------------------------------------------------------------------
+// HTTP Replay
+// ---------------------------------------------------------------------------
+
+/// Path to the test fixture directory.
+pub const FIXTURES_HTTP_DIR: &str = "fixtures/http";
+pub const HTTP_REPLAY_OK_RESPONSE: &str = "200 OK";
+
+// ---------------------------------------------------------------------------
 // Network / addressing
 // ---------------------------------------------------------------------------
 

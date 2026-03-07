@@ -307,17 +307,13 @@ Add work_stealing toggle.
 * [x] Fully automated TLS (http-01 challenge)
 * [x] Host-based route matching
 * [x] `/admin/certs` endpoint
+* [x] Implement `route solve` command for debugging routes.
+* [x] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 
-## Phase 4.1: Emergent tasks (v0.9.x)
+## Phase 5: Hardening (v0.10.x)
 
-1. [x] Implement `route solve` command for debugging routes.
-2. [ ] Cert transparency logs
-3. [ ] Implement 3rd cert store, postgres or S3 (but probably postgres).
-4. [ ] Implement DNS challenge (maybe).
+All core features should be implemented at this stage (with the exception of otel support).
 
-## Phase 5: Architecture and Test Suite (v0.x.x)
-
-All core features should be implemented at this stage.   
 It is a good time to pause and re-evaluate the overall architecture and flesh out the holes in the test suite.
 
 ### Goals
@@ -328,7 +324,7 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 ### Features
 
-* none
+* OpenTelemetry support
 
 ### Deliverables
 
@@ -337,8 +333,11 @@ It is a good time to pause and re-evaluate the overall architecture and flesh ou
 
 #### Conf
 
-* [x] Review conf lowering logic to remove any possible unwrap() or expect() calls etc.
 * [ ] Consider moving validation logic into spec files, where appropriate.
+* [ ] Add parity between env vars, CLI args, and defaults (namely for logging and config directory).
+* [ ] Consider removing the individual directory config options in TLS automation to a centralized state_dir option.
+* [ ] Do not resolve DNS for hosts in lowering (with resolve() function) as this is incompatible with docker.
+    * The resolution should happen lazily (somehow).
 
 #### Devices
 
@@ -416,6 +415,11 @@ Zero-drop reload support.
 
 Active health checks (passive health checks already exist).
 
+### Cert Management
+
+1. [ ] Implement 3rd cert store, postgres and/or S3.
+2. [ ] Implement DNS challenge.
+
 ### Kubernetes Ingress Controller
 
 Add an optional k8s feature that allows snakeway to function as an ingress controller.
@@ -448,7 +452,3 @@ Similarly, the external control plane and discovery features are only important 
 ### Admissions control
 
 Standalone backpressure monitoring tool that integrates with the core proxy.
-
-### Observability
-
-Native Prometheus/OpenTelemetry support.
