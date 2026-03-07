@@ -41,14 +41,12 @@ fn structured_logging_with_otel_metrics_proxies_request() {
 /// guaranteed by the "Wait for Jaeger" workflow step.
 #[test]
 fn structured_logging_otel_metrics_exports_trace_to_jaeger() {
-    // Tell the OTel SDK where to send spans.  The Jaeger all-in-one image
-    // accepts OTLP gRPC on port 4317.
-    std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
-    std::env::set_var("OTEL_SERVICE_NAME", "snakeway-integration-test");
-
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_structured_logging_device_and_otel_metrics()
+        .with_structured_logging_device_otel_metrics_and_endpoint(
+            "http://localhost:4317",
+            "snakeway-integration-test",
+        )
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 

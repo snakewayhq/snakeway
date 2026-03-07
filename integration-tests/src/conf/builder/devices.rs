@@ -54,6 +54,19 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_structured_logging_device_otel_metrics_and_endpoint(
+        mut self,
+        endpoint: &str,
+        service_name: &str,
+    ) -> Self {
+        let mut spec = Self::make_structured_logging_device();
+        spec.otel_metrics = true;
+        spec.otel_endpoint = Some(endpoint.to_string());
+        spec.otel_service_name = Some(service_name.to_string());
+        self.structured_logging_device_spec = Some(spec);
+        self
+    }
+
     pub fn make_structured_logging_device() -> StructuredLoggingDeviceSpec {
         StructuredLoggingDeviceSpec {
             enable: true,

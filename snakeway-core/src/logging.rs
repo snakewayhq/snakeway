@@ -49,7 +49,11 @@ pub fn enable_otel_from_env() {
     let service_name =
         std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "snakeway".to_string());
 
-    let tracer = match init_otel_providers(&endpoint, &service_name) {
+    enable_otel(&endpoint, &service_name);
+}
+
+pub fn enable_otel(endpoint: &str, service_name: &str) {
+    let tracer = match init_otel_providers(endpoint, service_name) {
         Ok(t) => t,
         Err(e) => {
             eprintln!("Failed to initialize OTel providers: {e}");

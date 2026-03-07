@@ -39,4 +39,14 @@ pub struct StructuredLoggingDeviceSpec {
     /// Requires OTEL_EXPORTER_OTLP_ENDPOINT to be set at startup.
     #[serde(default)]
     pub otel_metrics: bool,
+
+    /// OTLP gRPC endpoint for OTel export (e.g. "http://localhost:4317").
+    /// When set, takes precedence over the OTEL_EXPORTER_OTLP_ENDPOINT env var.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub otel_endpoint: Option<String>,
+
+    /// Service name reported in OTel spans.
+    /// When set, takes precedence over the OTEL_SERVICE_NAME env var.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub otel_service_name: Option<String>,
 }

@@ -1,7 +1,7 @@
 use crate::cert_manager::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
-use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsAutomationConfig};
+use crate::conf::types::{CertStoreConfig, DeviceConfig, ListenerConfig, TlsAutomationConfig};
 use crate::conf::{RuntimeConfig, TlsTerminationConfig};
 use crate::device::core::registry::DeviceRegistry;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
@@ -50,11 +50,28 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         .build()
         .expect("failed to build control-plane Tokio runtime");
 
-    // Enable OTel tracing from environment variables
+    // Enable OTel tracing. Config-level endpoint takes precedence over env vars.
     // Note that this HAS to be done after control_rt is created,
     // as internally otel requires that a tokio runtime exists.
     let _guard = control_rt.enter();
-    crate::logging::enable_otel_from_env();
+    let otel_from_config = config.devices.iter().find_map(|d| {
+        if let DeviceConfig::StructuredLogging(sl) = d {
+            sl.otel_endpoint.as_deref().map(|ep| {
+                let svc = sl
+                    .otel_service_name
+                    .clone()
+                    .unwrap_or_else(|| "snakeway".to_string());
+                (ep.to_string(), svc)
+            })
+        } else {
+            None
+        }
+    });
+    if let Some((endpoint, service_name)) = otel_from_config {
+        crate::logging::enable_otel(&endpoint, &service_name);
+    } else {
+        crate::logging::enable_otel_from_env();
+    }
 
     tracing::info_span!("snakeway_startup").in_scope(|| {
         info!("Snakeway control plane created");

@@ -31,6 +31,8 @@ pub struct StructuredLoggingDeviceConfig {
     pub phases: Option<Vec<LogPhase>>,
 
     pub otel_metrics: bool,
+    pub otel_endpoint: Option<String>,
+    pub otel_service_name: Option<String>,
 }
 
 impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
@@ -46,6 +48,8 @@ impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
             events: spec.events,
             phases: spec.phases,
             otel_metrics: spec.otel_metrics,
+            otel_endpoint: spec.otel_endpoint,
+            otel_service_name: spec.otel_service_name,
         }
     }
 }
