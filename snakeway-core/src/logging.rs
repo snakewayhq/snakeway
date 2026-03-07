@@ -1,9 +1,7 @@
 use once_cell::sync::OnceCell;
 use std::io::{self, IsTerminal};
 use tracing_appender::rolling;
-use tracing_subscriber::{
-    EnvFilter, Registry, fmt, layer::SubscriberExt, reload,
-};
+use tracing_subscriber::{EnvFilter, Registry, fmt, layer::SubscriberExt, reload};
 
 type OTelLayer =
     tracing_opentelemetry::OpenTelemetryLayer<Registry, opentelemetry_sdk::trace::SdkTracer>;
