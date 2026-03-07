@@ -17,6 +17,7 @@ use http::{StatusCode, Version, header};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use std::sync::Arc;
+use tracing::info_span;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
@@ -194,11 +195,28 @@ impl ProxyHttp for PublicGateway {
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
+        // Hydrate request context from session.
         ctx.hydrate_from_session(session).map_err(|e| {
             tracing::warn!(error = %e, "request rejected during normalization");
             e.as_pingora_error()
         })?;
 
+        // Setup request root span and add it to the request context.
+        let request_id = ctx.request_id().unwrap_or_else(|| "unknown".into());
+
+        let span = info_span!(
+            "request",
+            http.method = %ctx.method_str(),
+            http.host = %ctx.effective_host(),
+            http.path = %ctx.canonical_path(),
+            client.ip = %ctx.peer_ip,
+            request.id = %request_id,
+            listener = %self.listener,
+            route = tracing::field::Empty,
+        );
+        ctx.extensions.insert(span.clone());
+
+        // Grab state.
         let state = self.gw_ctx.state();
 
         // Run on_request devices first (applies to both static and upstream requests).

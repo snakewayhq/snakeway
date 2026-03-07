@@ -315,6 +315,7 @@ use crate::server::DownstreamSni;
 ///
 #[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
+use tracing::Span;
 
 #[cfg(feature = "wasm")]
 impl RequestCtx {
@@ -408,5 +409,13 @@ impl RequestCtx {
 
     pub fn identity(&self) -> Option<&ClientIdentity> {
         self.extensions.get::<ClientIdentity>()
+    }
+
+    pub fn request_span(&self) -> Option<&Span> {
+        self.extensions.get::<Span>()
+    }
+
+    pub fn enter_request_span(&self) -> Option<tracing::span::Entered<'_>> {
+        self.request_span().map(|s| s.enter())
     }
 }
