@@ -1,9 +1,17 @@
 use opentelemetry_sdk::trace::Tracer;
-use std::io::{self, IsTerminal};
+use std::sync::OnceLock;
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry, fmt, layer::SubscriberExt};
+
+/// Holds the non-blocking writer guard for the process lifetime.
+///
+/// The guard must remain alive as long as log output should be flushed to the
+/// file. Storing it in a static prevents the background writer thread from
+/// being torn down prematurely, without leaking memory via `mem::forget`.
+static _LOG_GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 
 /// Initialize the logging system with JSON formatting and environment-based filtering
 ///
@@ -32,7 +40,7 @@ fn init_normal_logging(tracer: Option<Tracer>) {
             .init();
 
         // Keep the non-blocking writer guard alive for the process lifetime.
-        std::mem::forget(guard);
+        let _ = _LOG_GUARD.set(guard);
     } else {
         let fmt_layer = fmt::layer().json().flatten_event(true);
 
@@ -59,7 +67,8 @@ fn init_console_logging() {
 }
 
 pub fn default_log_mode() -> LogMode {
-    if io::stdout().is_terminal() {
+    use std::io::IsTerminal;
+    if std::io::stdout().is_terminal() {
         LogMode::Pretty
     } else {
         LogMode::Raw

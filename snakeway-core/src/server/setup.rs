@@ -52,7 +52,13 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         .expect("failed to build control-plane Tokio runtime");
 
     // Load telemetry and logging
-    let tracer = control_rt.block_on(async { observability::init_telemetry(&config) });
+    let tracer = match observability::init_telemetry(&config) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("OpenTelemetry initialization failed, tracing disabled: {e}");
+            None
+        }
+    };
     observability::init_logging(tracer);
 
     // Set up the Cert Store and Manager.

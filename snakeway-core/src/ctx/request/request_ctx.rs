@@ -1,5 +1,6 @@
 use crate::ctx::RequestId;
 use crate::ctx::request::error::RequestRejectError;
+use tracing::Span;
 use crate::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
     normalize_query,
@@ -321,7 +322,6 @@ use crate::server::DownstreamSni;
 ///
 #[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
-use tracing::Span;
 
 #[cfg(feature = "wasm")]
 impl RequestCtx {

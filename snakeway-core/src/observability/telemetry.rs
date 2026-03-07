@@ -8,7 +8,7 @@ use opentelemetry_sdk::{
     Resource,
     trace::{Sampler, SdkTracerProvider, Tracer},
 };
-use tracing::info;
+use tracing::{info, warn};
 
 /// Global tracer provider so we can flush spans on shutdown.
 static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
@@ -17,17 +17,23 @@ static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
 ///
 /// This must be called **after configuration is loaded**
 /// but **before Pingora worker threads start**.
-pub fn init_telemetry(config: &RuntimeConfig) -> Option<Tracer> {
+///
+/// Returns `Ok(Some(tracer))` when tracing is enabled and initialized,
+/// `Ok(None)` when tracing is disabled or not configured, and
+/// `Err(...)` when the exporter fails to build.
+pub fn init_telemetry(
+    config: &RuntimeConfig,
+) -> Result<Option<Tracer>, Box<dyn std::error::Error>> {
     let Some(obs) = &config.server.observability else {
-        return None;
+        return Ok(None);
     };
 
     let Some(otel) = &obs.otel else {
-        return None;
+        return Ok(None);
     };
 
     if !otel.enable {
-        return None;
+        return Ok(None);
     }
 
     let endpoint = &otel.endpoint;
@@ -47,7 +53,7 @@ pub fn init_telemetry(config: &RuntimeConfig) -> Option<Tracer> {
         .with_tonic()
         .with_endpoint(endpoint)
         .build()
-        .expect("failed to create OTLP exporter");
+        .map_err(|e| format!("failed to create OTLP exporter: {e}"))?;
 
     //-------------------------------------------------------------------------
     // Sampling
@@ -87,16 +93,18 @@ pub fn init_telemetry(config: &RuntimeConfig) -> Option<Tracer> {
 
     let tracer = tracer_provider.tracer("snakeway");
 
-    // Store globally so we can flush on shutdown
-    TRACER_PROVIDER
-        .set(tracer_provider.clone())
-        .expect("tracer provider already initialized");
+    // Store globally so we can flush on shutdown.
+    // The clone is a reference-counted handle; both instances share the same provider.
+    if TRACER_PROVIDER.set(tracer_provider.clone()).is_err() {
+        warn!("tracer provider was already initialized; skipping re-initialization");
+        return Ok(None);
+    }
 
     global::set_tracer_provider(tracer_provider);
 
     info!("OpenTelemetry tracing initialized");
 
-    Some(tracer)
+    Ok(Some(tracer))
 }
 
 /// Shutdown telemetry and flush remaining spans.
