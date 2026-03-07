@@ -77,8 +77,10 @@ impl PublicGateway {
 ///    - Create AdmissionGuard if admitted
 ///    - Construct HttpPeer
 ///
-/// 7. [unused] upstream_request_filter()
-///    - (NOTE: no such hook in Pingora; upstream request mutation is implicit)
+/// 7. upstream_request_filter()
+///    - Set HTTP/2 :authority pseudo-header for gRPC
+///    - Run before_proxy devices (header mutation, path rewriting)
+///    - Apply upstream method/path intent from RequestCtx
 ///
 /// 8. [Pingora upstream I/O]
 ///    - Connect, TLS, send request, receive response
@@ -105,8 +107,9 @@ impl PublicGateway {
 /// 15. [unused] suppress_error_log()
 ///     - Decide whether Pingora logs proxy failure
 ///
-/// 16. [unused] response_filter()
-///     - (NOTE: no downstream response hook; handled via Session APIs)
+/// 16. response_filter()
+///     - Run on_response devices (response header mutation)
+///     - Determine upstream outcome (success / HTTP 5xx) for circuit breaker
 ///
 /// 17. logging() ...ALWAYS LAST
 ///     - Capture transport errors
@@ -216,8 +219,8 @@ impl ProxyHttp for PublicGateway {
             route = tracing::field::Empty,
         );
         ctx.request_span = Some(span);
-
-        tracing::info!("test span event");
+        let _span = ctx.request_span.clone();
+        let _enter = _span.as_ref().map(|s| s.enter());
 
         // Grab state.
         let state = self.gw_ctx.state();
@@ -311,8 +314,8 @@ impl ProxyHttp for PublicGateway {
         end_of_stream: bool,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let span = ctx.request_span.clone();
-        let _enter = span.as_ref().map(|s| s.enter());
+        let _span = ctx.request_span.clone();
+        let _enter = _span.as_ref().map(|s| s.enter());
         let state = self.gw_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
@@ -335,8 +338,8 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let span = ctx.request_span.clone();
-        let _enter = span.as_ref().map(|s| s.enter());
+        let _span = ctx.request_span.clone();
+        let _enter = _span.as_ref().map(|s| s.enter());
 
         if upstream.version == Version::HTTP_2 {
             let authority = ctx
@@ -387,6 +390,7 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        let _enter = ctx.request_span.as_ref().map(|s| s.enter());
         let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
@@ -474,8 +478,8 @@ impl ProxyHttp for PublicGateway {
     where
         Self::CTX: Send + Sync,
     {
-        let span = ctx.request_span.clone();
-        let _enter = span.as_ref().map(|s| s.enter());
+        let _span = ctx.request_span.clone();
+        let _enter = _span.as_ref().map(|s| s.enter());
 
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be

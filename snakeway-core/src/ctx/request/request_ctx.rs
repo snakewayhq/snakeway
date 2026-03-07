@@ -16,6 +16,7 @@ use http::header::HOST;
 use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
+use tracing::Span;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
@@ -321,7 +322,6 @@ use crate::server::DownstreamSni;
 ///
 #[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
-use tracing::Span;
 
 #[cfg(feature = "wasm")]
 impl RequestCtx {
