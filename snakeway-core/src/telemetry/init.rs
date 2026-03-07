@@ -6,7 +6,7 @@ use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::{
     Resource,
-    trace::{self, Sampler, SdkTracerProvider, Tracer},
+    trace::{Sampler, SdkTracerProvider, Tracer},
 };
 use tracing::info;
 

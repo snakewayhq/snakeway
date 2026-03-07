@@ -1,6 +1,9 @@
+use opentelemetry_sdk::trace::Tracer;
 use std::io::{self, IsTerminal};
 use tracing_appender::rolling;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Registry, fmt, layer::SubscriberExt};
 
 /// Initialize the logging system with JSON formatting and environment-based filtering
 ///
@@ -8,38 +11,46 @@ use tracing_subscriber::{EnvFilter, fmt};
 /// - Uses environment variables for log level filtering (defaults to "info" if not set)
 /// - Configures JSON output format for structured logging
 /// - Flattens event fields for cleaner log output
-pub fn init_normal_logging() {
+fn init_normal_logging(tracer: Option<Tracer>) {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    // The OpenTelemetry layer must be attached before fmt::Layer.
+    // Otherwise its subscriber type becomes dependent on the fmt writer type
+    // (stdout vs NonBlocking file writer), which causes nasty trait errors.
+    let otel_layer = tracer.map(OpenTelemetryLayer::new);
 
     if let Ok(dir) = std::env::var("SNAKEWAY_LOG_DIR") {
         let appender = rolling::daily(dir, "snakeway.log");
         let (writer, guard) = tracing_appender::non_blocking(appender);
 
-        fmt()
-            .with_env_filter(filter)
-            .json()
-            .flatten_event(true)
-            .with_writer(writer)
+        let fmt_layer = fmt::layer().json().flatten_event(true).with_writer(writer);
+
+        Registry::default()
+            .with(filter)
+            .with(otel_layer)
+            .with(fmt_layer)
             .init();
 
-        // Keep guard alive for the entire lifetime of the program.
+        // Keep the non-blocking writer guard alive for the process lifetime.
         std::mem::forget(guard);
     } else {
-        fmt()
-            .with_env_filter(filter)
-            .json()
-            .flatten_event(true)
+        let fmt_layer = fmt::layer().json().flatten_event(true);
+
+        Registry::default()
+            .with(filter)
+            .with(otel_layer)
+            .with(fmt_layer)
             .init();
     }
 }
 
-pub fn init_logging() {
+pub fn init_logging(tracer: Option<Tracer>) {
     if std::env::var("TOKIO_CONSOLE").is_ok() {
         // Tokio console logging is specifically for interactive debugging and profiling.
         init_console_logging();
     } else {
         // Normal logging for production and non-interactive use.
-        init_normal_logging();
+        init_normal_logging(tracer);
     }
 }
 

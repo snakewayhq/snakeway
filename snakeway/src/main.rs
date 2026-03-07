@@ -104,7 +104,7 @@ fn main() {
         }
 
         Some(Command::WasmDevice { cmd }) => {
-            init_logging();
+            init_logging(None);
 
             if let Err(e) = cli::wasm_device::run(cmd) {
                 eprintln!("WASM device error: {e}");
@@ -117,7 +117,7 @@ fn main() {
         }
 
         Some(Command::Reload { pid_file }) => {
-            init_logging();
+            init_logging(None);
 
             if let Err(e) = cli::reload::run(&pid_file) {
                 eprintln!("reload failed: {e}");
@@ -138,8 +138,6 @@ fn main() {
 }
 
 fn run(config_path: &str) {
-    init_logging();
-
     let validated =
         load_config(Path::new(&config_path)).expect("Failed to load default Snakeway config");
 
