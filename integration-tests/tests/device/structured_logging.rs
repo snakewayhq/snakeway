@@ -51,7 +51,7 @@ fn structured_logging_otel_metrics_exports_trace_to_jaeger() {
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     // Send a request; the device creates an OTel span for it.
-    let res = srv.get("/otel-test").send().unwrap();
+    let res = srv.get("/api").send().unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
     // Give the OTel SDK's background batch exporter time to flush.
