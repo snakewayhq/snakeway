@@ -2,7 +2,7 @@ use once_cell::sync::OnceCell;
 use std::io::{self, IsTerminal};
 use tracing_appender::rolling;
 use tracing_subscriber::{
-    EnvFilter, Registry, fmt, layer::SubscriberExt, reload, util::SubscriberInitExt,
+    EnvFilter, Registry, fmt, layer::SubscriberExt, reload,
 };
 
 type OTelLayer =
