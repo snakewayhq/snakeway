@@ -1,0 +1,9 @@
+GET /api HTTP/1.1
+Host: snakeway.test:8080
+Connection: keep-alive, foo
+Keep-Alive: timeout=5
+Proxy-Connection: keep-alive
+Transfer-Encoding: chunked
+Foo: bar
+User-Agent: hop-test
+Accept: */*

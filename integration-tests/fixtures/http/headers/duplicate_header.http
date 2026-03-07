@@ -1,0 +1,10 @@
+GET /api HTTP/1.1
+Host: snakeway.test:8080
+Connection: keep-alive
+User-Agent: test-client
+Accept: text/html
+Accept: application/json
+Accept: */*
+X-Custom: one
+X-Custom: two
+X-Custom: three

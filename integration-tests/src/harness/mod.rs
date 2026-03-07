@@ -1,4 +1,6 @@
+mod replay_http;
 mod runtime_patch;
+
 pub mod server;
 pub mod tracing;
 pub mod upstream;
