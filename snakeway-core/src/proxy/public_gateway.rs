@@ -45,6 +45,53 @@ impl PublicGateway {
     }
 }
 
+// Detects CL.TE / TE.CL request smuggling attempts that Pingora's HTTP/1 parser has already
+// partially handled.
+//
+// Pingora strips `Content-Length` (and disables keepalive) when a request carries both
+// `Transfer-Encoding` and `Content-Length` per RFC 9112 §6.3 + §6.1-15.  By the time our
+// code runs the `Content-Length` header is already gone, so we cannot simply check "are both
+// headers present?"
+//
+// Observable signal: for an HTTP/1.1 request where the client did not explicitly send
+// `Connection: close`, Pingora will leave keepalive *enabled*.  The *only* case where it
+// disables keepalive despite the client not requesting it is the CL+TE detection path.  We
+// use `ServerSession::H1.will_keepalive()` to read that flag.
+fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
+    let req = session.req_header();
+
+    // Only relevant for HTTP/1.x connections.
+    if req.version == Version::HTTP_2 {
+        return false;
+    }
+
+    // Transfer-Encoding must be present (Pingora retains it).
+    if !req.headers.contains_key("transfer-encoding") {
+        return false;
+    }
+
+    // If the client explicitly requested connection close the keepalive-off state is
+    // expected and is not a signal of CL+TE detection.
+    let client_closed = req
+        .headers
+        .get("connection")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .split(',')
+        .any(|t| t.trim().eq_ignore_ascii_case("close"));
+
+    if client_closed {
+        return false;
+    }
+
+    // For HTTP/1.1 requests that did not request Connection: close, Pingora enables keepalive
+    // by default.  If keepalive is off, Pingora must have detected CL+TE and disabled it.
+    match session.downstream_session.as_ref() {
+        ServerSession::H1(h1) => !h1.will_keepalive(),
+        _ => false,
+    }
+}
+
 /// Pingora hook execution order in ProxyHttp...
 ///
 /// This is a giant orchestration trait implementation, so better to lay this out explicitly,
@@ -112,53 +159,6 @@ impl PublicGateway {
 ///     - Capture transport errors
 ///     - Run on_ws_close if needed
 ///     - Finalize AdmissionGuard (circuit success/failure)
-
-/// Detects CL.TE / TE.CL request smuggling attempts that Pingora's HTTP/1 parser has already
-/// partially handled.
-///
-/// Pingora strips `Content-Length` (and disables keepalive) when a request carries both
-/// `Transfer-Encoding` and `Content-Length` per RFC 9112 §6.3 + §6.1-15.  By the time our
-/// code runs the `Content-Length` header is already gone, so we cannot simply check "are both
-/// headers present?"
-///
-/// Observable signal: for an HTTP/1.1 request where the client did not explicitly send
-/// `Connection: close`, Pingora will leave keepalive *enabled*.  The *only* case where it
-/// disables keepalive despite the client not requesting it is the CL+TE detection path.  We
-/// use `ServerSession::H1.will_keepalive()` to read that flag.
-fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
-    let req = session.req_header();
-
-    // Only relevant for HTTP/1.x connections.
-    if req.version == Version::HTTP_2 {
-        return false;
-    }
-
-    // Transfer-Encoding must be present (Pingora retains it).
-    if !req.headers.contains_key("transfer-encoding") {
-        return false;
-    }
-
-    // If the client explicitly requested connection close the keepalive-off state is
-    // expected and is not a signal of CL+TE detection.
-    let client_closed = req
-        .headers
-        .get("connection")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .split(',')
-        .any(|t| t.trim().eq_ignore_ascii_case("close"));
-
-    if client_closed {
-        return false;
-    }
-
-    // For HTTP/1.1 requests that did not request Connection: close, Pingora enables keepalive
-    // by default.  If keepalive is off, Pingora must have detected CL+TE and disabled it.
-    match session.downstream_session.as_ref() {
-        ServerSession::H1(h1) => !h1.will_keepalive(),
-        _ => false,
-    }
-}
 
 #[async_trait]
 impl ProxyHttp for PublicGateway {
