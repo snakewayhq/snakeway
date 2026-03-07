@@ -24,6 +24,8 @@ pub struct ServerSpec {
     pub ca_file: Option<PathBuf>,
 
     pub tls_automation: Option<TlsAutomationSpec>,
+
+    pub observability: Option<ObservabilitySpec>,
 }
 
 fn default_work_stealing() -> bool {
@@ -40,9 +42,14 @@ impl Default for ServerSpec {
             work_stealing: true,
             ca_file: None,
             tls_automation: None,
+            observability: None,
         }
     }
 }
+
+//-----------------------------------------------------------------------------
+// TLS Automation
+//-----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct TlsAutomationSpec {
@@ -73,4 +80,28 @@ pub struct AcmeServerSpec {
     pub data_dir: PathBuf,
     pub contact_email: Vec<String>,
     pub ca_file: Option<PathBuf>,
+}
+
+//-----------------------------------------------------------------------------
+// Observability
+//-----------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize, Default, Serialize)]
+pub struct ObservabilitySpec {
+    pub otel: Option<OtelSpec>,
+}
+
+#[derive(Debug, Deserialize, Default, Serialize)]
+pub struct OtelSpec {
+    pub enable: bool,
+    pub endpoint: String,
+    pub service_name: String,
+    pub sampling: SamplingTypeSpec,
+}
+
+#[derive(Debug, Deserialize, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SamplingTypeSpec {
+    #[default]
+    ParentBased,
 }

@@ -1,4 +1,7 @@
-use crate::conf::types::{AcmeServerSpec, CertStoreSpec, ServerSpec, TlsAutomationSpec};
+use crate::conf::types::{
+    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, SamplingTypeSpec, ServerSpec,
+    TlsAutomationSpec,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -20,6 +23,8 @@ pub struct ServerConfig {
     pub ca_file: Option<String>,
 
     pub tls_automation: Option<TlsAutomationConfig>,
+
+    pub observability: Option<ObservabilityConfig>,
 }
 
 impl TryFrom<ServerSpec> for ServerConfig {
@@ -38,9 +43,14 @@ impl TryFrom<ServerSpec> for ServerConfig {
                     "invalid ca_file path. this likely a bug as it should have been caught by validation".to_string()
                 })?,
             tls_automation: spec.tls_automation.map(Into::into),
+            observability: spec.observability.map(Into::into),
         })
     }
 }
+
+//-----------------------------------------------------------------------------
+// TLS Automation
+//-----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TlsAutomationConfig {
@@ -89,6 +99,57 @@ impl From<AcmeServerSpec> for AcmeServerConfig {
             data_dir: spec.data_dir,
             contact_email: spec.contact_email,
             ca_file: spec.ca_file,
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Observability
+//-----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize, Default, Serialize)]
+pub struct ObservabilityConfig {
+    pub otel: Option<OtelConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default, Serialize)]
+pub struct OtelConfig {
+    pub enable: bool,
+    pub endpoint: String,
+    pub service_name: String,
+    pub sampling: SamplingTypeConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SamplingTypeConfig {
+    #[default]
+    ParentBased,
+}
+
+impl From<ObservabilitySpec> for ObservabilityConfig {
+    fn from(spec: ObservabilitySpec) -> Self {
+        Self {
+            otel: spec.otel.map(Into::into),
+        }
+    }
+}
+
+impl From<OtelSpec> for OtelConfig {
+    fn from(spec: OtelSpec) -> Self {
+        Self {
+            enable: spec.enable,
+            endpoint: spec.endpoint,
+            service_name: spec.service_name,
+            sampling: spec.sampling.into(),
+        }
+    }
+}
+
+impl From<SamplingTypeSpec> for SamplingTypeConfig {
+    fn from(spec: SamplingTypeSpec) -> Self {
+        match spec {
+            SamplingTypeSpec::ParentBased => Self::ParentBased,
         }
     }
 }
