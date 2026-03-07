@@ -114,6 +114,17 @@ pub fn init_otel_providers(
     Ok(tracer)
 }
 
+/// Creates the OTel hot-swap layer and registers the global reload handle.
+///
+/// Call this once when composing a custom subscriber (e.g. in integration
+/// tests) so that a subsequent `enable_otel()` call can activate OTel export.
+/// The returned layer must be included in the subscriber stack.
+pub fn build_otel_reload_layer() -> impl tracing_subscriber::Layer<Registry> + Send + Sync + 'static {
+    let (layer, handle) = reload::Layer::new(None::<OTelLayer>);
+    OTEL_HANDLE.set(handle).ok();
+    layer
+}
+
 pub fn init_logging() {
     if std::env::var("TOKIO_CONSOLE").is_ok() {
         init_console_logging();

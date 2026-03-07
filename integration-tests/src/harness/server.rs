@@ -5,6 +5,7 @@ use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
 use snakeway_core::cert_manager::{CertManager, FilesystemOrderStore, MemoryCertStore};
+use snakeway_core::conf::types::DeviceConfig;
 use snakeway_core::conf::{RuntimeConfig, load_config};
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
@@ -15,6 +16,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
+
+/// Dedicated Tokio runtime for OTel background tasks (batch span exporter).
+/// Kept alive for the lifetime of the test process.
+static OTEL_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
@@ -46,6 +51,33 @@ impl TestServer {
         init_test_tracing(events.clone());
         // Clear events.
         events.lock().unwrap().clear();
+
+        // If any device requests OTel export, activate it now.
+        // enable_otel() needs a running Tokio runtime (for tonic gRPC internals),
+        // so we spin up a dedicated one that lives for the process lifetime.
+        if let Some((endpoint, service_name)) = cfg.devices.iter().find_map(|d| {
+            if let DeviceConfig::StructuredLogging(sl) = d {
+                sl.otel_endpoint.as_deref().map(|ep| {
+                    let svc = sl
+                        .otel_service_name
+                        .clone()
+                        .unwrap_or_else(|| "snakeway".to_string());
+                    (ep.to_string(), svc)
+                })
+            } else {
+                None
+            }
+        }) {
+            let rt = OTEL_RUNTIME.get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .worker_threads(1)
+                    .enable_all()
+                    .build()
+                    .expect("failed to build OTel runtime")
+            });
+            let _guard = rt.enter();
+            snakeway_core::logging::enable_otel(&endpoint, &service_name);
+        }
 
         //---------------------------------------------------------------------
         // Setup upstreams and listeners, then patch config in-memory.

@@ -24,7 +24,13 @@ pub fn init_test_tracing(events: Arc<Mutex<Vec<CapturedEvent>>>) {
     INIT_TRACING.call_once(|| {
         let capture_layer = TestEventLayer { events };
 
+        // Include the OTel reload layer so that enable_otel() called later
+        // (e.g. when the test server starts with an OTel-configured device)
+        // can activate span export without replacing the global subscriber.
+        let otel_layer = snakeway_core::logging::build_otel_reload_layer();
+
         tracing_subscriber::registry()
+            .with(otel_layer)
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("trace")))
             .with(capture_layer)
             .with(fmt::layer().with_test_writer().with_ansi(false))
