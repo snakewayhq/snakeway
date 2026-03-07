@@ -10,6 +10,7 @@ use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runt
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::tls_handshake::{CertMode, build_tls_callbacks};
+use crate::telemetry;
 use crate::traffic_management::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result, anyhow};
@@ -49,6 +50,8 @@ pub fn run(config_path: &str, config: RuntimeConfig) -> Result<()> {
         .enable_all()
         .build()
         .expect("failed to build control-plane Tokio runtime");
+
+    telemetry::init(&config);
 
     // Set up the Cert Store and Manager.
     let has_tls = config.listeners.iter().any(|l| l.tls_termination.is_some());
