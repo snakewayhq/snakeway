@@ -3,7 +3,7 @@ use crate::ctx::request::normalization::{ProtocolNormalizationMode, RejectReason
 use http::HeaderValue;
 
 fn assert_accept_http1_headers(input: &[(&str, &str)], expected: &[(&str, &str)]) {
-    assert_accept_headers(input, expected, &ProtocolNormalizationMode::Http2);
+    assert_accept_headers(input, expected, &ProtocolNormalizationMode::Http1);
 }
 
 fn assert_rewrite_http1_headers(
@@ -11,11 +11,11 @@ fn assert_rewrite_http1_headers(
     expected: &[(&str, &str)],
     reason: RewriteReason,
 ) {
-    assert_rewrite_headers(input, expected, reason, &ProtocolNormalizationMode::Http2);
+    assert_rewrite_headers(input, expected, reason, &ProtocolNormalizationMode::Http1);
 }
 
 fn assert_reject_http1_headers(input: &[(&str, &str)], reason: RejectReason) {
-    assert_reject_headers(input, reason, &ProtocolNormalizationMode::Http2);
+    assert_reject_headers(input, reason, &ProtocolNormalizationMode::Http1);
 }
 
 //-----------------------------------------------------------------------------
@@ -75,9 +75,71 @@ fn reject_nul_in_header_value_at_parse_time() {
 }
 
 #[test]
-fn reject_hop_by_hop_header() {
+fn strip_hop_by_hop_header() {
+    // In HTTP/1, hop-by-hop headers are stripped (not rejected); the result is a rewrite.
+    assert_rewrite_http1_headers(
+        &[
+            ("host", "example.com"),
+            ("connection", "keep-alive"),
+            ("transfer-encoding", "chunked"),
+        ],
+        &[("host", "example.com")],
+        RewriteReason::HeaderCanonicalization,
+    );
+}
+
+//-----------------------------------------------------------------------------
+// Smuggling reject cases (RFC 9112 §6.3)
+//-----------------------------------------------------------------------------
+
+#[test]
+fn reject_cl_te_smuggling() {
+    // CL.TE: Content-Length then Transfer-Encoding
     assert_reject_http1_headers(
-        &[("connection", "keep-alive")],
-        RejectReason::HopByHopHeader,
+        &[
+            ("host", "example.com"),
+            ("content-length", "13"),
+            ("transfer-encoding", "chunked"),
+        ],
+        RejectReason::RequestSmugglingAttempt,
+    );
+}
+
+#[test]
+fn reject_te_cl_smuggling() {
+    // TE.CL: Transfer-Encoding then Content-Length
+    assert_reject_http1_headers(
+        &[
+            ("host", "example.com"),
+            ("transfer-encoding", "chunked"),
+            ("content-length", "4"),
+        ],
+        RejectReason::RequestSmugglingAttempt,
+    );
+}
+
+#[test]
+fn reject_dual_content_length_differing_values() {
+    assert_reject_http1_headers(
+        &[
+            ("host", "example.com"),
+            ("content-length", "5"),
+            ("content-length", "10"),
+        ],
+        RejectReason::RequestSmugglingAttempt,
+    );
+}
+
+#[test]
+fn accept_duplicate_content_length_same_value() {
+    // Identical duplicate CL is technically redundant but not ambiguous; strip the duplicate.
+    assert_rewrite_http1_headers(
+        &[
+            ("host", "example.com"),
+            ("content-length", "5"),
+            ("content-length", "5"),
+        ],
+        &[("host", "example.com"), ("content-length", "5, 5")],
+        RewriteReason::HeaderCanonicalization,
     );
 }

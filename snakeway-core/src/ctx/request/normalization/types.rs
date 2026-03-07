@@ -22,6 +22,13 @@ impl<T> NormalizationOutcome<T> {
             reason: RejectReason::HeaderEncodingViolation,
         }
     }
+
+    #[inline]
+    pub fn reject_for_smuggling_attempt() -> Self {
+        Self::Reject {
+            reason: RejectReason::RequestSmugglingAttempt,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +39,7 @@ pub enum RejectReason {
     InvalidQueryEncoding,
     HeaderEncodingViolation,
     HopByHopHeader,
+    RequestSmugglingAttempt,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

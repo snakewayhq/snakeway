@@ -1,5 +1,5 @@
 mod error;
-mod normalization;
+pub mod normalization;
 mod normalized_request;
 mod request_ctx;
 mod request_id;
