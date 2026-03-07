@@ -26,7 +26,7 @@ services:
 
   tempo:
     container_name: snakeway-tempo
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.1
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./otel/tempo.yaml:/etc/tempo.yaml
@@ -41,5 +41,11 @@ services:
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - snakeway-grafana-data:/var/lib/grafana
     depends_on:
       - tempo
+
+
+volumes:
+  snakeway-grafana-data:
