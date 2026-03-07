@@ -1,6 +1,5 @@
 use crate::ctx::RequestId;
 use crate::ctx::request::error::RequestRejectError;
-use tracing::Span;
 use crate::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
     normalize_query,
@@ -17,6 +16,7 @@ use http::header::HOST;
 use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
+use tracing::Span;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
