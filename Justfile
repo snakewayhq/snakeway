@@ -55,6 +55,10 @@ setup-tls-dev-cert:
 # Benchmarks and profiling
 # -----------------------------------------------------------------------------
 
+# Run Criterion microbenchmarks for snakeway-core.
+bench:
+    cargo bench -p snakeway-core
+
 # Use wrk and hey to test various upstream configurations.
 benchmark-proxy:
     @echo "No TLS (wrk)"

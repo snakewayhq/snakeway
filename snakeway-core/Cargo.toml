@@ -77,3 +77,22 @@ rcgen = { workspace = true }
 sha2 = { workspace = true }
 x509-parser = { workspace = true }
 url = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "router"
+harness = false
+
+[[bench]]
+name = "device_pipeline"
+harness = false
+
+[[bench]]
+name = "request_filter"
+harness = false
+
+[[bench]]
+name = "identity"
+harness = false
