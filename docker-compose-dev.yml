@@ -11,3 +11,42 @@ services:
       - PEBBLE_VA_ALWAYS_VALID=1
     volumes:
       - ./pebble.json:/test/pebble.json
+
+  otel-collector:
+    container_name: snakeway-otel-collector
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./otel/collector.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      - tempo
+
+  tempo:
+    container_name: snakeway-tempo
+    image: grafana/tempo:2.10.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./otel/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
+
+  grafana:
+    container_name: snakeway-grafana
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./otel/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - snakeway-grafana-data:/var/lib/grafana
+    depends_on:
+      - tempo
+
+
+volumes:
+  snakeway-grafana-data:

@@ -16,7 +16,7 @@ pub mod ctx;
 pub mod device;
 mod enrichment;
 pub mod http_event;
-pub mod logging;
+pub mod observability;
 pub mod route;
 pub mod runtime;
 mod serialization;

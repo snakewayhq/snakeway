@@ -74,10 +74,13 @@ export default defineConfig({
             {
                 label: 'Internals', items: [
                     {label: 'Architecture', link: '/internals/architecture/'},
+                    {label: 'Control Plane and Data Plane', link: '/internals/control-plane-and-data-plane/'},
+                    {label: 'Observability', link: '/internals/observability/'},
                     {label: 'Mental Model', link: '/internals/mental-model/'},
                     {label: 'HTTP Lifecycle', link: '/internals/lifecycle/'},
                     {label: 'Configuration Subsystem', link: '/internals/configuration/'},
                     {label: 'TLS Certificate Renewal', link: '/internals/tls-cert-renewal/'},
+                    {label: 'Observability', link: '/internals/observability/'},
                 ],
             },
         ],

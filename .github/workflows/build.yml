@@ -149,6 +149,7 @@ jobs:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
     runs-on: ubuntu-latest
     needs: [test, integration-test]
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:

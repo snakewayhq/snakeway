@@ -77,6 +77,11 @@ rcgen = { workspace = true }
 sha2 = { workspace = true }
 x509-parser = { workspace = true }
 url = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+hostname = "0.4.2"
 
 [dev-dependencies]
 criterion = { workspace = true }

@@ -16,6 +16,7 @@ use http::header::HOST;
 use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
+use tracing::Span;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
@@ -61,6 +62,9 @@ pub struct RequestCtx {
 
     /// Circuit breaker started?
     pub cb_started: bool,
+
+    /// Root tracing request span.
+    pub request_span: Option<Span>,
 }
 
 impl Default for RequestCtx {
@@ -103,6 +107,9 @@ impl RequestCtx {
 
             // Request normalization
             normalized_request: NormalizedRequest::default(),
+
+            // Observability.
+            request_span: None,
         }
     }
 
