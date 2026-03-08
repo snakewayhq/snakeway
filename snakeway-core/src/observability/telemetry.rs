@@ -21,7 +21,7 @@ static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
 /// Returns `Ok(Some(tracer))` when tracing is enabled and initialized,
 /// `Ok(None)` when tracing is disabled or not configured, and
 /// `Err(...)` when the exporter fails to build.
-pub fn init_telemetry(
+pub async fn init_telemetry(
     config: &RuntimeConfig,
 ) -> Result<Option<Tracer>, Box<dyn std::error::Error>> {
     let Some(obs) = &config.server.observability else {
