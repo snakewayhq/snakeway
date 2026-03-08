@@ -102,7 +102,10 @@ fn test_admin_view_circuit_details() {
 
     let view = manager.get_upstream_view(&service_id, &upstream_id, true);
 
-    assert_eq!(view.circuit, crate::traffic::circuit::CircuitState::Open);
+    assert_eq!(
+        view.circuit,
+        crate::execution::traffic::circuit::CircuitState::Open
+    );
     let details = view.circuit_details.expect("details");
     assert!(details.opened_at_rfc3339.is_some());
 
