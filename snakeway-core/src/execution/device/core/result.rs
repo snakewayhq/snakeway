@@ -1,5 +1,5 @@
-use crate::ctx::ResponseCtx;
-use crate::device::core::errors::DeviceError;
+use crate::execution::ctx::ResponseCtx;
+use crate::execution::device::core::errors::DeviceError;
 
 #[derive(Debug)]
 pub enum DeviceResult {

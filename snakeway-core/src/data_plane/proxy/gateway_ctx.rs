@@ -1,6 +1,6 @@
-use crate::runtime::RuntimeState;
-use crate::traffic::TrafficManager;
-use crate::ws_connection_management::WsConnectionManager;
+use crate::control_plane::runtime::RuntimeState;
+use crate::data_plane::ws_connection_management::WsConnectionManager;
+use crate::execution::traffic::TrafficManager;
 use arc_swap::{ArcSwap, Guard};
 use std::sync::Arc;
 

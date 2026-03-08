@@ -1,4 +1,4 @@
-use crate::ctx::request::normalization::{
+use crate::execution::ctx::request::normalization::{
     NormalizationOutcome, ProtocolNormalizationMode, RejectReason, RewriteReason, normalize_headers,
 };
 use http::{HeaderMap, HeaderName, HeaderValue};

@@ -1,5 +1,7 @@
-use crate::ctx::request::CanonicalQuery;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
+use crate::execution::ctx::request::CanonicalQuery;
+use crate::execution::ctx::request::normalization::{
+    NormalizationOutcome, RejectReason, RewriteReason,
+};
 
 /// Normalizes HTTP query strings per RFC 3986 and related specifications.
 ///

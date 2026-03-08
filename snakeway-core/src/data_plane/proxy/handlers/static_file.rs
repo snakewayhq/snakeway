@@ -1,6 +1,6 @@
-use crate::ctx::RequestCtx;
-use crate::device::core::registry::DeviceRegistry;
-use crate::route::RouteEntry;
+use crate::execution::ctx::RequestCtx;
+use crate::execution::device::core::registry::DeviceRegistry;
+use crate::execution::route::RouteEntry;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
 
@@ -26,14 +26,14 @@ impl StaticFileHandler {
         route: &RouteEntry,
         devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
-        use crate::ctx::{RequestId, ResponseCtx};
-        use crate::device::core::DeviceResult;
-        use crate::device::core::pipeline::DevicePipeline;
+        use crate::execution::ctx::{RequestId, ResponseCtx};
+        use crate::execution::device::core::DeviceResult;
+        use crate::execution::device::core::pipeline::DevicePipeline;
         use pingora::http::ResponseHeader;
         use tokio::io::AsyncReadExt;
 
         // Extract conditional headers for cache validation and content negotiation.
-        let conditional = crate::static_files::ConditionalHeaders {
+        let conditional = crate::data_plane::static_files::ConditionalHeaders {
             if_none_match: ctx
                 .headers()
                 .get(http::header::IF_NONE_MATCH)
@@ -56,7 +56,7 @@ impl StaticFileHandler {
                 .map(|s| s.to_string()),
         };
 
-        let static_resp = crate::static_files::handle_static_request(
+        let static_resp = crate::data_plane::static_files::handle_static_request(
             &route.kind,
             ctx.canonical_path(),
             &conditional,
@@ -80,15 +80,15 @@ impl StaticFileHandler {
         } else {
             // Write body and end the stream.
             match static_resp.body {
-                crate::static_files::StaticBody::Empty => {
+                crate::data_plane::static_files::StaticBody::Empty => {
                     session.write_response_body(None, true).await?;
                 }
 
-                crate::static_files::StaticBody::Bytes(bytes) => {
+                crate::data_plane::static_files::StaticBody::Bytes(bytes) => {
                     session.write_response_body(Some(bytes), true).await?;
                 }
 
-                crate::static_files::StaticBody::File(mut file) => {
+                crate::data_plane::static_files::StaticBody::File(mut file) => {
                     use bytes::{Bytes, BytesMut};
                     use tokio::io::AsyncReadExt;
 
@@ -123,7 +123,7 @@ impl StaticFileHandler {
                     session.write_response_body(None, true).await?;
                 }
 
-                crate::static_files::StaticBody::RangedFile {
+                crate::data_plane::static_files::StaticBody::RangedFile {
                     mut file,
                     mut remaining,
                 } => {

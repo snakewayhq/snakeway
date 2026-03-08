@@ -1,5 +1,7 @@
 use crate::conf::types::StructuredLoggingDeviceSpec;
-use crate::device::builtin::structured_logging::{IdentityField, LogEvent, LogLevel, LogPhase};
+use crate::execution::device::builtin::structured_logging::{
+    IdentityField, LogEvent, LogLevel, LogPhase,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]

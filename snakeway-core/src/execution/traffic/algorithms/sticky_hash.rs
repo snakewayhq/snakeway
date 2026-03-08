@@ -1,6 +1,6 @@
-use crate::ctx::RequestCtx;
-use crate::enrichment::user_agent::ClientIdentity;
-use crate::traffic::{
+use crate::execution::ctx::RequestCtx;
+use crate::execution::enrichment::user_agent::ClientIdentity;
+use crate::execution::traffic::{
     ServiceId, TrafficManager,
     decision::{DecisionReason, TrafficDecision},
     snapshot::UpstreamSnapshot,

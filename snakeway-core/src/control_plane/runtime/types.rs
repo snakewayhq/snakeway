@@ -1,7 +1,7 @@
-use crate::acme::SniRegistry;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
-use crate::device::core::registry::DeviceRegistry;
-use crate::route::Router;
+use crate::control_plane::acme::SniRegistry;
+use crate::execution::device::core::registry::DeviceRegistry;
+use crate::execution::route::Router;
 use pingora::protocols::tls::CaType;
 use std::collections::HashMap;
 use std::hash::Hash;

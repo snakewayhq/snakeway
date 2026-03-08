@@ -1,7 +1,9 @@
-use crate::ctx::request::NormalizedHeaders;
-use crate::ctx::request::normalization::http1_headers::normalize_http1_headers;
-use crate::ctx::request::normalization::http2_headers::normalize_http2_headers;
-use crate::ctx::request::normalization::{NormalizationOutcome, ProtocolNormalizationMode};
+use crate::execution::ctx::request::NormalizedHeaders;
+use crate::execution::ctx::request::normalization::http1_headers::normalize_http1_headers;
+use crate::execution::ctx::request::normalization::http2_headers::normalize_http2_headers;
+use crate::execution::ctx::request::normalization::{
+    NormalizationOutcome, ProtocolNormalizationMode,
+};
 use http::HeaderMap;
 
 /// Normalizes HTTP headers according to the appropriate protocol specification.

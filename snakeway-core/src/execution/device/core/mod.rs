@@ -5,7 +5,7 @@ pub mod result;
 
 use self::errors::DeviceError;
 pub(crate) use self::result::DeviceResult;
-use crate::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
+use crate::execution::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use bytes::Bytes;
 
 /// A trait representing a processing unit in the HTTP proxy pipeline.

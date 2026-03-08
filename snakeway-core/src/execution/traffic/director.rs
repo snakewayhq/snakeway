@@ -1,5 +1,5 @@
 use crate::conf::types::LoadBalancingStrategy;
-use crate::traffic::{
+use crate::execution::traffic::{
     TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
 use once_cell::sync::Lazy;
@@ -16,9 +16,9 @@ pub struct TrafficDirector;
 impl TrafficDirector {
     pub fn decide(
         &self,
-        req: &crate::ctx::RequestCtx,
+        req: &crate::execution::ctx::RequestCtx,
         snapshot: &TrafficSnapshot,
-        service_id: &crate::traffic::types::ServiceId,
+        service_id: &crate::execution::traffic::types::ServiceId,
         traffic_manager: &TrafficManager,
     ) -> Result<TrafficDecision, TrafficError> {
         let service = snapshot

@@ -1,8 +1,10 @@
 use crate::conf::types::IdentityDeviceConfig;
-use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::errors::DeviceError;
-use crate::device::core::{Device, DeviceResult};
-use crate::enrichment::user_agent::{ClientIdentity, GeoInfo, UaEngine, build_ua_engine};
+use crate::execution::ctx::{RequestCtx, ResponseCtx};
+use crate::execution::device::core::errors::DeviceError;
+use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::enrichment::user_agent::{
+    ClientIdentity, GeoInfo, UaEngine, build_ua_engine,
+};
 use crate::net::resolve_client_ip;
 use ipnet::IpNet;
 use maxminddb::PathElement;

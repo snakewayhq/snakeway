@@ -7,20 +7,19 @@ mod control_plane;
 mod data_plane;
 mod execution;
 mod net;
+mod serialization;
 
 //-----------------------------------------------------------------------------
-// Public
+// Public Subsystems
 //-----------------------------------------------------------------------------
 pub mod cli;
 pub mod conf;
 pub mod http_event;
-mod serialization;
-pub mod server;
-
-pub use control_plane::*;
-pub use data_plane::*;
-pub use execution::*;
 
 //-----------------------------------------------------------------------------
-// Public / Feature-gated
+// Entry points
 //-----------------------------------------------------------------------------
+
+pub use crate::execution::device;
+pub use control_plane::bootstrap::start_server;
+pub use data_plane::bootstrap::build_pingora_server;

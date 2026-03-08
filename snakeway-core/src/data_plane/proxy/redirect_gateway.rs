@@ -1,5 +1,5 @@
-use crate::acme::CertManager;
-use crate::ctx::RequestCtx;
+use crate::control_plane::acme::CertManager;
+use crate::execution::ctx::RequestCtx;
 use async_trait::async_trait;
 use bytes::Bytes;
 use pingora::http::ResponseHeader;

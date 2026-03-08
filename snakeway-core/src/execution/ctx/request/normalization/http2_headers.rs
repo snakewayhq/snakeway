@@ -1,5 +1,7 @@
-use crate::ctx::request::NormalizedHeaders;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
+use crate::execution::ctx::request::NormalizedHeaders;
+use crate::execution::ctx::request::normalization::{
+    NormalizationOutcome, RejectReason, RewriteReason,
+};
 use http::{HeaderMap, HeaderValue};
 
 /// Normalizes HTTP/2 headers according to RFC 9110 and RFC 9113.

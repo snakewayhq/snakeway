@@ -2,7 +2,7 @@ use crate::cli::route::args::{RouteSolveArgs, RouteSolveOutputFormat};
 use crate::cli::route::solve::solver::solve;
 use crate::cli::route::solve::types::{RouteSolveDecision, RouteSolveOptions, SyntheticRequest};
 use crate::conf::load_config;
-use crate::runtime::build_runtime_state;
+use crate::control_plane::runtime::build_runtime_state;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use std::net::IpAddr;
 use std::process;

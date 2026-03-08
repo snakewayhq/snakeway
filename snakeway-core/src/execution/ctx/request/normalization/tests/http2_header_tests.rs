@@ -1,6 +1,6 @@
 use super::test_helpers::{assert_accept_headers, assert_reject_headers, assert_rewrite_headers};
-use crate::ctx::request::normalization::ProtocolNormalizationMode;
-use crate::ctx::request::normalization::{RejectReason, RewriteReason};
+use crate::execution::ctx::request::normalization::ProtocolNormalizationMode;
+use crate::execution::ctx::request::normalization::{RejectReason, RewriteReason};
 
 fn assert_accept_http2_headers(input: &[(&str, &str)], expected: &[(&str, &str)]) {
     assert_accept_headers(input, expected, &ProtocolNormalizationMode::Http2);

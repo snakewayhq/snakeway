@@ -10,10 +10,10 @@ use http::{HeaderMap, HeaderName, StatusCode};
 use wasmtime::component::ResourceTable;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView, p2::add_to_linker_sync};
 
-use crate::ctx::{RequestCtx, RequestId, ResponseCtx};
-use crate::device::core::{Device, result::DeviceResult};
+use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
+use crate::execution::device::core::{Device, result::DeviceResult};
 
-use crate::device::wasm::bindings::{
+use crate::execution::device::wasm::bindings::{
     Snakeway,
     exports::snakeway::device::policy::{BodyChunk, Decision, Header, Request, RequestPatch},
 };
@@ -158,7 +158,7 @@ fn build_request_snapshot(ctx: &RequestCtx) -> Request {
 /// Apply a request_result returned from WASM to the RequestCtx.
 fn apply_request_result(
     ctx: &mut RequestCtx,
-    result: crate::device::wasm::bindings::exports::snakeway::device::policy::RequestResult,
+    result: crate::execution::device::wasm::bindings::exports::snakeway::device::policy::RequestResult,
 ) -> Result<DeviceResult> {
     if matches!(result.decision, Decision::Block) {
         let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());

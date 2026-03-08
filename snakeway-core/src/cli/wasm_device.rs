@@ -1,5 +1,5 @@
-use crate::ctx::{NormalizedPath, RequestCtx};
-use crate::device::load_wasm_device;
+use crate::execution::ctx::{NormalizedPath, RequestCtx};
+use crate::execution::device::load_wasm_device;
 use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
 use std::net::{IpAddr, Ipv4Addr};

@@ -1,6 +1,6 @@
 use crate::conf::types::RequestRateLimitingDeviceConfig;
-use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::{Device, DeviceResult};
+use crate::execution::ctx::{RequestCtx, ResponseCtx};
+use crate::execution::device::core::{Device, DeviceResult};
 use pingora_limits::rate::Rate;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;

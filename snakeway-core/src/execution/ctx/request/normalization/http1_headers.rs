@@ -1,5 +1,5 @@
-use crate::ctx::request::NormalizedHeaders;
-use crate::ctx::request::normalization::{NormalizationOutcome, RewriteReason};
+use crate::execution::ctx::request::NormalizedHeaders;
+use crate::execution::ctx::request::normalization::{NormalizationOutcome, RewriteReason};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::collections::HashSet;
 

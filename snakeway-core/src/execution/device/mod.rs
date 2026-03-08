@@ -3,7 +3,7 @@ pub mod core;
 #[cfg(feature = "wasm")]
 pub(crate) mod wasm;
 
-use crate::device::core::Device;
+use crate::execution::device::core::Device;
 use std::path::PathBuf;
 use std::sync::Arc;
 

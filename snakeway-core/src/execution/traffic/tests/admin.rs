@@ -1,7 +1,7 @@
 use crate::conf::types::{HealthCheckConfig, LoadBalancingStrategy};
-use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
-use crate::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
-use crate::traffic::{ServiceId, TrafficManager};
+use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
+use crate::execution::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
+use crate::execution::traffic::{ServiceId, TrafficManager};
 use std::collections::HashMap;
 
 #[test]

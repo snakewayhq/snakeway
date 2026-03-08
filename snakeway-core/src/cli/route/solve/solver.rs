@@ -2,8 +2,8 @@ use crate::cli::route::solve::types::{
     RouteSolveDecision, RouteSolveNormalized, RouteSolveOptions, RouteSolveRejection,
     RouteSolveTraceStep, SyntheticRequest,
 };
-use crate::route::{RouteEntry, RouteRuntime};
-use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamRuntime};
+use crate::control_plane::runtime::{RuntimeState, ServiceRuntime, UpstreamRuntime};
+use crate::execution::route::{RouteEntry, RouteRuntime};
 
 /// Deterministic, side-effect-free route resolution.
 ///

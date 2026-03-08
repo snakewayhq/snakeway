@@ -1,8 +1,8 @@
-use crate::acme::CertManager;
-use crate::runtime::UpstreamRuntime;
-use crate::server::ReloadHandle;
-use crate::traffic::TrafficManager;
-use crate::ws_connection_management::WsConnectionManager;
+use crate::control_plane::acme::CertManager;
+use crate::control_plane::reload::ReloadHandle;
+use crate::control_plane::runtime::UpstreamRuntime;
+use crate::data_plane::ws_connection_management::WsConnectionManager;
+use crate::execution::traffic::TrafficManager;
 use http::{StatusCode, header};
 use pingora::http::ResponseHeader;
 use pingora::prelude::Session;

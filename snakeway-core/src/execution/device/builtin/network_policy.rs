@@ -1,6 +1,6 @@
 use crate::conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
-use crate::ctx::{RequestCtx, ResponseCtx};
-use crate::device::core::{Device, DeviceResult};
+use crate::execution::ctx::{RequestCtx, ResponseCtx};
+use crate::execution::device::core::{Device, DeviceResult};
 use crate::net::CidrCollection;
 use tracing::debug;
 

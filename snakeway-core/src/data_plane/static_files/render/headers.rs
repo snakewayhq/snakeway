@@ -1,5 +1,5 @@
 use crate::conf::types::CachePolicy;
-use crate::static_files::render::range::ByteRange;
+use crate::data_plane::static_files::render::range::ByteRange;
 use http::{HeaderMap, HeaderName, HeaderValue, header};
 
 #[derive(Debug, Default)]

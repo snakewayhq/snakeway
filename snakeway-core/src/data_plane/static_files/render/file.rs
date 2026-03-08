@@ -1,15 +1,15 @@
 use std::path::PathBuf;
 
-use crate::static_files::render::compression::{
+use crate::data_plane::static_files::render::compression::{
     CompressionEncoding, apply_compression, is_compressible_mime, preferred_encoding,
     response_varies_by_encoding,
 };
-use crate::static_files::render::etag::{etag_matches, generate_etag, modified_since};
+use crate::data_plane::static_files::render::etag::{etag_matches, generate_etag, modified_since};
 
 use crate::conf::types::{CachePolicy, CompressionOptions};
-use crate::static_files::render::headers::HeaderBuilder;
-use crate::static_files::render::range::parse_range_header;
-use crate::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
+use crate::data_plane::static_files::render::headers::HeaderBuilder;
+use crate::data_plane::static_files::render::range::parse_range_header;
+use crate::data_plane::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
 use http::StatusCode;
 use httpdate::fmt_http_date;

@@ -1,5 +1,7 @@
-use crate::ctx::request::normalization::query::normalize_query;
-use crate::ctx::request::normalization::{NormalizationOutcome, RejectReason, RewriteReason};
+use crate::execution::ctx::request::normalization::query::normalize_query;
+use crate::execution::ctx::request::normalization::{
+    NormalizationOutcome, RejectReason, RewriteReason,
+};
 use pretty_assertions::assert_eq;
 
 fn assert_accept_query(raw: &str, expected: &[(&str, &str)]) {

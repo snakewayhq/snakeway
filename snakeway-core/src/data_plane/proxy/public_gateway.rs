@@ -1,15 +1,15 @@
-use crate::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
-use crate::device::core::pipeline::DevicePipeline;
-use crate::device::core::result::DeviceResult;
-use crate::proxy::error_classification::classify_pingora_error;
-use crate::proxy::gateway_ctx::GatewayCtx;
-use crate::proxy::handlers::StaticFileHandler;
-use crate::route::RouteRuntime;
-use crate::runtime::{RuntimeState, UpstreamRuntime};
-use crate::traffic::{
+use crate::control_plane::runtime::{RuntimeState, UpstreamRuntime};
+use crate::data_plane::proxy::error_classification::classify_pingora_error;
+use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
+use crate::data_plane::proxy::handlers::StaticFileHandler;
+use crate::data_plane::ws_connection_management::WsConnectionManager;
+use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
+use crate::execution::device::core::pipeline::DevicePipeline;
+use crate::execution::device::core::result::DeviceResult;
+use crate::execution::route::RouteRuntime;
+use crate::execution::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
-use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;

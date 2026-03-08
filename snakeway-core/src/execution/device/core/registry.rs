@@ -1,13 +1,13 @@
 use crate::conf::RuntimeConfig;
 use crate::conf::types::DeviceConfig;
-use crate::device::builtin::identity::IdentityDevice;
-use crate::device::builtin::network_policy::NetworkPolicyDevice;
-use crate::device::builtin::request_filter::RequestFilterDevice;
-use crate::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
-use crate::device::builtin::structured_logging::StructuredLoggingDevice;
-use crate::device::core::Device;
+use crate::execution::device::builtin::identity::IdentityDevice;
+use crate::execution::device::builtin::network_policy::NetworkPolicyDevice;
+use crate::execution::device::builtin::request_filter::RequestFilterDevice;
+use crate::execution::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
+use crate::execution::device::builtin::structured_logging::StructuredLoggingDevice;
+use crate::execution::device::core::Device;
 #[cfg(feature = "wasm")]
-use crate::device::wasm::wasm_device::WasmDevice;
+use crate::execution::device::wasm::wasm_device::WasmDevice;
 use anyhow::Result;
 use std::sync::Arc;
 
