@@ -5,11 +5,11 @@ use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_w
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
-use snakeway_core::cert_manager::{CertManager, FilesystemOrderStore, MemoryCertStore};
+use snakeway_core::acme::{CertManager, FilesystemOrderStore, MemoryCertStore};
 use snakeway_core::conf::{RuntimeConfig, load_config};
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::server::{ReloadHandle, build_pingora_server};
-use snakeway_core::traffic_management::{TrafficManager, TrafficSnapshot};
+use snakeway_core::traffic::{TrafficManager, TrafficSnapshot};
 use snakeway_core::ws_connection_management::WsConnectionManager;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
