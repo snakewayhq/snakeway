@@ -14,7 +14,6 @@ mod net;
 pub mod cli;
 pub mod conf;
 pub mod http_event;
-pub mod observability;
 mod serialization;
 pub mod server;
 
