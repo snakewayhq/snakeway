@@ -1,7 +1,7 @@
 use crate::conf::validation::{ConfigError, ValidationReport};
 
 #[derive(Debug, thiserror::Error)]
-pub enum ReloadError {
+pub(crate) enum ReloadError {
     #[error("failed to load configuration")]
     Load(#[from] ConfigError),
 

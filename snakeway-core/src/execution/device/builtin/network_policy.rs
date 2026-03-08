@@ -5,14 +5,14 @@ use crate::net::CidrCollection;
 use tracing::debug;
 
 #[derive(Debug)]
-pub struct NetworkPolicyDevice {
+pub(crate) struct NetworkPolicyDevice {
     pub(crate) cidr_allow: CidrCollection,
     pub(crate) allow_forwarded: bool,
     pub(crate) on_invalid_forwarded: OnInvalidForwarded,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum OnInvalidForwarded {
+pub(crate) enum OnInvalidForwarded {
     Deny,
     Ignore,
 }

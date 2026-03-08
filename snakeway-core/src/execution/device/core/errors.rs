@@ -5,11 +5,11 @@ use std::fmt::{Display, Formatter};
 /// This error type encapsulates a string message describing what went wrong
 /// during device operations in the Snakeway proxy.
 #[derive(Debug)]
-pub struct DeviceError {
+pub(crate) struct DeviceError {
     /// A descriptive message explaining the error that occurred
-    pub message: String,
+    pub(crate) message: String,
     /// Whether the error is considered fatal and should be reported to the client
-    pub fatal: bool,
+    pub(crate) fatal: bool,
 }
 
 impl Display for DeviceError {

@@ -4,25 +4,25 @@ use std::time::{Duration, Instant, SystemTime};
 use tracing::info;
 
 #[derive(Debug, Clone)]
-pub struct CircuitBreakerParams {
-    pub enable_auto_recovery: bool,
-    pub failure_threshold: u32,
-    pub open_duration: Duration,
-    pub half_open_max_requests: u32,
-    pub success_threshold: u32,
-    pub count_http_5xx_as_failure: bool,
+pub(crate) struct CircuitBreakerParams {
+    pub(crate) enable_auto_recovery: bool,
+    pub(crate) failure_threshold: u32,
+    pub(crate) open_duration: Duration,
+    pub(crate) half_open_max_requests: u32,
+    pub(crate) success_threshold: u32,
+    pub(crate) count_http_5xx_as_failure: bool,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum CircuitState {
+pub(crate) enum CircuitState {
     Closed,
     Open,
     HalfOpen,
 }
 
 #[derive(Debug, Clone)]
-pub struct CircuitBreaker {
+pub(crate) struct CircuitBreaker {
     // state machine data
     pub(crate) state: CircuitState,
 
@@ -39,7 +39,7 @@ pub struct CircuitBreaker {
 }
 
 impl CircuitBreaker {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             state: CircuitState::Closed,
             consecutive_failures: 0,
@@ -50,12 +50,12 @@ impl CircuitBreaker {
         }
     }
 
-    pub fn state(&self) -> CircuitState {
+    pub(crate) fn state(&self) -> CircuitState {
         self.state
     }
 
     /// Returns whether we should allow *starting* a request to this upstream right now.
-    pub fn allow_request(
+    pub(crate) fn allow_request(
         &mut self,
         ids: (&ServiceId, &UpstreamId),
         p: &CircuitBreakerParams,
@@ -116,7 +116,7 @@ impl CircuitBreaker {
 
     /// Called when the request finishes. `started` tells us whether this request was actually
     /// admitted by `allow_request()` (so we can unwind counters safely).
-    pub fn on_request_end(
+    pub(crate) fn on_request_end(
         &mut self,
         ids: (&ServiceId, &UpstreamId),
         p: &CircuitBreakerParams,

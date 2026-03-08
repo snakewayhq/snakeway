@@ -3,7 +3,7 @@ use crate::conf::validation::ConfigError;
 use std::fs;
 use std::path::Path;
 
-pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
+pub(crate) fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
     let parsed: DevicesFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 
@@ -43,7 +43,7 @@ pub fn parse_devices(path: &Path) -> Result<Vec<DeviceSpec>, ConfigError> {
     Ok(device_config)
 }
 
-pub fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
+pub(crate) fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
     let s = fs::read_to_string(path).map_err(|e| ConfigError::read_file(path, e))?;
     let mut parsed: IngressFile = hcl::from_str(&s).map_err(|e| ConfigError::parse(path, e))?;
 

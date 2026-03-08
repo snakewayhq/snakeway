@@ -6,7 +6,7 @@ fn is_snakeway_event(event: &Value) -> bool {
     event.get("method").is_some() || event.get("uri").is_some() || event.get("status").is_some()
 }
 
-pub fn parse_event(event: &Value) -> Option<LogEvent> {
+pub(crate) fn parse_event(event: &Value) -> Option<LogEvent> {
     let level = event
         .get("level")
         .and_then(Value::as_str)

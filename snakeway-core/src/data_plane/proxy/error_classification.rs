@@ -2,7 +2,7 @@ use crate::execution::traffic::TransportFailure;
 
 /// Classifies Pingora upstream errors into Snakeway transport failures.
 /// Non-upstream errors are intentionally ignored to avoid penalizing healthy upstreams.
-pub fn classify_pingora_error(err: &pingora::Error) -> TransportFailure {
+pub(crate) fn classify_pingora_error(err: &pingora::Error) -> TransportFailure {
     use pingora::{ErrorSource, ErrorType::*};
 
     // Return unknown for downstream and internal errors (without penalizing upstream(s)).

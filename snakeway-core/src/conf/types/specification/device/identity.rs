@@ -4,32 +4,32 @@ use std::path::PathBuf;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct IdentityDeviceSpec {
+pub(crate) struct IdentityDeviceSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub(crate) origin: Origin,
 
-    pub enable: bool,
+    pub(crate) enable: bool,
 
     /// CIDR strings
-    pub trusted_proxies: Vec<String>,
+    pub(crate) trusted_proxies: Vec<String>,
     #[serde(default = "default_max_x_forwarded_for_length")]
-    pub max_x_forwarded_for_length: usize,
+    pub(crate) max_x_forwarded_for_length: usize,
 
-    pub enable_geoip: bool,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub geoip_city_db: Option<PathBuf>,
+    pub(crate) enable_geoip: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub geoip_isp_db: Option<PathBuf>,
+    pub(crate) geoip_city_db: Option<PathBuf>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub geoip_connection_type_db: Option<PathBuf>,
+    pub(crate) geoip_isp_db: Option<PathBuf>,
 
-    pub enable_user_agent: bool,
-    pub ua_engine: UaEngineSpec,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) geoip_connection_type_db: Option<PathBuf>,
+
+    pub(crate) enable_user_agent: bool,
+    pub(crate) ua_engine: UaEngineSpec,
     #[serde(default = "default_max_user_agent_length")]
-    pub max_user_agent_length: usize,
+    pub(crate) max_user_agent_length: usize,
 }
 
 fn default_max_x_forwarded_for_length() -> usize {
@@ -60,7 +60,7 @@ impl Default for IdentityDeviceSpec {
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
-pub enum UaEngineSpec {
+pub(crate) enum UaEngineSpec {
     UaParser,
     #[default]
     Woothee,

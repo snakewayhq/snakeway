@@ -8,20 +8,20 @@ use std::net::IpAddr;
 
 const REGEXES_YAML: &[u8] = include_bytes!("regexes.yaml");
 
-pub fn build_ua_engine(kind: UaEngineKind) -> anyhow::Result<UaEngine> {
+pub(crate) fn build_ua_engine(kind: UaEngineKind) -> anyhow::Result<UaEngine> {
     match kind {
         UaEngineKind::UaParser => Ok(UaEngine::UaParser(UaParserEngine::new(REGEXES_YAML)?)),
         UaEngineKind::Woothee => Ok(UaEngine::Woothee(WootheeEngine::new())),
     }
 }
 
-pub enum UaEngine {
+pub(crate) enum UaEngine {
     UaParser(UaParserEngine),
     Woothee(WootheeEngine),
 }
 
 impl UaEngine {
-    pub fn parse(&self, ua: &str) -> UserAgentInfo {
+    pub(crate) fn parse(&self, ua: &str) -> UserAgentInfo {
         match self {
             UaEngine::UaParser(p) => p.parse(ua),
             UaEngine::Woothee(p) => p.parse(ua),
@@ -30,33 +30,33 @@ impl UaEngine {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClientIdentity {
+pub(crate) struct ClientIdentity {
     #[allow(dead_code)]
-    pub ip: IpAddr,
+    pub(crate) ip: IpAddr,
     /// empty unless trusted proxies enabled/used
-    pub proxy_chain: Vec<IpAddr>,
-    pub is_forwarded: bool,
-    pub is_trusted: bool,
-    pub geo: Option<GeoInfo>,
-    pub ua: Option<UserAgentInfo>,
+    pub(crate) proxy_chain: Vec<IpAddr>,
+    pub(crate) is_forwarded: bool,
+    pub(crate) is_trusted: bool,
+    pub(crate) geo: Option<GeoInfo>,
+    pub(crate) ua: Option<UserAgentInfo>,
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GeoInfo {
+pub(crate) struct GeoInfo {
     /// e.g., US, GB, etc
-    pub country_code: Option<String>,
+    pub(crate) country_code: Option<String>,
     /// Location region
-    pub region: Option<String>,
+    pub(crate) region: Option<String>,
     /// Autonomous System Number
-    pub asn: Option<u32>,
+    pub(crate) asn: Option<u32>,
     /// Autonomous System Organization
-    pub aso: Option<String>,
+    pub(crate) aso: Option<String>,
     /// e.g., wifi, mobile, etc
-    pub connection_type: Option<String>,
+    pub(crate) connection_type: Option<String>,
 }
 
 impl GeoInfo {
-    pub fn has_some_info(&self) -> bool {
+    pub(crate) fn has_some_info(&self) -> bool {
         self.country_code.is_some()
             || self.region.is_some()
             || self.asn.is_some()
@@ -66,13 +66,13 @@ impl GeoInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct UserAgentInfo {
-    pub device_type: DeviceType,
-    pub is_bot: bool,
+pub(crate) struct UserAgentInfo {
+    pub(crate) device_type: DeviceType,
+    pub(crate) is_bot: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum DeviceType {
+pub(crate) enum DeviceType {
     Desktop,
     Mobile,
     Tablet,
@@ -81,7 +81,7 @@ pub enum DeviceType {
 }
 
 impl DeviceType {
-    pub fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             DeviceType::Desktop => "desktop",
             DeviceType::Mobile => "mobile",

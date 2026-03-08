@@ -3,29 +3,29 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ServerSpec {
+pub(crate) struct ServerSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub(crate) origin: Origin,
 
     /// Configuration schema version
-    pub version: u32,
+    pub(crate) version: u32,
 
     /// Optional number of worker threads - default is decided by Pingora.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub threads: Option<usize>,
+    pub(crate) threads: Option<usize>,
 
     /// Optional pid file path
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pid_file: Option<PathBuf>,
+    pub(crate) pid_file: Option<PathBuf>,
 
     #[serde(default = "default_work_stealing")]
-    pub work_stealing: bool,
+    pub(crate) work_stealing: bool,
 
-    pub ca_file: Option<PathBuf>,
+    pub(crate) ca_file: Option<PathBuf>,
 
-    pub tls_automation: Option<TlsAutomationSpec>,
+    pub(crate) tls_automation: Option<TlsAutomationSpec>,
 
-    pub observability: Option<ObservabilitySpec>,
+    pub(crate) observability: Option<ObservabilitySpec>,
 }
 
 fn default_work_stealing() -> bool {
@@ -52,11 +52,11 @@ impl Default for ServerSpec {
 //-----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize, Default)]
-pub struct TlsAutomationSpec {
-    pub acme: AcmeServerSpec,
-    pub cert_store: CertStoreSpec,
+pub(crate) struct TlsAutomationSpec {
+    pub(crate) acme: AcmeServerSpec,
+    pub(crate) cert_store: CertStoreSpec,
     #[serde(default = "default_renew_within_days")]
-    pub renew_within_days: u64,
+    pub(crate) renew_within_days: u64,
 }
 
 fn default_renew_within_days() -> u64 {
@@ -65,7 +65,7 @@ fn default_renew_within_days() -> u64 {
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub enum CertStoreSpec {
+pub(crate) enum CertStoreSpec {
     Filesystem {
         cert_dir: PathBuf,
     },
@@ -75,11 +75,11 @@ pub enum CertStoreSpec {
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
-pub struct AcmeServerSpec {
-    pub directory_url: String,
-    pub data_dir: PathBuf,
-    pub contact_email: Vec<String>,
-    pub ca_file: Option<PathBuf>,
+pub(crate) struct AcmeServerSpec {
+    pub(crate) directory_url: String,
+    pub(crate) data_dir: PathBuf,
+    pub(crate) contact_email: Vec<String>,
+    pub(crate) ca_file: Option<PathBuf>,
 }
 
 //-----------------------------------------------------------------------------
@@ -87,21 +87,21 @@ pub struct AcmeServerSpec {
 //-----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Default, Serialize)]
-pub struct ObservabilitySpec {
-    pub otel: Option<OtelSpec>,
+pub(crate) struct ObservabilitySpec {
+    pub(crate) otel: Option<OtelSpec>,
 }
 
 #[derive(Debug, Deserialize, Default, Serialize)]
-pub struct OtelSpec {
-    pub enable: bool,
-    pub endpoint: String,
-    pub service_name: String,
-    pub sampling: SamplingTypeSpec,
+pub(crate) struct OtelSpec {
+    pub(crate) enable: bool,
+    pub(crate) endpoint: String,
+    pub(crate) service_name: String,
+    pub(crate) sampling: SamplingTypeSpec,
 }
 
 #[derive(Debug, Deserialize, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum SamplingTypeSpec {
+pub(crate) enum SamplingTypeSpec {
     #[default]
     ParentBased,
 }

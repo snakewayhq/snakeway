@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum AcmeClientError {
+pub(crate) enum AcmeClientError {
     #[error("cannot read acme account file: {0}")]
     ReadAcmeAccountFile(String),
 
@@ -24,12 +24,12 @@ pub enum AcmeClientError {
     WriteAcmeAccountFile(String),
 }
 
-pub struct AcmeClient {
-    pub account: Account,
+pub(crate) struct AcmeClient {
+    pub(crate) account: Account,
 }
 
 impl AcmeClient {
-    pub async fn load_or_create(
+    pub(crate) async fn load_or_create(
         directory_url: String,
         order_dir: PathBuf,
         contact_email: Vec<String>,

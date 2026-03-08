@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
+pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     use anyhow::bail;
 
     // Refuse to overwrite an existing non-empty directory.
@@ -116,7 +116,7 @@ pub fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 }
 
 #[derive(Debug, ValueEnum, Clone)]
-pub enum ConfigInitTemplate {
+pub(crate) enum ConfigInitTemplate {
     Minimal,
     Httpbin,
     Dev,

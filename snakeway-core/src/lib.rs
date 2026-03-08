@@ -1,25 +1,26 @@
 extern crate core;
 
 //-----------------------------------------------------------------------------
-// Private
+// Private / Internal
 //-----------------------------------------------------------------------------
+
+mod cli;
+mod conf;
 mod control_plane;
 mod data_plane;
 mod execution;
+mod http_event;
 mod net;
 mod serialization;
+mod server;
 
 //-----------------------------------------------------------------------------
-// Public Subsystems
+// Public API
 //-----------------------------------------------------------------------------
-pub mod cli;
-pub mod conf;
-pub mod http_event;
 
 //-----------------------------------------------------------------------------
 // Entry points
 //-----------------------------------------------------------------------------
-
-pub use crate::execution::device;
-pub use control_plane::bootstrap::start_server;
+pub use cli::bootstrap::run_cli;
 pub use data_plane::bootstrap::build_pingora_server;
+pub use server::start_server;

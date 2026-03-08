@@ -1,2 +1,2 @@
-pub mod bindings;
-pub mod wasm_device;
+pub(crate) mod bindings;
+pub(crate) mod wasm_device;

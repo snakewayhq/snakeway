@@ -20,51 +20,51 @@ use tracing::Span;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
-pub struct RequestCtx {
+pub(crate) struct RequestCtx {
     /// Holds the WS connection slot for the lifetime of the connection
-    pub ws_guard: Option<WsConnectionGuard>,
+    pub(crate) ws_guard: Option<WsConnectionGuard>,
 
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
-    pub admission_guard: Option<AdmissionGuard>,
+    pub(crate) admission_guard: Option<AdmissionGuard>,
 
     /// Lifecycle flag to determine if the context has already been hydrated from a session.
-    pub hydrated: bool,
+    pub(crate) hydrated: bool,
 
     /// Service name for routing decisions.
-    pub service: Option<String>,
+    pub(crate) service: Option<String>,
 
     /// Optional override for the upstream request path
-    pub upstream_path: Option<String>,
+    pub(crate) upstream_path: Option<String>,
 
     /// Remote IP of the TCP connection (authoritative)
-    pub peer_ip: IpAddr,
+    pub(crate) peer_ip: IpAddr,
 
     /// Was a websocket connection opened?
-    pub ws_opened: bool,
+    pub(crate) ws_opened: bool,
 
     /// Upstream authority for HTTP/2 requests.
-    pub upstream_authority: Option<String>,
+    pub(crate) upstream_authority: Option<String>,
 
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
-    pub extensions: Extensions,
+    pub(crate) extensions: Extensions,
 
     /// Normalized request representation for routing and processing.
     normalized_request: NormalizedRequest,
 
     /// Route ID for routing decisions.
-    pub route_id: Option<RouteId>,
+    pub(crate) route_id: Option<RouteId>,
 
     /// Selected upstream and outcome
-    pub selected_upstream: Option<(ServiceId, UpstreamId)>,
+    pub(crate) selected_upstream: Option<(ServiceId, UpstreamId)>,
 
     /// Outcome of upstream selection
-    pub upstream_outcome: Option<UpstreamOutcome>,
+    pub(crate) upstream_outcome: Option<UpstreamOutcome>,
 
     /// Circuit breaker started?
-    pub cb_started: bool,
+    pub(crate) cb_started: bool,
 
     /// Root tracing request span.
-    pub request_span: Option<Span>,
+    pub(crate) request_span: Option<Span>,
 }
 
 impl Default for RequestCtx {
@@ -75,7 +75,7 @@ impl Default for RequestCtx {
 
 /// Hydration API
 impl RequestCtx {
-    pub fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Self {
             route_id: None,
 
@@ -115,7 +115,7 @@ impl RequestCtx {
 
     /// Create a boundary to decouple session from logic.
     /// This makes testing the hydration/normalization code easier.
-    pub fn hydrate_from_session<S: RequestSource>(
+    pub(crate) fn hydrate_from_session<S: RequestSource>(
         &mut self,
         src: &S,
     ) -> Result<(), RequestRejectError> {
@@ -291,11 +291,11 @@ impl RequestCtx {
     ///
     /// This is typically set when proxying to HTTP/2 backends that require
     /// a specific :authority pseudo-header value.
-    pub fn upstream_authority(&self) -> Option<&str> {
+    pub(crate) fn upstream_authority(&self) -> Option<&str> {
         self.upstream_authority.as_deref()
     }
 
-    pub fn is_http2(&self) -> bool {
+    pub(crate) fn is_http2(&self) -> bool {
         debug_assert!(self.hydrated);
         self.normalized_request.is_http2()
     }
@@ -303,7 +303,7 @@ impl RequestCtx {
 
 /// Websocket API
 impl RequestCtx {
-    pub fn is_upgrade_req(&self) -> bool {
+    pub(crate) fn is_upgrade_req(&self) -> bool {
         debug_assert!(self.hydrated);
         self.normalized_request.is_upgrade_req()
     }
@@ -311,7 +311,7 @@ impl RequestCtx {
 
 /// Request Header API
 impl RequestCtx {
-    pub fn headers(&self) -> &HeaderMap {
+    pub(crate) fn headers(&self) -> &HeaderMap {
         debug_assert!(self.hydrated);
         self.normalized_request.headers()
     }
@@ -344,7 +344,7 @@ impl RequestCtx {
 /// Request Path API
 impl RequestCtx {
     /// Path used when proxying upstream
-    pub fn upstream_path(&self) -> &str {
+    pub(crate) fn upstream_path(&self) -> &str {
         self.upstream_path
             .as_deref()
             .unwrap_or(self.canonical_path())
@@ -353,7 +353,7 @@ impl RequestCtx {
     /// Will return the full original URI as received the proxy.
     /// This may include the scheme, host, and port.
     /// Or, just the path with an optional query string.
-    pub fn original_uri_string(&self) -> String {
+    pub(crate) fn original_uri_string(&self) -> String {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().to_string()
     }
@@ -362,19 +362,19 @@ impl RequestCtx {
     /// This is the path as it was received by the proxy.
     /// This may include the path with an optional query string.
     /// e.g., /foo/bar or /foo/bar?a=b
-    pub fn original_uri_path(&self) -> &str {
+    pub(crate) fn original_uri_path(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().path()
     }
 
     /// Internal canonical representation of the request path.
-    pub fn canonical_path(&self) -> &str {
+    pub(crate) fn canonical_path(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.path().as_str()
     }
 
     /// The SNI if present, otherwise HOST header value.
-    pub fn effective_host(&self) -> &str {
+    pub(crate) fn effective_host(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.effective_host()
     }
@@ -382,17 +382,17 @@ impl RequestCtx {
 
 /// Method API
 impl RequestCtx {
-    pub fn method_str(&self) -> &str {
+    pub(crate) fn method_str(&self) -> &str {
         self.method().as_str()
     }
 
-    pub fn method(&self) -> &Method {
+    pub(crate) fn method(&self) -> &Method {
         debug_assert!(self.hydrated);
         self.normalized_request.method()
     }
 
     /// Return true if the method is allowed to have a body.
-    pub fn has_defined_body_semantics(&self) -> bool {
+    pub(crate) fn has_defined_body_semantics(&self) -> bool {
         let method = self.method();
         method == Method::POST || method == Method::PATCH || method == Method::PUT
     }
@@ -401,7 +401,7 @@ impl RequestCtx {
     /// Conceptually, the presence of a body does not matter for a CONNECT request.
     /// HTTP semantics are discarded after the CONNECT request is established.
     /// After that data is actually transferred.
-    pub fn body_presence_is_irrelevant(&self) -> bool {
+    pub(crate) fn body_presence_is_irrelevant(&self) -> bool {
         let method = self.method();
         method == Method::CONNECT
     }
@@ -409,11 +409,11 @@ impl RequestCtx {
 
 /// Request Extensions API
 impl RequestCtx {
-    pub fn request_id(&self) -> Option<String> {
+    pub(crate) fn request_id(&self) -> Option<String> {
         self.extensions.get::<RequestId>().map(|id| id.0.clone())
     }
 
-    pub fn identity(&self) -> Option<&ClientIdentity> {
+    pub(crate) fn identity(&self) -> Option<&ClientIdentity> {
         self.extensions.get::<ClientIdentity>()
     }
 }

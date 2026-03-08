@@ -13,7 +13,7 @@ use tracing::{debug, error, info, warn};
 use x509_parser::prelude::*;
 
 #[derive(Debug, Error)]
-pub enum ReconcilerError {
+pub(crate) enum ReconcilerError {
     #[error("acme client not available: {0}")]
     CannotGetAcmeClient(String),
 
@@ -36,16 +36,16 @@ pub enum ReconcilerError {
     UnexpectedOrderStatus(instant_acme::OrderStatus),
 }
 
-pub struct Reconciler {
+pub(crate) struct Reconciler {
     cert_manager: Arc<CertManager>,
 }
 
 impl Reconciler {
-    pub fn new(cert_manager: Arc<CertManager>) -> Self {
+    pub(crate) fn new(cert_manager: Arc<CertManager>) -> Self {
         Self { cert_manager }
     }
 
-    pub async fn run(&mut self) {
+    pub(crate) async fn run(&mut self) {
         loop {
             let config = self.cert_manager.config().load();
 
@@ -510,9 +510,9 @@ impl Reconciler {
 }
 
 #[derive(Debug, Clone)]
-pub struct DesiredCertificate {
-    pub domains: Vec<String>,
-    pub challenge: AcmeChallengeConfig,
+pub(crate) struct DesiredCertificate {
+    pub(crate) domains: Vec<String>,
+    pub(crate) challenge: AcmeChallengeConfig,
 }
 
 fn desired_certificates_from_config(

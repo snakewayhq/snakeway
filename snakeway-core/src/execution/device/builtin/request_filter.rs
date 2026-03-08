@@ -21,20 +21,20 @@ use smallvec::SmallVec;
 /// to store a few items, we use a small shelf (stack storage) first, and only rent
 /// warehouse space when we really need it.
 #[derive(Debug)]
-pub struct RequestFilterDevice {
-    pub allow_methods: SmallVec<[Method; 4]>,
-    pub deny_methods: SmallVec<[Method; 4]>,
-    pub deny_headers: SmallVec<[HeaderName; 8]>,
-    pub allow_headers: SmallVec<[HeaderName; 8]>,
-    pub required_headers: SmallVec<[HeaderName; 8]>,
-    pub max_header_bytes: usize,
-    pub max_body_bytes: usize,
-    pub max_suspicious_body_bytes: usize,
-    pub deny_status: Option<u16>,
+pub(crate) struct RequestFilterDevice {
+    pub(crate) allow_methods: SmallVec<[Method; 4]>,
+    pub(crate) deny_methods: SmallVec<[Method; 4]>,
+    pub(crate) deny_headers: SmallVec<[HeaderName; 8]>,
+    pub(crate) allow_headers: SmallVec<[HeaderName; 8]>,
+    pub(crate) required_headers: SmallVec<[HeaderName; 8]>,
+    pub(crate) max_header_bytes: usize,
+    pub(crate) max_body_bytes: usize,
+    pub(crate) max_suspicious_body_bytes: usize,
+    pub(crate) deny_status: Option<u16>,
 }
 
 impl RequestFilterDevice {
-    pub fn from_config(cfg: RequestFilterDeviceConfig) -> anyhow::Result<Self> {
+    pub(crate) fn from_config(cfg: RequestFilterDeviceConfig) -> anyhow::Result<Self> {
         Ok(Self {
             allow_methods: cfg.allow_methods.into_iter().collect(),
             deny_methods: cfg.deny_methods.into_iter().collect(),

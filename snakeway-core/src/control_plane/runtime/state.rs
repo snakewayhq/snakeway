@@ -20,7 +20,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-pub async fn reload_runtime_state(
+pub(crate) async fn reload_runtime_state(
     config_path: &Path,
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,
@@ -62,7 +62,7 @@ pub async fn reload_runtime_state(
     Ok(validated.config)
 }
 
-pub fn build_runtime_state(
+pub(crate) fn build_runtime_state(
     cfg: &RuntimeConfig,
     cert_manager: &Option<Arc<CertManager>>,
 ) -> Result<RuntimeState> {
@@ -142,7 +142,7 @@ fn build_runtime_services(
 }
 
 /// Build router from config routes.
-pub fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>, Router>> {
+pub(crate) fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Arc<str>, Router>> {
     let mut routers: HashMap<Arc<str>, Router> = HashMap::new();
 
     for route in routes {
@@ -251,7 +251,7 @@ fn make_upstream_runtime_from_tcp(
 /// Load a per-upstream CA file.
 /// This happens when the runtime state is recomputed,
 /// keeping it out of the data plane.
-pub fn load_ca_from_path(path: &Path) -> Result<CaType> {
+pub(crate) fn load_ca_from_path(path: &Path) -> Result<CaType> {
     if !path.exists() {
         anyhow::bail!("CA file does not exist: {}", path.display());
     }

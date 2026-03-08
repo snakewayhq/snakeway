@@ -12,20 +12,20 @@ pub enum WasmDeviceCmd {
 }
 
 #[derive(Args, Debug)]
-pub struct WasmDeviceExecArgs {
+pub(crate) struct WasmDeviceExecArgs {
     /// Path to the .wasm file
-    pub file: PathBuf,
+    pub(crate) file: PathBuf,
 
     /// Which hook to call (default: on_request)
     #[arg(long, default_value = "on_request")]
-    pub hook: String,
+    pub(crate) hook: String,
 
     /// Request path to send to the WASM device (used by on_request / before_proxy)
     #[arg(long, default_value = "/")]
-    pub path: String,
+    pub(crate) path: String,
 }
 
-pub fn run(cmd: WasmDeviceCmd) -> Result<()> {
+pub(crate) fn run(cmd: WasmDeviceCmd) -> Result<()> {
     match cmd {
         WasmDeviceCmd::Exec(args) => run_exec(args),
     }

@@ -29,7 +29,7 @@ use crate::execution::ctx::request::normalization::{
 /// - `Accept`: Query is already normalized
 /// - `Rewrite`: Query was normalized (with reason)
 /// - `Reject`: Query contains invalid encoding
-pub fn normalize_query(query: &str) -> NormalizationOutcome<CanonicalQuery> {
+pub(crate) fn normalize_query(query: &str) -> NormalizationOutcome<CanonicalQuery> {
     if query.is_empty() {
         return NormalizationOutcome::Accept(CanonicalQuery::default());
     }

@@ -7,17 +7,17 @@ use serde::{Deserialize, Serialize};
 
 /// Represents the top-level configuration file.
 #[derive(Debug, Deserialize, Serialize, Default)]
-pub struct EntrypointSpec {
-    pub server: ServerSpec,
-    pub include: IncludeSpec,
+pub(crate) struct EntrypointSpec {
+    pub(crate) server: ServerSpec,
+    pub(crate) include: IncludeSpec,
 }
 
 /// Represents the include section of the top-level config file.
 /// The members are directory paths where sub-configuration files are located.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct IncludeSpec {
-    pub devices: String,
-    pub ingresses: String,
+pub(crate) struct IncludeSpec {
+    pub(crate) devices: String,
+    pub(crate) ingresses: String,
 }
 
 impl Default for IncludeSpec {

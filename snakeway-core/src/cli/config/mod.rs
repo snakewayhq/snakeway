@@ -2,10 +2,10 @@ mod check;
 mod dump;
 mod init;
 
-pub use check::*;
+pub(crate) use check::*;
 use clap::Subcommand;
-pub use dump::*;
-pub use init::*;
+pub(crate) use dump::*;
+pub(crate) use init::*;
 use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]

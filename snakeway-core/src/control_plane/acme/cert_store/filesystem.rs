@@ -4,12 +4,12 @@ use crate::control_plane::acme::cert_store::{CertificateMeta, StoredCertificate}
 use std::io::Error;
 use std::path::PathBuf;
 
-pub struct FilesystemCertStore {
+pub(crate) struct FilesystemCertStore {
     path: PathBuf,
 }
 
 impl FilesystemCertStore {
-    pub fn new(path: PathBuf) -> Self {
+    pub(crate) fn new(path: PathBuf) -> Self {
         Self { path }
     }
     fn cert_dir(&self, id: &str) -> PathBuf {

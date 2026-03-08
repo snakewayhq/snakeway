@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize)]
-pub struct ServiceId(pub String);
+pub(crate) struct ServiceId(pub(crate) String);
 
 impl Display for ServiceId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -11,26 +11,26 @@ impl Display for ServiceId {
 }
 
 #[derive(Debug, Clone)]
-pub struct LatencyStats {
+pub(crate) struct LatencyStats {
     /// Exponential weighted moving average of latency
-    pub ewma: Duration,
+    pub(crate) ewma: Duration,
 }
 
 #[derive(Debug, Clone)]
-pub struct ConnectionStats {
+pub(crate) struct ConnectionStats {
     /// Active in-flight requests.
-    pub active: u32,
+    pub(crate) active: u32,
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
-pub struct HealthStatus {
+pub(crate) struct HealthStatus {
     /// Whether the upstream is considered healthy or not.
-    pub healthy: bool,
+    pub(crate) healthy: bool,
 }
 
 #[derive(Debug, Clone)]
-pub struct HealthCheckParams {
-    pub enable: bool,
-    pub failure_threshold: u32,
-    pub unhealthy_cooldown: Duration,
+pub(crate) struct HealthCheckParams {
+    pub(crate) enable: bool,
+    pub(crate) failure_threshold: u32,
+    pub(crate) unhealthy_cooldown: Duration,
 }

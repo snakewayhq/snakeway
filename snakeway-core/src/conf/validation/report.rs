@@ -7,24 +7,24 @@ use std::net::IpAddr;
 use std::path::{Display, Path};
 
 #[derive(Debug, Default, Clone, Serialize)]
-pub struct ValidationIssue {
-    pub severity: Severity,
-    pub message: String,
-    pub origin: Origin,
-    pub help: Option<String>,
+pub(crate) struct ValidationIssue {
+    pub(crate) severity: Severity,
+    pub(crate) message: String,
+    pub(crate) origin: Origin,
+    pub(crate) help: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
-pub enum Severity {
+pub(crate) enum Severity {
     #[default]
     Error,
     Warning,
 }
 
 #[derive(Debug, Default)]
-pub struct ValidationReport {
-    pub errors: Vec<ValidationIssue>,
-    pub warnings: Vec<ValidationIssue>,
+pub(crate) struct ValidationReport {
+    pub(crate) errors: Vec<ValidationIssue>,
+    pub(crate) warnings: Vec<ValidationIssue>,
 }
 
 #[derive(Serialize)]
@@ -34,7 +34,7 @@ struct ValidationReportJson<'a> {
 }
 
 impl ValidationReport {
-    pub fn has_violations(&self) -> bool {
+    pub(crate) fn has_violations(&self) -> bool {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
 
@@ -56,7 +56,7 @@ impl ValidationReport {
         });
     }
 
-    pub fn render_json(&self) {
+    pub(crate) fn render_json(&self) {
         if !self.has_violations() {
             return;
         }
@@ -71,7 +71,7 @@ impl ValidationReport {
         }
     }
 
-    pub fn render_plain(&self) {
+    pub(crate) fn render_plain(&self) {
         if !self.has_violations() {
             return;
         }
@@ -105,7 +105,7 @@ impl ValidationReport {
         help.to_string()
     }
 
-    pub fn render_pretty(&self) {
+    pub(crate) fn render_pretty(&self) {
         if !self.has_violations() {
             return;
         }
@@ -168,7 +168,7 @@ impl ValidationReport {
 
 /// Ingress Spec Validation
 impl ValidationReport {
-    pub fn missing_bind(&mut self, origin: &Origin) {
+    pub(crate) fn missing_bind(&mut self, origin: &Origin) {
         self.error(
             "ingress config must have a bind or bind_admin declaration".to_string(),
             origin,
@@ -179,26 +179,15 @@ impl ValidationReport {
 
 /// Bind Spec Validation
 impl ValidationReport {
-    pub fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {
+    pub(crate) fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {
         self.error(format!("invalid bind address: {}", addr), origin, None);
     }
 
-    pub fn duplicate_bind_addr(&mut self, addr: &str, origin: &Origin) {
+    pub(crate) fn duplicate_bind_addr(&mut self, addr: &str, origin: &Origin) {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub fn static_tls_requires_cert_file(&mut self, cert_file: &Path, origin: &Origin) {
-        self.error(
-            format!(
-                "missing or invalid cert file: {}",
-                cert_file.to_string_lossy()
-            ),
-            origin,
-            None,
-        );
-    }
-
-    pub fn static_tls_requires_key_file(&mut self, key_file: &Path, origin: &Origin) {
+    pub(crate) fn static_tls_requires_key_file(&mut self, key_file: &Path, origin: &Origin) {
         self.error(
             format!(
                 "missing or invalid key file: {}",
@@ -209,7 +198,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn ingress_tls_manual_cert_pair_invalid(&mut self, message: &str, origin: &Origin) {
+    pub(crate) fn ingress_tls_manual_cert_pair_invalid(&mut self, message: &str, origin: &Origin) {
         self.error(
             format!("invalid TLS manual cert pair: {}", message),
             origin,
@@ -217,11 +206,11 @@ impl ValidationReport {
         );
     }
 
-    pub fn acme_tls_requires_domains(&mut self, origin: &Origin) {
+    pub(crate) fn acme_tls_requires_domains(&mut self, origin: &Origin) {
         self.error("missing domains for ACME TLS".to_string(), origin, None);
     }
 
-    pub fn admin_bind_does_not_support_acme(&mut self, origin: &Origin) {
+    pub(crate) fn admin_bind_does_not_support_acme(&mut self, origin: &Origin) {
         self.error(
             "admin bind does not support ACME TLS".to_string(),
             origin,
@@ -229,7 +218,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
+    pub(crate) fn http2_requires_tls(&mut self, addr: &str, origin: &Origin) {
         self.error(
             format!("HTTP/2 requires TLS: {}", addr),
             origin,
@@ -237,7 +226,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn redirect_http_to_https_requires_tls(&mut self, addr: &str, origin: &Origin) {
+    pub(crate) fn redirect_http_to_https_requires_tls(&mut self, addr: &str, origin: &Origin) {
         self.error(
             format!("redirect_http_to_https requires TLS: {}", addr),
             origin,
@@ -245,7 +234,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn redirect_status_is_not_a_3xx_code(&mut self, status_code: u16, origin: &Origin) {
+    pub(crate) fn redirect_status_is_not_a_3xx_code(&mut self, status_code: u16, origin: &Origin) {
         self.error(
             format!("redirect status {status_code} is not a 3xx code"),
             origin,
@@ -253,7 +242,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn invalid_http_status_code(&mut self, status_code: u16, origin: &Origin) {
+    pub(crate) fn invalid_http_status_code(&mut self, status_code: u16, origin: &Origin) {
         self.error(
             format!("invalid HTTP status code {}", status_code),
             origin,
@@ -261,7 +250,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn duplicate_redirect_http_to_https_port(&mut self, port: u16, origin: &Origin) {
+    pub(crate) fn duplicate_redirect_http_to_https_port(&mut self, port: u16, origin: &Origin) {
         self.error(
             format!("duplicate redirect_http_to_https port: {}", port),
             origin,
@@ -269,7 +258,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn invalid_port(&mut self, port: u16, origin: &Origin) {
+    pub(crate) fn invalid_port(&mut self, port: u16, origin: &Origin) {
         self.error(
             format!("invalid port: {}", port),
             origin,
@@ -277,7 +266,7 @@ impl ValidationReport {
         );
     }
 
-    pub fn connection_filter_requires_at_least_one_ip_family(&mut self, origin: &Origin) {
+    pub(crate) fn connection_filter_requires_at_least_one_ip_family(&mut self, origin: &Origin) {
         self.error(
             "connection_filter must enable at least one IP family".to_string(),
             origin,
@@ -285,7 +274,11 @@ impl ValidationReport {
         );
     }
 
-    pub fn invalid_cidr_in_connection_filter_allow_list(&mut self, cidr: &str, origin: &Origin) {
+    pub(crate) fn invalid_cidr_in_connection_filter_allow_list(
+        &mut self,
+        cidr: &str,
+        origin: &Origin,
+    ) {
         self.error(
             format!("invalid CIDR in connection_filter.cidr.allow: {cidr}"),
             origin,
@@ -293,7 +286,11 @@ impl ValidationReport {
         );
     }
 
-    pub fn invalid_cidr_in_connection_filter_deny_list(&mut self, cidr: &str, origin: &Origin) {
+    pub(crate) fn invalid_cidr_in_connection_filter_deny_list(
+        &mut self,
+        cidr: &str,
+        origin: &Origin,
+    ) {
         self.error(
             format!("invalid CIDR in connection_filter.cidr.deny: {cidr}"),
             origin,
@@ -304,7 +301,7 @@ impl ValidationReport {
 
 /// Static Files Spec Validation
 impl ValidationReport {
-    pub fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {
+    pub(crate) fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {
         self.error(
             format!("invalid static directory: {}", dir.display()),
             origin,
@@ -312,7 +309,11 @@ impl ValidationReport {
         );
     }
 
-    pub fn invalid_static_dir_must_be_absolute(&mut self, dir: &std::path::Path, origin: &Origin) {
+    pub(crate) fn invalid_static_dir_must_be_absolute(
+        &mut self,
+        dir: &std::path::Path,
+        origin: &Origin,
+    ) {
         self.error(
             format!(
                 "static file directory must be an absolute path: {}",
@@ -326,15 +327,15 @@ impl ValidationReport {
 
 /// Service Spec Validation
 impl ValidationReport {
-    pub fn service_has_no_upstreams(&mut self, origin: &Origin) {
+    pub(crate) fn service_has_no_upstreams(&mut self, origin: &Origin) {
         self.error("service has no upstream backends".to_string(), origin, None)
     }
 
-    pub fn invalid_upstream_weight(&mut self, weight: &u32, origin: &Origin) {
+    pub(crate) fn invalid_upstream_weight(&mut self, weight: &u32, origin: &Origin) {
         self.error(format!("invalid upstream weight: {}", weight), origin, None)
     }
 
-    pub fn upstream_cannot_have_both_sock_and_endpoint(
+    pub(crate) fn upstream_cannot_have_both_sock_and_endpoint(
         &mut self,
         sock: &str,
         host: &str,
@@ -351,30 +352,26 @@ impl ValidationReport {
         )
     }
 
-    pub fn upstream_must_have_a_sock_or_endpoint(&mut self, origin: &Origin) {
+    pub(crate) fn upstream_must_have_a_sock_or_endpoint(&mut self, origin: &Origin) {
         let message =
             "invalid upstream - it must have a sock or an endpoint, but neither are defined"
                 .to_string();
         self.error(message, origin, Some("Only one can be set.".to_string()));
     }
 
-    pub fn invalid_upstream_addr(&mut self, err: &ResolveError, origin: &Origin) {
-        self.error(format!("invalid upstream address: {:?}", err), origin, None)
-    }
-
-    pub fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
+    pub(crate) fn duplicate_upstream_sock(&mut self, sock: &str, origin: &Origin) {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
     }
 
-    pub fn route_has_no_hosts(&mut self, origin: &Origin) {
+    pub(crate) fn route_has_no_hosts(&mut self, origin: &Origin) {
         self.error("route has no hosts".to_string(), origin, None)
     }
 
-    pub fn upstream_tls_sni_required(&mut self, origin: &Origin) {
+    pub(crate) fn upstream_tls_sni_required(&mut self, origin: &Origin) {
         self.error("upstream TLS SNI required".to_string(), origin, None)
     }
 
-    pub fn upstream_tls_sni_must_be_dns(&mut self, origin: &Origin) {
+    pub(crate) fn upstream_tls_sni_must_be_dns(&mut self, origin: &Origin) {
         self.error(
             "upstream TLS SNI must be DNS name".to_string(),
             origin,
@@ -382,7 +379,12 @@ impl ValidationReport {
         )
     }
 
-    pub fn upstream_tls_has_invalid_ca_file(&mut self, ca_file: &Path, err: &str, origin: &Origin) {
+    pub(crate) fn upstream_tls_has_invalid_ca_file(
+        &mut self,
+        ca_file: &Path,
+        err: &str,
+        origin: &Origin,
+    ) {
         self.error(
             format!(
                 "upstream TLS has invalid CA file ({}): {}",
@@ -394,7 +396,11 @@ impl ValidationReport {
         )
     }
 
-    pub fn websocket_route_cannot_be_used_with_http2(&mut self, path: &str, origin: &Origin) {
+    pub(crate) fn websocket_route_cannot_be_used_with_http2(
+        &mut self,
+        path: &str,
+        origin: &Origin,
+    ) {
         self.error(
             format!("websocket route cannot be used with HTTP2: {}", path),
             origin,
@@ -402,11 +408,11 @@ impl ValidationReport {
         )
     }
 
-    pub fn invalid_upstream_ip(&mut self, ip: &IpAddr, origin: &Origin) {
+    pub(crate) fn invalid_upstream_ip(&mut self, ip: &IpAddr, origin: &Origin) {
         self.error(format!("invalid upstream ip: {}", ip), origin, None)
     }
 
-    pub fn invalid_upstream_hostname(&mut self, hostname: &str, origin: &Origin) {
+    pub(crate) fn invalid_upstream_hostname(&mut self, hostname: &str, origin: &Origin) {
         self.error(
             format!("invalid upstream hostname: {}", hostname),
             origin,
@@ -417,11 +423,15 @@ impl ValidationReport {
 
 /// Server Spec Validation
 impl ValidationReport {
-    pub fn invalid_config_version(&mut self, version: &u32, origin: &Origin) {
+    pub(crate) fn invalid_config_version(&mut self, version: &u32, origin: &Origin) {
         self.error(format!("invalid config version: {}", version), origin, None)
     }
 
-    pub fn pid_file_parent_dir_does_not_exist(&mut self, pid_file: Display, origin: &Origin) {
+    pub(crate) fn pid_file_parent_dir_does_not_exist(
+        &mut self,
+        pid_file: Display,
+        origin: &Origin,
+    ) {
         self.error(
             format!("pid file parent directory does not exist: {}", pid_file),
             origin,
@@ -429,7 +439,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn pid_file_parent_not_a_dir(&mut self, pid_file: Display, origin: &Origin) {
+    pub(crate) fn pid_file_parent_not_a_dir(&mut self, pid_file: Display, origin: &Origin) {
         self.error(
             format!("pid file parent is not a directory: {}", pid_file),
             origin,
@@ -437,7 +447,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_ca_file_invalid(&mut self, message: &str, origin: &Origin) {
+    pub(crate) fn server_ca_file_invalid(&mut self, message: &str, origin: &Origin) {
         self.error(
             format!("server CA file is invalid: {}", message),
             origin,
@@ -445,7 +455,10 @@ impl ValidationReport {
         )
     }
 
-    pub fn acme_configured_in_ingress_but_server_tls_not_configured(&mut self, origin: &Origin) {
+    pub(crate) fn acme_configured_in_ingress_but_server_tls_not_configured(
+        &mut self,
+        origin: &Origin,
+    ) {
         self.error(
             "ACME configured in ingress but server.tls_automation is not configured".to_string(),
             origin,
@@ -453,7 +466,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_acme_directory_url_cannot_be_empty(&mut self, origin: &Origin) {
+    pub(crate) fn server_tls_acme_directory_url_cannot_be_empty(&mut self, origin: &Origin) {
         self.error(
             "server TLS ACME directory URL cannot be empty".to_string(),
             origin,
@@ -461,7 +474,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_acme_directory_url_must_be_https(&mut self, origin: &Origin) {
+    pub(crate) fn server_tls_acme_directory_url_must_be_https(&mut self, origin: &Origin) {
         self.error(
             "server TLS ACME directory URL must be a valid URL".to_string(),
             origin,
@@ -469,7 +482,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_acme_contact_email_cannot_be_empty(&mut self, origin: &Origin) {
+    pub(crate) fn server_tls_acme_contact_email_cannot_be_empty(&mut self, origin: &Origin) {
         self.error(
             "server TLS ACME contact email cannot be empty".to_string(),
             origin,
@@ -477,7 +490,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_acme_ca_file_invalid(
+    pub(crate) fn server_tls_acme_ca_file_invalid(
         &mut self,
         ca_file: &Path,
         message: &str,
@@ -501,7 +514,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_acme_data_dir_is_invalid(&mut self, data_dir: &Path, origin: &Origin) {
+    pub(crate) fn server_tls_acme_data_dir_is_invalid(&mut self, data_dir: &Path, origin: &Origin) {
         self.error(
             format!(
                 "server TLS ACME data directory does not exist or is not a directory: {}",
@@ -512,7 +525,10 @@ impl ValidationReport {
         )
     }
 
-    pub fn server_tls_filesystem_cert_store_must_have_a_cert_directory(&mut self, origin: &Origin) {
+    pub(crate) fn server_tls_filesystem_cert_store_must_have_a_cert_directory(
+        &mut self,
+        origin: &Origin,
+    ) {
         self.error(
             "server TLS filesystem cert store must have a certificate directory".to_string(),
             origin,
@@ -520,7 +536,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &Origin) {
+    pub(crate) fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &Origin) {
         self.warning(
             "server.tls_automation configured but no TLS listeners defined".to_string(),
             origin,
@@ -531,17 +547,17 @@ impl ValidationReport {
 
 /// Wasm Device Spec Validation
 impl ValidationReport {
-    pub fn wasm_device_path_is_empty(&mut self, path: Display, origin: &Origin) {
+    pub(crate) fn wasm_device_path_is_empty(&mut self, path: Display, origin: &Origin) {
         self.error(format!("wasm device path is empty: {}", path), origin, None)
     }
-    pub fn wasm_device_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
+    pub(crate) fn wasm_device_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
         self.error(
             format!("wasm device path does not exist: {}", path),
             origin,
             None,
         )
     }
-    pub fn wasm_device_path_is_not_a_file(&mut self, path: Display, origin: &Origin) {
+    pub(crate) fn wasm_device_path_is_not_a_file(&mut self, path: Display, origin: &Origin) {
         self.error(
             format!("wasm device path is not a file: {}", path),
             origin,
@@ -552,7 +568,7 @@ impl ValidationReport {
 
 /// Builtin Identity Device Spec Validation
 impl ValidationReport {
-    pub fn geoip_enabled_with_no_dbs_specified(&mut self, origin: &Origin) {
+    pub(crate) fn geoip_enabled_with_no_dbs_specified(&mut self, origin: &Origin) {
         self.warning(
             "geoip enabled with no dbs specified".to_string(),
             origin,
@@ -560,17 +576,17 @@ impl ValidationReport {
         )
     }
 
-    pub fn geoip_db_path_is_empty(&mut self, path: Display, origin: &Origin) {
+    pub(crate) fn geoip_db_path_is_empty(&mut self, path: Display, origin: &Origin) {
         self.error(format!("geoip db path is empty: {}", path), origin, None)
     }
-    pub fn geoip_db_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
+    pub(crate) fn geoip_db_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
         self.error(
             format!("geoip db path does not exist: {}", path),
             origin,
             None,
         )
     }
-    pub fn geoip_db_is_not_a_file(&mut self, path: Display, origin: &Origin) {
+    pub(crate) fn geoip_db_is_not_a_file(&mut self, path: Display, origin: &Origin) {
         self.error(
             format!("geoip db path is not a file: {}", path),
             origin,
@@ -578,11 +594,11 @@ impl ValidationReport {
         )
     }
 
-    pub fn invalid_trusted_proxy(&mut self, proxy: &str, origin: &Origin) {
+    pub(crate) fn invalid_trusted_proxy(&mut self, proxy: &str, origin: &Origin) {
         self.error(format!("invalid trusted proxy: {}", proxy), origin, None)
     }
 
-    pub fn trusted_proxies_cannot_trust_all_networks(&mut self, origin: &Origin) {
+    pub(crate) fn trusted_proxies_cannot_trust_all_networks(&mut self, origin: &Origin) {
         self.error(
             "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)".to_string(),
             origin,
@@ -590,7 +606,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn trusted_proxies_contains_a_public_ip_range_warning(
+    pub(crate) fn trusted_proxies_contains_a_public_ip_range_warning(
         &mut self,
         network: ipnet::IpNet,
         origin: &Origin,
@@ -602,15 +618,11 @@ impl ValidationReport {
         )
     }
 
-    pub fn ua_engine_is_empty(&mut self, origin: &Origin) {
-        self.error("ua_engine is empty".to_string(), origin, None)
-    }
-
-    pub fn device_already_defined(&mut self, origin: &Origin) {
+    pub(crate) fn device_already_defined(&mut self, origin: &Origin) {
         self.error("device already defined".to_string(), origin, None)
     }
 
-    pub fn device_requires_identity_device(&mut self, origin: &Origin) {
+    pub(crate) fn device_requires_identity_device(&mut self, origin: &Origin) {
         self.error(
             "device requires identity device to be present and enabled".to_string(),
             origin,
@@ -618,7 +630,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn network_policy_device_requires_cidr_allow(&mut self, origin: &Origin) {
+    pub(crate) fn network_policy_device_requires_cidr_allow(&mut self, origin: &Origin) {
         self.error(
             "network policy device requires cidr_allow list to be set".to_string(),
             origin,
@@ -626,7 +638,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &Origin) {
+    pub(crate) fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &Origin) {
         self.error(
             format!("invalid network policy CIDR: {}", cidr),
             origin,
@@ -634,7 +646,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn structured_logging_identity_fields_empty(&mut self, origin: &Origin) {
+    pub(crate) fn structured_logging_identity_fields_empty(&mut self, origin: &Origin) {
         self.warning(
             "structured logging identity fields cannot be empty".to_string(),
             origin,
@@ -642,7 +654,10 @@ impl ValidationReport {
         )
     }
 
-    pub fn structured_logging_includes_headers_but_no_headers_set(&mut self, origin: &Origin) {
+    pub(crate) fn structured_logging_includes_headers_but_no_headers_set(
+        &mut self,
+        origin: &Origin,
+    ) {
         self.warning(
             "structured logging includes headers but no headers are set".to_string(),
             origin,
@@ -653,11 +668,11 @@ impl ValidationReport {
         )
     }
 
-    pub fn invalid_http_method(&mut self, method: &str, origin: &Origin) {
+    pub(crate) fn invalid_http_method(&mut self, method: &str, origin: &Origin) {
         self.error(format!("invalid HTTP method: {}", method), origin, None)
     }
 
-    pub fn invalid_http_header_name(&mut self, header: &str, origin: &Origin) {
+    pub(crate) fn invalid_http_header_name(&mut self, header: &str, origin: &Origin) {
         self.error(
             format!("invalid HTTP header name: {}", header),
             origin,
@@ -665,7 +680,7 @@ impl ValidationReport {
         )
     }
 
-    pub fn warn_max_suspicious_bytes_large_than_max_body_bytes(&mut self, origin: &Origin) {
+    pub(crate) fn warn_max_suspicious_bytes_large_than_max_body_bytes(&mut self, origin: &Origin) {
         self.warning(
             "max_suspicious_body_bytes should not be larger than max_body_bytes".to_string(),
             origin,

@@ -3,7 +3,7 @@ use crate::execution::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use bytes::Bytes;
 use std::sync::Arc;
 
-pub struct DevicePipeline;
+pub(crate) struct DevicePipeline;
 
 fn run_device_chain<D>(
     devices: &[D],
@@ -43,11 +43,14 @@ impl DevicePipeline {
 
 /// Device pipeline for HTTP events
 impl DevicePipeline {
-    pub fn run_on_request(devices: &[Arc<dyn Device>], ctx: &mut RequestCtx) -> DeviceResult {
+    pub(crate) fn run_on_request(
+        devices: &[Arc<dyn Device>],
+        ctx: &mut RequestCtx,
+    ) -> DeviceResult {
         run_device_chain(devices, |dev| dev.on_request(ctx))
     }
 
-    pub fn on_stream_request_body(
+    pub(crate) fn on_stream_request_body(
         devices: &[Arc<dyn Device>],
         ctx: &mut RequestCtx,
         body: &mut Option<Bytes>,
@@ -58,21 +61,21 @@ impl DevicePipeline {
         })
     }
 
-    pub fn run_before_proxy(
+    pub(crate) fn run_before_proxy(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut RequestCtx,
     ) -> DeviceResult {
         run_device_chain(devices, |dev| dev.before_proxy(ctx))
     }
 
-    pub fn run_after_proxy(
+    pub(crate) fn run_after_proxy(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut ResponseCtx,
     ) -> DeviceResult {
         run_device_chain(devices, |dev| dev.after_proxy(ctx))
     }
 
-    pub fn run_on_response(
+    pub(crate) fn run_on_response(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut ResponseCtx,
     ) -> DeviceResult {

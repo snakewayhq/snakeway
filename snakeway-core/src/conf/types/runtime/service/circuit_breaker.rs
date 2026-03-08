@@ -2,13 +2,13 @@ use crate::conf::types::CircuitBreakerSpec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
-pub struct CircuitBreakerConfig {
-    pub enable_auto_recovery: bool,
-    pub failure_threshold: u32,
-    pub open_duration_milliseconds: u64,
-    pub half_open_max_requests: u32,
-    pub success_threshold: u32,
-    pub count_http_5xx_as_failure: bool,
+pub(crate) struct CircuitBreakerConfig {
+    pub(crate) enable_auto_recovery: bool,
+    pub(crate) failure_threshold: u32,
+    pub(crate) open_duration_milliseconds: u64,
+    pub(crate) half_open_max_requests: u32,
+    pub(crate) success_threshold: u32,
+    pub(crate) count_http_5xx_as_failure: bool,
 }
 
 impl From<CircuitBreakerSpec> for CircuitBreakerConfig {

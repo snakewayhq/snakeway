@@ -3,7 +3,7 @@ use crate::execution::traffic::{ServiceId, TrafficManager};
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct AdmissionGuard {
+pub(crate) struct AdmissionGuard {
     tm: Arc<TrafficManager>,
     service_id: ServiceId,
     upstream_id: UpstreamId,
@@ -11,7 +11,11 @@ pub struct AdmissionGuard {
 }
 
 impl AdmissionGuard {
-    pub fn new(tm: Arc<TrafficManager>, service_id: ServiceId, upstream_id: UpstreamId) -> Self {
+    pub(crate) fn new(
+        tm: Arc<TrafficManager>,
+        service_id: ServiceId,
+        upstream_id: UpstreamId,
+    ) -> Self {
         tm.on_request_start(&service_id, &upstream_id);
 
         Self {
@@ -22,11 +26,11 @@ impl AdmissionGuard {
         }
     }
 
-    pub fn success(&mut self) {
+    pub(crate) fn success(&mut self) {
         self.finish(true);
     }
 
-    pub fn failure(&mut self) {
+    pub(crate) fn failure(&mut self) {
         self.finish(false);
     }
 

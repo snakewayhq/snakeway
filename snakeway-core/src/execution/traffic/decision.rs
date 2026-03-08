@@ -1,7 +1,7 @@
 use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum DecisionReason {
+pub(crate) enum DecisionReason {
     Failover,
     RoundRobin,
     AdmissionPressure,
@@ -11,13 +11,13 @@ pub enum DecisionReason {
 }
 
 #[derive(Debug, Clone)]
-pub struct TrafficDecision {
-    pub upstream_id: UpstreamId,
-    pub reason: DecisionReason,
-    pub cb_started: bool,
+pub(crate) struct TrafficDecision {
+    pub(crate) upstream_id: UpstreamId,
+    pub(crate) reason: DecisionReason,
+    pub(crate) cb_started: bool,
 }
 
-pub struct SelectedUpstream<'a> {
-    pub upstream: &'a UpstreamRuntime,
-    pub cb_started: bool,
+pub(crate) struct SelectedUpstream<'a> {
+    pub(crate) upstream: &'a UpstreamRuntime,
+    pub(crate) cb_started: bool,
 }

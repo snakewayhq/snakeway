@@ -5,5 +5,5 @@ mod file;
 mod headers;
 mod range;
 
-pub use directory::render_directory;
-pub use file::render_file;
+pub(crate) use directory::render_directory;
+pub(crate) use file::render_file;

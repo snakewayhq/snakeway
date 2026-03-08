@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum NormalizationOutcome<T> {
+pub(crate) enum NormalizationOutcome<T> {
     Accept(T),
     Rewrite {
         value: T,
@@ -17,14 +17,14 @@ pub enum NormalizationOutcome<T> {
 /// Small helper to reduce noisy call site boilerplate.
 impl<T> NormalizationOutcome<T> {
     #[inline]
-    pub fn reject_for_header_encoding_violation() -> Self {
+    pub(crate) fn reject_for_header_encoding_violation() -> Self {
         Self::Reject {
             reason: RejectReason::HeaderEncodingViolation,
         }
     }
 
     #[inline]
-    pub fn reject_for_smuggling_attempt() -> Self {
+    pub(crate) fn reject_for_smuggling_attempt() -> Self {
         Self::Reject {
             reason: RejectReason::RequestSmugglingAttempt,
         }
@@ -32,7 +32,7 @@ impl<T> NormalizationOutcome<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RejectReason {
+pub(crate) enum RejectReason {
     InvalidUtf8,
     PathTraversal,
     InvalidPercentEncoding,
@@ -43,14 +43,14 @@ pub enum RejectReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RewriteReason {
+pub(crate) enum RewriteReason {
     PathCanonicalization,
     QueryCanonicalization,
     HeaderCanonicalization,
     PercentDecodeUnreserved,
 }
 
-pub enum ProtocolNormalizationMode {
+pub(crate) enum ProtocolNormalizationMode {
     Http1,
     Http2,
 }

@@ -13,7 +13,7 @@ use std::fs::DirEntry;
 /// - `dir` is already canonicalized and validated
 /// - traversal has already been prevented
 /// - caller has confirmed directory_listing is enabled
-pub fn render_directory(dir: PathBuf, request_path: &str) -> StaticResponse {
+pub(crate) fn render_directory(dir: PathBuf, request_path: &str) -> StaticResponse {
     let mut entries = match std::fs::read_dir(&dir) {
         Ok(rd) => rd
             .filter_map(|e| e.ok())

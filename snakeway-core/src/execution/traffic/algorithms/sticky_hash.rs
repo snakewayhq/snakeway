@@ -10,7 +10,7 @@ use ahash::RandomState;
 use std::hash::Hash;
 
 #[derive(Debug, Default)]
-pub struct StickyHash;
+pub(crate) struct StickyHash;
 
 impl StickyHash {
     /// Deterministic, fast hash for routing decisions.

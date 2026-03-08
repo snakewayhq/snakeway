@@ -3,25 +3,25 @@ use crate::execution::traffic::circuit::{CircuitBreakerParams, CircuitState};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-pub struct AdminUpstreamView {
-    pub health: HealthStatus,
-    pub circuit: CircuitState,
-    pub active_requests: u32,
-    pub total_requests: u32,
-    pub total_successes: u32,
-    pub total_failures: u32,
-    pub circuit_params: Option<CircuitBreakerParamsView>,
-    pub circuit_details: Option<CircuitBreakerDetailsView>,
+pub(crate) struct AdminUpstreamView {
+    pub(crate) health: HealthStatus,
+    pub(crate) circuit: CircuitState,
+    pub(crate) active_requests: u32,
+    pub(crate) total_requests: u32,
+    pub(crate) total_successes: u32,
+    pub(crate) total_failures: u32,
+    pub(crate) circuit_params: Option<CircuitBreakerParamsView>,
+    pub(crate) circuit_details: Option<CircuitBreakerDetailsView>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct CircuitBreakerParamsView {
-    pub enabled: bool,
-    pub failure_threshold: u32,
-    pub open_duration_milliseconds: u64,
-    pub half_open_max_requests: u32,
-    pub success_threshold: u32,
-    pub count_http_5xx_as_failure: bool,
+pub(crate) struct CircuitBreakerParamsView {
+    pub(crate) enabled: bool,
+    pub(crate) failure_threshold: u32,
+    pub(crate) open_duration_milliseconds: u64,
+    pub(crate) half_open_max_requests: u32,
+    pub(crate) success_threshold: u32,
+    pub(crate) count_http_5xx_as_failure: bool,
 }
 
 impl From<&CircuitBreakerParams> for CircuitBreakerParamsView {
@@ -38,9 +38,9 @@ impl From<&CircuitBreakerParams> for CircuitBreakerParamsView {
 }
 
 #[derive(Debug, Serialize)]
-pub struct CircuitBreakerDetailsView {
-    pub consecutive_failures: u32,
-    pub opened_at_rfc3339: Option<String>,
-    pub half_open_in_flight: u32,
-    pub half_open_successes: u32,
+pub(crate) struct CircuitBreakerDetailsView {
+    pub(crate) consecutive_failures: u32,
+    pub(crate) opened_at_rfc3339: Option<String>,
+    pub(crate) half_open_in_flight: u32,
+    pub(crate) half_open_successes: u32,
 }

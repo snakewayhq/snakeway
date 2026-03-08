@@ -1,4 +1,4 @@
 mod config_init;
 mod templates;
 
-pub use config_init::*;
+pub(crate) use config_init::*;

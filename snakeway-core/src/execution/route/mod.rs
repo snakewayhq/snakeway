@@ -1,5 +1,5 @@
-pub mod router;
-pub mod types;
+pub(crate) mod router;
+pub(crate) mod types;
 
-pub use router::{RouteEntry, Router};
-pub use types::RouteRuntime;
+pub(crate) use router::{RouteEntry, Router};
+pub(crate) use types::RouteRuntime;

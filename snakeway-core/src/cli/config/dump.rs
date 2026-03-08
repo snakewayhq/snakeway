@@ -4,7 +4,7 @@ use clap::ValueEnum;
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub fn dump(
+pub(crate) fn dump(
     path: PathBuf,
     format: ConfigDumpOutputFormat,
     repr: RepresentationFormat,
@@ -47,13 +47,13 @@ fn dump_hcl<T: Serialize>(value: &T) -> anyhow::Result<()> {
 }
 
 #[derive(Clone, Debug, ValueEnum)]
-pub enum RepresentationFormat {
+pub(crate) enum RepresentationFormat {
     Spec,
     Runtime,
 }
 
 #[derive(Clone, Debug, ValueEnum)]
-pub enum ConfigDumpOutputFormat {
+pub(crate) enum ConfigDumpOutputFormat {
     Hcl,
     Json,
     Yaml,

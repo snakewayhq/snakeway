@@ -7,7 +7,7 @@ use crate::execution::traffic::{
 };
 
 #[derive(Debug, Default)]
-pub struct RoundRobin;
+pub(crate) struct RoundRobin;
 
 impl TrafficStrategy for RoundRobin {
     fn decide(

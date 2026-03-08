@@ -9,25 +9,25 @@ use crate::net::resolve_client_ip;
 use ipnet::IpNet;
 use maxminddb::PathElement;
 
-pub struct IdentityDevice {
+pub(crate) struct IdentityDevice {
     // IP Trust
     trusted_proxies: Vec<IpNet>,
     max_x_forwarded_for_length: usize,
 
     // GeoIP
-    pub enable_geoip: bool,
+    pub(crate) enable_geoip: bool,
     city_reader: Option<maxminddb::Reader<maxminddb::Mmap>>,
     isp_reader: Option<maxminddb::Reader<maxminddb::Mmap>>,
     connection_type_reader: Option<maxminddb::Reader<maxminddb::Mmap>>,
 
     // User-agent
-    pub enable_user_agent: bool,
+    pub(crate) enable_user_agent: bool,
     ua_engine: Option<UaEngine>,
     max_user_agent_length: usize,
 }
 
 impl IdentityDevice {
-    pub fn from_config(cfg: IdentityDeviceConfig) -> anyhow::Result<Self> {
+    pub(crate) fn from_config(cfg: IdentityDeviceConfig) -> anyhow::Result<Self> {
         // Safety note on these memory-mapped GeoIP files...
         // 1. File is opened read-only
         // 2. Lifetime is bound to IdentityDevice

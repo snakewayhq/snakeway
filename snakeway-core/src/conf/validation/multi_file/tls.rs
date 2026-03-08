@@ -1,7 +1,11 @@
 use crate::conf::types::{CertStoreSpec, IngressSpec, ServerSpec, TlsTerminationSpec};
 use crate::conf::validation::ValidationReport;
 
-pub fn validate_tls(server: &ServerSpec, ingresses: &[IngressSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_tls(
+    server: &ServerSpec,
+    ingresses: &[IngressSpec],
+    report: &mut ValidationReport,
+) {
     let mut any_tls_listener = false;
     let mut any_acme_listener = false;
 

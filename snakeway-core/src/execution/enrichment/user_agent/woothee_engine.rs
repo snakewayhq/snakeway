@@ -1,18 +1,18 @@
 use crate::execution::enrichment::user_agent::{DeviceType, UserAgentInfo};
 use woothee::parser::Parser;
 
-pub struct WootheeEngine {
+pub(crate) struct WootheeEngine {
     parser: Parser,
 }
 
 impl WootheeEngine {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             parser: Parser::new(),
         }
     }
 
-    pub fn parse(&self, ua: &str) -> UserAgentInfo {
+    pub(crate) fn parse(&self, ua: &str) -> UserAgentInfo {
         let Some(result) = self.parser.parse(ua) else {
             return UserAgentInfo {
                 device_type: DeviceType::Unknown,

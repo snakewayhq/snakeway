@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-pub fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
+pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
     if !path.is_file() {
         return Err(format!("file does not exist: {}", path.display()));
     }

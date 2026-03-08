@@ -2,10 +2,10 @@ use crate::conf::types::HealthCheckSpec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
-pub struct HealthCheckConfig {
-    pub enable: bool,
-    pub failure_threshold: u32,
-    pub unhealthy_cooldown_seconds: u64,
+pub(crate) struct HealthCheckConfig {
+    pub(crate) enable: bool,
+    pub(crate) failure_threshold: u32,
+    pub(crate) unhealthy_cooldown_seconds: u64,
 }
 
 impl From<HealthCheckSpec> for HealthCheckConfig {

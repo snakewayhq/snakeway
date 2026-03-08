@@ -1,16 +1,16 @@
 use http::{HeaderMap, StatusCode};
 
 #[derive(Debug)]
-pub struct ResponseCtx {
-    pub request_id: Option<String>,
-    pub status: StatusCode,
-    pub headers: HeaderMap,
+pub(crate) struct ResponseCtx {
+    pub(crate) request_id: Option<String>,
+    pub(crate) status: StatusCode,
+    pub(crate) headers: HeaderMap,
     #[allow(dead_code)]
-    pub body: Vec<u8>,
+    pub(crate) body: Vec<u8>,
 }
 
 impl ResponseCtx {
-    pub fn new(
+    pub(crate) fn new(
         request_id: Option<String>,
         status: StatusCode,
         headers: HeaderMap,
@@ -24,7 +24,7 @@ impl ResponseCtx {
         }
     }
 
-    pub fn forbidden(request_id: Option<String>) -> Self {
+    pub(crate) fn forbidden(request_id: Option<String>) -> Self {
         Self::new(
             request_id,
             StatusCode::FORBIDDEN,
@@ -33,7 +33,7 @@ impl ResponseCtx {
         )
     }
 
-    pub fn too_many_requests(request_id: Option<String>) -> Self {
+    pub(crate) fn too_many_requests(request_id: Option<String>) -> Self {
         Self::new(
             request_id,
             StatusCode::TOO_MANY_REQUESTS,

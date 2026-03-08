@@ -16,7 +16,7 @@ use httpdate::fmt_http_date;
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-pub async fn render_file(
+pub(crate) async fn render_file(
     path: PathBuf,
     max_file_size: &u64,
     conditional: &ConditionalHeaders,

@@ -1,7 +1,7 @@
-pub mod identity;
-pub mod network_policy;
-pub mod request_filter;
-pub mod request_rate_limiting;
-pub mod structured_logging;
+pub(crate) mod identity;
+pub(crate) mod network_policy;
+pub(crate) mod request_filter;
+pub(crate) mod request_rate_limiting;
+pub(crate) mod structured_logging;
 #[cfg(test)]
 mod tests;

@@ -2,24 +2,24 @@ use crate::conf::types::Origin;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct NetworkPolicyDeviceSpec {
+pub(crate) struct NetworkPolicyDeviceSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub(crate) origin: Origin,
 
-    pub enable: bool,
-    pub cidr_allow: Vec<String>,
-    pub forwarding: ForwardingSpec,
+    pub(crate) enable: bool,
+    pub(crate) cidr_allow: Vec<String>,
+    pub(crate) forwarding: ForwardingSpec,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct ForwardingSpec {
-    pub allow: bool,
-    pub on_invalid: OnInvalidForwardedSpec,
+pub(crate) struct ForwardingSpec {
+    pub(crate) allow: bool,
+    pub(crate) on_invalid: OnInvalidForwardedSpec,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum OnInvalidForwardedSpec {
+pub(crate) enum OnInvalidForwardedSpec {
     Deny,
     #[default]
     Ignore,

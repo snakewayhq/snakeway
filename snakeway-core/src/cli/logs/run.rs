@@ -14,7 +14,7 @@ use std::time::Instant;
 
 static CTRL_C_INSTALLED: std::sync::Once = std::sync::Once::new();
 
-pub fn run_logs(mode: LogMode) -> Result<()> {
+pub(crate) fn run_logs(mode: LogMode) -> Result<()> {
     match mode {
         LogMode::Raw => run_raw(),
         LogMode::Pretty => run_pretty(),

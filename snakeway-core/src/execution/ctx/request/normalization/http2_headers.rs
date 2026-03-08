@@ -25,7 +25,7 @@ use http::{HeaderMap, HeaderValue};
 /// - Rejects headers containing NUL bytes to prevent header injection attacks
 /// - Validates all header names and values are properly encoded
 /// - Strictly enforces HTTP/2 protocol requirements to prevent downgrade attacks
-pub fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
+pub(crate) fn normalize_http2_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
 

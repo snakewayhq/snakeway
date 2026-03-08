@@ -7,17 +7,17 @@ use pingora::protocols::tls::TlsRef;
 use std::any::Any;
 use std::sync::Arc;
 
-pub enum CertMode {
+pub(crate) enum CertMode {
     Manual,
     Acme(Arc<ArcSwap<RuntimeState>>),
 }
 
-pub struct SnakewayTlsAccept {
+pub(crate) struct SnakewayTlsAccept {
     cert_mode: CertMode,
 }
 
 impl SnakewayTlsAccept {
-    pub fn new(cert_mode: CertMode) -> Self {
+    pub(crate) fn new(cert_mode: CertMode) -> Self {
         Self { cert_mode }
     }
 }

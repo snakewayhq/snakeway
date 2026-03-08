@@ -9,7 +9,7 @@ use crate::execution::route::{RouteEntry, RouteRuntime};
 ///
 /// Walks the same router matching path the proxy uses, then selects an
 /// upstream according to the supplied [`RouteSolveOptions`].
-pub fn solve(
+pub(crate) fn solve(
     state: &RuntimeState,
     req: &SyntheticRequest,
     opts: &RouteSolveOptions,

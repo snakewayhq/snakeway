@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
-pub enum TlsTerminationSpec {
+pub(crate) enum TlsTerminationSpec {
     Manual {
         cert: PathBuf,
         key: PathBuf,
@@ -26,7 +26,7 @@ impl Default for TlsTerminationSpec {
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum AcmeChallengeSpec {
+pub(crate) enum AcmeChallengeSpec {
     #[default]
     Http01,
 }

@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct ConnectionRateLimitingFilter {
+pub(crate) struct ConnectionRateLimitingFilter {
     /// Rate estimator (per key)
     rate: Arc<Rate>,
     /// Maximum allowed connections per second per IP

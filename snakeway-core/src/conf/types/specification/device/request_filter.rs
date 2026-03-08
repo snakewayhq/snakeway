@@ -3,48 +3,48 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct RequestFilterDeviceSpec {
+pub(crate) struct RequestFilterDeviceSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub(crate) origin: Origin,
 
     /// Whether this request filter device is enabled.
-    pub enable: bool,
+    pub(crate) enable: bool,
 
     //-------------------------------------------------------------------------
     // Method policy
     //-------------------------------------------------------------------------
     #[serde(default)]
-    pub allow_methods: Vec<String>,
+    pub(crate) allow_methods: Vec<String>,
 
     #[serde(default)]
-    pub deny_methods: Vec<String>,
+    pub(crate) deny_methods: Vec<String>,
 
     //-------------------------------------------------------------------------
     // Header policy
     //-------------------------------------------------------------------------
     #[serde(default)]
-    pub deny_headers: Vec<String>,
+    pub(crate) deny_headers: Vec<String>,
 
     #[serde(default)]
-    pub allow_headers: Vec<String>,
+    pub(crate) allow_headers: Vec<String>,
 
     #[serde(default)]
-    pub required_headers: Vec<String>,
+    pub(crate) required_headers: Vec<String>,
 
     //-------------------------------------------------------------------------
     // Size limits
     //-------------------------------------------------------------------------
     #[serde(default = "default_max_header_bytes")]
-    pub max_header_bytes: usize,
+    pub(crate) max_header_bytes: usize,
     #[serde(default = "default_max_body_bytes")]
-    pub max_body_bytes: usize,
+    pub(crate) max_body_bytes: usize,
     #[serde(default = "default_max_suspicious_body_bytes")]
-    pub max_suspicious_body_bytes: usize,
+    pub(crate) max_suspicious_body_bytes: usize,
 
     //-------------------------------------------------------------------------
     // Override the default granular deny status with a device-scoped value.
     //-------------------------------------------------------------------------
-    pub deny_status: Option<u16>,
+    pub(crate) deny_status: Option<u16>,
 }
 
 fn default_max_header_bytes() -> usize {

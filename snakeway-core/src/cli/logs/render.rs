@@ -3,7 +3,7 @@ use crate::cli::logs::types::LogEvent;
 use std::io;
 use std::io::Write;
 
-pub fn render_stats(snapshot: &StatsSnapshot) -> String {
+pub(crate) fn render_stats(snapshot: &StatsSnapshot) -> String {
     let mut out = String::new();
 
     let (_ok, _client, server) = snapshot.status;
@@ -109,13 +109,13 @@ pub fn render_stats(snapshot: &StatsSnapshot) -> String {
     out
 }
 
-pub fn redraw(output: &str) {
+pub(crate) fn redraw(output: &str) {
     print!("\x1b[2J\x1b[H");
     println!("{output}");
     let _ = io::stdout().flush();
 }
 
-pub fn render_pretty(event: &LogEvent) {
+pub(crate) fn render_pretty(event: &LogEvent) {
     match event {
         LogEvent::Snakeway(e) => {
             print!("[{}] {}", e.level, e.name);

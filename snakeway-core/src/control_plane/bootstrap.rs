@@ -1,35 +1,25 @@
+use crate::conf::RuntimeConfig;
 use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsAutomationConfig};
-use crate::conf::{RuntimeConfig, TlsTerminationConfig};
 use crate::control_plane::acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
 use crate::control_plane::pid::write_pid;
 use crate::control_plane::reload::{ReloadEvent, ReloadHandle};
-use crate::control_plane::runtime::{
-    ReloadError, RuntimeState, build_runtime_state, reload_runtime_state,
-};
+use crate::control_plane::runtime::{ReloadError, build_runtime_state, reload_runtime_state};
 use crate::control_plane::{observability, pid};
 use crate::data_plane::bootstrap::build_pingora_server;
-use crate::data_plane::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
-use crate::execution::device::core::registry::DeviceRegistry;
 use crate::execution::traffic::{TrafficManager, TrafficSnapshot};
-use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
-use anyhow::{Error, Result, anyhow};
+use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
 use nix::NixPath;
-use openssl::ssl::SslFiletype;
-use pingora::listeners::tls::TlsSettings;
-use pingora::prelude::*;
-use pingora::server::Server;
-use pingora::server::configuration::ServerConf;
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 /// Start the Snakeway control plane, the start the Pingora data plane.
-pub fn start_server(config_path: &str, config: RuntimeConfig) -> Result<()> {
+pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<()> {
     bail_if_port_is_in_use(&config.listeners)?;
 
     use tokio::runtime::Builder;

@@ -7,65 +7,65 @@ pub enum RouteCmd {
 }
 
 #[derive(clap::Args, Debug)]
-pub struct RouteSolveArgs {
+pub(crate) struct RouteSolveArgs {
     /// Full URL to resolve (must include scheme + host, e.g. http://example.com/api/v1)
-    pub url: String,
+    pub(crate) url: String,
 
     /// Path to config directory
     #[arg(long, default_value = "config")]
-    pub config: std::path::PathBuf,
+    pub(crate) config: std::path::PathBuf,
 
     /// HTTP method
     #[arg(long, default_value = "GET")]
-    pub method: String,
+    pub(crate) method: String,
 
     /// Request header (repeatable, format: KEY:VALUE)
     #[arg(long = "header", value_name = "KEY:VALUE")]
-    pub headers: Vec<String>,
+    pub(crate) headers: Vec<String>,
 
     /// Client IP address for policy evaluation
     #[arg(long)]
-    pub client_ip: Option<String>,
+    pub(crate) client_ip: Option<String>,
 
     /// Override URL scheme (http or https)
     #[arg(long)]
-    pub scheme: Option<String>,
+    pub(crate) scheme: Option<String>,
 
     /// Override URL path
     #[arg(long)]
-    pub path: Option<String>,
+    pub(crate) path: Option<String>,
 
     /// Override URL query string (no leading '?' required)
     #[arg(long)]
-    pub query: Option<String>,
+    pub(crate) query: Option<String>,
 
     /// Simulated request body size in bytes
     #[arg(long, default_value = "0")]
-    pub body_size: usize,
+    pub(crate) body_size: usize,
 
     /// Deterministic key for hash-based upstream selection
     #[arg(long)]
-    pub lb_key: Option<String>,
+    pub(crate) lb_key: Option<String>,
 
     /// Force upstream index selection (>= 0)
     #[arg(long)]
-    pub lb_index: Option<usize>,
+    pub(crate) lb_index: Option<usize>,
 
     /// Output format
     #[arg(long, value_enum, default_value = "pretty")]
-    pub format: RouteSolveOutputFormat,
+    pub(crate) format: RouteSolveOutputFormat,
 
     /// Include evaluation trace steps
     #[arg(long, default_value = "false")]
-    pub trace: bool,
+    pub(crate) trace: bool,
 
     /// Verbose output (implies --trace)
     #[arg(long, default_value = "false")]
-    pub verbose: bool,
+    pub(crate) verbose: bool,
 }
 
 #[derive(Clone, Debug, ValueEnum)]
-pub enum RouteSolveOutputFormat {
+pub(crate) enum RouteSolveOutputFormat {
     Pretty,
     Json,
 }

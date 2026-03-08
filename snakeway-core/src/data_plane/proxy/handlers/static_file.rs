@@ -4,11 +4,11 @@ use crate::execution::route::RouteEntry;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
 
-pub struct StaticFileHandler;
+pub(crate) struct StaticFileHandler;
 
 impl StaticFileHandler {
     #[cfg(not(feature = "static_files"))]
-    pub async fn handle(
+    pub(crate) async fn handle(
         &self,
         _session: &mut Session,
         _ctx: &RequestCtx,
@@ -19,7 +19,7 @@ impl StaticFileHandler {
     }
 
     #[cfg(feature = "static_files")]
-    pub async fn handle(
+    pub(crate) async fn handle(
         &self,
         session: &mut Session,
         ctx: &RequestCtx,

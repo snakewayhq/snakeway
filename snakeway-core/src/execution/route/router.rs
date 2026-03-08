@@ -2,12 +2,12 @@ use crate::execution::route::types::RouteRuntime;
 use anyhow::{Result, anyhow};
 
 #[derive(Debug)]
-pub struct Router {
+pub(crate) struct Router {
     routes: Vec<RouteEntry>,
 }
 
 #[derive(Debug, Clone)]
-pub enum HostMatcher {
+pub(crate) enum HostMatcher {
     Exact(String),
     /// "*.example.com"
     Wildcard(String),
@@ -29,10 +29,10 @@ impl From<String> for HostMatcher {
 }
 
 #[derive(Debug)]
-pub struct RouteEntry {
-    pub hosts: Vec<HostMatcher>,
-    pub path: String,
-    pub kind: RouteRuntime,
+pub(crate) struct RouteEntry {
+    pub(crate) hosts: Vec<HostMatcher>,
+    pub(crate) path: String,
+    pub(crate) kind: RouteRuntime,
 }
 
 impl Default for Router {
@@ -42,11 +42,16 @@ impl Default for Router {
 }
 
 impl Router {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { routes: Vec::new() }
     }
 
-    pub fn add_route(&mut self, hosts: Vec<String>, path: &str, kind: RouteRuntime) -> Result<()> {
+    pub(crate) fn add_route(
+        &mut self,
+        hosts: Vec<String>,
+        path: &str,
+        kind: RouteRuntime,
+    ) -> Result<()> {
         if !path.starts_with('/') {
             return Err(anyhow!("route path must start with '/': {}", path));
         }
@@ -69,7 +74,7 @@ impl Router {
         Ok(())
     }
 
-    pub fn match_route(&self, host: &str, request_path: &str) -> Result<&RouteEntry> {
+    pub(crate) fn match_route(&self, host: &str, request_path: &str) -> Result<&RouteEntry> {
         if !request_path.starts_with('/') {
             return Err(anyhow!("invalid request path: {}", request_path));
         }

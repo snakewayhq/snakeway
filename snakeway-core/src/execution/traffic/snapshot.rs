@@ -4,19 +4,19 @@ use crate::execution::traffic::types::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct UpstreamSnapshot {
-    pub endpoint: UpstreamRuntime,
-    pub latency: Option<LatencyStats>,
-    pub weight: u32,
+pub(crate) struct UpstreamSnapshot {
+    pub(crate) endpoint: UpstreamRuntime,
+    pub(crate) latency: Option<LatencyStats>,
+    pub(crate) weight: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ServiceSnapshot {
-    pub service_id: ServiceId,
-    pub strategy: LoadBalancingStrategy,
-    pub upstreams: Vec<UpstreamSnapshot>,
-    pub circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig,
-    pub health_check_cfg: crate::conf::types::HealthCheckConfig,
+pub(crate) struct ServiceSnapshot {
+    pub(crate) service_id: ServiceId,
+    pub(crate) strategy: LoadBalancingStrategy,
+    pub(crate) upstreams: Vec<UpstreamSnapshot>,
+    pub(crate) circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig,
+    pub(crate) health_check_cfg: crate::conf::types::HealthCheckConfig,
 }
 
 /// Immutable, control-plane snapshot of traffic topology and health.
@@ -24,12 +24,12 @@ pub struct ServiceSnapshot {
 /// Safe to read from the request hot path.
 /// Updated only by reload, health checks, or discovery.
 #[derive(Debug, Clone, Default)]
-pub struct TrafficSnapshot {
-    pub services: HashMap<ServiceId, ServiceSnapshot>,
+pub(crate) struct TrafficSnapshot {
+    pub(crate) services: HashMap<ServiceId, ServiceSnapshot>,
 }
 
 impl TrafficSnapshot {
-    pub fn from_runtime(state: &RuntimeState) -> Self {
+    pub(crate) fn from_runtime(state: &RuntimeState) -> Self {
         let mut services = HashMap::new();
 
         for (name, svc) in &state.services {

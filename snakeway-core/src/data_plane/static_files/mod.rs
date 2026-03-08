@@ -1,7 +1,7 @@
-pub mod handler;
+pub(crate) mod handler;
 mod render;
 mod resolve;
 mod response;
 
-pub use handler::handle_static_request;
-pub use response::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
+pub(crate) use handler::handle_static_request;
+pub(crate) use response::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};

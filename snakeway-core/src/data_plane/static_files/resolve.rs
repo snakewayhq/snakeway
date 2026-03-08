@@ -1,19 +1,19 @@
 use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug)]
-pub enum ResolveError {
+pub(crate) enum ResolveError {
     NotFound,
     Forbidden,
     BadPath,
 }
 
 #[derive(Debug)]
-pub enum ResolvedStatic {
+pub(crate) enum ResolvedStatic {
     File(PathBuf),
     Directory(PathBuf),
 }
 
-pub fn resolve_static_path(
+pub(crate) fn resolve_static_path(
     base_dir: &Path,
     route_prefix: &str,
     request_path: &str,

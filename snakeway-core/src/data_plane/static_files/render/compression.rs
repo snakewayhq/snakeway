@@ -3,14 +3,14 @@ use flate2::Compression;
 use flate2::write::GzEncoder;
 use std::io::Write;
 
-pub enum CompressionEncoding {
+pub(crate) enum CompressionEncoding {
     Gzip,
     Brotli,
     Unknown,
 }
 
 impl CompressionEncoding {
-    pub fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             CompressionEncoding::Gzip => "gzip",
             CompressionEncoding::Brotli => "br",

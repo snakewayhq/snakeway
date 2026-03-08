@@ -4,11 +4,11 @@ mod report;
 mod single_file;
 mod validate;
 mod validated_config;
-pub mod validator;
+pub(crate) mod validator;
 
-pub use error::ConfigError;
-pub use report::*;
+pub(crate) use error::ConfigError;
+pub(crate) use report::*;
 #[cfg(test)]
-pub use single_file::*;
-pub use validate::validate_spec;
-pub use validated_config::ValidatedConfig;
+pub(crate) use single_file::*;
+pub(crate) use validate::validate_spec;
+pub(crate) use validated_config::ValidatedConfig;

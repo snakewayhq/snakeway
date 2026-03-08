@@ -16,7 +16,7 @@ use tracing::{debug, error, info, trace, warn};
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
-pub enum LogLevel {
+pub(crate) enum LogLevel {
     Trace,
     Debug,
     Info,
@@ -27,7 +27,7 @@ pub enum LogLevel {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum LogEvent {
+pub(crate) enum LogEvent {
     Request,
     BeforeProxy,
     AfterProxy,
@@ -36,14 +36,14 @@ pub enum LogEvent {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-pub enum LogPhase {
+pub(crate) enum LogPhase {
     Request,
     Response,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum IdentityField {
+pub(crate) enum IdentityField {
     Asn,
     Aso,
     Country,
@@ -73,7 +73,7 @@ macro_rules! emit {
 // Device implementation
 // ----------------------------------------------------------------------------
 
-pub struct StructuredLoggingDevice {
+pub(crate) struct StructuredLoggingDevice {
     level: LogLevel,
 
     include_headers: bool,
@@ -88,7 +88,7 @@ pub struct StructuredLoggingDevice {
 }
 
 impl StructuredLoggingDevice {
-    pub fn from_config(cfg: StructuredLoggingDeviceConfig) -> Result<Self> {
+    pub(crate) fn from_config(cfg: StructuredLoggingDeviceConfig) -> Result<Self> {
         Ok(Self {
             level: cfg.level,
 

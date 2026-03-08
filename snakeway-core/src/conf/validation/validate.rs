@@ -3,7 +3,7 @@ use crate::conf::validation::report::ValidationReport;
 use crate::conf::validation::{multi_file, single_file};
 
 /// Validate everything that exists in a fully parsed config.
-pub fn validate_spec(
+pub(crate) fn validate_spec(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
     devices: &[DeviceSpec],

@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub struct RequestId(pub String);
+pub(crate) struct RequestId(pub(crate) String);
 
 impl Default for RequestId {
     fn default() -> Self {

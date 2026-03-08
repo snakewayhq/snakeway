@@ -1,14 +1,14 @@
-pub mod device;
-pub mod listener;
-pub mod route;
-pub mod server;
-pub mod service;
+pub(crate) mod device;
+pub(crate) mod listener;
+pub(crate) mod route;
+pub(crate) mod server;
+pub(crate) mod service;
 
-pub use device::*;
-pub use listener::*;
-pub use route::*;
-pub use server::*;
-pub use service::*;
+pub(crate) use device::*;
+pub(crate) use listener::*;
+pub(crate) use route::*;
+pub(crate) use server::*;
+pub(crate) use service::*;
 
 use serde::Serialize;
 use std::collections::HashMap;
@@ -16,9 +16,9 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct RuntimeConfig {
-    pub server: ServerConfig,
-    pub listeners: Vec<ListenerConfig>,
-    pub routes: Vec<RouteConfig>,
-    pub services: HashMap<String, ServiceConfig>,
-    pub devices: Vec<DeviceConfig>,
+    pub(crate) server: ServerConfig,
+    pub(crate) listeners: Vec<ListenerConfig>,
+    pub(crate) routes: Vec<RouteConfig>,
+    pub(crate) services: HashMap<String, ServiceConfig>,
+    pub(crate) devices: Vec<DeviceConfig>,
 }

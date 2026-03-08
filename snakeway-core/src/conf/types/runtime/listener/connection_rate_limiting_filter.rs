@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub struct ConnectionRateLimitingFilterConfig {
-    pub max_connections_per_second: f64,
-    pub reaction_interval: Duration,
+pub(crate) struct ConnectionRateLimitingFilterConfig {
+    pub(crate) max_connections_per_second: f64,
+    pub(crate) reaction_interval: Duration,
 }
 
 impl From<ConnectionRateLimitingFilterSpec> for ConnectionRateLimitingFilterConfig {

@@ -1,17 +1,17 @@
 use crate::execution::enrichment::user_agent::{DeviceType, UserAgentInfo};
 use uaparser::{Parser, UserAgentParser};
 
-pub struct UaParserEngine {
+pub(crate) struct UaParserEngine {
     parser: UserAgentParser,
 }
 
 impl UaParserEngine {
-    pub fn new(regexes_yaml: &[u8]) -> anyhow::Result<Self> {
+    pub(crate) fn new(regexes_yaml: &[u8]) -> anyhow::Result<Self> {
         let parser = UserAgentParser::from_bytes(regexes_yaml)?;
         Ok(Self { parser })
     }
 
-    pub fn parse(&self, ua: &str) -> UserAgentInfo {
+    pub(crate) fn parse(&self, ua: &str) -> UserAgentInfo {
         let client = self.parser.parse(ua);
 
         let ua_family = client.user_agent.family.to_lowercase();

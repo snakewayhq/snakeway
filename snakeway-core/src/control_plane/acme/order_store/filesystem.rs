@@ -1,12 +1,12 @@
 use crate::control_plane::acme::order_store::store_trait::{OrderState, OrderStore};
 use std::path::{Path, PathBuf};
 
-pub struct FilesystemOrderStore {
+pub(crate) struct FilesystemOrderStore {
     base_path: PathBuf,
 }
 
 impl FilesystemOrderStore {
-    pub fn new(base_path: PathBuf) -> Self {
+    pub(crate) fn new(base_path: PathBuf) -> Self {
         Self { base_path }
     }
 

@@ -47,7 +47,7 @@ impl RequestSource for FakeRequest {
     }
 }
 
-pub struct RawHttpRequest {
+pub(crate) struct RawHttpRequest {
     method: String,
     target: String,
     version: &'static str,
@@ -56,7 +56,7 @@ pub struct RawHttpRequest {
 }
 
 impl RawHttpRequest {
-    pub fn new(method: impl Into<String>, target: impl Into<String>) -> Self {
+    pub(crate) fn new(method: impl Into<String>, target: impl Into<String>) -> Self {
         Self {
             method: method.into(),
             target: target.into(),
@@ -66,7 +66,7 @@ impl RawHttpRequest {
         }
     }
 
-    pub fn header(mut self, k: impl AsRef<str>, v: impl AsRef<str>) -> Self {
+    pub(crate) fn header(mut self, k: impl AsRef<str>, v: impl AsRef<str>) -> Self {
         self.headers.push((
             k.as_ref().as_bytes().to_vec(),
             v.as_ref().as_bytes().to_vec(),
@@ -74,18 +74,18 @@ impl RawHttpRequest {
         self
     }
 
-    pub fn header_bytes(mut self, k: impl AsRef<[u8]>, v: impl AsRef<[u8]>) -> Self {
+    pub(crate) fn header_bytes(mut self, k: impl AsRef<[u8]>, v: impl AsRef<[u8]>) -> Self {
         self.headers
             .push((k.as_ref().to_vec(), v.as_ref().to_vec()));
         self
     }
 
-    pub fn body(mut self, body: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn body(mut self, body: impl Into<Vec<u8>>) -> Self {
         self.body = body.into();
         self
     }
 
-    pub fn build(self) -> Vec<u8> {
+    pub(crate) fn build(self) -> Vec<u8> {
         let mut out = Vec::new();
 
         // request line

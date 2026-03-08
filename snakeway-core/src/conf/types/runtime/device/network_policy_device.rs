@@ -4,10 +4,10 @@ use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct NetworkPolicyDeviceConfig {
-    pub enable: bool,
-    pub cidr_allow: Vec<IpNet>,
-    pub forwarding: ForwardingConfig,
+pub(crate) struct NetworkPolicyDeviceConfig {
+    pub(crate) enable: bool,
+    pub(crate) cidr_allow: Vec<IpNet>,
+    pub(crate) forwarding: ForwardingConfig,
 }
 
 impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
@@ -37,9 +37,9 @@ impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct ForwardingConfig {
-    pub allow: bool,
-    pub on_invalid: OnInvalidForwardedConfig,
+pub(crate) struct ForwardingConfig {
+    pub(crate) allow: bool,
+    pub(crate) on_invalid: OnInvalidForwardedConfig,
 }
 
 impl From<OnInvalidForwardedSpec> for OnInvalidForwardedConfig {
@@ -53,7 +53,7 @@ impl From<OnInvalidForwardedSpec> for OnInvalidForwardedConfig {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum OnInvalidForwardedConfig {
+pub(crate) enum OnInvalidForwardedConfig {
     Deny,
     #[default]
     Ignore,

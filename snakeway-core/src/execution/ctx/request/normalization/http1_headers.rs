@@ -16,7 +16,7 @@ use std::collections::HashSet;
 /// - Rejects headers containing NUL bytes to prevent header injection attacks
 /// - Validates all header names and values are properly encoded
 /// - Strips hop-by-hop headers to prevent protocol confusion
-pub fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
+pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
 

@@ -5,7 +5,7 @@ use std::fmt;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub enum CertState {
+pub(crate) enum CertState {
     /// No certificate exists in the store and no ACME order is active.
     ///
     /// This is the starting state for a domain that requires TLS.
@@ -73,7 +73,7 @@ impl fmt::Display for CertState {
     }
 }
 
-pub fn compute_state(
+pub(crate) fn compute_state(
     meta: Option<&crate::control_plane::acme::cert_store::CertificateMeta>,
     order_state: Option<&OrderState>,
     renewal_policy: &RenewalPolicy,

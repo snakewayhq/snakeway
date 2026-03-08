@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tracing::debug;
 
 #[derive(Clone)]
-pub struct RequestRateLimitingDevice {
+pub(crate) struct RequestRateLimitingDevice {
     rate: Arc<Rate>,
     max_requests_per_second: f64,
 }

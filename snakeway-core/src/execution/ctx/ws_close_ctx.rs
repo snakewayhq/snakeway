@@ -1,2 +1,2 @@
 #[derive(Debug, Default)]
-pub struct WsCloseCtx {}
+pub(crate) struct WsCloseCtx {}

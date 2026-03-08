@@ -2,7 +2,7 @@ use crate::execution::ctx::RequestCtx;
 use crate::execution::traffic::decision::TrafficDecision;
 use crate::execution::traffic::{ServiceId, TrafficManager, UpstreamSnapshot};
 
-pub trait TrafficStrategy: Send + Sync {
+pub(crate) trait TrafficStrategy: Send + Sync {
     fn decide(
         &self,
         req: &RequestCtx,

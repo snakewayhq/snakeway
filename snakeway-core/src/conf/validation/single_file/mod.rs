@@ -4,6 +4,6 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-pub use device::*;
-pub use ingress::*;
-pub use server::*;
+pub(crate) use device::*;
+pub(crate) use ingress::*;
+pub(crate) use server::*;

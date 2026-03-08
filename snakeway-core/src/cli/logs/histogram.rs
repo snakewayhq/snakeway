@@ -1,5 +1,5 @@
 #[derive(Clone)]
-pub struct Histogram {
+pub(crate) struct Histogram {
     buckets: &'static [u64],
     counts: Vec<u64>,
 }
@@ -56,7 +56,7 @@ impl Histogram {
     }
 }
 
-pub fn percentile_from_histogram(buckets: &[(u64, u64)], total: u64, pct: f64) -> u64 {
+pub(crate) fn percentile_from_histogram(buckets: &[(u64, u64)], total: u64, pct: f64) -> u64 {
     if total == 0 {
         return 0;
     }

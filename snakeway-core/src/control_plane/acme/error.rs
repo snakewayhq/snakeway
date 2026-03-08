@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum CertManagerError {
+pub(crate) enum CertManagerError {
     #[error("cert manager already initialized")]
     AlreadyInitialized,
 

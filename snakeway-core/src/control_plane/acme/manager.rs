@@ -30,7 +30,7 @@ pub struct CertManager {
 }
 
 impl CertManager {
-    pub fn new(
+    pub(crate) fn new(
         cert_store: Arc<dyn CertStore>,
         order_store: Arc<dyn OrderStore>,
         config: Arc<RuntimeConfig>,
@@ -48,7 +48,7 @@ impl CertManager {
         }
     }
 
-    pub async fn initialize(&self, cfg: &AcmeServerConfig) -> Result<(), CertManagerError> {
+    pub(crate) async fn initialize(&self, cfg: &AcmeServerConfig) -> Result<(), CertManagerError> {
         let client = AcmeClient::load_or_create(
             cfg.directory_url.clone(),
             cfg.data_dir.clone(),
@@ -64,16 +64,16 @@ impl CertManager {
         Ok(())
     }
 
-    pub async fn run_reconciliation(self: Arc<Self>) {
+    pub(crate) async fn run_reconciliation(self: Arc<Self>) {
         let mut reconciler = Reconciler::new(self.clone());
         reconciler.run().await;
     }
 
-    pub fn reload(&self, new_config: Arc<RuntimeConfig>) {
+    pub(crate) fn reload(&self, new_config: Arc<RuntimeConfig>) {
         self.config.store(new_config);
     }
 
-    pub async fn shutdown(&self) {
+    pub(crate) async fn shutdown(&self) {
         let mut guard = self.worker.lock().unwrap();
 
         if let Some(handle) = guard.take() {
@@ -81,7 +81,10 @@ impl CertManager {
         }
     }
 
-    pub fn load_parsed_cert(&self, cert_id: &str) -> Result<Option<ParsedCert>, CertManagerError> {
+    pub(crate) fn load_parsed_cert(
+        &self,
+        cert_id: &str,
+    ) -> Result<Option<ParsedCert>, CertManagerError> {
         let Some(stored) = self.cert_store.get(cert_id) else {
             return Ok(None);
         };
@@ -109,7 +112,9 @@ impl CertManager {
         Ok(Some(ParsedCert { leaf, chain, key }))
     }
 
-    pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
+    pub(crate) fn build_sni_map(
+        &self,
+    ) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
         let mut map = HashMap::new();
 
         for (cert_id, meta) in self.cert_store.list() {
@@ -125,15 +130,15 @@ impl CertManager {
         Ok(map)
     }
 
-    pub fn attach_tls_sni_map(&self, registry: Arc<SniRegistry>) {
+    pub(crate) fn attach_tls_sni_map(&self, registry: Arc<SniRegistry>) {
         self.tls_sni_map.store(Some(registry));
     }
 
-    pub fn tls_sni_map(&self) -> Option<Arc<SniRegistry>> {
+    pub(crate) fn tls_sni_map(&self) -> Option<Arc<SniRegistry>> {
         self.tls_sni_map.load_full()
     }
 
-    pub fn publish_sni_map(&self, new_map: SniMap) {
+    pub(crate) fn publish_sni_map(&self, new_map: SniMap) {
         if let Some(registry) = self.tls_sni_map() {
             registry.publish(new_map);
         } else {
@@ -141,37 +146,37 @@ impl CertManager {
         }
     }
 
-    pub fn cert_store(&self) -> Arc<dyn CertStore> {
+    pub(crate) fn cert_store(&self) -> Arc<dyn CertStore> {
         self.cert_store.clone()
     }
 
-    pub fn config(&self) -> Arc<ArcSwap<RuntimeConfig>> {
+    pub(crate) fn config(&self) -> Arc<ArcSwap<RuntimeConfig>> {
         self.config.clone()
     }
 
-    pub fn renewal_policy(&self) -> &RenewalPolicy {
+    pub(crate) fn renewal_policy(&self) -> &RenewalPolicy {
         &self.renewal_policy
     }
 
-    pub fn order_store(&self) -> Arc<dyn OrderStore> {
+    pub(crate) fn order_store(&self) -> Arc<dyn OrderStore> {
         self.order_store.clone()
     }
 
-    pub fn acme_client(&self) -> Result<Arc<AcmeClient>, CertManagerError> {
+    pub(crate) fn acme_client(&self) -> Result<Arc<AcmeClient>, CertManagerError> {
         self.acme_client
             .get()
             .cloned()
             .ok_or(CertManagerError::AcmeNotInitialized)
     }
 
-    pub fn http01(&self) -> Arc<Http01Registry> {
+    pub(crate) fn http01(&self) -> Arc<Http01Registry> {
         self.http01.clone()
     }
 }
 
 /// Admin API
 impl CertManager {
-    pub fn snapshot(&self) -> Vec<CertView> {
+    pub(crate) fn snapshot(&self) -> Vec<CertView> {
         let now = SystemTime::now();
 
         self.cert_store

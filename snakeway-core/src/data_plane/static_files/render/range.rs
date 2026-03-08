@@ -1,7 +1,7 @@
 #[derive(Debug)]
-pub struct ByteRange {
-    pub start: u64,
-    pub end: u64, // inclusive
+pub(crate) struct ByteRange {
+    pub(crate) start: u64,
+    pub(crate) end: u64, // inclusive
 }
 
 pub(crate) fn parse_range_header(header: &str, size: u64) -> Option<ByteRange> {

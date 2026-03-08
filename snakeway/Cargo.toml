@@ -10,7 +10,6 @@ static_files = ["snakeway-core/static_files"]
 
 [dependencies]
 snakeway-core = { version = "*", path = "../snakeway-core" }
-clap = { workspace = true, features = ["derive"] }
 
 [[bin]]
 name = "snakeway"

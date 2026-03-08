@@ -52,7 +52,7 @@ fn init_normal_logging(tracer: Option<Tracer>) {
     }
 }
 
-pub fn init_logging(tracer: Option<Tracer>) {
+pub(crate) fn init_logging(tracer: Option<Tracer>) {
     if std::env::var("TOKIO_CONSOLE").is_ok() {
         // Tokio console logging is specifically for interactive debugging and profiling.
         init_console_logging();
@@ -66,7 +66,7 @@ fn init_console_logging() {
     console_subscriber::init();
 }
 
-pub fn default_log_mode() -> LogMode {
+pub(crate) fn default_log_mode() -> LogMode {
     use std::io::IsTerminal;
     if std::io::stdout().is_terminal() {
         LogMode::Pretty
@@ -76,7 +76,7 @@ pub fn default_log_mode() -> LogMode {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum LogMode {
+pub(crate) enum LogMode {
     Raw,
     Pretty,
     Stats,

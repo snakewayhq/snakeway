@@ -1,37 +1,37 @@
 use std::time::SystemTime;
 
 #[derive(Clone)]
-pub enum LogEvent {
+pub(crate) enum LogEvent {
     Snakeway(SnakewayEvent),
     Generic(GenericEvent),
 }
 
 #[derive(Clone)]
-pub struct SnakewayEvent {
-    pub request_id: Option<String>,
-    pub level: String,
-    pub name: String,
-    pub method: Option<String>,
-    pub uri: Option<String>,
+pub(crate) struct SnakewayEvent {
+    pub(crate) request_id: Option<String>,
+    pub(crate) level: String,
+    pub(crate) name: String,
+    pub(crate) method: Option<String>,
+    pub(crate) uri: Option<String>,
     /// status is a string in logs; we parse to i64
-    pub status: Option<i64>,
-    pub ts: Option<SystemTime>,
-    pub identity: Option<IdentitySummary>,
+    pub(crate) status: Option<i64>,
+    pub(crate) ts: Option<SystemTime>,
+    pub(crate) identity: Option<IdentitySummary>,
 }
 
 #[derive(Clone, Default)]
-pub struct IdentitySummary {
-    pub device: Option<String>,
-    pub bot: Option<bool>,
-    pub asn: Option<usize>,
-    pub aso: Option<String>,
-    pub connection_type: Option<String>,
-    pub country: Option<String>,
+pub(crate) struct IdentitySummary {
+    pub(crate) device: Option<String>,
+    pub(crate) bot: Option<bool>,
+    pub(crate) asn: Option<usize>,
+    pub(crate) aso: Option<String>,
+    pub(crate) connection_type: Option<String>,
+    pub(crate) country: Option<String>,
 }
 
 #[derive(Clone)]
-pub struct GenericEvent {
-    pub level: String,
-    pub message: String,
-    pub target: Option<String>,
+pub(crate) struct GenericEvent {
+    pub(crate) level: String,
+    pub(crate) message: String,
+    pub(crate) target: Option<String>,
 }

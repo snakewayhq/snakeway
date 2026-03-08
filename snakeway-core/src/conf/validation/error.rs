@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ConfigError {
+pub(crate) enum ConfigError {
     //-------------------------------------------------------------------------
     // IO / Discovery
     //-------------------------------------------------------------------------
@@ -64,14 +64,14 @@ pub enum ConfigError {
 }
 
 impl ConfigError {
-    pub fn read_file(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
+    pub(crate) fn read_file(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
         Self::ReadFile {
             path: path.into(),
             source,
         }
     }
 
-    pub fn parse(path: impl Into<PathBuf>, source: hcl::Error) -> Self {
+    pub(crate) fn parse(path: impl Into<PathBuf>, source: hcl::Error) -> Self {
         Self::Parse {
             path: path.into(),
             source,

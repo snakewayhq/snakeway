@@ -15,7 +15,7 @@ use std::net::IpAddr;
 /// Validate listener definitions.
 ///
 /// Structural errors here are aggregated, not fail-fast.
-pub fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_keys = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
@@ -209,7 +209,11 @@ fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut Val
 }
 
 /// Validate redirect configuration.
-pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut ValidationReport) {
+pub(crate) fn validate_redirect(
+    spec: &RedirectSpec,
+    origin: &Origin,
+    report: &mut ValidationReport,
+) {
     if !is_valid_port(spec.port) {
         report.invalid_port(spec.port, origin);
     }
@@ -218,7 +222,7 @@ pub fn validate_redirect(spec: &RedirectSpec, origin: &Origin, report: &mut Vali
 }
 
 /// Validate service definitions.
-pub fn validate_services(
+pub(crate) fn validate_services(
     maybe_bind: &Option<BindSpec>,
     services: &[ServiceSpec],
     report: &mut ValidationReport,

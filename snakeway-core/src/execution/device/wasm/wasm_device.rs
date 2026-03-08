@@ -18,13 +18,13 @@ use crate::execution::device::wasm::bindings::{
     exports::snakeway::device::policy::{BodyChunk, Decision, Header, Request, RequestPatch},
 };
 
-pub struct WasmDevice {
+pub(crate) struct WasmDevice {
     engine: Engine,
     component: Component,
 }
 
 impl WasmDevice {
-    pub fn load(path: &PathBuf) -> Result<Self> {
+    pub(crate) fn load(path: &PathBuf) -> Result<Self> {
         let engine = Engine::default();
         let component = Component::from_file(&engine, path)?;
         Ok(Self { engine, component })

@@ -6,7 +6,7 @@ use crate::conf::validation::ConfigError;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-pub type IrConfig = (
+pub(crate) type IrConfig = (
     ServerConfig,
     Vec<ListenerConfig>,
     Vec<RouteConfig>,
@@ -17,7 +17,7 @@ pub type IrConfig = (
 /// Transform spec to the runtime configuration.
 ///
 /// Assumes all specs have already passed validation.
-pub fn lower_configs(
+pub(crate) fn lower_configs(
     server_spec: ServerSpec,
     ingresses: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,

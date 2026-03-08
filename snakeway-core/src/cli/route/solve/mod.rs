@@ -5,6 +5,6 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-pub use route_solve::run;
-pub use solver::solve;
-pub use types::*;
+pub(crate) use route_solve::run;
+pub(crate) use solver::solve;
+pub(crate) use types::*;

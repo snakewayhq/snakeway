@@ -5,6 +5,6 @@ mod handlers;
 mod public_gateway;
 mod redirect_gateway;
 
-pub use admin_gateway::AdminGateway;
-pub use public_gateway::PublicGateway;
-pub use redirect_gateway::RedirectGateway;
+pub(crate) use admin_gateway::AdminGateway;
+pub(crate) use public_gateway::PublicGateway;
+pub(crate) use redirect_gateway::RedirectGateway;

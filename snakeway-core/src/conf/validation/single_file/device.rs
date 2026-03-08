@@ -11,7 +11,7 @@ use nix::NixPath;
 use std::net::IpAddr;
 use std::path::Path;
 
-pub fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
     let mut identity_seen = false;
     let mut identity_enabled = false;
     let mut network_policy_seen = false;

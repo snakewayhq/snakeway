@@ -1,7 +1,7 @@
-pub mod errors;
-pub mod pipeline;
-pub mod registry;
-pub mod result;
+pub(crate) mod errors;
+pub(crate) mod pipeline;
+pub(crate) mod registry;
+pub(crate) mod result;
 
 use self::errors::DeviceError;
 pub(crate) use self::result::DeviceResult;
@@ -16,7 +16,7 @@ use bytes::Bytes;
 ///
 /// All methods provide default implementations that simply continue the pipeline,
 /// allowing implementations to override only the methods they care about.
-pub trait Device: Send + Sync {
+pub(crate) trait Device: Send + Sync {
     fn name(&self) -> &str;
 
     /// Called when a request is first received, before any processing.

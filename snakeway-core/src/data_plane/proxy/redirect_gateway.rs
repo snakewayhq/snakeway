@@ -7,14 +7,18 @@ use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
 use std::sync::Arc;
 
-pub struct RedirectGateway {
+pub(crate) struct RedirectGateway {
     destination: String,
     response_code: u16,
     cert_manager: Option<Arc<CertManager>>,
 }
 
 impl RedirectGateway {
-    pub fn new(to: String, response_code: u16, cert_manager: Option<Arc<CertManager>>) -> Self {
+    pub(crate) fn new(
+        to: String,
+        response_code: u16,
+        cert_manager: Option<Arc<CertManager>>,
+    ) -> Self {
         Self {
             destination: to,
             response_code,

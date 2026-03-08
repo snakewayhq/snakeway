@@ -13,14 +13,14 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
-pub enum UpstreamOutcome {
+pub(crate) enum UpstreamOutcome {
     Transport(TransportFailure),
     HttpStatus(u16),
     Success,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum TransportFailure {
+pub(crate) enum TransportFailure {
     Connect,
     Timeout,
     Reset,
@@ -69,17 +69,17 @@ pub struct TrafficManager {
     total_failures: DashMap<(ServiceId, UpstreamId), AtomicU32>,
 
     /// Per-upstream circuit breaker state machine
-    pub circuit: DashMap<(ServiceId, UpstreamId), CircuitBreaker>,
+    pub(crate) circuit: DashMap<(ServiceId, UpstreamId), CircuitBreaker>,
 
     /// Per-service circuit breaker parameters (cloned from snapshot)
-    pub circuit_params: DashMap<ServiceId, Arc<CircuitBreakerParams>>,
+    pub(crate) circuit_params: DashMap<ServiceId, Arc<CircuitBreakerParams>>,
 
     /// Per-service health check parameters (cloned from snapshot)
-    pub health_params: DashMap<ServiceId, Arc<HealthCheckParams>>,
+    pub(crate) health_params: DashMap<ServiceId, Arc<HealthCheckParams>>,
 }
 
 impl TrafficManager {
-    pub fn new(initial: TrafficSnapshot) -> Self {
+    pub(crate) fn new(initial: TrafficSnapshot) -> Self {
         let tm = Self {
             snapshot: ArcSwap::from_pointee(initial.clone()),
             active_requests: DashMap::new(),
@@ -101,11 +101,11 @@ impl TrafficManager {
 
 /// Snapshot API (read-only)
 impl TrafficManager {
-    pub fn snapshot(&self) -> Arc<TrafficSnapshot> {
+    pub(crate) fn snapshot(&self) -> Arc<TrafficSnapshot> {
         self.snapshot.load_full()
     }
 
-    pub fn update(&self, new_snapshot: TrafficSnapshot) {
+    pub(crate) fn update(&self, new_snapshot: TrafficSnapshot) {
         let valid_services: HashSet<ServiceId> = new_snapshot.services.keys().cloned().collect();
 
         // Clean up weighted round-robin cursors
@@ -227,7 +227,7 @@ impl TrafficManager {
 
 /// Request Counters
 impl TrafficManager {
-    pub fn on_request_start(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+    pub(crate) fn on_request_start(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
         let key = (service_id.clone(), *upstream_id);
 
         let counter = self
@@ -244,7 +244,7 @@ impl TrafficManager {
         total.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn on_request_end(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+    pub(crate) fn on_request_end(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
         let key = (service_id.clone(), *upstream_id);
 
         if let Some(counter) = self.active_requests.get(&key) {
@@ -255,14 +255,18 @@ impl TrafficManager {
         }
     }
 
-    pub fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
         self.active_requests
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub fn next_wrr_index(&self, service_id: &ServiceId, healthy: &[UpstreamSnapshot]) -> usize {
+    pub(crate) fn next_wrr_index(
+        &self,
+        service_id: &ServiceId,
+        healthy: &[UpstreamSnapshot],
+    ) -> usize {
         debug_assert!(!healthy.is_empty());
 
         // Build signature inputs (ids + weights)
@@ -319,7 +323,7 @@ impl TrafficManager {
 
 /// Health API
 impl TrafficManager {
-    pub fn report_failure(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+    pub(crate) fn report_failure(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
         let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
             unreachable!(
                 "health params missing for service {} — invariant violated",
@@ -393,7 +397,7 @@ impl TrafficManager {
     }
 
     /// Any success will fully restore health
-    pub fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+    pub(crate) fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
         let key = (service_id.clone(), *upstream_id);
         self.upstream_health
             .insert(key.clone(), HealthState::Healthy);
@@ -406,7 +410,11 @@ impl TrafficManager {
     }
 
     /// Determines whether an upstream may receive a request
-    pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
+    pub(crate) fn health_status(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+    ) -> HealthStatus {
         let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
             unreachable!(
                 "health params missing for service {} — invariant violated",
@@ -450,7 +458,7 @@ impl TrafficManager {
 /// Circuit Breaker API
 impl TrafficManager {
     /// Called by director when selecting an upstream.
-    pub fn circuit_allows(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> bool {
+    pub(crate) fn circuit_allows(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> bool {
         let params = match self.circuit_params.get(service_id) {
             Some(p) => p.clone(),
             None => return true, // fail-open: no config means no circuit
@@ -463,7 +471,7 @@ impl TrafficManager {
 
     /// Called once per request, after we know whether it succeeded.
     /// `started` must be true only if `circuit_allows()` returned true for this request.
-    pub fn circuit_on_end(
+    pub(crate) fn circuit_on_end(
         &self,
         service_id: &ServiceId,
         upstream_id: &UpstreamId,
@@ -480,35 +488,39 @@ impl TrafficManager {
         entry.on_request_end((service_id, upstream_id), &params, started, success);
     }
 
-    pub fn circuit_state(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> CircuitState {
+    pub(crate) fn circuit_state(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+    ) -> CircuitState {
         self.circuit
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.state())
             .unwrap_or(CircuitState::Closed)
     }
 
-    pub fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
         self.total_requests
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
         self.total_successes
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
         self.total_failures
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub fn get_upstream_view(
+    pub(crate) fn get_upstream_view(
         &self,
         service_id: &ServiceId,
         upstream_id: &UpstreamId,

@@ -38,4 +38,4 @@ mod run;
 mod stats_aggregation;
 mod types;
 
-pub use run::run_logs;
+pub(crate) use run::run_logs;

@@ -6,25 +6,25 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ServerConfig {
-    pub version: u32,
+pub(crate) struct ServerConfig {
+    pub(crate) version: u32,
 
     /// Optional number of worker threads - default is decided by Pingora.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub threads: Option<usize>,
+    pub(crate) threads: Option<usize>,
 
     /// Pid file path.
     /// If empty, Snakeway will not write a pid file.
-    pub pid_file: PathBuf,
+    pub(crate) pid_file: PathBuf,
 
     /// Enable work stealing between threads.
-    pub work_stealing: bool,
+    pub(crate) work_stealing: bool,
 
-    pub ca_file: Option<String>,
+    pub(crate) ca_file: Option<String>,
 
-    pub tls_automation: Option<TlsAutomationConfig>,
+    pub(crate) tls_automation: Option<TlsAutomationConfig>,
 
-    pub observability: Option<ObservabilityConfig>,
+    pub(crate) observability: Option<ObservabilityConfig>,
 }
 
 impl TryFrom<ServerSpec> for ServerConfig {
@@ -53,10 +53,10 @@ impl TryFrom<ServerSpec> for ServerConfig {
 //-----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct TlsAutomationConfig {
-    pub acme: AcmeServerConfig,
-    pub cert_store: CertStoreConfig,
-    pub renew_within_days: u64,
+pub(crate) struct TlsAutomationConfig {
+    pub(crate) acme: AcmeServerConfig,
+    pub(crate) cert_store: CertStoreConfig,
+    pub(crate) renew_within_days: u64,
 }
 
 impl From<TlsAutomationSpec> for TlsAutomationConfig {
@@ -70,7 +70,7 @@ impl From<TlsAutomationSpec> for TlsAutomationConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum CertStoreConfig {
+pub(crate) enum CertStoreConfig {
     Filesystem { cert_dir: PathBuf },
     Memory,
 }
@@ -85,11 +85,11 @@ impl From<CertStoreSpec> for CertStoreConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct AcmeServerConfig {
-    pub directory_url: String,
-    pub data_dir: PathBuf,
-    pub contact_email: Vec<String>,
-    pub ca_file: Option<PathBuf>,
+pub(crate) struct AcmeServerConfig {
+    pub(crate) directory_url: String,
+    pub(crate) data_dir: PathBuf,
+    pub(crate) contact_email: Vec<String>,
+    pub(crate) ca_file: Option<PathBuf>,
 }
 
 impl From<AcmeServerSpec> for AcmeServerConfig {
@@ -108,21 +108,21 @@ impl From<AcmeServerSpec> for AcmeServerConfig {
 //-----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
-pub struct ObservabilityConfig {
-    pub otel: Option<OtelConfig>,
+pub(crate) struct ObservabilityConfig {
+    pub(crate) otel: Option<OtelConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
-pub struct OtelConfig {
-    pub enable: bool,
-    pub endpoint: String,
-    pub service_name: String,
-    pub sampling: SamplingTypeConfig,
+pub(crate) struct OtelConfig {
+    pub(crate) enable: bool,
+    pub(crate) endpoint: String,
+    pub(crate) service_name: String,
+    pub(crate) sampling: SamplingTypeConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum SamplingTypeConfig {
+pub(crate) enum SamplingTypeConfig {
     #[default]
     ParentBased,
 }

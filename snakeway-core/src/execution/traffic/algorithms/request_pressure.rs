@@ -4,7 +4,7 @@ use crate::execution::traffic::{
 };
 
 #[derive(Debug, Default)]
-pub struct RequestPressure;
+pub(crate) struct RequestPressure;
 
 impl TrafficStrategy for RequestPressure {
     fn decide(

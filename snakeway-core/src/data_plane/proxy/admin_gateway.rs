@@ -9,12 +9,12 @@ use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
 use std::sync::Arc;
 
-pub struct AdminGateway {
+pub(crate) struct AdminGateway {
     admin_handler: AdminHandler,
 }
 
 impl AdminGateway {
-    pub fn new(
+    pub(crate) fn new(
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,

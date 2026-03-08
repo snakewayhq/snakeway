@@ -4,7 +4,7 @@ use crate::execution::traffic::{
 };
 
 #[derive(Debug, Default)]
-pub struct Failover {}
+pub(crate) struct Failover {}
 
 impl TrafficStrategy for Failover {
     fn decide(

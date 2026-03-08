@@ -6,7 +6,7 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum DeviceConfig {
+pub(crate) enum DeviceConfig {
     RequestFilter(RequestFilterDeviceConfig),
     Identity(IdentityDeviceConfig),
     NetworkPolicy(NetworkPolicyDeviceConfig),
@@ -16,7 +16,7 @@ pub enum DeviceConfig {
 }
 
 impl DeviceConfig {
-    pub fn is_enabled(&self) -> bool {
+    pub(crate) fn is_enabled(&self) -> bool {
         match self {
             DeviceConfig::RequestFilter(r) => r.enable,
             DeviceConfig::Identity(i) => i.enable,

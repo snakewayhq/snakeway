@@ -3,14 +3,14 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
-pub struct WasmDeviceConfig {
-    pub enable: bool,
+pub(crate) struct WasmDeviceConfig {
+    pub(crate) enable: bool,
 
     /// The location of the WASM module.
-    pub path: PathBuf,
+    pub(crate) path: PathBuf,
 
     /// Device-specific configuration blob
-    pub config: Option<hcl::Value>,
+    pub(crate) config: Option<hcl::Value>,
 }
 
 impl From<WasmDeviceSpec> for WasmDeviceConfig {

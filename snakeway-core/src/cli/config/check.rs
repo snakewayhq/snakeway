@@ -2,7 +2,11 @@ use crate::conf::load_config;
 use clap::ValueEnum;
 use std::path::PathBuf;
 
-pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> anyhow::Result<()> {
+pub(crate) fn check(
+    path: PathBuf,
+    quiet: bool,
+    format: ConfigCheckOutputFormat,
+) -> anyhow::Result<()> {
     match load_config(&path) {
         Ok(validation_cfg) => {
             let cfg = validation_cfg.config;
@@ -74,7 +78,7 @@ pub fn check(path: PathBuf, quiet: bool, format: ConfigCheckOutputFormat) -> any
 }
 
 #[derive(Clone, Debug, ValueEnum)]
-pub enum ConfigCheckOutputFormat {
+pub(crate) enum ConfigCheckOutputFormat {
     Pretty,
     Plain,
     Json,

@@ -14,7 +14,7 @@ pub struct WsConnectionManager {
 
 impl WsConnectionManager {
     /// Create a new, empty manager.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             routes: DashMap::new(),
         }
@@ -23,7 +23,7 @@ impl WsConnectionManager {
     /// Get (or lazily create) the connection state for a route.
     ///
     /// `max` is applied only on the first creation and is immutable thereafter.
-    pub fn route_state(
+    pub(crate) fn route_state(
         &self,
         route_id: &RouteId,
         max: Option<usize>,
@@ -37,7 +37,11 @@ impl WsConnectionManager {
     /// Attempt to acquire a connection slot for the given route.
     ///
     /// On success, returns a ConnectionGuard that will release the slot on Drop.
-    pub fn try_acquire(&self, route_id: &RouteId, max: Option<usize>) -> Option<WsConnectionGuard> {
+    pub(crate) fn try_acquire(
+        &self,
+        route_id: &RouteId,
+        max: Option<usize>,
+    ) -> Option<WsConnectionGuard> {
         let state = self.route_state(route_id, max);
 
         if !state.try_acquire() {
@@ -49,7 +53,7 @@ impl WsConnectionManager {
 
     /// Get the current active connection count for a route.
     /// Intended for admin/observability.
-    pub fn active(&self, route_id: &RouteId) -> usize {
+    pub(crate) fn active(&self, route_id: &RouteId) -> usize {
         self.routes
             .get(route_id)
             .map(|state| state.active())
@@ -57,14 +61,14 @@ impl WsConnectionManager {
     }
 }
 
-pub struct RouteConnectionSnapshot {
-    pub route_id: RouteId,
-    pub active: usize,
-    pub max: Option<usize>,
+pub(crate) struct RouteConnectionSnapshot {
+    pub(crate) route_id: RouteId,
+    pub(crate) active: usize,
+    pub(crate) max: Option<usize>,
 }
 
 impl WsConnectionManager {
-    pub fn snapshot(&self) -> Vec<RouteConnectionSnapshot> {
+    pub(crate) fn snapshot(&self) -> Vec<RouteConnectionSnapshot> {
         self.routes
             .iter()
             .map(|entry| {

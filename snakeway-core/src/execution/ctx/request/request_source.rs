@@ -4,7 +4,7 @@ use pingora::protocols::Digest;
 use pingora::protocols::l4::socket::SocketAddr as PingoraSocketAddr;
 use std::net::{IpAddr, Ipv4Addr};
 
-pub trait RequestSource {
+pub(crate) trait RequestSource {
     fn http_uri(&self) -> &Uri;
     fn http_method(&self) -> &Method;
     fn http_headers(&self) -> &HeaderMap;

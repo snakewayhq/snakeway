@@ -5,7 +5,7 @@ use crate::execution::traffic::{
 use rand::{Rng, rng};
 
 #[derive(Debug, Default)]
-pub struct Random {}
+pub(crate) struct Random {}
 
 impl TrafficStrategy for Random {
     fn decide(

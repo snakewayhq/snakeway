@@ -6,16 +6,16 @@ use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
 #[derive(Debug, Deserialize, Default, Serialize)]
-pub struct BindAdminSpec {
+pub(crate) struct BindAdminSpec {
     #[serde(skip)]
-    pub origin: Origin,
-    pub interface: BindInterfaceInput,
-    pub port: u16,
-    pub tls: TlsTerminationSpec,
+    pub(crate) origin: Origin,
+    pub(crate) interface: BindInterfaceInput,
+    pub(crate) port: u16,
+    pub(crate) tls: TlsTerminationSpec,
 }
 
 impl BindAdminSpec {
-    pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
+    pub(crate) fn resolve(&self) -> Result<SocketAddr, ResolveError> {
         let interface: BindInterfaceSpec = self
             .interface
             .clone()

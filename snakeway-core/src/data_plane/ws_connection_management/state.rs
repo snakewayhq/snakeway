@@ -1,13 +1,13 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug)]
-pub struct WsRouteConnectionState {
+pub(crate) struct WsRouteConnectionState {
     active: AtomicUsize,
     max: Option<usize>,
 }
 
 impl WsRouteConnectionState {
-    pub fn new(max: Option<usize>) -> Self {
+    pub(crate) fn new(max: Option<usize>) -> Self {
         Self {
             active: AtomicUsize::new(0),
             max,
@@ -16,7 +16,7 @@ impl WsRouteConnectionState {
 
     /// Attempt to acquire one connection slot.
     /// On success, the counter is incremented atomically.
-    pub fn try_acquire(&self) -> bool {
+    pub(crate) fn try_acquire(&self) -> bool {
         match self.max {
             None => {
                 // Unlimited
@@ -43,15 +43,15 @@ impl WsRouteConnectionState {
         }
     }
 
-    pub fn release(&self) {
+    pub(crate) fn release(&self) {
         self.active.fetch_sub(1, Ordering::Relaxed);
     }
 
-    pub fn active(&self) -> usize {
+    pub(crate) fn active(&self) -> usize {
         self.active.load(Ordering::Relaxed)
     }
 
-    pub fn max(&self) -> Option<usize> {
+    pub(crate) fn max(&self) -> Option<usize> {
         self.max
     }
 }

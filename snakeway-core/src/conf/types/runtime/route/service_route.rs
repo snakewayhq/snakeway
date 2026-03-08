@@ -2,23 +2,23 @@ use crate::conf::types::ServiceRouteSpec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ServiceRouteConfig {
+pub(crate) struct ServiceRouteConfig {
     /// Host names allowed to access this route.
-    pub hosts: Vec<String>,
+    pub(crate) hosts: Vec<String>,
 
     /// Path prefix (longest-prefix match).
-    pub path: String,
+    pub(crate) path: String,
 
-    pub service: String,
+    pub(crate) service: String,
 
-    pub allow_websocket: bool,
-    pub ws_max_connections: Option<usize>,
+    pub(crate) allow_websocket: bool,
+    pub(crate) ws_max_connections: Option<usize>,
 
-    pub listener: String,
+    pub(crate) listener: String,
 }
 
 impl ServiceRouteConfig {
-    pub fn new(service: &str, listener: &str, spec: ServiceRouteSpec) -> Self {
+    pub(crate) fn new(service: &str, listener: &str, spec: ServiceRouteSpec) -> Self {
         Self {
             service: service.to_string(),
             listener: listener.to_string(),

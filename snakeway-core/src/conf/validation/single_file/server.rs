@@ -8,7 +8,7 @@ use nix::NixPath;
 /// Validate top-level config version.
 ///
 /// Fail-fast: invalid versions invalidate the entire config model.
-pub fn validate_version(server_spec: &ServerSpec, report: &mut ValidationReport) -> bool {
+pub(crate) fn validate_version(server_spec: &ServerSpec, report: &mut ValidationReport) -> bool {
     if server_spec.version != 1 {
         report.invalid_config_version(&server_spec.version, &server_spec.origin);
         return false;
@@ -19,7 +19,7 @@ pub fn validate_version(server_spec: &ServerSpec, report: &mut ValidationReport)
 /// Validate the server config.
 ///
 /// Version validation fails fast, because it invalidates the entire config model.
-pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) {
+pub(crate) fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) {
     if let Some(pid_file) = server_spec.pid_file.clone() {
         let Some(parent) = pid_file.parent() else {
             return;

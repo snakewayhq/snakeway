@@ -15,7 +15,7 @@ const EXIT_CONFIG_FAILURE: i32 = 2;
 const EXIT_NO_MATCH: i32 = 3;
 const EXIT_REJECTED: i32 = 4;
 
-pub fn run(args: RouteSolveArgs) {
+pub(crate) fn run(args: RouteSolveArgs) {
     // 1. Parse URL
     let parsed_url = match Url::parse(&args.url) {
         Ok(u) => u,

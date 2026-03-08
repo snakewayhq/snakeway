@@ -1,5 +1,5 @@
 mod logging;
 mod telemetry;
 
-pub use logging::*;
-pub use telemetry::*;
+pub(crate) use logging::*;
+pub(crate) use telemetry::*;

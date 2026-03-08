@@ -7,7 +7,7 @@ mod query;
 mod tests;
 mod types;
 
-pub use headers::*;
-pub use path::*;
-pub use query::*;
-pub use types::*;
+pub(crate) use headers::*;
+pub(crate) use path::*;
+pub(crate) use query::*;
+pub(crate) use types::*;

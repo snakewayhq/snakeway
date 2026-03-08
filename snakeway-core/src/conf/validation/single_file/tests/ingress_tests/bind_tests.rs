@@ -46,7 +46,7 @@ fn minimal_admin_bind() -> BindAdminSpec {
     }
 }
 
-pub fn minimal_ingress() -> IngressSpec {
+pub(crate) fn minimal_ingress() -> IngressSpec {
     IngressSpec {
         bind: Some(minimal_bind()),
         services: vec![minimal_service()],

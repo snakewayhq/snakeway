@@ -14,7 +14,7 @@ use http::HeaderMap;
 ///
 /// Both protocol modes validate header encoding, reject hop-by-hop headers, canonicalize
 /// header names and values, and fold duplicate headers according to their respective RFCs.
-pub fn normalize_headers(
+pub(crate) fn normalize_headers(
     raw: &HeaderMap,
     protocol_mode: &ProtocolNormalizationMode,
 ) -> NormalizationOutcome<NormalizedHeaders> {

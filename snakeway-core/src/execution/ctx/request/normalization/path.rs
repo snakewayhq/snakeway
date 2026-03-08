@@ -17,7 +17,7 @@ use crate::execution::ctx::request::normalization::{
 /// - `Accept`: Path is already normalized and valid.
 /// - `Rewrite`: Path was modified to comply with normalization rules (reason provided).
 /// - `Reject`: Path contains invalid or dangerous patterns (e.g., traversal above root, NUL bytes).
-pub fn normalize_path(path: &str) -> NormalizationOutcome<NormalizedPath> {
+pub(crate) fn normalize_path(path: &str) -> NormalizationOutcome<NormalizedPath> {
     // Reject NUL bytes outright (never valid in HTTP semantics).
     if path.as_bytes().contains(&0) {
         return NormalizationOutcome::Reject {

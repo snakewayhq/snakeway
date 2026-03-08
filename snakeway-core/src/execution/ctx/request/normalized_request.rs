@@ -2,20 +2,20 @@ use http::{HeaderMap, Method, Uri, Version};
 use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Default)]
-pub struct NormalizedRequestParams {
-    pub original_uri: Uri,
-    pub method: Method,
-    pub host: String,
-    pub path: NormalizedPath,
-    pub query: CanonicalQuery,
-    pub headers: NormalizedHeaders,
-    pub sni_host: Option<String>,
-    pub protocol_version: Version,
-    pub is_upgrade_req: bool,
+pub(crate) struct NormalizedRequestParams {
+    pub(crate) original_uri: Uri,
+    pub(crate) method: Method,
+    pub(crate) host: String,
+    pub(crate) path: NormalizedPath,
+    pub(crate) query: CanonicalQuery,
+    pub(crate) headers: NormalizedHeaders,
+    pub(crate) sni_host: Option<String>,
+    pub(crate) protocol_version: Version,
+    pub(crate) is_upgrade_req: bool,
 }
 
 #[derive(Debug, Default)]
-pub struct NormalizedRequest(NormalizedRequestParams);
+pub(crate) struct NormalizedRequest(NormalizedRequestParams);
 
 impl From<NormalizedRequestParams> for NormalizedRequest {
     fn from(params: NormalizedRequestParams) -> Self {
@@ -37,35 +37,35 @@ impl DerefMut for NormalizedRequest {
 }
 
 impl NormalizedRequest {
-    pub fn original_uri(&self) -> &Uri {
+    pub(crate) fn original_uri(&self) -> &Uri {
         &self.original_uri
     }
 
-    pub fn effective_host(&self) -> &str {
+    pub(crate) fn effective_host(&self) -> &str {
         self.sni_host.as_deref().unwrap_or(&self.host)
     }
 
-    pub fn method(&self) -> &Method {
+    pub(crate) fn method(&self) -> &Method {
         &self.method
     }
 
-    pub fn path(&self) -> &NormalizedPath {
+    pub(crate) fn path(&self) -> &NormalizedPath {
         &self.path
     }
 
-    pub fn set_path(&mut self, path: String) {
+    pub(crate) fn set_path(&mut self, path: String) {
         self.path.0 = path;
     }
 
-    pub fn query(&self) -> &CanonicalQuery {
+    pub(crate) fn query(&self) -> &CanonicalQuery {
         &self.query
     }
 
-    pub fn headers(&self) -> &HeaderMap {
+    pub(crate) fn headers(&self) -> &HeaderMap {
         &self.headers.header_map
     }
 
-    pub fn insert_header(
+    pub(crate) fn insert_header(
         &mut self,
         name: http::header::HeaderName,
         value: http::header::HeaderValue,
@@ -73,23 +73,23 @@ impl NormalizedRequest {
         self.headers.header_map.insert(name, value);
     }
 
-    pub fn remove_header(&mut self, name: &str) {
+    pub(crate) fn remove_header(&mut self, name: &str) {
         self.headers.header_map.remove(name);
     }
 
-    pub fn is_upgrade_req(&self) -> bool {
+    pub(crate) fn is_upgrade_req(&self) -> bool {
         self.is_upgrade_req
     }
 
-    pub fn protocol_version(&self) -> &Version {
+    pub(crate) fn protocol_version(&self) -> &Version {
         &self.protocol_version
     }
 
-    pub fn is_http2(&self) -> bool {
+    pub(crate) fn is_http2(&self) -> bool {
         self.protocol_version == Version::HTTP_2
     }
 
-    pub fn into_inner(self) -> (Method, NormalizedPath, CanonicalQuery, NormalizedHeaders) {
+    pub(crate) fn into_inner(self) -> (Method, NormalizedPath, CanonicalQuery, NormalizedHeaders) {
         let NormalizedRequestParams {
             method,
             path,
@@ -114,29 +114,29 @@ impl From<NormalizedPath> for NormalizedRequest {
 }
 
 #[derive(Debug, Default)]
-pub struct NormalizedPath(pub String);
+pub(crate) struct NormalizedPath(pub(crate) String);
 
 impl NormalizedPath {
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
 }
 
 #[derive(Debug, Default)]
-pub struct CanonicalQuery {
+pub(crate) struct CanonicalQuery {
     raw: String,
     pairs: Vec<(String, String)>,
 }
 
 impl CanonicalQuery {
-    pub fn new(raw: &str, pairs: Vec<(String, String)>) -> Self {
+    pub(crate) fn new(raw: &str, pairs: Vec<(String, String)>) -> Self {
         Self {
             raw: raw.to_string(),
             pairs,
         }
     }
 
-    pub fn from_raw(raw: Option<&str>) -> CanonicalQuery {
+    pub(crate) fn from_raw(raw: Option<&str>) -> CanonicalQuery {
         let raw = raw.unwrap_or("").to_string();
 
         CanonicalQuery {
@@ -145,17 +145,17 @@ impl CanonicalQuery {
         }
     }
 
-    pub fn raw(&self) -> &str {
+    pub(crate) fn raw(&self) -> &str {
         &self.raw
     }
 
-    pub fn pairs(&self) -> &[(String, String)] {
+    pub(crate) fn pairs(&self) -> &[(String, String)] {
         &self.pairs
     }
 }
 
 #[derive(Debug, Default)]
-pub struct NormalizedHeaders {
+pub(crate) struct NormalizedHeaders {
     header_map: HeaderMap,
 }
 
@@ -168,13 +168,13 @@ impl From<HeaderMap> for NormalizedHeaders {
 }
 
 impl NormalizedHeaders {
-    pub fn new(headers: HeaderMap) -> Self {
+    pub(crate) fn new(headers: HeaderMap) -> Self {
         Self {
             header_map: headers,
         }
     }
 
-    pub fn as_map(&self) -> &HeaderMap {
+    pub(crate) fn as_map(&self) -> &HeaderMap {
         &self.header_map
     }
 }

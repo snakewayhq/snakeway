@@ -5,7 +5,7 @@ use crate::data_plane::static_files::resolve::{ResolveError, ResolvedStatic, res
 use crate::data_plane::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use crate::execution::route::RouteRuntime;
 
-pub async fn handle_static_request(
+pub(crate) async fn handle_static_request(
     route: &RouteRuntime,
     request_path: &str,
     conditional: &ConditionalHeaders,

@@ -3,13 +3,13 @@ use http::{HeaderMap, StatusCode};
 use tokio::fs;
 
 #[derive(Debug)]
-pub enum ServeError {
+pub(crate) enum ServeError {
     NotFound,
     Forbidden,
     Io,
 }
 
-pub enum StaticBody {
+pub(crate) enum StaticBody {
     Empty,
     /// Useful for tiny files/errors.
     Bytes(Bytes),
@@ -23,17 +23,17 @@ pub enum StaticBody {
     },
 }
 
-pub struct StaticResponse {
-    pub status: StatusCode,
-    pub headers: HeaderMap,
-    pub body: StaticBody,
+pub(crate) struct StaticResponse {
+    pub(crate) status: StatusCode,
+    pub(crate) headers: HeaderMap,
+    pub(crate) body: StaticBody,
 }
 
 /// Conditional request headers for cache validation and content negotiation
 #[derive(Debug, Default)]
-pub struct ConditionalHeaders {
-    pub if_none_match: Option<String>,
-    pub if_modified_since: Option<String>,
-    pub accept_encoding: Option<String>,
-    pub range: Option<String>,
+pub(crate) struct ConditionalHeaders {
+    pub(crate) if_none_match: Option<String>,
+    pub(crate) if_modified_since: Option<String>,
+    pub(crate) accept_encoding: Option<String>,
+    pub(crate) range: Option<String>,
 }

@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy)]
-pub enum HttpEvent {
+pub(crate) enum HttpEvent {
     Request,
     BeforeProxy,
     AfterProxy,
@@ -7,7 +7,7 @@ pub enum HttpEvent {
 }
 
 impl HttpEvent {
-    pub fn as_str(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             HttpEvent::Request => "request",
             HttpEvent::BeforeProxy => "before_proxy",

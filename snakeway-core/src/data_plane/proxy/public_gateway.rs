@@ -22,7 +22,7 @@ use tracing::info_span;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
-pub struct PublicGateway {
+pub(crate) struct PublicGateway {
     listener: Arc<str>,
     gw_ctx: GatewayCtx,
     traffic_director: TrafficDirector,
@@ -30,7 +30,7 @@ pub struct PublicGateway {
 }
 
 impl PublicGateway {
-    pub fn new(
+    pub(crate) fn new(
         listener: Arc<str>,
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
@@ -615,7 +615,7 @@ impl PublicGateway {
     /// 1. WebSocket: HTTP/1.1 only
     /// 2. gRPC: HTTP/2 only (TLS required)
     /// 3. Default: Pingora defaults
-    pub fn enforce_protocol(
+    pub(crate) fn enforce_protocol(
         &self,
         peer: &mut HttpPeer,
         ctx: &RequestCtx,

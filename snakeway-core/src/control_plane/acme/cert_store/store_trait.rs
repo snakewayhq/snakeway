@@ -2,20 +2,20 @@ use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CertificateMeta {
-    pub domains: Vec<String>,
-    pub not_after: SystemTime,
-    pub issued_at: SystemTime,
+pub(crate) struct CertificateMeta {
+    pub(crate) domains: Vec<String>,
+    pub(crate) not_after: SystemTime,
+    pub(crate) issued_at: SystemTime,
 }
 
 #[derive(Clone)]
-pub struct StoredCertificate {
-    pub private_key_pem: Vec<u8>,
-    pub cert_chain_pem: Vec<u8>,
-    pub meta: CertificateMeta,
+pub(crate) struct StoredCertificate {
+    pub(crate) private_key_pem: Vec<u8>,
+    pub(crate) cert_chain_pem: Vec<u8>,
+    pub(crate) meta: CertificateMeta,
 }
 
-pub trait CertStore: Send + Sync {
+pub(crate) trait CertStore: Send + Sync {
     fn get(&self, id: &str) -> Option<StoredCertificate>;
 
     fn put(&self, id: String, cert: StoredCertificate) -> Result<(), std::io::Error>;

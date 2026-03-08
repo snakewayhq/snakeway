@@ -14,7 +14,7 @@ struct WindowEvent {
     identity: IdentitySummary,
 }
 
-pub struct StatsAggregator {
+pub(crate) struct StatsAggregator {
     window: Duration,
     events: VecDeque<WindowEvent>,
     in_flight: HashMap<RequestId, InFlight>,
@@ -28,7 +28,7 @@ struct InFlight {
 }
 
 impl StatsAggregator {
-    pub fn new(window: Duration) -> Self {
+    pub(crate) fn new(window: Duration) -> Self {
         Self {
             window,
             events: VecDeque::new(),
@@ -196,23 +196,23 @@ impl StatsAggregator {
     }
 }
 
-pub struct StatsSnapshot {
-    pub window_seconds: u64,
+pub(crate) struct StatsSnapshot {
+    pub(crate) window_seconds: u64,
 
-    pub rps: f64,
-    pub window_events: u64,
-    pub latency: Vec<(String, u64)>,
-    pub status: (u64, u64, u64), // 2xx, 4xx, 5xx
+    pub(crate) rps: f64,
+    pub(crate) window_events: u64,
+    pub(crate) latency: Vec<(String, u64)>,
+    pub(crate) status: (u64, u64, u64), // 2xx, 4xx, 5xx
 
-    pub p95_ms: u64,
-    pub p99_ms: u64,
+    pub(crate) p95_ms: u64,
+    pub(crate) p99_ms: u64,
 
-    pub device_counts: HashMap<String, u64>,
-    pub connection_type_counts: HashMap<String, u64>,
-    pub asn_counts: HashMap<usize, u64>,
-    pub aso_counts: HashMap<String, u64>,
-    pub country_counts: HashMap<String, u64>,
-    pub bot_count: u64,
-    pub human_count: u64,
-    pub unknown_identity_count: u64,
+    pub(crate) device_counts: HashMap<String, u64>,
+    pub(crate) connection_type_counts: HashMap<String, u64>,
+    pub(crate) asn_counts: HashMap<usize, u64>,
+    pub(crate) aso_counts: HashMap<String, u64>,
+    pub(crate) country_counts: HashMap<String, u64>,
+    pub(crate) bot_count: u64,
+    pub(crate) human_count: u64,
+    pub(crate) unknown_identity_count: u64,
 }

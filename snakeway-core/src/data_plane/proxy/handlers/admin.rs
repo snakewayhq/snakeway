@@ -34,7 +34,7 @@ impl FromStr for AdminEndpoint {
     }
 }
 
-pub struct AdminHandler {
+pub(crate) struct AdminHandler {
     traffic_manager: Arc<TrafficManager>,
     connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
@@ -42,7 +42,7 @@ pub struct AdminHandler {
 }
 
 impl AdminHandler {
-    pub fn new(
+    pub(crate) fn new(
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,

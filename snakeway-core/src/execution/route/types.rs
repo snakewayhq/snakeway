@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-pub enum RouteRuntime {
+pub(crate) enum RouteRuntime {
     /// Forward request to upstream
     Service {
         id: RouteId,
@@ -28,7 +28,7 @@ pub enum RouteRuntime {
 }
 
 impl RouteRuntime {
-    pub fn id(&self) -> &RouteId {
+    pub(crate) fn id(&self) -> &RouteId {
         match self {
             RouteRuntime::Service { id, .. } => id,
             RouteRuntime::Static { id, .. } => id,
@@ -37,13 +37,13 @@ impl RouteRuntime {
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize)]
-pub enum RouteKind {
+pub(crate) enum RouteKind {
     Service,
     Static,
 }
 
 #[derive(Debug, Clone, Eq, Serialize)]
-pub struct RouteId {
+pub(crate) struct RouteId {
     kind: RouteKind,
     path: Arc<str>,
     target: Arc<str>,
@@ -64,7 +64,7 @@ impl Hash for RouteId {
 }
 
 impl RouteId {
-    pub fn service(path: &str, service: &str) -> Self {
+    pub(crate) fn service(path: &str, service: &str) -> Self {
         Self {
             kind: RouteKind::Service,
             path: Arc::from(path.trim_end_matches('/')),
@@ -72,7 +72,7 @@ impl RouteId {
         }
     }
 
-    pub fn static_route(path: &str, file_dir: &str) -> Self {
+    pub(crate) fn static_route(path: &str, file_dir: &str) -> Self {
         Self {
             kind: RouteKind::Static,
             path: Arc::from(path.trim_end_matches('/')),
@@ -81,7 +81,7 @@ impl RouteId {
     }
 
     /// Stable string form for logging / admin APIs
-    pub fn as_str(&self) -> String {
+    pub(crate) fn as_str(&self) -> String {
         let kind = match self.kind {
             RouteKind::Service => "service",
             RouteKind::Static => "static",
@@ -90,7 +90,7 @@ impl RouteId {
         format!("{kind}:{}:{}", self.path, self.target)
     }
 
-    pub fn kind(&self) -> RouteKind {
+    pub(crate) fn kind(&self) -> RouteKind {
         self.kind
     }
 }

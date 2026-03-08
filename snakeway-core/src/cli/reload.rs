@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 /// Send SIGHUP to a running Snakeway process via pid file.
-pub fn run<P: AsRef<Path>>(pid_file: P) -> Result<()> {
+pub(crate) fn run<P: AsRef<Path>>(pid_file: P) -> Result<()> {
     let pid_file = pid_file.as_ref();
 
     let contents = fs::read_to_string(pid_file)

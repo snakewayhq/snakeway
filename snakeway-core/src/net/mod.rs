@@ -5,7 +5,7 @@ mod network_connection_filter;
 #[cfg(test)]
 mod tests;
 
-pub use cidr::*;
-pub use client_ip::*;
-pub use connection_rate_limiting_filter::*;
-pub use network_connection_filter::*;
+pub(crate) use cidr::*;
+pub(crate) use client_ip::*;
+pub(crate) use connection_rate_limiting_filter::*;
+pub(crate) use network_connection_filter::*;

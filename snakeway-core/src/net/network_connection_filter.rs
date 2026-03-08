@@ -7,7 +7,7 @@ use std::net::{IpAddr, SocketAddr};
 use tracing::debug;
 
 #[derive(Debug, Default, Clone)]
-pub struct NetworkConnectionFilter {
+pub(crate) struct NetworkConnectionFilter {
     pub(crate) cidr_allow: CidrCollection,
     pub(crate) cidr_deny: CidrCollection,
     pub(crate) ip_family_ipv4: bool,

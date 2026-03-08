@@ -11,7 +11,7 @@ use crate::execution::device::wasm::wasm_device::WasmDevice;
 use anyhow::Result;
 use std::sync::Arc;
 
-pub struct DeviceRegistry {
+pub(crate) struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
 }
 
@@ -22,13 +22,13 @@ impl Default for DeviceRegistry {
 }
 
 impl DeviceRegistry {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             devices: Vec::new(),
         }
     }
 
-    pub fn load_from_config(&mut self, cfg: &RuntimeConfig) -> Result<()> {
+    pub(crate) fn load_from_config(&mut self, cfg: &RuntimeConfig) -> Result<()> {
         for device_cfg in &cfg.devices {
             if !device_cfg.is_enabled() {
                 continue;
@@ -85,7 +85,7 @@ impl DeviceRegistry {
         Ok(())
     }
 
-    pub fn all(&self) -> &[Arc<dyn Device>] {
+    pub(crate) fn all(&self) -> &[Arc<dyn Device>] {
         &self.devices
     }
 }

@@ -2,40 +2,40 @@ mod connection_rate_limiting_filter;
 mod network_connection_filter;
 mod tls_termination;
 
-pub use connection_rate_limiting_filter::*;
-pub use network_connection_filter::*;
-pub use tls_termination::*;
+pub(crate) use connection_rate_limiting_filter::*;
+pub(crate) use network_connection_filter::*;
+pub(crate) use tls_termination::*;
 
 use crate::conf::types::{BindAdminSpec, BindSpec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ListenerConfig {
+pub(crate) struct ListenerConfig {
     /// Name of the listener. Must be unique among listeners.
-    pub name: String,
+    pub(crate) name: String,
 
     /// Address to bind, e.g. "0.0.0.0:8080"
-    pub addr: String,
+    pub(crate) addr: String,
 
     /// Optional TLS termination config.
-    pub tls_termination: Option<TlsTerminationConfig>,
+    pub(crate) tls_termination: Option<TlsTerminationConfig>,
 
     /// Enable HTTP/2 on this listener.
-    pub enable_http2: bool,
+    pub(crate) enable_http2: bool,
 
     /// Whether a listener serves admin endpoints or not.
-    pub enable_admin: bool,
+    pub(crate) enable_admin: bool,
 
     /// Optional redirect config.
-    pub redirect: Option<RedirectConfig>,
+    pub(crate) redirect: Option<RedirectConfig>,
 
-    pub connection_filter: Option<NetworkConnectionFilterConfig>,
+    pub(crate) connection_filter: Option<NetworkConnectionFilterConfig>,
 
-    pub connection_rate_limiting_filter: Option<ConnectionRateLimitingFilterConfig>,
+    pub(crate) connection_rate_limiting_filter: Option<ConnectionRateLimitingFilterConfig>,
 }
 
 impl ListenerConfig {
-    pub fn from_redirect(
+    pub(crate) fn from_redirect(
         name: &str,
         from_addr: String,
         redirect_response_code: u16,
@@ -58,7 +58,7 @@ impl ListenerConfig {
         })
     }
 
-    pub fn from_bind(name: &str, spec: BindSpec) -> Result<Self, String> {
+    pub(crate) fn from_bind(name: &str, spec: BindSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
         let maybe_tls = if let Some(tls) = spec.tls {
             Some(TlsTerminationConfig::try_from(tls).map_err(|err| err.to_string())?)
@@ -78,7 +78,7 @@ impl ListenerConfig {
         })
     }
 
-    pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
+    pub(crate) fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
         let tls = TlsTerminationConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
         Ok(Self {
@@ -95,13 +95,13 @@ impl ListenerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct RedirectConfig {
-    pub destination: String,
-    pub response_code: u16,
+pub(crate) struct RedirectConfig {
+    pub(crate) destination: String,
+    pub(crate) response_code: u16,
 }
 
 impl RedirectConfig {
-    pub fn new(destination: String, response_code: u16) -> Self {
+    pub(crate) fn new(destination: String, response_code: u16) -> Self {
         Self {
             destination,
             response_code,
