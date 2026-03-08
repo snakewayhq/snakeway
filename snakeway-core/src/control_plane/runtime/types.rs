@@ -1,4 +1,4 @@
-use crate::cert_manager::SniRegistry;
+use crate::acme::SniRegistry;
 use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use crate::device::core::registry::DeviceRegistry;
 use crate::route::Router;

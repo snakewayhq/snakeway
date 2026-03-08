@@ -10,7 +10,7 @@ use crate::ctx::request::{
 use crate::enrichment::user_agent::ClientIdentity;
 use crate::route::types::RouteId;
 use crate::runtime::UpstreamId;
-use crate::traffic_management::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
 use crate::ws_connection_management::WsConnectionGuard;
 use http::header::HOST;
 use http::{Extensions, HeaderMap, Method, Version, uri::Authority};

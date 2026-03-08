@@ -1,5 +1,5 @@
 use crate::ctx::RequestCtx;
-use crate::traffic_management::{
+use crate::traffic::{
     ServiceId, TrafficManager, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
 use rand::{Rng, rng};

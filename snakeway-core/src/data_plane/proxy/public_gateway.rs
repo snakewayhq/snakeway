@@ -6,7 +6,7 @@ use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::route::RouteRuntime;
 use crate::runtime::{RuntimeState, UpstreamRuntime};
-use crate::traffic_management::{
+use crate::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use crate::ws_connection_management::WsConnectionManager;

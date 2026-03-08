@@ -1,5 +1,5 @@
-use crate::cert_manager::CertStore;
-use crate::cert_manager::cert_store::{CertificateMeta, StoredCertificate};
+use crate::acme::CertStore;
+use crate::acme::cert_store::{CertificateMeta, StoredCertificate};
 
 use std::io::Error;
 use std::path::PathBuf;

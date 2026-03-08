@@ -1,4 +1,4 @@
-use crate::cert_manager::order_store::store_trait::{OrderState, OrderStore};
+use crate::acme::order_store::store_trait::{OrderState, OrderStore};
 use std::path::{Path, PathBuf};
 
 pub struct FilesystemOrderStore {

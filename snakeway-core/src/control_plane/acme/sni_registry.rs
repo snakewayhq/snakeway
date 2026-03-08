@@ -1,4 +1,4 @@
-use crate::cert_manager::ParsedCert;
+use crate::acme::ParsedCert;
 use arc_swap::ArcSwap;
 use std::collections::HashMap;
 use std::sync::Arc;

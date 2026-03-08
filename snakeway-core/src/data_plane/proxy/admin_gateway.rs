@@ -1,8 +1,8 @@
-use crate::cert_manager::CertManager;
+use crate::acme::CertManager;
 use crate::ctx::RequestCtx;
 use crate::proxy::handlers::AdminHandler;
 use crate::server::ReloadHandle;
-use crate::traffic_management::TrafficManager;
+use crate::traffic::TrafficManager;
 use crate::ws_connection_management::WsConnectionManager;
 use async_trait::async_trait;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};

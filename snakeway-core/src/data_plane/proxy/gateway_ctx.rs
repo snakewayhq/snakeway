@@ -1,5 +1,5 @@
 use crate::runtime::RuntimeState;
-use crate::traffic_management::TrafficManager;
+use crate::traffic::TrafficManager;
 use crate::ws_connection_management::WsConnectionManager;
 use arc_swap::{ArcSwap, Guard};
 use std::sync::Arc;

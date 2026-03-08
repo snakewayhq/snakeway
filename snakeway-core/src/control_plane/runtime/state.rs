@@ -1,4 +1,4 @@
-use crate::cert_manager::{CertManager, SniRegistry};
+use crate::acme::{CertManager, SniRegistry};
 use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use crate::conf::{RuntimeConfig, load_config};
 use crate::device::core::registry::DeviceRegistry;

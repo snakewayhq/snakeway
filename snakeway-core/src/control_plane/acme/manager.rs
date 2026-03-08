@@ -1,9 +1,9 @@
-use crate::cert_manager::acme_client::AcmeClient;
-use crate::cert_manager::admin::CertView;
-use crate::cert_manager::challenge::Http01Registry;
-use crate::cert_manager::error::CertManagerError;
-use crate::cert_manager::sni_registry::{SniMap, SniRegistry};
-use crate::cert_manager::{
+use crate::acme::acme_client::AcmeClient;
+use crate::acme::admin::CertView;
+use crate::acme::challenge::Http01Registry;
+use crate::acme::error::CertManagerError;
+use crate::acme::sni_registry::{SniMap, SniRegistry};
+use crate::acme::{
     ParsedCert, cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
     renewal_policy::RenewalPolicy,
 };

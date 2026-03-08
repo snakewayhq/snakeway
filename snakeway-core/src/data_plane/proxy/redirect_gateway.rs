@@ -1,4 +1,4 @@
-use crate::cert_manager::CertManager;
+use crate::acme::CertManager;
 use crate::ctx::RequestCtx;
 use async_trait::async_trait;
 use bytes::Bytes;

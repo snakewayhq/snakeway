@@ -1,7 +1,7 @@
-use crate::cert_manager::cert_store::{CertificateMeta, StoredCertificate};
-use crate::cert_manager::order_store::OrderState;
-use crate::cert_manager::state::{CertState, compute_state};
-use crate::cert_manager::{CertManager, OrderStatus};
+use crate::acme::cert_store::{CertificateMeta, StoredCertificate};
+use crate::acme::order_store::OrderState;
+use crate::acme::state::{CertState, compute_state};
+use crate::acme::{CertManager, OrderStatus};
 use crate::conf::RuntimeConfig;
 use crate::conf::types::{AcmeChallengeConfig, TlsTerminationConfig};
 use sha2::{Digest, Sha256};

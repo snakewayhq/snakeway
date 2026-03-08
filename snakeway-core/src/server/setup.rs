@@ -1,4 +1,4 @@
-use crate::cert_manager::{
+use crate::acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
 use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsAutomationConfig};
@@ -11,7 +11,7 @@ use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runt
 use crate::server::pid;
 use crate::server::reload::{ReloadEvent, ReloadHandle};
 use crate::server::tls_handshake::{CertMode, build_tls_callbacks};
-use crate::traffic_management::{TrafficManager, TrafficSnapshot};
+use crate::traffic::{TrafficManager, TrafficSnapshot};
 use crate::ws_connection_management::WsConnectionManager;
 use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;

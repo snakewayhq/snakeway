@@ -1,10 +1,10 @@
 use crate::runtime::UpstreamId;
-use crate::traffic_management::admin::{
+use crate::traffic::admin::{
     AdminUpstreamView, CircuitBreakerDetailsView, CircuitBreakerParamsView,
 };
-use crate::traffic_management::circuit::{CircuitBreaker, CircuitBreakerParams, CircuitState};
-use crate::traffic_management::snapshot::TrafficSnapshot;
-use crate::traffic_management::{HealthCheckParams, HealthStatus, ServiceId, UpstreamSnapshot};
+use crate::traffic::circuit::{CircuitBreaker, CircuitBreakerParams, CircuitState};
+use crate::traffic::snapshot::TrafficSnapshot;
+use crate::traffic::{HealthCheckParams, HealthStatus, ServiceId, UpstreamSnapshot};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use std::collections::HashSet;
