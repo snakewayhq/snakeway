@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+# Create the snakeway system group and user if they don't exist.
+if ! getent group snakeway > /dev/null 2>&1; then
+    addgroup --system snakeway
+fi
+if ! getent passwd snakeway > /dev/null 2>&1; then
+    adduser --system --no-create-home --ingroup snakeway --shell /usr/sbin/nologin snakeway
+fi
+
+# Create runtime and log directories with correct ownership.
+install -d -m 0750 -o snakeway -g snakeway /run/snakeway
+install -d -m 0750 -o snakeway -g snakeway /var/log/snakeway
+
+# Ensure config sub-directories exist (the package ships example files,
+# but operators may remove them — the directories should always be present).
+install -d -m 0755 /etc/snakeway/ingress.d
+install -d -m 0755 /etc/snakeway/device.d
+
+#DEBHELPER#
