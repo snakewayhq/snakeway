@@ -1,8 +1,8 @@
 use crate::constants::{ACME_ORDERS_DIR, CERT_PEBBLE_CA_PEM, TEST_HOST};
-use snakeway_core::integration_test_api::conf::types::RuntimeConfig;
+use snakeway_core::testing_api::conf::types::RuntimeConfig;
 use url::Url;
 
-use snakeway_core::integration_test_api::conf::types::RouteConfig;
+use snakeway_core::testing_api::conf::types::RouteConfig;
 use std::path::PathBuf;
 
 pub fn patch_runtime(cfg: &mut RuntimeConfig, listener_ports: &[u16], upstream_ports: &[u16]) {

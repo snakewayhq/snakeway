@@ -1,10 +1,10 @@
 use integration_tests::conf::ConfigBuilder;
 use integration_tests::constants::{ROUTE_PATH_API, TEST_HOST};
 use pretty_assertions::assert_eq;
-use snakeway_core::integration_test_api::cli::route::solve::{
+use snakeway_core::testing_api::cli::route::solve::{
     RouteSolveOptions, SyntheticRequest, walk_solve,
 };
-use snakeway_core::integration_test_api::control_plane::runtime::build_runtime_state;
+use snakeway_core::testing_api::control_plane::runtime::build_runtime_state;
 
 fn make_req(scheme: &str, host: &str, path: &str) -> SyntheticRequest {
     SyntheticRequest {

@@ -1,5 +1,6 @@
+use crate::execution::ctx::RequestCtx;
 use crate::execution::ctx::request::RequestSource;
-use crate::execution::ctx::{RequestCtx, RequestRejectError};
+use crate::execution::ctx::request::error::RequestRejectError;
 use http::header::HOST;
 use http::{HeaderMap, HeaderValue, Method, Uri, Version};
 use pingora::prelude::Session;
