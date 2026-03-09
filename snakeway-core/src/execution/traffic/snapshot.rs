@@ -1,5 +1,5 @@
-use crate::control_plane::runtime::{RuntimeState, UpstreamRuntime};
 use crate::execution::traffic::types::*;
+use crate::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_conf::types::LoadBalancingStrategy;
 use std::collections::HashMap;
 

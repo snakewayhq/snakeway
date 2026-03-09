@@ -8,9 +8,9 @@ use reqwest::blocking::{Client, RequestBuilder};
 
 use snakeway_core::control_plane::ReloadHandle;
 use snakeway_core::control_plane::acme::FilesystemOrderStore;
-use snakeway_core::control_plane::runtime::build_runtime_state;
 use snakeway_core::data_plane::build_pingora_server;
 use snakeway_core::execution::traffic::TrafficSnapshot;
+use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::testing_api::conf::load_config;
 use snakeway_core::testing_api::conf::types::RuntimeConfig;
 use snakeway_core::testing_api::control_plane::acme::{CertManager, MemoryCertStore};

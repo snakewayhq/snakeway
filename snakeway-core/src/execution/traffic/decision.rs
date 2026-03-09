@@ -1,4 +1,4 @@
-use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime};
+use crate::runtime::{UpstreamId, UpstreamRuntime};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum DecisionReason {

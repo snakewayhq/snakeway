@@ -14,7 +14,7 @@ pub struct ValidationIssue {
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
-pub(crate) enum Severity {
+pub enum Severity {
     #[default]
     Error,
     Warning,
@@ -186,17 +186,6 @@ impl ValidationReport {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
-    pub(crate) fn static_tls_requires_key_file(&mut self, key_file: &Path, origin: &Origin) {
-        self.error(
-            format!(
-                "missing or invalid key file: {}",
-                key_file.to_string_lossy()
-            ),
-            origin,
-            None,
-        );
-    }
-
     pub(crate) fn ingress_tls_manual_cert_pair_invalid(&mut self, message: &str, origin: &Origin) {
         self.error(
             format!("invalid TLS manual cert pair: {}", message),
@@ -230,22 +219,6 @@ impl ValidationReport {
             format!("redirect_http_to_https requires TLS: {}", addr),
             origin,
             Some("Enable TLS on the bind or remove redirect_http_to_https.".to_string()),
-        );
-    }
-
-    pub(crate) fn redirect_status_is_not_a_3xx_code(&mut self, status_code: u16, origin: &Origin) {
-        self.error(
-            format!("redirect status {status_code} is not a 3xx code"),
-            origin,
-            None,
-        );
-    }
-
-    pub(crate) fn invalid_http_status_code(&mut self, status_code: u16, origin: &Origin) {
-        self.error(
-            format!("invalid HTTP status code {}", status_code),
-            origin,
-            None,
         );
     }
 

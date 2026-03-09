@@ -1,11 +1,11 @@
 use crate::cli::route::solve::solver::{fnv1a_hash, walk_solve};
 use crate::cli::route::solve::types::{RouteSolveOptions, SyntheticRequest};
-use crate::control_plane::runtime::{
-    RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
-};
 use crate::execution::device::core::registry::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
+use crate::runtime::{
+    RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
+};
 use snakeway_conf::types::LoadBalancingStrategy;
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -1,6 +1,6 @@
-use crate::control_plane::runtime::UpstreamId;
 use crate::execution::traffic::circuit::*;
 use crate::execution::traffic::types::ServiceId;
+use crate::runtime::UpstreamId;
 use std::time::Duration;
 
 fn params() -> CircuitBreakerParams {

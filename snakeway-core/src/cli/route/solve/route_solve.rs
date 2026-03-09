@@ -1,7 +1,7 @@
 use crate::cli::route::args::{RouteSolveArgs, RouteSolveOutputFormat};
 use crate::cli::route::solve::solver::walk_solve;
 use crate::cli::route::solve::types::{RouteSolveDecision, RouteSolveOptions, SyntheticRequest};
-use crate::control_plane::runtime::build_runtime_state;
+use crate::runtime::build_runtime_state;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use snakeway_conf::load_config;
 use std::net::IpAddr;

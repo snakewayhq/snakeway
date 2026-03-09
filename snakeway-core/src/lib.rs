@@ -20,6 +20,7 @@ pub mod control_plane;
 pub mod data_plane;
 #[doc(hidden)]
 pub mod execution;
+pub mod runtime;
 
 pub use cli::bootstrap::run_cli;
 pub use server::start_server;

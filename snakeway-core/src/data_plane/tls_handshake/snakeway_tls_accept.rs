@@ -1,5 +1,5 @@
-use crate::control_plane::runtime::RuntimeState;
 use crate::data_plane::tls_handshake::DownstreamSni;
+use crate::runtime::RuntimeState;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use pingora::listeners::TlsAccept;

@@ -5,7 +5,6 @@ use crate::execution::enrichment::user_agent::ClientIdentity;
 use crate::http_event::HttpEvent;
 use anyhow::Result;
 use http::HeaderMap;
-use serde::{Deserialize, Serialize};
 use snakeway_conf::types::{
     IdentityField, LogEvent, LogLevel, LogPhase, StructuredLoggingDeviceConfig,
 };

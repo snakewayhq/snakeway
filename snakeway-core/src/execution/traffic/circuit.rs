@@ -1,5 +1,5 @@
-use crate::control_plane::runtime::UpstreamId;
 use crate::execution::traffic::ServiceId;
+use crate::runtime::UpstreamId;
 use std::time::{Duration, Instant, SystemTime};
 use tracing::info;
 

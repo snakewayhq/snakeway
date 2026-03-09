@@ -1,4 +1,3 @@
-use crate::control_plane::runtime::{RuntimeState, UpstreamRuntime};
 use crate::data_plane::proxy::error_classification::classify_pingora_error;
 use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
 use crate::data_plane::proxy::handlers::StaticFileHandler;
@@ -10,6 +9,7 @@ use crate::execution::route::RouteRuntime;
 use crate::execution::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
+use crate::runtime::{RuntimeState, UpstreamRuntime};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;

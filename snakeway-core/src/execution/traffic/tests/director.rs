@@ -1,4 +1,3 @@
-use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::execution::ctx::{NormalizedPath, RequestCtx};
 use crate::execution::traffic::circuit::CircuitBreakerParams;
 use crate::execution::traffic::decision::TrafficDecision;
@@ -10,6 +9,7 @@ use crate::execution::traffic::{
     snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot},
     types::*,
 };
+use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use snakeway_conf::types::LoadBalancingStrategy;
 use std::collections::HashMap;
 use std::sync::Arc;

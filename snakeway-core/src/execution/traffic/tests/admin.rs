@@ -1,6 +1,6 @@
-use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::execution::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
 use crate::execution::traffic::{ServiceId, TrafficManager};
+use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use snakeway_conf::types::{HealthCheckConfig, LoadBalancingStrategy};
 use std::collections::HashMap;
 
