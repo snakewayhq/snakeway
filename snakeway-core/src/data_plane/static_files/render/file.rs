@@ -6,13 +6,13 @@ use crate::data_plane::static_files::render::compression::{
 };
 use crate::data_plane::static_files::render::etag::{etag_matches, generate_etag, modified_since};
 
-use crate::conf::types::{CachePolicy, CompressionOptions};
 use crate::data_plane::static_files::render::headers::HeaderBuilder;
 use crate::data_plane::static_files::render::range::parse_range_header;
 use crate::data_plane::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
 use bytes::Bytes;
 use http::StatusCode;
 use httpdate::fmt_http_date;
+use snakeway_conf::types::{CachePolicy, CompressionOptions};
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 

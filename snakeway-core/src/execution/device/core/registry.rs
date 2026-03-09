@@ -1,4 +1,3 @@
-use crate::conf::types::{DeviceConfig, RuntimeConfig};
 use crate::execution::device::builtin::identity::IdentityDevice;
 use crate::execution::device::builtin::network_policy::NetworkPolicyDevice;
 use crate::execution::device::builtin::request_filter::RequestFilterDevice;
@@ -8,6 +7,7 @@ use crate::execution::device::core::Device;
 #[cfg(feature = "wasm")]
 use crate::execution::device::wasm::wasm_device::WasmDevice;
 use anyhow::Result;
+use snakeway_conf::types::{DeviceConfig, RuntimeConfig};
 use std::sync::Arc;
 
 pub(crate) struct DeviceRegistry {
@@ -91,7 +91,7 @@ impl DeviceRegistry {
 
 impl DeviceRegistry {
     #[cfg(feature = "wasm")]
-    fn load_wasm_device(&mut self, cfg: &crate::conf::types::WasmDeviceConfig) -> Result<()> {
+    fn load_wasm_device(&mut self, cfg: &snakeway_conf::types::WasmDeviceConfig) -> Result<()> {
         let device = WasmDevice::load(&cfg.path)?;
 
         self.devices.push(Arc::new(device));
@@ -99,7 +99,7 @@ impl DeviceRegistry {
     }
 
     #[cfg(not(feature = "wasm"))]
-    fn load_wasm_device(&mut self, cfg: &crate::conf::types::WasmDeviceConfig) -> Result<()> {
+    fn load_wasm_device(&mut self, cfg: &snakeway_conf::types::WasmDeviceConfig) -> Result<()> {
         Err(anyhow::anyhow!(
             "WASM device '{}' requested, but Snakeway was built without the `wasm` feature",
             cfg.path.display()

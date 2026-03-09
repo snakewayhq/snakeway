@@ -1,4 +1,4 @@
-use crate::conf::validation::{ConfigError, ValidationReport};
+use snakeway_conf::validation::{ConfigError, ValidationReport};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ReloadError {

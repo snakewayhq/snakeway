@@ -1,5 +1,3 @@
-use crate::conf::types::RuntimeConfig;
-use crate::conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use crate::control_plane::acme::acme_client::AcmeClient;
 use crate::control_plane::acme::admin::CertView;
 use crate::control_plane::acme::challenge::Http01Registry;
@@ -13,6 +11,8 @@ use arc_swap::ArcSwap;
 use arc_swap::ArcSwapOption;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
+use snakeway_conf::types::RuntimeConfig;
+use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime};

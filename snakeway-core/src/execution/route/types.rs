@@ -1,5 +1,5 @@
-use crate::conf::types::{CachePolicy, CompressionOptions};
 use serde::Serialize;
+use snakeway_conf::types::{CachePolicy, CompressionOptions};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;

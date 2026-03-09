@@ -1,4 +1,3 @@
-use crate::conf::types::{RuntimeConfig, TlsTerminationConfig};
 use crate::control_plane::acme::CertManager;
 use crate::control_plane::reload::ReloadHandle;
 use crate::control_plane::runtime::RuntimeState;
@@ -15,6 +14,7 @@ use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::server::Server;
 use pingora::server::configuration::ServerConf;
+use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
 use std::sync::Arc;
 use tracing::{debug, warn};
 

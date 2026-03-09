@@ -1,7 +1,7 @@
-use crate::conf::types::ConnectionRateLimitingFilterConfig;
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
 use pingora_limits::rate::Rate;
+use snakeway_conf::types::ConnectionRateLimitingFilterConfig;
 use std::fmt::{Debug, Formatter};
 use std::net::SocketAddr;
 use std::sync::Arc;

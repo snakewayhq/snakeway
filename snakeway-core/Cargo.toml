@@ -20,6 +20,7 @@ static_files = [
 ]
 
 [dependencies]
+snakeway-conf = { version = "*", path = "../snakeway-conf" }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 arc-swap = { workspace = true }
@@ -59,7 +60,6 @@ woothee = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
 ipnet-trie = { workspace = true }
 thiserror = { workspace = true }
-glob = { workspace = true }
 serde_yaml = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }

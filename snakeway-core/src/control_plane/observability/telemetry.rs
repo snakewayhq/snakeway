@@ -1,4 +1,3 @@
-use crate::conf::types::{RuntimeConfig, SamplingTypeConfig};
 use once_cell::sync::OnceCell;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::{KeyValue, global};
@@ -7,6 +6,7 @@ use opentelemetry_sdk::{
     Resource,
     trace::{Sampler, SdkTracerProvider, Tracer},
 };
+use snakeway_conf::types::{RuntimeConfig, SamplingTypeConfig};
 use tracing::{info, warn};
 
 /// Global tracer provider so we can flush spans on shutdown.

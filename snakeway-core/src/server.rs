@@ -1,5 +1,5 @@
-use crate::conf::load_config;
 use crate::control_plane::bootstrap::start_control_plane;
+use snakeway_conf::load_config;
 use std::path::Path;
 use std::process::exit;
 

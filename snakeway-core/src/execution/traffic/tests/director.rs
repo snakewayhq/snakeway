@@ -1,4 +1,3 @@
-use crate::conf::types::LoadBalancingStrategy;
 use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::execution::ctx::{NormalizedPath, RequestCtx};
 use crate::execution::traffic::circuit::CircuitBreakerParams;
@@ -11,6 +10,7 @@ use crate::execution::traffic::{
     snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot},
     types::*,
 };
+use snakeway_conf::types::LoadBalancingStrategy;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,7 +58,7 @@ fn snapshot_with_service(
             service_id,
             strategy,
             upstreams,
-            circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig {
+            circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig {
                 enable_auto_recovery: true,
                 failure_threshold: 3,
                 open_duration_milliseconds: 10000,
@@ -66,7 +66,7 @@ fn snapshot_with_service(
                 success_threshold: 2,
                 count_http_5xx_as_failure: true,
             },
-            health_check_cfg: crate::conf::types::HealthCheckConfig::default(),
+            health_check_cfg: snakeway_conf::types::HealthCheckConfig::default(),
         },
     );
 

@@ -1,9 +1,9 @@
-use crate::conf::types::RequestFilterDeviceConfig;
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
 use bytes::Bytes;
 use http::{HeaderName, Method, StatusCode};
 use smallvec::SmallVec;
+use snakeway_conf::types::RequestFilterDeviceConfig;
 
 /// RequestFilter validates incoming HTTP requests against various rules.
 ///

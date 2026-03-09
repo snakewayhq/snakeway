@@ -1,5 +1,3 @@
-use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
-use crate::conf::{load_config, types::RuntimeConfig};
 use crate::control_plane::acme::{CertManager, SniRegistry};
 use crate::control_plane::runtime::error::ReloadError;
 use crate::control_plane::runtime::types::{
@@ -15,6 +13,8 @@ use arc_swap::ArcSwap;
 use http::Uri;
 use openssl::x509::X509;
 use pingora::protocols::tls::CaType;
+use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
+use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;

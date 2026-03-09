@@ -15,8 +15,6 @@ mod server;
 #[doc(hidden)]
 pub mod cli;
 #[doc(hidden)]
-pub mod conf;
-#[doc(hidden)]
 pub mod control_plane;
 #[doc(hidden)]
 pub mod data_plane;
@@ -28,5 +26,6 @@ pub use server::start_server;
 
 #[doc(hidden)]
 pub mod testing_api {
-    pub use crate::{cli, conf, control_plane, data_plane, execution};
+    pub use crate::{cli, control_plane, data_plane, execution};
+    pub use snakeway_conf as conf;
 }

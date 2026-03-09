@@ -1,6 +1,6 @@
-use crate::conf::types::CachePolicy;
 use crate::data_plane::static_files::render::range::ByteRange;
 use http::{HeaderMap, HeaderName, HeaderValue, header};
+use snakeway_conf::types::CachePolicy;
 
 #[derive(Debug, Default)]
 pub(crate) struct HeaderBuilder {

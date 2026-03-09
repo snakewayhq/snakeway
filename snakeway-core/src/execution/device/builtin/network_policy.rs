@@ -1,7 +1,7 @@
-use crate::conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::net::CidrCollection;
+use snakeway_conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
 use tracing::debug;
 
 #[derive(Debug)]

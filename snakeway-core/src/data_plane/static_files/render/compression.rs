@@ -1,6 +1,6 @@
-use crate::conf::types::CompressionOptions;
 use flate2::Compression;
 use flate2::write::GzEncoder;
+use snakeway_conf::types::CompressionOptions;
 use std::io::Write;
 
 pub(crate) enum CompressionEncoding {

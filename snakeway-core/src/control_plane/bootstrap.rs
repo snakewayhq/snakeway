@@ -1,4 +1,3 @@
-use crate::conf::types::{CertStoreConfig, ListenerConfig, RuntimeConfig, TlsAutomationConfig};
 use crate::control_plane::acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
@@ -12,6 +11,7 @@ use crate::execution::traffic::{TrafficManager, TrafficSnapshot};
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwap;
 use nix::NixPath;
+use snakeway_conf::types::{CertStoreConfig, ListenerConfig, RuntimeConfig, TlsAutomationConfig};
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::Arc;

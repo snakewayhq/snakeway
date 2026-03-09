@@ -1,8 +1,8 @@
-use crate::conf::types::{
+use crate::serialization::to_hcl_string;
+use snakeway_conf::types::{
     BindInterfaceInput, BindSpec, DevicesFile, EndpointSpec, HostSpec, IdentityDeviceSpec,
     IngressSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
 };
-use crate::serialization::to_hcl_string;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

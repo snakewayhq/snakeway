@@ -1,4 +1,3 @@
-use crate::conf::types::IdentityDeviceConfig;
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::errors::DeviceError;
 use crate::execution::device::core::{Device, DeviceResult};
@@ -8,6 +7,7 @@ use crate::execution::enrichment::user_agent::{
 use crate::net::resolve_client_ip;
 use ipnet::IpNet;
 use maxminddb::PathElement;
+use snakeway_conf::types::IdentityDeviceConfig;
 
 pub(crate) struct IdentityDevice {
     // IP Trust

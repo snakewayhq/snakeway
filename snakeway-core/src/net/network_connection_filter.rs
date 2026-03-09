@@ -1,7 +1,7 @@
-use crate::conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
 use crate::net::CidrCollection;
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
+use snakeway_conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
 use std::fmt::Debug;
 use std::net::{IpAddr, SocketAddr};
 use tracing::debug;

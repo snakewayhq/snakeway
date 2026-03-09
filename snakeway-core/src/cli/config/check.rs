@@ -1,5 +1,5 @@
-use crate::conf::load_config;
 use clap::ValueEnum;
+use snakeway_conf::load_config;
 use std::path::PathBuf;
 
 pub(crate) fn check(

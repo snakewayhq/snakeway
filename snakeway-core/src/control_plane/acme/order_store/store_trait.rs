@@ -1,5 +1,5 @@
-use crate::conf::types::AcmeChallengeConfig;
 use serde::{Deserialize, Serialize};
+use snakeway_conf::types::AcmeChallengeConfig;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

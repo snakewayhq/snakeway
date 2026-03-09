@@ -1,8 +1,8 @@
-use crate::conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use crate::control_plane::acme::SniRegistry;
 use crate::execution::device::core::registry::DeviceRegistry;
 use crate::execution::route::Router;
 use pingora::protocols::tls::CaType;
+use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;

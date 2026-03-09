@@ -1,6 +1,6 @@
-use crate::conf::types::LoadBalancingStrategy;
 use crate::control_plane::runtime::{RuntimeState, UpstreamRuntime};
 use crate::execution::traffic::types::*;
+use snakeway_conf::types::LoadBalancingStrategy;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -15,8 +15,8 @@ pub(crate) struct ServiceSnapshot {
     pub(crate) service_id: ServiceId,
     pub(crate) strategy: LoadBalancingStrategy,
     pub(crate) upstreams: Vec<UpstreamSnapshot>,
-    pub(crate) circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig,
-    pub(crate) health_check_cfg: crate::conf::types::HealthCheckConfig,
+    pub(crate) circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig,
+    pub(crate) health_check_cfg: snakeway_conf::types::HealthCheckConfig,
 }
 
 /// Immutable, control-plane snapshot of traffic topology and health.

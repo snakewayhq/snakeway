@@ -1,6 +1,6 @@
 use super::super::connection_rate_limiting_filter::ConnectionRateLimitingFilter;
-use crate::conf::types::ConnectionRateLimitingFilterConfig;
 use pingora::listeners::ConnectionFilter;
+use snakeway_conf::types::ConnectionRateLimitingFilterConfig;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tokio::time::sleep;

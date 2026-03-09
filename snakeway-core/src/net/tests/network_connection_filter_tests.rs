@@ -1,7 +1,7 @@
 use super::super::network_connection_filter::NetworkConnectionFilter;
-use crate::conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
 use crate::net::CidrCollection;
 use pingora::listeners::ConnectionFilter;
+use snakeway_conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 //-----------------------------------------------------------------------------

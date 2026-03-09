@@ -1,8 +1,8 @@
-use crate::conf::types::RequestRateLimitingDeviceConfig;
 use crate::execution::ctx::RequestCtx;
 use crate::execution::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::execution::enrichment::user_agent::ClientIdentity;
+use snakeway_conf::types::RequestRateLimitingDeviceConfig;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use tokio::time::sleep;

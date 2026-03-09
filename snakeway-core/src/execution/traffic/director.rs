@@ -1,8 +1,8 @@
-use crate::conf::types::LoadBalancingStrategy;
 use crate::execution::traffic::{
     TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
 use once_cell::sync::Lazy;
+use snakeway_conf::types::LoadBalancingStrategy;
 
 static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
 static HASH: Lazy<StickyHash> = Lazy::new(StickyHash::default);

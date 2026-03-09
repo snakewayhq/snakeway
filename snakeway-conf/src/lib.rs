@@ -1,14 +1,12 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
+mod discover;
+mod loader;
+mod lower;
+mod parse;
+mod resolution;
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod validation;
+
+pub mod types;
+pub use loader::{load_config, load_config_from_specs, load_spec_files};

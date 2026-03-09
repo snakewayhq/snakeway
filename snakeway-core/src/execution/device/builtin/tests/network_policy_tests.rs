@@ -1,9 +1,9 @@
-use crate::conf::types::{ForwardingConfig, NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
 use crate::execution::ctx::RequestCtx;
 use crate::execution::device::builtin::network_policy::{NetworkPolicyDevice, OnInvalidForwarded};
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::execution::enrichment::user_agent::ClientIdentity;
 use crate::net::CidrCollection;
+use snakeway_conf::types::{ForwardingConfig, NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
 use std::net::{IpAddr, Ipv4Addr};
 
 //-----------------------------------------------------------------------------

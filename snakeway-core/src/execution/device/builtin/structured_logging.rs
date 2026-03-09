@@ -1,4 +1,3 @@
-use crate::conf::types::StructuredLoggingDeviceConfig;
 use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
 use crate::execution::device::core::errors::DeviceError;
 use crate::execution::device::core::{Device, result::DeviceResult};
@@ -7,51 +6,11 @@ use crate::http_event::HttpEvent;
 use anyhow::Result;
 use http::HeaderMap;
 use serde::{Deserialize, Serialize};
+use snakeway_conf::types::{
+    IdentityField, LogEvent, LogLevel, LogPhase, StructuredLoggingDeviceConfig,
+};
 use std::collections::{BTreeMap, HashSet};
 use tracing::{debug, error, info, trace, warn};
-
-// ----------------------------------------------------------------------------
-// Logging level & config enums
-// ----------------------------------------------------------------------------
-
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum LogLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    #[default]
-    Error,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum LogEvent {
-    Request,
-    BeforeProxy,
-    AfterProxy,
-    Response,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LogPhase {
-    Request,
-    Response,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum IdentityField {
-    Asn,
-    Aso,
-    Country,
-    Region,
-    ConnectionType,
-    Bot,
-    Device,
-}
 
 // ----------------------------------------------------------------------------
 // Emit macro ...to DRY-out logging calls.

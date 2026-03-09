@@ -1,7 +1,7 @@
-use crate::conf::types::{HealthCheckConfig, LoadBalancingStrategy};
 use crate::control_plane::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
 use crate::execution::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
 use crate::execution::traffic::{ServiceId, TrafficManager};
+use snakeway_conf::types::{HealthCheckConfig, LoadBalancingStrategy};
 use std::collections::HashMap;
 
 #[test]
@@ -83,7 +83,7 @@ fn test_admin_view_circuit_details() {
                 latency: None,
                 weight: 1,
             }],
-            circuit_breaker_cfg: crate::conf::types::CircuitBreakerConfig {
+            circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig {
                 enable_auto_recovery: true,
                 failure_threshold: 2,
                 ..Default::default()

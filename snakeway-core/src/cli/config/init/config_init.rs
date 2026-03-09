@@ -1,10 +1,10 @@
 use crate::cli::config::init::templates;
-use crate::conf::types::{
-    AcmeServerSpec, CertStoreSpec, EntrypointSpec, ServerSpec, TlsAutomationSpec,
-};
 use crate::serialization::to_hcl_string;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
+use snakeway_conf::types::{
+    AcmeServerSpec, CertStoreSpec, EntrypointSpec, ServerSpec, TlsAutomationSpec,
+};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
