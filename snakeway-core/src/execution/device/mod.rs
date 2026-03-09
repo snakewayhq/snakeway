@@ -1,4 +1,4 @@
-pub(crate) mod builtin;
+pub mod builtin;
 pub(crate) mod core;
 #[cfg(feature = "wasm")]
 pub(crate) mod wasm;

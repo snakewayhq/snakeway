@@ -4,7 +4,7 @@ use crate::constants::{
     CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM, ROUTE_PATH_API, ROUTE_PATH_GRPC,
     ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
 };
-use snakeway_core::conf::types::{
+use snakeway_core::integration_test_api::conf::types::{
     AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec,
     EndpointTlsSpec, HostSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec,
     TlsTerminationSpec, UpstreamSpec,
@@ -81,19 +81,21 @@ impl ConfigBuilder {
         std::fs::create_dir_all(ACME_ORDERS_DIR).expect("failed to create ACME orders directory");
 
         self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
-        self.server_spec.tls_automation = Some(snakeway_core::conf::types::TlsAutomationSpec {
-            acme: AcmeServerSpec {
-                directory_url: ACME_DIRECTORY_URL.to_string(),
-                data_dir: PathBuf::from(ACME_ORDERS_DIR),
-                contact_email: vec![ACME_CONTACT_EMAIL.to_string()],
-                ca_file: Some(PathBuf::from(CERT_PEBBLE_CA_PEM)),
+        self.server_spec.tls_automation = Some(
+            snakeway_core::integration_test_api::conf::types::TlsAutomationSpec {
+                acme: AcmeServerSpec {
+                    directory_url: ACME_DIRECTORY_URL.to_string(),
+                    data_dir: PathBuf::from(ACME_ORDERS_DIR),
+                    contact_email: vec![ACME_CONTACT_EMAIL.to_string()],
+                    ca_file: Some(PathBuf::from(CERT_PEBBLE_CA_PEM)),
+                },
+                // Memory store avoids filesystem path concerns in tests.
+                cert_store: CertStoreSpec::Filesystem {
+                    cert_dir: PathBuf::from(ACME_CERTS_DIR),
+                },
+                renew_within_days: 30,
             },
-            // Memory store avoids filesystem path concerns in tests.
-            cert_store: CertStoreSpec::Filesystem {
-                cert_dir: PathBuf::from(ACME_CERTS_DIR),
-            },
-            renew_within_days: 30,
-        });
+        );
 
         // Public HTTPS listener.  Port 5002 is Pebble's httpPort (see pebble.json):
         // the redirect listener on that port answers HTTP-01 challenges during ACME issuance.

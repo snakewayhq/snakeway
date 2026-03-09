@@ -1,6 +1,9 @@
-pub(crate) mod acme;
 pub(crate) mod bootstrap;
 pub(crate) mod observability;
 pub(crate) mod pid;
 pub(crate) mod reload;
-pub(crate) mod runtime;
+
+pub mod acme;
+pub mod runtime;
+
+pub use reload::ReloadHandle;

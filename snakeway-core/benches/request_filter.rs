@@ -1,9 +1,9 @@
+use crate::conf::types::RequestFilterDeviceConfig;
+use crate::execution::ctx::RequestCtx;
+use crate::execution::device::builtin::request_filter::RequestFilterDevice;
+use crate::execution::device::core::Device;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::HeaderName;
-use snakeway_core::conf::types::RequestFilterDeviceConfig;
-use snakeway_core::ctx::RequestCtx;
-use snakeway_core::device::builtin::request_filter::RequestFilterDevice;
-use snakeway_core::device::core::Device;
 
 /// Build a `RequestFilterDevice` with `n` deny-header rules.
 ///

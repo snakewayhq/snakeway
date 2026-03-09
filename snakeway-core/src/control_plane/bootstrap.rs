@@ -1,5 +1,4 @@
-use crate::conf::RuntimeConfig;
-use crate::conf::types::{CertStoreConfig, ListenerConfig, TlsAutomationConfig};
+use crate::conf::types::{CertStoreConfig, ListenerConfig, RuntimeConfig, TlsAutomationConfig};
 use crate::control_plane::acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };

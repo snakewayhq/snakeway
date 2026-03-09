@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 pub(crate) type SniMap = HashMap<String, Arc<ParsedCert>>;
 
-pub(crate) struct SniRegistry {
+pub struct SniRegistry {
     inner: ArcSwap<SniMap>,
 }
 

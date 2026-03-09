@@ -4,25 +4,25 @@ use std::path::PathBuf;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct IdentityDeviceConfig {
-    pub(crate) enable: bool,
+pub struct IdentityDeviceConfig {
+    pub enable: bool,
 
     /// CIDR strings
-    pub(crate) trusted_proxies: Vec<String>,
+    pub trusted_proxies: Vec<String>,
 
-    pub(crate) max_x_forwarded_for_length: usize,
+    pub max_x_forwarded_for_length: usize,
 
-    pub(crate) enable_geoip: bool,
+    pub enable_geoip: bool,
 
-    pub(crate) geoip_city_db: Option<PathBuf>,
-    pub(crate) geoip_isp_db: Option<PathBuf>,
-    pub(crate) geoip_connection_type_db: Option<PathBuf>,
+    pub geoip_city_db: Option<PathBuf>,
+    pub geoip_isp_db: Option<PathBuf>,
+    pub geoip_connection_type_db: Option<PathBuf>,
 
-    pub(crate) enable_user_agent: bool,
+    pub enable_user_agent: bool,
 
-    pub(crate) ua_engine: UaEngineKind,
+    pub ua_engine: UaEngineKind,
 
-    pub(crate) max_user_agent_length: usize,
+    pub max_user_agent_length: usize,
 }
 
 impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
@@ -44,7 +44,7 @@ impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum UaEngineKind {
+pub enum UaEngineKind {
     UaParser,
     #[default]
     Woothee,

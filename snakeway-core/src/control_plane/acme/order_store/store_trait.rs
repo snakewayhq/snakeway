@@ -40,7 +40,7 @@ pub(crate) enum OrderStatus {
     Failed,
 }
 
-pub(crate) trait OrderStore: Send + Sync {
+pub trait OrderStore: Send + Sync {
     fn get(&self, cert_id: &str) -> std::io::Result<Option<OrderState>>;
     fn put(&self, state: &OrderState) -> std::io::Result<()>;
     fn delete(&self, cert_id: &str) -> std::io::Result<()>;

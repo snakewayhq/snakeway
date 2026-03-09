@@ -79,7 +79,7 @@ pub struct TrafficManager {
 }
 
 impl TrafficManager {
-    pub(crate) fn new(initial: TrafficSnapshot) -> Self {
+    pub fn new(initial: TrafficSnapshot) -> Self {
         let tm = Self {
             snapshot: ArcSwap::from_pointee(initial.clone()),
             active_requests: DashMap::new(),

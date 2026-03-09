@@ -7,17 +7,17 @@ use serde::{Deserialize, Serialize};
 
 /// Represents the top-level configuration file.
 #[derive(Debug, Deserialize, Serialize, Default)]
-pub(crate) struct EntrypointSpec {
-    pub(crate) server: ServerSpec,
-    pub(crate) include: IncludeSpec,
+pub struct EntrypointSpec {
+    pub server: ServerSpec,
+    pub include: IncludeSpec,
 }
 
 /// Represents the include section of the top-level config file.
 /// The members are directory paths where sub-configuration files are located.
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct IncludeSpec {
-    pub(crate) devices: String,
-    pub(crate) ingresses: String,
+pub struct IncludeSpec {
+    pub devices: String,
+    pub ingresses: String,
 }
 
 impl Default for IncludeSpec {
@@ -31,35 +31,35 @@ impl Default for IncludeSpec {
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct DevicesFile {
+pub struct DevicesFile {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) request_filter_device: Option<RequestFilterDeviceSpec>,
+    pub request_filter_device: Option<RequestFilterDeviceSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) identity_device: Option<IdentityDeviceSpec>,
+    pub identity_device: Option<IdentityDeviceSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) network_policy_device: Option<NetworkPolicyDeviceSpec>,
+    pub network_policy_device: Option<NetworkPolicyDeviceSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) request_rate_limiting_device: Option<RequestRateLimitingDeviceSpec>,
+    pub request_rate_limiting_device: Option<RequestRateLimitingDeviceSpec>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub(crate) wasm_devices: Vec<WasmDeviceSpec>,
+    pub wasm_devices: Vec<WasmDeviceSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) structured_logging_device: Option<StructuredLoggingDeviceSpec>,
+    pub structured_logging_device: Option<StructuredLoggingDeviceSpec>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct IngressFile {
+pub struct IngressFile {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) bind: Option<BindSpec>,
+    pub bind: Option<BindSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) bind_admin: Option<BindAdminSpec>,
+    pub bind_admin: Option<BindAdminSpec>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub(crate) services: Vec<ServiceSpec>,
+    pub services: Vec<ServiceSpec>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub(crate) static_files: Vec<StaticFilesSpec>,
+    pub static_files: Vec<StaticFilesSpec>,
 }

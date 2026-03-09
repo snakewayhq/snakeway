@@ -20,7 +20,7 @@ impl Default for ReloadHandle {
 }
 
 impl ReloadHandle {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         let (tx, _) = watch::channel(ReloadEvent { epoch: 0 });
         Self { tx }
     }

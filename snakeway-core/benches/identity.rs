@@ -1,8 +1,5 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use snakeway_core::conf::types::{IdentityDeviceConfig, UaEngineKind};
-use snakeway_core::ctx::RequestCtx;
-use snakeway_core::device::builtin::identity::IdentityDevice;
-use snakeway_core::device::core::Device;
+use snakeway_core::{IdentityDeviceConfig, UaEngineKind};
 
 /// Build an `IdentityDevice` with `n` trusted-proxy CIDR rules.
 ///

@@ -16,7 +16,7 @@ use bytes::Bytes;
 ///
 /// All methods provide default implementations that simply continue the pipeline,
 /// allowing implementations to override only the methods they care about.
-pub(crate) trait Device: Send + Sync {
+pub trait Device: Send + Sync {
     fn name(&self) -> &str;
 
     /// Called when a request is first received, before any processing.

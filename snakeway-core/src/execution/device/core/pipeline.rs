@@ -3,7 +3,7 @@ use crate::execution::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use bytes::Bytes;
 use std::sync::Arc;
 
-pub(crate) struct DevicePipeline;
+pub struct DevicePipeline;
 
 fn run_device_chain<D>(
     devices: &[D],

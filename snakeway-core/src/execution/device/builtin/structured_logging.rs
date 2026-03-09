@@ -16,7 +16,7 @@ use tracing::{debug, error, info, trace, warn};
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum LogLevel {
+pub enum LogLevel {
     Trace,
     Debug,
     Info,
@@ -27,7 +27,7 @@ pub(crate) enum LogLevel {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum LogEvent {
+pub enum LogEvent {
     Request,
     BeforeProxy,
     AfterProxy,
@@ -36,14 +36,14 @@ pub(crate) enum LogEvent {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum LogPhase {
+pub enum LogPhase {
     Request,
     Response,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum IdentityField {
+pub enum IdentityField {
     Asn,
     Aso,
     Country,

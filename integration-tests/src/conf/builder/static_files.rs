@@ -1,6 +1,6 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::TEST_HOST;
-use snakeway_core::conf::types::{
+use snakeway_core::integration_test_api::conf::types::{
     CachePolicySpec, CompressionOptsSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec,
 };
 use std::path::PathBuf;

@@ -18,3 +18,6 @@ pub(crate) use director::*;
 pub(crate) use manager::*;
 pub(crate) use snapshot::*;
 pub(crate) use types::*;
+
+pub use manager::TrafficManager;
+pub use snapshot::TrafficSnapshot;

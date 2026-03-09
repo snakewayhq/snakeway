@@ -6,5 +6,6 @@ mod types;
 mod tests;
 
 pub(crate) use route_solve::run;
-pub(crate) use solver::solve;
-pub(crate) use types::*;
+
+pub use solver::walk_solve;
+pub use types::*;

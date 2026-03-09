@@ -1,5 +1,4 @@
-use crate::conf::RuntimeConfig;
-use crate::conf::types::SamplingTypeConfig;
+use crate::conf::types::{RuntimeConfig, SamplingTypeConfig};
 use once_cell::sync::OnceCell;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::{KeyValue, global};

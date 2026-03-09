@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub(crate) struct RequestRateLimitingDeviceConfig {
-    pub(crate) enable: bool,
-    pub(crate) reaction_interval: Duration,
-    pub(crate) max_requests_per_second: f64,
+pub struct RequestRateLimitingDeviceConfig {
+    pub enable: bool,
+    pub reaction_interval: Duration,
+    pub max_requests_per_second: f64,
 }
 
 impl From<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig {

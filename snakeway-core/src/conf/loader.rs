@@ -10,14 +10,14 @@ use crate::conf::validation::{ConfigError, validate_spec};
 use std::fs;
 use std::path::Path;
 
-pub(crate) fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
+pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
     load_config_from_specs(server_spec, ingress_specs, device_specs)
 }
 
 /// Load configs from spec definitions.
 /// Useful for integration testing where reading files is not necessarily scalable/maintainable.
-pub(crate) fn load_config_from_specs(
+pub fn load_config_from_specs(
     server_spec: ServerSpec,
     ingress_specs: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
@@ -44,7 +44,7 @@ pub(crate) fn load_config_from_specs(
 pub(crate) type Spec = (ServerSpec, Vec<DeviceSpec>, Vec<IngressSpec>);
 
 /// Load spec from files
-pub(crate) fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
+pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
     // Hard fail: IO and parsing
     //--------------------------------------------------------------------------

@@ -6,7 +6,7 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum DeviceSpec {
+pub enum DeviceSpec {
     RequestFilter(RequestFilterDeviceSpec),
     Identity(IdentityDeviceSpec),
     NetworkPolicy(NetworkPolicyDeviceSpec),
@@ -16,7 +16,7 @@ pub(crate) enum DeviceSpec {
 }
 
 impl DeviceSpec {
-    pub(crate) fn origin(&self) -> &Origin {
+    pub fn origin(&self) -> &Origin {
         match self {
             DeviceSpec::RequestFilter(s) => &s.origin,
             DeviceSpec::Identity(s) => &s.origin,
@@ -26,7 +26,7 @@ impl DeviceSpec {
             DeviceSpec::RequestRateLimiting(s) => &s.origin,
         }
     }
-    pub(crate) fn is_enabled(&self) -> bool {
+    pub fn is_enabled(&self) -> bool {
         match self {
             DeviceSpec::RequestFilter(s) => s.enable,
             DeviceSpec::Identity(s) => s.enable,

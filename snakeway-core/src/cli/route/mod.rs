@@ -1,5 +1,5 @@
 pub(crate) mod args;
-pub(crate) mod solve;
+pub mod solve;
 pub(crate) use args::RouteCmd;
 
 pub(crate) fn run(cmd: RouteCmd) {

@@ -6,26 +6,26 @@ use crate::conf::types::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct ServiceConfig {
-    pub(crate) name: String,
+pub struct ServiceConfig {
+    pub name: String,
 
     /// The name of a listener this service is attached to.
-    pub(crate) listener: String,
+    pub listener: String,
 
     /// Load balancing strategy
-    pub(crate) load_balancing_strategy: LoadBalancingStrategy,
+    pub load_balancing_strategy: LoadBalancingStrategy,
 
-    pub(crate) tcp_upstreams: Vec<UpstreamTcpConfig>,
+    pub tcp_upstreams: Vec<UpstreamTcpConfig>,
 
-    pub(crate) unix_upstreams: Vec<UpstreamUnixConfig>,
+    pub unix_upstreams: Vec<UpstreamUnixConfig>,
 
-    pub(crate) circuit_breaker: CircuitBreakerConfig,
+    pub circuit_breaker: CircuitBreakerConfig,
 
-    pub(crate) health_check: HealthCheckConfig,
+    pub health_check: HealthCheckConfig,
 }
 
 impl ServiceConfig {
-    pub(crate) fn new(
+    pub fn new(
         name: &str,
         listener: &str,
         tcp_upstreams: Vec<UpstreamTcpConfig>,
@@ -45,7 +45,7 @@ impl ServiceConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) enum LoadBalancingStrategy {
+pub enum LoadBalancingStrategy {
     Failover,
     RoundRobin,
     RequestPressure,

@@ -24,12 +24,12 @@ pub(crate) struct ServiceSnapshot {
 /// Safe to read from the request hot path.
 /// Updated only by reload, health checks, or discovery.
 #[derive(Debug, Clone, Default)]
-pub(crate) struct TrafficSnapshot {
+pub struct TrafficSnapshot {
     pub(crate) services: HashMap<ServiceId, ServiceSnapshot>,
 }
 
 impl TrafficSnapshot {
-    pub(crate) fn from_runtime(state: &RuntimeState) -> Self {
+    pub fn from_runtime(state: &RuntimeState) -> Self {
         let mut services = HashMap::new();
 
         for (name, svc) in &state.services {

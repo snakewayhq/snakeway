@@ -3,30 +3,30 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct StaticRouteConfig {
+pub struct StaticRouteConfig {
     /// The listener this route is attached to.
-    pub(crate) listener: String,
+    pub listener: String,
 
     /// Host names allowed to access this route.
-    pub(crate) hosts: Vec<String>,
+    pub hosts: Vec<String>,
 
     /// Path prefix (longest-prefix match).
-    pub(crate) path: String,
+    pub path: String,
 
-    pub(crate) file_dir: PathBuf,
+    pub file_dir: PathBuf,
 
-    pub(crate) index: Option<String>,
+    pub index: Option<String>,
 
-    pub(crate) directory_listing: bool,
+    pub directory_listing: bool,
 
-    pub(crate) max_file_size: u64,
+    pub max_file_size: u64,
 
-    pub(crate) static_config: CompressionOptions,
-    pub(crate) cache_policy: CachePolicy,
+    pub static_config: CompressionOptions,
+    pub cache_policy: CachePolicy,
 }
 
 impl StaticRouteConfig {
-    pub(crate) fn new(listener: &str, spec: StaticRouteSpec) -> Self {
+    pub fn new(listener: &str, spec: StaticRouteSpec) -> Self {
         Self {
             listener: listener.to_string(),
             hosts: spec.hosts,
@@ -42,12 +42,12 @@ impl StaticRouteConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct CompressionOptions {
-    pub(crate) small_file_threshold: u64,
-    pub(crate) min_gzip_size: u64,
-    pub(crate) min_brotli_size: u64,
-    pub(crate) enable_gzip: bool,
-    pub(crate) enable_brotli: bool,
+pub struct CompressionOptions {
+    pub small_file_threshold: u64,
+    pub min_gzip_size: u64,
+    pub min_brotli_size: u64,
+    pub enable_gzip: bool,
+    pub enable_brotli: bool,
 }
 
 impl From<CompressionOptsSpec> for CompressionOptions {
@@ -63,10 +63,10 @@ impl From<CompressionOptsSpec> for CompressionOptions {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct CachePolicy {
-    pub(crate) max_age_seconds: u32,
-    pub(crate) public: bool,
-    pub(crate) immutable: bool,
+pub struct CachePolicy {
+    pub max_age_seconds: u32,
+    pub public: bool,
+    pub immutable: bool,
 }
 
 impl From<CachePolicySpec> for CachePolicy {

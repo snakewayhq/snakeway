@@ -1,5 +1,5 @@
 use crate::conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
-use crate::conf::{RuntimeConfig, load_config};
+use crate::conf::{load_config, types::RuntimeConfig};
 use crate::control_plane::acme::{CertManager, SniRegistry};
 use crate::control_plane::runtime::error::ReloadError;
 use crate::control_plane::runtime::types::{
@@ -62,7 +62,7 @@ pub(crate) async fn reload_runtime_state(
     Ok(validated.config)
 }
 
-pub(crate) fn build_runtime_state(
+pub fn build_runtime_state(
     cfg: &RuntimeConfig,
     cert_manager: &Option<Arc<CertManager>>,
 ) -> Result<RuntimeState> {

@@ -20,7 +20,7 @@ use tracing::Span;
 
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
-pub(crate) struct RequestCtx {
+pub struct RequestCtx {
     /// Holds the WS connection slot for the lifetime of the connection
     pub(crate) ws_guard: Option<WsConnectionGuard>,
 

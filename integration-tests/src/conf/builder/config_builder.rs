@@ -1,11 +1,11 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
-use snakeway_core::conf::types::{
+use snakeway_core::integration_test_api::conf::types::{
     AcmeChallengeSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
     DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
     NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
-use snakeway_core::conf::{RuntimeConfig, load_config_from_specs};
+use snakeway_core::integration_test_api::conf::{load_config_from_specs, types::RuntimeConfig};
 use std::path::PathBuf;
 
 pub struct ConfigBuilder {

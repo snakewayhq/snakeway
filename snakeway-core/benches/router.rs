@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use snakeway_core::route::router::Router;
-use snakeway_core::route::types::{RouteId, RouteRuntime};
+use snakeway_core::bench_api::RouteId;
+use snakeway_core::bench_api::{RouteRuntime, Router};
 
 fn build_router(n: usize) -> Router {
     let mut router = Router::new();

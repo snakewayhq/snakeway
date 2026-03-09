@@ -16,8 +16,9 @@ mod renewal_policy;
 mod sni_registry;
 mod state;
 
-pub(crate) use cert_store::*;
-pub(crate) use manager::CertManager;
-pub(crate) use order_store::*;
+pub use manager::CertManager;
 pub(crate) use parsed_cert::ParsedCert;
 pub(crate) use sni_registry::*;
+
+pub use cert_store::*;
+pub use order_store::*;

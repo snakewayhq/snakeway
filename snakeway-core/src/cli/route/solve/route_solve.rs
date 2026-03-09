@@ -1,5 +1,5 @@
 use crate::cli::route::args::{RouteSolveArgs, RouteSolveOutputFormat};
-use crate::cli::route::solve::solver::solve;
+use crate::cli::route::solve::solver::walk_solve;
 use crate::cli::route::solve::types::{RouteSolveDecision, RouteSolveOptions, SyntheticRequest};
 use crate::conf::load_config;
 use crate::control_plane::runtime::build_runtime_state;
@@ -127,7 +127,7 @@ pub(crate) fn run(args: RouteSolveArgs) {
     };
 
     // 9. Solve
-    let decision = solve(&state, &req, &opts);
+    let decision = walk_solve(&state, &req, &opts);
 
     // 10. Render output
     match args.format {

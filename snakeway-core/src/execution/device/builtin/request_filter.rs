@@ -21,7 +21,7 @@ use smallvec::SmallVec;
 /// to store a few items, we use a small shelf (stack storage) first, and only rent
 /// warehouse space when we really need it.
 #[derive(Debug)]
-pub(crate) struct RequestFilterDevice {
+pub struct RequestFilterDevice {
     pub(crate) allow_methods: SmallVec<[Method; 4]>,
     pub(crate) deny_methods: SmallVec<[Method; 4]>,
     pub(crate) deny_headers: SmallVec<[HeaderName; 8]>,

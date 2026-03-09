@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-pub(crate) enum RouteRuntime {
+pub enum RouteRuntime {
     /// Forward request to upstream
     Service {
         id: RouteId,
@@ -43,7 +43,7 @@ pub(crate) enum RouteKind {
 }
 
 #[derive(Debug, Clone, Eq, Serialize)]
-pub(crate) struct RouteId {
+pub struct RouteId {
     kind: RouteKind,
     path: Arc<str>,
     target: Arc<str>,

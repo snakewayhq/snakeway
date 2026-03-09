@@ -6,7 +6,7 @@ use std::path::PathBuf;
 /// Runtime code assumes these values are valid.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
-pub(crate) enum TlsTerminationConfig {
+pub enum TlsTerminationConfig {
     Manual {
         cert: PathBuf,
         key: PathBuf,
@@ -46,7 +46,7 @@ impl TryFrom<TlsTerminationSpec> for TlsTerminationConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) enum AcmeChallengeConfig {
+pub enum AcmeChallengeConfig {
     Http01,
 }
 

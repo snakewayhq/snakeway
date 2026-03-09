@@ -50,7 +50,7 @@ pub(crate) enum RewriteReason {
     PercentDecodeUnreserved,
 }
 
-pub(crate) enum ProtocolNormalizationMode {
+pub enum ProtocolNormalizationMode {
     Http1,
     Http2,
 }

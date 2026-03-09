@@ -5,13 +5,17 @@ use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_w
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
-use snakeway_core::acme::{CertManager, FilesystemOrderStore, MemoryCertStore};
-use snakeway_core::build_pingora_server;
-use snakeway_core::conf::{RuntimeConfig, load_config};
-use snakeway_core::reload::ReloadHandle;
-use snakeway_core::runtime::build_runtime_state;
-use snakeway_core::traffic::{TrafficManager, TrafficSnapshot};
-use snakeway_core::ws_connection_management::WsConnectionManager;
+
+use snakeway_core::control_plane::ReloadHandle;
+use snakeway_core::control_plane::acme::FilesystemOrderStore;
+use snakeway_core::control_plane::runtime::build_runtime_state;
+use snakeway_core::data_plane::build_pingora_server;
+use snakeway_core::execution::traffic::TrafficSnapshot;
+use snakeway_core::integration_test_api::conf::load_config;
+use snakeway_core::integration_test_api::conf::types::RuntimeConfig;
+use snakeway_core::integration_test_api::control_plane::acme::{CertManager, MemoryCertStore};
+use snakeway_core::integration_test_api::data_plane::ws_connection_management::WsConnectionManager;
+use snakeway_core::integration_test_api::execution::traffic::TrafficManager;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};

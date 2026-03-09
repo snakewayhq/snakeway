@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum BindInterfaceSpec {
+pub enum BindInterfaceSpec {
     /// 127.0.0.1 / ::1
     #[default]
     Loopback,
@@ -17,7 +17,7 @@ pub(crate) enum BindInterfaceSpec {
 }
 
 impl BindInterfaceSpec {
-    pub(crate) fn as_ip(&self) -> IpAddr {
+    pub fn as_ip(&self) -> IpAddr {
         match self {
             BindInterfaceSpec::Loopback => IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             BindInterfaceSpec::All => IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
@@ -28,7 +28,7 @@ impl BindInterfaceSpec {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
-pub(crate) enum BindInterfaceInput {
+pub enum BindInterfaceInput {
     Keyword(String),
 }
 

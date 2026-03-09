@@ -1,4 +1,3 @@
-use crate::conf::resolution::ResolveError;
 use crate::conf::types::Origin;
 use owo_colors::OwoColorize;
 use serde::Serialize;
@@ -22,7 +21,7 @@ pub(crate) enum Severity {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct ValidationReport {
+pub struct ValidationReport {
     pub(crate) errors: Vec<ValidationIssue>,
     pub(crate) warnings: Vec<ValidationIssue>,
 }
@@ -34,11 +33,11 @@ struct ValidationReportJson<'a> {
 }
 
 impl ValidationReport {
-    pub(crate) fn has_violations(&self) -> bool {
+    pub fn has_violations(&self) -> bool {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
 
-    pub(crate) fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
+    pub fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
         self.errors.push(ValidationIssue {
             severity: Severity::Error,
             message,
@@ -56,7 +55,7 @@ impl ValidationReport {
         });
     }
 
-    pub(crate) fn render_json(&self) {
+    pub fn render_json(&self) {
         if !self.has_violations() {
             return;
         }
@@ -71,7 +70,7 @@ impl ValidationReport {
         }
     }
 
-    pub(crate) fn render_plain(&self) {
+    pub fn render_plain(&self) {
         if !self.has_violations() {
             return;
         }
@@ -105,7 +104,7 @@ impl ValidationReport {
         help.to_string()
     }
 
-    pub(crate) fn render_pretty(&self) {
+    pub fn render_pretty(&self) {
         if !self.has_violations() {
             return;
         }

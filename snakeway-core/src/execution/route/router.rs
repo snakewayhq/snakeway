@@ -2,7 +2,7 @@ use crate::execution::route::types::RouteRuntime;
 use anyhow::{Result, anyhow};
 
 #[derive(Debug)]
-pub(crate) struct Router {
+pub struct Router {
     routes: Vec<RouteEntry>,
 }
 

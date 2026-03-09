@@ -2,7 +2,7 @@ use crate::control_plane::acme::cert_store::{CertStore, CertificateMeta, StoredC
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-pub(crate) struct MemoryCertStore {
+pub struct MemoryCertStore {
     inner: RwLock<HashMap<String, StoredCertificate>>,
 }
 

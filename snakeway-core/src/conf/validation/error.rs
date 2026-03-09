@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) enum ConfigError {
+pub enum ConfigError {
     //-------------------------------------------------------------------------
     // IO / Discovery
     //-------------------------------------------------------------------------

@@ -1,5 +1,4 @@
-use crate::conf::RuntimeConfig;
-use crate::conf::types::DeviceConfig;
+use crate::conf::types::{DeviceConfig, RuntimeConfig};
 use crate::execution::device::builtin::identity::IdentityDevice;
 use crate::execution::device::builtin::network_policy::NetworkPolicyDevice;
 use crate::execution::device::builtin::request_filter::RequestFilterDevice;

@@ -1,8 +1,10 @@
 use integration_tests::conf::ConfigBuilder;
 use integration_tests::constants::{ROUTE_PATH_API, TEST_HOST};
 use pretty_assertions::assert_eq;
-use snakeway_core::cli::route::solve::{RouteSolveOptions, SyntheticRequest, solve};
-use snakeway_core::runtime::build_runtime_state;
+use snakeway_core::integration_test_api::cli::route::solve::{
+    RouteSolveOptions, SyntheticRequest, walk_solve,
+};
+use snakeway_core::integration_test_api::control_plane::runtime::build_runtime_state;
 
 fn make_req(scheme: &str, host: &str, path: &str) -> SyntheticRequest {
     SyntheticRequest {
@@ -33,7 +35,7 @@ fn route_solve_matches_service_route() {
     let req = make_req("http", TEST_HOST, "/api/users");
 
     // Act
-    let decision = solve(&state, &req, &opts(false));
+    let decision = walk_solve(&state, &req, &opts(false));
 
     // Assert
     assert!(decision.matched_route.is_some(), "should match a route");
@@ -53,7 +55,7 @@ fn route_solve_no_match_returns_rejection() {
     let req = make_req("http", TEST_HOST, "/nonexistent");
 
     // Act
-    let decision = solve(&state, &req, &opts(false));
+    let decision = walk_solve(&state, &req, &opts(false));
 
     // Assert
     assert!(decision.matched_route.is_none());
@@ -69,8 +71,8 @@ fn route_solve_json_output_is_stable() {
     let req = make_req("http", TEST_HOST, "/api/test");
 
     // Act
-    let d1 = solve(&state, &req, &opts(true));
-    let d2 = solve(&state, &req, &opts(true));
+    let d1 = walk_solve(&state, &req, &opts(true));
+    let d2 = walk_solve(&state, &req, &opts(true));
 
     // Assert
     let json1 = serde_json::to_string_pretty(&d1).unwrap();
@@ -98,8 +100,8 @@ fn route_solve_lb_index_selects_correct_upstream() {
     };
 
     // Act
-    let d0 = solve(&state, &req, &opts_0);
-    let d1 = solve(&state, &req, &opts_1);
+    let d0 = walk_solve(&state, &req, &opts_0);
+    let d1 = walk_solve(&state, &req, &opts_1);
 
     // Assert
     assert!(d0.selected_upstream.is_some());
@@ -124,8 +126,8 @@ fn route_solve_lb_key_deterministic_across_calls() {
     };
 
     // Act
-    let d1 = solve(&state, &req, &opts);
-    let d2 = solve(&state, &req, &opts);
+    let d1 = walk_solve(&state, &req, &opts);
+    let d2 = walk_solve(&state, &req, &opts);
 
     // Assert
     assert_eq!(
@@ -142,7 +144,7 @@ fn route_solve_trace_contains_expected_stages() {
     let req = make_req("http", TEST_HOST, ROUTE_PATH_API);
 
     // Act
-    let decision = solve(&state, &req, &opts(true));
+    let decision = walk_solve(&state, &req, &opts(true));
 
     // Assert
     let trace = decision.trace.expect("trace should be present");

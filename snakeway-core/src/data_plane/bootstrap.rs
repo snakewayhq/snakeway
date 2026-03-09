@@ -1,4 +1,4 @@
-use crate::conf::{RuntimeConfig, TlsTerminationConfig};
+use crate::conf::types::{RuntimeConfig, TlsTerminationConfig};
 use crate::control_plane::acme::CertManager;
 use crate::control_plane::reload::ReloadHandle;
 use crate::control_plane::runtime::RuntimeState;

@@ -1,4 +1,4 @@
-use crate::conf::RuntimeConfig;
+use crate::conf::types::RuntimeConfig;
 use crate::conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use crate::control_plane::acme::acme_client::AcmeClient;
 use crate::control_plane::acme::admin::CertView;
@@ -30,7 +30,7 @@ pub struct CertManager {
 }
 
 impl CertManager {
-    pub(crate) fn new(
+    pub fn new(
         cert_store: Arc<dyn CertStore>,
         order_store: Arc<dyn OrderStore>,
         config: Arc<RuntimeConfig>,
@@ -48,7 +48,7 @@ impl CertManager {
         }
     }
 
-    pub(crate) async fn initialize(&self, cfg: &AcmeServerConfig) -> Result<(), CertManagerError> {
+    pub async fn initialize(&self, cfg: &AcmeServerConfig) -> Result<(), CertManagerError> {
         let client = AcmeClient::load_or_create(
             cfg.directory_url.clone(),
             cfg.data_dir.clone(),
@@ -64,7 +64,7 @@ impl CertManager {
         Ok(())
     }
 
-    pub(crate) async fn run_reconciliation(self: Arc<Self>) {
+    pub async fn run_reconciliation(self: Arc<Self>) {
         let mut reconciler = Reconciler::new(self.clone());
         reconciler.run().await;
     }
@@ -130,7 +130,7 @@ impl CertManager {
         Ok(map)
     }
 
-    pub(crate) fn attach_tls_sni_map(&self, registry: Arc<SniRegistry>) {
+    pub fn attach_tls_sni_map(&self, registry: Arc<SniRegistry>) {
         self.tls_sni_map.store(Some(registry));
     }
 

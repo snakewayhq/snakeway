@@ -1,4 +1,4 @@
-use crate::cli::route::solve::solver::{fnv1a_hash, solve};
+use crate::cli::route::solve::solver::{fnv1a_hash, walk_solve};
 use crate::cli::route::solve::types::{RouteSolveOptions, SyntheticRequest};
 use crate::conf::types::LoadBalancingStrategy;
 use crate::control_plane::runtime::{
@@ -108,7 +108,10 @@ fn solve_lb_key_deterministic() {
     };
 
     // Act
-    let (d1, d2) = (solve(&state, &req, &opts), solve(&state, &req, &opts));
+    let (d1, d2) = (
+        walk_solve(&state, &req, &opts),
+        walk_solve(&state, &req, &opts),
+    );
 
     // Assert
     assert_eq!(
@@ -135,7 +138,7 @@ fn solve_lb_index_overrides_lb_key() {
     };
 
     // Act
-    let d = solve(&state, &req, &opts);
+    let d = walk_solve(&state, &req, &opts);
 
     // Assert
     assert_eq!(d.selected_upstream.as_deref(), Some("10.0.0.2:8080"));
@@ -152,7 +155,7 @@ fn solve_default_selects_index_0() {
     let req = make_req("/api");
 
     // Act
-    let d = solve(&state, &req, &opts_default());
+    let d = walk_solve(&state, &req, &opts_default());
 
     // Assert
     assert_eq!(d.selected_upstream.as_deref(), Some("10.0.0.1:8080"));
@@ -165,7 +168,7 @@ fn solve_no_match() {
     let req = make_req("/other");
 
     // Act
-    let d = solve(&state, &req, &opts_default());
+    let d = walk_solve(&state, &req, &opts_default());
 
     // Assert
     assert!(d.matched_route.is_none());
@@ -238,8 +241,8 @@ fn solve_longest_prefix() {
 
     // Act
     let (d, d2) = (
-        solve(&state, &make_req("/api/v2/users"), &opts_default()),
-        solve(&state, &make_req("/api/v1/users"), &opts_default()),
+        walk_solve(&state, &make_req("/api/v2/users"), &opts_default()),
+        walk_solve(&state, &make_req("/api/v1/users"), &opts_default()),
     );
 
     // Assert
@@ -260,7 +263,10 @@ fn solve_trace_stable() {
     };
 
     // Act
-    let (d1, d2) = (solve(&state, &req, &opts), solve(&state, &req, &opts));
+    let (d1, d2) = (
+        walk_solve(&state, &req, &opts),
+        walk_solve(&state, &req, &opts),
+    );
 
     // Assert
     let t1 = d1.trace.unwrap();
@@ -281,8 +287,8 @@ fn solve_rejection_stable() {
 
     // Act
     let (d1, d2) = (
-        solve(&state, &req, &opts_default()),
-        solve(&state, &req, &opts_default()),
+        walk_solve(&state, &req, &opts_default()),
+        walk_solve(&state, &req, &opts_default()),
     );
 
     // Assert
@@ -319,7 +325,7 @@ fn solve_lb_index_wraps() {
     };
 
     // Act
-    let d = solve(&state, &req, &opts);
+    let d = walk_solve(&state, &req, &opts);
 
     // Assert
     assert_eq!(d.selected_upstream.as_deref(), Some("10.0.0.2:8080"));
@@ -340,7 +346,7 @@ fn solve_normalized_populated() {
     };
 
     // Act
-    let d = solve(&state, &req, &opts_default());
+    let d = walk_solve(&state, &req, &opts_default());
 
     // Assert
     assert_eq!(d.normalized.scheme, "https");

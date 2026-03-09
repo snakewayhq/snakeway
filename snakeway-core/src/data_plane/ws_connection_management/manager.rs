@@ -14,7 +14,7 @@ pub struct WsConnectionManager {
 
 impl WsConnectionManager {
     /// Create a new, empty manager.
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             routes: DashMap::new(),
         }

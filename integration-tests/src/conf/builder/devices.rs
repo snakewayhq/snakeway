@@ -3,7 +3,7 @@ use snakeway_core::conf::types::{
     ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec,
     RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
 };
-use snakeway_core::device::builtin::structured_logging::{
+use snakeway_core::execution::device::builtin::structured_logging::{
     IdentityField, LogEvent, LogLevel, LogPhase,
 };
 use std::path::PathBuf;

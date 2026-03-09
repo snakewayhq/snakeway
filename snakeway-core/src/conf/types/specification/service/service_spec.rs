@@ -6,20 +6,20 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Default, Serialize)]
-pub(crate) struct ServiceSpec {
+pub struct ServiceSpec {
     #[serde(skip)]
-    pub(crate) origin: Origin,
+    pub origin: Origin,
     #[serde(default)]
-    pub(crate) load_balancing_strategy: LoadBalancingStrategySpec,
-    pub(crate) routes: Vec<ServiceRouteSpec>,
-    pub(crate) upstreams: Vec<UpstreamSpec>,
-    pub(crate) health_check: Option<HealthCheckSpec>,
-    pub(crate) circuit_breaker: Option<CircuitBreakerSpec>,
+    pub load_balancing_strategy: LoadBalancingStrategySpec,
+    pub routes: Vec<ServiceRouteSpec>,
+    pub upstreams: Vec<UpstreamSpec>,
+    pub health_check: Option<HealthCheckSpec>,
+    pub circuit_breaker: Option<CircuitBreakerSpec>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum LoadBalancingStrategySpec {
+pub enum LoadBalancingStrategySpec {
     #[default]
     Failover,
     RoundRobin,
@@ -29,26 +29,26 @@ pub(crate) enum LoadBalancingStrategySpec {
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
-pub(crate) struct ServiceRouteSpec {
+pub struct ServiceRouteSpec {
     #[serde(skip)]
-    pub(crate) origin: Origin,
-    pub(crate) hosts: Vec<String>,
-    pub(crate) path: String,
+    pub origin: Origin,
+    pub hosts: Vec<String>,
+    pub path: String,
     #[serde(default)]
-    pub(crate) enable_websocket: bool,
+    pub enable_websocket: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) ws_max_connections: Option<usize>,
+    pub ws_max_connections: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
-pub(crate) struct UpstreamSpec {
+pub struct UpstreamSpec {
     #[serde(skip)]
-    pub(crate) origin: Origin,
-    pub(crate) endpoint: Option<EndpointSpec>,
+    pub origin: Origin,
+    pub endpoint: Option<EndpointSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) sock: Option<String>,
+    pub sock: Option<String>,
     #[serde(default = "default_weight")]
-    pub(crate) weight: u32,
+    pub weight: u32,
 }
 fn default_weight() -> u32 {
     1
@@ -56,7 +56,7 @@ fn default_weight() -> u32 {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
-pub(crate) enum HostSpec {
+pub enum HostSpec {
     Ip(std::net::IpAddr),
     Hostname(String),
 }
@@ -71,22 +71,22 @@ impl fmt::Display for HostSpec {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub(crate) struct EndpointSpec {
-    pub(crate) host: HostSpec,
-    pub(crate) port: u16,
+pub struct EndpointSpec {
+    pub host: HostSpec,
+    pub port: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) tls: Option<EndpointTlsSpec>,
+    pub tls: Option<EndpointTlsSpec>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub(crate) struct EndpointTlsSpec {
-    pub(crate) sni: String,
-    pub(crate) verify: bool,
-    pub(crate) ca_file: Option<PathBuf>,
+pub struct EndpointTlsSpec {
+    pub sni: String,
+    pub verify: bool,
+    pub ca_file: Option<PathBuf>,
 }
 
 impl EndpointSpec {
-    pub(crate) fn resolve(&self) -> Result<SocketAddr, ResolveError> {
+    pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
         let ip = match &self.host {
             HostSpec::Ip(ip) => *ip,
             HostSpec::Hostname(name) => {

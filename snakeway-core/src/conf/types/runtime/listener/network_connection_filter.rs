@@ -4,16 +4,16 @@ use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub(crate) struct NetworkConnectionFilterConfig {
-    pub(crate) cidr_allow: Vec<IpNet>,
-    pub(crate) cidr_deny: Vec<IpNet>,
-    pub(crate) on_no_peer_addr: OnNoPeerAddr,
-    pub(crate) ip_family_ipv4: bool,
-    pub(crate) ip_family_ipv6: bool,
+pub struct NetworkConnectionFilterConfig {
+    pub cidr_allow: Vec<IpNet>,
+    pub cidr_deny: Vec<IpNet>,
+    pub on_no_peer_addr: OnNoPeerAddr,
+    pub ip_family_ipv4: bool,
+    pub ip_family_ipv6: bool,
 }
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
-pub(crate) enum OnNoPeerAddr {
+pub enum OnNoPeerAddr {
     #[default]
     Allow,
     Deny,

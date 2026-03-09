@@ -8,7 +8,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 pub struct RuntimeState {
-    pub(crate) tls: Option<TlsRuntime>,
+    pub tls: Option<TlsRuntime>,
     pub(crate) routers: HashMap<Arc<str>, Router>,
     pub(crate) devices: DeviceRegistry,
     pub(crate) services: HashMap<String, ServiceRuntime>,
@@ -18,9 +18,9 @@ pub struct RuntimeState {
 /// It is reloadable independent of RuntimeState (hence the ArcSwap).
 /// This is because it is reloadable not just during a config reload,
 /// but also when the cert store is updated.
-pub(crate) struct TlsRuntime {
+pub struct TlsRuntime {
     /// Represent an SNI and a parsed certificate.
-    pub(crate) sni_map: Arc<SniRegistry>,
+    pub sni_map: Arc<SniRegistry>,
 }
 
 /// ServiceRuntime encapsulates the state of a service, including its

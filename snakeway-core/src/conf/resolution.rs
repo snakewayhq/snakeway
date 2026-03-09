@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum ResolveError {
+pub enum ResolveError {
     #[error("failed to resolve hostname '{0}'")]
     DnsFailed(String),
 

@@ -6,30 +6,30 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct StructuredLoggingDeviceConfig {
-    pub(crate) enable: bool,
+pub struct StructuredLoggingDeviceConfig {
+    pub enable: bool,
 
-    pub(crate) level: LogLevel,
+    pub level: LogLevel,
 
     /// Headers are excluded by default.
-    pub(crate) include_headers: bool,
+    pub include_headers: bool,
 
     /// Allowlist of headers to include.
     /// If empty, all headers are eligible (subject to redaction).
-    pub(crate) allowed_headers: Vec<String>,
+    pub allowed_headers: Vec<String>,
 
     /// Headers to redact (case-insensitive).
-    pub(crate) redacted_headers: Vec<String>,
+    pub redacted_headers: Vec<String>,
 
     /// Identity logging.
-    pub(crate) include_identity: bool,
+    pub include_identity: bool,
 
     /// Identity fields to include in the request context (and possibly log).
-    pub(crate) identity_fields: Vec<IdentityField>,
+    pub identity_fields: Vec<IdentityField>,
 
-    pub(crate) events: Option<Vec<LogEvent>>,
+    pub events: Option<Vec<LogEvent>>,
 
-    pub(crate) phases: Option<Vec<LogPhase>>,
+    pub phases: Option<Vec<LogPhase>>,
 }
 
 impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
