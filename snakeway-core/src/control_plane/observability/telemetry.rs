@@ -107,8 +107,6 @@ pub(crate) async fn init_telemetry(
 }
 
 /// Shutdown telemetry and flush remaining spans.
-///
-/// Optional but recommended for graceful shutdown.
 pub(crate) fn shutdown() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         let _ = provider.shutdown();

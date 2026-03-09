@@ -3,7 +3,7 @@ use snakeway_conf::types::AcmeChallengeConfig;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct OrderState {
+pub struct OrderState {
     pub(crate) cert_id: String,
     pub(crate) domains: Vec<String>,
     pub(crate) challenge: AcmeChallengeConfig,
