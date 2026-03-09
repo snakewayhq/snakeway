@@ -4096,6 +4096,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "snakeway-conf"
+version = "0.9.1"
+
+[[package]]
 name = "snakeway-core"
 version = "0.9.1"
 dependencies = [
