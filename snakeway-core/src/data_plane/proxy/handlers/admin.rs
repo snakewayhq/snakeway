@@ -1,5 +1,6 @@
 use crate::control_plane::acme::CertManager;
 use crate::control_plane::reload::ReloadHandle;
+use crate::data_plane::proxy::handlers::health::admin_health;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
 use crate::runtime::UpstreamRuntime;
@@ -64,31 +65,8 @@ impl AdminHandler {
         match admin_endpoint {
             AdminEndpoint::Health | AdminEndpoint::Upstreams => {
                 let include_details = matches!(admin_endpoint, AdminEndpoint::Upstreams);
-                let snapshot = self.traffic_manager.snapshot();
-                let mut services = std::collections::HashMap::new();
-
-                for (svc_id, svc_snapshot) in &snapshot.services {
-                    let mut tcp_upstreams = std::collections::HashMap::new();
-                    for u in &svc_snapshot.upstreams {
-                        match &u.endpoint {
-                            UpstreamRuntime::Tcp(tcp) => {
-                                let view = self.traffic_manager.get_upstream_view(
-                                    svc_id,
-                                    &u.endpoint.id(),
-                                    include_details,
-                                );
-                                let addr = format!("{}:{}", tcp.host, tcp.port);
-                                tcp_upstreams.insert(addr, view);
-                            }
-                            UpstreamRuntime::Unix(_) => {}
-                        };
-                    }
-                    services.insert(svc_id.clone(), tcp_upstreams);
-                }
-
-                let body = serde_json::to_vec(&serde_json::json!({ "services": services }))
-                    .map_err(|_| Error::new(Custom("json serialization failed")))?;
-
+                let body = admin_health(self.traffic_manager.clone(), include_details)
+                    .expect("failed to serialize health");
                 self.send_json_response(session, StatusCode::OK, body)
                     .await?;
                 Ok(true)

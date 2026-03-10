@@ -1,4 +1,5 @@
 mod admin;
+mod health;
 mod static_file;
 
 pub(crate) use admin::AdminHandler;
