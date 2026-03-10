@@ -14,9 +14,8 @@ use openssl::x509::X509;
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime};
-use tokio::task::JoinHandle;
 
 pub struct CertManager {
     acme_client: OnceLock<Arc<AcmeClient>>,
@@ -24,7 +23,6 @@ pub struct CertManager {
     cert_store: Arc<dyn CertStore>,
     order_store: Arc<dyn OrderStore>,
     renewal_policy: RenewalPolicy,
-    worker: Mutex<Option<JoinHandle<()>>>,
     config: Arc<ArcSwap<RuntimeConfig>>,
     tls_sni_map: ArcSwapOption<SniRegistry>,
 }
@@ -42,7 +40,6 @@ impl CertManager {
             cert_store,
             order_store,
             renewal_policy: RenewalPolicy::new(certificates_config.renew_within_days),
-            worker: Mutex::new(None),
             config: Arc::new(ArcSwap::from(config)),
             tls_sni_map: ArcSwapOption::from(None),
         }
@@ -71,14 +68,6 @@ impl CertManager {
 
     pub(crate) fn reload(&self, new_config: Arc<RuntimeConfig>) {
         self.config.store(new_config);
-    }
-
-    pub(crate) async fn shutdown(&self) {
-        let mut guard = self.worker.lock().unwrap();
-
-        if let Some(handle) = guard.take() {
-            handle.abort();
-        }
     }
 
     pub(crate) fn load_parsed_cert(
