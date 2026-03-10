@@ -32,6 +32,7 @@ pub(crate) struct ServiceRuntime {
     pub(crate) upstreams: Vec<UpstreamRuntime>,
     pub(crate) circuit_breaker_cfg: CircuitBreakerConfig,
     pub(crate) health_check_cfg: HealthCheckConfig,
+    #[allow(dead_code)] // useful for debugger inspection
     pub(crate) listener: Option<Arc<str>>,
 }
 

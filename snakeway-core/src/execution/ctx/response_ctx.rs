@@ -4,8 +4,9 @@ use http::{HeaderMap, StatusCode};
 pub(crate) struct ResponseCtx {
     pub(crate) request_id: Option<String>,
     pub(crate) status: StatusCode,
+    #[allow(dead_code)] // useful for debugger inspection
     pub(crate) headers: HeaderMap,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // useful for debugger inspection
     pub(crate) body: Vec<u8>,
 }
 

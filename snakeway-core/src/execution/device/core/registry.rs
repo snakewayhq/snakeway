@@ -9,6 +9,7 @@ use crate::execution::device::wasm::wasm_device::WasmDevice;
 use anyhow::Result;
 use snakeway_conf::types::{DeviceConfig, RuntimeConfig};
 use std::sync::Arc;
+use tracing::info;
 
 pub(crate) struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
@@ -40,6 +41,7 @@ impl DeviceRegistry {
                 DeviceConfig::RequestFilter(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(RequestFilterDevice::from_config(device_config)?);
+                    info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
 
@@ -48,6 +50,7 @@ impl DeviceRegistry {
                 DeviceConfig::Identity(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(IdentityDevice::from_config(device_config)?);
+                    info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
 
@@ -56,18 +59,21 @@ impl DeviceRegistry {
                 DeviceConfig::NetworkPolicy(cfg) => {
                     let device_config = cfg.clone();
                     let device: Arc<NetworkPolicyDevice> = Arc::new(device_config.into());
+                    info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
 
                 DeviceConfig::RequestRateLimiting(cfg) => {
                     let device_config = cfg.clone();
                     let device: Arc<RequestRateLimitingDevice> = Arc::new(device_config.into());
+                    info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
 
                 // Wasm devices are loaded dynamically at runtime.
                 // They should be run AFTER all builtin devices, except the logging device.
                 DeviceConfig::Wasm(cfg) => {
+                    info!("loaded device: {}", cfg.path.display());
                     self.load_wasm_device(cfg)?;
                 }
 
@@ -76,6 +82,7 @@ impl DeviceRegistry {
                 DeviceConfig::StructuredLogging(cfg) => {
                     let device_config = cfg.clone();
                     let device = Arc::new(StructuredLoggingDevice::from_config(device_config)?);
+                    info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
             }

@@ -89,8 +89,4 @@ impl RouteId {
 
         format!("{kind}:{}:{}", self.path, self.target)
     }
-
-    pub(crate) fn kind(&self) -> RouteKind {
-        self.kind
-    }
 }
