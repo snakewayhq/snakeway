@@ -3,7 +3,6 @@ use crate::control_plane::reload::ReloadHandle;
 use crate::data_plane::proxy::handlers::health::admin_health;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
-use crate::runtime::UpstreamRuntime;
 use http::{StatusCode, header};
 use pingora::http::ResponseHeader;
 use pingora::prelude::Session;
