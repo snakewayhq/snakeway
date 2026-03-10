@@ -174,19 +174,19 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
         e
     })?;
 
+    // Run the pingora server.
+    server.run(Default::default());
+
+    // Flush observability/
+    observability::shutdown();
+
     // Ensure pid file cleanup on shutdown
     if !config.server.pid_file.is_empty() {
-        ctrlc::set_handler(move || {
-            info!("shutdown requested, removing pid file");
-            pid::remove_pid(&config.server.pid_file);
-            std::process::exit(0);
-        })?;
+        info!("shutdown requested, removing pid file");
+        pid::remove_pid(&config.server.pid_file);
     }
 
-    // IMPORTANT:
-    // - control_rt must stay in scope so its worker thread lives
-    // - run_forever blocks the main thread as intended
-    server.run_forever();
+    Ok(())
 }
 
 fn build_cert_store(tls_automation_cfg: &TlsAutomationConfig) -> Result<Arc<dyn CertStore>> {
