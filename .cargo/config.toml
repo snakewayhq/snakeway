@@ -16,3 +16,8 @@ ar = "zig ar"
 [target.aarch64-unknown-linux-musl]
 linker = "zig cc -target aarch64-linux-musl"
 ar = "zig ar"
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-fuse-ld=lld",
+]
