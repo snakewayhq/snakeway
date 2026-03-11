@@ -11,7 +11,6 @@ and a composable "device" middleware pipeline.
 ```
 snakeway/           # Main binary crate (entrypoint, CLI wiring)
 snakeway-core/      # Core library crate — all business logic lives here
-snakeway-origin/    # Test origin server (used during development)
 snakeway-wit/       # WIT bindings for WASM device interface
 integration-tests/  # Integration test crate (separate binary, uses nextest)
 docs/               # mdBook documentation

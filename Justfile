@@ -66,11 +66,11 @@ benchmark-proxy:
     @echo "With TLS (wrk)"
     wrk -t4 -c128 -d10s https://localhost:8443/api/users/1
     @echo "Raw upstream (wrk)"
-    wrk -t4 -c128 -d10s http://localhost:3000/api/users/1
+    wrk -t4 -c128 -d10s http://localhost:4000/api/users/1
     @echo "NO TLS (hey)"
     hey -n 20000 -c 128 http://127.0.0.1:8080/api/users/1
     @echo "Raw upstream (hey)"
-    hey -n 20000 -c 128 http://127.0.0.1:3000/api/users/1
+    hey -n 20000 -c 128 http://127.0.0.1:4000/api/users/1
 
 # Run hey to test out various static file request configs.
 benchmark-static-files:
@@ -98,11 +98,11 @@ profile-tokio:
 
 # Generate meaningful profiling data against an upstream.
 run-load-against-upstream:
-    hey -n 300000 -c 256 http://127.0.0.1:8080/api/users/1
+    hey -n 400000 -c 256 http://127.0.0.1:8080/api/users/1
 
 # Generate meaningful profiling data against a static file.
 run-load-against-static:
-    hey -n 300000 -c 256 http://127.0.0.1:8080/assets/index.html
+    hey -n 400000 -c 256 http://127.0.0.1:8080/assets/index.html
 
 # Generate some spoofed traffic for the identity device
 run-spoofed-traffic:
@@ -111,30 +111,26 @@ run-spoofed-traffic:
 run-load-test:
     k6 run --vus 10 --duration 30s ./k6/load-test.js
 
-# Build and run the origin server.
-start-origin:
-    (cd snakeway-origin && just launch)
-
 # Check all origin protocols (TCP + UDS)
 sanity-check-origin:
     @echo "TCP ================"
 
     @echo "\nHTTP:"
-    @curl -s http://localhost:3000/
+    @curl -s http://localhost:4000/
 
     @echo "\nHTTPS:"
-    @curl -s --cacert integration-tests/certs/origin-ca.pem https://localhost:3443/
+    @curl -s --cacert integration-tests/certs/origin-ca.pem https://localhost:4443/
 
     @echo "\nWS:"
-    @(echo "Hello, websocket." | wscat -c ws://localhost:3000/ws)
+    @(echo "Hello, websocket." | wscat -c ws://localhost:4000/ws)
 
     @echo "\nWSS:"
-    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=integration-tests/certs/origin-ca.pem wscat -c wss://localhost:3443/ws)
+    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=integration-tests/certs/origin-ca.pem wscat -c wss://localhost:4443/ws)
 
     @echo "\ngRPC:"
     @grpcurl \
     	-cacert integration-tests/certs/origin-ca.pem \
-    	-proto snakeway-origin/users.proto \
+    	-proto ../snakeway-origin/users.proto \
     	-d '{"id":"123"}' \
     	localhost:5051 \
     	users.UserService/GetUser
