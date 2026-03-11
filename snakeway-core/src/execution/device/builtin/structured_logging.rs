@@ -137,6 +137,29 @@ impl StructuredLoggingDevice {
 
         for field in &self.identity_fields {
             match field {
+                IdentityField::ClientIp => {
+                    out.insert("client_ip".into(), identity.ip.to_string());
+                }
+
+                IdentityField::ProxyChain => {
+                    if !identity.proxy_chain.is_empty() {
+                        let chain: Vec<String> = identity
+                            .proxy_chain
+                            .iter()
+                            .map(|ip| ip.to_string())
+                            .collect();
+                        out.insert("proxy_chain".into(), chain.join(","));
+                    }
+                }
+
+                IdentityField::Forwarded => {
+                    out.insert("is_forwarded".into(), identity.is_forwarded.to_string());
+                }
+
+                IdentityField::Trusted => {
+                    out.insert("is_trusted".into(), identity.is_trusted.to_string());
+                }
+
                 IdentityField::Country => {
                     if let Some(cc) = geo.and_then(|g| g.country_code.as_ref()) {
                         out.insert("country".into(), cc.clone());

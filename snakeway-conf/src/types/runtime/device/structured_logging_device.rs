@@ -75,11 +75,17 @@ pub enum LogPhase {
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IdentityField {
+    ClientIp,
+    ProxyChain,
+    Forwarded,
+    Trusted,
+
     Asn,
     Aso,
     Country,
     Region,
     ConnectionType,
+
     Bot,
     Device,
 }
