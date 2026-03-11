@@ -65,17 +65,12 @@ pub(crate) fn normalize_query(query: &str) -> NormalizationOutcome<CanonicalQuer
     }
 
     // Canonical ordering
-    let mut ordering_rewrite = false;
-    pairs.sort_by(|a, b| {
-        let ord = a.cmp(b);
-        if ord != std::cmp::Ordering::Equal {
-            ordering_rewrite = true;
-        }
-        ord
-    });
-
+    let mut sorted = pairs.clone();
+    sorted.sort();
+    let ordering_rewrite = sorted != pairs;
     let rewritten = decoded_rewrite || ordering_rewrite;
-    let canonical = CanonicalQuery::new(query, pairs);
+
+    let canonical = CanonicalQuery::new(query, sorted);
 
     if rewritten {
         NormalizationOutcome::Rewrite {
