@@ -8,7 +8,7 @@ glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
 ipnet-trie = { workspace = true }
 nix = { workspace = true, features = ["signal"] }
-openssl = { workspace = true, features = ["vendored"] }
+openssl = { workspace = true }
 http = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
