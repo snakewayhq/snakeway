@@ -212,7 +212,7 @@ impl AdminHandler {
         body: serde_json::Value,
     ) -> pingora::Result<()> {
         let body = serde_json::to_vec(&body)
-            .map_err(|e| Error::new(Custom(&format!("json serialization failed: {e}"))))?;
+            .map_err(|_| Error::new(Custom("failed to serialize json response")))?;
 
         let mut resp = ResponseHeader::build(status, None)?;
 
