@@ -122,7 +122,6 @@ impl NormalizedPath {
 #[derive(Debug, Default)]
 pub(crate) struct CanonicalQuery {
     raw: String,
-    // pairs: Vec<(String, String)>,
     pairs: SmallVec<[(String, String); 4]>,
 }
 
