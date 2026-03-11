@@ -2,6 +2,7 @@ use crate::execution::ctx::request::CanonicalQuery;
 use crate::execution::ctx::request::normalization::{
     NormalizationOutcome, RejectReason, RewriteReason,
 };
+use smallvec::SmallVec;
 
 /// Normalizes HTTP query strings per RFC 3986 and related specifications.
 ///
@@ -41,7 +42,7 @@ pub(crate) fn normalize_query(query: &str) -> NormalizationOutcome<CanonicalQuer
     }
 
     let mut decoded_rewrite = false;
-    let mut pairs = Vec::new();
+    let mut pairs = SmallVec::<[(String, String); 4]>::new();
 
     for part in query.split('&') {
         let (raw_key, raw_val) = match part.split_once('=') {
@@ -63,14 +64,18 @@ pub(crate) fn normalize_query(query: &str) -> NormalizationOutcome<CanonicalQuer
         pairs.push((key, val));
     }
 
-    // Canonical ordering (Phase 3A)
-    let mut sorted = pairs.clone();
-    sorted.sort();
+    // Canonical ordering
+    let mut ordering_rewrite = false;
+    pairs.sort_by(|a, b| {
+        let ord = a.cmp(b);
+        if ord != std::cmp::Ordering::Equal {
+            ordering_rewrite = true;
+        }
+        ord
+    });
 
-    let ordering_rewrite = sorted != pairs;
     let rewritten = decoded_rewrite || ordering_rewrite;
-
-    let canonical = CanonicalQuery::new(query, sorted);
+    let canonical = CanonicalQuery::new(query, pairs);
 
     if rewritten {
         NormalizationOutcome::Rewrite {

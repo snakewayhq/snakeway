@@ -1,4 +1,5 @@
 use http::{HeaderMap, Method, Uri, Version};
+use smallvec::SmallVec;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Default)]
@@ -121,11 +122,12 @@ impl NormalizedPath {
 #[derive(Debug, Default)]
 pub(crate) struct CanonicalQuery {
     raw: String,
-    pairs: Vec<(String, String)>,
+    // pairs: Vec<(String, String)>,
+    pairs: SmallVec<[(String, String); 4]>,
 }
 
 impl CanonicalQuery {
-    pub(crate) fn new(raw: &str, pairs: Vec<(String, String)>) -> Self {
+    pub(crate) fn new(raw: &str, pairs: SmallVec<[(String, String); 4]>) -> Self {
         Self {
             raw: raw.to_string(),
             pairs,
