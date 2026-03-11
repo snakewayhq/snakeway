@@ -1,11 +1,10 @@
 use crate::conf::ConfigBuilder;
-use snakeway_core::conf::types::{
-    ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec,
-    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
+use snakeway_core::testing_api::conf::types::{
+    ForwardingSpec, IdentityDeviceSpec, IdentityFieldSpec, LogEventSpec, LogLevelSpec,
+    LogPhaseSpec, NetworkPolicyDeviceSpec, OnInvalidForwardedSpec, RequestFilterDeviceSpec,
+    RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
 };
-use snakeway_core::execution::device::builtin::structured_logging::{
-    IdentityField, LogEvent, LogLevel, LogPhase,
-};
+
 use std::path::PathBuf;
 
 /// Identity Device
@@ -50,7 +49,7 @@ impl ConfigBuilder {
     pub fn make_structured_logging_device() -> StructuredLoggingDeviceSpec {
         StructuredLoggingDeviceSpec {
             enable: true,
-            level: LogLevel::Info,
+            level: LogLevelSpec::Info,
             include_headers: true,
             allowed_headers: vec![
                 "user-agent".to_string(),
@@ -61,21 +60,21 @@ impl ConfigBuilder {
             redacted_headers: vec!["authentication".to_string(), "cookie".to_string()],
             include_identity: true,
             identity_fields: vec![
-                IdentityField::Asn,
-                IdentityField::Aso,
-                IdentityField::Bot,
-                IdentityField::Country,
-                IdentityField::Region,
-                IdentityField::Device,
-                IdentityField::ConnectionType,
+                IdentityFieldSpec::Asn,
+                IdentityFieldSpec::Aso,
+                IdentityFieldSpec::Bot,
+                IdentityFieldSpec::Country,
+                IdentityFieldSpec::Region,
+                IdentityFieldSpec::Device,
+                IdentityFieldSpec::ConnectionType,
             ],
             events: Some(vec![
-                LogEvent::Request,
-                LogEvent::BeforeProxy,
-                LogEvent::AfterProxy,
-                LogEvent::Response,
+                LogEventSpec::Request,
+                LogEventSpec::BeforeProxy,
+                LogEventSpec::AfterProxy,
+                LogEventSpec::Response,
             ]),
-            phases: Some(vec![LogPhase::Request, LogPhase::Response]),
+            phases: Some(vec![LogPhaseSpec::Request, LogPhaseSpec::Response]),
             ..Default::default()
         }
     }

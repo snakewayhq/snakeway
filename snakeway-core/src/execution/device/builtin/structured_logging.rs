@@ -6,7 +6,8 @@ use crate::http_event::HttpEvent;
 use anyhow::Result;
 use http::HeaderMap;
 use snakeway_conf::types::{
-    IdentityField, LogEvent, LogLevel, LogPhase, StructuredLoggingDeviceConfig,
+    IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig,
+    StructuredLoggingDeviceConfig,
 };
 use std::collections::{BTreeMap, HashSet};
 use tracing::{debug, error, info, trace, warn};
@@ -18,11 +19,11 @@ use tracing::{debug, error, info, trace, warn};
 macro_rules! emit {
     ($level:expr, $($fields:tt)*) => {
         match $level {
-            LogLevel::Trace => trace!($($fields)*),
-            LogLevel::Debug => debug!($($fields)*),
-            LogLevel::Info  => info!($($fields)*),
-            LogLevel::Warn  => warn!($($fields)*),
-            LogLevel::Error => error!($($fields)*),
+            LogLevelConfig::Trace => trace!($($fields)*),
+            LogLevelConfig::Debug => debug!($($fields)*),
+            LogLevelConfig::Info  => info!($($fields)*),
+            LogLevelConfig::Warn  => warn!($($fields)*),
+            LogLevelConfig::Error => error!($($fields)*),
         }
     };
 }
@@ -32,17 +33,17 @@ macro_rules! emit {
 // ----------------------------------------------------------------------------
 
 pub(crate) struct StructuredLoggingDevice {
-    level: LogLevel,
+    level: LogLevelConfig,
 
     include_headers: bool,
     allowed_headers: HashSet<String>,
     redact_headers: HashSet<String>,
 
     include_identity: bool,
-    identity_fields: Vec<IdentityField>,
+    identity_fields: Vec<IdentityFieldConfig>,
 
-    events: Option<Vec<LogEvent>>,
-    phases: Option<Vec<LogPhase>>,
+    events: Option<Vec<LogEventConfig>>,
+    phases: Option<Vec<LogPhaseConfig>>,
 }
 
 impl StructuredLoggingDevice {
@@ -74,11 +75,11 @@ impl StructuredLoggingDevice {
     // Gating helpers
     // ------------------------------------------------------------------------
 
-    fn event_enabled(&self, event: LogEvent) -> bool {
+    fn event_enabled(&self, event: LogEventConfig) -> bool {
         self.events.as_ref().is_none_or(|e| e.contains(&event))
     }
 
-    fn phase_enabled(&self, phase: LogPhase) -> bool {
+    fn phase_enabled(&self, phase: LogPhaseConfig) -> bool {
         self.phases.as_ref().is_none_or(|p| p.contains(&phase))
     }
 
@@ -137,11 +138,11 @@ impl StructuredLoggingDevice {
 
         for field in &self.identity_fields {
             match field {
-                IdentityField::ClientIp => {
+                IdentityFieldConfig::ClientIp => {
                     out.insert("client_ip".into(), identity.ip.to_string());
                 }
 
-                IdentityField::ProxyChain => {
+                IdentityFieldConfig::ProxyChain => {
                     if !identity.proxy_chain.is_empty() {
                         let chain: Vec<String> = identity
                             .proxy_chain
@@ -152,45 +153,45 @@ impl StructuredLoggingDevice {
                     }
                 }
 
-                IdentityField::Forwarded => {
+                IdentityFieldConfig::Forwarded => {
                     out.insert("is_forwarded".into(), identity.is_forwarded.to_string());
                 }
 
-                IdentityField::Trusted => {
+                IdentityFieldConfig::Trusted => {
                     out.insert("is_trusted".into(), identity.is_trusted.to_string());
                 }
 
-                IdentityField::Country => {
+                IdentityFieldConfig::Country => {
                     if let Some(cc) = geo.and_then(|g| g.country_code.as_ref()) {
                         out.insert("country".into(), cc.clone());
                     }
                 }
-                IdentityField::Region => {
+                IdentityFieldConfig::Region => {
                     if let Some(r) = geo.and_then(|g| g.region.as_ref()) {
                         out.insert("region".into(), r.clone());
                     }
                 }
-                IdentityField::Asn => {
+                IdentityFieldConfig::Asn => {
                     if let Some(asn) = geo.and_then(|g| g.asn) {
                         out.insert("asn".into(), asn.to_string());
                     }
                 }
-                IdentityField::Aso => {
+                IdentityFieldConfig::Aso => {
                     if let Some(aso) = geo.and_then(|g| g.aso.as_ref()) {
                         out.insert("aso".into(), aso.to_string());
                     }
                 }
-                IdentityField::ConnectionType => {
+                IdentityFieldConfig::ConnectionType => {
                     if let Some(connection_type) = geo.and_then(|g| g.connection_type.as_ref()) {
                         out.insert("connection_type".into(), connection_type.to_string());
                     }
                 }
-                IdentityField::Device => {
+                IdentityFieldConfig::Device => {
                     if let Some(ua) = ua {
                         out.insert("device".into(), ua.device_type.as_str().to_string());
                     }
                 }
-                IdentityField::Bot => {
+                IdentityFieldConfig::Bot => {
                     if let Some(ua) = ua {
                         out.insert("bot".into(), ua.is_bot.to_string());
                     }
@@ -258,7 +259,9 @@ impl Device for StructuredLoggingDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        if self.phase_enabled(LogPhase::Request) && self.event_enabled(LogEvent::Request) {
+        if self.phase_enabled(LogPhaseConfig::Request)
+            && self.event_enabled(LogEventConfig::Request)
+        {
             self.emit_http_request(
                 ctx,
                 HttpEvent::Request,
@@ -271,7 +274,9 @@ impl Device for StructuredLoggingDevice {
     }
 
     fn before_proxy(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        if self.phase_enabled(LogPhase::Request) && self.event_enabled(LogEvent::BeforeProxy) {
+        if self.phase_enabled(LogPhaseConfig::Request)
+            && self.event_enabled(LogEventConfig::BeforeProxy)
+        {
             self.emit_http_request(
                 ctx,
                 HttpEvent::BeforeProxy,
@@ -284,14 +289,18 @@ impl Device for StructuredLoggingDevice {
     }
 
     fn after_proxy(&self, ctx: &mut ResponseCtx) -> DeviceResult {
-        if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::AfterProxy) {
+        if self.phase_enabled(LogPhaseConfig::Response)
+            && self.event_enabled(LogEventConfig::AfterProxy)
+        {
             self.emit_http_response(ctx, HttpEvent::AfterProxy);
         }
         DeviceResult::Continue
     }
 
     fn on_response(&self, ctx: &mut ResponseCtx) -> DeviceResult {
-        if self.phase_enabled(LogPhase::Response) && self.event_enabled(LogEvent::Response) {
+        if self.phase_enabled(LogPhaseConfig::Response)
+            && self.event_enabled(LogEventConfig::Response)
+        {
             self.emit_http_response(ctx, HttpEvent::Response);
         }
         DeviceResult::Continue

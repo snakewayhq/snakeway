@@ -6,7 +6,7 @@ mod resolution;
 #[cfg(test)]
 mod tests;
 
+pub mod types;
 pub mod validation;
 
-pub mod types;
 pub use loader::{load_config, load_config_from_specs, load_spec_files};

@@ -87,18 +87,6 @@ impl NormalizedRequest {
     pub(crate) fn is_http2(&self) -> bool {
         self.protocol_version == Version::HTTP_2
     }
-
-    pub(crate) fn into_inner(self) -> (Method, NormalizedPath, CanonicalQuery, NormalizedHeaders) {
-        let NormalizedRequestParams {
-            method,
-            path,
-            query,
-            headers,
-            ..
-        } = self.0;
-
-        (method, path, query, headers)
-    }
 }
 
 /// Used for testing purposes only.

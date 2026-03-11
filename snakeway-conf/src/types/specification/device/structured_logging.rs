@@ -1,4 +1,4 @@
-use crate::types::{IdentityField, LogEvent, LogLevel, LogPhase, Origin};
+use crate::types::Origin;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -9,7 +9,7 @@ pub struct StructuredLoggingDeviceSpec {
 
     pub enable: bool,
 
-    pub level: LogLevel,
+    pub level: LogLevelSpec,
 
     /// Headers are excluded by default.
     pub include_headers: bool,
@@ -25,11 +25,56 @@ pub struct StructuredLoggingDeviceSpec {
     pub include_identity: bool,
 
     /// Identity fields to include in the request context (and possibly log).
-    pub identity_fields: Vec<IdentityField>,
+    pub identity_fields: Vec<IdentityFieldSpec>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub events: Option<Vec<LogEvent>>,
+    pub events: Option<Vec<LogEventSpec>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub phases: Option<Vec<LogPhase>>,
+    pub phases: Option<Vec<LogPhaseSpec>>,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevelSpec {
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    #[default]
+    Error,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LogEventSpec {
+    Request,
+    BeforeProxy,
+    AfterProxy,
+    Response,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum LogPhaseSpec {
+    Request,
+    Response,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum IdentityFieldSpec {
+    ClientIp,
+    ProxyChain,
+    Forwarded,
+    Trusted,
+
+    Asn,
+    Aso,
+    Country,
+    Region,
+    ConnectionType,
+
+    Bot,
+    Device,
 }
