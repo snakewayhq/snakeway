@@ -91,7 +91,7 @@ jobs:
       # These certificates are created by our own test CA and are used by the proxy
       # tests that exercise manual TLS termination.  They do not depend on Pebble.
       - name: Generate TLS test certificates
-        run: bash ./gen-test-certs.sh
+        run: bash ./dev/gen-test-certs.sh
 
       # Reuse the same docker-compose-dev.yml that developers use locally so that
       # CI behaviour is identical to local behaviour.  --remove-orphans ensures a

@@ -10,7 +10,7 @@ services:
       - PEBBLE_VA_NOSLEEP=1
       - PEBBLE_VA_ALWAYS_VALID=1
     volumes:
-      - ./pebble.json:/test/pebble.json
+      - ./dev/pebble.json:/test/pebble.json
 
   otel-collector:
     container_name: snakeway-otel-collector
@@ -57,7 +57,7 @@ services:
 
     volumes:
       - ./integration-tests/certs:/certs:ro
-      - ./tmp:/tmp
+      - ./data/tmp:/tmp
 
     ports:
       - "4000-4004:4000-4004"

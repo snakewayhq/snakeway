@@ -283,7 +283,7 @@ uninstall-dev-ca:
 generate-dev-certs:
     mkdir -p integration-tests/certs/
     @just fetch-pebble-ca
-    ./gen-test-certs.sh
+    ./dev/gen-test-certs.sh
 
 test:
     cargo nextest run -p snakeway-core --features static_files,wasm

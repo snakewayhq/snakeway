@@ -19,7 +19,6 @@ target
 # Artifacts
 dist/
 /config/
-/dev/
 /integration-tests/certs/
 /integration-tests/acme/
 /plugins/
