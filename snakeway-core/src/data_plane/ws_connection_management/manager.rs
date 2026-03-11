@@ -2,6 +2,7 @@ use crate::data_plane::ws_connection_management::guard::WsConnectionGuard;
 use crate::data_plane::ws_connection_management::state::WsRouteConnectionState;
 use crate::execution::route::types::RouteId;
 use dashmap::DashMap;
+use serde::Serialize;
 use std::sync::Arc;
 
 /// Global registry of per-route connection state.
@@ -61,6 +62,7 @@ impl WsConnectionManager {
     }
 }
 
+#[derive(Debug, Serialize)]
 pub(crate) struct RouteConnectionSnapshot {
     pub(crate) route_id: RouteId,
     pub(crate) active: usize,

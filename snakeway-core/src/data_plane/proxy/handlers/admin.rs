@@ -145,19 +145,7 @@ impl AdminHandler {
             );
         }
 
-        let connections = self.ctx.ws.snapshot();
-
-        let mut ws_connections = HashMap::new();
-
-        for c in connections {
-            ws_connections.insert(
-                c.route_id,
-                serde_json::json!({
-                    "active": c.active,
-                    "max": c.max
-                }),
-            );
-        }
+        let ws_connections = self.ctx.ws.snapshot();
 
         self.json(
             session,
