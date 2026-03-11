@@ -81,10 +81,6 @@ impl NormalizedRequest {
         self.is_upgrade_req
     }
 
-    pub(crate) fn protocol_version(&self) -> &Version {
-        &self.protocol_version
-    }
-
     pub(crate) fn is_http2(&self) -> bool {
         self.protocol_version == Version::HTTP_2
     }
@@ -133,15 +129,6 @@ impl CanonicalQuery {
         Self {
             raw: raw.to_string(),
             pairs,
-        }
-    }
-
-    pub(crate) fn from_raw(raw: Option<&str>) -> CanonicalQuery {
-        let raw = raw.unwrap_or("").to_string();
-
-        CanonicalQuery {
-            raw,
-            pairs: Vec::new(),
         }
     }
 
