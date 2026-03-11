@@ -1,16 +1,27 @@
 use crate::control_plane::acme::CertManager;
 use crate::control_plane::reload::ReloadHandle;
-use crate::data_plane::proxy::handlers::health::admin_health;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
-use http::{StatusCode, header};
+use crate::runtime::UpstreamRuntime;
+
+use http::{Method, StatusCode, header};
 use pingora::http::ResponseHeader;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
-use std::str::FromStr;
+
+use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, PartialEq)]
+/// Group dependencies for the admin handler.
+pub struct AdminContext {
+    pub traffic: Arc<TrafficManager>,
+    pub ws: Arc<WsConnectionManager>,
+    pub reload: Arc<ReloadHandle>,
+    pub certs: Option<Arc<CertManager>>,
+}
+
+/// Collects admin handler routes
+#[derive(Debug, Clone, Copy)]
 enum AdminEndpoint {
     Health,
     Upstreams,
@@ -19,180 +30,200 @@ enum AdminEndpoint {
     Certs,
 }
 
-impl FromStr for AdminEndpoint {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "/admin/health" => Ok(AdminEndpoint::Health),
-            "/admin/upstreams" => Ok(AdminEndpoint::Upstreams),
-            "/admin/stats" => Ok(AdminEndpoint::Stats),
-            "/admin/reload" => Ok(AdminEndpoint::Reload),
-            "/admin/certs" => Ok(AdminEndpoint::Certs),
-            _ => Err("invalid admin endpoint"),
+impl AdminEndpoint {
+    fn from_path(path: &str) -> Option<Self> {
+        match path {
+            "/admin/health" => Some(Self::Health),
+            "/admin/upstreams" => Some(Self::Upstreams),
+            "/admin/stats" => Some(Self::Stats),
+            "/admin/reload" => Some(Self::Reload),
+            "/admin/certs" => Some(Self::Certs),
+            _ => None,
         }
     }
 }
 
-pub(crate) struct AdminHandler {
-    traffic_manager: Arc<TrafficManager>,
-    connection_manager: Arc<WsConnectionManager>,
-    reload: Arc<ReloadHandle>,
-    cert_manager: Option<Arc<CertManager>>,
+// AdminHandler
+pub struct AdminHandler {
+    ctx: Arc<AdminContext>,
 }
 
 impl AdminHandler {
-    pub(crate) fn new(
-        traffic_manager: Arc<TrafficManager>,
-        connection_manager: Arc<WsConnectionManager>,
-        reload: Arc<ReloadHandle>,
-        cert_manager: Option<Arc<CertManager>>,
-    ) -> Self {
-        Self {
-            traffic_manager,
-            connection_manager,
-            reload,
-            cert_manager,
-        }
+    pub fn new(ctx: Arc<AdminContext>) -> Self {
+        Self { ctx }
     }
 
-    pub(crate) async fn handle(&self, session: &mut Session, path: &str) -> pingora::Result<bool> {
-        let admin_endpoint = path
-            .parse::<AdminEndpoint>()
-            .map_err(|_| Error::new(Custom("invalid admin endpoint")))?;
+    pub async fn handle(&self, session: &mut Session, path: &str) -> pingora::Result<bool> {
+        let endpoint = AdminEndpoint::from_path(path)
+            .ok_or_else(|| Error::new(Custom("invalid admin endpoint")))?;
 
-        match admin_endpoint {
-            AdminEndpoint::Health | AdminEndpoint::Upstreams => {
-                let include_details = matches!(admin_endpoint, AdminEndpoint::Upstreams);
-                let body = admin_health(self.traffic_manager.clone(), include_details)
-                    .expect("failed to serialize health");
-                self.send_json_response(session, StatusCode::OK, body)
-                    .await?;
-                Ok(true)
-            }
-
-            AdminEndpoint::Stats => {
-                let traffic = self.traffic_manager.snapshot();
-                let mut traffic_stats = std::collections::HashMap::new();
-
-                for (svc_id, svc_snapshot) in &traffic.services {
-                    let mut svc_stats = serde_json::json!({
-                        "total_requests": 0,
-                        "total_successes": 0,
-                        "total_failures": 0,
-                        "active_requests": 0,
-                    });
-
-                    for u in &svc_snapshot.upstreams {
-                        let active = self
-                            .traffic_manager
-                            .active_requests(svc_id, &u.endpoint.id());
-                        let total = self
-                            .traffic_manager
-                            .total_requests(svc_id, &u.endpoint.id());
-                        let successes = self
-                            .traffic_manager
-                            .total_successes(svc_id, &u.endpoint.id());
-                        let failures = self
-                            .traffic_manager
-                            .total_failures(svc_id, &u.endpoint.id());
-
-                        let s = svc_stats.as_object_mut().unwrap();
-                        s["active_requests"] =
-                            (s["active_requests"].as_u64().unwrap() + active as u64).into();
-                        s["total_requests"] =
-                            (s["total_requests"].as_u64().unwrap() + total as u64).into();
-                        s["total_successes"] =
-                            (s["total_successes"].as_u64().unwrap() + successes as u64).into();
-                        s["total_failures"] =
-                            (s["total_failures"].as_u64().unwrap() + failures as u64).into();
-                    }
-                    traffic_stats.insert(svc_id.clone(), svc_stats);
-                }
-
-                let connections = self.connection_manager.snapshot();
-
-                let mut ws_connections = std::collections::HashMap::new();
-                for c in connections {
-                    ws_connections.insert(
-                        c.route_id,
-                        serde_json::json!({
-                            "active": c.active,
-                            "max": c.max
-                        }),
-                    );
-                }
-
-                let body = serde_json::to_vec(&serde_json::json!({
-                    "traffic": traffic_stats,
-                    "connections": {
-                        "websocket": ws_connections
-                    }
-                }))
-                .map_err(|_| Error::new(Custom("json serialization failed")))?;
-
-                self.send_json_response(session, StatusCode::OK, body)
-                    .await?;
-                Ok(true)
-            }
-
-            AdminEndpoint::Reload => {
-                let method = session.req_header().method.clone();
-
-                // Return early when not a POST request.
-                if method != http::Method::POST {
-                    let mut resp = ResponseHeader::build(StatusCode::METHOD_NOT_ALLOWED, None)?;
-                    resp.insert_header(header::ALLOW, "POST")?;
-                    resp.insert_header(header::CONTENT_LENGTH, "0")?;
-                    session.write_response_header(Box::new(resp), true).await?;
-                    return Ok(true);
-                }
-
-                let epoch = self.reload.notify_reload();
-
-                let body = serde_json::to_vec(&serde_json::json!({
-                    "message": "reload requested",
-                    "epoch": epoch
-                }))
-                .map_err(|_| Error::new(Custom("json serialization failed")))?;
-
-                self.send_json_response(session, StatusCode::OK, body)
-                    .await?;
-                Ok(true)
-            }
-            AdminEndpoint::Certs => {
-                let Some(cert_manager) = &self.cert_manager else {
-                    let body = serde_json::to_vec(&serde_json::json!({
-                        "certs": []
-                    }))
-                    .map_err(|_| Error::new(Custom("json serialization failed")))?;
-
-                    self.send_json_response(session, StatusCode::OK, body)
-                        .await?;
-                    return Ok(true);
-                };
-
-                let certs = cert_manager.snapshot();
-
-                let body = serde_json::to_vec(&serde_json::json!({
-                    "certs": certs
-                }))
-                .map_err(|_| Error::new(Custom("json serialization failed")))?;
-
-                self.send_json_response(session, StatusCode::OK, body)
-                    .await?;
-                Ok(true)
-            }
+        match endpoint {
+            AdminEndpoint::Health => self.health(session).await,
+            AdminEndpoint::Upstreams => self.upstreams(session).await,
+            AdminEndpoint::Stats => self.stats(session).await,
+            AdminEndpoint::Reload => self.reload(session).await,
+            AdminEndpoint::Certs => self.certs(session).await,
         }
     }
+}
 
-    async fn send_json_response(
+/// Endpoints
+impl AdminHandler {
+    async fn health(&self, session: &mut Session) -> pingora::Result<bool> {
+        self.json(
+            session,
+            StatusCode::OK,
+            serde_json::json!({ "status": "ok" }),
+        )
+        .await?;
+
+        Ok(true)
+    }
+
+    async fn upstreams(&self, session: &mut Session) -> pingora::Result<bool> {
+        let snapshot = self.ctx.traffic.snapshot();
+
+        let mut services = HashMap::new();
+
+        for (svc_id, svc_snapshot) in &snapshot.services {
+            let mut tcp_upstreams = HashMap::new();
+
+            for u in &svc_snapshot.upstreams {
+                if let UpstreamRuntime::Tcp(tcp) = &u.endpoint {
+                    let view = self
+                        .ctx
+                        .traffic
+                        .get_upstream_view(svc_id, &u.endpoint.id(), true);
+
+                    let addr = format!("{}:{}", tcp.host, tcp.port);
+
+                    tcp_upstreams.insert(addr, view);
+                }
+            }
+
+            services.insert(svc_id.clone(), tcp_upstreams);
+        }
+
+        self.json(
+            session,
+            StatusCode::OK,
+            serde_json::json!({ "services": services }),
+        )
+        .await?;
+
+        Ok(true)
+    }
+
+    async fn stats(&self, session: &mut Session) -> pingora::Result<bool> {
+        let traffic = self.ctx.traffic.snapshot();
+
+        let mut traffic_stats = HashMap::new();
+
+        for (svc_id, svc_snapshot) in &traffic.services {
+            let mut total_requests = 0;
+            let mut total_successes = 0;
+            let mut total_failures = 0;
+            let mut active_requests = 0;
+
+            for u in &svc_snapshot.upstreams {
+                let id = u.endpoint.id();
+
+                active_requests += self.ctx.traffic.active_requests(svc_id, &id);
+                total_requests += self.ctx.traffic.total_requests(svc_id, &id);
+                total_successes += self.ctx.traffic.total_successes(svc_id, &id);
+                total_failures += self.ctx.traffic.total_failures(svc_id, &id);
+            }
+
+            traffic_stats.insert(
+                svc_id.clone(),
+                serde_json::json!({
+                    "active_requests": active_requests,
+                    "total_requests": total_requests,
+                    "total_successes": total_successes,
+                    "total_failures": total_failures
+                }),
+            );
+        }
+
+        let connections = self.ctx.ws.snapshot();
+
+        let mut ws_connections = HashMap::new();
+
+        for c in connections {
+            ws_connections.insert(
+                c.route_id,
+                serde_json::json!({
+                    "active": c.active,
+                    "max": c.max
+                }),
+            );
+        }
+
+        self.json(
+            session,
+            StatusCode::OK,
+            serde_json::json!({
+                "traffic": traffic_stats,
+                "connections": {
+                    "websocket": ws_connections
+                }
+            }),
+        )
+        .await?;
+
+        Ok(true)
+    }
+
+    async fn reload(&self, session: &mut Session) -> pingora::Result<bool> {
+        if session.req_header().method != Method::POST {
+            return self.method_not_allowed(session, "POST").await;
+        }
+
+        let epoch = self.ctx.reload.notify_reload();
+
+        self.json(
+            session,
+            StatusCode::OK,
+            serde_json::json!({
+                "message": "reload requested",
+                "epoch": epoch
+            }),
+        )
+        .await?;
+
+        Ok(true)
+    }
+
+    async fn certs(&self, session: &mut Session) -> pingora::Result<bool> {
+        let certs = match &self.ctx.certs {
+            Some(mgr) => mgr.snapshot(),
+            None => Vec::new(),
+        };
+
+        self.json(
+            session,
+            StatusCode::OK,
+            serde_json::json!({ "certs": certs }),
+        )
+        .await?;
+
+        Ok(true)
+    }
+}
+
+/// Response helpers
+impl AdminHandler {
+    async fn json(
         &self,
         session: &mut Session,
         status: StatusCode,
-        body: Vec<u8>,
+        body: serde_json::Value,
     ) -> pingora::Result<()> {
+        let body = serde_json::to_vec(&body)
+            .map_err(|_| Error::new(Custom("json serialization failed")))?;
+
         let mut resp = ResponseHeader::build(status, None)?;
+
         resp.insert_header(header::CONTENT_TYPE, "application/json")?;
         resp.insert_header(header::CONTENT_LENGTH, body.len().to_string())?;
 
@@ -200,5 +231,20 @@ impl AdminHandler {
         session.write_response_body(Some(body.into()), true).await?;
 
         Ok(())
+    }
+
+    async fn method_not_allowed(
+        &self,
+        session: &mut Session,
+        allowed: &str,
+    ) -> pingora::Result<bool> {
+        let mut resp = ResponseHeader::build(StatusCode::METHOD_NOT_ALLOWED, None)?;
+
+        resp.insert_header(header::ALLOW, allowed)?;
+        resp.insert_header(header::CONTENT_LENGTH, "0")?;
+
+        session.write_response_header(Box::new(resp), true).await?;
+
+        Ok(true)
     }
 }

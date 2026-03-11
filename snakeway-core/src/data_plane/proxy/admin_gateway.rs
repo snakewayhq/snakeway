@@ -1,6 +1,6 @@
 use crate::control_plane::acme::CertManager;
 use crate::control_plane::reload::ReloadHandle;
-use crate::data_plane::proxy::handlers::AdminHandler;
+use crate::data_plane::proxy::handlers::{AdminContext, AdminHandler};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::ctx::RequestCtx;
 use crate::execution::traffic::TrafficManager;
@@ -20,13 +20,15 @@ impl AdminGateway {
         reload: Arc<ReloadHandle>,
         cert_manager: Option<Arc<CertManager>>,
     ) -> Self {
+        let ctx = Arc::new(AdminContext {
+            traffic: traffic_manager,
+            ws: connection_manager,
+            reload,
+            certs: cert_manager,
+        });
+
         Self {
-            admin_handler: AdminHandler::new(
-                traffic_manager,
-                connection_manager,
-                reload,
-                cert_manager,
-            ),
+            admin_handler: AdminHandler::new(ctx),
         }
     }
 }
