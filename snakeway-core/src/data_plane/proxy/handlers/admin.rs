@@ -101,7 +101,7 @@ impl AdminHandler {
                 let view = self
                     .ctx
                     .traffic
-                    .get_upstream_view(svc_id, &u, &endpoint_label, true);
+                    .get_upstream_view(svc_id, u, &endpoint_label, true);
 
                 upstreams.insert(endpoint_label, view);
             }

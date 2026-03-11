@@ -559,10 +559,10 @@ impl ProxyHttp for PublicGateway {
         }
 
         // Capture transport-level failure.
-        if let Some(err) = e {
-            if let Some(failure) = classify_pingora_error(err) {
-                ctx.upstream_outcome = Some(UpstreamOutcome::Transport(failure));
-            }
+        if let Some(err) = e
+            && let Some(failure) = classify_pingora_error(err)
+        {
+            ctx.upstream_outcome = Some(UpstreamOutcome::Transport(failure));
         }
         // Finalize request guard...
         self.finalize_admission_guard(ctx);
