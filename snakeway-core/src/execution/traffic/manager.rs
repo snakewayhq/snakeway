@@ -26,7 +26,6 @@ pub(crate) enum TransportFailure {
     Reset,
     Protocol,
     Tls,
-    Unknown,
 }
 
 /// Health state of an upstream endpoint
@@ -331,11 +330,6 @@ impl TrafficManager {
             )
         });
 
-        if !health_params.enable {
-            // Health checks are disabled for this service, so we can't report failures.
-            return;
-        }
-
         let key = (service_id.clone(), *upstream_id);
 
         let total = self
@@ -343,6 +337,12 @@ impl TrafficManager {
             .entry(key.clone())
             .or_insert_with(|| AtomicU64::new(0));
         total.fetch_add(1, Ordering::Relaxed);
+
+        if !health_params.enable {
+            // Health checks are disabled for this service,
+            // so we short-circuit updating health status after reporting total failures.
+            return;
+        }
 
         let mut entry = self
             .upstream_health

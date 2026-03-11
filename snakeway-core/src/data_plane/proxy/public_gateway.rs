@@ -560,9 +560,10 @@ impl ProxyHttp for PublicGateway {
 
         // Capture transport-level failure.
         if let Some(err) = e {
-            ctx.upstream_outcome = Some(UpstreamOutcome::Transport(classify_pingora_error(err)));
+            if let Some(failure) = classify_pingora_error(err) {
+                ctx.upstream_outcome = Some(UpstreamOutcome::Transport(failure));
+            }
         }
-
         // Finalize request guard...
         self.finalize_admission_guard(ctx);
     }
@@ -658,7 +659,14 @@ impl PublicGateway {
         };
 
         let success = match ctx.upstream_outcome {
-            Some(UpstreamOutcome::Transport(_)) => false,
+            Some(UpstreamOutcome::Transport(failure)) => {
+                tracing::debug!(
+                    service = %service_id,
+                    failure = ?failure,
+                    "upstream transport failure"
+                );
+                false
+            }
 
             Some(UpstreamOutcome::HttpStatus(code)) => {
                 let count_5xx = self

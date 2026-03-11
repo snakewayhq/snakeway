@@ -2,36 +2,50 @@ use crate::execution::traffic::TransportFailure;
 
 /// Classifies Pingora upstream errors into Snakeway transport failures.
 /// Non-upstream errors are intentionally ignored to avoid penalizing healthy upstreams.
-pub(crate) fn classify_pingora_error(err: &pingora::Error) -> TransportFailure {
+pub(crate) fn classify_pingora_error(err: &pingora::Error) -> Option<TransportFailure> {
     use pingora::{ErrorSource, ErrorType::*};
 
-    // Return unknown for downstream and internal errors (without penalizing upstream(s)).
+    // Only penalize upstream-originated errors.
     if err.esource() != &ErrorSource::Upstream {
-        return TransportFailure::Unknown;
+        return None;
     }
 
-    // Classify specific upstream errors from Pingora.
-    match err.etype() {
+    let failure = match err.etype() {
         // Connect phase.
         ConnectTimedout | ConnectRefused | ConnectNoRoute | ConnectProxyFailure | ConnectError => {
             TransportFailure::Connect
         }
 
-        // TLS / handshake.
+        // TLS handshake.
         TLSHandshakeFailure | TLSHandshakeTimedout | TLSWantX509Lookup | InvalidCert
         | HandshakeError => TransportFailure::Tls,
 
-        // Protocol.
+        // Protocol violations.
         InvalidHTTPHeader | H1Error | H2Error | InvalidH2 | H2Downgrade => {
             TransportFailure::Protocol
         }
 
-        // Established connection IO.
+        // Established connection I/O.
         ReadTimedout | WriteTimedout => TransportFailure::Timeout,
 
         ReadError | WriteError | ConnectionClosed => TransportFailure::Reset,
 
-        // Everything else.
-        _ => TransportFailure::Unknown,
-    }
+        // Non-upstream-related errors.
+        BindError
+        | AcceptError
+        | SocketError
+        | FileOpenError
+        | FileCreateError
+        | FileReadError
+        | FileWriteError
+        | InternalError
+        | UnknownError
+        | Custom(_)
+        | CustomCode(_, _)
+        | HTTPStatus(_) => {
+            return None;
+        }
+    };
+
+    Some(failure)
 }
