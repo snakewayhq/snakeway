@@ -126,10 +126,10 @@ impl AdminHandler {
         let mut traffic_stats = HashMap::new();
 
         for (svc_id, svc_snapshot) in &traffic.services {
-            let mut total_requests = 0;
-            let mut total_successes = 0;
-            let mut total_failures = 0;
-            let mut active_requests = 0;
+            let mut total_requests: u64 = 0;
+            let mut total_successes: u64 = 0;
+            let mut total_failures: u64 = 0;
+            let mut active_requests: u64 = 0;
 
             for u in &svc_snapshot.upstreams {
                 let id = u.endpoint.id();

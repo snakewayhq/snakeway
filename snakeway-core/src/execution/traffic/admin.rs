@@ -6,10 +6,10 @@ use serde::Serialize;
 pub(crate) struct AdminUpstreamView {
     pub(crate) health: HealthStatus,
     pub(crate) circuit: CircuitState,
-    pub(crate) active_requests: u32,
-    pub(crate) total_requests: u32,
-    pub(crate) total_successes: u32,
-    pub(crate) total_failures: u32,
+    pub(crate) active_requests: u64,
+    pub(crate) total_requests: u64,
+    pub(crate) total_successes: u64,
+    pub(crate) total_failures: u64,
     pub(crate) circuit_params: Option<CircuitBreakerParamsView>,
     pub(crate) circuit_details: Option<CircuitBreakerDetailsView>,
 }

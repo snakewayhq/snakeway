@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 pub struct HealthCheckSpec {
     pub enable: bool,
     #[serde(default = "hc_default_threshold")]
-    pub failure_threshold: u32,
+    pub failure_threshold: u64,
     #[serde(default = "hc_default_unhealthy_cooldown_seconds")]
     pub unhealthy_cooldown_seconds: u64,
 }
 
-fn hc_default_threshold() -> u32 {
+fn hc_default_threshold() -> u64 {
     3
 }
 

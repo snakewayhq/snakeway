@@ -9,7 +9,7 @@ use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -34,7 +34,7 @@ pub(crate) enum TransportFailure {
 enum HealthState {
     Healthy,
     Unhealthy {
-        consecutive_failures: u32,
+        consecutive_failures: u64,
         last_failure: Instant,
     },
 }
@@ -55,7 +55,7 @@ pub struct TrafficManager {
     snapshot: ArcSwap<TrafficSnapshot>,
 
     /// Live per-upstream counters (hot path)
-    active_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
+    active_requests: DashMap<(ServiceId, UpstreamId), AtomicU64>,
 
     /// Per-upstream weighted round-robin state
     wrr_state: DashMap<ServiceId, WrrState>,
@@ -64,9 +64,9 @@ pub struct TrafficManager {
     upstream_health: DashMap<(ServiceId, UpstreamId), HealthState>,
 
     /// Per-upstream counters
-    total_requests: DashMap<(ServiceId, UpstreamId), AtomicU32>,
-    total_successes: DashMap<(ServiceId, UpstreamId), AtomicU32>,
-    total_failures: DashMap<(ServiceId, UpstreamId), AtomicU32>,
+    total_requests: DashMap<(ServiceId, UpstreamId), AtomicU64>,
+    total_successes: DashMap<(ServiceId, UpstreamId), AtomicU64>,
+    total_failures: DashMap<(ServiceId, UpstreamId), AtomicU64>,
 
     /// Per-upstream circuit breaker state machine
     pub(crate) circuit: DashMap<(ServiceId, UpstreamId), CircuitBreaker>,
@@ -233,14 +233,14 @@ impl TrafficManager {
         let counter = self
             .active_requests
             .entry(key.clone())
-            .or_insert_with(|| AtomicU32::new(0));
+            .or_insert_with(|| AtomicU64::new(0));
 
         counter.fetch_add(1, Ordering::Relaxed);
 
         let total = self
             .total_requests
             .entry(key)
-            .or_insert_with(|| AtomicU32::new(0));
+            .or_insert_with(|| AtomicU64::new(0));
         total.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -255,7 +255,7 @@ impl TrafficManager {
         }
     }
 
-    pub(crate) fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.active_requests
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
@@ -276,7 +276,7 @@ impl TrafficManager {
 
         let total_weight: i64 = healthy
             .iter()
-            .map(|u| u.weight as i64) // assumes UpstreamSnapshot has `weight: u32`
+            .map(|u| u.weight as i64) // assumes UpstreamSnapshot has `weight: u64`
             .sum();
 
         // Safety net: weight is enforced in config validation.
@@ -341,7 +341,7 @@ impl TrafficManager {
         let total = self
             .total_failures
             .entry(key.clone())
-            .or_insert_with(|| AtomicU32::new(0));
+            .or_insert_with(|| AtomicU64::new(0));
         total.fetch_add(1, Ordering::Relaxed);
 
         let mut entry = self
@@ -405,7 +405,7 @@ impl TrafficManager {
         let total = self
             .total_successes
             .entry(key)
-            .or_insert_with(|| AtomicU32::new(0));
+            .or_insert_with(|| AtomicU64::new(0));
         total.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -499,21 +499,21 @@ impl TrafficManager {
             .unwrap_or(CircuitState::Closed)
     }
 
-    pub(crate) fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_requests
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub(crate) fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_successes
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub(crate) fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u32 {
+    pub(crate) fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_failures
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))

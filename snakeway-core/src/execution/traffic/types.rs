@@ -19,7 +19,7 @@ pub(crate) struct LatencyStats {
 #[derive(Debug, Clone)]
 pub(crate) struct ConnectionStats {
     /// Active in-flight requests.
-    pub(crate) active: u32,
+    pub(crate) active: u64,
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
@@ -31,6 +31,6 @@ pub(crate) struct HealthStatus {
 #[derive(Debug, Clone)]
 pub(crate) struct HealthCheckParams {
     pub(crate) enable: bool,
-    pub(crate) failure_threshold: u32,
+    pub(crate) failure_threshold: u64,
     pub(crate) unhealthy_cooldown: Duration,
 }
