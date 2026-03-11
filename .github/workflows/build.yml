@@ -97,7 +97,7 @@ jobs:
       # CI behaviour is identical to local behaviour.  --remove-orphans ensures a
       # clean slate on re-runs without requiring an explicit down step beforehand.
       - name: Start Pebble (ACME test server)
-        run: docker compose -f docker-compose-dev.yml up -d --remove-orphans
+        run: docker compose -f docker-compose-dev.yml up pebble -d --remove-orphans
 
       # Pebble takes a moment to generate its ephemeral CA and start its HTTPS
       # listener.  We poll the ACME directory endpoint (which is the same URL
@@ -148,7 +148,7 @@ jobs:
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
     runs-on: ubuntu-latest
-    needs: [test, integration-test]
+    needs: [ test, integration-test ]
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
