@@ -32,7 +32,7 @@ enum AdminEndpoint {
 
 impl AdminEndpoint {
     fn from_path(path: &str) -> Option<Self> {
-        match path {
+        match path.trim_end_matches('/') {
             "/admin/health" => Some(Self::Health),
             "/admin/upstreams" => Some(Self::Upstreams),
             "/admin/stats" => Some(Self::Stats),
@@ -89,16 +89,22 @@ impl AdminHandler {
             let mut tcp_upstreams = HashMap::new();
 
             for u in &svc_snapshot.upstreams {
-                if let UpstreamRuntime::Tcp(tcp) = &u.endpoint {
-                    let view = self
-                        .ctx
-                        .traffic
-                        .get_upstream_view(svc_id, &u.endpoint.id(), true);
+                let view = self
+                    .ctx
+                    .traffic
+                    .get_upstream_view(svc_id, &u.endpoint.id(), true);
 
-                    let addr = format!("{}:{}", tcp.host, tcp.port);
+                let key = match &u.endpoint {
+                    UpstreamRuntime::Tcp(tcp) => {
+                        format!("{}:{}", tcp.host, tcp.port)
+                    }
 
-                    tcp_upstreams.insert(addr, view);
-                }
+                    UpstreamRuntime::Unix(unix) => {
+                        format!("unix:{}", unix.path)
+                    }
+                };
+
+                tcp_upstreams.insert(key, view);
             }
 
             services.insert(svc_id.clone(), tcp_upstreams);
@@ -152,9 +158,7 @@ impl AdminHandler {
             StatusCode::OK,
             serde_json::json!({
                 "traffic": traffic_stats,
-                "connections": {
-                    "websocket": ws_connections
-                }
+                "websocket": ws_connections
             }),
         )
         .await?;
@@ -208,7 +212,7 @@ impl AdminHandler {
         body: serde_json::Value,
     ) -> pingora::Result<()> {
         let body = serde_json::to_vec(&body)
-            .map_err(|_| Error::new(Custom("json serialization failed")))?;
+            .map_err(|e| Error::new(Custom(&format!("json serialization failed: {e}"))))?;
 
         let mut resp = ResponseHeader::build(status, None)?;
 
