@@ -8,6 +8,7 @@ pub(crate) struct NormalizedRequestParams {
     pub(crate) method: Method,
     pub(crate) host: String,
     pub(crate) path: NormalizedPath,
+    #[allow(dead_code)] // reserved for future routing / logging / caching
     pub(crate) query: CanonicalQuery,
     pub(crate) headers: NormalizedHeaders,
     pub(crate) sni_host: Option<String>,
@@ -58,6 +59,7 @@ impl NormalizedRequest {
         self.path.0 = path;
     }
 
+    #[allow(dead_code)] // reserved for future routing / logging / caching
     pub(crate) fn query(&self) -> &CanonicalQuery {
         &self.query
     }
@@ -121,7 +123,9 @@ impl NormalizedPath {
 
 #[derive(Debug, Default)]
 pub(crate) struct CanonicalQuery {
+    #[allow(dead_code)] // reserved for future routing / logging / caching
     raw: String,
+    #[allow(dead_code)] // reserved for future routing / logging / caching
     pairs: SmallVec<[(String, String); 4]>,
 }
 
@@ -133,10 +137,12 @@ impl CanonicalQuery {
         }
     }
 
+    #[allow(dead_code)] // reserved for future routing / logging / caching
     pub(crate) fn raw(&self) -> &str {
         &self.raw
     }
 
+    #[allow(dead_code)] // reserved for future routing / logging / caching
     pub(crate) fn pairs(&self) -> &[(String, String)] {
         &self.pairs
     }
