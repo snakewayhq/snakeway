@@ -1,12 +1,14 @@
 use crate::execution::traffic::{ServiceId, TrafficManager};
 use crate::runtime::UpstreamId;
 use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub(crate) struct AdmissionGuard {
     tm: Arc<TrafficManager>,
     service_id: ServiceId,
     upstream_id: UpstreamId,
+    started: Instant,
     finished: bool,
 }
 
@@ -22,6 +24,7 @@ impl AdmissionGuard {
             tm,
             service_id,
             upstream_id,
+            started: Instant::now(),
             finished: false,
         }
     }
@@ -39,8 +42,11 @@ impl AdmissionGuard {
             return;
         }
 
+        // Capture success/failure.
         if success {
-            self.tm.report_success(&self.service_id, &self.upstream_id);
+            let latency = self.started.elapsed();
+            self.tm
+                .report_success(&self.service_id, &self.upstream_id, latency);
         } else {
             self.tm.report_failure(&self.service_id, &self.upstream_id);
         }

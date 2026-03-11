@@ -3,7 +3,9 @@ use crate::execution::traffic::admin::{
 };
 use crate::execution::traffic::circuit::{CircuitBreaker, CircuitBreakerParams, CircuitState};
 use crate::execution::traffic::snapshot::TrafficSnapshot;
-use crate::execution::traffic::{HealthCheckParams, HealthStatus, ServiceId, UpstreamSnapshot};
+use crate::execution::traffic::{
+    HealthCheckParams, HealthStatus, LatencyStats, ServiceId, UpstreamSnapshot,
+};
 use crate::runtime::UpstreamId;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
@@ -66,6 +68,7 @@ pub struct TrafficManager {
     total_requests: DashMap<(ServiceId, UpstreamId), AtomicU64>,
     total_successes: DashMap<(ServiceId, UpstreamId), AtomicU64>,
     total_failures: DashMap<(ServiceId, UpstreamId), AtomicU64>,
+    latency_stats: DashMap<(ServiceId, UpstreamId), LatencyStats>,
 
     /// Per-upstream circuit breaker state machine
     pub(crate) circuit: DashMap<(ServiceId, UpstreamId), CircuitBreaker>,
@@ -87,6 +90,7 @@ impl TrafficManager {
             total_requests: DashMap::new(),
             total_successes: DashMap::new(),
             total_failures: DashMap::new(),
+            latency_stats: DashMap::new(),
             circuit: DashMap::new(),
             circuit_params: DashMap::new(),
             health_params: DashMap::new(),
@@ -397,16 +401,37 @@ impl TrafficManager {
     }
 
     /// Any success will fully restore health
-    pub(crate) fn report_success(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+    pub(crate) fn report_success(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+        latency: Duration,
+    ) {
         let key = (service_id.clone(), *upstream_id);
+
+        // Mark upstream healthy
         self.upstream_health
             .insert(key.clone(), HealthState::Healthy);
 
+        // Increment success counter
         let total = self
             .total_successes
-            .entry(key)
+            .entry(key.clone())
             .or_insert_with(|| AtomicU64::new(0));
         total.fetch_add(1, Ordering::Relaxed);
+
+        // Update EWMA latency
+        const ALPHA: f64 = 0.2;
+
+        self.latency_stats
+            .entry(key)
+            .and_modify(|stats| {
+                let old = stats.ewma.as_secs_f64();
+                let new = latency.as_secs_f64();
+                let updated = ALPHA * new + (1.0 - ALPHA) * old;
+                stats.ewma = Duration::from_secs_f64(updated);
+            })
+            .or_insert_with(|| LatencyStats { ewma: latency });
     }
 
     /// Determines whether an upstream may receive a request
