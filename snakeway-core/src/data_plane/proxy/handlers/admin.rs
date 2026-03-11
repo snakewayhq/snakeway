@@ -86,15 +86,10 @@ impl AdminHandler {
         let mut services = HashMap::new();
 
         for (svc_id, svc_snapshot) in &snapshot.services {
-            let mut tcp_upstreams = HashMap::new();
+            let mut upstreams = HashMap::new();
 
             for u in &svc_snapshot.upstreams {
-                let view = self
-                    .ctx
-                    .traffic
-                    .get_upstream_view(svc_id, &u.endpoint.id(), true);
-
-                let key = match &u.endpoint {
+                let endpoint_label = match &u.endpoint {
                     UpstreamRuntime::Tcp(tcp) => {
                         format!("{}:{}", tcp.host, tcp.port)
                     }
@@ -103,11 +98,15 @@ impl AdminHandler {
                         format!("unix:{}", unix.path)
                     }
                 };
+                let view = self
+                    .ctx
+                    .traffic
+                    .get_upstream_view(svc_id, &u, &endpoint_label, true);
 
-                tcp_upstreams.insert(key, view);
+                upstreams.insert(endpoint_label, view);
             }
 
-            services.insert(svc_id.clone(), tcp_upstreams);
+            services.insert(svc_id.clone(), upstreams);
         }
 
         self.json(

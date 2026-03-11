@@ -523,9 +523,13 @@ impl TrafficManager {
     pub(crate) fn get_upstream_view(
         &self,
         service_id: &ServiceId,
-        upstream_id: &UpstreamId,
+        upstream: &UpstreamSnapshot,
+        endpoint_label: &str,
         include_details: bool,
     ) -> AdminUpstreamView {
+        let weight = upstream.weight;
+        let latency_ms = upstream.latency.as_ref().map(|l| l.ewma.as_millis() as u64);
+        let upstream_id = &upstream.endpoint.id();
         let health = self.health_status(service_id, upstream_id);
         let active_requests = self.active_requests(service_id, upstream_id);
 
@@ -568,6 +572,9 @@ impl TrafficManager {
             .unwrap_or((CircuitState::Closed, None));
 
         AdminUpstreamView {
+            endpoint: endpoint_label.to_owned(),
+            weight,
+            latency_ms,
             health,
             circuit: circuit_state,
             active_requests,

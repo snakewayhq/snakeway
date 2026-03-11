@@ -12,6 +12,7 @@ pub(crate) struct UpstreamSnapshot {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ServiceSnapshot {
+    #[allow(dead_code)] // useful for debugger inspection
     pub(crate) service_id: ServiceId,
     pub(crate) strategy: LoadBalancingStrategy,
     pub(crate) upstreams: Vec<UpstreamSnapshot>,

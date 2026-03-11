@@ -4,6 +4,9 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub(crate) struct AdminUpstreamView {
+    pub(crate) endpoint: String,
+    pub(crate) weight: u32,
+    pub(crate) latency_ms: Option<u64>,
     pub(crate) health: HealthStatus,
     pub(crate) circuit: CircuitState,
     pub(crate) active_requests: u64,
