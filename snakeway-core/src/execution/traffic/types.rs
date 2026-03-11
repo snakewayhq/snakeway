@@ -16,12 +16,6 @@ pub(crate) struct LatencyStats {
     pub(crate) ewma: Duration,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct ConnectionStats {
-    /// Active in-flight requests.
-    pub(crate) active: u64,
-}
-
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 pub(crate) struct HealthStatus {
     /// Whether the upstream is considered healthy or not.

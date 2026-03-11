@@ -18,7 +18,6 @@ use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
 use std::sync::Arc;
-use tracing::info_span;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
@@ -276,7 +275,7 @@ impl ProxyHttp for PublicGateway {
         // Setup request root span and add it to the request context.
         let request_id = ctx.request_id().unwrap_or_else(|| "unknown".into());
 
-        let span = info_span!(
+        let span = tracing::info_span!(
             "request",
             http.method = %ctx.method_str(),
             http.host = %ctx.effective_host(),
@@ -589,6 +588,8 @@ impl PublicGateway {
                 tracing::error!(error = ?e, "traffic decision failed");
                 Error::new(Custom("traffic decision failed"))
             })?;
+
+        tracing::info!("decision reason: {}", decision.reason);
 
         // Grab the service by name.
         let service = state

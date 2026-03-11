@@ -396,15 +396,6 @@ impl RequestCtx {
         let method = self.method();
         method == Method::POST || method == Method::PATCH || method == Method::PUT
     }
-
-    /// Return true for the special case of CONNECT method
-    /// Conceptually, the presence of a body does not matter for a CONNECT request.
-    /// HTTP semantics are discarded after the CONNECT request is established.
-    /// After that data is actually transferred.
-    pub(crate) fn body_presence_is_irrelevant(&self) -> bool {
-        let method = self.method();
-        method == Method::CONNECT
-    }
 }
 
 /// Request Extensions API

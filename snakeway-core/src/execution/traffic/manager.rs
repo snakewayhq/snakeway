@@ -488,17 +488,6 @@ impl TrafficManager {
         entry.on_request_end((service_id, upstream_id), &params, started, success);
     }
 
-    pub(crate) fn circuit_state(
-        &self,
-        service_id: &ServiceId,
-        upstream_id: &UpstreamId,
-    ) -> CircuitState {
-        self.circuit
-            .get(&(service_id.clone(), *upstream_id))
-            .map(|c| c.state())
-            .unwrap_or(CircuitState::Closed)
-    }
-
     pub(crate) fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_requests
             .get(&(service_id.clone(), *upstream_id))

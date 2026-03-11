@@ -51,15 +51,6 @@ impl WsConnectionManager {
 
         Some(WsConnectionGuard::new_acquired(state))
     }
-
-    /// Get the current active connection count for a route.
-    /// Intended for admin/observability.
-    pub(crate) fn active(&self, route_id: &RouteId) -> usize {
-        self.routes
-            .get(route_id)
-            .map(|state| state.active())
-            .unwrap_or(0)
-    }
 }
 
 #[derive(Debug, Serialize)]
