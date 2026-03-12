@@ -140,7 +140,7 @@ fn directory_listing_includes_expected_file() {
 
     let body = srv.get("/images/").send().unwrap().text().unwrap();
 
-    assert!(body.contains("41kb.png"));
+    assert!(body.contains("1mb.png"));
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn supports_range_requests() {
 
     let client = reqwest::blocking::Client::new();
     let res = client
-        .get(format!("{}/images/41kb.png", srv.base_url()))
+        .get(format!("{}/images/1mb.png", srv.base_url()))
         .header(reqwest::header::RANGE, "bytes=0-99")
         .send()
         .unwrap();
@@ -174,14 +174,13 @@ fn supports_range_requests() {
 
 #[test]
 fn head_request_returns_headers_without_body() {
-    let mut cfg = ConfigBuilder::default()
-        .with_static_file_ingress(true)
-        .build();
+    let spec = ConfigBuilder::default().with_static_file_ingress(true);
+    let mut cfg = spec.build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     let client = reqwest::blocking::Client::new();
     let res = client
-        .head(format!("{}/images/41kb.png", srv.base_url()))
+        .head(format!("{}/images/1mb.png", srv.base_url()))
         .send()
         .unwrap();
 

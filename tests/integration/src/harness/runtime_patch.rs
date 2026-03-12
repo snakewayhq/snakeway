@@ -14,8 +14,7 @@ pub fn patch_runtime(cfg: &mut RuntimeConfig, listener_ports: &[u16], upstream_p
 
 fn patch_paths(cfg: &mut RuntimeConfig) {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let repo_root = manifest_dir.parent().expect("expected workspace root");
-    let fixtures_root = repo_root.join("../../fixtures/public");
+    let fixtures_root = manifest_dir.join("fixtures/public");
     for route_cfg in &mut cfg.routes {
         if let RouteConfig::Static(route) = route_cfg {
             route.file_dir = fixtures_root.clone();
