@@ -142,8 +142,9 @@ fn directory_listing_includes_expected_file() {
         .with_static_file_ingress(true)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let target_path = format!("/{}/", IMAGES_DIR);
 
-    let body = srv.get(IMAGES_DIR).send().unwrap().text().unwrap();
+    let body = srv.get(&target_path).send().unwrap().text().unwrap();
 
     assert!(body.contains(IMAGES_1MB_PNG));
 }
@@ -153,9 +154,8 @@ fn supports_range_requests() {
     let mut cfg = ConfigBuilder::default()
         .with_static_file_ingress(true)
         .build();
-    let _ = TestServer::start_http_upstream_with_config(&mut cfg);
-    let target_path = format!("{}/{}", IMAGES_DIR, IMAGES_1MB_PNG);
-
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let target_path = format!("{}/{}/{}", srv.base_url(), IMAGES_DIR, IMAGES_1MB_PNG);
     let client = reqwest::blocking::Client::new();
     let res = client
         .get(target_path)
@@ -182,8 +182,8 @@ fn supports_range_requests() {
 fn head_request_returns_headers_without_body() {
     let spec = ConfigBuilder::default().with_static_file_ingress(true);
     let mut cfg = spec.build();
-    let _ = TestServer::start_http_upstream_with_config(&mut cfg);
-    let target_path = format!("{}/{}", IMAGES_DIR, IMAGES_1MB_PNG);
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let target_path = format!("{}/{}/{}", srv.base_url(), IMAGES_DIR, IMAGES_1MB_PNG);
     let client = reqwest::blocking::Client::new();
 
     let res = client.head(target_path).send().unwrap();
