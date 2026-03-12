@@ -10,7 +10,7 @@ fn websocket_echo_is_proxied() {
     let srv = TestServer::start_ws_upstream_with_config(&mut cfg);
     let url = format!(
         "ws://{}{}",
-        srv.base_url().strip_prefix("http://").unwrap(),
+        srv.base_url().as_str().strip_prefix("http://").unwrap(),
         ROUTE_PATH_WS
     );
 

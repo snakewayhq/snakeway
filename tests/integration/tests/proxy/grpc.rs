@@ -13,7 +13,7 @@ fn grpc_unary_call_is_proxied() {
 
     let endpoint = format!(
         "https://{}",
-        srv.base_url().strip_prefix("http://").unwrap()
+        srv.base_url().as_str().strip_prefix("http://").unwrap()
     );
 
     let rt = tokio::runtime::Runtime::new().unwrap();

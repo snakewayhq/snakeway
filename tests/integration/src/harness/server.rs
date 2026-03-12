@@ -236,38 +236,36 @@ impl TestServer {
 
     /// Convenience helper for GET requests.
     pub fn get(&self, path: &str) -> RequestBuilder {
-        self.client
-            .get(format!("{}{}", self.base_url(), path))
-            .header("Host", TEST_HOST)
+        let url = self.base_url().join(path).expect("invalid URL");
+        self.client.get(url).header("Host", TEST_HOST)
     }
 
     pub fn put(&self, path: &str) -> RequestBuilder {
-        self.client
-            .put(format!("{}{}", self.base_url(), path))
-            .header("Host", TEST_HOST)
+        let url = self.base_url().join(path).expect("invalid URL");
+        self.client.put(url).header("Host", TEST_HOST)
     }
 
     pub fn post(&self, path: &str) -> RequestBuilder {
-        self.client
-            .post(format!("{}{}", self.base_url(), path))
-            .header("Host", TEST_HOST)
+        let url = self.base_url().join(path).expect("invalid URL");
+        self.client.post(url).header("Host", TEST_HOST)
     }
 
     pub fn delete(&self, path: &str) -> RequestBuilder {
-        self.client
-            .delete(format!("{}{}", self.base_url(), path))
-            .header("Host", TEST_HOST)
+        let url = self.base_url().join(path).expect("invalid URL");
+        self.client.delete(url).header("Host", TEST_HOST)
     }
 
     /// Returns the first configured base URL.
-    pub fn base_url(&self) -> &str {
-        self.base_urls.first().expect("no base url")
+    pub fn base_url(&self) -> Url {
+        let base_url_str = self.base_urls.first().expect("no base url");
+        Url::parse(base_url_str).expect("invalid base URL")
     }
 
     /// Returns the first configured listener port.
     pub fn port(self) -> u16 {
-        let url = Url::parse(self.base_url()).expect("invalid URL");
-        url.port_or_known_default().expect("invalid port")
+        self.base_url()
+            .port_or_known_default()
+            .expect("invalid port")
     }
 
     /// Returns the first configured listener address (host:port).

@@ -32,7 +32,7 @@ fn static_route_does_not_require_upstream() {
     let mut cfg = minimal_static_file_runtime_config();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let res = srv.get(INDEX_HTML).send().unwrap();
+    let res = srv.get(INDEX_HTML).send().expect("failed to get HTML page");
 
     assert_eq!(res.status(), StatusCode::OK);
 }
