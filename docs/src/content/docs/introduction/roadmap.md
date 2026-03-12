@@ -396,6 +396,33 @@ The following is pushed out past the v1.0.x release, because it is not in the cr
 
 Zero-drop reload support.
 
+### Router performance optimizations
+
+- LRU cache in front of router to make route lookups O(1) instead of O(n).
+
+### Caching Device
+
+Use Pingora Native HTTP Cache.
+
+Rough draft of approach...
+
+identity
+rate_limit
+...
+cache_lookup  ← early device
+origin call
+cache_store   ← response device
+logging
+
+Pluggable storage (supported by pingora)
+
+    1.	memory (LRU)
+	2.	memory + disk
+	3.	Redis
+	4.	custom storage
+
+
+
 ### Full WASM Device Functionality
 
 - Pre-instantiate components (no per-request instantiation)

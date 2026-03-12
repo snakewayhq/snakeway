@@ -1,0 +1,34 @@
+use crate::execution::ctx::RequestCtx;
+use crate::execution::traffic::{
+    ServiceId, TrafficManager,
+    decision::{DecisionReason, TrafficDecision},
+    snapshot::UpstreamSnapshot,
+    strategy::TrafficStrategy,
+};
+
+#[derive(Debug, Default)]
+pub(crate) struct RoundRobin;
+
+impl TrafficStrategy for RoundRobin {
+    fn decide(
+        &self,
+        _req: &RequestCtx,
+        service_id: &ServiceId,
+        healthy: &[UpstreamSnapshot],
+        traffic_manager: &TrafficManager,
+    ) -> Option<TrafficDecision> {
+        if healthy.is_empty() {
+            return None;
+        }
+
+        let idx = traffic_manager.next_wrr_index(service_id, healthy);
+
+        let upstream = &healthy[idx];
+
+        Some(TrafficDecision {
+            upstream_id: upstream.endpoint.id(),
+            reason: DecisionReason::RoundRobin,
+            cb_started: true,
+        })
+    }
+}

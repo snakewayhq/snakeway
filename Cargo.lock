@@ -2092,7 +2092,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "integration-tests"
+name = "integration"
 version = "0.9.1"
 dependencies = [
  "arc-swap",
@@ -4092,8 +4092,26 @@ dependencies = [
 name = "snakeway"
 version = "0.9.1"
 dependencies = [
- "clap",
  "snakeway-core",
+]
+
+[[package]]
+name = "snakeway-conf"
+version = "0.9.1"
+dependencies = [
+ "glob",
+ "hcl-rs",
+ "http",
+ "ipnet",
+ "ipnet-trie",
+ "nix 0.31.1",
+ "openssl",
+ "owo-colors",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -4113,7 +4131,6 @@ dependencies = [
  "ctrlc",
  "dashmap",
  "flate2",
- "glob",
  "hcl-rs",
  "hostname",
  "http",
@@ -4142,6 +4159,7 @@ dependencies = [
  "serde_yaml",
  "sha2",
  "smallvec",
+ "snakeway-conf",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

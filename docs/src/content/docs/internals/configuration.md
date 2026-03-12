@@ -2,7 +2,7 @@
 title: Configuration Internals
 ---
 
-The configuration subsystem lives in `snakeway-core/src/conf`. It is responsible for
+The configuration subsystem lives in the `snakeway-conf` crate. It is responsible for
 reading HCL files from disk, checking them for semantic correctness, and producing the
 runtime types that the rest of the proxy reads.
 
@@ -52,10 +52,10 @@ the report before deciding whether to start the server.
 
 Every setting exists in two parallel structs:
 
-| Layer | Location | Derives | Purpose |
-|-------|----------|---------|---------|
-| **Spec** | `snakeway-core/src/conf/types/specification/` | `Deserialize` | Populated directly from HCL; uses user-friendly types |
-| **Config** | `snakeway-core/src/conf/types/runtime/` | `Serialize` | Resolved, executable form used by the proxy at runtime |
+| Layer      | Location                                      | Derives       | Purpose                                                |
+|------------|-----------------------------------------------|---------------|--------------------------------------------------------|
+| **Spec**   | `snakeway-core/src/conf/types/specification/` | `Deserialize` | Populated directly from HCL; uses user-friendly types  |
+| **Config** | `snakeway-core/src/conf/types/runtime/`       | `Serialize`   | Resolved, executable form used by the proxy at runtime |
 
 The conversion between them is always a `From<FooSpec> for FooConfig` or
 `TryFrom<FooSpec> for FooConfig` impl that lives **in the runtime module** alongside
@@ -63,12 +63,12 @@ The conversion between them is always a `From<FooSpec> for FooConfig` or
 
 A few concrete differences between the layers:
 
-| Setting | Spec type | Config type |
-|---------|-----------|-------------|
-| Bind address | `BindInterfaceInput` (symbolic: `"loopback"`, `"all"`, or an IP string) | Resolved `SocketAddr` string |
-| TLS | `TlsTerminationSpec` (enum: `Manual` or `Acme`) | `TlsTerminationConfig` with resolved cert paths |
-| Upstreams | Mixed `UpstreamSpec` (either `sock` or `endpoint`) | Separated into `UpstreamUnixConfig` / `UpstreamTcpConfig` |
-| Services | Array inside `IngressSpec` | Flattened into `HashMap<String, ServiceConfig>` |
+| Setting      | Spec type                                                               | Config type                                               |
+|--------------|-------------------------------------------------------------------------|-----------------------------------------------------------|
+| Bind address | `BindInterfaceInput` (symbolic: `"loopback"`, `"all"`, or an IP string) | Resolved `SocketAddr` string                              |
+| TLS          | `TlsTerminationSpec` (enum: `Manual` or `Acme`)                         | `TlsTerminationConfig` with resolved cert paths           |
+| Upstreams    | Mixed `UpstreamSpec` (either `sock` or `endpoint`)                      | Separated into `UpstreamUnixConfig` / `UpstreamTcpConfig` |
+| Services     | Array inside `IngressSpec`                                              | Flattened into `HashMap<String, ServiceConfig>`           |
 
 ## Origin tracking
 
@@ -151,16 +151,16 @@ These live in `snakeway-core/src/conf/validation/multi_file/`:
 `ValidationReport` accumulates issues through two primitives:
 
 ```rust
-report.error("message", &origin, Some("help text"));
-report.warning("message", &origin, None);
+report.error("message", & origin, Some("help text"));
+report.warning("message", & origin, None);
 ```
 
 For each distinct error kind there is also a typed helper method on `ValidationReport` —
 for example:
 
 ```rust
-report.http2_requires_tls(&addr, &bind.origin);
-report.acme_tls_requires_domains(&bind.origin);
+report.http2_requires_tls( & addr, & bind.origin);
+report.acme_tls_requires_domains( & bind.origin);
 ```
 
 These helpers keep validator code readable and keep error messages consistent across the
@@ -174,9 +174,9 @@ do not block startup.
 
 `ConfigError` and `ValidationReport` serve different roles:
 
-| Type | When used | What triggers it |
-|------|-----------|-----------------|
-| `ConfigError` | Hard failure; `load_config` returns `Err(…)` | File I/O failure, HCL syntax error, unresolvable address during lowering |
+| Type               | When used                                        | What triggers it                                                           |
+|--------------------|--------------------------------------------------|----------------------------------------------------------------------------|
+| `ConfigError`      | Hard failure; `load_config` returns `Err(…)`     | File I/O failure, HCL syntax error, unresolvable address during lowering   |
 | `ValidationReport` | Soft accumulation; `load_config` returns `Ok(…)` | Semantic violations (wrong value, missing field, cross-file inconsistency) |
 
 A `ConfigError` means the pipeline cannot proceed at all. A non-empty `ValidationReport`
@@ -184,17 +184,17 @@ means the pipeline completed but the operator should not start the server.
 
 ## Key files at a glance
 
-| File | Responsibility |
-|------|---------------|
-| `conf/loader.rs` | Entry point: `load_config`, `load_spec_files`, `load_config_from_specs` |
-| `conf/discover.rs` | Glob-based file discovery |
-| `conf/parse.rs` | `parse_devices`, `parse_ingress` — HCL → Spec |
-| `conf/lower.rs` | `lower_configs` — Spec → Config; defines `IrConfig` |
-| `conf/types/specification/` | All `*Spec` structs |
-| `conf/types/runtime/` | All `*Config` structs and their `From`/`TryFrom` impls |
-| `conf/validation/validate.rs` | `validate_spec` orchestrator |
-| `conf/validation/single_file/` | Per-file validators |
-| `conf/validation/multi_file/` | Cross-file validators |
-| `conf/validation/report.rs` | `ValidationReport`, `ValidationIssue`, typed error helpers |
-| `conf/validation/error.rs` | `ConfigError` enum |
-| `conf/validation/validated_config.rs` | `ValidatedConfig` wrapper |
+| File                                  | Responsibility                                                          |
+|---------------------------------------|-------------------------------------------------------------------------|
+| `conf/loader.rs`                      | Entry point: `load_config`, `load_spec_files`, `load_config_from_specs` |
+| `conf/discover.rs`                    | Glob-based file discovery                                               |
+| `conf/parse.rs`                       | `parse_devices`, `parse_ingress` — HCL → Spec                           |
+| `conf/lower.rs`                       | `lower_configs` — Spec → Config; defines `IrConfig`                     |
+| `conf/types/specification/`           | All `*Spec` structs                                                     |
+| `conf/types/runtime/`                 | All `*Config` structs and their `From`/`TryFrom` impls                  |
+| `conf/validation/validate.rs`         | `validate_spec` orchestrator                                            |
+| `conf/validation/single_file/`        | Per-file validators                                                     |
+| `conf/validation/multi_file/`         | Cross-file validators                                                   |
+| `conf/validation/report.rs`           | `ValidationReport`, `ValidationIssue`, typed error helpers              |
+| `conf/validation/error.rs`            | `ConfigError` enum                                                      |
+| `conf/validation/validated_config.rs` | `ValidatedConfig` wrapper                                               |

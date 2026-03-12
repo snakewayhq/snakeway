@@ -1,16 +1,16 @@
 # Skill: integration-test — Writing Standard Integration Tests
 
 This skill covers how to write standard (non-HTTP-replay) integration tests in the
-`integration-tests` crate. These tests spin up a real Snakeway server process and
+`tests/integration` crate. These tests spin up a real Snakeway server process and
 exercise it over real network connections.
 
 ## Where Tests Live
 
-Integration tests are Rust test files inside `integration-tests/tests/`, organised
+Integration tests are Rust test files inside `tests/integration/tests/`, organised
 into subdirectories by feature area:
 
 ```
-integration-tests/tests/
+tests/integration/tests/
   proxy/
     basic_proxy.rs
     static_files.rs
@@ -47,8 +47,8 @@ Build a `RuntimeConfig` entirely in Rust using the fluent `ConfigBuilder` API,
 then hand it to `TestServer`:
 
 ```rust
-use integration_tests::conf::ConfigBuilder;
-use integration_tests::harness::TestServer;
+use integration::conf::ConfigBuilder;
+use integration::harness::TestServer;
 
 #[test]
 fn my_test() {
@@ -66,29 +66,29 @@ fn my_test() {
 }
 ```
 
-Common pre-built helpers in `integration_tests::conf`:
+Common pre-built helpers in `integration::conf`:
 
-| Helper | What it builds |
-|---|---|
-| `minimal_http_runtime_config()` | Plain HTTP listener + HTTP upstream |
-| `minimal_ws_runtime_config()` | Plain HTTP listener + WebSocket upstream |
-| `minimal_grpc_runtime_config()` | TLS listener + gRPC upstream |
-| `minimal_static_file_runtime_config()` | Static file serving (no upstream) |
-| `minimal_https_runtime_config_with_acme()` | TLS listener with ACME automation |
+| Helper                                     | What it builds                           |
+|--------------------------------------------|------------------------------------------|
+| `minimal_http_runtime_config()`            | Plain HTTP listener + HTTP upstream      |
+| `minimal_ws_runtime_config()`              | Plain HTTP listener + WebSocket upstream |
+| `minimal_grpc_runtime_config()`            | TLS listener + gRPC upstream             |
+| `minimal_static_file_runtime_config()`     | Static file serving (no upstream)        |
+| `minimal_https_runtime_config_with_acme()` | TLS listener with ACME automation        |
 
 `ConfigBuilder` methods (chain as needed):
 
 ```rust
-ConfigBuilder::default()
-    .with_http_ingress()
-    .with_request_filter_device()
-    .with_connection_filter_cidr_deny_list(&["192.168.1.0/24"])
-    .build()
+ConfigBuilder::default ()
+.with_http_ingress()
+.with_request_filter_device()
+.with_connection_filter_cidr_deny_list( & ["192.168.1.0/24"])
+.build()
 ```
 
 ### Option B — Fixture directory (for testing the HCL config loader)
 
-Pass the name of a config fixture directory under `integration-tests/fixtures/config/`:
+Pass the name of a config fixture directory under `tests/integration/fixtures/config/`:
 
 ```rust
 let srv = TestServer::start_with_http_upstream("basic");
@@ -115,9 +115,9 @@ For TLS endpoints use `srv.https_url()` and build your own client with the test 
 
 ```rust
 let client = reqwest::blocking::Client::builder()
-    .danger_accept_invalid_certs(true) // or pin the test CA
-    .build()
-    .unwrap();
+.danger_accept_invalid_certs(true) // or pin the test CA
+.build()
+.unwrap();
 let res = client.get(srv.https_url()).send().unwrap();
 ```
 
@@ -217,10 +217,10 @@ fn serves_index_html_from_static_dir() { ... }
 
 ## Useful Constants
 
-Import from `integration_tests::constants`:
+Import from `integration::constants`:
 
 ```rust
-use integration_tests::constants::{
+use integration::constants::{
     HTTP_RESPONSE_BODY,   // "hello world" — expected plain upstream body
     ROUTE_PATH_API,       // "/api"
     ROUTE_PATH_WS,        // "/ws"
@@ -236,12 +236,12 @@ use integration_tests::constants::{
 just integration-test
 
 # Run directly with nextest (assumes certs already exist)
-cargo nextest run -p integration-tests
+cargo nextest run -p integration
 
 # Run a specific test
-cargo nextest run -p integration-tests -E 'test(serves_index_html_from_static_dir)'
+cargo nextest run -p integration -E 'test(serves_index_html_from_static_dir)'
 ```
 
 > **Note:** The integration test suite requires Docker for ACME tests (Pebble CA).
 > For everything except ACME tests you can skip `just fetch-pebble-ca` and run
-> `cargo nextest run -p integration-tests` directly after generating TLS certs once.
+> `cargo nextest run -p integration` directly after generating TLS certs once.
