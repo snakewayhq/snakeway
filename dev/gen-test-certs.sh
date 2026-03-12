@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CERT_DIR="integration-tests/certs"
+CERT_DIR="tests/integration/certs"
 DAYS=3650
 
 mkdir -p "${CERT_DIR}"

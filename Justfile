@@ -119,17 +119,17 @@ sanity-check-origin:
     @curl -s http://localhost:4000/
 
     @echo "\nHTTPS:"
-    @curl -s --cacert integration-tests/certs/origin-ca.pem https://localhost:4443/
+    @curl -s --cacert tests/integration/certs/origin-ca.pem https://localhost:4443/
 
     @echo "\nWS:"
     @(echo "Hello, websocket." | wscat -c ws://localhost:4000/ws)
 
     @echo "\nWSS:"
-    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=integration-tests/certs/origin-ca.pem wscat -c wss://localhost:4443/ws)
+    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=tests/integration/certs/origin-ca.pem wscat -c wss://localhost:4443/ws)
 
     @echo "\ngRPC:"
     @grpcurl \
-    	-cacert integration-tests/certs/origin-ca.pem \
+    	-cacert tests/integration/certs/origin-ca.pem \
     	-proto ../snakeway-origin/users.proto \
     	-d '{"id":"123"}' \
     	localhost:5051 \
@@ -143,16 +143,16 @@ sanity-check-origin:
     @echo "\nHTTPS (TLS) over UDS:"
     @curl -s \
     	--unix-socket /tmp/snakeway-https-0.sock \
-    	--cacert integration-tests/certs/origin-ca.pem \
+    	--cacert tests/integration/certs/origin-ca.pem \
     	https://localhost/
 
 sanity-check-snakeway:
     @echo "\n\nStatic file over HTTPS ================"
-    curl -s --cacert integration-tests/certs/origin-ca.pem https://127.0.0.1:8443/assets/index.html
+    curl -s --cacert tests/integration/certs/origin-ca.pem https://127.0.0.1:8443/assets/index.html
     @echo "\n\nService over HTTPS ================"
-    curl -s --cacert integration-tests/certs/origin-ca.pem https://127.0.0.1:8443/api/users/1
+    curl -s --cacert tests/integration/certs/origin-ca.pem https://127.0.0.1:8443/api/users/1
     @echo "\n\nAdmin stats ================"
-    curl -s --cacert integration-tests/certs/origin-ca.pem https://127.0.0.1:8440/admin/stats
+    curl -s --cacert tests/integration/certs/origin-ca.pem https://127.0.0.1:8440/admin/stats
 
 # -----------------------------------------------------------------------------
 # Debugging
@@ -258,9 +258,9 @@ stop-docker:
 
 fetch-pebble-ca: start-docker
     @echo "Fetch Pebble's CA cert..."
-    docker cp snakeway-pebble:/test/certs/pebble.minica.pem integration-tests/certs/pebble-ca.pem
+    docker cp snakeway-pebble:/test/certs/pebble.minica.pem tests/integration/certs/pebble-ca.pem
     @echo "Fetch Pebble's Issuing cert (used to sign HTTP requests)..."
-    @curl -k https://localhost:15000/roots/0 > integration-tests/certs/pebble-issuing-ca.pem
+    @curl -k https://localhost:15000/roots/0 > tests/integration/certs/pebble-issuing-ca.pem
     @echo "All good."
 
 # Install Snakeway dev CA into macOS System keychain
@@ -269,7 +269,7 @@ install-dev-ca:
     sudo security add-trusted-cert \
       -d -r trustRoot \
       -k /Library/Keychains/System.keychain \
-      integration-tests/certs/origin-ca.pem
+      tests/integration/certs/origin-ca.pem
     @echo "✓ Snakeway dev CA installed"
 
 # Remove Snakeway dev CA from macOS System keychain
@@ -281,7 +281,7 @@ uninstall-dev-ca:
     @echo "✓ Snakeway dev CA removed"
 
 generate-dev-certs:
-    mkdir -p integration-tests/certs/
+    mkdir -p tests/integration/certs/
     @just fetch-pebble-ca
     ./dev/gen-test-certs.sh
 
@@ -289,7 +289,7 @@ test:
     cargo nextest run -p snakeway-core --features static_files,wasm
 
 integration-test: fetch-pebble-ca generate-dev-certs
-    cargo nextest run -p integration-tests
+    cargo nextest run -p integration
 
 test-everything: lint test integration-test generate-all-templates
     @echo "All good."

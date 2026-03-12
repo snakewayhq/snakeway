@@ -17,7 +17,7 @@ services:
     image: otel/opentelemetry-collector-contrib:latest
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
-      - ./otel/collector.yaml:/etc/otel-collector-config.yaml
+      - ./dev/otel/collector.yaml:/etc/otel-collector-config.yaml
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
@@ -29,7 +29,7 @@ services:
     image: grafana/tempo:2.10.1
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
-      - ./otel/tempo.yaml:/etc/tempo.yaml
+      - ./dev/otel/tempo.yaml:/etc/tempo.yaml
     ports:
       - "3200:3200"
 
@@ -42,7 +42,7 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     volumes:
-      - ./otel/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./dev/otel/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - snakeway-grafana-data:/var/lib/grafana
     depends_on:
       - tempo
@@ -56,7 +56,7 @@ services:
       TLS_KEY: /certs/server.key
 
     volumes:
-      - ./integration-tests/certs:/certs:ro
+      - ./tests/integration/certs:/certs:ro
       - ./data/tmp:/tmp
 
     ports:

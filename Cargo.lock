@@ -2092,7 +2092,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "integration-tests"
+name = "integration"
 version = "0.9.1"
 dependencies = [
  "arc-swap",

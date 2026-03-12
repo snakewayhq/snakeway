@@ -9,7 +9,7 @@ header quirks, large cookies, hop-by-hop header handling, etc.
 ## How the Harness Works
 
 ```
-integration-tests/
+tests/integration/
   fixtures/
     http/                   ← raw .http request fixture files
       headers/
@@ -38,6 +38,7 @@ integration-tests/
 ```
 
 `replay_http_fixture(path, port)` (in `src/harness/replay_http.rs`):
+
 1. Reads the raw bytes from `fixtures/http/<path>`.
 2. Normalises line endings to `\r\n` and ensures the request ends with `\r\n\r\n`.
 3. Opens a plain TCP connection to `TEST_HOST:port`.
@@ -58,7 +59,7 @@ pub fn replay_fixture(path: &str) -> String {
 
 ## Writing a Fixture File
 
-Create a plain text file in `integration-tests/fixtures/http/<category>/my_request.http`.
+Create a plain text file in `tests/integration/fixtures/http/<category>/my_request.http`.
 The file contains a raw HTTP/1.1 request exactly as it would appear on the wire.
 Line endings can be `\n` — the harness normalises them to `\r\n` automatically.
 
@@ -96,7 +97,7 @@ and declare it in `tests/http_replay/mod.rs`.
 ```rust
 // tests/http_replay/headers.rs
 use super::replay_fixture;
-use integration_tests::constants::HTTP_REPLAY_OK_RESPONSE;
+use integration::constants::HTTP_REPLAY_OK_RESPONSE;
 
 #[test]
 fn duplicate_headers_should_proxy() {
@@ -122,7 +123,7 @@ fn cl_te_smuggling_should_be_rejected() {
 ## Useful Constants
 
 ```rust
-use integration_tests::constants::HTTP_REPLAY_OK_RESPONSE; // "200 OK"
+use integration::constants::HTTP_REPLAY_OK_RESPONSE; // "200 OK"
 ```
 
 `HTTP_REPLAY_OK_RESPONSE` (`"200 OK"`) is the canonical string to check for a
@@ -131,8 +132,8 @@ and received a 200 response. Its absence means Snakeway rejected or blocked the 
 
 ## Declaring a New Test File
 
-1. Create the file: `integration-tests/tests/http_replay/my_category.rs`
-2. Declare it in `integration-tests/tests/http_replay/mod.rs`:
+1. Create the file: `tests/integration/tests/http_replay/my_category.rs`
+2. Declare it in `tests/integration/tests/http_replay/mod.rs`:
 
 ```rust
 mod browsers;
@@ -144,29 +145,29 @@ mod smuggling;
 
 ## When to Use Replay Tests vs Standard Integration Tests
 
-| Use HTTP replay when… | Use standard integration tests when… |
-|---|---|
-| Testing protocol-level edge cases (smuggling, malformed headers) | Testing feature behaviour via normal HTTP verbs |
-| Verifying browser-specific header sets | Testing response status codes, bodies, JSON |
-| Reproducing a bug that requires an exact byte-level request | Testing WebSocket or gRPC protocol flows |
-| Testing request normalisation (duplicate headers, hop-by-hop stripping) | Testing configuration options and their effects |
-| The scenario cannot be expressed with a high-level HTTP client | The test can be written with `srv.get()` / `srv.post()` |
+| Use HTTP replay when…                                                   | Use standard integration tests when…                    |
+|-------------------------------------------------------------------------|---------------------------------------------------------|
+| Testing protocol-level edge cases (smuggling, malformed headers)        | Testing feature behaviour via normal HTTP verbs         |
+| Verifying browser-specific header sets                                  | Testing response status codes, bodies, JSON             |
+| Reproducing a bug that requires an exact byte-level request             | Testing WebSocket or gRPC protocol flows                |
+| Testing request normalisation (duplicate headers, hop-by-hop stripping) | Testing configuration options and their effects         |
+| The scenario cannot be expressed with a high-level HTTP client          | The test can be written with `srv.get()` / `srv.post()` |
 
 ## Adding a New Category
 
-1. Create a directory: `integration-tests/fixtures/http/my_category/`
-2. Add fixture files: `integration-tests/fixtures/http/my_category/scenario_name.http`
-3. Create a test file: `integration-tests/tests/http_replay/my_category.rs`
-4. Declare it in `integration-tests/tests/http_replay/mod.rs`
+1. Create a directory: `tests/integration/fixtures/http/my_category/`
+2. Add fixture files: `tests/integration/fixtures/http/my_category/scenario_name.http`
+3. Create a test file: `tests/integration/tests/http_replay/my_category.rs`
+4. Declare it in `tests/integration/tests/http_replay/mod.rs`
 
 ## Running Replay Tests
 
 ```bash
 # Run only the http_replay test group
-cargo nextest run -p integration-tests -E 'test(http_replay)'
+cargo nextest run -p integration -E 'test(http_replay)'
 
 # Run a specific replay test
-cargo nextest run -p integration-tests -E 'test(cl_te_smuggling_should_be_rejected)'
+cargo nextest run -p integration -E 'test(cl_te_smuggling_should_be_rejected)'
 
 # Run the full integration suite (includes replay tests)
 just integration-test

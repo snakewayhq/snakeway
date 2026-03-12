@@ -1,8 +1,8 @@
 [workspace]
-members = ["integration-tests", "snakeway", "snakeway-conf", "snakeway-core"]
-default-members = ["snakeway"]
+members = ["tests/integration", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core"]
+default-members = ["crates/snakeway"]
 exclude = [
-    "snakeway-wit",
+    "crates/snakeway-wit",
 ]
 resolver = "2"
 

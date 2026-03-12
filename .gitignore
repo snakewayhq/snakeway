@@ -19,8 +19,8 @@ target
 # Artifacts
 dist/
 /config/
-/integration-tests/certs/
-/integration-tests/acme/
+/tests/integration/certs/
+/tests/integration/acme/
 /plugins/
 profile.json.gz
 /.snapshots/
