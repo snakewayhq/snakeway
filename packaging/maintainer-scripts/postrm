@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+# On purge, remove the snakeway user and group.
+if [ "$1" = "purge" ]; then
+    if getent passwd snakeway > /dev/null 2>&1; then
+        deluser --quiet --system snakeway || true
+    fi
+    if getent group snakeway > /dev/null 2>&1; then
+        delgroup --quiet --only-if-empty snakeway || true
+    fi
+fi
+
+#DEBHELPER#

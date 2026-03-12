@@ -1,0 +1,36 @@
+[Unit]
+Description=Snakeway Reverse Proxy
+Documentation=https://snakeway.io
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=snakeway
+Group=snakeway
+
+ExecStart=/usr/bin/snakeway run --config /etc/snakeway
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5s
+
+RuntimeDirectory=snakeway
+RuntimeDirectoryMode=0750
+
+# Reduce attack surface
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/snakeway /run/snakeway /var/log/snakeway
+
+# Allow binding to privileged ports (80, 443) as non-root.
+# Remove if you choose to bind on ports >= 1024.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

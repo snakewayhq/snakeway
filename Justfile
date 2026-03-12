@@ -210,6 +210,10 @@ install-build-tools:
     @brew install zig
     @cargo install cargo-component cargo-zigbuild wit-bindgen-cli
 
+# Install packaging tools (cargo-deb, cargo-generate-rpm)
+install-package-tools:
+    cargo install cargo-deb cargo-generate-rpm --locked
+
 # MUSL Build: AARCH64 (Linux ARM64)
 musl-aarch64:
     rustup target add aarch64-unknown-linux-musl
@@ -230,6 +234,31 @@ run:
 # Build and run
 build-and-run: release
     ./target/release/snakeway --config {{ CONFIG }}
+
+# -----------------------------------------------------------------------------
+# PACKAGING
+# -----------------------------------------------------------------------------
+
+# Build a .deb package (requires cargo-deb — run `just install-package-tools`)
+deb:
+    cargo deb -p snakeway
+
+# Build a .rpm package (requires cargo-generate-rpm — run `just install-package-tools`)
+rpm:
+    cargo generate-rpm -p snakeway
+
+# Build the Docker image locally (from source, native arch)
+docker-build:
+    docker build -t snakeway:dev .
+
+# Build the Docker image using pre-built binaries (CI pattern, multi-arch)
+# Expects binaries staged at dist/linux/amd64/snakeway and dist/linux/arm64/snakeway
+docker-build-ci:
+    docker buildx build \
+      --file Dockerfile.ci \
+      --platform linux/amd64,linux/arm64 \
+      --tag snakeway:dev \
+      .
 
 # -----------------------------------------------------------------------------
 # LINTING & FORMAT
