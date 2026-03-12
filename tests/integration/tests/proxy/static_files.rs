@@ -4,13 +4,17 @@ use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 
+const INDEX_HTML: &str = "index.html";
+const IMAGES_DIR: &str = "images";
+const IMAGES_1MB_PNG: &str = "1mb.png";
+
 /// Serves index.html from the configured static directory
 #[test]
 fn serves_index_html_from_static_dir() {
     let mut cfg = minimal_static_file_runtime_config();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let res = srv.get("/index.html").send().unwrap();
+    let res = srv.get(INDEX_HTML).send().unwrap();
 
     let status = res.status();
     let body = res.text().unwrap();
@@ -28,7 +32,7 @@ fn static_route_does_not_require_upstream() {
     let mut cfg = minimal_static_file_runtime_config();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let res = srv.get("/index.html").send().unwrap();
+    let res = srv.get(INDEX_HTML).send().unwrap();
 
     assert_eq!(res.status(), StatusCode::OK);
 }
@@ -54,8 +58,9 @@ fn proxy_route_still_works_when_static_is_enabled() {
 fn static_path_traversal_is_rejected() {
     let mut cfg = minimal_static_file_runtime_config();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let inaccessible_path = "/static/../Cargo.toml";
 
-    let res = srv.get("/static/../Cargo.toml").send().unwrap();
+    let res = srv.get(inaccessible_path).send().unwrap();
 
     assert!(
         res.status().is_client_error(),
@@ -69,7 +74,7 @@ fn static_response_includes_cache_headers() {
     let mut cfg = minimal_static_file_runtime_config();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let res = srv.get("/index.html").send().unwrap();
+    let res = srv.get(INDEX_HTML).send().unwrap();
 
     assert_eq!(res.status(), StatusCode::OK);
 
@@ -94,7 +99,7 @@ fn if_none_match_returns_304() {
     let mut cfg = minimal_static_file_runtime_config();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let initial = srv.get("/index.html").send().unwrap();
+    let initial = srv.get(INDEX_HTML).send().unwrap();
 
     let etag = initial
         .headers()
@@ -121,12 +126,12 @@ fn directory_listing_renders_when_enabled() {
         .with_static_file_ingress(true)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let target_path = format!("/{}/", IMAGES_DIR);
 
-    let res = srv.get("/images/").send().unwrap();
+    let res = srv.get(&target_path).send().unwrap();
 
     let status = res.status();
     let body = res.text().unwrap();
-
     assert_eq!(status, StatusCode::OK);
     assert!(body.contains("Index of /"));
 }
@@ -138,9 +143,9 @@ fn directory_listing_includes_expected_file() {
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let body = srv.get("/images/").send().unwrap().text().unwrap();
+    let body = srv.get(IMAGES_DIR).send().unwrap().text().unwrap();
 
-    assert!(body.contains("1mb.png"));
+    assert!(body.contains(IMAGES_1MB_PNG));
 }
 
 #[test]
@@ -148,11 +153,12 @@ fn supports_range_requests() {
     let mut cfg = ConfigBuilder::default()
         .with_static_file_ingress(true)
         .build();
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let _ = TestServer::start_http_upstream_with_config(&mut cfg);
+    let target_path = format!("{}/{}", IMAGES_DIR, IMAGES_1MB_PNG);
 
     let client = reqwest::blocking::Client::new();
     let res = client
-        .get(format!("{}/images/1mb.png", srv.base_url()))
+        .get(target_path)
         .header(reqwest::header::RANGE, "bytes=0-99")
         .send()
         .unwrap();
@@ -176,13 +182,11 @@ fn supports_range_requests() {
 fn head_request_returns_headers_without_body() {
     let spec = ConfigBuilder::default().with_static_file_ingress(true);
     let mut cfg = spec.build();
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
-
+    let _ = TestServer::start_http_upstream_with_config(&mut cfg);
+    let target_path = format!("{}/{}", IMAGES_DIR, IMAGES_1MB_PNG);
     let client = reqwest::blocking::Client::new();
-    let res = client
-        .head(format!("{}/images/1mb.png", srv.base_url()))
-        .send()
-        .unwrap();
+
+    let res = client.head(target_path).send().unwrap();
 
     assert_eq!(res.status(), StatusCode::OK);
     assert!(res.headers().contains_key(reqwest::header::CONTENT_LENGTH));
