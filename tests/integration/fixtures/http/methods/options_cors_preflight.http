@@ -1,0 +1,7 @@
+OPTIONS /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: method-test
+Origin: https://app.example.com
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: content-type,x-custom-header
+Accept: */*

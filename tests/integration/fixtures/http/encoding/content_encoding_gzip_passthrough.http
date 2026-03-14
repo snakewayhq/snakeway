@@ -1,0 +1,13 @@
+POST /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: encoding-test
+Content-Type: application/json
+Content-Encoding: gzip
+Transfer-Encoding: chunked
+Accept: */*
+Accept-Encoding: gzip, deflate, br
+
+c
+gzip-payload
+0
+
