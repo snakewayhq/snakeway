@@ -27,10 +27,10 @@ The orchestrating code lives in four files:
 
 | File | Role |
 |------|------|
-| `snakeway-core/src/conf/loader.rs` | Entry point: reads files, calls validate, calls lower |
-| `snakeway-core/src/conf/validation/validate.rs` | Calls all validators, returns `ValidationReport` |
-| `snakeway-core/src/conf/lower.rs` | Converts every Spec type into its Config counterpart |
-| `snakeway-core/src/conf/validation/report.rs` | Defines `ValidationReport` and all typed error helpers |
+| `crates/snakeway-core/src/conf/loader.rs` | Entry point: reads files, calls validate, calls lower |
+| `crates/snakeway-core/src/conf/validation/validate.rs` | Calls all validators, returns `ValidationReport` |
+| `crates/snakeway-core/src/conf/lower.rs` | Converts every Spec type into its Config counterpart |
+| `crates/snakeway-core/src/conf/validation/report.rs` | Defines `ValidationReport` and all typed error helpers |
 
 ---
 
@@ -38,11 +38,11 @@ The orchestrating code lives in four files:
 
 Every setting exists in **two parallel structs**:
 
-- **Spec** (`snakeway-core/src/conf/types/specification/`) — derives `Deserialize`; populated
+- **Spec** (`crates/snakeway-core/src/conf/types/specification/`) — derives `Deserialize`; populated
   directly from HCL. Fields use user-friendly types (`String`, `PathBuf`, `Option<…>`).
   The `origin: Origin` field (skip-serialized) carries the source file location for error messages.
 
-- **Config** (`snakeway-core/src/conf/types/runtime/`) — the resolved, executable form.
+- **Config** (`crates/snakeway-core/src/conf/types/runtime/`) — the resolved, executable form.
   Populated by lowering. May use resolved types (e.g. `SocketAddr` instead of `String`,
   or a concrete enum instead of a raw string).
 
@@ -57,7 +57,7 @@ This is the most common case. The server block is defined in `snakeway.hcl`.
 
 ### Step 1 — Add the field to the Spec struct
 
-**File:** `snakeway-core/src/conf/types/specification/server.rs`
+**File:** `crates/snakeway-core/src/conf/types/specification/server.rs`
 
 Add a field to `ServerSpec`. Use `Option<T>` when the setting is optional:
 
@@ -85,7 +85,7 @@ Update `ServerSpec::default()` at the bottom of the same file to include the new
 
 ### Step 2 — Add the field to the Config struct
 
-**File:** `snakeway-core/src/conf/types/runtime/server.rs`
+**File:** `crates/snakeway-core/src/conf/types/runtime/server.rs`
 
 Add a matching field to `ServerConfig`:
 
@@ -98,7 +98,7 @@ pub struct ServerConfig {
 
 ### Step 3 — Thread the field through the `TryFrom` conversion
 
-Still in `snakeway-core/src/conf/types/runtime/server.rs`, update the `TryFrom<ServerSpec>
+Still in `crates/snakeway-core/src/conf/types/runtime/server.rs`, update the `TryFrom<ServerSpec>
 for ServerConfig` impl:
 
 ```rust
@@ -119,7 +119,7 @@ by the caller in `lower.rs` — no changes to `lower.rs` are needed for server f
 
 ### Step 4 — Add validation (if needed)
 
-**File:** `snakeway-core/src/conf/validation/single_file/server.rs`
+**File:** `crates/snakeway-core/src/conf/validation/single_file/server.rs`
 
 Add your check inside `validate_server()`:
 
@@ -140,12 +140,12 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
 ```
 
 For reusable range checks, see `validate_range()` in
-`snakeway-core/src/conf/validation/validator/mod.rs` and the `SERVER_THREADS` constant for
+`crates/snakeway-core/src/conf/validation/validator/mod.rs` and the `SERVER_THREADS` constant for
 a pattern to follow.
 
 **Add a typed helper to `ValidationReport`** when the error should be reusable across
 validators. Add a new `impl ValidationReport` block in
-`snakeway-core/src/conf/validation/report.rs`:
+`crates/snakeway-core/src/conf/validation/report.rs`:
 
 ```rust
 /// Server Spec Validation
@@ -180,11 +180,11 @@ Ingress settings live in `ingress.d/*.hcl`. The same four steps apply but the fi
 
 | Step | File |
 |------|------|
-| Spec field | `snakeway-core/src/conf/types/specification/ingress.rs` (or `bind/`, `service/`, etc.) |
-| Config field | The matching file under `snakeway-core/src/conf/types/runtime/` |
+| Spec field | `crates/snakeway-core/src/conf/types/specification/ingress.rs` (or `bind/`, `service/`, etc.) |
+| Config field | The matching file under `crates/snakeway-core/src/conf/types/runtime/` |
 | Conversion | `From`/`TryFrom` impl in the runtime file |
-| Validation | `snakeway-core/src/conf/validation/single_file/ingress.rs` — `validate_ingress()` or one of its sub-functions |
-| Lowering | `snakeway-core/src/conf/lower.rs` — update the relevant `lower_configs()` section (listeners, services, static files) to plumb the new field through |
+| Validation | `crates/snakeway-core/src/conf/validation/single_file/ingress.rs` — `validate_ingress()` or one of its sub-functions |
+| Lowering | `crates/snakeway-core/src/conf/lower.rs` — update the relevant `lower_configs()` section (listeners, services, static files) to plumb the new field through |
 
 Note that `lower.rs` **does** need updating for ingress fields because the lowering loop
 there explicitly constructs `ListenerConfig`, `ServiceConfig`, etc.
@@ -195,10 +195,10 @@ there explicitly constructs `ListenerConfig`, `ServiceConfig`, etc.
 
 Some rules span multiple HCL files — for example, "if any ingress uses ACME TLS, the
 server block must configure `tls_automation`". These checks live in
-`snakeway-core/src/conf/validation/multi_file/`.
+`crates/snakeway-core/src/conf/validation/multi_file/`.
 
 Add a new function there and call it from `validate_spec()` in
-`snakeway-core/src/conf/validation/validate.rs`:
+`crates/snakeway-core/src/conf/validation/validate.rs`:
 
 ```rust
 pub fn validate_spec(server, ingresses, devices) -> ValidationReport {
@@ -218,5 +218,5 @@ pub fn validate_spec(server, ingresses, devices) -> ValidationReport {
   `bind { … }`, `services = [ { … } ]`, or `static_files = [ { … } ]`.
 - **Device-level** — any file matched by `include.devices`, inside the named device block
   (e.g. `identity_device { … }`). Device spec structs live in
-  `snakeway-core/src/conf/types/specification/device/` and are validated in
-  `snakeway-core/src/conf/validation/single_file/device.rs`.
+  `crates/snakeway-core/src/conf/types/specification/device/` and are validated in
+  `crates/snakeway-core/src/conf/validation/single_file/device.rs`.

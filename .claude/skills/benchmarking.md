@@ -19,7 +19,7 @@ in `k6/` and the `benchmark-proxy` / `run-load-test` recipes in the Justfile ins
 
 | Benchmark type | Location | Tool |
 |---|---|---|
-| Rust microbenchmarks | `snakeway-core/benches/` | Criterion |
+| Rust microbenchmarks | `crates/snakeway-core/benches/` | Criterion |
 | Proxy throughput / load tests | `k6/` | k6 |
 | Manual load tests | Justfile recipes | wrk / hey |
 
@@ -85,13 +85,13 @@ Good candidates (all synchronous, no I/O):
 ### Step 2 — Name the file after the component
 
 ```
-snakeway-core/benches/router.rs
-snakeway-core/benches/device_pipeline.rs
-snakeway-core/benches/request_filter.rs
-snakeway-core/benches/identity.rs
+crates/snakeway-core/benches/router.rs
+crates/snakeway-core/benches/device_pipeline.rs
+crates/snakeway-core/benches/request_filter.rs
+crates/snakeway-core/benches/identity.rs
 ```
 
-### Step 3 — Register the bench target in `snakeway-core/Cargo.toml`
+### Step 3 — Register the bench target in `crates/snakeway-core/Cargo.toml`
 
 ```toml
 [[bench]]
