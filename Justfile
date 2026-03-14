@@ -130,7 +130,6 @@ sanity-check-origin:
     @echo "\ngRPC:"
     @grpcurl \
     	-cacert tests/integration/certs/origin-ca.pem \
-    	-proto ../snakeway-origin/users.proto \
     	-d '{"id":"123"}' \
     	localhost:5051 \
     	users.UserService/GetUser
@@ -193,9 +192,9 @@ generate-all-templates:
 # Create WIT bindings for example WASM device
 generate-wit-bindings:
     @echo "Generate bindings for WASM devices"
-    wit-bindgen rust ./snakeway-wit/wit \
+    wit-bindgen rust ./crates/snakeway-wit/wit \
       --world snakeway \
-      --out-dir ./snakeway-wit/src/
+      --out-dir ./crates/snakeway-wit/src/
 
 # Build debug binary
 build:

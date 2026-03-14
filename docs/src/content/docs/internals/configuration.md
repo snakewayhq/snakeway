@@ -38,7 +38,7 @@ so a failure here (e.g. an unresolvable socket address) is wrapped in a `ConfigE
 variant and treated as a bug surface rather than user-visible feedback.
 
 The entry point for all three phases is `load_config` in
-`snakeway-core/src/conf/loader.rs`:
+`crates/snakeway-core/src/conf/loader.rs`:
 
 ```rust
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError>
@@ -54,8 +54,8 @@ Every setting exists in two parallel structs:
 
 | Layer      | Location                                      | Derives       | Purpose                                                |
 |------------|-----------------------------------------------|---------------|--------------------------------------------------------|
-| **Spec**   | `snakeway-core/src/conf/types/specification/` | `Deserialize` | Populated directly from HCL; uses user-friendly types  |
-| **Config** | `snakeway-core/src/conf/types/runtime/`       | `Serialize`   | Resolved, executable form used by the proxy at runtime |
+| **Spec**   | `crates/snakeway-core/src/conf/types/specification/` | `Deserialize` | Populated directly from HCL; uses user-friendly types  |
+| **Config** | `crates/snakeway-core/src/conf/types/runtime/`       | `Serialize`   | Resolved, executable form used by the proxy at runtime |
 
 The conversion between them is always a `From<FooSpec> for FooConfig` or
 `TryFrom<FooSpec> for FooConfig` impl that lives **in the runtime module** alongside
@@ -102,13 +102,13 @@ include {
 }
 ```
 
-`discover()` in `snakeway-core/src/conf/discover.rs` resolves each pattern relative to
+`discover()` in `crates/snakeway-core/src/conf/discover.rs` resolves each pattern relative to
 the config root and returns an ordered list of paths. Ordering is deterministic
 (lexicographic within each directory), which matters for listener naming.
 
 ## Validation in depth
 
-`validate_spec` in `snakeway-core/src/conf/validation/validate.rs` is the single
+`validate_spec` in `crates/snakeway-core/src/conf/validation/validate.rs` is the single
 orchestration point:
 
 ```rust
@@ -124,7 +124,7 @@ Internally it runs two categories of checks:
 ### Single-file validation
 
 Each spec is validated in isolation against its own fields. Validators live in
-`snakeway-core/src/conf/validation/single_file/`:
+`crates/snakeway-core/src/conf/validation/single_file/`:
 
 - `validate_version` — must be `1`. If it fails, all other validation is skipped (a
   version mismatch means the entire schema could be wrong).
@@ -140,7 +140,7 @@ Each spec is validated in isolation against its own fields. Validators live in
 ### Multi-file validation
 
 Some invariants span multiple files and can only be checked once the full set is known.
-These live in `snakeway-core/src/conf/validation/multi_file/`:
+These live in `crates/snakeway-core/src/conf/validation/multi_file/`:
 
 - `validate_tls` — if any ingress uses ACME TLS, `server.tls_automation` must be
   configured. If `server.tls_automation` is configured but no ingress has a TLS listener,
@@ -165,7 +165,7 @@ report.acme_tls_requires_domains( & bind.origin);
 
 These helpers keep validator code readable and keep error messages consistent across the
 codebase. They are defined as `impl ValidationReport` blocks grouped by the spec they
-belong to, at the bottom of `snakeway-core/src/conf/validation/report.rs`.
+belong to, at the bottom of `crates/snakeway-core/src/conf/validation/report.rs`.
 
 `ValidationReport::is_valid()` returns `true` only when `errors` is empty. Warnings alone
 do not block startup.
