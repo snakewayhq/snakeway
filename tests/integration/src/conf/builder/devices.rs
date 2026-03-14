@@ -168,6 +168,18 @@ impl ConfigBuilder {
         self
     }
 
+    /// Like `with_network_policy_allowing_forwarded_requests` but sets
+    /// `on_invalid = Ignore` so that a malformed X-Forwarded-For value is
+    /// silently discarded and the real connection IP is used instead of
+    /// returning 403.
+    pub fn with_network_policy_ignoring_invalid_forwarded(mut self) -> Self {
+        let mut device = Self::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+        device.forwarding.allow = true;
+        device.forwarding.on_invalid = OnInvalidForwardedSpec::Ignore;
+        self.network_policy_device_spec = Some(device);
+        self
+    }
+
     pub fn make_network_policy_device_spec(cidrs: Vec<&str>) -> NetworkPolicyDeviceSpec {
         NetworkPolicyDeviceSpec {
             enable: true,
