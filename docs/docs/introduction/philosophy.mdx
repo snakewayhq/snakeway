@@ -1,0 +1,51 @@
+---
+title: Philosophy
+---
+
+
+
+## Design Principles
+
+Snakeway is built around a few ideas:
+
+- **Explicit over implicit**: Nothing happens unless you configure it.
+- **Programmable, not declarative-only**: Real logic requires real code.
+- **Safe by default**: User-defined logic runs in constrained environments.
+- **Observable from day one**: Traffic you can't see is traffic you don't control.
+
+## Where Snakeway Fits
+
+Snakeway sits between the client and the web service, like nginx or any other reverse proxy.
+
+![Where Snakeway fits diagram](/img/diagrams/philosophy/where-snakeway-fits.svg)
+
+This allows Snakeway to make decisions at the edge before traffic ever hits application code.
+
+Common use cases include:
+
+- Early rejection of invalid or abusive requests
+- Rules engines and request classification
+- Header normalization and enrichment
+- Static file serving alongside proxied traffic
+- Structured access logging and observability
+
+## The Core Extensibility Model
+
+Everything in Snakeway revolves around **devices**.
+
+A device is a unit of logic that runs at a specific point in the request lifecycle.
+
+Devices can:
+
+- Read or modify request headers and bodies
+- Make routing decisions
+- Short-circuit requests with a response
+- Observe traffic for logging or metrics
+- React to upstream responses or errors
+
+Devices are executed **in a strict, ordered pipeline**.
+
+This is not middleware in the traditional web-framework sense.
+Devices are plugins that hook into the underlying Pingora data plane's HTTP pipeline at various points.
+Specific hooks are optional; which hooks are implemented depends on the device.
+For example, the Identity device only implements the `on_request` hook.

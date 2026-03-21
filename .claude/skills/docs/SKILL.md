@@ -10,18 +10,20 @@ the docs.
 
 | Component | Technology |
 |-----------|-----------|
-| Framework | [Astro](https://astro.build/) with [Starlight](https://starlight.astro.build/) |
-| Content | Markdown/MDX in `docs/src/content/docs/` |
-| Sidebar | Manual in `docs/astro.config.mjs` |
-| Build/Preview | `just docs` (runs `bun start` in `docs/`) |
-| Package manager | bun (`docs/package.json`) |
+| Framework | [Docusaurus](https://docusaurus.io/) (classic preset, TypeScript) |
+| Content | Markdown/MDX in `docs/docs/` |
+| Blog | Release notes in `docs/blog/` |
+| Sidebar | Manual in `docs/sidebars.ts` |
+| Site config | `docs/docusaurus.config.ts` |
+| Build/Preview | `just docs` (runs `npm start` in `docs/`) |
+| Package manager | npm (`docs/package.json`) |
 
 ---
 
 ## Content Layout
 
 ```
-docs/src/content/docs/
+docs/docs/
   introduction/          # Getting started, philosophy, roadmap
   guide/                 # How-to guides (CLI, TLS, devices, admin API, logging, static files)
   configuration/         # Configuration reference
@@ -35,7 +37,8 @@ docs/src/content/docs/
       request-rate-limiting.md
       structured-logging.md
   internals/             # Architecture, lifecycle, mental model
-  releases/              # Release notes (v0_6_0.md through v0_9_0.md)
+docs/blog/               # Release notes as blog posts
+docs/static/img/         # Images and SVG diagrams
 ```
 
 ---
@@ -80,7 +83,7 @@ Follow these rules precisely to match the existing documentation tone:
 - Include comments in HCL for default values: `max_header_bytes = 16384  # 16 KB`
 
 ### Admonitions
-Use Starlight admonitions for callouts:
+Use Docusaurus admonitions for callouts:
 
 ```markdown
 :::note
@@ -116,13 +119,13 @@ Compare the Rust spec struct against the corresponding docs page:
 
 | Spec file | Docs page |
 |-----------|-----------|
-| `crates/snakeway-conf/src/types/specification/server.rs` | `docs/src/content/docs/configuration/entry-point.md` |
-| `crates/snakeway-conf/src/types/specification/ingress.rs` | `docs/src/content/docs/configuration/ingress.md` |
-| `crates/snakeway-conf/src/types/specification/device/request_filter.rs` | `docs/src/content/docs/configuration/devices/request-filter.md` |
-| `crates/snakeway-conf/src/types/specification/device/identity.rs` | `docs/src/content/docs/configuration/devices/identity.md` |
-| `crates/snakeway-conf/src/types/specification/device/network_policy.rs` | `docs/src/content/docs/configuration/devices/network-policy.md` |
-| `crates/snakeway-conf/src/types/specification/device/request_rate_limiting.rs` | `docs/src/content/docs/configuration/devices/request-rate-limiting.md` |
-| `crates/snakeway-conf/src/types/specification/device/structured_logging.rs` | `docs/src/content/docs/configuration/devices/structured-logging.md` |
+| `crates/snakeway-conf/src/types/specification/server.rs` | `docs/docs/configuration/entry-point.md` |
+| `crates/snakeway-conf/src/types/specification/ingress.rs` | `docs/docs/configuration/ingress.md` |
+| `crates/snakeway-conf/src/types/specification/device/request_filter.rs` | `docs/docs/configuration/devices/request-filter.md` |
+| `crates/snakeway-conf/src/types/specification/device/identity.rs` | `docs/docs/configuration/devices/identity.md` |
+| `crates/snakeway-conf/src/types/specification/device/network_policy.rs` | `docs/docs/configuration/devices/network-policy.md` |
+| `crates/snakeway-conf/src/types/specification/device/request_rate_limiting.rs` | `docs/docs/configuration/devices/request-rate-limiting.md` |
+| `crates/snakeway-conf/src/types/specification/device/structured_logging.rs` | `docs/docs/configuration/devices/structured-logging.md` |
 
 Every `pub` field on a spec struct should have a corresponding section or mention in the
 docs page. Fields with `#[serde(default = "...")]` should show the default value in the
@@ -133,7 +136,7 @@ docs.
 If a new feature area, device, or guide topic is added:
 
 1. Create the markdown file under the appropriate directory
-2. Add a sidebar entry in `docs/astro.config.mjs` in the correct section
+2. Add a sidebar entry in `docs/sidebars.ts` in the correct section
 3. Follow the structure of an existing page in the same section as a template
 
 ### For behavioral changes
@@ -205,7 +208,7 @@ Open `http://localhost:4321` and navigate to the updated page.
 ### Step 1 — Create the file
 
 ```bash
-touch docs/src/content/docs/<section>/<slug>.md
+touch docs/docs/<section>/<slug>.md
 ```
 
 ### Step 2 — Write the frontmatter and content
@@ -239,7 +242,7 @@ Description of what it does.
 
 ### Step 3 — Add to sidebar
 
-Edit `docs/astro.config.mjs` and add an entry in the appropriate section:
+Edit `docs/sidebars.ts` and add an entry in the appropriate section:
 
 ```javascript
 {label: 'My New Feature', link: '/<section>/<slug>/'},
