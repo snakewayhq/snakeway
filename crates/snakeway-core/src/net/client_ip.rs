@@ -49,7 +49,6 @@ pub(crate) fn resolve_client_ip(
         .filter_map(|s| s.parse::<IpAddr>().ok())
         .collect();
 
-
     if !raw_entries.is_empty() && ips.is_empty() {
         // Malformed X-Forwarded-For headers with unparseable IPs detected...
         // If the XFF header had entries but none parsed as valid IPs,
