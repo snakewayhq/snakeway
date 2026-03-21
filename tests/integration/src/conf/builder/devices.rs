@@ -123,6 +123,13 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_request_filter_device_with_body_timeout(mut self, timeout_seconds: u64) -> Self {
+        let mut device_spec = Self::make_request_filter_device_spec();
+        device_spec.client_body_timeout_seconds = Some(timeout_seconds);
+        self.request_filter_device_spec = Some(device_spec);
+        self
+    }
+
     pub fn make_request_filter_device_spec() -> RequestFilterDeviceSpec {
         RequestFilterDeviceSpec {
             enable: true,

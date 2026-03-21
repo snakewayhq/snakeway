@@ -4,6 +4,7 @@ use bytes::Bytes;
 use http::{HeaderName, Method, StatusCode};
 use smallvec::SmallVec;
 use snakeway_conf::types::RequestFilterDeviceConfig;
+use std::time::Duration;
 
 /// RequestFilter validates incoming HTTP requests against various rules.
 ///
@@ -31,6 +32,7 @@ pub struct RequestFilterDevice {
     pub(crate) max_body_bytes: usize,
     pub(crate) max_suspicious_body_bytes: usize,
     pub(crate) deny_status: Option<u16>,
+    pub(crate) client_body_timeout: Option<Duration>,
 }
 
 impl RequestFilterDevice {
@@ -45,6 +47,7 @@ impl RequestFilterDevice {
             max_body_bytes: cfg.max_body_bytes,
             max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
             deny_status: cfg.deny_status,
+            client_body_timeout: cfg.client_body_timeout,
         })
     }
 
@@ -165,6 +168,12 @@ impl Device for RequestFilterDevice {
                 .insert(RequestBodyLimit::new(self.max_suspicious_body_bytes));
         }
 
+        // Client body timeout — stored in extensions so the gateway can apply
+        // it to the downstream session after the device pipeline runs.
+        if let Some(timeout) = self.client_body_timeout {
+            ctx.extensions.insert(ClientBodyTimeout(timeout));
+        }
+
         // Return normally - no gates tripped.
         DeviceResult::Continue
     }
@@ -203,3 +212,9 @@ impl RequestBodyLimit {
         Self { seen: 0, max }
     }
 }
+
+/// Stored in `RequestCtx.extensions` by the request filter device so the
+/// gateway layer can apply it to the downstream Pingora session via
+/// `session.downstream_session.set_read_timeout()`.
+#[derive(Debug, Clone, Copy)]
+pub struct ClientBodyTimeout(pub Duration);

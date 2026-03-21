@@ -1,5 +1,7 @@
 use super::replay_fixture;
+use integration::conf::ConfigBuilder;
 use integration::constants::HTTP_REPLAY_OK_RESPONSE;
+use integration::harness::TestServer;
 
 /// HTTP/1.1 requires a Host header (RFC 9112 §3.2).
 ///
@@ -102,10 +104,25 @@ fn request_line_without_version_should_be_rejected() {
 /// Forwarding a truncated body could cause the upstream to block waiting
 /// for more bytes, effectively creating a half-open connection that ties
 /// up upstream resources.
+///
+/// This test requires:
+/// - A request filter device with a short `client_body_timeout` so Pingora
+///   gives up waiting for the remaining body bytes quickly.
+/// - An upstream that reads the request before responding, so it doesn't
+///   race ahead with a 200 before the proxy detects the underflow.
 #[test]
 fn content_length_body_underflow_should_not_proxy_successfully() {
-    let resp = replay_fixture("malformed/content_length_body_underflow.http");
+    // Arrange: 2-second client body timeout so the test doesn't take 60s.
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_request_filter_device_with_body_timeout(2)
+        .build();
+    let srv = TestServer::start_http_upstream_that_reads_request_with_config(&mut cfg);
 
+    // Act
+    let resp = srv.replay_http_fixture("malformed/content_length_body_underflow.http");
+
+    // Assert
     assert!(
         !resp.contains(HTTP_REPLAY_OK_RESPONSE),
         "Request whose body is shorter than Content-Length must not proxy successfully"
