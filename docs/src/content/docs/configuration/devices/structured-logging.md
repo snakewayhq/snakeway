@@ -68,8 +68,12 @@ identity_fields = [
   "country", # ISO country code (coarse geolocation, privacy-safe)
   "region", # Sub-country region/state (used for traffic analysis and policy)
   "device", # Client device category (desktop, mobile, tablet, bot, etc.)
-  "bot", # Flag indicating likely of automated traffic vs human
+  "bot", # Flag indicating likely automated traffic vs human
   "connection_type", # Network type used by the client (Cable/DSL, Cellular, Corporate, or Satellite)
+  "client_ip", # Resolved client IP address (after XFF/trusted proxy resolution)
+  "proxy_chain", # Ordered list of proxy IPs traversed before reaching Snakeway
+  "forwarded", # Whether the request arrived via a forwarded (XFF) header
+  "trusted", # Whether the forwarded identity was verified against trusted proxies
 ]
 ```
 

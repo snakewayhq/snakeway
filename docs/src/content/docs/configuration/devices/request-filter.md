@@ -21,6 +21,8 @@ request_filter_device = {
   max_header_bytes = 16384
   max_body_bytes   = 1048576
 
+  client_body_timeout_seconds = 10
+
   deny_status = 403
 }
 ```
@@ -129,6 +131,28 @@ Body size limits depend on HTTP method semantics:
 * Methods that forbid bodies (`GET`, `HEAD`, `TRACE`) may be rejected earlier
 
 If a body exceeds its configured limit, the request is rejected with `413 Payload Too Large`.
+
+## Client Body Timeout
+
+```hcl
+client_body_timeout_seconds = 10
+```
+
+Controls how long the proxy waits for each chunk of request body data from the client.
+If the client stalls mid-body for longer than this duration, the connection is terminated.
+
+This prevents **slowloris-style attacks** where an attacker sends a large `Content-Length`
+but trickles body bytes to hold upstream connections open indefinitely.
+
+* Default: not set (Pingora's built-in default of 60 seconds applies)
+* Set to a lower value (e.g., `5`–`10`) for public-facing deployments
+* The timeout is **per-read**, not cumulative — each successful chunk resets the timer
+
+:::caution
+Without this setting, a malicious client can declare `Content-Length: 1000000` and send
+one byte per minute, tying up an upstream connection for hours. Set this in any
+deployment exposed to untrusted clients.
+:::
 
 ## Custom Deny Status
 

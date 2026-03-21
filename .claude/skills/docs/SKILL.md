@@ -251,16 +251,5 @@ Edit `docs/astro.config.mjs` and add an entry in the appropriate section:
 just docs
 ```
 
----
 
-## Known Gaps (as of 2026-03-21)
 
-These fields exist in code but are not yet documented:
-
-| Field | Spec file | Docs page |
-|-------|-----------|-----------|
-| `client_body_timeout_seconds` | `device/request_filter.rs` | `devices/request-filter.md` |
-| Identity field `client_ip` | `device/structured_logging.rs` | `devices/structured-logging.md` |
-| Identity field `proxy_chain` | `device/structured_logging.rs` | `devices/structured-logging.md` |
-| Identity field `forwarded` | `device/structured_logging.rs` | `devices/structured-logging.md` |
-| Identity field `trusted` | `device/structured_logging.rs` | `devices/structured-logging.md` |
