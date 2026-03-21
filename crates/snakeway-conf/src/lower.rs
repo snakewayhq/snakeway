@@ -82,10 +82,7 @@ pub(crate) fn lower_configs(
                             .as_ref()
                             .map(|endpoint| UpstreamTcpConfig::new(u.weight, endpoint))
                     })
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| ConfigError::InvalidUpstream {
-                        message: e.to_string(),
-                    })?;
+                    .collect::<Vec<_>>();
 
                 let service_name = format!("{}-service", bind_addr);
 
