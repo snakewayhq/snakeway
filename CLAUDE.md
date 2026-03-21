@@ -9,13 +9,13 @@ and a composable "device" middleware pipeline.
 ## Repository Layout
 
 ```
-snakeway/           # Main binary crate (entrypoint, CLI wiring)
-snakeway-conf/      # Configuration library crate — handles configuration file parsing and lowering to runtime representation.
-snakeway-core/      # Core library crate — all business logic lives here
-snakeway-wit/       # WIT bindings for WASM device interface
-tests/integration/  # Integration test crate (separate binary, uses nextest)
-docs/               # mdBook documentation
-k6/                 # k6 load test scripts
+crates/snakeway/           # Main binary crate (entrypoint, CLI wiring)
+crates/snakeway-conf/      # Configuration library crate — handles configuration file parsing and lowering to runtime representation.
+crates/snakeway-core/      # Core library crate — all business logic lives here
+crates/snakeway-wit/       # WIT bindings for WASM device interface
+tests/integration/         # Integration test crate (separate binary, uses nextest)
+docs/                      # mdBook documentation
+k6/                        # k6 load test scripts
 ```
 
 ## Key Commands

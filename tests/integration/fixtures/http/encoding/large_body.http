@@ -1,0 +1,49 @@
+POST /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: encoding-test
+Transfer-Encoding: chunked
+Content-Type: application/octet-stream
+Accept: */*
+
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+a
+0123456789
+0
+

@@ -24,6 +24,10 @@ pub const TEST_HOST: &str = "snakeway.test";
 /// Always patched to a dynamic free port by the test harness at startup.
 pub const DEFAULT_LISTENER_PORT: u16 = 8080;
 
+/// Default admin listener port, to distinguish between non-admin listeners during config validation.
+/// Always patched to a dynamic free port by the test harness at startup.
+pub const DEFAULT_ADMIN_LISTENER_PORT: u16 = 8443;
+
 /// Primary placeholder upstream port used when building service specs.
 /// Always patched to a dynamic free port by the test harness at startup.
 pub const UPSTREAM_PORT_PRIMARY: u16 = 9000;

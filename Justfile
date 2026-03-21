@@ -130,7 +130,6 @@ sanity-check-origin:
     @echo "\ngRPC:"
     @grpcurl \
     	-cacert tests/integration/certs/origin-ca.pem \
-    	-proto ../snakeway-origin/users.proto \
     	-d '{"id":"123"}' \
     	localhost:5051 \
     	users.UserService/GetUser
@@ -169,22 +168,22 @@ dump-config:
     cargo run -q --all-features -- config dump|jq
 
 generate-all-templates:
-    @mkdir -p .dev/templates
-    @rm -fr .dev/templates/*
+    @mkdir -p data/templates data/acme/orders
+    @rm -fr data/templates/*
     @echo "Creating minimal conf..."
-    @cargo run -q --all-features -- config init .dev/templates/minimal --template=minimal
+    @cargo run -q --all-features -- config init data/templates/minimal --template=minimal
     @echo "\nValidating minimal conf..."
-    @cargo run -q --all-features -- config check .dev/templates/minimal
+    @cargo run -q --all-features -- config check data/templates/minimal
 
     @echo "\nCreating dev conf..."
-    @cargo run -q --all-features -- config init .dev/templates/dev --template=dev
+    @cargo run -q --all-features -- config init data/templates/dev --template=dev
     @echo "\nValidating dev conf..."
-    @cargo run -q --all-features -- config check .dev/templates/dev
+    @cargo run -q --all-features -- config check data/templates/dev
 
     @echo "\nCreating httpbin conf..."
-    @cargo run -q --all-features -- config init .dev/templates/httpbin --template=httpbin
+    @cargo run -q --all-features -- config init data/templates/httpbin --template=httpbin
     @echo "\nValidating httpbin conf..."
-    @cargo run -q --all-features -- config check .dev/templates/httpbin
+    @cargo run -q --all-features -- config check data/templates/httpbin
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS
@@ -193,9 +192,9 @@ generate-all-templates:
 # Create WIT bindings for example WASM device
 generate-wit-bindings:
     @echo "Generate bindings for WASM devices"
-    wit-bindgen rust ./snakeway-wit/wit \
+    wit-bindgen rust ./crates/snakeway-wit/wit \
       --world snakeway \
-      --out-dir ./snakeway-wit/src/
+      --out-dir ./crates/snakeway-wit/src/
 
 # Build debug binary
 build:
@@ -318,8 +317,8 @@ generate-dev-certs:
 test:
     cargo nextest run -p snakeway-core --features static_files,wasm
 
-integration-test: fetch-pebble-ca generate-dev-certs
-    cargo nextest run -p integration
+integration-test *ARGS: fetch-pebble-ca generate-dev-certs
+    cargo nextest run -p integration {{ ARGS }}
 
 test-everything: lint test integration-test generate-all-templates
     @echo "All good."

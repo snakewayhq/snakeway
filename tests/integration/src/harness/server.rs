@@ -1,7 +1,10 @@
 use crate::constants::{ACME_ORDERS_DIR, TEST_HOST};
 use crate::harness::replay_http::replay_http_fixture;
 use crate::harness::runtime_patch::patch_runtime;
-use crate::harness::upstream::{start_grpc_upstream, start_http_upstream, start_ws_upstream};
+use crate::harness::upstream::{
+    start_grpc_upstream, start_http_upstream, start_http_upstream_that_reads_request,
+    start_ws_upstream,
+};
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
 use reqwest::blocking::{Client, RequestBuilder};
@@ -42,6 +45,10 @@ impl TestServer {
 
     pub fn start_http_upstream_with_config(cfg: &mut RuntimeConfig) -> Self {
         Self::start_with_config(cfg, start_http_upstream)
+    }
+
+    pub fn start_http_upstream_that_reads_request_with_config(cfg: &mut RuntimeConfig) -> Self {
+        Self::start_with_config(cfg, start_http_upstream_that_reads_request)
     }
 
     pub fn start_with_config<F>(cfg: &mut RuntimeConfig, start_upstream: F) -> Self

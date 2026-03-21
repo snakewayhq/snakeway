@@ -42,6 +42,19 @@ pub struct RequestFilterDeviceSpec {
     pub max_suspicious_body_bytes: usize,
 
     //-------------------------------------------------------------------------
+    // Timeouts
+    //-------------------------------------------------------------------------
+    /// Maximum time (in seconds) to wait for each chunk of request body data
+    /// from the client.  If the client stalls mid-body for longer than this
+    /// duration, the connection is terminated.  This prevents slowloris-style
+    /// attacks that hold upstream resources by trickling body bytes.
+    ///
+    /// Applied to the downstream read timeout via Pingora's session API.
+    /// `None` keeps Pingora's default (60 s).
+    #[serde(default)]
+    pub client_body_timeout_seconds: Option<u64>,
+
+    //-------------------------------------------------------------------------
     // Override the default granular deny status with a device-scoped value.
     //-------------------------------------------------------------------------
     pub deny_status: Option<u16>,
