@@ -14,7 +14,7 @@ crates/snakeway-conf/      # Configuration library crate — handles configurati
 crates/snakeway-core/      # Core library crate — all business logic lives here
 crates/snakeway-wit/       # WIT bindings for WASM device interface
 tests/integration/         # Integration test crate (separate binary, uses nextest)
-docs/                      # mdBook documentation
+docs/                      # Docusaurus documentation site
 k6/                        # k6 load test scripts
 ```
 
@@ -67,7 +67,7 @@ See the `benchmarking` skill for conventions and templates.
 
 ## Documentation
 
-The documentation site lives in `docs/` and uses Astro + Starlight. Preview with `just docs`.
+The documentation site lives in `docs/` and uses Docusaurus. Preview with `just docs`.
 When adding or changing config fields, update the corresponding docs page.
 See the `docs` skill for the spec-to-docs mapping, writing conventions, and recipes.
 

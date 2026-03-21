@@ -199,7 +199,7 @@ Preview the docs locally:
 just docs
 ```
 
-Open `http://localhost:4321` and navigate to the updated page.
+Open `http://localhost:3000` and navigate to the updated page.
 
 ---
 
@@ -245,7 +245,7 @@ Description of what it does.
 Edit `docs/sidebars.ts` and add an entry in the appropriate section:
 
 ```javascript
-{label: 'My New Feature', link: '/<section>/<slug>/'},
+'<section>/<slug>',
 ```
 
 ### Step 4 — Verify
