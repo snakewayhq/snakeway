@@ -19,6 +19,20 @@ structured_logging_device = {
 }
 ```
 
+## Field Reference
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enable` | boolean | `false` | Enable or disable the device. |
+| `level` | string | `"info"` | Log level: `"trace"`, `"debug"`, `"info"`, `"warn"`, `"error"`. |
+| `include_identity` | boolean | `false` | Include resolved identity fields in log events. |
+| `identity_fields` | list of strings | `[]` | Which identity fields to include (see below). |
+| `include_headers` | boolean | `false` | Include request headers in log events. |
+| `allowed_headers` | list of strings | `[]` | Headers to include when `include_headers` is true. |
+| `redacted_headers` | list of strings | `[]` | Headers to redact (value replaced, key preserved). |
+| `events` | list of strings | all | Which lifecycle events to log. |
+| `phases` | list of strings | all | Which phases to log. |
+
 ## What Gets Logged
 
 Depending on configuration, the device can emit events for:

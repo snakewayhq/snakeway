@@ -30,8 +30,66 @@ const sidebars: SidebarsConfig = {
       label: 'Configuration Reference',
       items: [
         'configuration/overview',
-        'configuration/entry-point',
-        'configuration/ingress',
+        {
+          type: 'category',
+          label: 'Entry Point',
+          link: {type: 'doc', id: 'configuration/entry-point/index'},
+          items: [
+            'configuration/entry-point/server',
+            {
+              type: 'category',
+              label: 'TLS Automation',
+              link: {type: 'doc', id: 'configuration/entry-point/tls-automation/index'},
+              items: [
+                'configuration/entry-point/tls-automation/acme',
+                'configuration/entry-point/tls-automation/cert-store',
+              ],
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Ingress',
+          link: {type: 'doc', id: 'configuration/ingress/index'},
+          items: [
+            {
+              type: 'category',
+              label: 'Bind',
+              link: {type: 'doc', id: 'configuration/ingress/bind'},
+              items: [
+                'configuration/ingress/connection-filter',
+                'configuration/ingress/connection-rate-limiter',
+              ],
+            },
+            'configuration/ingress/admin-bind',
+            {
+              type: 'category',
+              label: 'Services',
+              link: {type: 'doc', id: 'configuration/ingress/services'},
+              items: [
+                'configuration/ingress/circuit-breaker',
+              ],
+            },
+            'configuration/ingress/routes',
+            {
+              type: 'category',
+              label: 'Upstreams',
+              link: {type: 'doc', id: 'configuration/ingress/upstreams'},
+              items: [
+                'configuration/ingress/upstream-tls',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Static Files',
+              link: {type: 'doc', id: 'configuration/ingress/static-files'},
+              items: [
+                'configuration/ingress/compression',
+                'configuration/ingress/cache-policy',
+              ],
+            },
+          ],
+        },
         {
           type: 'category',
           label: 'Devices',

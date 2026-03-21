@@ -277,7 +277,7 @@ snakeway run --config /etc/snakeway
 
 ## reload
 
-Reloads via the CLI require Snakeway to be started with a [PID file](/docs/configuration/entry-point/#pid_file) (set in
+Reloads via the CLI require Snakeway to be started with a [PID file](/docs/configuration/entry-point/server) (set in
 `snakeway.hcl`).
 
 ```shell
