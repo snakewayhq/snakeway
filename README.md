@@ -1,5 +1,8 @@
 # Snakeway
 
+> **LLM Disclosure**: This project used LLMs during development. See
+> [LLM_DISCLOSURE.md](LLM_DISCLOSURE.md) for a full transparency report.
+
 **Snakeway** is a modern, extensible **L7 reverse proxy** built with **Rust**.
 
 It is designed for engineers who want **control**, **performance**, and **composability** without dragging in a bloated
