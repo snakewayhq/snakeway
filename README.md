@@ -1,8 +1,5 @@
 # Snakeway
 
-> **LLM Disclosure**: This project used LLMs during development. See
-> [LLM_DISCLOSURE.md](LLM_DISCLOSURE.md) for a full transparency report.
-
 **Snakeway** is a modern, extensible **L7 reverse proxy** built with **Rust**.
 
 It is designed for engineers who want **control**, **performance**, and **composability** without dragging in a bloated
@@ -29,3 +26,13 @@ Any MMDB database is supported, but the default for integration tests is [IP Geo
 ## User Agent Parsing
 
 Uses Woothee by default, but also as a secondary options [ua-parser](https://github.com/ua-parser/uap-core).
+
+## LLM Disclosure
+
+The software was largely written and architected by a human.
+
+An LLM was used *mostly* for fleshing out tests, refactoring, bug fixes,
+and attempting to keep the docs from drifting.
+
+See [LLM_DISCLOSURE.md](LLM_DISCLOSURE.md) for a full transparency report.
+
