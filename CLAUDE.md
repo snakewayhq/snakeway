@@ -58,6 +58,18 @@ Two sub-types:
 
 Snakeway config is loaded from HCL files. The integration-test crate also provides a
 `ConfigBuilder` for constructing `RuntimeConfig` values entirely in Rust without touching the filesystem.
+See the `conf-settings` skill for the end-to-end recipe when adding a new setting.
+
+## Benchmarking
+
+Criterion microbenchmarks live in `crates/snakeway-core/benches/`. Run with `just bench`.
+See the `benchmarking` skill for conventions and templates.
+
+## Documentation
+
+The documentation site lives in `docs/` and uses Astro + Starlight. Preview with `just docs`.
+When adding or changing config fields, update the corresponding docs page.
+See the `docs` skill for the spec-to-docs mapping, writing conventions, and recipes.
 
 ## Environment constraints
 
