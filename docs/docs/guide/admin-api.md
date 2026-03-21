@@ -2,64 +2,56 @@
 title: Admin API
 ---
 
+Snakeway includes a built-in administrative API for monitoring proxy health, inspecting upstream services, viewing traffic statistics, and triggering configuration reloads. All endpoints are served on the address configured in `bind_admin` under the `/admin/` path, and all responses are JSON-formatted.
 
-Snakeway includes a built-in administrative API that allows you to monitor the health of your proxy, inspect upstream
-services, view performance statistics, and trigger configuration reloads.
+## Configuration
 
-### Endpoint Reference
+The Admin API listens on the address specified by `bind_admin` in your server configuration:
 
-All Admin API endpoints return JSON-formatted responses.
+```hcl
+server {
+  bind_admin = "127.0.0.1:8081"
+}
+```
 
-#### `GET /admin/health`
+:::caution
+The Admin API exposes operational data and a reload endpoint. Bind it to a loopback or internal address and restrict access at the network level.
+:::
 
-Returns the overall health status of the Snakeway instance and its registered upstream services.
+## Endpoint Reference
+
+### `GET /admin/health`
+
+Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream health checks and circuit breaker state.
 
 ```shell
 curl http://localhost:8081/admin/health
 ```
 
-#### `GET /admin/upstreams`
+**Example response:**
 
-Provides a detailed view of all registered upstreams, including their current health status and load balancing metrics.
+```json
+{
+  "status": "healthy"
+}
+```
+
+**Error responses:**
+
+| Status | Meaning |
+|---|---|
+| `200 OK` | Instance is healthy. |
+| `503 Service Unavailable` | One or more critical upstreams are unhealthy. |
+
+### `GET /admin/upstreams`
+
+Provides a detailed view of all registered upstreams, including their current health status, circuit breaker state, and request counters.
 
 ```shell
 curl http://localhost:8081/admin/upstreams
 ```
 
-#### `GET /admin/stats`
-
-Returns real-time performance statistics, including request and response counters, error rates, and active connection
-counts per service.
-
-```shell
-curl http://localhost:8081/admin/stats
-```
-
-#### `POST /admin/reload`
-
-Triggers an immediate hot reload of the Snakeway configuration. The server will validate the new configuration before
-applying it.
-
-```shell
-curl -X POST http://localhost:8081/admin/reload
-```
-
-The response includes the new configuration "epoch" (a version counter) if the reload was successfully initiated.
-
-## Admin Bindings
-
-These endpoints are available on the `bind_admin` address under the `/admin/` path.
-
-## Endpoints
-
-### `GET /admin/health`
-
-### `GET /admin/upstreams`
-
-Returns a detailed view of all configured services and their upstreams, including health status and circuit breaker
-state.
-
-**Example Response:**
+**Example response:**
 
 ```json
 {
@@ -94,65 +86,17 @@ state.
 }
 ```
 
+The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
+
 ### `GET /admin/stats`
 
-Returns aggregated traffic statistics per service.
+Returns aggregated traffic statistics per service, including active connections and cumulative counters.
 
-**Example Response:**
-
-```json
-{
-  "api": {
-    "active_requests": 0,
-    "total_failures": 2,
-    "total_requests": 150,
-    "total_successes": 148
-  }
-}
+```shell
+curl http://localhost:8081/admin/stats
 ```
 
-## Internal Logging
-
-Snakeway logs significant traffic events to standard output (structured as JSON when configured).
-
-### Circuit Breaker Transitions
-
-When an upstream's circuit state changes, a log entry is generated:
-
-```json
-{
-  "timestamp": "2023-12-29T15:27:00.000Z",
-  "level": "INFO",
-  "fields": {
-    "event": "circuit_transition",
-    "service": "api",
-    "upstream": "UpstreamId(12345)",
-    "from": "closed",
-    "to": "open",
-    "reason": "failure_threshold_exceeded",
-    "failures": 5
-  }
-}
-```
-
-**Common Reasons:**
-
-- `failure_threshold_exceeded`: Too many consecutive failures in Closed state.
-- `cooldown_expired`: Transitioning from Open to HalfOpen after the configured duration.
-- `half_open_failure`: Any failure while in HalfOpen state immediately re-opens the circuit.
-- `success_threshold_reached`: Successful probes in HalfOpen state closed the circuit.
-
-## Metrics
-
-Monitoring the performance and health of your proxy is critical for maintaining a reliable service. Snakeway provides
-real-time metrics through its Admin API, giving you visibility into traffic patterns and upstream health.
-
-### The Stats API
-
-The primary way to collect metrics from Snakeway is through the `/admin/stats` endpoint. This endpoint provides counters
-and gauges for various system activities.
-
-#### Sample Metrics Output
+**Example response:**
 
 ```json
 {
@@ -171,13 +115,90 @@ and gauges for various system activities.
 }
 ```
 
-### Metrics per Service
+**Metrics per service:**
 
-Stats are grouped by the service name defined in your configuration. For each service, Snakeway tracks:
+| Metric | Description |
+|---|---|
+| `active_requests` | Number of requests currently in flight. |
+| `total_requests` | Cumulative requests handled since last restart or reload. |
+| `total_successes` | Requests that resulted in a successful response (typically 2xx and 3xx). |
+| `total_failures` | Requests that resulted in an error (4xx, 5xx, or connection failures). |
 
-- **`active_requests`**: The number of requests currently being processed.
-- **`total_requests`**: The cumulative number of requests handled by the service since the last restart or reload.
-- **`total_successes`**: The number of requests that resulted in a successful response (typically 2xx and 3xx status
-  codes).
-- **`total_failures`**: The number of requests that resulted in an error (typically 4xx and 5xx status codes, or
-  connection failures).
+### `POST /admin/reload`
+
+Triggers a hot reload of the Snakeway configuration. Snakeway validates the new configuration before applying it. If validation fails, the existing configuration remains active.
+
+```shell
+curl -X POST http://localhost:8081/admin/reload
+```
+
+**Example response (success):**
+
+```json
+{
+  "status": "ok",
+  "epoch": 3
+}
+```
+
+The `epoch` field is a version counter that increments with each successful reload.
+
+**Example response (validation failure):**
+
+```json
+{
+  "status": "error",
+  "message": "invalid configuration: unknown field `cidr_alow` in network_policy_device"
+}
+```
+
+**Error responses:**
+
+| Status | Meaning |
+|---|---|
+| `200 OK` | Reload was successfully initiated. |
+| `400 Bad Request` | Configuration validation failed. The response body contains the error message. |
+
+## Circuit Breaker Transition Logs
+
+When an upstream's circuit state changes, Snakeway emits a structured log event:
+
+```json
+{
+  "timestamp": "2026-03-21T15:27:00.000Z",
+  "level": "INFO",
+  "fields": {
+    "event": "circuit_transition",
+    "service": "api",
+    "upstream": "UpstreamId(12345)",
+    "from": "closed",
+    "to": "open",
+    "reason": "failure_threshold_exceeded",
+    "failures": 5
+  }
+}
+```
+
+**Transition reasons:**
+
+- `failure_threshold_exceeded`: Too many consecutive failures in Closed state triggered the circuit to open.
+- `cooldown_expired`: The configured open duration elapsed, transitioning from Open to HalfOpen.
+- `half_open_failure`: A failure during HalfOpen immediately re-opens the circuit.
+- `success_threshold_reached`: Enough successful probes in HalfOpen state closed the circuit.
+
+## Using the Admin API for Monitoring
+
+The `/admin/stats` and `/admin/upstreams` endpoints are designed to be polled by monitoring systems. A simple health check script might look like this:
+
+```shell
+# Check overall health
+curl -sf http://localhost:8081/admin/health || echo "Snakeway is unhealthy"
+
+# Fetch stats for a Prometheus exporter or custom dashboard
+curl -s http://localhost:8081/admin/stats | jq .
+
+# Inspect a specific service's upstream health
+curl -s http://localhost:8081/admin/upstreams | jq '.services.api'
+```
+
+Stats counters reset on process restart or successful configuration reload. For long-term trend analysis, export the counters to an external time-series database at a regular polling interval.

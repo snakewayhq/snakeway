@@ -393,9 +393,9 @@ endpoint = {
 
 Enables TLS for the upstream connection.
 
-- `sni` — The SNI hostname sent during the TLS handshake.
-- `verify` — Whether to verify the upstream's certificate. Set to `false` only in controlled environments.
-- `ca_file` — Optional path to a CA certificate file used to verify the upstream's certificate. Falls back to the global
+- `sni`: The SNI hostname sent during the TLS handshake.
+- `verify`: Whether to verify the upstream's certificate. Set to `false` only in controlled environments.
+- `ca_file`: Optional path to a CA certificate file used to verify the upstream's certificate. Falls back to the global
   `server.ca_file` if not set.
 
 #### sock

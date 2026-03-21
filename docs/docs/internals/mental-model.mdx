@@ -92,8 +92,7 @@ The identity device is the first device in the pipeline.
 
 The structured logging device is the last device in the pipeline.
 
-WASM devices are run AFTER all builtin devices.
-In the future, WASM devices will run after all builtin devices except the structured logging device.
+WASM devices currently run after all builtin devices, including the structured logging device. A future release will reorder WASM devices to run before structured logging so that log entries can reflect any mutations made by user-defined devices.
 
 ## Device Phases
 

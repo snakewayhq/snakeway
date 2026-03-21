@@ -177,10 +177,10 @@ How many days before expiry to begin attempting renewal. Recommended range: 7–
 
 ACME server connection details.
 
-- `directory_url` — The ACME directory URL (e.g., Let's Encrypt's production or staging endpoint).
-- `data_dir` — Directory where ACME account keys and order state are persisted.
-- `contact_email` — One or more contact email addresses registered with the ACME provider.
-- `ca_file` — Optional CA certificate file for verifying the ACME server's TLS certificate (useful for staging/testing environments).
+- `directory_url`: The ACME directory URL (e.g., Let's Encrypt's production or staging endpoint).
+- `data_dir`: Directory where ACME account keys and order state are persisted.
+- `contact_email`: One or more contact email addresses registered with the ACME provider.
+- `ca_file`: Optional CA certificate file for verifying the ACME server's TLS certificate (useful for staging/testing environments).
 
 ##### cert_store
 
@@ -189,7 +189,7 @@ ACME server connection details.
 
 Determines where issued certificates are stored. Two types are supported:
 
-`filesystem` — persists certificates to disk across restarts (recommended for production):
+`filesystem`: persists certificates to disk across restarts (recommended for production):
 
 ```hcl
 cert_store = {
@@ -198,7 +198,7 @@ cert_store = {
 }
 ```
 
-`memory` — stores certificates in memory only; certificates are lost on restart (useful for development and testing):
+`memory`: stores certificates in memory only; certificates are lost on restart (useful for development and testing):
 
 ```hcl
 cert_store = {

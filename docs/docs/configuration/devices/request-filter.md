@@ -146,7 +146,7 @@ but trickles body bytes to hold upstream connections open indefinitely.
 
 * Default: not set (Pingora's built-in default of 60 seconds applies)
 * Set to a lower value (e.g., `5`–`10`) for public-facing deployments
-* The timeout is **per-read**, not cumulative — each successful chunk resets the timer
+* The timeout is **per-read**, not cumulative: each successful chunk resets the timer
 
 :::caution
 Without this setting, a malicious client can declare `Content-Length: 1000000` and send
