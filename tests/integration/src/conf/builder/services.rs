@@ -1,8 +1,8 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::{
     ACME_CERTS_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDERS_DIR, CERT_ORIGIN_CA_PEM,
-    CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM, ROUTE_PATH_API, ROUTE_PATH_GRPC,
-    ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
+    CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, ROUTE_PATH_API,
+    ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
 };
 use snakeway_core::testing_api::conf::types::{
     AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec,
@@ -126,6 +126,29 @@ impl ConfigBuilder {
         };
         self.ingress_specs.push(admin_ingress);
 
+        self
+    }
+
+    /// Adds a standalone manual-TLS admin listener to the config.
+    ///
+    /// This lets admin API tests run without the full ACME / Pebble setup
+    /// required by `with_https_ingress()`.  The listener uses the same test
+    /// server certificate as other TLS listeners, so test clients must call
+    /// `danger_accept_invalid_certs(true)`.
+    pub fn with_admin_ingress(mut self) -> Self {
+        let admin_ingress = IngressSpec {
+            bind_admin: Some(BindAdminSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: DEFAULT_LISTENER_PORT,
+                tls: TlsTerminationSpec::Manual {
+                    cert: PathBuf::from(CERT_SERVER_PEM),
+                    key: PathBuf::from(CERT_SERVER_KEY),
+                },
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        self.ingress_specs.push(admin_ingress);
         self
     }
 

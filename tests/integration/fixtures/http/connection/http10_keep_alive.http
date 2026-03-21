@@ -1,0 +1,5 @@
+GET /api HTTP/1.0
+Host: snakeway.test:8080
+User-Agent: connection-test
+Connection: Keep-Alive
+Accept: */*

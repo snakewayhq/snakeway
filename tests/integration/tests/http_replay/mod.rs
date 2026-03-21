@@ -1,7 +1,12 @@
 mod browsers;
+mod connection;
 mod cookies;
+mod encoding;
 mod headers;
+mod malformed;
+mod methods;
 mod smuggling;
+mod uri;
 
 use integration::conf::minimal_http_runtime_config;
 use integration::harness::TestServer;

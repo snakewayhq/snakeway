@@ -1,0 +1,11 @@
+POST /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: smuggle-test
+Content-Type: application/x-www-form-urlencoded
+Transfer-Encoding: chunked
+X-Custom: value
+Content-Length: 0
+Accept: */*
+
+0
+

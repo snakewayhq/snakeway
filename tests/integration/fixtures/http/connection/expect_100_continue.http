@@ -1,0 +1,12 @@
+POST /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: connection-test
+Content-Type: application/json
+Transfer-Encoding: chunked
+Expect: 100-continue
+Accept: */*
+
+b
+{"ok":true}
+0
+

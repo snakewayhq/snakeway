@@ -1,0 +1,5 @@
+GET /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: cookie-test
+Accept: */*
+Cookie: session="abc 123"; token=xy%3Dz; flag=true; encoded=%2Fpath%2Fvalue; empty=; normal=hello_world

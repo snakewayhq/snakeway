@@ -96,3 +96,75 @@ fn dual_content_length_should_be_rejected() {
         "Duplicate Content-Length must be rejected"
     );
 }
+
+/// Obfuscated Transfer-Encoding smuggling test.
+///
+/// Technique:
+/// Use a non-standard Transfer-Encoding token (`xchunked`) that some
+/// upstream servers normalise to `chunked` while the proxy rejects or
+/// ignores the header and falls back to Content-Length.
+///
+/// If the proxy uses Content-Length (5 bytes = "hello") while the
+/// backend treats the unknown TE as chunked and reads `hello\r\n0\r\n`
+/// as two message parts, the request boundary shifts and a hidden
+/// second request can be injected.
+///
+/// Snakeway must not proxy a request with an unrecognised
+/// Transfer-Encoding alongside a Content-Length.
+#[test]
+fn te_obfuscated_chunked_should_be_rejected() {
+    let resp = replay_fixture("smuggling/te_chunked_obfuscated.http");
+
+    assert!(
+        !resp.contains(HTTP_REPLAY_OK_RESPONSE),
+        "Obfuscated Transfer-Encoding with Content-Length must not be proxied"
+    );
+}
+
+/// Leading-whitespace Transfer-Encoding smuggling variant.
+///
+/// Technique:
+/// `Transfer-Encoding:  chunked` (two spaces before the value) is a
+/// known bypass against WAFs and proxies that whitespace-strip header
+/// values inconsistently.  If the proxy doesn't recognise the
+/// double-spaced value as `chunked` but the backend does, the proxy
+/// may fall back to Content-Length framing, creating a desync.
+///
+/// A correctly implemented proxy must either normalise header-value
+/// whitespace and detect the conflict, or reject the ambiguous request.
+#[test]
+fn te_with_leading_whitespace_cl_should_be_rejected() {
+    let resp = replay_fixture("smuggling/te_space_before_value.http");
+
+    assert!(
+        !resp.contains(HTTP_REPLAY_OK_RESPONSE),
+        "Transfer-Encoding with leading whitespace + Content-Length desync must be rejected"
+    );
+}
+
+/// Chunked-then-Content-Length pipeline injection.
+///
+/// Technique:
+/// A request that carries Transfer-Encoding: chunked with a chunked
+/// body that terminates immediately (chunk size 0) but also declares
+/// Content-Length: 20.
+///
+/// The 20 bytes declared by Content-Length happen to be the start of
+/// a second HTTP request (`POST /api ...`). A proxy that gives precedence
+/// to Content-Length after seeing a zero-length chunked body would forward
+/// those 20 bytes as the body, letting the hidden request prefix "bleed"
+/// into the next upstream connection slot.
+///
+/// RFC 9112 requires that when both Transfer-Encoding and Content-Length
+/// are present, Transfer-Encoding takes precedence. The proxy must
+/// reject or safely handle this ambiguity rather than forwarding the
+/// Content-Length count worth of bytes as a body.
+#[test]
+fn chunked_body_with_content_length_should_be_rejected() {
+    let resp = replay_fixture("smuggling/chunked_then_cl.http");
+
+    assert!(
+        !resp.contains(HTTP_REPLAY_OK_RESPONSE),
+        "Chunked body combined with conflicting Content-Length must be rejected"
+    );
+}

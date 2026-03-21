@@ -1,0 +1,6 @@
+GET /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: header-test
+X-Empty-Value:
+X-Present-Value: present
+Accept: */*
