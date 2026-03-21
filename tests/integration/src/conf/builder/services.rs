@@ -1,8 +1,9 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::{
     ACME_CERTS_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDERS_DIR, CERT_ORIGIN_CA_PEM,
-    CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, ROUTE_PATH_API,
-    ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
+    CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_ADMIN_LISTENER_PORT,
+    ROUTE_PATH_API, ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY,
+    UPSTREAM_PORT_SECONDARY,
 };
 use snakeway_core::testing_api::conf::types::{
     AcmeServerSpec, BindAdminSpec, BindInterfaceInput, CertStoreSpec, EndpointSpec,
@@ -139,7 +140,7 @@ impl ConfigBuilder {
         let admin_ingress = IngressSpec {
             bind_admin: Some(BindAdminSpec {
                 interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: DEFAULT_LISTENER_PORT,
+                port: DEFAULT_ADMIN_LISTENER_PORT,
                 tls: TlsTerminationSpec::Manual {
                     cert: PathBuf::from(CERT_SERVER_PEM),
                     key: PathBuf::from(CERT_SERVER_KEY),
