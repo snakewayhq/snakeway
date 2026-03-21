@@ -1,0 +1,12 @@
+POST /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: smuggle-test
+Content-Length: 13
+Transfer-Encoding: chunked
+Connection: keep-alive
+Accept: */*
+
+0
+
+GET /api HTTP/1.1
+Host: snakeway.test:8080

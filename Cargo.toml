@@ -1,8 +1,8 @@
 [workspace]
-members = ["integration-tests", "snakeway", "snakeway-core"]
-default-members = ["snakeway"]
+members = ["tests/integration", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core"]
+default-members = ["crates/snakeway"]
 exclude = [
-    "snakeway-wit",
+    "crates/snakeway-wit",
 ]
 resolver = "2"
 
@@ -12,7 +12,7 @@ opt-level = 0
 [profile.release]
 opt-level = 3               # Maximize performance
 debug = true                # Keep debug symbols for profiling
-lto = "thin"                # Link-time optimization
+lto = "fat"                 # Link-time optimization
 codegen-units = 1           # More aggressive optimization by reducing parallelism
 panic = "abort"             # Reduce panic handling code
 incremental = false         # Ensure no incremental compilation
@@ -77,3 +77,8 @@ instant-acme = "0.8"
 rcgen = "0.14"
 sha2 = "0.10"
 x509-parser = "0.18.1"
+opentelemetry_sdk = "0.31"
+opentelemetry-otlp = "0.31"
+opentelemetry = "0.31"
+tracing-opentelemetry = "0.32"
+criterion = { version = "0.5", features = ["html_reports"] }

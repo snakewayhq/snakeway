@@ -1,0 +1,7 @@
+GET /api HTTP/1.1
+Host: snakeway.test:8080
+Connection: keep-alive
+User-Agent: Mozilla/5.0
+Accept: */*
+Cookie: sessionid=abc123; csrftoken=xyz456; analytics_id=12345678901234567890; tracking_cookie=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ; theme=dark; preferences=lang=en&layout=grid&notifications=true&beta=false; session_signature=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+Accept-Encoding: gzip, deflate, br

@@ -1,0 +1,8 @@
+PATCH /api HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: method-test
+Content-Type: application/merge-patch+json
+Content-Length: 17
+Accept: */*
+
+{"status":"patch"}

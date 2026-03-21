@@ -28,18 +28,11 @@ install-dev-tools:
     bun i -g wscat
     cargo install tokio-console samply cargo-nextest cargo-llvm-cov
 
-# Make SVG diagrams themeable.
-post-process-diagrams:
-    #!/usr/bin/env bash
-    find docs/src/assets/diagrams -name '*.svg' -exec sh -c '
-      for f do
-        sed -E "s/(fill|stroke)=\"#[^\"]*\"/\1=\"currentColor\"/g" "$f" > "$f.tmp" &&
-        mv "$f.tmp" "$f"
-      done
-    ' sh {} +
+docs:
+    cd docs && npm start
 
-docs: post-process-diagrams
-    cd docs && bun start
+docs-build:
+    cd docs && npm run build
 
 # Install mkcert and nss, then create dev certs.
 setup-tls-dev-cert:
@@ -55,6 +48,10 @@ setup-tls-dev-cert:
 # Benchmarks and profiling
 # -----------------------------------------------------------------------------
 
+# Run Criterion microbenchmarks for snakeway-core.
+bench:
+    cargo bench -p snakeway-core
+
 # Use wrk and hey to test various upstream configurations.
 benchmark-proxy:
     @echo "No TLS (wrk)"
@@ -62,11 +59,11 @@ benchmark-proxy:
     @echo "With TLS (wrk)"
     wrk -t4 -c128 -d10s https://localhost:8443/api/users/1
     @echo "Raw upstream (wrk)"
-    wrk -t4 -c128 -d10s http://localhost:3000/api/users/1
+    wrk -t4 -c128 -d10s http://localhost:4000/api/users/1
     @echo "NO TLS (hey)"
     hey -n 20000 -c 128 http://127.0.0.1:8080/api/users/1
     @echo "Raw upstream (hey)"
-    hey -n 20000 -c 128 http://127.0.0.1:3000/api/users/1
+    hey -n 20000 -c 128 http://127.0.0.1:4000/api/users/1
 
 # Run hey to test out various static file request configs.
 benchmark-static-files:
@@ -94,11 +91,11 @@ profile-tokio:
 
 # Generate meaningful profiling data against an upstream.
 run-load-against-upstream:
-    hey -n 300000 -c 256 http://127.0.0.1:8080/api/users/1
+    hey -n 400000 -c 256 http://127.0.0.1:8080/api/users/1
 
 # Generate meaningful profiling data against a static file.
 run-load-against-static:
-    hey -n 300000 -c 256 http://127.0.0.1:8080/assets/index.html
+    hey -n 400000 -c 256 http://127.0.0.1:8080/assets/index.html
 
 # Generate some spoofed traffic for the identity device
 run-spoofed-traffic:
@@ -107,30 +104,25 @@ run-spoofed-traffic:
 run-load-test:
     k6 run --vus 10 --duration 30s ./k6/load-test.js
 
-# Build and run the origin server.
-start-origin:
-    (cd snakeway-origin && just launch)
-
 # Check all origin protocols (TCP + UDS)
 sanity-check-origin:
     @echo "TCP ================"
 
     @echo "\nHTTP:"
-    @curl -s http://localhost:3000/
+    @curl -s http://localhost:4000/
 
     @echo "\nHTTPS:"
-    @curl -s --cacert integration-tests/certs/origin-ca.pem https://localhost:3443/
+    @curl -s --cacert tests/integration/certs/origin-ca.pem https://localhost:4443/
 
     @echo "\nWS:"
-    @(echo "Hello, websocket." | wscat -c ws://localhost:3000/ws)
+    @(echo "Hello, websocket." | wscat -c ws://localhost:4000/ws)
 
     @echo "\nWSS:"
-    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=integration-tests/certs/origin-ca.pem wscat -c wss://localhost:3443/ws)
+    @(echo "Hello, secure websocket." | NODE_EXTRA_CA_CERTS=tests/integration/certs/origin-ca.pem wscat -c wss://localhost:4443/ws)
 
     @echo "\ngRPC:"
     @grpcurl \
-    	-cacert integration-tests/certs/origin-ca.pem \
-    	-proto snakeway-origin/users.proto \
+    	-cacert tests/integration/certs/origin-ca.pem \
     	-d '{"id":"123"}' \
     	localhost:5051 \
     	users.UserService/GetUser
@@ -143,16 +135,16 @@ sanity-check-origin:
     @echo "\nHTTPS (TLS) over UDS:"
     @curl -s \
     	--unix-socket /tmp/snakeway-https-0.sock \
-    	--cacert integration-tests/certs/origin-ca.pem \
+    	--cacert tests/integration/certs/origin-ca.pem \
     	https://localhost/
 
 sanity-check-snakeway:
     @echo "\n\nStatic file over HTTPS ================"
-    curl -s --cacert integration-tests/certs/origin-ca.pem https://127.0.0.1:8443/assets/index.html
+    curl -s --cacert tests/integration/certs/origin-ca.pem https://127.0.0.1:8443/assets/index.html
     @echo "\n\nService over HTTPS ================"
-    curl -s --cacert integration-tests/certs/origin-ca.pem https://127.0.0.1:8443/api/users/1
+    curl -s --cacert tests/integration/certs/origin-ca.pem https://127.0.0.1:8443/api/users/1
     @echo "\n\nAdmin stats ================"
-    curl -s --cacert integration-tests/certs/origin-ca.pem https://127.0.0.1:8440/admin/stats
+    curl -s --cacert tests/integration/certs/origin-ca.pem https://127.0.0.1:8440/admin/stats
 
 # -----------------------------------------------------------------------------
 # Debugging
@@ -169,22 +161,22 @@ dump-config:
     cargo run -q --all-features -- config dump|jq
 
 generate-all-templates:
-    @mkdir -p ./dev/templates
-    @rm -fr ./dev/templates/*
+    @mkdir -p data/templates data/acme/orders
+    @rm -fr data/templates/*
     @echo "Creating minimal conf..."
-    @cargo run -q --all-features -- config init ./dev/templates/minimal --template=minimal
+    @cargo run -q --all-features -- config init data/templates/minimal --template=minimal
     @echo "\nValidating minimal conf..."
-    @cargo run -q --all-features -- config check ./dev/templates/minimal
+    @cargo run -q --all-features -- config check data/templates/minimal
 
     @echo "\nCreating dev conf..."
-    @cargo run -q --all-features -- config init ./dev/templates/dev --template=dev
+    @cargo run -q --all-features -- config init data/templates/dev --template=dev
     @echo "\nValidating dev conf..."
-    @cargo run -q --all-features -- config check ./dev/templates/dev
+    @cargo run -q --all-features -- config check data/templates/dev
 
     @echo "\nCreating httpbin conf..."
-    @cargo run -q --all-features -- config init ./dev/templates/httpbin --template=httpbin
+    @cargo run -q --all-features -- config init data/templates/httpbin --template=httpbin
     @echo "\nValidating httpbin conf..."
-    @cargo run -q --all-features -- config check ./dev/templates/httpbin
+    @cargo run -q --all-features -- config check data/templates/httpbin
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS
@@ -193,9 +185,9 @@ generate-all-templates:
 # Create WIT bindings for example WASM device
 generate-wit-bindings:
     @echo "Generate bindings for WASM devices"
-    wit-bindgen rust ./snakeway-wit/wit \
+    wit-bindgen rust ./crates/snakeway-wit/wit \
       --world snakeway \
-      --out-dir ./snakeway-wit/src/
+      --out-dir ./crates/snakeway-wit/src/
 
 # Build debug binary
 build:
@@ -209,6 +201,10 @@ release:
 install-build-tools:
     @brew install zig
     @cargo install cargo-component cargo-zigbuild wit-bindgen-cli
+
+# Install packaging tools (cargo-deb, cargo-generate-rpm)
+install-package-tools:
+    cargo install cargo-deb cargo-generate-rpm --locked
 
 # MUSL Build: AARCH64 (Linux ARM64)
 musl-aarch64:
@@ -230,6 +226,32 @@ run:
 # Build and run
 build-and-run: release
     ./target/release/snakeway --config {{ CONFIG }}
+
+# -----------------------------------------------------------------------------
+# PACKAGING
+# -----------------------------------------------------------------------------
+
+# Build a .deb package (requires cargo-deb — run `just install-package-tools`)
+deb:
+    cargo deb -p snakeway
+
+# Build a .rpm package (requires cargo-generate-rpm — run `just install-package-tools`)
+rpm:
+    cargo generate-rpm -p snakeway
+
+# Build the Docker image locally (from source, native arch)
+docker-build:
+    docker build -t snakeway:dev .
+
+# Build the Docker image using pre-built binaries (CI pattern, multi-arch)
+
+# Expects binaries staged at dist/linux/amd64/snakeway and dist/linux/arm64/snakeway
+docker-build-ci:
+    docker buildx build \
+      --file Dockerfile.ci \
+      --platform linux/amd64,linux/arm64 \
+      --tag snakeway:dev \
+      .
 
 # -----------------------------------------------------------------------------
 # LINTING & FORMAT
@@ -258,9 +280,9 @@ stop-docker:
 
 fetch-pebble-ca: start-docker
     @echo "Fetch Pebble's CA cert..."
-    docker cp snakeway-pebble:/test/certs/pebble.minica.pem integration-tests/certs/pebble-ca.pem
+    docker cp snakeway-pebble:/test/certs/pebble.minica.pem tests/integration/certs/pebble-ca.pem
     @echo "Fetch Pebble's Issuing cert (used to sign HTTP requests)..."
-    @curl -k https://localhost:15000/roots/0 > integration-tests/certs/pebble-issuing-ca.pem
+    @curl -k https://localhost:15000/roots/0 > tests/integration/certs/pebble-issuing-ca.pem
     @echo "All good."
 
 # Install Snakeway dev CA into macOS System keychain
@@ -269,7 +291,7 @@ install-dev-ca:
     sudo security add-trusted-cert \
       -d -r trustRoot \
       -k /Library/Keychains/System.keychain \
-      integration-tests/certs/origin-ca.pem
+      tests/integration/certs/origin-ca.pem
     @echo "✓ Snakeway dev CA installed"
 
 # Remove Snakeway dev CA from macOS System keychain
@@ -281,15 +303,15 @@ uninstall-dev-ca:
     @echo "✓ Snakeway dev CA removed"
 
 generate-dev-certs:
-    mkdir -p integration-tests/certs/
+    mkdir -p tests/integration/certs/
     @just fetch-pebble-ca
-    ./gen-test-certs.sh
+    ./dev/gen-test-certs.sh
 
 test:
     cargo nextest run -p snakeway-core --features static_files,wasm
 
-integration-test: fetch-pebble-ca generate-dev-certs
-    cargo nextest run -p integration-tests
+integration-test *ARGS: fetch-pebble-ca generate-dev-certs
+    cargo nextest run -p integration {{ ARGS }}
 
 test-everything: lint test integration-test generate-all-templates
     @echo "All good."

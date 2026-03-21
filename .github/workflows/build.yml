@@ -2,6 +2,7 @@ name: Snakeway CI
 
 permissions:
   contents: write
+  packages: write
 
 on:
   push:
@@ -72,7 +73,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Use a dedicated cache key so this job's compiled artifacts (integration-tests crate
+      # Use a dedicated cache key so this job's compiled artifacts (integration crate
       # and its unique dependencies such as tonic, reqwest) are stored separately from the
       # unit-test job's cache.  Both jobs run in parallel after lint, so sharing a single key
       # would cause last-writer-wins cache collisions with no benefit.
@@ -91,13 +92,13 @@ jobs:
       # These certificates are created by our own test CA and are used by the proxy
       # tests that exercise manual TLS termination.  They do not depend on Pebble.
       - name: Generate TLS test certificates
-        run: bash ./gen-test-certs.sh
+        run: bash ./dev/gen-test-certs.sh
 
       # Reuse the same docker-compose-dev.yml that developers use locally so that
       # CI behaviour is identical to local behaviour.  --remove-orphans ensures a
       # clean slate on re-runs without requiring an explicit down step beforehand.
       - name: Start Pebble (ACME test server)
-        run: docker compose -f docker-compose-dev.yml up -d --remove-orphans
+        run: docker compose -f docker-compose-dev.yml up pebble -d --remove-orphans
 
       # Pebble takes a moment to generate its ephemeral CA and start its HTTPS
       # listener.  We poll the ACME directory endpoint (which is the same URL
@@ -129,14 +130,14 @@ jobs:
       # before we proceed to run the tests.
       - name: Fetch Pebble CA certificate
         run: |
-          mkdir -p integration-tests/certs
+          mkdir -p tests/integration/certs
           docker cp snakeway-pebble:/test/certs/pebble.minica.pem \
-            integration-tests/certs/pebble-ca.pem
+            tests/integration/certs/pebble-ca.pem
           openssl x509 -noout -subject \
-            -in integration-tests/certs/pebble-ca.pem
+            -in tests/integration/certs/pebble-ca.pem
 
       - name: Run integration tests
-        run: cargo nextest run -p integration-tests
+        run: cargo nextest run -p integration
 
       # Always tear down containers, even when tests fail, to prevent port and
       # resource leaks between CI runs on the same runner.  --volumes removes
@@ -148,7 +149,8 @@ jobs:
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
     runs-on: ubuntu-latest
-    needs: [test, integration-test]
+    needs: [ test, integration-test ]
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -201,17 +203,166 @@ jobs:
           name: snakeway-${{ matrix.target }}-${{ matrix.variant.name }}
           path: target/${{ matrix.target }}/dist/snakeway
 
-  release:
-    name: Create release artifacts
+  package:
+    name: Build OS packages (.deb + .rpm)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            deb_arch: amd64
+            rpm_arch: x86_64
+          - target: aarch64-unknown-linux-musl
+            deb_arch: arm64
+            rpm_arch: aarch64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-deb and cargo-generate-rpm binaries
+        id: cache-pkg-tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-deb
+            ~/.cargo/bin/cargo-generate-rpm
+          key: pkg-tools-${{ runner.os }}-v1
+
+      - name: Install packaging tools
+        if: steps.cache-pkg-tools.outputs.cache-hit != 'true'
+        run: cargo install cargo-deb cargo-generate-rpm --locked
+
+      # Download the pre-built binary produced by the `build` job (default
+      # variant — no extra features) and place it where cargo-deb and
+      # cargo-generate-rpm expect it.
+      - name: Download pre-built binary (${{ matrix.target }})
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-${{ matrix.target }}-default
+          path: snakeway/target/${{ matrix.target }}/dist/
+
+      - name: Fix binary permissions
+        run: chmod 0755 snakeway/target/${{ matrix.target }}/dist/snakeway
+
+      # cargo-deb reads assets relative to the workspace root; --no-build
+      # skips compilation and uses the binary we placed above.
+      - name: Build .deb (${{ matrix.deb_arch }})
+        run: |
+          cargo deb -p snakeway \
+            --no-build \
+            --target ${{ matrix.target }} \
+            --deb-version ${{ github.ref_name }}
+
+      # cargo-generate-rpm reads from the same target directory.
+      - name: Build .rpm (${{ matrix.rpm_arch }})
+        run: |
+          cargo generate-rpm -p snakeway \
+            --target ${{ matrix.target }} \
+            --set-metadata "version=\"${{ github.ref_name }}\""
+
+      - name: Collect packages
+        run: |
+          mkdir -p pkgs
+          cp snakeway/target/${{ matrix.target }}/debian/*.deb \
+             pkgs/ 2>/dev/null || true
+          cp snakeway/target/${{ matrix.target }}/generate-rpm/*.rpm \
+             pkgs/ 2>/dev/null || true
+          ls -lh pkgs/
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.target }}
+          path: pkgs/
+
+  docker:
+    name: Build and push Docker image
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifacts
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Download pre-built MUSL binaries for both architectures.
+      - name: Download x86_64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-x86_64-unknown-linux-musl-default
+          path: dist/linux/amd64/
+
+      - name: Download aarch64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-aarch64-unknown-linux-musl-default
+          path: dist/linux/arm64/
+
+      - name: Fix binary permissions
+        run: |
+          chmod 0755 dist/linux/amd64/snakeway
+          chmod 0755 dist/linux/arm64/snakeway
+
+      - name: Set up QEMU (for cross-arch emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/snakeway
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.ci
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: Create release artifacts
+    needs: [build, package]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download binary artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: snakeway-*-linux-musl-*
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: packages-*
 
       - name: Verify downloaded artifacts
         run: |
@@ -239,6 +390,11 @@ jobs:
         run: |
           set -e
           cd dist
+          shasum -a 256 \
+            snakeway-v*-linux-musl* \
+            packages-*/*.deb \
+            packages-*/*.rpm \
+            > SHA256SUMS 2>/dev/null || \
           shasum -a 256 snakeway-v*-linux-musl* > SHA256SUMS
           cat SHA256SUMS
 
@@ -250,4 +406,8 @@ jobs:
             dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl-wasm
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl-wasm
+            dist/packages-x86_64-unknown-linux-musl/*.deb
+            dist/packages-x86_64-unknown-linux-musl/*.rpm
+            dist/packages-aarch64-unknown-linux-musl/*.deb
+            dist/packages-aarch64-unknown-linux-musl/*.rpm
             dist/SHA256SUMS

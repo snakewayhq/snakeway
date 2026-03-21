@@ -1,0 +1,19 @@
+[package]
+name = "snakeway-conf"
+version = "0.9.1"
+edition = "2024"
+
+[dependencies]
+glob = { workspace = true }
+ipnet = { workspace = true, features = ["serde"] }
+ipnet-trie = { workspace = true }
+nix = { workspace = true, features = ["signal"] }
+openssl = { workspace = true }
+http = { workspace = true }
+serde = { workspace = true, features = ["rc"] }
+serde_json = { workspace = true }
+hcl-rs = { workspace = true }
+owo-colors = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

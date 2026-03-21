@@ -1,0 +1,410 @@
+use crate::data_plane::ws_connection_management::WsConnectionGuard;
+use crate::execution::ctx::RequestId;
+use crate::execution::ctx::request::error::RequestRejectError;
+use crate::execution::ctx::request::normalization::{
+    NormalizationOutcome, ProtocolNormalizationMode, normalize_headers, normalize_path,
+    normalize_query,
+};
+use crate::execution::ctx::request::{
+    NormalizedHeaders, NormalizedRequest, NormalizedRequestParams, RequestSource,
+};
+use crate::execution::enrichment::user_agent::ClientIdentity;
+use crate::execution::route::types::RouteId;
+use crate::execution::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::runtime::UpstreamId;
+use http::header::HOST;
+use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
+use std::net::{IpAddr, Ipv4Addr};
+use std::str::FromStr;
+use tracing::Span;
+
+/// Canonical request context passed through the Snakeway pipeline
+#[derive(Debug)]
+pub struct RequestCtx {
+    /// Holds the WS connection slot for the lifetime of the connection
+    pub(crate) ws_guard: Option<WsConnectionGuard>,
+
+    /// It is necessary to guard requests to ensure proper circuit breaker state updates.
+    pub(crate) admission_guard: Option<AdmissionGuard>,
+
+    /// Lifecycle flag to determine if the context has already been hydrated from a session.
+    pub(crate) hydrated: bool,
+
+    /// Service name for routing decisions.
+    pub(crate) service: Option<String>,
+
+    /// Optional override for the upstream request path
+    pub(crate) upstream_path: Option<String>,
+
+    /// Remote IP of the TCP connection (authoritative)
+    pub(crate) peer_ip: IpAddr,
+
+    /// Was a websocket connection opened?
+    pub(crate) ws_opened: bool,
+
+    /// Upstream authority for HTTP/2 requests.
+    pub(crate) upstream_authority: Option<String>,
+
+    /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
+    pub(crate) extensions: Extensions,
+
+    /// Normalized request representation for routing and processing.
+    normalized_request: NormalizedRequest,
+
+    /// Route ID for routing decisions.
+    pub(crate) route_id: Option<RouteId>,
+
+    /// Selected upstream and outcome
+    pub(crate) selected_upstream: Option<(ServiceId, UpstreamId)>,
+
+    /// Outcome of upstream selection
+    pub(crate) upstream_outcome: Option<UpstreamOutcome>,
+
+    /// Circuit breaker started?
+    pub(crate) cb_started: bool,
+
+    /// Root tracing request span.
+    pub(crate) request_span: Option<Span>,
+}
+
+impl Default for RequestCtx {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+/// Hydration API
+impl RequestCtx {
+    pub(crate) fn empty() -> Self {
+        Self {
+            route_id: None,
+
+            // Request lifecycle-related.
+            hydrated: false,
+            admission_guard: None,
+            ws_guard: None,
+
+            // Upstream/routing related.
+            service: None,
+            selected_upstream: None,
+            upstream_path: None,
+
+            // Protocol flag(s) that help figure out what to do with the request.
+            ws_opened: false,
+
+            // Required for gRPC.
+            upstream_authority: None,
+
+            // Traffic/Circuit-breaker.
+            cb_started: false,
+            upstream_outcome: None,
+
+            // Peer info - filled out during hydration
+            peer_ip: Ipv4Addr::UNSPECIFIED.into(),
+
+            // Device related data.
+            extensions: Extensions::new(),
+
+            // Request normalization
+            normalized_request: NormalizedRequest::default(),
+
+            // Observability.
+            request_span: None,
+        }
+    }
+
+    /// Create a boundary to decouple session from logic.
+    /// This makes testing the hydration/normalization code easier.
+    pub(crate) fn hydrate_from_session<S: RequestSource>(
+        &mut self,
+        src: &S,
+    ) -> Result<(), RequestRejectError> {
+        debug_assert!(!self.hydrated, "Already hydrated, cannot hydrate again");
+
+        // Generate a new request ID.
+        self.extensions.insert(RequestId::default());
+
+        // Set the client IP.
+        if self.peer_ip.is_unspecified() {
+            self.peer_ip = src.net_peer_ip();
+        }
+
+        //---------------------------------------------------------------------
+        // Header normalization.
+        //---------------------------------------------------------------------
+        // Do header normalization early as it may produce a protocol-related violation.
+        // This will short-circuit the request if it's invalid while preventing unused allocations.
+        let normalized_headers = if src.http_is_upgrade_req() {
+            self.normalize_ws_handshake(src.http_method(), src.http_headers())?
+        } else {
+            self.normalize_http_request(&src.http_version(), src.http_headers())?
+        };
+
+        //---------------------------------------------------------------------
+        // Extract canonical authority (H2 first, H1 fallback)
+        //---------------------------------------------------------------------
+        let authority_str = if let Some(auth) = src.http_uri().authority() {
+            auth.as_str()
+        } else if let Some(host_header) = normalized_headers.as_map().get(HOST) {
+            host_header
+                .to_str()
+                .map_err(|_| RequestRejectError::InvalidHostHeader)?
+        } else {
+            return Err(RequestRejectError::InvalidHostHeader);
+        };
+
+        // Strip trailing dot (RFC 3986 allowance)
+        let authority_str = authority_str.trim_end_matches('.');
+
+        if authority_str.is_empty() {
+            return Err(RequestRejectError::InvalidHostHeader);
+        }
+
+        // Parse safely (handles host:port and IPv6 correctly)
+        let authority = Authority::from_str(authority_str)
+            .map_err(|_| RequestRejectError::InvalidHostHeader)?;
+
+        let host = authority.host().to_ascii_lowercase();
+
+        //---------------------------------------------------------------------
+        // SNI
+        //---------------------------------------------------------------------
+        // Extract SNI, if present, from the SSL digest.
+        let mut sni_host: Option<String> = None;
+        if let Some(digest) = src.net_digest()
+            && let Some(ssl_digest) = &digest.ssl_digest
+        {
+            let maybe_sni = &ssl_digest.extension.get::<DownstreamSni>();
+            if let Some(sni) = maybe_sni {
+                sni_host = Some(sni.to_ascii_lowercase());
+            }
+        }
+
+        // Enforce SNI/Host matching - they must match if SNI is present.
+        if let Some(sni) = sni_host.clone()
+            && sni.as_str() != host
+        {
+            return Err(RequestRejectError::HostSniMismatch);
+        }
+
+        //---------------------------------------------------------------------
+        // Normalize the path.
+        //---------------------------------------------------------------------
+        let normalized_path = match normalize_path(src.http_uri().path()) {
+            NormalizationOutcome::Accept(p) => p,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidPath);
+            }
+        };
+
+        //---------------------------------------------------------------------
+        // Normalize the query string.
+        //---------------------------------------------------------------------
+        let raw_query = src.http_uri().query().unwrap_or_default();
+        let canonical_query = match normalize_query(raw_query) {
+            NormalizationOutcome::Accept(q) => q,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidQueryString);
+            }
+        };
+
+        self.normalized_request = NormalizedRequestParams {
+            host,
+            sni_host,
+            original_uri: src.http_uri().clone(),
+            method: src.http_method().clone(),
+            path: normalized_path,
+            query: canonical_query,
+            headers: normalized_headers,
+            protocol_version: src.http_version(),
+            is_upgrade_req: src.http_is_upgrade_req(),
+        }
+        .into();
+
+        self.hydrated = true;
+        Ok(())
+    }
+
+    pub(crate) fn normalize_ws_handshake(
+        &self,
+        method: &Method,
+        headers: &HeaderMap,
+    ) -> Result<NormalizedHeaders, RequestRejectError> {
+        // Method must be GET for a WS handshake.
+        if method != Method::GET {
+            return Err(RequestRejectError::InvalidMethod);
+        }
+
+        // Header validation ONLY.
+        // Mutating the headers here would cause the handshake to fail.
+        for (name, value) in headers.iter() {
+            name.as_str(); // validate name
+            value
+                .to_str()
+                .map_err(|_| RequestRejectError::InvalidHeaders)?;
+
+            if value.as_bytes().contains(&0) {
+                return Err(RequestRejectError::InvalidHeaders);
+            }
+        }
+        let normalized_headers = NormalizedHeaders::new(headers.clone());
+
+        Ok(normalized_headers)
+    }
+
+    pub(crate) fn normalize_http_request(
+        &self,
+        protocol_version: &Version,
+        headers: &HeaderMap,
+    ) -> Result<NormalizedHeaders, RequestRejectError> {
+        // Header normalization is protocol-specific, meaning that
+        // the protocol ultimately decides which set of rules to apply to the headers in the
+        // normalize_headers() function.
+        let protocol_normalization_mode = match *protocol_version {
+            Version::HTTP_2 => ProtocolNormalizationMode::Http2,
+            _ => ProtocolNormalizationMode::Http1,
+        };
+
+        let normalized_headers = match normalize_headers(headers, &protocol_normalization_mode) {
+            NormalizationOutcome::Accept(h) => h,
+            NormalizationOutcome::Rewrite { value, .. } => value,
+            NormalizationOutcome::Reject { .. } => {
+                return Err(RequestRejectError::InvalidHeaders);
+            }
+        };
+
+        Ok(normalized_headers)
+    }
+
+    /// Normally this function would not be used outside a unit test or a CLI command
+    /// that makes a synthetic request.
+    pub(crate) fn set_normalized_request(&mut self, request: NormalizedRequest) {
+        self.normalized_request = request;
+    }
+}
+
+/// HTTP/2 API
+impl RequestCtx {
+    /// Returns the upstream authority (host:port) to use for HTTP/2 requests.
+    ///
+    /// This is typically set when proxying to HTTP/2 backends that require
+    /// a specific :authority pseudo-header value.
+    pub(crate) fn upstream_authority(&self) -> Option<&str> {
+        self.upstream_authority.as_deref()
+    }
+
+    pub(crate) fn is_http2(&self) -> bool {
+        debug_assert!(self.hydrated);
+        self.normalized_request.is_http2()
+    }
+}
+
+/// Websocket API
+impl RequestCtx {
+    pub(crate) fn is_upgrade_req(&self) -> bool {
+        debug_assert!(self.hydrated);
+        self.normalized_request.is_upgrade_req()
+    }
+}
+
+/// Request Header API
+impl RequestCtx {
+    pub(crate) fn headers(&self) -> &HeaderMap {
+        debug_assert!(self.hydrated);
+        self.normalized_request.headers()
+    }
+}
+
+use crate::data_plane::tls_handshake::DownstreamSni;
+/// WASM Device API
+///
+#[cfg(feature = "wasm")]
+use http::{HeaderName, HeaderValue};
+
+#[cfg(feature = "wasm")]
+impl RequestCtx {
+    pub(crate) fn set_canonical_path(&mut self, path: String) {
+        debug_assert!(self.hydrated);
+        self.normalized_request.set_path(path);
+    }
+
+    pub(crate) fn insert_header(&mut self, name: HeaderName, value: HeaderValue) {
+        debug_assert!(self.hydrated);
+        self.normalized_request.insert_header(name, value);
+    }
+
+    pub(crate) fn remove_header(&mut self, name: &str) {
+        debug_assert!(self.hydrated);
+        self.normalized_request.remove_header(name);
+    }
+}
+
+/// Request Path API
+impl RequestCtx {
+    /// Path used when proxying upstream
+    pub(crate) fn upstream_path(&self) -> &str {
+        self.upstream_path
+            .as_deref()
+            .unwrap_or(self.canonical_path())
+    }
+
+    /// Will return the full original URI as received the proxy.
+    /// This may include the scheme, host, and port.
+    /// Or, just the path with an optional query string.
+    pub(crate) fn original_uri_string(&self) -> String {
+        debug_assert!(self.hydrated);
+        self.normalized_request.original_uri().to_string()
+    }
+
+    /// Will return the original URI path.
+    /// This is the path as it was received by the proxy.
+    /// This may include the path with an optional query string.
+    /// e.g., /foo/bar or /foo/bar?a=b
+    pub(crate) fn original_uri_path(&self) -> &str {
+        debug_assert!(self.hydrated);
+        self.normalized_request.original_uri().path()
+    }
+
+    /// Internal canonical representation of the request path.
+    pub(crate) fn canonical_path(&self) -> &str {
+        debug_assert!(self.hydrated);
+        self.normalized_request.path().as_str()
+    }
+
+    /// The SNI if present, otherwise HOST header value.
+    pub(crate) fn effective_host(&self) -> &str {
+        debug_assert!(self.hydrated);
+        self.normalized_request.effective_host()
+    }
+}
+
+/// Method API
+impl RequestCtx {
+    pub(crate) fn method_str(&self) -> &str {
+        self.method().as_str()
+    }
+
+    pub(crate) fn method(&self) -> &Method {
+        debug_assert!(self.hydrated);
+        self.normalized_request.method()
+    }
+
+    /// Return true if the method is allowed to have a body.
+    pub(crate) fn has_defined_body_semantics(&self) -> bool {
+        let method = self.method();
+        method == Method::POST || method == Method::PATCH || method == Method::PUT
+    }
+}
+
+/// Request Extensions API
+impl RequestCtx {
+    pub(crate) fn request_id(&self) -> Option<String> {
+        self.extensions.get::<RequestId>().map(|id| id.0.clone())
+    }
+
+    pub(crate) fn identity(&self) -> Option<&ClientIdentity> {
+        self.extensions.get::<ClientIdentity>()
+    }
+}
