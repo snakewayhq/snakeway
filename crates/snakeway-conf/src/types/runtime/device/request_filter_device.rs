@@ -2,6 +2,7 @@ use crate::types::RequestFilterDeviceSpec;
 use crate::validation::ConfigError;
 use http::{HeaderName, Method};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -21,6 +22,7 @@ pub struct RequestFilterDeviceConfig {
     pub max_body_bytes: usize,
     pub max_suspicious_body_bytes: usize,
     pub deny_status: Option<u16>,
+    pub client_body_timeout: Option<Duration>,
 }
 
 impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
@@ -95,6 +97,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
             max_body_bytes: spec.max_body_bytes,
             max_suspicious_body_bytes: spec.max_suspicious_body_bytes,
             deny_status: spec.deny_status,
+            client_body_timeout: spec.client_body_timeout_seconds.map(Duration::from_secs),
         })
     }
 }

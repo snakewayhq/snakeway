@@ -1,0 +1,5 @@
+GET /api?name=%E4%B8%AD%E6%96%87&emoji=%F0%9F%91%8D&latin=%C3%A9t%C3%A9 HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: uri-test
+Accept-Charset: utf-8
+Accept: */*

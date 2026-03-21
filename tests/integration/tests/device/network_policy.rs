@@ -103,10 +103,10 @@ fn network_policy_allows_forwarded_request_when_allowed() {
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    // Act
+    // Act — use a valid IP in the allowed CIDR range (0.0.0.0/0 allows all)
     let res = srv
         .get("/api")
-        .header("x-forwarded-for", "snakeway.test")
+        .header("x-forwarded-for", "203.0.113.50")
         .send()
         .unwrap();
 

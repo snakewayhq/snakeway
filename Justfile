@@ -168,22 +168,22 @@ dump-config:
     cargo run -q --all-features -- config dump|jq
 
 generate-all-templates:
-    @mkdir -p ./dev/templates
-    @rm -fr ./dev/templates/*
+    @mkdir -p data/templates data/acme/orders
+    @rm -fr data/templates/*
     @echo "Creating minimal conf..."
-    @cargo run -q --all-features -- config init ./dev/templates/minimal --template=minimal
+    @cargo run -q --all-features -- config init data/templates/minimal --template=minimal
     @echo "\nValidating minimal conf..."
-    @cargo run -q --all-features -- config check ./dev/templates/minimal
+    @cargo run -q --all-features -- config check data/templates/minimal
 
     @echo "\nCreating dev conf..."
-    @cargo run -q --all-features -- config init ./dev/templates/dev --template=dev
+    @cargo run -q --all-features -- config init data/templates/dev --template=dev
     @echo "\nValidating dev conf..."
-    @cargo run -q --all-features -- config check ./dev/templates/dev
+    @cargo run -q --all-features -- config check data/templates/dev
 
     @echo "\nCreating httpbin conf..."
-    @cargo run -q --all-features -- config init ./dev/templates/httpbin --template=httpbin
+    @cargo run -q --all-features -- config init data/templates/httpbin --template=httpbin
     @echo "\nValidating httpbin conf..."
-    @cargo run -q --all-features -- config check ./dev/templates/httpbin
+    @cargo run -q --all-features -- config check data/templates/httpbin
 
 # -----------------------------------------------------------------------------
 # BUILD TASKS
@@ -251,6 +251,7 @@ docker-build:
     docker build -t snakeway:dev .
 
 # Build the Docker image using pre-built binaries (CI pattern, multi-arch)
+
 # Expects binaries staged at dist/linux/amd64/snakeway and dist/linux/arm64/snakeway
 docker-build-ci:
     docker buildx build \
@@ -316,8 +317,8 @@ generate-dev-certs:
 test:
     cargo nextest run -p snakeway-core --features static_files,wasm
 
-integration-test: fetch-pebble-ca generate-dev-certs
-    cargo nextest run -p integration
+integration-test *ARGS: fetch-pebble-ca generate-dev-certs
+    cargo nextest run -p integration {{ ARGS }}
 
 test-everything: lint test integration-test generate-all-templates
     @echo "All good."

@@ -1,0 +1,4 @@
+GET /api?action=search&q=hello+world&page=1&limit=50 HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: uri-test
+Accept: */*

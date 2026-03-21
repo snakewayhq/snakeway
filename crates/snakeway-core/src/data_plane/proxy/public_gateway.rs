@@ -3,6 +3,7 @@ use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
 use crate::data_plane::proxy::handlers::StaticFileHandler;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
+use crate::execution::device::builtin::request_filter::ClientBodyTimeout;
 use crate::execution::device::core::pipeline::DevicePipeline;
 use crate::execution::device::core::result::DeviceResult;
 use crate::execution::route::RouteRuntime;
@@ -308,6 +309,22 @@ impl ProxyHttp for PublicGateway {
             }
         }
 
+        // Apply client body timeout if the request filter device configured one.
+        if let Some(timeout) = ctx.extensions.get::<ClientBodyTimeout>() {
+            session.downstream_session.set_read_timeout(Some(timeout.0));
+        }
+
+        // Store declared Content-Length for underflow detection in request_body_filter.
+        if let Some(cl) = session
+            .req_header()
+            .headers
+            .get(header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.trim().parse::<u64>().ok())
+        {
+            ctx.extensions.insert(DeclaredContentLength(cl));
+        }
+
         // Make a decision about the route.
         let router = state
             .routers
@@ -374,6 +391,12 @@ impl ProxyHttp for PublicGateway {
 
     /// A method to filter and process the request body during a streaming session.
     /// This method is currently used for running device pipeline operations on the request body.
+    ///
+    /// Additionally, when `end_of_stream` is true and a `Content-Length` header was
+    /// declared, the total bytes received are compared against the declared value.
+    /// A mismatch means the client closed the connection (or timed out) before
+    /// sending the full body — forwarding a truncated body to the upstream would
+    /// waste backend resources or cause incorrect behaviour.
     async fn request_body_filter(
         &self,
         session: &mut Session,
@@ -383,6 +406,43 @@ impl ProxyHttp for PublicGateway {
     ) -> Result<()> {
         let _span = ctx.request_span.clone();
         let _enter = _span.as_ref().map(|s| s.enter());
+
+        // Track total body bytes received.
+        if let Some(chunk) = body.as_ref() {
+            let counter = ctx
+                .extensions
+                .get_mut::<BodyBytesReceived>()
+                .map(|c| {
+                    c.0 += chunk.len() as u64;
+                    c.0
+                })
+                .unwrap_or_else(|| {
+                    let len = chunk.len() as u64;
+                    ctx.extensions.insert(BodyBytesReceived(len));
+                    len
+                });
+            // Use the counter to avoid an unused-variable warning.
+            let _ = counter;
+        }
+
+        // Content-Length underflow check: if the stream has ended and the
+        // client declared a Content-Length, verify that the full body arrived.
+        if end_of_stream && let Some(&DeclaredContentLength(declared)) = ctx.extensions.get() {
+            let received = ctx.extensions.get::<BodyBytesReceived>().map_or(0, |c| c.0);
+            if received < declared {
+                tracing::warn!(
+                    request_id = ctx.request_id(),
+                    declared,
+                    received,
+                    "request body underflow: client sent fewer bytes than Content-Length"
+                );
+                session.respond_error(400).await?;
+                return Err(Error::new(Custom(
+                    "request body shorter than Content-Length",
+                )));
+            }
+        }
+
         let state = self.gw_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
@@ -692,3 +752,13 @@ impl PublicGateway {
         }
     }
 }
+
+/// Declared Content-Length from the request headers, stored in extensions
+/// during `request_filter` for comparison at end-of-stream.
+#[derive(Debug, Clone, Copy)]
+struct DeclaredContentLength(u64);
+
+/// Running total of body bytes received from the downstream client,
+/// updated per-chunk in `request_body_filter`.
+#[derive(Debug, Clone, Copy)]
+struct BodyBytesReceived(u64);

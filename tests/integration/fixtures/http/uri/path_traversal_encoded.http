@@ -1,0 +1,4 @@
+GET /api/%2e%2e/%2e%2e/etc/passwd HTTP/1.1
+Host: snakeway.test:8080
+User-Agent: uri-test
+Accept: */*

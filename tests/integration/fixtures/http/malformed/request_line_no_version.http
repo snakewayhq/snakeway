@@ -1,0 +1,4 @@
+GET /api
+Host: snakeway.test:8080
+User-Agent: malformed-test
+Accept: */*
