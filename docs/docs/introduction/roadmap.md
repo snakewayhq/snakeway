@@ -2,7 +2,8 @@
 title: Roadmap
 ---
 
-This page outlines the development phases of Snakeway, from initial foundation through the 1.0 release and beyond. Each phase has a defined set of goals and deliverables. Completed items are marked with checkboxes.
+This page outlines the development phases of Snakeway, from initial foundation through the 1.0 release and beyond. Each
+phase has a defined set of goals and deliverables. Completed items are marked with checkboxes.
 
 ---
 
@@ -150,7 +151,8 @@ Confirm that the architecture is sound before building on top of it.
 
 ## Phase 5: Hardening (v0.10.x)
 
-All core features are implemented at this stage. The focus shifts to architecture review, test coverage, and operational polish.
+All core features are implemented at this stage. The focus shifts to architecture review, test coverage, and operational
+polish.
 
 **Goals**
 
@@ -219,13 +221,39 @@ The following items are not in the critical path for 1.0 but represent the longe
 
 Zero-drop reload support for seamless configuration changes under load.
 
+### Router performance optimizations
+
+- LRU cache in front of router to make route lookups O(1) instead of O(n).
+
+### Caching Device
+
+Use Pingora Native HTTP Cache.
+
+Rough draft of approach:
+
+1. identity
+2. rate_limit
+3. OTHER_DEVICES
+4. cache_lookup ← early device
+5. origin call
+6. cache_store ← response device
+7. logging
+
+Pluggable storage (supported by Pingora):
+
+1. memory (LRU)
+2. memory + disk
+3. Redis
+4. custom storage
+
 ### Router Performance
 
 LRU cache in front of the router to make route lookups O(1) instead of O(n).
 
 ### Caching Device
 
-HTTP response caching using Pingora's native cache subsystem with pluggable storage (memory, disk, Redis, or custom backends).
+HTTP response caching using Pingora's native cache subsystem with pluggable storage (memory, disk, Redis, or custom
+backends).
 
 ### Full WASM Device Support
 
@@ -247,7 +275,8 @@ Background probe model (HTTP/TCP) independent of request traffic. Passive health
 
 ### Kubernetes Ingress Controller
 
-Optional feature that allows Snakeway to function as a Kubernetes ingress controller, polling for configuration changes and applying runtime snapshots through the existing configuration pipeline.
+Optional feature that allows Snakeway to function as a Kubernetes ingress controller, polling for configuration changes
+and applying runtime snapshots through the existing configuration pipeline.
 
 ### Static File Server Enhancements
 
