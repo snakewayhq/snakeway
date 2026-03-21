@@ -32,12 +32,12 @@ jobs:
         run: bun install
 
       - name: Build site
-        run: bun run astro build
+        run: bun run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/dist
+          path: docs/build
 
   deploy:
     runs-on: ubuntu-latest
