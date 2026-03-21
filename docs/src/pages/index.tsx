@@ -32,9 +32,56 @@ function HomepageHeader() {
   );
 }
 
+// Simple monochrome SVG icons (24x24 viewbox, stroke-based)
+const icons = {
+  pipeline: (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="2" x2="12" y2="6" />
+      <rect x="8" y="6" width="8" height="4" rx="1" />
+      <line x1="12" y1="10" x2="12" y2="14" />
+      <rect x="8" y="14" width="8" height="4" rx="1" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+    </svg>
+  ),
+  shield: (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  ),
+  lock: (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      <line x1="12" y1="15" x2="12" y2="18" />
+    </svg>
+  ),
+  cube: (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
+  activity: (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  ),
+  fileText: (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  ),
+};
+
 const features = [
   {
     title: 'Device Pipeline',
+    icon: icons.pipeline,
     description:
       'Requests pass through a composable pipeline of devices. ' +
       'Each device inspects or transforms the request at a well-defined point in the lifecycle. ' +
@@ -42,6 +89,7 @@ const features = [
   },
   {
     title: 'Protocol Safety',
+    icon: icons.shield,
     description:
       'Request smuggling detection (CL.TE, TE.CL, duplicate Content-Length), ' +
       'header normalization, body size enforcement, and Content-Length validation ' +
@@ -49,6 +97,7 @@ const features = [
   },
   {
     title: 'TLS Automation',
+    icon: icons.lock,
     description:
       'ACME certificate issuance and renewal via HTTP-01 challenges. ' +
       'Supports Let\'s Encrypt and compatible CAs. ' +
@@ -56,6 +105,7 @@ const features = [
   },
   {
     title: 'WebAssembly Extensibility',
+    icon: icons.cube,
     description:
       'Write custom devices in any language that compiles to WASM. ' +
       'Devices run in a sandboxed environment with access to request context. ' +
@@ -63,6 +113,7 @@ const features = [
   },
   {
     title: 'Observability',
+    icon: icons.activity,
     description:
       'Structured logging with field-selectable identity signals, ' +
       'OpenTelemetry tracing, and an admin API for health checks, ' +
@@ -70,6 +121,7 @@ const features = [
   },
   {
     title: 'HCL Configuration',
+    icon: icons.fileText,
     description:
       'Configuration is split across focused files: server settings, ' +
       'ingress definitions, and device pipelines. ' +
@@ -85,6 +137,7 @@ function Features() {
           {features.map((feature, idx) => (
             <div key={idx} className="col col--4">
               <div className="feature-card">
+                <div className="feature-card__icon">{feature.icon}</div>
                 <h3>{feature.title}</h3>
                 <p>{feature.description}</p>
               </div>

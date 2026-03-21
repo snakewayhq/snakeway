@@ -39,12 +39,6 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/ethanhann/snakeway/tree/main/docs/',
-          lastVersion: 'current',
-          versions: {
-            current: {
-              label: '0.9 (development)',
-            },
-          },
         },
         blog: {
           showReadingTime: true,
@@ -84,10 +78,6 @@ const config: Config = {
           label: 'Docs',
         },
         {to: '/blog', label: 'Blog', position: 'left'},
-        {
-          type: 'docsVersionDropdown',
-          position: 'right',
-        },
         {
           href: 'https://github.com/ethanhann/snakeway',
           position: 'right',
