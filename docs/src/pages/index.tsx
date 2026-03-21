@@ -6,23 +6,25 @@ import Layout from '@theme/Layout';
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <header style={{
-      padding: '4rem 0',
-      textAlign: 'center',
-    }}>
+    <header className="hero-banner">
       <div className="container">
-        <h1 className="hero__title">{siteConfig.title}</h1>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem'}}>
+        <h1>{siteConfig.title}</h1>
+        <p>
+          A programmable reverse proxy built on{' '}
+          <a href="https://github.com/cloudflare/pingora">Pingora</a>.
+          Configure routing, middleware, TLS, and traffic policy with HCL.
+          Extend behavior with WebAssembly devices.
+        </p>
+        <div style={{display: 'flex', gap: '0.75rem', justifyContent: 'center'}}>
           <Link
             className="button button--primary button--lg"
             to="/docs/introduction/getting-started">
             Get Started
           </Link>
           <Link
-            className="button button--secondary button--lg"
+            className="button button--outline button--lg"
             to="/docs/configuration/overview">
-            Configuration Reference
+            Configuration
           </Link>
         </div>
       </div>
@@ -30,30 +32,62 @@ function HomepageHeader() {
   );
 }
 
-function Features() {
-  const features = [
-    {
-      title: 'Programmable',
-      description: 'Compose builtin devices or write your own in WebAssembly. The device pipeline gives you control over every request without sacrificing safety.',
-    },
-    {
-      title: 'Secure by Default',
-      description: 'Request smuggling detection, header normalization, network policies, rate limiting, and TLS automation are built in — not bolted on.',
-    },
-    {
-      title: 'Built on Pingora',
-      description: 'Powered by Cloudflare\'s battle-tested Rust proxy framework. Async I/O, connection pooling, and HTTP/2 come for free.',
-    },
-  ];
+const features = [
+  {
+    title: 'Device Pipeline',
+    description:
+      'Requests pass through a composable pipeline of devices. ' +
+      'Each device inspects or transforms the request at a well-defined point in the lifecycle. ' +
+      'Builtin devices handle identity resolution, network policy, rate limiting, and request filtering.',
+  },
+  {
+    title: 'Protocol Safety',
+    description:
+      'Request smuggling detection (CL.TE, TE.CL, duplicate Content-Length), ' +
+      'header normalization, body size enforcement, and Content-Length validation ' +
+      'run automatically on every request.',
+  },
+  {
+    title: 'TLS Automation',
+    description:
+      'ACME certificate issuance and renewal via HTTP-01 challenges. ' +
+      'Supports Let\'s Encrypt and compatible CAs. ' +
+      'Manual TLS configuration is also available for environments that manage certificates externally.',
+  },
+  {
+    title: 'WebAssembly Extensibility',
+    description:
+      'Write custom devices in any language that compiles to WASM. ' +
+      'Devices run in a sandboxed environment with access to request context. ' +
+      'The WIT interface defines the contract between the proxy and user code.',
+  },
+  {
+    title: 'Observability',
+    description:
+      'Structured logging with field-selectable identity signals, ' +
+      'OpenTelemetry tracing, and an admin API for health checks, ' +
+      'upstream status, traffic statistics, and configuration reload.',
+  },
+  {
+    title: 'HCL Configuration',
+    description:
+      'Configuration is split across focused files: server settings, ' +
+      'ingress definitions, and device pipelines. ' +
+      'Validation runs at load time with clear error messages and source locations.',
+  },
+];
 
+function Features() {
   return (
-    <section style={{padding: '2rem 0'}}>
+    <section className="features-section">
       <div className="container">
         <div className="row">
           {features.map((feature, idx) => (
-            <div key={idx} className="col col--4" style={{marginBottom: '2rem'}}>
-              <h3>{feature.title}</h3>
-              <p>{feature.description}</p>
+            <div key={idx} className="col col--4">
+              <div className="feature-card">
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -67,7 +101,7 @@ export default function Home(): React.JSX.Element {
   return (
     <Layout
       title={siteConfig.title}
-      description={siteConfig.tagline}>
+      description="Programmable reverse proxy built on Pingora.">
       <HomepageHeader />
       <main>
         <Features />

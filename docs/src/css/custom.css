@@ -1,30 +1,76 @@
-/**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
- */
-
-/* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-color-primary: #247f00;
+  --ifm-color-primary-dark: #1f7200;
+  --ifm-color-primary-darker: #1d6b00;
+  --ifm-color-primary-darkest: #175800;
+  --ifm-color-primary-light: #298c00;
+  --ifm-color-primary-lighter: #2b9300;
+  --ifm-color-primary-lightest: #31a600;
   --ifm-code-font-size: 95%;
+  --ifm-font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
+  --ifm-color-primary: #4db82a;
+  --ifm-color-primary-dark: #45a625;
+  --ifm-color-primary-darker: #419d24;
+  --ifm-color-primary-darkest: #36811d;
+  --ifm-color-primary-light: #55c42f;
+  --ifm-color-primary-lighter: #5dc835;
+  --ifm-color-primary-lightest: #74d24f;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Homepage */
+.hero-banner {
+  padding: 5rem 0 4rem;
+  text-align: center;
+  background: linear-gradient(180deg, var(--ifm-background-color) 0%, var(--ifm-background-surface-color) 100%);
+}
+
+.hero-banner h1 {
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.hero-banner p {
+  font-size: 1.25rem;
+  color: var(--ifm-color-emphasis-700);
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.features-section {
+  padding: 3rem 0;
+}
+
+.feature-card {
+  padding: 1.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  height: 100%;
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+  margin-bottom: 0;
+}
+
+/* Code blocks */
+.prism-code {
+  font-size: 0.9rem;
+}
+
+/* Navbar */
+.navbar__title {
+  font-weight: 700;
 }
