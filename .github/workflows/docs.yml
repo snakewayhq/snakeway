@@ -43,6 +43,17 @@ jobs:
             --dir static/coverage \
             || echo "::warning::No coverage artifact found; skipping."
 
+      - name: Download integration test badge
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download \
+            --repo ${{ github.repository }} \
+            --name integration-badge \
+            --dir static/coverage \
+            || echo "::warning::No integration badge artifact found; skipping."
+
       - name: Build site
         run: bun run build
 

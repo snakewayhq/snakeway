@@ -19,6 +19,9 @@ function HomepageHeader() {
           <a href="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml">
             <img src="https://img.shields.io/endpoint?url=https://snakeway.dev/coverage/tests-badge.json" alt="Tests" />
           </a>
+          <a href="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml">
+            <img src="https://img.shields.io/endpoint?url=https://snakeway.dev/coverage/integration-tests-badge.json" alt="Integration Tests" />
+          </a>
         </div>
         <p>
           A programmable reverse proxy built on{' '}
