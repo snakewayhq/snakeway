@@ -13,8 +13,11 @@ function HomepageHeader() {
           <a href="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml">
             <img src="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml/badge.svg?branch=main" alt="CI" />
           </a>
-          <a href="/coverage/">
+          <a href="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml">
             <img src="https://img.shields.io/endpoint?url=https://snakeway.dev/coverage/badge.json" alt="Coverage" />
+          </a>
+          <a href="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml">
+            <img src="https://img.shields.io/endpoint?url=https://snakeway.dev/coverage/tests-badge.json" alt="Tests" />
           </a>
         </div>
         <p>

@@ -96,7 +96,6 @@ const config: Config = {
           label: 'Docs',
         },
         {to: '/releases', label: 'Release Notes', position: 'left'},
-        {href: '/coverage/', label: 'Coverage', position: 'left'},
         {
           type: 'docsVersionDropdown',
           position: 'right',
