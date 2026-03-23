@@ -17,3 +17,7 @@ owo-colors = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+rcgen = { workspace = true }

@@ -4107,6 +4107,8 @@ dependencies = [
  "nix 0.31.1",
  "openssl",
  "owo-colors",
+ "pretty_assertions",
+ "rcgen",
  "serde",
  "serde_json",
  "tempfile",
