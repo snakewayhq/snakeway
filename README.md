@@ -1,5 +1,8 @@
 # Snakeway
 
+[![CI](https://github.com/snakewayhq/snakeway/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/snakewayhq/snakeway/actions/workflows/build.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 **Snakeway** is a modern, extensible **L7 reverse proxy** built with **Rust**.
 
 It is designed for engineers who want **control**, **performance**, and **composability** without dragging in a bloated
