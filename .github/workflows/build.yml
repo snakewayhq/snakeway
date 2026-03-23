@@ -3,11 +3,14 @@ name: Snakeway CI
 permissions:
   contents: write
   packages: write
+  checks: write
 
 on:
   push:
     tags:
       - "v*"
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -17,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -38,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -53,7 +56,15 @@ jobs:
         run: |
           cargo nextest run \
             -p snakeway-core \
-            --features static_files,wasm
+            --features static_files,wasm \
+            --profile ci
+
+      - name: Publish unit test results
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: target/nextest/ci/junit.xml
+          check_name: Unit Tests
 
   integration-test:
     name: Integration tests
@@ -62,7 +73,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # snakeway.test is the canonical test hostname used as Host header, SNI, and listener
       # address throughout the integration test suite.  It must resolve to loopback so that
@@ -137,7 +148,14 @@ jobs:
             -in tests/integration/certs/pebble-ca.pem
 
       - name: Run integration tests
-        run: cargo nextest run -p integration
+        run: cargo nextest run -p integration --profile ci
+
+      - name: Publish integration test results
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: target/nextest/ci/junit.xml
+          check_name: Integration Tests
 
       # Always tear down containers, even when tests fail, to prevent port and
       # resource leaks between CI runs on the same runner.  --volumes removes
@@ -145,6 +163,57 @@ jobs:
       - name: Tear down Pebble
         if: always()
         run: docker compose -f docker-compose-dev.yml down --volumes --remove-orphans
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: coverage
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run tests with coverage instrumentation
+        run: |
+          cargo llvm-cov \
+            -p snakeway-core \
+            --features static_files,wasm \
+            --ignore-filename-regex 'pingora|tests/|examples/' \
+            --json --output-path coverage.json
+
+      - name: Generate HTML report and extract percentage
+        run: |
+          cargo llvm-cov report \
+            -p snakeway-core \
+            --features static_files,wasm \
+            --ignore-filename-regex 'pingora|tests/|examples/' \
+            --html \
+            --output-dir coverage-html
+          PCT=$(jq '.data[0].totals.lines.percent | . * 10 | floor | . / 10' coverage.json)
+          echo "COVERAGE_PCT=${PCT}" >> "$GITHUB_ENV"
+          echo "## Coverage: ${PCT}%" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg pct "$PCT" \
+            '{schemaVersion:1,label:"coverage",message:($pct+"%"),color:(if ($pct|tonumber)>=80 then "brightgreen" elif ($pct|tonumber)>=60 then "yellow" else "red" end)}' \
+            > coverage-html/badge.json
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html/
 
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
@@ -165,7 +234,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -221,7 +290,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -290,7 +359,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Download pre-built MUSL binaries for both architectures.
       - name: Download x86_64 binary
@@ -347,7 +416,7 @@ jobs:
 
   release:
     name: Create release artifacts
-    needs: [build, package]
+    needs: [ build, package ]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
 

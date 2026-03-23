@@ -9,6 +9,14 @@ function HomepageHeader() {
     <header className="hero-banner">
       <div className="container">
         <h1>{siteConfig.title}</h1>
+        <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'center', margin: '0.75rem 0'}}>
+          <a href="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml">
+            <img src="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml/badge.svg?branch=main" alt="CI" />
+          </a>
+          <a href="/coverage/">
+            <img src="https://img.shields.io/endpoint?url=https://snakeway.dev/coverage/badge.json" alt="Coverage" />
+          </a>
+        </div>
         <p>
           A programmable reverse proxy built on{' '}
           <a href="https://github.com/cloudflare/pingora">Pingora</a>.

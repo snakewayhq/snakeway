@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -23,13 +24,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
         run: bun install
+
+      - name: Download coverage report
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download \
+            --repo ${{ github.repository }} \
+            --name coverage-html \
+            --dir static/coverage \
+            || echo "::warning::No coverage artifact found; skipping."
 
       - name: Build site
         run: bun run build
