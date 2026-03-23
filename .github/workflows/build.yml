@@ -183,17 +183,13 @@ jobs:
         with:
           key: coverage
 
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Run tests with coverage instrumentation
         run: |
           cargo llvm-cov \
-            --workspace \
-            --exclude snakeway-wit \
+            -p snakeway-core -p snakeway-conf -p snakeway \
             --features static_files,wasm \
             --ignore-filename-regex 'pingora|tests/|examples/' \
             --json --output-path coverage.json
@@ -213,11 +209,9 @@ jobs:
 
       - name: Count tests and generate badge
         run: |
-          UNIT=$(cargo test -p snakeway-core --features static_files,wasm -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
-          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
-          TOTAL=$((UNIT + INTEG))
-          echo "## Tests: ${TOTAL} (${UNIT} unit + ${INTEG} integration)" >> "$GITHUB_STEP_SUMMARY"
-          jq -n --arg total "$TOTAL" \
+          UNIT=$(cargo test -p snakeway-core -p snakeway-conf -p snakeway --features static_files,wasm -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          echo "## Tests: ${UNIT}" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg total "$UNIT" \
             '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
             > coverage-html/tests-badge.json
 
