@@ -197,8 +197,6 @@ jobs:
       - name: Generate HTML report and extract percentage
         run: |
           cargo llvm-cov report \
-            -p snakeway-core \
-            --features static_files,wasm \
             --ignore-filename-regex 'pingora|tests/|examples/' \
             --html \
             --output-dir coverage-html

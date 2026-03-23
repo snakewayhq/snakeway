@@ -47,7 +47,10 @@ impl IdentityDevice {
         };
 
         let ua_engine = if cfg.enable_user_agent {
-            Some(build_ua_engine(cfg.ua_engine)?)
+            Some(build_ua_engine(
+                cfg.ua_engine,
+                cfg.ua_parser_regexes.as_deref(),
+            )?)
         } else {
             None
         };

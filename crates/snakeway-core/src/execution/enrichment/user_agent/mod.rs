@@ -5,12 +5,22 @@ use crate::execution::enrichment::user_agent::uaparser_engine::UaParserEngine;
 use crate::execution::enrichment::user_agent::woothee_engine::WootheeEngine;
 use snakeway_conf::types::UaEngineKind;
 use std::net::IpAddr;
+use std::path::Path;
 
 const REGEXES_YAML: &[u8] = include_bytes!("regexes.yaml");
 
-pub(crate) fn build_ua_engine(kind: UaEngineKind) -> anyhow::Result<UaEngine> {
+pub(crate) fn build_ua_engine(
+    kind: UaEngineKind,
+    ua_parser_regexes: Option<&Path>,
+) -> anyhow::Result<UaEngine> {
     match kind {
-        UaEngineKind::UaParser => Ok(UaEngine::UaParser(UaParserEngine::new(REGEXES_YAML)?)),
+        UaEngineKind::UaParser => {
+            let regexes = match ua_parser_regexes {
+                Some(path) => std::fs::read(path)?,
+                None => REGEXES_YAML.to_vec(),
+            };
+            Ok(UaEngine::UaParser(UaParserEngine::new(&regexes)?))
+        }
         UaEngineKind::Woothee => Ok(UaEngine::Woothee(WootheeEngine::new())),
     }
 }

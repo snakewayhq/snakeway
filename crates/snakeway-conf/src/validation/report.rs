@@ -566,6 +566,51 @@ impl ValidationReport {
         )
     }
 
+    pub(crate) fn ua_parser_regexes_path_is_empty(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("ua_parser_regexes path is empty: {}", path),
+            origin,
+            None,
+        )
+    }
+
+    pub(crate) fn ua_parser_regexes_path_does_not_exist(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("ua_parser_regexes path does not exist: {}", path),
+            origin,
+            Some(
+                "Provide a valid path to a ua-parser regexes.yaml file, or remove the setting to use the bundled default."
+                    .to_string(),
+            ),
+        )
+    }
+
+    pub(crate) fn ua_parser_regexes_path_is_not_a_file(&mut self, path: Display, origin: &Origin) {
+        self.error(
+            format!("ua_parser_regexes path is not a file: {}", path),
+            origin,
+            None,
+        )
+    }
+
+    pub(crate) fn ua_parser_regexes_file_missing_expected_content(
+        &mut self,
+        path: Display,
+        origin: &Origin,
+    ) {
+        self.warning(
+            format!(
+                "ua_parser_regexes file does not appear to be a valid ua-parser regexes.yaml: {}",
+                path
+            ),
+            origin,
+            Some(
+                "Expected the file to contain a 'user_agent_parsers' section. See https://github.com/ua-parser/uap-core for the expected format."
+                    .to_string(),
+            ),
+        )
+    }
+
     pub(crate) fn invalid_trusted_proxy(&mut self, proxy: &str, origin: &Origin) {
         self.error(format!("invalid trusted proxy: {}", proxy), origin, None)
     }
