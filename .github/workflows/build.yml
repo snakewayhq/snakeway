@@ -183,18 +183,22 @@ jobs:
         with:
           key: coverage
 
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Run tests with coverage instrumentation
         run: |
           cargo llvm-cov \
-            -p snakeway-core \
+            --workspace \
+            --exclude snakeway-wit \
             --features static_files,wasm \
             --ignore-filename-regex 'pingora|tests/|examples/' \
             --json --output-path coverage.json
 
-      - name: Generate HTML report and extract percentage
+      - name: Generate reports and badges
         run: |
           cargo llvm-cov report \
             --ignore-filename-regex 'pingora|tests/|examples/' \
@@ -206,6 +210,16 @@ jobs:
           jq -n --arg pct "$PCT" \
             '{schemaVersion:1,label:"coverage",message:($pct+"%"),color:(if ($pct|tonumber)>=80 then "brightgreen" elif ($pct|tonumber)>=60 then "yellow" else "red" end)}' \
             > coverage-html/badge.json
+
+      - name: Count tests and generate badge
+        run: |
+          UNIT=$(cargo test -p snakeway-core --features static_files,wasm -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          TOTAL=$((UNIT + INTEG))
+          echo "## Tests: ${TOTAL} (${UNIT} unit + ${INTEG} integration)" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg total "$TOTAL" \
+            '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
+            > coverage-html/tests-badge.json
 
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@v4
