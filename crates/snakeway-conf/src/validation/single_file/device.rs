@@ -66,6 +66,10 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
                     validate_geoip_db_file(geoip_city_db, report, device.origin());
                 }
             }
+
+            if let Some(path) = cfg.ua_parser_regexes.as_ref() {
+                validate_ua_parser_regexes_file(path, report, device.origin());
+            }
         };
     }
 
@@ -238,6 +242,27 @@ fn validate_trusted_proxies(proxies: &[String], report: &mut ValidationReport, o
         if !is_non_public_infra_network(&network) {
             report.trusted_proxies_contains_a_public_ip_range_warning(network, origin);
         }
+    }
+}
+
+fn validate_ua_parser_regexes_file(path: &Path, report: &mut ValidationReport, origin: &Origin) {
+    if NixPath::is_empty(path) {
+        report.ua_parser_regexes_path_is_empty(path.display(), origin);
+        return;
+    }
+    if !path.exists() {
+        report.ua_parser_regexes_path_does_not_exist(path.display(), origin);
+        return;
+    }
+    if !path.is_file() {
+        report.ua_parser_regexes_path_is_not_a_file(path.display(), origin);
+        return;
+    }
+    // Sanity check: the file should contain the canonical ua-parser top-level key.
+    if let Ok(contents) = std::fs::read_to_string(path)
+        && !contents.contains("user_agent_parsers")
+    {
+        report.ua_parser_regexes_file_missing_expected_content(path.display(), origin);
     }
 }
 

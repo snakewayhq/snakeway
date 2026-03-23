@@ -28,6 +28,8 @@ pub struct IdentityDeviceSpec {
 
     pub enable_user_agent: bool,
     pub ua_engine: UaEngineSpec,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ua_parser_regexes: Option<PathBuf>,
     #[serde(default = "default_max_user_agent_length")]
     pub max_user_agent_length: usize,
 }
@@ -53,6 +55,7 @@ impl Default for IdentityDeviceSpec {
             geoip_connection_type_db: None,
             enable_user_agent: false,
             ua_engine: Default::default(),
+            ua_parser_regexes: None,
             max_user_agent_length: default_max_user_agent_length(),
         }
     }

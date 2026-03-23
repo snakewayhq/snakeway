@@ -22,6 +22,8 @@ pub struct IdentityDeviceConfig {
 
     pub ua_engine: UaEngineKind,
 
+    pub ua_parser_regexes: Option<PathBuf>,
+
     pub max_user_agent_length: usize,
 }
 
@@ -37,6 +39,7 @@ impl From<IdentityDeviceSpec> for IdentityDeviceConfig {
             geoip_connection_type_db: spec.geoip_connection_type_db,
             enable_user_agent: spec.enable_user_agent,
             ua_engine: spec.ua_engine.into(),
+            ua_parser_regexes: spec.ua_parser_regexes,
             max_user_agent_length: spec.max_user_agent_length,
         }
     }
