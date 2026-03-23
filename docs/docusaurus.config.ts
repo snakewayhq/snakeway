@@ -32,6 +32,27 @@ const config: Config = {
     ],
   ],
 
+  plugins: [
+    [
+      '@docusaurus/plugin-content-blog',
+      {
+        id: 'releases',
+        routeBasePath: 'releases',
+        path: './releases',
+        blogTitle: 'Release Notes',
+        blogDescription: 'Snakeway release notes and changelogs.',
+        showReadingTime: false,
+        onUntruncatedBlogPosts: 'ignore',
+        onInlineTags: 'warn',
+        onInlineAuthors: 'warn',
+        feedOptions: {
+          type: ['rss', 'atom'],
+          xslt: true,
+        },
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
@@ -47,17 +68,7 @@ const config: Config = {
             },
           },
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          editUrl: 'https://github.com/ethanhann/snakeway/tree/main/docs/',
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'ignore',
-        },
+        blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -84,7 +95,7 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/releases', label: 'Release Notes', position: 'left'},
         {
           type: 'docsVersionDropdown',
           position: 'right',
@@ -117,8 +128,8 @@ const config: Config = {
           title: 'More',
           items: [
             {
-              label: 'Blog',
-              to: '/blog',
+              label: 'Release Notes',
+              to: '/releases',
             },
             {
               label: 'GitHub',
