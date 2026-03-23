@@ -9,6 +9,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -184,23 +186,23 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Generate HTML coverage report
+      - name: Run tests with coverage instrumentation
         run: |
           cargo llvm-cov \
             -p snakeway-core \
             --features static_files,wasm \
             --ignore-filename-regex 'pingora|tests/|examples/' \
-            --html \
-            --output-dir coverage-html
+            --json --output-path coverage.json
 
-      - name: Extract coverage percentage
+      - name: Generate HTML report and extract percentage
         run: |
-          PCT=$(cargo llvm-cov \
+          cargo llvm-cov report \
             -p snakeway-core \
             --features static_files,wasm \
             --ignore-filename-regex 'pingora|tests/|examples/' \
-            --json \
-            | jq '.data[0].totals.lines.percent | . * 10 | floor | . / 10')
+            --html \
+            --output-dir coverage-html
+          PCT=$(jq '.data[0].totals.lines.percent | . * 10 | floor | . / 10' coverage.json)
           echo "COVERAGE_PCT=${PCT}" >> "$GITHUB_ENV"
           echo "## Coverage: ${PCT}%" >> "$GITHUB_STEP_SUMMARY"
 
