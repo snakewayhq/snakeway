@@ -14,7 +14,7 @@ function HomepageHeader() {
             <img src="https://github.com/snakewayhq/snakeway/actions/workflows/build.yml/badge.svg?branch=main" alt="CI" />
           </a>
           <a href="/coverage/">
-            <img src={`https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ethanhann/${siteConfig.customFields?.coverageGistId || 'GIST_ID'}/raw/coverage.json`} alt="Coverage" />
+            <img src="https://img.shields.io/endpoint?url=https://snakeway.dev/coverage/badge.json" alt="Coverage" />
           </a>
         </div>
         <p>

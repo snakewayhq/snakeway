@@ -14,11 +14,6 @@ const config: Config = {
   url: 'https://snakeway.dev',
   baseUrl: '/',
 
-  customFields: {
-    // Replace with your actual Gist ID after creating the coverage badge gist.
-    coverageGistId: process.env.COVERAGE_GIST_ID || 'GIST_ID',
-  },
-
   onBrokenLinks: 'warn',
 
   i18n: {

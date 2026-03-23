@@ -205,25 +205,15 @@ jobs:
           PCT=$(jq '.data[0].totals.lines.percent | . * 10 | floor | . / 10' coverage.json)
           echo "COVERAGE_PCT=${PCT}" >> "$GITHUB_ENV"
           echo "## Coverage: ${PCT}%" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg pct "$PCT" \
+            '{schemaVersion:1,label:"coverage",message:($pct+"%"),color:(if ($pct|tonumber)>=80 then "brightgreen" elif ($pct|tonumber)>=60 then "yellow" else "red" end)}' \
+            > coverage-html/badge.json
 
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
           path: coverage-html/
-
-      - name: Update coverage badge
-        if: github.ref == 'refs/heads/main'
-        uses: schneegans/dynamic-badges-action@v1.7.0
-        with:
-          auth: ${{ secrets.GIST_TOKEN }}
-          gistID: ${{ vars.COVERAGE_GIST_ID }}
-          filename: coverage.json
-          label: coverage
-          message: "${{ env.COVERAGE_PCT }}%"
-          valColorRange: ${{ env.COVERAGE_PCT }}
-          minColorRange: 40
-          maxColorRange: 90
 
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
