@@ -169,7 +169,7 @@ polish.
 
 **Devices**
 
-- [ ] Move UA Parser regex file out of the executable (similar to MMDB files)
+- [x] Make UA Parser regex file overridable in the config (similar to MMDB files)
 - [ ] Review device subsystem against the mature configuration subsystem
 - [ ] Consider discrete `on_response_header` and `on_response_body` hooks
 - [ ] Consider scoping network policy and rate limiting to specific paths
@@ -177,7 +177,7 @@ polish.
 **Routing**
 
 - [ ] Review routing code for conceptual duplication
-- [ ] Implement more robust path matching
+- [x] Implement more robust path matching
 
 ---
 
