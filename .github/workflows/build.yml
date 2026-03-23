@@ -157,6 +157,22 @@ jobs:
           report_paths: target/nextest/ci/junit.xml
           check_name: Integration Tests
 
+      - name: Generate integration test badge
+        if: always()
+        run: |
+          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          mkdir -p integration-badge
+          jq -n --arg total "$INTEG" \
+            '{schemaVersion:1,label:"integration tests",message:($total+" passed"),color:"brightgreen"}' \
+            > integration-badge/integration-tests-badge.json
+
+      - name: Upload integration test badge
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-badge
+          path: integration-badge/
+
       # Always tear down containers, even when tests fail, to prevent port and
       # resource leaks between CI runs on the same runner.  --volumes removes
       # any anonymous volumes created by the Pebble container.
