@@ -2,7 +2,9 @@ mod error;
 mod multi_file;
 mod report;
 mod single_file;
+mod spec_impls;
 mod validate;
+mod validate_spec_trait;
 mod validated_config;
 pub(crate) mod validator;
 
@@ -13,3 +15,4 @@ pub(crate) use validated_config::ValidatedConfig;
 
 pub use error::ConfigError;
 pub use report::*;
+pub use validate_spec_trait::ValidateSpec;
