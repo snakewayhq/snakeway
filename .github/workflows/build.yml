@@ -160,7 +160,7 @@ jobs:
       - name: Generate integration test badge
         if: always()
         run: |
-          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ': test$' || echo 0)
           mkdir -p integration-badge
           jq -n --arg total "$INTEG" \
             '{schemaVersion:1,label:"integration tests",message:($total+" passed"),color:"brightgreen"}' \
@@ -225,9 +225,9 @@ jobs:
 
       - name: Count tests and generate badge
         run: |
-          CORE=$(cargo test -p snakeway-core --features static_files,wasm -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
-          CONF=$(cargo test -p snakeway-conf -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
-          BIN=$(cargo test -p snakeway -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          CORE=$(cargo test -p snakeway-core --features static_files,wasm -- --list 2>/dev/null | grep -c ': test$' || echo 0)
+          CONF=$(cargo test -p snakeway-conf -- --list 2>/dev/null | grep -c ': test$' || echo 0)
+          BIN=$(cargo test -p snakeway -- --list 2>/dev/null | grep -c ': test$' || echo 0)
           TOTAL=$((CORE + CONF + BIN))
           echo "## Tests: ${TOTAL}" >> "$GITHUB_STEP_SUMMARY"
           jq -n --arg total "$TOTAL" \
