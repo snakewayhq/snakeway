@@ -1,16 +1,10 @@
-use crate::types::{
-    BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
-    StaticFilesSpec, TlsTerminationSpec,
-};
+use crate::types::{BindInterfaceSpec, BindSpec, IngressSpec, ServiceSpec, StaticFilesSpec};
+#[cfg(test)]
+use crate::types::{Origin, RedirectSpec};
 use crate::validation::ValidationReport;
-use crate::validation::validator::{
-    CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
-    CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
-    is_valid_hostname, is_valid_port, validate_cert_key_pair, validate_cert_pem, validate_range,
-};
+use crate::validation::validate_spec_trait::ValidateSpec;
+use crate::validation::validator::is_valid_port;
 use std::collections::{HashMap, HashSet};
-use std::net::IpAddr;
 
 /// Validate listener definitions.
 ///
@@ -30,40 +24,11 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
 
             if let Some(connection_filter) = &bind.connection_filter {
-                // At least one IP family must be enabled
-                if !connection_filter.ip_family.ipv4 && !connection_filter.ip_family.ipv6 {
-                    report.connection_filter_requires_at_least_one_ip_family(&bind.origin);
-                }
-
-                // Validate CIDR allow list
-                for cidr in &connection_filter.cidr.allow {
-                    if cidr.parse::<ipnet::IpNet>().is_err() {
-                        report.invalid_cidr_in_connection_filter_allow_list(cidr, &bind.origin);
-                    }
-                }
-
-                // Validate CIDR deny list
-                for cidr in &connection_filter.cidr.deny {
-                    if cidr.parse::<ipnet::IpNet>().is_err() {
-                        report.invalid_cidr_in_connection_filter_deny_list(cidr, &bind.origin);
-                    }
-                }
+                connection_filter.validate(&bind.origin, report);
             }
 
             if let Some(connection_rate_limiting_filter) = &bind.connection_rate_limiting_filter {
-                validate_range(
-                    connection_rate_limiting_filter.window_seconds,
-                    &CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS,
-                    report,
-                    &bind.origin,
-                );
-
-                validate_range(
-                    connection_rate_limiting_filter.max_connections_per_second,
-                    &CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
-                    report,
-                    &bind.origin,
-                );
+                connection_rate_limiting_filter.validate(&bind.origin, report);
             }
 
             let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
@@ -83,18 +48,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
 
             if let Some(certificate_spec) = &bind.tls {
-                match certificate_spec {
-                    TlsTerminationSpec::Manual { cert, key } => {
-                        if let Err(e) = validate_cert_key_pair(cert, key) {
-                            report.ingress_tls_manual_cert_pair_invalid(&e, &bind.origin);
-                        }
-                    }
-                    TlsTerminationSpec::Acme { domains, .. } => {
-                        if domains.is_empty() {
-                            report.acme_tls_requires_domains(&bind.origin);
-                        }
-                    }
-                }
+                certificate_spec.validate(&bind.origin, report);
             }
 
             // HTTP/2 requires TLS
@@ -103,7 +57,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
 
             if let Some(redirect) = &bind.redirect_http_to_https {
-                validate_redirect(redirect, &bind.origin, report);
+                redirect.validate(&bind.origin, report);
 
                 if bind.tls.is_none() {
                     report.redirect_http_to_https_requires_tls(
@@ -162,12 +116,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
 
             match &bind_admin.tls {
-                TlsTerminationSpec::Manual { cert, key } => {
-                    if let Err(e) = validate_cert_key_pair(cert, key) {
-                        report.ingress_tls_manual_cert_pair_invalid(&e, &bind_admin.origin);
-                    }
+                tls @ crate::types::TlsTerminationSpec::Manual { .. } => {
+                    tls.validate(&bind_admin.origin, report);
                 }
-                TlsTerminationSpec::Acme { .. } => {
+                crate::types::TlsTerminationSpec::Acme { .. } => {
                     report.admin_bind_does_not_support_acme(&bind_admin.origin);
                 }
             }
@@ -198,27 +150,9 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
 fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
     for spec in static_file_specs {
         for route in &spec.routes {
-            if !route.file_dir.exists() {
-                report.invalid_static_dir(&route.file_dir, &route.origin);
-            }
-            if route.file_dir.is_relative() {
-                report.invalid_static_dir_must_be_absolute(&route.file_dir, &route.origin);
-            }
+            route.validate(&route.origin, report);
         }
     }
-}
-
-/// Validate redirect configuration.
-pub(crate) fn validate_redirect(
-    spec: &RedirectSpec,
-    origin: &Origin,
-    report: &mut ValidationReport,
-) {
-    if !is_valid_port(spec.port) {
-        report.invalid_port(spec.port, origin);
-    }
-
-    validate_range(spec.status, &REDIRECT_RESPONSE_CODE, report, origin);
 }
 
 /// Validate service definitions.
@@ -249,9 +183,7 @@ pub(crate) fn validate_services(
 
         // Upstreams
         for upstream in &service.upstreams {
-            if upstream.weight == 0 || upstream.weight > 1_000 {
-                report.invalid_upstream_weight(&upstream.weight, &service.origin);
-            }
+            upstream.validate(&service.origin, report);
 
             if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
                 report.upstream_cannot_have_both_sock_and_endpoint(
@@ -269,36 +201,20 @@ pub(crate) fn validate_services(
             }
 
             if let Some(endpoint) = &upstream.endpoint {
-                match &endpoint.host {
-                    HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-                        report.invalid_upstream_ip(ip, &upstream.origin);
-                    }
-                    HostSpec::Hostname(name) if !is_valid_hostname(name) => {
-                        report.invalid_upstream_hostname(name, &upstream.origin);
-                    }
-                    _ => {}
-                }
+                endpoint.validate(&upstream.origin, report);
 
-                if !is_valid_port(endpoint.port) {
-                    report.invalid_port(endpoint.port, &upstream.origin);
-                }
-
-                // Validate upstream TLS.
-                if let Some(tls) = &endpoint.tls {
-                    if tls.sni.trim().is_empty() {
-                        report.upstream_tls_sni_required(&upstream.origin);
+                // Cross-field TLS checks that depend on verify flag.
+                if let Some(tls) = &endpoint.tls
+                    && tls.verify
+                {
+                    if tls.sni.parse::<std::net::IpAddr>().is_ok() {
+                        report.upstream_tls_sni_must_be_dns(&upstream.origin);
                     }
 
-                    if tls.verify {
-                        if tls.sni.parse::<IpAddr>().is_ok() {
-                            report.upstream_tls_sni_must_be_dns(&upstream.origin);
-                        }
-
-                        if let Some(ca_file) = &tls.ca_file
-                            && let Err(e) = validate_cert_pem(ca_file)
-                        {
-                            report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
-                        }
+                    if let Some(ca_file) = &tls.ca_file
+                        && let Err(e) = crate::validation::validator::validate_cert_pem(ca_file)
+                    {
+                        report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
                     }
                 }
             }
@@ -314,30 +230,20 @@ pub(crate) fn validate_services(
         if let Some(cb) = &service.circuit_breaker
             && cb.enable_auto_recovery
         {
-            validate_range(
-                cb.failure_threshold,
-                &CB_FAILURE_THRESHOLD,
-                report,
-                &service.origin,
-            );
-            validate_range(
-                cb.open_duration_milliseconds,
-                &CB_OPEN_DURATION_MS,
-                report,
-                &service.origin,
-            );
-            validate_range(
-                cb.half_open_max_requests,
-                &CB_HALF_OPEN_MAX_REQUESTS,
-                report,
-                &service.origin,
-            );
-            validate_range(
-                cb.success_threshold,
-                &CB_SUCCESS_THRESHOLD,
-                report,
-                &service.origin,
-            );
+            cb.validate(&service.origin, report);
         }
     }
+}
+
+/// Validate redirect configuration.
+///
+/// Delegates field-local validation to the `ValidateSpec` trait implementation
+/// on `RedirectSpec`. Retained for test compatibility.
+#[cfg(test)]
+pub(crate) fn validate_redirect(
+    spec: &RedirectSpec,
+    origin: &Origin,
+    report: &mut ValidationReport,
+) {
+    spec.validate(origin, report);
 }
