@@ -1,6 +1,6 @@
 use crate::types::{
-    ConnectionRateLimitingFilterSpec, NetworkConnectionFilterSpec, Origin, RedirectSpec,
-    StaticRouteSpec, TlsTerminationSpec,
+    BindAdminSpec, BindSpec, ConnectionRateLimitingFilterSpec, NetworkConnectionFilterSpec, Origin,
+    RedirectSpec, StaticRouteSpec, TlsTerminationSpec,
 };
 use crate::validation::report::ValidationReport;
 use crate::validation::validate_spec_trait::ValidateSpec;
@@ -9,6 +9,38 @@ use crate::validation::validator::{
     CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE, is_valid_port,
     validate_cert_key_pair, validate_range,
 };
+
+impl ValidateSpec for BindSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        if !is_valid_port(self.port) {
+            report.invalid_port(self.port, origin);
+        }
+
+        if let Some(connection_filter) = &self.connection_filter {
+            connection_filter.validate(origin, report);
+        }
+
+        if let Some(connection_rate_limiting_filter) = &self.connection_rate_limiting_filter {
+            connection_rate_limiting_filter.validate(origin, report);
+        }
+
+        if let Some(tls) = &self.tls {
+            tls.validate(origin, report);
+        }
+
+        if let Some(redirect) = &self.redirect_http_to_https {
+            redirect.validate(origin, report);
+        }
+    }
+}
+
+impl ValidateSpec for BindAdminSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        if !is_valid_port(self.port) {
+            report.invalid_port(self.port, origin);
+        }
+    }
+}
 
 impl ValidateSpec for NetworkConnectionFilterSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {

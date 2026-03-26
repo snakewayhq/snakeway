@@ -1,5 +1,5 @@
 use crate::types::*;
-use crate::validation::{ValidationReport, validate_ingresses, validate_redirect};
+use crate::validation::{ValidateSpec, ValidationReport, validate_ingresses};
 use pretty_assertions::assert_eq;
 use rcgen::generate_simple_self_signed;
 use std::fs::File;
@@ -255,7 +255,7 @@ fn valid_3xx_status_produces_no_errors() {
     let mut report = ValidationReport::default();
 
     // Act
-    validate_redirect(&spec, &origin, &mut report);
+    spec.validate(&origin, &mut report);
 
     // Assert
     assert_eq!(report.errors.is_empty(), true);
@@ -272,7 +272,7 @@ fn valid_non_3xx_status_produces_error_bottom_of_range() {
     let mut report = ValidationReport::default();
 
     // Act
-    validate_redirect(&spec, &origin, &mut report);
+    spec.validate(&origin, &mut report);
 
     // Assert
     assert_eq!(report.errors[0].message, expected_error);
@@ -289,7 +289,7 @@ fn valid_non_3xx_status_produces_error_top_of_range() {
     let mut report = ValidationReport::default();
 
     // Act
-    validate_redirect(&spec, &origin, &mut report);
+    spec.validate(&origin, &mut report);
 
     // Assert
     assert_eq!(report.errors[0].message, expected_error);
@@ -306,7 +306,7 @@ fn invalid_port_produces_error() {
     let mut report = ValidationReport::default();
 
     // Act
-    validate_redirect(&spec, &origin, &mut report);
+    spec.validate(&origin, &mut report);
 
     // Assert
     assert_eq!(report.errors[0].message, "invalid port: 0");

@@ -1,9 +1,8 @@
-use crate::types::{BindInterfaceSpec, BindSpec, IngressSpec, ServiceSpec, StaticFilesSpec};
-#[cfg(test)]
-use crate::types::{Origin, RedirectSpec};
+use crate::types::{
+    BindInterfaceSpec, BindSpec, IngressSpec, ServiceSpec, StaticFilesSpec, TlsTerminationSpec,
+};
 use crate::validation::ValidationReport;
 use crate::validation::validate_spec_trait::ValidateSpec;
-use crate::validation::validator::is_valid_port;
 use std::collections::{HashMap, HashSet};
 
 /// Validate listener definitions.
@@ -19,17 +18,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         // Bind
         // ---------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
-            if !is_valid_port(bind.port) {
-                report.invalid_port(bind.port, &bind.origin);
-            }
-
-            if let Some(connection_filter) = &bind.connection_filter {
-                connection_filter.validate(&bind.origin, report);
-            }
-
-            if let Some(connection_rate_limiting_filter) = &bind.connection_rate_limiting_filter {
-                connection_rate_limiting_filter.validate(&bind.origin, report);
-            }
+            bind.validate(&bind.origin, report);
 
             let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
             match interface {
@@ -47,18 +36,12 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                 }
             }
 
-            if let Some(certificate_spec) = &bind.tls {
-                certificate_spec.validate(&bind.origin, report);
-            }
-
             // HTTP/2 requires TLS
             if bind.enable_http2 && bind.tls.is_none() {
                 report.http2_requires_tls(&bind.interface.to_string(), &bind.origin);
             }
 
             if let Some(redirect) = &bind.redirect_http_to_https {
-                redirect.validate(&bind.origin, report);
-
                 if bind.tls.is_none() {
                     report.redirect_http_to_https_requires_tls(
                         &bind.interface.to_string(),
@@ -76,9 +59,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         // Admin bind
         // ---------------------------------------------------------------------
         if let Some(bind_admin) = &ingress.bind_admin {
-            if !is_valid_port(bind_admin.port) {
-                report.invalid_port(bind_admin.port, &bind_admin.origin);
-            }
+            bind_admin.validate(&bind_admin.origin, report);
 
             let interface: Result<BindInterfaceSpec, _> = bind_admin.interface.clone().try_into();
             match interface {
@@ -116,10 +97,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
 
             match &bind_admin.tls {
-                tls @ crate::types::TlsTerminationSpec::Manual { .. } => {
-                    tls.validate(&bind_admin.origin, report);
+                TlsTerminationSpec::Manual { .. } => {
+                    // TLS cert/key validation already handled by bind_admin.validate() above.
                 }
-                crate::types::TlsTerminationSpec::Acme { .. } => {
+                TlsTerminationSpec::Acme { .. } => {
                     report.admin_bind_does_not_support_acme(&bind_admin.origin);
                 }
             }
@@ -146,6 +127,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         }
     }
 }
+
 /// Validate Static files
 fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
     for spec in static_file_specs {
@@ -183,7 +165,7 @@ pub(crate) fn validate_services(
 
         // Upstreams
         for upstream in &service.upstreams {
-            upstream.validate(&service.origin, report);
+            upstream.validate(&upstream.origin, report);
 
             if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
                 report.upstream_cannot_have_both_sock_and_endpoint(
@@ -233,17 +215,4 @@ pub(crate) fn validate_services(
             cb.validate(&service.origin, report);
         }
     }
-}
-
-/// Validate redirect configuration.
-///
-/// Delegates field-local validation to the `ValidateSpec` trait implementation
-/// on `RedirectSpec`. Retained for test compatibility.
-#[cfg(test)]
-pub(crate) fn validate_redirect(
-    spec: &RedirectSpec,
-    origin: &Origin,
-    report: &mut ValidationReport,
-) {
-    spec.validate(origin, report);
 }
