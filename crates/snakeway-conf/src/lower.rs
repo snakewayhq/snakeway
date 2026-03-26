@@ -1,18 +1,11 @@
 use crate::types::{
-    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
-    ServiceConfig, ServiceRouteConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, RuntimeConfig,
+    ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
+    UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::validation::ConfigError;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-
-pub(crate) type IrConfig = (
-    ServerConfig,
-    Vec<ListenerConfig>,
-    Vec<RouteConfig>,
-    HashMap<String, ServiceConfig>,
-    Vec<DeviceConfig>,
-);
 
 /// Transform spec to the runtime configuration.
 ///
@@ -21,7 +14,7 @@ pub(crate) fn lower_configs(
     server_spec: ServerSpec,
     ingresses: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
-) -> Result<IrConfig, ConfigError> {
+) -> Result<RuntimeConfig, ConfigError> {
     // ---------------------------------------------------------------------
     // Server
     // ---------------------------------------------------------------------
@@ -161,5 +154,11 @@ pub(crate) fn lower_configs(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok((server, listeners, routes, services, devices))
+    Ok(RuntimeConfig {
+        server,
+        listeners,
+        routes,
+        services,
+        devices,
+    })
 }

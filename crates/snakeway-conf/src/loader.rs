@@ -1,7 +1,7 @@
 use crate::discover::discover;
 use crate::lower::lower_configs;
 use crate::parse::{parse_devices, parse_ingress};
-use crate::types::{DeviceSpec, EntrypointSpec, IngressSpec, Origin, RuntimeConfig, ServerSpec};
+use crate::types::{DeviceSpec, EntrypointSpec, IngressSpec, Origin, ServerSpec};
 use crate::validation::ValidatedConfig;
 use crate::validation::{ConfigError, validate_spec};
 
@@ -24,17 +24,10 @@ pub fn load_config_from_specs(
     let validation_report = validate_spec(&server_spec, &ingress_specs, &device_specs);
 
     // Convert spec to runtime config.
-    let (server, listeners, routes, services, devices) =
-        lower_configs(server_spec, ingress_specs, device_specs)?;
+    let config = lower_configs(server_spec, ingress_specs, device_specs)?;
 
     Ok(ValidatedConfig {
-        config: RuntimeConfig {
-            server,
-            devices,
-            routes,
-            services,
-            listeners,
-        },
+        config,
         validation_report,
     })
 }

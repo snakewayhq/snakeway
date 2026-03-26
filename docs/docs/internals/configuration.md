@@ -238,7 +238,7 @@ means the pipeline completed but the operator should not start the server.
 | `conf/loader.rs`                      | Entry point: `load_config`, `load_spec_files`, `load_config_from_specs` |
 | `conf/discover.rs`                    | Glob-based file discovery                                               |
 | `conf/parse.rs`                       | `parse_devices`, `parse_ingress`: HCL to Spec                           |
-| `conf/lower.rs`                       | `lower_configs`: Spec to Config; defines `IrConfig`                     |
+| `conf/lower.rs`                       | `lower_configs`: Spec to Config                                         |
 | `conf/types/specification/`           | All `*Spec` structs                                                     |
 | `conf/types/runtime/`                 | All `*Config` structs and their `From`/`TryFrom` impls                  |
 | `conf/validation/validate.rs`         | `validate_spec` orchestrator                                            |
