@@ -49,6 +49,37 @@ Every setting exists in **two parallel structs**:
 The conversion is always a `From<FooSpec> for FooConfig` or `TryFrom<FooSpec> for FooConfig`
 impl that lives **in the runtime file alongside `FooConfig`**.
 
+### Type selection principle
+
+**Spec types must use the rawest type that deserializes infallibly from HCL.** Use `String`,
+`u32`, `bool`, `PathBuf`, `Vec<String>`, `Option<T>`. Never use parsed domain types like
+`IpNet`, `Method`, or `HeaderName` in spec fields. If serde rejects a value during
+deserialization, the operator sees a single cryptic error and the rest of the file is not
+checked. Keeping specs raw ensures the validation stage can collect ALL errors in one pass.
+
+**Config types should use the fully parsed, typed form.** `IpNet`, `Method`, `SocketAddr`.
+Downstream code should never re-parse a config value.
+
+**Lowering is the parsing boundary.** Validation parses to *check* (read-only, collecting
+errors). Lowering parses to *store* (producing typed values). This duplication is intentional
+defense-in-depth: if validation passes, lowering should never fail. If it does, the `TryFrom`
+error catches the bug gracefully rather than panicking during live config reload.
+
+### ValidateSpec trait
+
+Spec types implement the `ValidateSpec` trait for field-local validation:
+
+```rust
+pub trait ValidateSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport);
+}
+```
+
+Implementations live in `crates/snakeway-conf/src/validation/spec_impls/`. Cross-field and
+cross-file checks remain in the centralized validators (`validation/single_file/` and
+`validation/multi_file/`). The centralized validators call `spec.validate(origin, report)`
+first, then add their own relational checks.
+
 ---
 
 ## Recipe: adding a setting to the `server` block
