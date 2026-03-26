@@ -150,21 +150,25 @@ by the caller in `lower.rs` — no changes to `lower.rs` are needed for server f
 
 ### Step 4 — Add validation (if needed)
 
-**File:** `crates/snakeway-conf/src/validation/single_file/server.rs`
+Field-local validation goes in the `ValidateSpec` trait impl for the spec type.
 
-Add your check inside `validate_server()`:
+**File:** `crates/snakeway-conf/src/validation/spec_impls/server.rs`
+
+Add your check inside the `ValidateSpec` impl for `ServerSpec`:
 
 ```rust
-pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) {
-    // ... existing checks ...
+impl ValidateSpec for ServerSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        // ... existing checks ...
 
-    if let Some(max) = server_spec.max_connections {
-        if max == 0 {
-            report.error(
-                "max_connections must be greater than zero".to_string(),
-                &server_spec.origin,
-                Some("Set max_connections to a positive integer.".to_string()),
-            );
+        if let Some(max) = self.max_connections {
+            if max == 0 {
+                report.error(
+                    "max_connections must be greater than zero".to_string(),
+                    origin,
+                    Some("Set max_connections to a positive integer.".to_string()),
+                );
+            }
         }
     }
 }
@@ -173,6 +177,9 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
 For reusable range checks, see `validate_range()` in
 `crates/snakeway-conf/src/validation/validator/mod.rs` and the `SERVER_THREADS` constant for
 a pattern to follow.
+
+Cross-field checks (involving two or more fields on the same struct) stay in the centralized
+validator at `crates/snakeway-conf/src/validation/single_file/server.rs`.
 
 **Add a typed helper to `ValidationReport`** when the error should be reusable across
 validators. Add a new `impl ValidationReport` block in
@@ -193,7 +200,7 @@ impl ValidationReport {
 }
 ```
 
-Then call `report.invalid_max_connections(max, &server_spec.origin)` from the validator.
+Then call `report.invalid_max_connections(max, origin)` from the `ValidateSpec` impl.
 
 ### Step 5 — Verify
 
