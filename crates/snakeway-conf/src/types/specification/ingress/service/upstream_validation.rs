@@ -1,12 +1,6 @@
-use crate::types::{
-    CircuitBreakerSpec, EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec,
-};
-use crate::validation::report::ValidationReport;
-use crate::validation::validate_spec_trait::ValidateSpec;
-use crate::validation::validator::{
-    CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    is_valid_hostname, is_valid_port, validate_range,
-};
+use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
+use crate::validation::validator::{is_valid_hostname, is_valid_port};
+use crate::validation::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec for UpstreamSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -43,34 +37,5 @@ impl ValidateSpec for EndpointTlsSpec {
         if self.sni.trim().is_empty() {
             report.upstream_tls_sni_required(origin);
         }
-    }
-}
-
-impl ValidateSpec for CircuitBreakerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
-        validate_range(
-            self.failure_threshold,
-            &CB_FAILURE_THRESHOLD,
-            report,
-            origin,
-        );
-        validate_range(
-            self.open_duration_milliseconds,
-            &CB_OPEN_DURATION_MS,
-            report,
-            origin,
-        );
-        validate_range(
-            self.half_open_max_requests,
-            &CB_HALF_OPEN_MAX_REQUESTS,
-            report,
-            origin,
-        );
-        validate_range(
-            self.success_threshold,
-            &CB_SUCCESS_THRESHOLD,
-            report,
-            origin,
-        );
     }
 }
