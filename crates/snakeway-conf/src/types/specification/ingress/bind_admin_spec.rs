@@ -1,5 +1,7 @@
 use crate::resolution::ResolveError;
-use crate::types::specification::ingress::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
+use crate::types::specification::ingress::bind_interface_spec::{
+    BindInterfaceInput, BindInterfaceSpec,
+};
 use crate::types::{Origin, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
