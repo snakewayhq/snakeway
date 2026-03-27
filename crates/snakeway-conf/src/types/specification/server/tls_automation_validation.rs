@@ -1,42 +1,10 @@
-use crate::types::{AcmeServerSpec, CertStoreSpec, Origin, ServerSpec, TlsAutomationSpec};
-use crate::validation::report::ValidationReport;
-use crate::validation::validate_spec_trait::ValidateSpec;
+use crate::types::{AcmeServerSpec, CertStoreSpec, Origin, TlsAutomationSpec};
+use crate::validation::ValidateSpec;
+use crate::validation::ValidationReport;
 use crate::validation::validator::{
-    SERVER_THREADS, SERVER_TLS_RENEW_WITHIN_DAYS, validate_cert_pem, validate_range,
+    SERVER_TLS_RENEW_WITHIN_DAYS, validate_cert_pem, validate_range,
 };
 use nix::NixPath;
-
-impl ValidateSpec for ServerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
-        if let Some(pid_file) = self.pid_file.clone() {
-            let Some(parent) = pid_file.parent() else {
-                return;
-            };
-
-            if !parent.exists() {
-                report.pid_file_parent_dir_does_not_exist(pid_file.display(), origin);
-            } else if !parent.is_dir() {
-                report.pid_file_parent_not_a_dir(pid_file.display(), origin);
-            }
-        }
-
-        if let Some(ca_file) = &self.ca_file
-            && let Err(e) = validate_cert_pem(ca_file)
-        {
-            report.server_ca_file_invalid(&e, origin);
-        }
-
-        if let Some(t) = self.threads
-            && (t == 0 || t > 1024)
-        {
-            validate_range(t, &SERVER_THREADS, report, origin);
-        }
-
-        if let Some(tls_automation) = &self.tls_automation {
-            tls_automation.validate(origin, report);
-        }
-    }
-}
 
 impl ValidateSpec for TlsAutomationSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
