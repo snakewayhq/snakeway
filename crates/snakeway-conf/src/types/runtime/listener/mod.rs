@@ -1,10 +1,10 @@
-mod connection_rate_limiting_filter;
-mod network_connection_filter;
-mod tls_termination;
+mod connection_rate_limiting_filter_config;
+mod network_connection_filter_config;
+mod tls_termination_config;
 
-pub use connection_rate_limiting_filter::*;
-pub use network_connection_filter::*;
-pub use tls_termination::*;
+pub use connection_rate_limiting_filter_config::*;
+pub use network_connection_filter_config::*;
+pub use tls_termination_config::*;
 
 use crate::types::{BindAdminSpec, BindSpec};
 use serde::{Deserialize, Serialize};

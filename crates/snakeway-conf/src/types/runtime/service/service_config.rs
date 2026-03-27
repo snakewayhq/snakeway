@@ -1,4 +1,4 @@
-use crate::types::runtime::service::upstream::UpstreamTcpConfig;
+use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
 use crate::types::{
     CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategySpec, ServiceSpec,
     UpstreamUnixConfig,
