@@ -1,5 +1,5 @@
 use crate::types::ServerSpec;
-use crate::validation::{ValidationReport, validate_server, validate_version};
+use crate::validation::{ValidateSpec, ValidationReport};
 use std::path::PathBuf;
 
 #[test]
@@ -12,10 +12,9 @@ fn validate_server_version_valid() {
     };
 
     // Act
-    let result = validate_version(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
-    assert!(result);
     assert!(!report.has_violations());
 }
 
@@ -29,10 +28,9 @@ fn validate_server_version_invalid() {
     };
 
     // Act
-    let result = validate_version(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
-    assert!(!result);
     assert!(report.has_violations());
     assert!(
         report.errors[0]
@@ -52,7 +50,7 @@ fn validate_server_valid_config() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(!report.has_violations());
@@ -68,7 +66,7 @@ fn validate_server_pid_file_parent_dir_does_not_exist() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(report.has_violations());
@@ -94,7 +92,7 @@ fn validate_server_ca_file_does_not_exist() {
     );
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(report.has_violations());
@@ -111,7 +109,7 @@ fn validate_server_threads_too_low() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(report.has_violations());
@@ -132,7 +130,7 @@ fn validate_server_threads_too_high() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(report.has_violations());
@@ -159,7 +157,7 @@ fn validate_server_pid_file_parent_is_not_a_dir() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(report.has_violations());
@@ -187,7 +185,7 @@ fn validate_server_ca_file_is_not_a_file() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(report.has_violations());
@@ -213,7 +211,7 @@ fn validate_server_valid_pid_and_ca_files() {
     };
 
     // Act
-    validate_server(&server, &mut report);
+    server.validate(&server.origin, &mut report);
 
     // Assert
     assert!(!report.has_violations());
