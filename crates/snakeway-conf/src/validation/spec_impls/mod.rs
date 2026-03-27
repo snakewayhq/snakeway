@@ -1,2 +1,1 @@
-mod ingress;
 mod service;
