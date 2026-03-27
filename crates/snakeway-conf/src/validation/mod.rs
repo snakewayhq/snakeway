@@ -2,7 +2,6 @@ mod error;
 mod multi_file;
 mod report;
 mod single_file;
-mod spec_impls;
 mod validate;
 mod validate_spec_trait;
 mod validated_config;
