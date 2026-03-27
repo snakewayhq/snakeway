@@ -3,12 +3,13 @@ mod bind_admin;
 mod bind_interface;
 
 mod device;
-pub mod entrypoint;
 mod ingress;
 mod origin;
 mod server;
 mod service;
 mod static_files;
+
+mod entrypoint;
 
 pub use bind::*;
 pub use bind_admin::*;
