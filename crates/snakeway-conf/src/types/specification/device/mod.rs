@@ -1,10 +1,15 @@
 mod device_spec;
 mod identity;
+mod identity_validation;
 mod network_policy;
+mod network_policy_validation;
 mod request_filter;
+mod request_filter_validation;
 mod request_rate_limiting;
+mod request_rate_limiting_validation;
 mod structured_logging;
 mod wasm;
+mod wasm_validation;
 
 pub use device_spec::*;
 pub use identity::*;

@@ -12,6 +12,7 @@ pub(crate) mod validator;
 pub(crate) use intra_file::*;
 pub(crate) use validate::validate_spec;
 pub(crate) use validated_config::ValidatedConfig;
+pub(crate) use validator::*;
 
 pub use error::ConfigError;
 pub use report::*;
