@@ -10,7 +10,7 @@ pub use tls_termination::*;
 
 use crate::resolution::ResolveError;
 use crate::types::Origin;
-use crate::types::specification::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
+use crate::types::specification::ingress::bind_interface::{BindInterfaceInput, BindInterfaceSpec};
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;

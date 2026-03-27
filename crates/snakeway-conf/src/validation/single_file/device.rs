@@ -113,8 +113,6 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use crate::types::{DeviceSpec, IdentityDeviceSpec, WasmDeviceSpec};
     use crate::validation::{ValidationReport, validate_devices};
     use std::path::PathBuf;
