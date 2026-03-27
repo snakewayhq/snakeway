@@ -1,11 +1,10 @@
 use crate::types::{IdentityDeviceSpec, Origin};
-use crate::validation::ValidationReport;
 use crate::validation::validator::{
     IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH, IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH,
     validate_range,
 };
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use crate::validation::{ValidateSpec, validate_trusted_proxies};
+use crate::validation::{ValidateSpec, ValidationReport, validate_trusted_proxies};
 
 impl ValidateSpec for IdentityDeviceSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
