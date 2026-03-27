@@ -17,7 +17,7 @@ pub(crate) fn validate_tls(
 
             match certificate_spec {
                 TlsTerminationSpec::Manual { .. } => {
-                    // no-op: already validated in single_file.
+                    // no-op: already validated in intra_file.
                 }
                 TlsTerminationSpec::Acme { domains, .. } => {
                     any_acme_listener = true;

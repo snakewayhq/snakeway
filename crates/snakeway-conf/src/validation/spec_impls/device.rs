@@ -125,7 +125,7 @@ impl ValidateSpec for WasmDeviceSpec {
 }
 
 // ---------------------------------------------------------------------------
-// Helper functions (moved from single_file/device.rs)
+// Helper functions (moved from intra_file/device.rs)
 // ---------------------------------------------------------------------------
 
 fn validate_geoip_db_file(geoip_db: &Path, report: &mut ValidationReport, origin: &Origin) {
