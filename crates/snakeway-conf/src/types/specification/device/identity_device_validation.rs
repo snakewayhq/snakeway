@@ -1,9 +1,22 @@
 use crate::types::{IdentityDeviceSpec, Origin};
-use crate::validation::validator::{
-    IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH, IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH,
-};
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use crate::validation::{ValidateSpec, ValidationReport, validate_trusted_proxies};
+use crate::validation::{
+    RangeConstraint, ValidateSpec, ValidationReport, validate_trusted_proxies,
+};
+
+const IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH: RangeConstraint<usize> = RangeConstraint {
+    min: 1,
+    max: 2024,
+    label: "max_x_forwarded_for_length",
+    units: None,
+};
+
+const IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH: RangeConstraint<usize> = RangeConstraint {
+    min: 1,
+    max: 4096,
+    label: "max_user_agent_length",
+    units: None,
+};
 
 impl ValidateSpec for IdentityDeviceSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
