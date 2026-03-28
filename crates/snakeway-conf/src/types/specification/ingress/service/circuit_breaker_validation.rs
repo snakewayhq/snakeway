@@ -1,33 +1,10 @@
 use crate::types::{CircuitBreakerSpec, Origin};
-use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport};
+use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport, range_constraint};
 
-const FAILURE_THRESHOLD: RangeConstraint<u32> = RangeConstraint {
-    min: 1,
-    max: 10_000,
-    label: "circuit_breaker.failure_threshold",
-    units: None,
-};
-
-const OPEN_DURATION_MS: RangeConstraint<u64> = RangeConstraint {
-    min: 1,
-    max: 60 * 60 * 1000,
-    label: "circuit_breaker.open_duration_milliseconds",
-    units: Some("ms"),
-};
-
-const HALF_OPEN_MAX_REQUESTS: RangeConstraint<u32> = RangeConstraint {
-    min: 1,
-    max: 10_000,
-    label: "circuit_breaker.half_open_max_requests",
-    units: None,
-};
-
-const SUCCESS_THRESHOLD: RangeConstraint<u32> = RangeConstraint {
-    min: 1,
-    max: 10_000,
-    label: "circuit_breaker.success_threshold",
-    units: None,
-};
+range_constraint!(FAILURE_THRESHOLD, u32, min: 1, max: 10_000, label: "circuit_breaker.failure_threshold");
+range_constraint!(OPEN_DURATION_MS, u64, min: 1, max: 60 * 60 * 1000, label: "circuit_breaker.open_duration_milliseconds", units: "ms");
+range_constraint!(HALF_OPEN_MAX_REQUESTS, u32, min: 1, max: 10_000, label: "circuit_breaker.half_open_max_requests");
+range_constraint!(SUCCESS_THRESHOLD, u32, min: 1, max: 10_000, label: "circuit_breaker.success_threshold");
 
 impl ValidateSpec for CircuitBreakerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {

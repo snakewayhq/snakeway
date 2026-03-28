@@ -1,13 +1,8 @@
 use crate::types::{Origin, ServerSpec};
 use crate::validation::validator::validate_cert_pem;
-use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport};
+use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport, range_constraint};
 
-const THREADS: RangeConstraint<usize> = RangeConstraint {
-    min: 1,
-    max: 1024,
-    label: "server.threads",
-    units: None,
-};
+range_constraint!(THREADS, usize, min: 1, max: 1024, label: "server.threads", units: "threads");
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {

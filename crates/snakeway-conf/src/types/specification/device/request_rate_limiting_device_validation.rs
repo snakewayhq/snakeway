@@ -1,19 +1,8 @@
 use crate::types::{Origin, RequestRateLimitingDeviceSpec};
-use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport};
+use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport, range_constraint};
 
-const WINDOW_SECONDS: RangeConstraint<u16> = RangeConstraint {
-    min: 1,
-    max: 60,
-    label: "window_seconds",
-    units: Some("seconds"),
-};
-
-const MAX_REQUESTS_PER_SECOND: RangeConstraint<u16> = RangeConstraint {
-    min: 1,
-    max: 30_000,
-    label: "max_requests_per_second",
-    units: None,
-};
+range_constraint!(WINDOW_SECONDS, u16, min: 1, max: 60, label: "window_seconds", units: "seconds");
+range_constraint!(MAX_REQUESTS_PER_SECOND, u16, min: 1, max: 30_000, label: "max_requests_per_second");
 
 impl ValidateSpec for RequestRateLimitingDeviceSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {

@@ -1,15 +1,10 @@
 use crate::types::{AcmeServerSpec, CertStoreSpec, Origin, TlsAutomationSpec};
-use crate::validation::ValidationReport;
 use crate::validation::validator::validate_cert_pem;
 use crate::validation::{RangeConstraint, ValidateSpec};
+use crate::validation::{ValidationReport, range_constraint};
 use nix::NixPath;
 
-const RENEW_WITHIN_DAYS: RangeConstraint<u64> = RangeConstraint {
-    min: 7,
-    max: 30,
-    label: "server.tls.renew_within_days",
-    units: Some("days"),
-};
+range_constraint!(RENEW_WITHIN_DAYS, u64, min: 7, max: 30, label: "server.tls_automation.renew_within_days", units: "days");
 
 impl ValidateSpec for TlsAutomationSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {

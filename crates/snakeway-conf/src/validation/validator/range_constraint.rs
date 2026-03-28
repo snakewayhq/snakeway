@@ -29,3 +29,18 @@ where
         }
     }
 }
+
+macro_rules! range_constraint {
+    ($name:ident, $T:ty, min: $min:expr, max: $max:expr, label: $label:literal $(, units: $units:literal)?) => {
+        const $name: RangeConstraint<$T> = RangeConstraint {
+            min: $min,
+            max: $max,
+            label: $label,
+            units: range_constraint!(@units $($units)?),
+        };
+    };
+    (@units $units:literal) => { Some($units) };
+    (@units) => { None };
+}
+
+pub(crate) use range_constraint;

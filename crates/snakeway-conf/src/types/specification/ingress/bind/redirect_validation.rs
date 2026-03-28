@@ -1,13 +1,8 @@
 use crate::types::{Origin, RedirectSpec};
 use crate::validation::validator::is_valid_port;
-use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport};
+use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport, range_constraint};
 
-const RESPONSE_CODE: RangeConstraint<u16> = RangeConstraint {
-    min: 300,
-    max: 399,
-    label: "redirect_response_code",
-    units: None,
-};
+range_constraint!(RESPONSE_CODE, u16, min: 300, max: 399, label: "redirect_response_code");
 
 impl ValidateSpec for RedirectSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
