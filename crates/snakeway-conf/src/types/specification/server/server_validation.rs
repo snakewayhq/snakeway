@@ -1,8 +1,10 @@
 use crate::types::{Origin, ServerSpec};
 use crate::validation::validator::validate_cert_pem;
-use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport, range_constraint};
+use crate::validation::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
 
-range_constraint!(THREADS, usize, min: 1, max: 1024, label: "server.threads", units: "threads");
+range_constraint!(THREADS, usize, min: 1, max: 1024, units: "threads");
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -31,7 +33,7 @@ impl ValidateSpec for ServerSpec {
         if let Some(t) = self.threads
             && (t == 0 || t > 1024)
         {
-            THREADS.validate(t, report, origin);
+            validate_range_field!(THREADS, t, report, origin);
         }
 
         if let Some(tls_automation) = &self.tls_automation {

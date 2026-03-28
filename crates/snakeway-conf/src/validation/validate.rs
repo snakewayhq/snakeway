@@ -14,7 +14,6 @@ pub(crate) fn validate_spec(
     };
 
     if server.version == 1 {
-        report.invalid_config_version(&server.version, &server.origin);
         // Single file validation.
         server.validate(&server.origin, &mut report);
         single_file::validate_ingresses(ingresses, &mut report);
@@ -22,6 +21,8 @@ pub(crate) fn validate_spec(
 
         // Multi file validation.
         multi_file::validate_tls(server, ingresses, &mut report);
+    } else {
+        report.invalid_config_version(&server.version, &server.origin);
     }
 
     report
