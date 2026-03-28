@@ -4,14 +4,14 @@ use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, validate_trusted_proxies,
 };
 
-const IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH: RangeConstraint<usize> = RangeConstraint {
+const MAX_X_FORWARDED_FOR_LENGTH: RangeConstraint<usize> = RangeConstraint {
     min: 1,
     max: 2024,
     label: "max_x_forwarded_for_length",
     units: None,
 };
 
-const IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH: RangeConstraint<usize> = RangeConstraint {
+const MAX_USER_AGENT_LENGTH: RangeConstraint<usize> = RangeConstraint {
     min: 1,
     max: 4096,
     label: "max_user_agent_length",
@@ -22,18 +22,10 @@ impl ValidateSpec for IdentityDeviceSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
         validate_trusted_proxies(&self.trusted_proxies, report, origin);
 
-        IDENTITY_DEVICE_MAX_X_FORWARDED_FOR_LENGTH.validate(
-            self.max_x_forwarded_for_length,
-            report,
-            origin,
-        );
+        MAX_X_FORWARDED_FOR_LENGTH.validate(self.max_x_forwarded_for_length, report, origin);
 
         if self.enable_user_agent {
-            IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH.validate(
-                self.max_user_agent_length,
-                report,
-                origin,
-            );
+            MAX_USER_AGENT_LENGTH.validate(self.max_user_agent_length, report, origin);
         }
 
         if self.enable_geoip {

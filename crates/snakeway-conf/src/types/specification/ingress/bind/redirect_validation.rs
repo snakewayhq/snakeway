@@ -2,7 +2,7 @@ use crate::types::{Origin, RedirectSpec};
 use crate::validation::validator::is_valid_port;
 use crate::validation::{RangeConstraint, ValidateSpec, ValidationReport};
 
-const REDIRECT_RESPONSE_CODE: RangeConstraint<u16> = RangeConstraint {
+const RESPONSE_CODE: RangeConstraint<u16> = RangeConstraint {
     min: 300,
     max: 399,
     label: "redirect_response_code",
@@ -15,6 +15,6 @@ impl ValidateSpec for RedirectSpec {
             report.invalid_port(self.port, origin);
         }
 
-        REDIRECT_RESPONSE_CODE.validate(self.status, report, origin);
+        RESPONSE_CODE.validate(self.status, report, origin);
     }
 }

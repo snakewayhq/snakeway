@@ -4,7 +4,7 @@ use crate::validation::validator::validate_cert_pem;
 use crate::validation::{RangeConstraint, ValidateSpec};
 use nix::NixPath;
 
-const SERVER_TLS_RENEW_WITHIN_DAYS: RangeConstraint<u64> = RangeConstraint {
+const RENEW_WITHIN_DAYS: RangeConstraint<u64> = RangeConstraint {
     min: 7,
     max: 30,
     label: "server.tls.renew_within_days",
@@ -15,7 +15,7 @@ impl ValidateSpec for TlsAutomationSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
         self.acme.validate(origin, report);
 
-        SERVER_TLS_RENEW_WITHIN_DAYS.validate(self.renew_within_days, report, origin);
+        RENEW_WITHIN_DAYS.validate(self.renew_within_days, report, origin);
 
         self.cert_store.validate(origin, report);
     }
