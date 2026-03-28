@@ -9,6 +9,27 @@ pub(crate) struct RangeConstraint<T> {
     pub(crate) units: Option<&'static str>,
 }
 
+impl<T> RangeConstraint<T>
+where
+    T: PartialOrd + std::fmt::Display + Copy,
+{
+    /// Validate that the given value is within the range of this constraint.
+    /// Invalid values are reported as errors in the validation report.
+    pub(crate) fn validate(&self, value: T, report: &mut ValidationReport, origin: &Origin) {
+        if value < self.min || value > self.max {
+            let units = self.units.unwrap_or("");
+            report.error(
+                format!(
+                    "invalid {}: {}{} (must be between {}{} and {}{})",
+                    self.label, value, units, self.min, units, self.max, units
+                ),
+                origin,
+                None,
+            );
+        }
+    }
+}
+
 pub(crate) const CB_FAILURE_THRESHOLD: RangeConstraint<u32> = RangeConstraint {
     min: 1,
     max: 10_000,
@@ -111,24 +132,3 @@ pub(crate) const IDENTITY_DEVICE_MAX_USER_AGENT_LENGTH: RangeConstraint<usize> =
     label: "max_user_agent_length",
     units: None,
 };
-
-pub(crate) fn validate_range<T>(
-    value: T,
-    constraint: &RangeConstraint<T>,
-    report: &mut ValidationReport,
-    origin: &Origin,
-) where
-    T: PartialOrd + std::fmt::Display,
-{
-    if value < constraint.min || value > constraint.max {
-        let units = constraint.units.unwrap_or("");
-        report.error(
-            format!(
-                "invalid {}: {}{} (must be between {}{} and {}{})",
-                constraint.label, value, units, constraint.min, units, constraint.max, units
-            ),
-            origin,
-            None,
-        );
-    }
-}

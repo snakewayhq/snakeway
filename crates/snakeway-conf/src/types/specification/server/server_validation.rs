@@ -1,5 +1,5 @@
 use crate::types::{Origin, ServerSpec};
-use crate::validation::validator::{SERVER_THREADS, validate_cert_pem, validate_range};
+use crate::validation::validator::{SERVER_THREADS, validate_cert_pem};
 use crate::validation::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec for ServerSpec {
@@ -29,7 +29,7 @@ impl ValidateSpec for ServerSpec {
         if let Some(t) = self.threads
             && (t == 0 || t > 1024)
         {
-            validate_range(t, &SERVER_THREADS, report, origin);
+            SERVER_THREADS.validate(t, report, origin);
         }
 
         if let Some(tls_automation) = &self.tls_automation {

@@ -1,5 +1,5 @@
 use crate::types::{Origin, RedirectSpec};
-use crate::validation::validator::{REDIRECT_RESPONSE_CODE, is_valid_port, validate_range};
+use crate::validation::validator::{REDIRECT_RESPONSE_CODE, is_valid_port};
 use crate::validation::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec for RedirectSpec {
@@ -8,6 +8,6 @@ impl ValidateSpec for RedirectSpec {
             report.invalid_port(self.port, origin);
         }
 
-        validate_range(self.status, &REDIRECT_RESPONSE_CODE, report, origin);
+        REDIRECT_RESPONSE_CODE.validate(self.status, report, origin);
     }
 }

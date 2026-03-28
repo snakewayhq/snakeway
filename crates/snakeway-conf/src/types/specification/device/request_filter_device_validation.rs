@@ -1,13 +1,13 @@
 use crate::types::{Origin, RequestFilterDeviceSpec};
 use crate::validation::validator::{
-    REQUEST_FILTER_DENY_STATUS, validate_http_header_name, validate_http_method, validate_range,
+    REQUEST_FILTER_DENY_STATUS, validate_http_header_name, validate_http_method,
 };
 use crate::validation::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec for RequestFilterDeviceSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
         if let Some(deny_status) = self.deny_status {
-            validate_range(deny_status, &REQUEST_FILTER_DENY_STATUS, report, origin);
+            REQUEST_FILTER_DENY_STATUS.validate(deny_status, report, origin);
         }
 
         for method in &self.allow_methods {
