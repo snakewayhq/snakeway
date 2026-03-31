@@ -1,9 +1,7 @@
-use crate::types::{
-    BindInterfaceSpec, BindSpec, IngressSpec, ServiceSpec, StaticFilesSpec, TlsTerminationSpec,
-};
+use crate::types::{BindInterfaceSpec, IngressSpec, TlsTerminationSpec};
 use crate::validation::ValidationReport;
 use crate::validation::validate_spec_trait::ValidateSpec;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// Validate listener definitions.
 ///
@@ -117,7 +115,18 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             .for_each(|static_files| static_files.validate(&ingress.origin, report));
 
         let bind_uses_http2 = ingress.bind.as_ref().is_some_and(|b| b.enable_http2);
-        validate_services(bind_uses_http2, &ingress.services, report);
+        ingress
+            .services
+            .iter()
+            .for_each(|service| service.validate(&service.origin, report));
+
+        for service in &ingress.services {
+            for route in &service.routes {
+                if bind_uses_http2 && route.enable_websocket {
+                    report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
+                }
+            }
+        }
 
         // ---------------------------------------------------------------------
         // Cross-ingress upstream sock uniqueness
@@ -130,84 +139,6 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                     report.duplicate_upstream_sock(sock, &service.origin);
                 }
             }
-        }
-    }
-}
-
-/// Validate service definitions.
-pub(crate) fn validate_services(
-    bind_uses_http2: bool,
-    services: &[ServiceSpec],
-    report: &mut ValidationReport,
-) {
-    for service in services {
-        if service.upstreams.is_empty() {
-            report.service_has_no_upstreams(&service.origin);
-        }
-
-        let mut seen_sock_values = HashSet::new();
-
-        // Routes
-        for route in &service.routes {
-            if route.hosts.is_empty() {
-                report.route_has_no_hosts(&service.origin);
-            }
-
-            if bind_uses_http2 && route.enable_websocket {
-                report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
-            }
-        }
-
-        // Upstreams
-        for upstream in &service.upstreams {
-            upstream.validate(&upstream.origin, report);
-
-            if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
-                report.upstream_cannot_have_both_sock_and_endpoint(
-                    sock,
-                    &endpoint.host.to_string(),
-                    endpoint.port,
-                    &service.origin,
-                );
-                continue;
-            }
-
-            if upstream.sock.is_none() && upstream.endpoint.is_none() {
-                report.upstream_must_have_a_sock_or_endpoint(&service.origin);
-                continue;
-            }
-
-            if let Some(endpoint) = &upstream.endpoint {
-                endpoint.validate(&upstream.origin, report);
-
-                // Cross-field TLS checks that depend on verify flag.
-                if let Some(tls) = &endpoint.tls
-                    && tls.verify
-                {
-                    if tls.sni.parse::<std::net::IpAddr>().is_ok() {
-                        report.upstream_tls_sni_must_be_dns(&upstream.origin);
-                    }
-
-                    if let Some(ca_file) = &tls.ca_file
-                        && let Err(e) = crate::validation::validator::validate_cert_pem(ca_file)
-                    {
-                        report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
-                    }
-                }
-            }
-
-            if let Some(sock) = &upstream.sock
-                && !seen_sock_values.insert(sock.clone())
-            {
-                report.duplicate_upstream_sock(sock, &upstream.origin);
-            }
-        }
-
-        // Circuit breaker
-        if let Some(cb) = &service.circuit_breaker
-            && cb.enable_auto_recovery
-        {
-            cb.validate(&service.origin, report);
         }
     }
 }
