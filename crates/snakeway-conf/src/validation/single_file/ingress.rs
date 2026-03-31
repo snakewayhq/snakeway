@@ -233,6 +233,138 @@ mod tests {
     }
 
     #[test]
+    fn ingress_missing_bind_produces_error() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: None,
+            bind_admin: None,
+            services: vec![minimal_service()],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "ingress config must have a bind or bind_admin declaration")
+        );
+    }
+
+    #[test]
+    fn http2_with_websocket_route_produces_error() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+
+        let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .expect("failed to generate self-signed cert");
+        let cert_pem = cert.cert.pem();
+        let key_pem = cert.signing_key.serialize_pem();
+
+        let cert_path = dir.path().join("cert.pem");
+        let key_path = dir.path().join("key.pem");
+        std::fs::write(&cert_path, cert_pem).unwrap();
+        std::fs::write(&key_path, key_pem).unwrap();
+
+        let ingress = IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: 8443,
+                tls: Some(TlsTerminationSpec::Manual {
+                    cert: cert_path,
+                    key: key_path,
+                }),
+                enable_http2: true,
+                ..Default::default()
+            }),
+            services: vec![ServiceSpec {
+                routes: vec![ServiceRouteSpec {
+                    path: "/ws".to_string(),
+                    hosts: vec!["example.com".to_string()],
+                    enable_websocket: true,
+                    ..Default::default()
+                }],
+                upstreams: vec![UpstreamSpec {
+                    endpoint: Some(EndpointSpec {
+                        host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                        port: 9090,
+                        tls: None,
+                    }),
+                    weight: 1,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "websocket route cannot be used with HTTP2: /ws")
+        );
+    }
+
+    #[test]
+    fn duplicate_redirect_ports_across_ingresses() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+
+        let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .expect("failed to generate self-signed cert");
+        let cert_pem = cert.cert.pem();
+        let key_pem = cert.signing_key.serialize_pem();
+
+        let cert_path = dir.path().join("cert.pem");
+        let key_path = dir.path().join("key.pem");
+        std::fs::write(&cert_path, &cert_pem).unwrap();
+        std::fs::write(&key_path, &key_pem).unwrap();
+
+        let make_ingress = |port: u16| IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port,
+                tls: Some(TlsTerminationSpec::Manual {
+                    cert: cert_path.clone(),
+                    key: key_path.clone(),
+                }),
+                redirect_http_to_https: Some(RedirectSpec {
+                    port: 9090,
+                    status: 308,
+                }),
+                ..Default::default()
+            }),
+            services: vec![minimal_service()],
+            ..Default::default()
+        };
+
+        let ingress1 = make_ingress(8443);
+        let ingress2 = make_ingress(8444);
+
+        // Act
+        validate_ingresses(&[ingress1, ingress2], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "duplicate redirect_http_to_https port: 9090")
+        );
+    }
+
+    #[test]
     fn validate_multiple_services_at_once() {
         // Arrange
         let mut report = ValidationReport::default();

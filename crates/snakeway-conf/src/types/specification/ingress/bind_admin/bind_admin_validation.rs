@@ -64,6 +64,53 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn acme_tls_not_supported() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind_admin = BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 9000,
+            tls: TlsTerminationSpec::Acme {
+                domains: vec!["example.com".to_string()],
+                challenge: Default::default(),
+            },
+            ..Default::default()
+        };
+        let origin = Origin::test("bind_admin");
+
+        // Act
+        bind_admin.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.to_lowercase().contains("acme"))
+        );
+    }
+
+    #[test]
+    fn unspecified_ip_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind_admin = BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("0.0.0.0".to_string()),
+            port: 9000,
+            ..Default::default()
+        };
+        let origin = Origin::test("bind_admin");
+
+        // Act
+        bind_admin.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(report.errors.iter().any(|e| e.message.contains("0.0.0.0")));
+    }
+
+    #[test]
     fn invalid_bind_addr() {
         // Arrange
         let mut report = ValidationReport::default();

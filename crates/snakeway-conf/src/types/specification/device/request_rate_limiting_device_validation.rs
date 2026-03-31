@@ -17,3 +17,75 @@ impl ValidateSpec for RequestRateLimitingDeviceSpec {
         validate_range_field!(WINDOW_SECONDS, self.window_seconds, report, origin);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::RequestRateLimitingDeviceSpec;
+    use crate::validation::{ValidateSpec, ValidationReport};
+
+    #[test]
+    fn max_requests_per_second_below_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = RequestRateLimitingDeviceSpec {
+            enable: true,
+            max_requests_per_second: 0,
+            window_seconds: 10,
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("max_requests_per_second"))
+        );
+    }
+
+    #[test]
+    fn window_seconds_below_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = RequestRateLimitingDeviceSpec {
+            enable: true,
+            max_requests_per_second: 100,
+            window_seconds: 0,
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("window_seconds"))
+        );
+    }
+
+    #[test]
+    fn valid_rate_limiting_device() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = RequestRateLimitingDeviceSpec {
+            enable: true,
+            max_requests_per_second: 100,
+            window_seconds: 10,
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(!report.has_violations());
+    }
+}

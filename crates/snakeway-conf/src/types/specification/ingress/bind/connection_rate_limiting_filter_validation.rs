@@ -22,3 +22,70 @@ impl ValidateSpec for ConnectionRateLimitingFilterSpec {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{ConnectionRateLimitingFilterSpec, Origin};
+    use crate::validation::{ValidateSpec, ValidationReport};
+
+    fn test_origin() -> Origin {
+        Origin::test("connection_rate_limiting_filter")
+    }
+
+    #[test]
+    fn window_seconds_below_range() {
+        // Arrange
+        let spec = ConnectionRateLimitingFilterSpec {
+            window_seconds: 0,
+            max_connections_per_second: 100,
+        };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors.len(), 1);
+        assert!(report.errors[0].message.contains("window_seconds"));
+    }
+
+    #[test]
+    fn max_connections_below_range() {
+        // Arrange
+        let spec = ConnectionRateLimitingFilterSpec {
+            window_seconds: 10,
+            max_connections_per_second: 0,
+        };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors.len(), 1);
+        assert!(
+            report.errors[0]
+                .message
+                .contains("max_connections_per_second")
+        );
+    }
+
+    #[test]
+    fn valid_rate_limiting_filter() {
+        // Arrange
+        let spec = ConnectionRateLimitingFilterSpec {
+            window_seconds: 10,
+            max_connections_per_second: 100,
+        };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.errors.is_empty());
+    }
+}

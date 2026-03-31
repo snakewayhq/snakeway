@@ -47,3 +47,71 @@ impl ValidateSpec for IdentityDeviceSpec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::IdentityDeviceSpec;
+    use crate::validation::{ValidateSpec, ValidationReport};
+
+    #[test]
+    fn max_xff_length_below_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = IdentityDeviceSpec {
+            enable: true,
+            max_x_forwarded_for_length: 0,
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("max_x_forwarded_for_length"))
+        );
+    }
+
+    #[test]
+    fn max_xff_length_above_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = IdentityDeviceSpec {
+            enable: true,
+            max_x_forwarded_for_length: 2049,
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("max_x_forwarded_for_length"))
+        );
+    }
+
+    #[test]
+    fn valid_identity_device() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = IdentityDeviceSpec {
+            enable: true,
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(!report.has_violations());
+    }
+}

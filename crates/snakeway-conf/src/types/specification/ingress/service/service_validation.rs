@@ -73,7 +73,8 @@ impl ValidateSpec for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        EndpointSpec, HostSpec, Origin, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+        EndpointSpec, EndpointTlsSpec, HostSpec, Origin, ServiceRouteSpec, ServiceSpec,
+        UpstreamSpec,
     };
     use crate::validation::{ValidateSpec, ValidationReport};
     use std::net::IpAddr;
@@ -224,5 +225,73 @@ mod tests {
         // Assert
         let error = report.errors.first().expect("expected at least one error");
         assert!(error.message.contains("duplicate upstream sock"));
+    }
+
+    #[test]
+    fn route_with_no_hosts_produces_error() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut service = minimal_service();
+        service.routes.push(ServiceRouteSpec {
+            hosts: vec![],
+            path: "/".to_string(),
+            ..Default::default()
+        });
+        let origin = Origin::test("service");
+
+        // Act
+        service.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("route has no hosts"));
+    }
+
+    #[test]
+    fn tls_sni_as_ip_rejected_when_verify_true() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut service = minimal_service();
+        service.upstreams[0].endpoint = Some(EndpointSpec {
+            host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+            port: 3000,
+            tls: Some(EndpointTlsSpec {
+                sni: "127.0.0.1".to_string(),
+                verify: true,
+                ca_file: None,
+            }),
+        });
+        let origin = Origin::test("service");
+
+        // Act
+        service.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("upstream TLS SNI must be DNS name"));
+    }
+
+    #[test]
+    fn tls_ca_file_invalid_when_verify_true() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut service = minimal_service();
+        service.upstreams[0].endpoint = Some(EndpointSpec {
+            host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+            port: 3000,
+            tls: Some(EndpointTlsSpec {
+                sni: "example.com".to_string(),
+                verify: true,
+                ca_file: Some("/nonexistent/ca.pem".into()),
+            }),
+        });
+        let origin = Origin::test("service");
+
+        // Act
+        service.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("upstream TLS has invalid CA file"));
     }
 }

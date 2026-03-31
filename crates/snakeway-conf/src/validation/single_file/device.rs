@@ -113,7 +113,10 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{DeviceSpec, IdentityDeviceSpec, WasmDeviceSpec};
+    use crate::types::{
+        DeviceSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestRateLimitingDeviceSpec,
+        StructuredLoggingDeviceSpec, WasmDeviceSpec,
+    };
     use crate::validation::{ValidationReport, validate_devices};
     use std::path::PathBuf;
 
@@ -416,6 +419,152 @@ mod tests {
                 .errors
                 .iter()
                 .any(|e| e.message.contains("geoip db path is not a file"))
+        );
+    }
+
+    #[test]
+    fn duplicate_identity_device_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let device_a = DeviceSpec::Identity(IdentityDeviceSpec {
+            enable: true,
+            ..Default::default()
+        });
+        let device_b = DeviceSpec::Identity(IdentityDeviceSpec {
+            enable: true,
+            ..Default::default()
+        });
+
+        // Act
+        validate_devices(&[device_a, device_b], &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("device already defined"))
+        );
+    }
+
+    #[test]
+    fn network_policy_requires_identity_device() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let device = DeviceSpec::NetworkPolicy(NetworkPolicyDeviceSpec {
+            enable: true,
+            cidr_allow: vec!["10.0.0.0/8".to_string()],
+            ..Default::default()
+        });
+
+        // Act
+        validate_devices(&[device], &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("requires identity device"))
+        );
+    }
+
+    #[test]
+    fn rate_limiting_requires_identity_device() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let device = DeviceSpec::RequestRateLimiting(RequestRateLimitingDeviceSpec {
+            enable: true,
+            max_requests_per_second: 100,
+            window_seconds: 10,
+            ..Default::default()
+        });
+
+        // Act
+        validate_devices(&[device], &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("requires identity device"))
+        );
+    }
+
+    #[test]
+    fn structured_logging_identity_fields_empty() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let device = DeviceSpec::StructuredLogging(StructuredLoggingDeviceSpec {
+            enable: true,
+            include_identity: true,
+            identity_fields: vec![],
+            ..Default::default()
+        });
+
+        // Act
+        validate_devices(&[device], &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.message.contains("identity fields cannot be empty"))
+        );
+    }
+
+    #[test]
+    fn structured_logging_headers_without_config() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let device = DeviceSpec::StructuredLogging(StructuredLoggingDeviceSpec {
+            enable: true,
+            include_headers: true,
+            allowed_headers: vec![],
+            redacted_headers: vec![],
+            ..Default::default()
+        });
+
+        // Act
+        validate_devices(&[device], &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(report.warnings.iter().any(|w| {
+            w.message
+                .contains("includes headers but no headers are set")
+        }));
+    }
+
+    #[test]
+    fn identity_geoip_enabled_without_db_produces_warning() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let device = DeviceSpec::Identity(IdentityDeviceSpec {
+            enable: true,
+            enable_geoip: true,
+            geoip_city_db: None,
+            geoip_isp_db: None,
+            geoip_connection_type_db: None,
+            ..Default::default()
+        });
+
+        // Act
+        validate_devices(&[device], &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.message.contains("geoip enabled with no dbs specified"))
         );
     }
 }

@@ -68,6 +68,78 @@ mod tests {
     }
 
     #[test]
+    fn bind_port_zero_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind = BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 0,
+            ..Default::default()
+        };
+        let origin = Origin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("invalid port: 0"))
+        );
+    }
+
+    #[test]
+    fn bind_unspecified_ip_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind = BindSpec {
+            interface: BindInterfaceInput::Keyword("0.0.0.0".to_string()),
+            port: 8080,
+            ..Default::default()
+        };
+        let origin = Origin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("invalid bind address: 0.0.0.0"))
+        );
+    }
+
+    #[test]
+    fn bind_invalid_interface_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind = BindSpec {
+            interface: BindInterfaceInput::Keyword("bad-keyword".to_string()),
+            port: 8080,
+            ..Default::default()
+        };
+        let origin = Origin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("invalid bind address"))
+        );
+    }
+
+    #[test]
     fn valid_minimal_bind() {
         // Arrange
         let mut report = ValidationReport::default();
