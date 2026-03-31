@@ -4,7 +4,7 @@ use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(THREADS, usize, min: 1, max: 1024, units: "threads");
+range_constraint!(THREADS, usize, min: 1, max: 1024);
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -30,10 +30,8 @@ impl ValidateSpec for ServerSpec {
             report.server_ca_file_invalid(&e, origin);
         }
 
-        if let Some(t) = self.threads
-            && (t == 0 || t > 1024)
-        {
-            validate_range_field!(THREADS, t, report, origin);
+        if let Some(threads) = self.threads {
+            validate_range_field!(THREADS, threads, report, origin);
         }
 
         if let Some(tls_automation) = &self.tls_automation {
@@ -159,11 +157,7 @@ mod tests {
 
         // Assert
         assert!(report.has_violations());
-        assert!(
-            report.errors[0]
-                .message
-                .contains("invalid server.threads: 0")
-        );
+        assert!(report.errors[0].message.contains("invalid threads: 0"));
     }
 
     #[test]
@@ -180,11 +174,7 @@ mod tests {
 
         // Assert
         assert!(report.has_violations());
-        assert!(
-            report.errors[0]
-                .message
-                .contains("invalid server.threads: 1025")
-        );
+        assert!(report.errors[0].message.contains("invalid threads: 1025"));
     }
 
     #[test]

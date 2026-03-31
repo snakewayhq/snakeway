@@ -75,7 +75,7 @@ mod tests {
         let origin = Origin::test("bind");
 
         // Act
-        bind.validate(origin, &mut report);
+        bind.validate(&origin, &mut report);
 
         // Assert
         assert!(!report.has_violations());
@@ -90,7 +90,7 @@ mod tests {
         let origin = Origin::test("bind");
 
         // Act
-        bind.validate(origin, &mut report);
+        bind.validate(&origin, &mut report);
 
         // Assert
         assert_eq!(report.errors[0].message, "HTTP/2 requires TLS: loopback");
@@ -112,7 +112,7 @@ mod tests {
         let origin = Origin::test("bind");
 
         // Act
-        bind.validate(origin, &mut report);
+        bind.validate(&origin, &mut report);
 
         // Assert
         assert_eq!(

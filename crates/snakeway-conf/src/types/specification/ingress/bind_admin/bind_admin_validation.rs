@@ -75,7 +75,7 @@ mod tests {
         let origin = Origin::test("bind_admin");
 
         // Act
-        bind_admin.validate(origin, &mut report);
+        bind_admin.validate(&origin, &mut report);
 
         // Assert
         assert!(
@@ -121,7 +121,7 @@ mod tests {
         let origin = Origin::test("bind_admin");
 
         // Act
-        bind_admin.validate(origin, &mut report);
+        bind_admin.validate(&origin, &mut report);
 
         // Assert
         assert_eq!(report.errors.len(), 1);
