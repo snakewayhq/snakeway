@@ -110,8 +110,12 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             report.missing_bind(&ingress.origin);
         }
 
-        ingress.static_files.validate(report);
-        validate_static_files(&ingress.static_files, report);
+        // Validate Static files
+        ingress
+            .static_files
+            .iter()
+            .for_each(|static_files| static_files.validate(&ingress.origin, report));
+
         validate_services(&ingress.bind, &ingress.services, report);
 
         // ---------------------------------------------------------------------
@@ -125,15 +129,6 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                     report.duplicate_upstream_sock(sock, &service.origin);
                 }
             }
-        }
-    }
-}
-
-/// Validate Static files
-fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
-    for spec in static_file_specs {
-        for route in &spec.routes {
-            route.validate(&route.origin, report);
         }
     }
 }
