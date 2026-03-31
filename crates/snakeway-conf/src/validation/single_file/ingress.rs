@@ -116,7 +116,8 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             .iter()
             .for_each(|static_files| static_files.validate(&ingress.origin, report));
 
-        validate_services(&ingress.bind, &ingress.services, report);
+        let bind_uses_http2 = ingress.bind.as_ref().is_some_and(|b| b.enable_http2);
+        validate_services(bind_uses_http2, &ingress.services, report);
 
         // ---------------------------------------------------------------------
         // Cross-ingress upstream sock uniqueness
@@ -135,18 +136,16 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
 
 /// Validate service definitions.
 pub(crate) fn validate_services(
-    maybe_bind: &Option<BindSpec>,
+    bind_uses_http2: bool,
     services: &[ServiceSpec],
     report: &mut ValidationReport,
 ) {
-    let bind_uses_http2 = maybe_bind.as_ref().is_some_and(|b| b.enable_http2);
-
     for service in services {
         if service.upstreams.is_empty() {
             report.service_has_no_upstreams(&service.origin);
         }
 
-        let mut seen_sock_values = HashMap::new();
+        let mut seen_sock_values = HashSet::new();
 
         // Routes
         for route in &service.routes {
@@ -198,7 +197,7 @@ pub(crate) fn validate_services(
             }
 
             if let Some(sock) = &upstream.sock
-                && seen_sock_values.insert(sock.clone(), ()).is_some()
+                && !seen_sock_values.insert(sock.clone())
             {
                 report.duplicate_upstream_sock(sock, &upstream.origin);
             }
