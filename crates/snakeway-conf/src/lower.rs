@@ -1,18 +1,11 @@
 use crate::types::{
-    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, ServerConfig, ServerSpec,
-    ServiceConfig, ServiceRouteConfig, StaticRouteConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, RuntimeConfig,
+    ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
+    UpstreamTcpConfig, UpstreamUnixConfig,
 };
 use crate::validation::ConfigError;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-
-pub(crate) type IrConfig = (
-    ServerConfig,
-    Vec<ListenerConfig>,
-    Vec<RouteConfig>,
-    HashMap<String, ServiceConfig>,
-    Vec<DeviceConfig>,
-);
 
 /// Transform spec to the runtime configuration.
 ///
@@ -21,7 +14,7 @@ pub(crate) fn lower_configs(
     server_spec: ServerSpec,
     ingresses: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
-) -> Result<IrConfig, ConfigError> {
+) -> Result<RuntimeConfig, ConfigError> {
     // ---------------------------------------------------------------------
     // Server
     // ---------------------------------------------------------------------
@@ -161,5 +154,106 @@ pub(crate) fn lower_configs(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok((server, listeners, routes, services, devices))
+    Ok(RuntimeConfig {
+        server,
+        listeners,
+        routes,
+        services,
+        devices,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{
+        BindAdminSpec, BindInterfaceInput, BindSpec, EndpointSpec, HostSpec, IngressSpec,
+        ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+    };
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn lower_minimal_valid_config() {
+        // Arrange
+        let server_spec = ServerSpec {
+            version: 1,
+            ..Default::default()
+        };
+        let ingress = IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: 8080,
+                ..Default::default()
+            }),
+            services: vec![ServiceSpec {
+                routes: vec![ServiceRouteSpec {
+                    path: "/".to_string(),
+                    hosts: vec!["example.com".to_string()],
+                    ..Default::default()
+                }],
+                upstreams: vec![UpstreamSpec {
+                    endpoint: Some(EndpointSpec {
+                        host: HostSpec::Ip(std::net::IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+                        port: 3000,
+                        tls: None,
+                    }),
+                    weight: 1,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        // Act
+        let result = lower_configs(server_spec, vec![ingress], vec![]);
+
+        // Assert
+        let config = result.expect("lowering should succeed");
+        assert_eq!(config.listeners.len(), 1);
+        assert_eq!(config.services.len(), 1);
+        assert!(!config.routes.is_empty());
+    }
+
+    #[test]
+    fn lower_ingress_with_admin_bind() {
+        // Arrange
+        let server_spec = ServerSpec {
+            version: 1,
+            ..Default::default()
+        };
+        let ingress = IngressSpec {
+            bind_admin: Some(BindAdminSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: 9090,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Act
+        let result = lower_configs(server_spec, vec![ingress], vec![]);
+
+        // Assert
+        let config = result.expect("lowering should succeed");
+        assert_eq!(config.listeners.len(), 1);
+    }
+
+    #[test]
+    fn lower_empty_ingresses() {
+        // Arrange
+        let server_spec = ServerSpec {
+            version: 1,
+            ..Default::default()
+        };
+
+        // Act
+        let result = lower_configs(server_spec, vec![], vec![]);
+
+        // Assert
+        let config = result.expect("lowering should succeed");
+        assert!(config.listeners.is_empty());
+        assert!(config.services.is_empty());
+        assert!(config.routes.is_empty());
+    }
 }

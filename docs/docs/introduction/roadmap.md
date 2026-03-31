@@ -162,7 +162,7 @@ polish.
 
 **Configuration**
 
-- [ ] Consider moving validation logic into spec files where appropriate
+- [x] Consider moving validation logic into spec files where appropriate
 - [ ] Add parity between environment variables, CLI arguments, and defaults
 - [ ] Consolidate TLS automation directory options into a centralized `state_dir`
 - [x] Lazy DNS resolution for hosts (compatible with container environments)

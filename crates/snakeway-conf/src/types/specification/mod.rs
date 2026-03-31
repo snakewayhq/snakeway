@@ -1,22 +1,11 @@
-mod bind;
-mod bind_admin;
-mod bind_interface;
-
 mod device;
-pub mod entrypoint;
+mod entrypoint_spec;
 mod ingress;
 mod origin;
 mod server;
-mod service;
-mod static_files;
 
-pub use bind::*;
-pub use bind_admin::*;
-pub use bind_interface::*;
 pub use device::*;
-pub use entrypoint::*;
+pub use entrypoint_spec::*;
 pub use ingress::*;
 pub use origin::*;
 pub use server::*;
-pub use service::*;
-pub use static_files::*;

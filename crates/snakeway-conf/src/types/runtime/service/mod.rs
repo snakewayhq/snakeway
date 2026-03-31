@@ -1,9 +1,13 @@
-mod circuit_breaker;
-mod health_check;
+mod circuit_breaker_config;
+mod circuit_breaker_lower;
+mod health_check_config;
+mod health_check_lower;
 mod service_config;
-mod upstream;
+mod service_lower;
+mod upstream_config;
+mod upstream_lower;
 
-pub use circuit_breaker::*;
-pub use health_check::*;
+pub use circuit_breaker_config::*;
+pub use health_check_config::*;
 pub use service_config::*;
-pub use upstream::*;
+pub use upstream_config::*;

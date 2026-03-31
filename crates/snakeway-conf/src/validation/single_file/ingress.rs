@@ -1,188 +1,78 @@
-use crate::types::{
-    BindInterfaceSpec, BindSpec, HostSpec, IngressSpec, Origin, RedirectSpec, ServiceSpec,
-    StaticFilesSpec, TlsTerminationSpec,
-};
-use crate::validation::ValidationReport;
-use crate::validation::validator::{
-    CB_FAILURE_THRESHOLD, CB_HALF_OPEN_MAX_REQUESTS, CB_OPEN_DURATION_MS, CB_SUCCESS_THRESHOLD,
-    CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
-    CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS, REDIRECT_RESPONSE_CODE,
-    is_valid_hostname, is_valid_port, validate_cert_key_pair, validate_cert_pem, validate_range,
-};
-use std::collections::{HashMap, HashSet};
-use std::net::IpAddr;
+use crate::types::{BindInterfaceInput, BindInterfaceSpec, IngressSpec, Origin};
+use crate::validation::{ValidateSpec, ValidationReport};
+use std::collections::HashSet;
 
-/// Validate listener definitions.
-///
-/// Structural errors here are aggregated, not fail-fast.
 pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_keys = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
-        // ---------------------------------------------------------------------
-        // Bind
-        // ---------------------------------------------------------------------
-        if let Some(bind) = &ingress.bind {
-            if !is_valid_port(bind.port) {
-                report.invalid_port(bind.port, &bind.origin);
-            }
+        // Ingress validation.
+        ingress.validate(&ingress.origin, report);
 
-            if let Some(connection_filter) = &bind.connection_filter {
-                // At least one IP family must be enabled
-                if !connection_filter.ip_family.ipv4 && !connection_filter.ip_family.ipv6 {
-                    report.connection_filter_requires_at_least_one_ip_family(&bind.origin);
-                }
+        // Cross-ingress validation checks depend on the ingress's bind and/or bind_admin.
+        let maybe_bind = ingress.bind.as_ref();
+        let maybe_bind_admin = ingress.bind_admin.as_ref();
 
-                // Validate CIDR allow list
-                for cidr in &connection_filter.cidr.allow {
-                    if cidr.parse::<ipnet::IpNet>().is_err() {
-                        report.invalid_cidr_in_connection_filter_allow_list(cidr, &bind.origin);
-                    }
-                }
-
-                // Validate CIDR deny list
-                for cidr in &connection_filter.cidr.deny {
-                    if cidr.parse::<ipnet::IpNet>().is_err() {
-                        report.invalid_cidr_in_connection_filter_deny_list(cidr, &bind.origin);
-                    }
-                }
-            }
-
-            if let Some(connection_rate_limiting_filter) = &bind.connection_rate_limiting_filter {
-                validate_range(
-                    connection_rate_limiting_filter.window_seconds,
-                    &CONNECTION_RATE_LIMITING_REACTION_INTERVAL_IN_SECONDS,
-                    report,
-                    &bind.origin,
-                );
-
-                validate_range(
-                    connection_rate_limiting_filter.max_connections_per_second,
-                    &CONNECTION_RATE_LIMITING_FILTER_MAX_CONNECTIONS_PER_SECOND,
-                    report,
-                    &bind.origin,
-                );
-            }
-
-            let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
-            match interface {
-                Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                    report.invalid_bind_addr("0.0.0.0", &bind.origin);
-                }
-                Ok(spec) => {
-                    let key = format!("{}:{}", spec.as_ip(), bind.port);
-                    if !seen_listener_keys.insert(key.clone()) {
-                        report.duplicate_bind_addr(&key, &bind.origin);
-                    }
-                }
-                Err(_) => {
-                    report.invalid_bind_addr(&bind.interface.to_string(), &bind.origin);
-                }
-            }
-
-            if let Some(certificate_spec) = &bind.tls {
-                match certificate_spec {
-                    TlsTerminationSpec::Manual { cert, key } => {
-                        if let Err(e) = validate_cert_key_pair(cert, key) {
-                            report.ingress_tls_manual_cert_pair_invalid(&e, &bind.origin);
-                        }
-                    }
-                    TlsTerminationSpec::Acme { domains, .. } => {
-                        if domains.is_empty() {
-                            report.acme_tls_requires_domains(&bind.origin);
-                        }
-                    }
-                }
-            }
-
-            // HTTP/2 requires TLS
-            if bind.enable_http2 && bind.tls.is_none() {
-                report.http2_requires_tls(&bind.interface.to_string(), &bind.origin);
-            }
-
-            if let Some(redirect) = &bind.redirect_http_to_https {
-                validate_redirect(redirect, &bind.origin, report);
-
-                if bind.tls.is_none() {
-                    report.redirect_http_to_https_requires_tls(
-                        &bind.interface.to_string(),
-                        &bind.origin,
-                    );
-                }
-
-                if !seen_redirect_ports.insert(redirect.port) {
-                    report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
-                }
-            }
-        }
-
-        // ---------------------------------------------------------------------
-        // Admin bind
-        // ---------------------------------------------------------------------
-        if let Some(bind_admin) = &ingress.bind_admin {
-            if !is_valid_port(bind_admin.port) {
-                report.invalid_port(bind_admin.port, &bind_admin.origin);
-            }
-
-            let interface: Result<BindInterfaceSpec, _> = bind_admin.interface.clone().try_into();
-            match interface {
-                Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                    report.invalid_bind_addr("0.0.0.0", &bind_admin.origin);
-                }
-                Ok(spec) => {
-                    let key = format!("{}:{}", spec.as_ip(), bind_admin.port);
-                    if !seen_listener_keys.insert(key.clone()) {
-                        report.duplicate_bind_addr(&key, &bind_admin.origin);
-                    }
-                }
-                Err(_) => {
-                    report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
-                }
-            }
-
-            // Guard against binding the admin API to all interfaces.
-            // This is a dangerous situation because the admin API does not currently have
-            // authentication and could be used to gain unauthorized access to the server.
-            let bind_interface: BindInterfaceSpec = match bind_admin.interface.clone().try_into() {
-                Ok(i) => i,
-                Err(_) => {
-                    report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
-                    continue;
-                }
-            };
-
-            if matches!(bind_interface, BindInterfaceSpec::All) {
-                report.error(
-                    "admin API cannot bind to all interfaces".to_string(),
-                    &bind_admin.origin,
-                    Some("Use loopback or a specific IP address.".to_string()),
-                );
-            }
-
-            match &bind_admin.tls {
-                TlsTerminationSpec::Manual { cert, key } => {
-                    if let Err(e) = validate_cert_key_pair(cert, key) {
-                        report.ingress_tls_manual_cert_pair_invalid(&e, &bind_admin.origin);
-                    }
-                }
-                TlsTerminationSpec::Acme { .. } => {
-                    report.admin_bind_does_not_support_acme(&bind_admin.origin);
-                }
-            }
-        }
-
-        if ingress.bind.is_none() && ingress.bind_admin.is_none() {
+        //---------------------------------------------------------------------
+        // Bind/Admin bind presence check.
+        // There must be at least one bind or admin bind.
+        //---------------------------------------------------------------------
+        if maybe_bind.is_none() && maybe_bind_admin.is_none() {
             report.missing_bind(&ingress.origin);
         }
 
-        validate_static_files(&ingress.static_files, report);
-        validate_services(&ingress.bind, &ingress.services, report);
+        //---------------------------------------------------------------------
+        // Bind uniqueness checks.
+        //---------------------------------------------------------------------
+        if let Some(bind) = maybe_bind {
+            // Validate listener uniqueness.
+            validate_listener_uniqueness(
+                &bind.interface,
+                bind.port,
+                &bind.origin,
+                report,
+                &mut seen_listener_keys,
+            );
 
-        // ---------------------------------------------------------------------
+            // Validate redirects' port uniqueness.
+            if let Some(redirect) = &bind.redirect_http_to_https
+                && !seen_redirect_ports.insert(redirect.port)
+            {
+                report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
+            }
+        }
+
+        //---------------------------------------------------------------------
+        // Admin bind uniqueness checks.
+        //---------------------------------------------------------------------
+        if let Some(bind_admin) = maybe_bind_admin {
+            validate_listener_uniqueness(
+                &bind_admin.interface,
+                bind_admin.port,
+                &bind_admin.origin,
+                report,
+                &mut seen_listener_keys,
+            );
+        }
+
+        //---------------------------------------------------------------------
+        // Bind/Route http2/websocket agreement.
+        // If bind has http2 enabled, websocket routes cannot be used.
+        //---------------------------------------------------------------------
+        let bind_uses_http2 = ingress.bind.as_ref().is_some_and(|b| b.enable_http2);
+        for service in &ingress.services {
+            for route in &service.routes {
+                if bind_uses_http2 && route.enable_websocket {
+                    report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
+                }
+            }
+        }
+
+        //---------------------------------------------------------------------
         // Cross-ingress upstream sock uniqueness
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         for service in &ingress.services {
             for upstream in &service.upstreams {
                 if let Some(sock) = &upstream.sock
@@ -194,150 +84,315 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         }
     }
 }
-/// Validate Static files
-fn validate_static_files(static_file_specs: &[StaticFilesSpec], report: &mut ValidationReport) {
-    for spec in static_file_specs {
-        for route in &spec.routes {
-            if !route.file_dir.exists() {
-                report.invalid_static_dir(&route.file_dir, &route.origin);
-            }
-            if route.file_dir.is_relative() {
-                report.invalid_static_dir_must_be_absolute(&route.file_dir, &route.origin);
-            }
-        }
-    }
-}
 
-/// Validate redirect configuration.
-pub(crate) fn validate_redirect(
-    spec: &RedirectSpec,
+/// Verify that a socket address (ip:port) is not used more than once.
+fn validate_listener_uniqueness(
+    bind_interface_input: &BindInterfaceInput,
+    port: u16,
     origin: &Origin,
     report: &mut ValidationReport,
+    seen_listener_keys: &mut HashSet<String>,
 ) {
-    if !is_valid_port(spec.port) {
-        report.invalid_port(spec.port, origin);
+    let maybe_interface: Result<BindInterfaceSpec, _> = bind_interface_input.clone().try_into();
+    if let Ok(interface) = maybe_interface {
+        let key = interface.socket_address_literal(port);
+        if !seen_listener_keys.insert(key.clone()) {
+            report.duplicate_bind_addr(&key, origin);
+        }
     }
-
-    validate_range(spec.status, &REDIRECT_RESPONSE_CODE, report, origin);
 }
 
-/// Validate service definitions.
-pub(crate) fn validate_services(
-    maybe_bind: &Option<BindSpec>,
-    services: &[ServiceSpec],
-    report: &mut ValidationReport,
-) {
-    let bind_uses_http2 = maybe_bind.as_ref().is_some_and(|b| b.enable_http2);
+#[cfg(test)]
+mod tests {
+    use super::validate_ingresses;
+    use crate::types::*;
+    use std::net::IpAddr;
+    use std::str::FromStr;
 
-    for service in services {
-        if service.upstreams.is_empty() {
-            report.service_has_no_upstreams(&service.origin);
+    use crate::validation::ValidationReport;
+
+    fn minimal_service() -> ServiceSpec {
+        ServiceSpec {
+            routes: vec![ServiceRouteSpec {
+                path: "/".to_string(),
+                hosts: vec!["example.com".to_string()],
+                ..Default::default()
+            }],
+            upstreams: vec![UpstreamSpec {
+                endpoint: Some(EndpointSpec {
+                    host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                    port: 8080,
+                    tls: None,
+                }),
+                weight: 1,
+                ..Default::default()
+            }],
+            ..Default::default()
         }
+    }
 
-        let mut seen_sock_values = HashMap::new();
-
-        // Routes
-        for route in &service.routes {
-            if route.hosts.is_empty() {
-                report.route_has_no_hosts(&service.origin);
-            }
-
-            if bind_uses_http2 && route.enable_websocket {
-                report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
-            }
+    fn minimal_bind() -> BindSpec {
+        BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
+            ..Default::default()
         }
+    }
 
-        // Upstreams
-        for upstream in &service.upstreams {
-            if upstream.weight == 0 || upstream.weight > 1_000 {
-                report.invalid_upstream_weight(&upstream.weight, &service.origin);
-            }
-
-            if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
-                report.upstream_cannot_have_both_sock_and_endpoint(
-                    sock,
-                    &endpoint.host.to_string(),
-                    endpoint.port,
-                    &service.origin,
-                );
-                continue;
-            }
-
-            if upstream.sock.is_none() && upstream.endpoint.is_none() {
-                report.upstream_must_have_a_sock_or_endpoint(&service.origin);
-                continue;
-            }
-
-            if let Some(endpoint) = &upstream.endpoint {
-                match &endpoint.host {
-                    HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-                        report.invalid_upstream_ip(ip, &upstream.origin);
-                    }
-                    HostSpec::Hostname(name) if !is_valid_hostname(name) => {
-                        report.invalid_upstream_hostname(name, &upstream.origin);
-                    }
-                    _ => {}
-                }
-
-                if !is_valid_port(endpoint.port) {
-                    report.invalid_port(endpoint.port, &upstream.origin);
-                }
-
-                // Validate upstream TLS.
-                if let Some(tls) = &endpoint.tls {
-                    if tls.sni.trim().is_empty() {
-                        report.upstream_tls_sni_required(&upstream.origin);
-                    }
-
-                    if tls.verify {
-                        if tls.sni.parse::<IpAddr>().is_ok() {
-                            report.upstream_tls_sni_must_be_dns(&upstream.origin);
-                        }
-
-                        if let Some(ca_file) = &tls.ca_file
-                            && let Err(e) = validate_cert_pem(ca_file)
-                        {
-                            report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
-                        }
-                    }
-                }
-            }
-
-            if let Some(sock) = &upstream.sock
-                && seen_sock_values.insert(sock.clone(), ()).is_some()
-            {
-                report.duplicate_upstream_sock(sock, &upstream.origin);
-            }
+    fn minimal_ingress() -> IngressSpec {
+        IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![minimal_service()],
+            ..Default::default()
         }
+    }
 
-        // Circuit breaker
-        if let Some(cb) = &service.circuit_breaker
-            && cb.enable_auto_recovery
-        {
-            validate_range(
-                cb.failure_threshold,
-                &CB_FAILURE_THRESHOLD,
-                report,
-                &service.origin,
-            );
-            validate_range(
-                cb.open_duration_milliseconds,
-                &CB_OPEN_DURATION_MS,
-                report,
-                &service.origin,
-            );
-            validate_range(
-                cb.half_open_max_requests,
-                &CB_HALF_OPEN_MAX_REQUESTS,
-                report,
-                &service.origin,
-            );
-            validate_range(
-                cb.success_threshold,
-                &CB_SUCCESS_THRESHOLD,
-                report,
-                &service.origin,
-            );
-        }
+    #[test]
+    fn duplicate_bind_addr() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress1 = minimal_ingress();
+        let ingress2 = minimal_ingress();
+
+        // Act
+        validate_ingresses(&[ingress1, ingress2], &mut report);
+
+        // Assert
+        assert_eq!(
+            report.errors[0].message,
+            "duplicate bind address: 127.0.0.1:8080"
+        );
+    }
+
+    #[test]
+    fn duplicate_admin_and_public_bind() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let port = 9000;
+        let interface = BindInterfaceInput::Keyword("loopback".to_string());
+        let ingress = IngressSpec {
+            bind: Some(BindSpec {
+                interface: interface.clone(),
+                port,
+                ..Default::default()
+            }),
+            bind_admin: Some(BindAdminSpec {
+                interface: interface.clone(),
+                port,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == format!("duplicate bind address: 127.0.0.1:{}", port))
+        );
+    }
+
+    #[test]
+    fn sock_file_not_reused_across_services() {
+        // Arrange
+        let sock = "/tmp/test.sock".to_string();
+        let expected_error = format!("duplicate upstream sock: {}", sock);
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![
+                ServiceSpec {
+                    upstreams: vec![UpstreamSpec {
+                        sock: Some(sock.clone()),
+                        weight: 1,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+                ServiceSpec {
+                    upstreams: vec![UpstreamSpec {
+                        sock: Some(sock.clone()),
+                        weight: 1,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(report.errors.iter().any(|e| e.message == expected_error));
+    }
+
+    #[test]
+    fn ingress_missing_bind_produces_error() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: None,
+            bind_admin: None,
+            services: vec![minimal_service()],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "ingress config must have a bind or bind_admin declaration")
+        );
+    }
+
+    #[test]
+    fn http2_with_websocket_route_produces_error() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+
+        let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .expect("failed to generate self-signed cert");
+        let cert_pem = cert.cert.pem();
+        let key_pem = cert.signing_key.serialize_pem();
+
+        let cert_path = dir.path().join("cert.pem");
+        let key_path = dir.path().join("key.pem");
+        std::fs::write(&cert_path, cert_pem).unwrap();
+        std::fs::write(&key_path, key_pem).unwrap();
+
+        let ingress = IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: 8443,
+                tls: Some(TlsTerminationSpec::Manual {
+                    cert: cert_path,
+                    key: key_path,
+                }),
+                enable_http2: true,
+                ..Default::default()
+            }),
+            services: vec![ServiceSpec {
+                routes: vec![ServiceRouteSpec {
+                    path: "/ws".to_string(),
+                    hosts: vec!["example.com".to_string()],
+                    enable_websocket: true,
+                    ..Default::default()
+                }],
+                upstreams: vec![UpstreamSpec {
+                    endpoint: Some(EndpointSpec {
+                        host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                        port: 9090,
+                        tls: None,
+                    }),
+                    weight: 1,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "websocket route cannot be used with HTTP2: /ws")
+        );
+    }
+
+    #[test]
+    fn duplicate_redirect_ports_across_ingresses() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+
+        let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .expect("failed to generate self-signed cert");
+        let cert_pem = cert.cert.pem();
+        let key_pem = cert.signing_key.serialize_pem();
+
+        let cert_path = dir.path().join("cert.pem");
+        let key_path = dir.path().join("key.pem");
+        std::fs::write(&cert_path, &cert_pem).unwrap();
+        std::fs::write(&key_path, &key_pem).unwrap();
+
+        let make_ingress = |port: u16| IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port,
+                tls: Some(TlsTerminationSpec::Manual {
+                    cert: cert_path.clone(),
+                    key: key_path.clone(),
+                }),
+                redirect_http_to_https: Some(RedirectSpec {
+                    port: 9090,
+                    status: 308,
+                }),
+                ..Default::default()
+            }),
+            services: vec![minimal_service()],
+            ..Default::default()
+        };
+
+        let ingress1 = make_ingress(8443);
+        let ingress2 = make_ingress(8444);
+
+        // Act
+        validate_ingresses(&[ingress1, ingress2], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "duplicate redirect_http_to_https port: 9090")
+        );
+    }
+
+    #[test]
+    fn validate_multiple_services_at_once() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![
+                minimal_service(),
+                ServiceSpec {
+                    origin: Origin {
+                        section: "service_2".to_string(),
+                        ..Default::default()
+                    },
+                    upstreams: vec![], // Invalid: no upstreams
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("service has no upstream backends"))
+        );
     }
 }

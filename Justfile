@@ -308,7 +308,7 @@ generate-dev-certs:
     ./dev/gen-test-certs.sh
 
 test:
-    cargo nextest run -p snakeway-core --features static_files,wasm
+    cargo nextest run -p snakeway-core -p snakeway-conf --features static_files,wasm
 
 integration-test *ARGS: fetch-pebble-ca generate-dev-certs
     cargo nextest run -p integration {{ ARGS }}
@@ -317,11 +317,11 @@ test-everything: lint test integration-test generate-all-templates
     @echo "All good."
 
 test-with-coverage:
-    cargo llvm-cov nextest -p snakeway-core --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
     open target/llvm-cov/html/index.html
 
 test-with-coverage-summary:
-    cargo llvm-cov nextest -p snakeway-core --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # -----------------------------------------------------------------------------
 # CLEANUP

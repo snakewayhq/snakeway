@@ -49,6 +49,37 @@ Every setting exists in **two parallel structs**:
 The conversion is always a `From<FooSpec> for FooConfig` or `TryFrom<FooSpec> for FooConfig`
 impl that lives **in the runtime file alongside `FooConfig`**.
 
+### Type selection principle
+
+**Spec types must use the rawest type that deserializes infallibly from HCL.** Use `String`,
+`u32`, `bool`, `PathBuf`, `Vec<String>`, `Option<T>`. Never use parsed domain types like
+`IpNet`, `Method`, or `HeaderName` in spec fields. If serde rejects a value during
+deserialization, the operator sees a single cryptic error and the rest of the file is not
+checked. Keeping specs raw ensures the validation stage can collect ALL errors in one pass.
+
+**Config types should use the fully parsed, typed form.** `IpNet`, `Method`, `SocketAddr`.
+Downstream code should never re-parse a config value.
+
+**Lowering is the parsing boundary.** Validation parses to *check* (read-only, collecting
+errors). Lowering parses to *store* (producing typed values). This duplication is intentional
+defense-in-depth: if validation passes, lowering should never fail. If it does, the `TryFrom`
+error catches the bug gracefully rather than panicking during live config reload.
+
+### ValidateSpec trait
+
+Spec types implement the `ValidateSpec` trait for field-local validation:
+
+```rust
+pub trait ValidateSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport);
+}
+```
+
+Implementations live in `crates/snakeway-conf/src/validation/spec_impls/`. Cross-field and
+cross-file checks remain in the centralized validators (`validation/single_file/` and
+`validation/multi_file/`). The centralized validators call `spec.validate(origin, report)`
+first, then add their own relational checks.
+
 ---
 
 ## Recipe: adding a setting to the `server` block
@@ -119,21 +150,25 @@ by the caller in `lower.rs` — no changes to `lower.rs` are needed for server f
 
 ### Step 4 — Add validation (if needed)
 
-**File:** `crates/snakeway-conf/src/validation/single_file/server.rs`
+Field-local validation goes in the `ValidateSpec` trait impl for the spec type.
 
-Add your check inside `validate_server()`:
+**File:** `crates/snakeway-conf/src/validation/spec_impls/server.rs`
+
+Add your check inside the `ValidateSpec` impl for `ServerSpec`:
 
 ```rust
-pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) {
-    // ... existing checks ...
+impl ValidateSpec for ServerSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        // ... existing checks ...
 
-    if let Some(max) = server_spec.max_connections {
-        if max == 0 {
-            report.error(
-                "max_connections must be greater than zero".to_string(),
-                &server_spec.origin,
-                Some("Set max_connections to a positive integer.".to_string()),
-            );
+        if let Some(max) = self.max_connections {
+            if max == 0 {
+                report.error(
+                    "max_connections must be greater than zero".to_string(),
+                    origin,
+                    Some("Set max_connections to a positive integer.".to_string()),
+                );
+            }
         }
     }
 }
@@ -142,6 +177,9 @@ pub fn validate_server(server_spec: &ServerSpec, report: &mut ValidationReport) 
 For reusable range checks, see `validate_range()` in
 `crates/snakeway-conf/src/validation/validator/mod.rs` and the `SERVER_THREADS` constant for
 a pattern to follow.
+
+Cross-field checks (involving two or more fields on the same struct) stay in the centralized
+validator at `crates/snakeway-conf/src/validation/single_file/server.rs`.
 
 **Add a typed helper to `ValidationReport`** when the error should be reusable across
 validators. Add a new `impl ValidationReport` block in
@@ -162,7 +200,7 @@ impl ValidationReport {
 }
 ```
 
-Then call `report.invalid_max_connections(max, &server_spec.origin)` from the validator.
+Then call `report.invalid_max_connections(max, origin)` from the `ValidateSpec` impl.
 
 ### Step 5 — Verify
 

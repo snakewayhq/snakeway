@@ -1,9 +1,11 @@
-# Skill: unit-test — Writing Unit Tests in `snakeway-core`
+# Skill: unit-test — Writing Unit Tests
 
-This skill documents the conventions used for unit tests throughout `snakeway-core`.
+This skill documents the conventions used for unit tests throughout the codebase.
 Follow these patterns precisely when adding new tests.
 
 ## Where Tests Live
+
+### `snakeway-core`
 
 Each module places its tests in a `tests` submodule, declared at the bottom of `mod.rs`:
 
@@ -24,6 +26,44 @@ src/
 ```
 
 For simpler modules with few tests a single `tests.rs` file alongside `mod.rs` suffices.
+
+### `snakeway-conf`
+
+Validation tests live **inline** at the bottom of each `*_validation.rs` file,
+inside a `#[cfg(test)] mod tests { ... }` block. Each validation file is self-contained
+with its own helpers and imports -- do not create shared test utility modules.
+
+```
+types/specification/
+  server/
+    server_validation.rs        ← #[cfg(test)] mod tests { ... } at bottom
+  ingress/
+    bind/
+      bind_validation.rs        ← #[cfg(test)] mod tests { ... } at bottom
+      redirect_validation.rs    ← #[cfg(test)] mod tests { ... } at bottom
+    service/
+      service_validation.rs     ← #[cfg(test)] mod tests { ... } at bottom
+```
+
+Cross-ingress and cross-device tests (checks that span multiple specs) live inline
+in the centralized validation files:
+
+```
+validation/single_file/
+  ingress.rs                    ← #[cfg(test)] mod tests { ... } at bottom
+  device.rs                     ← #[cfg(test)] mod tests { ... } at bottom
+```
+
+Cross-file validation tests (checks that span multiple config files) live inline in:
+
+```
+validation/multi_file/
+  tls.rs                        ← #[cfg(test)] mod tests { ... } at bottom
+```
+
+**Key rule:** tests for a `ValidateSpec` implementation go in the same file as
+that implementation, not in a separate test directory. Construct the spec directly
+and call `.validate()` -- do not wrap in parent types unnecessarily.
 
 ## The AAA Pattern
 
@@ -152,16 +192,21 @@ Helper functions must not contain assertions — they are pure setup utilities.
 - Prefer `matches!(value, Pattern)` over `assert!(matches!(value, Pattern))` for enum variants
   when no message is needed. When a failure message would be useful, write it out with
   `assert!(matches!(...), "explanation")`.
+- Assertions should be high quality, meaning they should actually serve to validate the subject under test meaningfully.
 
 ## Running Unit Tests
 
 ```bash
-# Run all snakeway-core unit tests
+# Run all unit tests
 just test
 
-# Or directly with nextest
+# Run snakeway-core tests
 cargo nextest run -p snakeway-core --features static_files,wasm
+
+# Run snakeway-conf tests
+cargo test -p snakeway-conf
 
 # Run a specific test by name
 cargo nextest run -p snakeway-core --features static_files,wasm -E 'test(denies_request_when_ip_not_in_allowlist)'
+cargo test -p snakeway-conf -- upstream_validation::tests::weight_greater_than_zero
 ```
