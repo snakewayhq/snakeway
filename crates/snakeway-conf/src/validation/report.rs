@@ -705,3 +705,155 @@ impl ValidationReport {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn has_violations_false_when_empty() {
+        // Arrange
+        let report = ValidationReport::default();
+
+        // Act
+        let result = report.has_violations();
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn has_violations_true_with_error() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.error("test error".to_string(), &Origin::test("test"), None);
+
+        // Act
+        let result = report.has_violations();
+
+        // Assert
+        assert!(result);
+    }
+
+    #[test]
+    fn has_violations_true_with_warning() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.warning("test warning".to_string(), &Origin::test("test"), None);
+
+        // Act
+        let result = report.has_violations();
+
+        // Assert
+        assert!(result);
+    }
+
+    #[test]
+    fn error_adds_to_errors_vec() {
+        // Arrange
+        let mut report = ValidationReport::default();
+
+        // Act
+        report.error(
+            "test message".to_string(),
+            &Origin::test("test"),
+            Some("help text".to_string()),
+        );
+
+        // Assert
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors[0].message, "test message");
+        assert_eq!(report.errors[0].origin.section, "test");
+        assert_eq!(report.errors[0].help, Some("help text".to_string()));
+    }
+
+    #[test]
+    fn format_help_with_help_text() {
+        // Arrange
+        let report = ValidationReport::default();
+        let issue = ValidationIssue {
+            severity: Severity::Error,
+            message: "some error".to_string(),
+            origin: Origin::test("test"),
+            help: Some("try this instead".to_string()),
+        };
+
+        // Act
+        let result = report.format_help(&issue);
+
+        // Assert
+        assert!(
+            result.contains("try this instead"),
+            "expected format_help output to contain help text, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn format_help_without_help_text() {
+        // Arrange
+        let report = ValidationReport::default();
+        let issue = ValidationIssue {
+            severity: Severity::Error,
+            message: "some error".to_string(),
+            origin: Origin::test("test"),
+            help: None,
+        };
+
+        // Act
+        let result = report.format_help(&issue);
+
+        // Assert
+        assert!(
+            result.is_empty(),
+            "expected empty string when no help text, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn render_json_contains_errors_and_warnings() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.error("bad port".to_string(), &Origin::test("bind"), None);
+        report.warning("unused field".to_string(), &Origin::test("server"), None);
+
+        let json_struct = ValidationReportJson {
+            errors: &report.errors,
+            warnings: &report.warnings,
+        };
+
+        // Act
+        let json = serde_json::to_string_pretty(&json_struct).unwrap();
+
+        // Assert
+        assert!(json.contains("bad port"));
+        assert!(json.contains("unused field"));
+        assert!(json.contains("\"errors\""));
+        assert!(json.contains("\"warnings\""));
+    }
+
+    #[test]
+    fn render_pretty_does_not_panic_with_errors() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.error(
+            "test error".to_string(),
+            &Origin::test("bind"),
+            Some("try fixing it".to_string()),
+        );
+
+        // Act + Assert (no panic)
+        report.render_pretty();
+    }
+
+    #[test]
+    fn render_pretty_does_not_panic_with_warnings() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.warning("test warning".to_string(), &Origin::test("server"), None);
+
+        // Act + Assert (no panic)
+        report.render_pretty();
+    }
+}

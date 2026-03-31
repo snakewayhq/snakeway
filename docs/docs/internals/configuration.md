@@ -61,6 +61,30 @@ The conversion between them is always a `From<FooSpec> for FooConfig` or
 `TryFrom<FooSpec> for FooConfig` impl that lives **in the runtime module** alongside
 `FooConfig`. This keeps the lowering logic close to the type that benefits from it.
 
+### Type selection principle
+
+Spec and Config types serve different stages of the pipeline and follow different rules for
+which Rust types to use:
+
+**Spec types use the rawest type that deserializes infallibly from user input.** Strings,
+numbers, bools, paths -- types where serde will never reject the HCL value. This keeps the
+parsing stage permissive and lets the validation stage do all semantic checking with proper
+error collection. If a spec field used a parsed type like `IpNet` or `Method`, a malformed
+value would cause a hard serde deserialization error (single error, stops processing) instead
+of being collected into the `ValidationReport` alongside all other problems.
+
+**Config types use the fully parsed, typed form.** `IpNet`, `Method`, `HeaderName`,
+`SocketAddr`. This is the executable representation -- downstream code should never need to
+re-parse a string it received from config.
+
+**Lowering is the natural parsing boundary.** The `TryFrom` conversion transforms
+raw-but-validated spec values into typed config values. The validation stage and the lowering
+stage both parse the same strings, but for different purposes: validation parses to *check*
+(read-only, collecting errors into `ValidationReport`), while lowering parses to *store*
+(producing typed values for the runtime). This intentional duplication is a safety net --
+if validation passes, lowering should never fail. If it does, the `TryFrom` error catches
+the bug gracefully rather than panicking during a live config reload.
+
 A few concrete differences between the layers:
 
 | Setting      | Spec type                                                               | Config type                                               |
@@ -69,6 +93,8 @@ A few concrete differences between the layers:
 | TLS          | `TlsTerminationSpec` (enum: `Manual` or `Acme`)                         | `TlsTerminationConfig` with resolved cert paths           |
 | Upstreams    | Mixed `UpstreamSpec` (either `sock` or `endpoint`)                      | Separated into `UpstreamUnixConfig` / `UpstreamTcpConfig` |
 | Services     | Array inside `IngressSpec`                                              | Flattened into `HashMap<String, ServiceConfig>`           |
+| CIDR lists   | `Vec<String>` (raw CIDR notation)                                       | `Vec<IpNet>` (parsed network addresses)                   |
+| HTTP methods | `Vec<String>` (raw method names)                                        | `Vec<Method>` (parsed HTTP methods)                       |
 
 ## Origin tracking
 
@@ -105,6 +131,29 @@ include {
 `discover()` in `crates/snakeway-conf/src/discover.rs` resolves each pattern relative to
 the config root and returns an ordered list of paths. Ordering is deterministic
 (lexicographic within each directory), which matters for listener naming.
+
+## ValidateSpec trait
+
+Spec types implement the `ValidateSpec` trait to validate their own field-local invariants:
+
+```rust
+pub trait ValidateSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport);
+}
+```
+
+**Field-local** means single-field checks: range validation, format checks, path existence.
+These live in `crates/snakeway-conf/src/validation/spec_impls/`, organised by domain
+(`server.rs`, `ingress.rs`, `service.rs`, `device.rs`).
+
+**Cross-field** checks (e.g. "HTTP/2 requires TLS") and **cross-file** checks (e.g.
+"duplicate bind addresses across ingresses") remain in the centralized validators under
+`validation/single_file/` and `validation/multi_file/`. The centralized validators call
+`spec.validate(origin, report)` first to run field-local checks, then perform their own
+relational checks.
+
+The `origin` parameter is passed explicitly because nested specs (e.g. `AcmeServerSpec`)
+do not carry their own `Origin` field. The parent passes its origin down.
 
 ## Validation in depth
 
@@ -189,7 +238,7 @@ means the pipeline completed but the operator should not start the server.
 | `conf/loader.rs`                      | Entry point: `load_config`, `load_spec_files`, `load_config_from_specs` |
 | `conf/discover.rs`                    | Glob-based file discovery                                               |
 | `conf/parse.rs`                       | `parse_devices`, `parse_ingress`: HCL to Spec                           |
-| `conf/lower.rs`                       | `lower_configs`: Spec to Config; defines `IrConfig`                     |
+| `conf/lower.rs`                       | `lower_configs`: Spec to Config                                         |
 | `conf/types/specification/`           | All `*Spec` structs                                                     |
 | `conf/types/runtime/`                 | All `*Config` structs and their `From`/`TryFrom` impls                  |
 | `conf/validation/validate.rs`         | `validate_spec` orchestrator                                            |

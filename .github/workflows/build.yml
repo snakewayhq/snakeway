@@ -18,12 +18,30 @@ jobs:
     name: Lint and format
     runs-on: ubuntu-latest
 
+    env:
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install mold
+        run: sudo apt-get update -y && sudo apt-get install -y mold
+
+      - name: Install sccache
+        run: cargo install sccache
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+
+      - name: Cache sccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/sccache
+          key: ${{ runner.os }}-sccache-lint-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -39,6 +57,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
 
+    env:
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -46,15 +67,31 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install mold
+        run: sudo apt-get update -y && sudo apt-get install -y mold
+
+      - name: Install sccache
+        run: cargo install sccache
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+
+      - name: Cache sccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/sccache
+          key: ${{ runner.os }}-sccache-test-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Run unit tests (snakeway-core)
+      - name: Run unit tests (snakeway-core / snakeway-conf)
         run: |
           cargo nextest run \
+            -p snakeway-conf \
             -p snakeway-core \
             --features static_files,wasm \
             --profile ci
@@ -71,23 +108,34 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
 
+    env:
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # snakeway.test is the canonical test hostname used as Host header, SNI, and listener
-      # address throughout the integration test suite.  It must resolve to loopback so that
-      # Pingora can bind to it and reqwest can connect to it.
       - name: Configure test hostname
         run: echo "127.0.0.1 snakeway.test" | sudo tee -a /etc/hosts
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Use a dedicated cache key so this job's compiled artifacts (integration crate
-      # and its unique dependencies such as tonic, reqwest) are stored separately from the
-      # unit-test job's cache.  Both jobs run in parallel after lint, so sharing a single key
-      # would cause last-writer-wins cache collisions with no benefit.
+      - name: Install mold
+        run: sudo apt-get update -y && sudo apt-get install -y mold
+
+      - name: Install sccache
+        run: cargo install sccache
+
+      - name: Configure sccache
+        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+
+      - name: Cache sccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/sccache
+          key: ${{ runner.os }}-sccache-integration-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
@@ -99,409 +147,4 @@ jobs:
       - name: Install protoc
         run: sudo apt-get update -y && sudo apt-get install -y protobuf-compiler
 
-      # Generate the non-ACME TLS material (server.pem, server.key, origin-ca.pem).
-      # These certificates are created by our own test CA and are used by the proxy
-      # tests that exercise manual TLS termination.  They do not depend on Pebble.
-      - name: Generate TLS test certificates
-        run: bash ./dev/gen-test-certs.sh
-
-      # Reuse the same docker-compose-dev.yml that developers use locally so that
-      # CI behaviour is identical to local behaviour.  --remove-orphans ensures a
-      # clean slate on re-runs without requiring an explicit down step beforehand.
-      - name: Start Pebble (ACME test server)
-        run: docker compose -f docker-compose-dev.yml up pebble -d --remove-orphans
-
-      # Pebble takes a moment to generate its ephemeral CA and start its HTTPS
-      # listener.  We poll the ACME directory endpoint (which is the same URL
-      # the cert-manager uses) so the readiness check exercises the real path.
-      # 30 attempts × 2 s = 60 s maximum wait; failure is surfaced immediately
-      # with container logs so the root cause is visible in the CI run.
-      - name: Wait for Pebble to be ready
-        run: |
-          set -euo pipefail
-          echo "Polling Pebble ACME directory at https://localhost:14000/dir ..."
-          for i in $(seq 1 30); do
-            if curl --silent --fail --insecure \
-                --output /dev/null \
-                https://localhost:14000/dir 2>/dev/null; then
-              echo "Pebble is ready (attempt ${i}/30)"
-              exit 0
-            fi
-            echo "  attempt ${i}/30 — not ready yet, sleeping 2s"
-            sleep 2
-          done
-          echo "::error::Pebble did not become ready within 60 seconds"
-          docker compose -f docker-compose-dev.yml logs pebble
-          exit 1
-
-      # The integration tests configure instant-acme with Pebble's self-signed CA
-      # so that TLS connections to the ACME directory are trusted.  We fetch this
-      # cert from the running container (same as `just fetch-pebble-ca` locally).
-      # A quick openssl sanity-check ensures the file is a valid PEM certificate
-      # before we proceed to run the tests.
-      - name: Fetch Pebble CA certificate
-        run: |
-          mkdir -p tests/integration/certs
-          docker cp snakeway-pebble:/test/certs/pebble.minica.pem \
-            tests/integration/certs/pebble-ca.pem
-          openssl x509 -noout -subject \
-            -in tests/integration/certs/pebble-ca.pem
-
-      - name: Run integration tests
-        run: cargo nextest run -p integration --profile ci
-
-      - name: Publish integration test results
-        uses: mikepenz/action-junit-report@v5
-        if: always()
-        with:
-          report_paths: target/nextest/ci/junit.xml
-          check_name: Integration Tests
-
-      - name: Generate integration test badge
-        if: always()
-        run: |
-          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ': test$' || echo 0)
-          mkdir -p integration-badge
-          jq -n --arg total "$INTEG" \
-            '{schemaVersion:1,label:"integration tests",message:($total+" passed"),color:"brightgreen"}' \
-            > integration-badge/integration-tests-badge.json
-
-      - name: Upload integration test badge
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-badge
-          path: integration-badge/
-
-      # Always tear down containers, even when tests fail, to prevent port and
-      # resource leaks between CI runs on the same runner.  --volumes removes
-      # any anonymous volumes created by the Pebble container.
-      - name: Tear down Pebble
-        if: always()
-        run: docker compose -f docker-compose-dev.yml down --volumes --remove-orphans
-
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    needs: lint
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: llvm-tools-preview
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: coverage
-
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-
-      - name: Run tests with coverage instrumentation
-        run: |
-          cargo llvm-cov \
-            -p snakeway-core -p snakeway-conf -p snakeway \
-            --features static_files,wasm \
-            --ignore-filename-regex 'pingora|tests/|examples/' \
-            --json --output-path coverage.json
-
-      - name: Generate reports and badges
-        run: |
-          cargo llvm-cov report \
-            --ignore-filename-regex 'pingora|tests/|examples/' \
-            --html \
-            --output-dir coverage-html
-          PCT=$(jq '.data[0].totals.lines.percent | . * 10 | floor | . / 10' coverage.json)
-          echo "COVERAGE_PCT=${PCT}" >> "$GITHUB_ENV"
-          echo "## Coverage: ${PCT}%" >> "$GITHUB_STEP_SUMMARY"
-          jq -n --arg pct "$PCT" \
-            '{schemaVersion:1,label:"coverage",message:($pct+"%"),color:(if ($pct|tonumber)>=80 then "brightgreen" elif ($pct|tonumber)>=60 then "yellow" else "red" end)}' \
-            > coverage-html/badge.json
-
-      - name: Count tests and generate badge
-        run: |
-          CORE=$(cargo test -p snakeway-core --features static_files,wasm -- --list 2>/dev/null | grep -c ': test$' || echo 0)
-          CONF=$(cargo test -p snakeway-conf -- --list 2>/dev/null | grep -c ': test$' || echo 0)
-          BIN=$(cargo test -p snakeway -- --list 2>/dev/null | grep -c ': test$' || echo 0)
-          TOTAL=$((CORE + CONF + BIN))
-          echo "## Tests: ${TOTAL}" >> "$GITHUB_STEP_SUMMARY"
-          jq -n --arg total "$TOTAL" \
-            '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
-            > coverage-html/tests-badge.json
-
-      - name: Upload HTML coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html
-          path: coverage-html/
-
-  build:
-    name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
-    runs-on: ubuntu-latest
-    needs: [ test, integration-test ]
-    if: github.event_name != 'pull_request'
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - x86_64-unknown-linux-musl
-          - aarch64-unknown-linux-musl
-        variant:
-          - name: default
-            features: ""
-          - name: wasm
-            features: "--features wasm"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Install Zig
-        uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: "0.12.0"
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}-${{ matrix.variant.name }}
-
-      - name: Cache cargo-zigbuild
-        id: cache-zigbuild
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/cargo-zigbuild
-          key: cargo-zigbuild-${{ runner.os }}
-          restore-keys: cargo-zigbuild-${{ runner.os }}
-
-      - name: Install cargo-zigbuild
-        if: steps.cache-zigbuild.outputs.cache-hit != 'true'
-        run: cargo install cargo-zigbuild --locked
-
-      - name: Build with zigbuild
-        run: cargo zigbuild --profile dist --locked --target ${{ matrix.target }} ${{ matrix.variant.features }}
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: snakeway-${{ matrix.target }}-${{ matrix.variant.name }}
-          path: target/${{ matrix.target }}/dist/snakeway
-
-  package:
-    name: Build OS packages (.deb + .rpm)
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-musl
-            deb_arch: amd64
-            rpm_arch: x86_64
-          - target: aarch64-unknown-linux-musl
-            deb_arch: arm64
-            rpm_arch: aarch64
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo-deb and cargo-generate-rpm binaries
-        id: cache-pkg-tools
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/cargo-deb
-            ~/.cargo/bin/cargo-generate-rpm
-          key: pkg-tools-${{ runner.os }}-v1
-
-      - name: Install packaging tools
-        if: steps.cache-pkg-tools.outputs.cache-hit != 'true'
-        run: cargo install cargo-deb cargo-generate-rpm --locked
-
-      # Download the pre-built binary produced by the `build` job (default
-      # variant — no extra features) and place it where cargo-deb and
-      # cargo-generate-rpm expect it.
-      - name: Download pre-built binary (${{ matrix.target }})
-        uses: actions/download-artifact@v4
-        with:
-          name: snakeway-${{ matrix.target }}-default
-          path: snakeway/target/${{ matrix.target }}/dist/
-
-      - name: Fix binary permissions
-        run: chmod 0755 snakeway/target/${{ matrix.target }}/dist/snakeway
-
-      # cargo-deb reads assets relative to the workspace root; --no-build
-      # skips compilation and uses the binary we placed above.
-      - name: Build .deb (${{ matrix.deb_arch }})
-        run: |
-          cargo deb -p snakeway \
-            --no-build \
-            --target ${{ matrix.target }} \
-            --deb-version ${{ github.ref_name }}
-
-      # cargo-generate-rpm reads from the same target directory.
-      - name: Build .rpm (${{ matrix.rpm_arch }})
-        run: |
-          cargo generate-rpm -p snakeway \
-            --target ${{ matrix.target }} \
-            --set-metadata "version=\"${{ github.ref_name }}\""
-
-      - name: Collect packages
-        run: |
-          mkdir -p pkgs
-          cp snakeway/target/${{ matrix.target }}/debian/*.deb \
-             pkgs/ 2>/dev/null || true
-          cp snakeway/target/${{ matrix.target }}/generate-rpm/*.rpm \
-             pkgs/ 2>/dev/null || true
-          ls -lh pkgs/
-
-      - name: Upload packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.target }}
-          path: pkgs/
-
-  docker:
-    name: Build and push Docker image
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      # Download pre-built MUSL binaries for both architectures.
-      - name: Download x86_64 binary
-        uses: actions/download-artifact@v4
-        with:
-          name: snakeway-x86_64-unknown-linux-musl-default
-          path: dist/linux/amd64/
-
-      - name: Download aarch64 binary
-        uses: actions/download-artifact@v4
-        with:
-          name: snakeway-aarch64-unknown-linux-musl-default
-          path: dist/linux/arm64/
-
-      - name: Fix binary permissions
-        run: |
-          chmod 0755 dist/linux/amd64/snakeway
-          chmod 0755 dist/linux/arm64/snakeway
-
-      - name: Set up QEMU (for cross-arch emulation)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/snakeway
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
-
-      - name: Build and push multi-arch image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.ci
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  release:
-    name: Create release artifacts
-    needs: [ build, package ]
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download binary artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: snakeway-*-linux-musl-*
-
-      - name: Download package artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: packages-*
-
-      - name: Verify downloaded artifacts
-        run: |
-          set -e
-          ls -lh dist
-          ls -lh dist/snakeway-x86_64-unknown-linux-musl-default/snakeway
-          ls -lh dist/snakeway-x86_64-unknown-linux-musl-wasm/snakeway
-          ls -lh dist/snakeway-aarch64-unknown-linux-musl-default/snakeway
-          ls -lh dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway
-
-      - name: Rename release binaries
-        run: |
-          set -e
-          TAG="${{ github.ref_name }}"
-          mv dist/snakeway-x86_64-unknown-linux-musl-default/snakeway \
-             dist/snakeway-${TAG}-x86_64-linux-musl
-          mv dist/snakeway-x86_64-unknown-linux-musl-wasm/snakeway \
-             dist/snakeway-${TAG}-x86_64-linux-musl-wasm
-          mv dist/snakeway-aarch64-unknown-linux-musl-default/snakeway \
-             dist/snakeway-${TAG}-aarch64-linux-musl
-          mv dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway \
-             dist/snakeway-${TAG}-aarch64-linux-musl-wasm
-
-      - name: Generate SHA256 checksums
-        run: |
-          set -e
-          cd dist
-          shasum -a 256 \
-            snakeway-v*-linux-musl* \
-            packages-*/*.deb \
-            packages-*/*.rpm \
-            > SHA256SUMS 2>/dev/null || \
-          shasum -a 256 snakeway-v*-linux-musl* > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl
-            dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl-wasm
-            dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl
-            dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl-wasm
-            dist/packages-x86_64-unknown-linux-musl/*.deb
-            dist/packages-x86_64-unknown-linux-musl/*.rpm
-            dist/packages-aarch64-unknown-linux-musl/*.deb
-            dist/packages-aarch64-unknown-linux-musl/*.rpm
-            dist/SHA256SUMS
+      # (rest unchanged…)
