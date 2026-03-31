@@ -11,69 +11,50 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
 
+    //---------------------------------------------------------------------
+    // Validate listener uniqueness.
+    //---------------------------------------------------------------------
+    ingresses.iter().for_each(|ingress| {
+        let maybe_bind = ingress.bind.as_ref();
+        if let (Some(bind)) = maybe_bind {
+            if let (Ok(interface)) = bind.interface.clone().try_into() {
+                let key = format!("{}:{}", interface.as_ip(), bind.port);
+                if !seen_listener_keys.insert(key.clone()) {
+                    report.duplicate_bind_addr(&key, &bind.origin);
+                }
+            }
+        }
+
+        let maybe_bind_admin = ingress.bind_admin.as_ref();
+        if let (Some(bind_admin)) = maybe_bind_admin {
+            if let (Ok(interface)) = bind_admin.interface.clone().try_into() {
+                let key = format!("{}:{}", interface.as_ip(), bind_admin.port);
+                if !seen_listener_keys.insert(key.clone()) {
+                    report.duplicate_bind_admin_addr(&key, &bind_admin.origin);
+                }
+            }
+        }
+    });
+
     for ingress in ingresses {
         //---------------------------------------------------------------------
         // Bind
         //---------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
             bind.validate(&bind.origin, report);
-
-            let interface: Result<BindInterfaceSpec, _> = bind.interface.clone().try_into();
-            match interface {
-                Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                    report.invalid_bind_addr("0.0.0.0", &bind.origin);
-                }
-                Ok(spec) => {
-                    let key = format!("{}:{}", spec.as_ip(), bind.port);
-                    if !seen_listener_keys.insert(key.clone()) {
-                        report.duplicate_bind_addr(&key, &bind.origin);
-                    }
-                }
-                Err(_) => {
-                    report.invalid_bind_addr(&bind.interface.to_string(), &bind.origin);
-                }
-            }
-
-            // HTTP/2 requires TLS
-            if bind.enable_http2 && bind.tls.is_none() {
-                report.http2_requires_tls(&bind.interface.to_string(), &bind.origin);
-            }
-
-            if let Some(redirect) = &bind.redirect_http_to_https {
-                if bind.tls.is_none() {
-                    report.redirect_http_to_https_requires_tls(
-                        &bind.interface.to_string(),
-                        &bind.origin,
-                    );
-                }
-
-                if !seen_redirect_ports.insert(redirect.port) {
-                    report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
-                }
+            if let Some(redirect) = &bind.redirect_http_to_https
+                && !seen_redirect_ports.insert(redirect.port)
+            {
+                report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
             }
         }
 
-        //---------------------------------------------------------------------
-        // Admin bind
-        //---------------------------------------------------------------------
+        // Admin bind validation.
         if let Some(bind_admin) = &ingress.bind_admin {
             bind_admin.validate(&bind_admin.origin, report);
-
-            // Listener uniqueness
-            let interface: Result<BindInterfaceSpec, _> = bind_admin.interface.clone().try_into();
-            match interface {
-                Ok(spec) => {
-                    let key = format!("{}:{}", spec.as_ip(), bind_admin.port);
-                    if !seen_listener_keys.insert(key.clone()) {
-                        report.duplicate_bind_addr(&key, &bind_admin.origin);
-                    }
-                }
-                _ => {
-                    // All other validation happens in bind_admin.validate().
-                }
-            }
         }
 
+        // There must be at least one bind or admin bind.
         if ingress.bind.is_none() && ingress.bind_admin.is_none() {
             report.missing_bind(&ingress.origin);
         }
