@@ -159,4 +159,80 @@ mod tests {
         assert_eq!(redirect.destination, "127.0.0.1:8443");
         assert_eq!(redirect.response_code, 308);
     }
+
+    #[test]
+    fn from_bind_invalid_interface_returns_error() {
+        // Arrange
+        let spec = BindSpec {
+            interface: BindInterfaceInput::Keyword("bad-interface".to_string()),
+            port: 8080,
+            ..Default::default()
+        };
+
+        // Act
+        let result = ListenerConfig::from_bind("test", spec);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_bind_admin_invalid_interface_returns_error() {
+        // Arrange
+        let spec = BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("bad-interface".to_string()),
+            port: 9090,
+            ..Default::default()
+        };
+
+        // Act
+        let result = ListenerConfig::from_bind_admin("test", spec);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_redirect_invalid_interface_returns_error() {
+        // Arrange
+        let spec = BindSpec {
+            interface: BindInterfaceInput::Keyword("bad-interface".to_string()),
+            port: 8443,
+            ..Default::default()
+        };
+
+        // Act
+        let result = ListenerConfig::from_redirect("test", "0.0.0.0:80".to_string(), 308, spec);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_bind_invalid_connection_filter_cidr_returns_error() {
+        // Arrange
+        use crate::types::{CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec};
+        let spec = BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
+            connection_filter: Some(NetworkConnectionFilterSpec {
+                cidr: CidrSpec {
+                    allow: vec!["not-a-cidr".to_string()],
+                    deny: vec![],
+                },
+                ip_family: IpFamilySpec {
+                    ipv4: true,
+                    ipv6: false,
+                },
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Act
+        let result = ListenerConfig::from_bind("test", spec);
+
+        // Assert
+        assert!(result.is_err());
+    }
 }
