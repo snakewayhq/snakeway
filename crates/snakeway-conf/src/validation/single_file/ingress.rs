@@ -12,9 +12,9 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
     let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         // Bind
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
             bind.validate(&bind.origin, report);
 
@@ -53,9 +53,9 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
         }
 
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         // Admin bind
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         if let Some(bind_admin) = &ingress.bind_admin {
             bind_admin.validate(&bind_admin.origin, report);
 
@@ -120,6 +120,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             .iter()
             .for_each(|service| service.validate(&service.origin, report));
 
+        //---------------------------------------------------------------------
+        // Bind/Route http2/websocket agreement.
+        // If bind has http2 enabled, websocket routes cannot be used.
+        //---------------------------------------------------------------------
         for service in &ingress.services {
             for route in &service.routes {
                 if bind_uses_http2 && route.enable_websocket {
@@ -128,9 +132,9 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
         }
 
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         // Cross-ingress upstream sock uniqueness
-        // ---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         for service in &ingress.services {
             for upstream in &service.upstreams {
                 if let Some(sock) = &upstream.sock
