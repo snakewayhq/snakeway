@@ -11,14 +11,12 @@ impl ValidateSpec for ServiceSpec {
             cb.validate(origin, report);
         }
 
-        // Route (todo refactor to use route's validate() method)
+        // Route validation.
         for route in &self.routes {
-            if route.hosts.is_empty() {
-                report.route_has_no_hosts(origin);
-            }
+            route.validate(origin, report);
         }
 
-        // Upstream
+        // Upstream validation.
         if self.upstreams.is_empty() {
             report.service_has_no_upstreams(origin);
         }

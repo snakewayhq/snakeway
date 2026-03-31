@@ -2,6 +2,7 @@ mod circuit_breaker_spec;
 mod circuit_breaker_validation;
 mod health_check_spec;
 mod service_route_spec;
+mod service_route_validation;
 mod service_spec;
 mod service_validation;
 mod upstream_spec;
