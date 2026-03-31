@@ -33,7 +33,8 @@ impl ValidateSpec for BindSpec {
             redirect.validate(origin, report);
         }
 
-        if let Some(redirect) = &self.redirect_http_to_https {
+        // Redirect HTTP to HTTPS requires TLS.
+        if self.redirect_http_to_https.is_some() {
             if self.tls.is_none() {
                 report.redirect_http_to_https_requires_tls(&self.interface.to_string(), &origin);
             }

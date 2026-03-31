@@ -24,6 +24,10 @@ impl BindInterfaceSpec {
             BindInterfaceSpec::Ip(ip) => *ip,
         }
     }
+
+    pub fn socket_address_literal(&self, port: u16) -> String {
+        format!("{}:{}", self.as_ip(), port)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -1,6 +1,5 @@
-use crate::types::{BindInterfaceSpec, IngressSpec, TlsTerminationSpec};
+use crate::types::{BindInterfaceInput, BindInterfaceSpec, IngressSpec, Origin};
 use crate::validation::ValidationReport;
-use crate::validation::validate_spec_trait::ValidateSpec;
 use std::collections::HashSet;
 
 /// Validate listener definitions.
@@ -11,37 +10,36 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
 
-    //---------------------------------------------------------------------
-    // Validate listener uniqueness.
-    //---------------------------------------------------------------------
-    ingresses.iter().for_each(|ingress| {
+    for ingress in ingresses {
+        //---------------------------------------------------------------------
+        // Validate listener uniqueness.
+        //---------------------------------------------------------------------
         let maybe_bind = ingress.bind.as_ref();
-        if let (Some(bind)) = maybe_bind {
-            if let (Ok(interface)) = bind.interface.clone().try_into() {
-                let key = format!("{}:{}", interface.as_ip(), bind.port);
-                if !seen_listener_keys.insert(key.clone()) {
-                    report.duplicate_bind_addr(&key, &bind.origin);
-                }
-            }
+        if let Some(bind) = maybe_bind {
+            validate_listener_uniqueness(
+                &bind.interface,
+                bind.port,
+                &bind.origin,
+                report,
+                &mut seen_listener_keys,
+            );
         }
 
         let maybe_bind_admin = ingress.bind_admin.as_ref();
-        if let (Some(bind_admin)) = maybe_bind_admin {
-            if let (Ok(interface)) = bind_admin.interface.clone().try_into() {
-                let key = format!("{}:{}", interface.as_ip(), bind_admin.port);
-                if !seen_listener_keys.insert(key.clone()) {
-                    report.duplicate_bind_admin_addr(&key, &bind_admin.origin);
-                }
-            }
+        if let Some(bind_admin) = maybe_bind_admin {
+            validate_listener_uniqueness(
+                &bind_admin.interface,
+                bind_admin.port,
+                &bind_admin.origin,
+                report,
+                &mut seen_listener_keys,
+            );
         }
-    });
 
-    for ingress in ingresses {
         //---------------------------------------------------------------------
-        // Bind
+        // Bind validation.
         //---------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
-            bind.validate(&bind.origin, report);
             if let Some(redirect) = &bind.redirect_http_to_https
                 && !seen_redirect_ports.insert(redirect.port)
             {
@@ -49,32 +47,16 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             }
         }
 
-        // Admin bind validation.
-        if let Some(bind_admin) = &ingress.bind_admin {
-            bind_admin.validate(&bind_admin.origin, report);
-        }
-
         // There must be at least one bind or admin bind.
         if ingress.bind.is_none() && ingress.bind_admin.is_none() {
             report.missing_bind(&ingress.origin);
         }
 
-        // Validate Static files
-        ingress
-            .static_files
-            .iter()
-            .for_each(|static_files| static_files.validate(&ingress.origin, report));
-
-        let bind_uses_http2 = ingress.bind.as_ref().is_some_and(|b| b.enable_http2);
-        ingress
-            .services
-            .iter()
-            .for_each(|service| service.validate(&service.origin, report));
-
         //---------------------------------------------------------------------
         // Bind/Route http2/websocket agreement.
         // If bind has http2 enabled, websocket routes cannot be used.
         //---------------------------------------------------------------------
+        let bind_uses_http2 = ingress.bind.as_ref().is_some_and(|b| b.enable_http2);
         for service in &ingress.services {
             for route in &service.routes {
                 if bind_uses_http2 && route.enable_websocket {
@@ -94,6 +76,22 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                     report.duplicate_upstream_sock(sock, &service.origin);
                 }
             }
+        }
+    }
+}
+
+fn validate_listener_uniqueness(
+    bind_interface_input: &BindInterfaceInput,
+    port: u16,
+    origin: &Origin,
+    report: &mut ValidationReport,
+    seen_listener_keys: &mut HashSet<String>,
+) {
+    let maybe_interface: Result<BindInterfaceSpec, _> = bind_interface_input.clone().try_into();
+    if let Ok(interface) = maybe_interface {
+        let key = interface.socket_address_literal(port);
+        if !seen_listener_keys.insert(key.clone()) {
+            report.duplicate_bind_addr(&key, origin);
         }
     }
 }
