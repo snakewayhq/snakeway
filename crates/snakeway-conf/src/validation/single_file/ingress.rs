@@ -11,11 +11,14 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         // Ingress validation.
         ingress.validate(&ingress.origin, report);
 
-        // Cross-ingress validation checks.
+        // Cross-ingress validation checks depend on the ingress's bind and/or bind_admin.
         let maybe_bind = ingress.bind.as_ref();
         let maybe_bind_admin = ingress.bind_admin.as_ref();
 
+        //---------------------------------------------------------------------
+        // Bind/Admin bind presence check.
         // There must be at least one bind or admin bind.
+        //---------------------------------------------------------------------
         if maybe_bind.is_none() && maybe_bind_admin.is_none() {
             report.missing_bind(&ingress.origin);
         }
