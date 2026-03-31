@@ -62,6 +62,15 @@ impl ListenerConfig {
     }
 }
 
+impl RedirectConfig {
+    pub fn new(destination: String, response_code: u16) -> Self {
+        Self {
+            destination,
+            response_code,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,5 +120,43 @@ mod tests {
         assert_eq!(config.addr, "127.0.0.1:9090");
         assert!(config.enable_admin);
         assert!(config.tls_termination.is_some());
+        assert!(!config.enable_http2);
+        assert!(config.redirect.is_none());
+        assert!(config.connection_filter.is_none());
+    }
+
+    #[test]
+    fn from_redirect_creates_redirect_listener() {
+        // Arrange
+        let spec = BindSpec {
+            origin: Default::default(),
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8443,
+            tls: None,
+            enable_http2: false,
+            redirect_http_to_https: None,
+            connection_filter: None,
+            connection_rate_limiting_filter: None,
+        };
+
+        // Act
+        let config = ListenerConfig::from_redirect(
+            "redirect-listener",
+            "127.0.0.1:8080".to_string(),
+            308,
+            spec,
+        )
+        .unwrap();
+
+        // Assert
+        assert_eq!(config.name, "redirect-listener");
+        assert_eq!(config.addr, "127.0.0.1:8080");
+        assert!(!config.enable_admin);
+        assert!(!config.enable_http2);
+        assert!(config.tls_termination.is_none());
+
+        let redirect = config.redirect.expect("redirect should be set");
+        assert_eq!(redirect.destination, "127.0.0.1:8443");
+        assert_eq!(redirect.response_code, 308);
     }
 }

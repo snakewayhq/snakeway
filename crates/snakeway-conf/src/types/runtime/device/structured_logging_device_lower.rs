@@ -143,4 +143,35 @@ mod tests {
             LogLevelConfig::Error
         ));
     }
+
+    #[test]
+    fn from_spec_maps_events_and_phases() {
+        // Arrange
+        let spec = StructuredLoggingDeviceSpec {
+            origin: Origin::default(),
+            enable: true,
+            level: LogLevelSpec::Info,
+            include_headers: false,
+            allowed_headers: vec![],
+            redacted_headers: vec![],
+            include_identity: false,
+            identity_fields: vec![],
+            events: Some(vec![LogEventSpec::Request, LogEventSpec::Response]),
+            phases: Some(vec![LogPhaseSpec::Request, LogPhaseSpec::Response]),
+        };
+
+        // Act
+        let config: StructuredLoggingDeviceConfig = spec.into();
+
+        // Assert
+        let events = config.events.expect("events should be Some");
+        assert_eq!(events.len(), 2);
+        assert!(matches!(events[0], LogEventConfig::Request));
+        assert!(matches!(events[1], LogEventConfig::Response));
+
+        let phases = config.phases.expect("phases should be Some");
+        assert_eq!(phases.len(), 2);
+        assert!(matches!(phases[0], LogPhaseConfig::Request));
+        assert!(matches!(phases[1], LogPhaseConfig::Response));
+    }
 }

@@ -64,4 +64,34 @@ mod tests {
         assert!(config.tcp_upstreams.is_empty());
         assert!(config.unix_upstreams.is_empty());
     }
+
+    #[test]
+    fn load_balancing_strategy_failover() {
+        // Arrange / Act / Assert
+        assert!(matches!(
+            LoadBalancingStrategy::from(LoadBalancingStrategySpec::Failover),
+            LoadBalancingStrategy::Failover
+        ));
+    }
+
+    #[test]
+    fn load_balancing_strategy_all_variants() {
+        // Arrange / Act / Assert
+        assert!(matches!(
+            LoadBalancingStrategy::from(LoadBalancingStrategySpec::RoundRobin),
+            LoadBalancingStrategy::RoundRobin
+        ));
+        assert!(matches!(
+            LoadBalancingStrategy::from(LoadBalancingStrategySpec::RequestPressure),
+            LoadBalancingStrategy::RequestPressure
+        ));
+        assert!(matches!(
+            LoadBalancingStrategy::from(LoadBalancingStrategySpec::StickyHash),
+            LoadBalancingStrategy::StickyHash
+        ));
+        assert!(matches!(
+            LoadBalancingStrategy::from(LoadBalancingStrategySpec::Random),
+            LoadBalancingStrategy::Random
+        ));
+    }
 }
