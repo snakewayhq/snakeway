@@ -2,13 +2,6 @@ use crate::types::Origin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Default, Serialize)]
-pub struct StaticFilesSpec {
-    #[serde(skip)]
-    pub origin: Origin,
-    pub routes: Vec<StaticRouteSpec>,
-}
-
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct StaticRouteSpec {
     #[serde(skip)]

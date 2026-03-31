@@ -110,6 +110,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             report.missing_bind(&ingress.origin);
         }
 
+        ingress.static_files.validate(report);
         validate_static_files(&ingress.static_files, report);
         validate_services(&ingress.bind, &ingress.services, report);
 
