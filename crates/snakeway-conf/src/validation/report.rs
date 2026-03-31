@@ -810,4 +810,50 @@ mod tests {
             result
         );
     }
+
+    #[test]
+    fn render_json_contains_errors_and_warnings() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.error("bad port".to_string(), &Origin::test("bind"), None);
+        report.warning("unused field".to_string(), &Origin::test("server"), None);
+
+        let json_struct = ValidationReportJson {
+            errors: &report.errors,
+            warnings: &report.warnings,
+        };
+
+        // Act
+        let json = serde_json::to_string_pretty(&json_struct).unwrap();
+
+        // Assert
+        assert!(json.contains("bad port"));
+        assert!(json.contains("unused field"));
+        assert!(json.contains("\"errors\""));
+        assert!(json.contains("\"warnings\""));
+    }
+
+    #[test]
+    fn render_pretty_does_not_panic_with_errors() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.error(
+            "test error".to_string(),
+            &Origin::test("bind"),
+            Some("try fixing it".to_string()),
+        );
+
+        // Act + Assert (no panic)
+        report.render_pretty();
+    }
+
+    #[test]
+    fn render_pretty_does_not_panic_with_warnings() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        report.warning("test warning".to_string(), &Origin::test("server"), None);
+
+        // Act + Assert (no panic)
+        report.render_pretty();
+    }
 }
