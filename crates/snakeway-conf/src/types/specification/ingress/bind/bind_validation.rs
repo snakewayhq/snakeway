@@ -25,7 +25,7 @@ impl ValidateSpec for BindSpec {
 
         // HTTP/2 requires TLS.
         if self.enable_http2 && self.tls.is_none() {
-            report.http2_requires_tls(&self.interface.to_string(), &origin);
+            report.http2_requires_tls(&self.interface.to_string(), origin);
         }
 
         // Redirect HTTP to HTTPS validation.
@@ -34,23 +34,21 @@ impl ValidateSpec for BindSpec {
         }
 
         // Redirect HTTP to HTTPS requires TLS.
-        if self.redirect_http_to_https.is_some() {
-            if self.tls.is_none() {
-                report.redirect_http_to_https_requires_tls(&self.interface.to_string(), &origin);
-            }
+        if self.redirect_http_to_https.is_some() && self.tls.is_none() {
+            report.redirect_http_to_https_requires_tls(&self.interface.to_string(), origin);
         }
 
         // Interface validation.
         let interface: Result<BindInterfaceSpec, _> = self.interface.clone().try_into();
         match interface {
             Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                report.invalid_bind_addr("0.0.0.0", &origin);
+                report.invalid_bind_addr("0.0.0.0", origin);
             }
             Ok(_) => {
                 // All good.
             }
             Err(_) => {
-                report.invalid_bind_addr(&self.interface.to_string(), &origin);
+                report.invalid_bind_addr(&self.interface.to_string(), origin);
             }
         }
     }
@@ -77,7 +75,7 @@ mod tests {
         let origin = Origin::test("bind");
 
         // Act
-        bind.validate(&origin, &mut report);
+        bind.validate(origin, &mut report);
 
         // Assert
         assert!(!report.has_violations());
@@ -92,7 +90,7 @@ mod tests {
         let origin = Origin::test("bind");
 
         // Act
-        bind.validate(&origin, &mut report);
+        bind.validate(origin, &mut report);
 
         // Assert
         assert_eq!(report.errors[0].message, "HTTP/2 requires TLS: loopback");
@@ -114,7 +112,7 @@ mod tests {
         let origin = Origin::test("bind");
 
         // Act
-        bind.validate(&origin, &mut report);
+        bind.validate(origin, &mut report);
 
         // Assert
         assert_eq!(

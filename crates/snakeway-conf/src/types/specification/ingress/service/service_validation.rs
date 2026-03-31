@@ -8,19 +8,19 @@ impl ValidateSpec for ServiceSpec {
         if let Some(cb) = &self.circuit_breaker
             && cb.enable_auto_recovery
         {
-            cb.validate(&origin, report);
+            cb.validate(origin, report);
         }
 
         // Route (todo refactor to use route's validate() method)
         for route in &self.routes {
             if route.hosts.is_empty() {
-                report.route_has_no_hosts(&origin);
+                report.route_has_no_hosts(origin);
             }
         }
 
         // Upstream
         if self.upstreams.is_empty() {
-            report.service_has_no_upstreams(&origin);
+            report.service_has_no_upstreams(origin);
         }
 
         let mut seen_sock_values = HashSet::new();
@@ -34,13 +34,13 @@ impl ValidateSpec for ServiceSpec {
                     sock,
                     &endpoint.host.to_string(),
                     endpoint.port,
-                    &origin,
+                    origin,
                 );
                 continue;
             }
 
             if upstream.sock.is_none() && upstream.endpoint.is_none() {
-                report.upstream_must_have_a_sock_or_endpoint(&origin);
+                report.upstream_must_have_a_sock_or_endpoint(origin);
                 continue;
             }
 

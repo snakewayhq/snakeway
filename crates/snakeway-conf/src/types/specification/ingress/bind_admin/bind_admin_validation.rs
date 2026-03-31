@@ -12,10 +12,10 @@ impl ValidateSpec for BindAdminSpec {
         // TLS cert/key/acme validation.
         match &self.tls {
             TlsTerminationSpec::Manual { .. } => {
-                self.tls.validate(&origin, report);
+                self.tls.validate(origin, report);
             }
             TlsTerminationSpec::Acme { .. } => {
-                report.admin_bind_does_not_support_acme(&origin);
+                report.admin_bind_does_not_support_acme(origin);
             }
         }
 
@@ -27,13 +27,13 @@ impl ValidateSpec for BindAdminSpec {
                 // which resolves to all interfaces.
                 // Binding to all interfaces exposes the admin API to the network,
                 // which is not allowed.
-                report.invalid_bind_addr("0.0.0.0 or ::", &origin);
+                report.invalid_bind_addr("0.0.0.0 or ::", origin);
             }
             Ok(_) => {
                 // All good.
             }
             Err(_) => {
-                report.invalid_bind_addr(&self.interface.to_string(), &origin);
+                report.invalid_bind_addr(&self.interface.to_string(), origin);
                 return;
             }
         }
@@ -47,7 +47,7 @@ impl ValidateSpec for BindAdminSpec {
             // 2. Use a specific IP address.
             report.error(
                 "admin API cannot bind to all interfaces".to_string(),
-                &origin,
+                origin,
                 Some("Use loopback or a specific IP address.".to_string()),
             );
         }
@@ -75,7 +75,7 @@ mod tests {
         let origin = Origin::test("bind_admin");
 
         // Act
-        bind_admin.validate(&origin, &mut report);
+        bind_admin.validate(origin, &mut report);
 
         // Assert
         assert!(
@@ -121,7 +121,7 @@ mod tests {
         let origin = Origin::test("bind_admin");
 
         // Act
-        bind_admin.validate(&origin, &mut report);
+        bind_admin.validate(origin, &mut report);
 
         // Assert
         assert_eq!(report.errors.len(), 1);
