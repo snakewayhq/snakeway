@@ -59,47 +59,17 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         if let Some(bind_admin) = &ingress.bind_admin {
             bind_admin.validate(&bind_admin.origin, report);
 
+            // Listener uniqueness
             let interface: Result<BindInterfaceSpec, _> = bind_admin.interface.clone().try_into();
             match interface {
-                Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                    report.invalid_bind_addr("0.0.0.0", &bind_admin.origin);
-                }
                 Ok(spec) => {
                     let key = format!("{}:{}", spec.as_ip(), bind_admin.port);
                     if !seen_listener_keys.insert(key.clone()) {
                         report.duplicate_bind_addr(&key, &bind_admin.origin);
                     }
                 }
-                Err(_) => {
-                    report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
-                }
-            }
-
-            // Guard against binding the admin API to all interfaces.
-            // This is a dangerous situation because the admin API does not currently have
-            // authentication and could be used to gain unauthorized access to the server.
-            let bind_interface: BindInterfaceSpec = match bind_admin.interface.clone().try_into() {
-                Ok(i) => i,
-                Err(_) => {
-                    report.invalid_bind_addr(&bind_admin.interface.to_string(), &bind_admin.origin);
-                    continue;
-                }
-            };
-
-            if matches!(bind_interface, BindInterfaceSpec::All) {
-                report.error(
-                    "admin API cannot bind to all interfaces".to_string(),
-                    &bind_admin.origin,
-                    Some("Use loopback or a specific IP address.".to_string()),
-                );
-            }
-
-            match &bind_admin.tls {
-                TlsTerminationSpec::Manual { .. } => {
-                    // TLS cert/key validation already handled by bind_admin.validate() above.
-                }
-                TlsTerminationSpec::Acme { .. } => {
-                    report.admin_bind_does_not_support_acme(&bind_admin.origin);
+                _ => {
+                    // All other validation happens in bind_admin.validate().
                 }
             }
         }
