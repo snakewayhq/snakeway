@@ -88,9 +88,10 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Run unit tests (snakeway-core)
+      - name: Run unit tests (snakeway-core / snakeway-conf)
         run: |
           cargo nextest run \
+            -p snakeway-conf \
             -p snakeway-core \
             --features static_files,wasm \
             --profile ci
