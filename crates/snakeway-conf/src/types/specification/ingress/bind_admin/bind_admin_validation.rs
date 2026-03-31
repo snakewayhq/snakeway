@@ -19,17 +19,15 @@ impl ValidateSpec for BindAdminSpec {
             }
         }
 
-        let bind_interface: BindInterfaceSpec = match self.interface.clone().try_into() {
-            Ok(i) => i,
-            Err(_) => {
-                report.invalid_bind_addr(&self.interface.to_string(), &origin);
-                return;
-            }
-        };
+        let maybe_interface: Result<BindInterfaceSpec, _> = self.interface.clone().try_into();
 
-        match bind_interface {
+        match maybe_interface {
             Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                report.invalid_bind_addr("0.0.0.0", &origin);
+                // Note: an unspecified IP address is "0.0.0.0" or "::"
+                // which resolves to all interfaces.
+                // Binding to all interfaces exposes the admin API to the network,
+                // which is not allowed.
+                report.invalid_bind_addr("0.0.0.0 or ::", &origin);
             }
             Ok(_) => {
                 // All good.
@@ -40,7 +38,13 @@ impl ValidateSpec for BindAdminSpec {
             }
         }
 
-        if matches!(bind_interface, BindInterfaceSpec::All) {
+        if let Ok(interface) = maybe_interface
+            && matches!(interface, BindInterfaceSpec::All)
+        {
+            // This check might look redundant, but it's not.
+            // There are two ways to bind to all interfaces:
+            // 1. Use "all" enum option.
+            // 2. Use a specific IP address.
             report.error(
                 "admin API cannot bind to all interfaces".to_string(),
                 &origin,

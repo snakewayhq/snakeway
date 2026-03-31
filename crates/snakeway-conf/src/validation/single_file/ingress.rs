@@ -1,16 +1,17 @@
 use crate::types::{BindInterfaceInput, BindInterfaceSpec, IngressSpec, Origin};
-use crate::validation::ValidationReport;
+use crate::validation::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
-/// Validate listener definitions.
-///
-/// Structural errors here are aggregated, not fail-fast.
 pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
     let mut seen_listener_keys = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
+        // Ingress validation.
+        ingress.validate(&ingress.origin, report);
+
+        // Cross-ingress validation checks.
         let maybe_bind = ingress.bind.as_ref();
         let maybe_bind_admin = ingress.bind_admin.as_ref();
 
