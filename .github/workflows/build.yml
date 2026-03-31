@@ -38,7 +38,7 @@ jobs:
         run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: ${{ runner.os }}-sccache-lint-${{ hashFiles('**/Cargo.lock') }}
@@ -77,7 +77,7 @@ jobs:
         run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: ${{ runner.os }}-sccache-test-${{ hashFiles('**/Cargo.lock') }}
@@ -131,7 +131,7 @@ jobs:
         run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: ${{ runner.os }}-sccache-integration-${{ hashFiles('**/Cargo.lock') }}
