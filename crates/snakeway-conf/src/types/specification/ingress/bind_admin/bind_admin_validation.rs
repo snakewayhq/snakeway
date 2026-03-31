@@ -53,3 +53,85 @@ impl ValidateSpec for BindAdminSpec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{BindAdminSpec, BindInterfaceInput, Origin, TlsTerminationSpec};
+    use crate::validation::{ValidateSpec, ValidationReport};
+    use rcgen::generate_simple_self_signed;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    #[test]
+    fn invalid_bind_addr() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind_admin = BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("bad-addr".to_string()),
+            port: 9000,
+            ..Default::default()
+        };
+        let origin = Origin::test("bind_admin");
+
+        // Act
+        bind_admin.validate(&origin, &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == "invalid bind address: bad-addr")
+        );
+    }
+
+    #[test]
+    fn cannot_bind_to_all_interfaces() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let dir = tempdir().expect("failed to create temp dir");
+
+        let cert = generate_simple_self_signed(vec!["localhost".into()])
+            .expect("failed to generate self-signed cert");
+        let cert_pem = cert.cert.pem();
+        let key_pem = cert.signing_key.serialize_pem();
+
+        let cert_path = dir.path().join("tmp-cert.pem");
+        let mut cert_file = File::create(&cert_path).expect("failed to create cert file");
+        cert_file
+            .write_all(cert_pem.as_bytes())
+            .expect("failed to write cert");
+
+        let key_path = dir.path().join("tmp-key.pem");
+        let mut key_file = File::create(&key_path).expect("failed to create key file");
+        key_file
+            .write_all(key_pem.as_bytes())
+            .expect("failed to write key");
+
+        let bind_admin = BindAdminSpec {
+            interface: BindInterfaceInput::Keyword("all".to_string()),
+            port: 9000,
+            tls: TlsTerminationSpec::Manual {
+                cert: cert_path,
+                key: key_path,
+            },
+            ..Default::default()
+        };
+        let origin = Origin::test("bind_admin");
+
+        // Act
+        bind_admin.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(
+            report.errors[0].message,
+            "admin API cannot bind to all interfaces"
+        );
+        assert_eq!(
+            report.errors[0].help.as_deref(),
+            Some("Use loopback or a specific IP address.")
+        );
+    }
+}

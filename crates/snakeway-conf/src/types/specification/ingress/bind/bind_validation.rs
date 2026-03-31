@@ -55,3 +55,75 @@ impl ValidateSpec for BindSpec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{BindInterfaceInput, BindSpec, Origin, RedirectSpec};
+    use crate::validation::{ValidateSpec, ValidationReport};
+
+    fn minimal_bind() -> BindSpec {
+        BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn valid_minimal_bind() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let bind = minimal_bind();
+        let origin = Origin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn http2_requires_tls() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut bind = minimal_bind();
+        bind.enable_http2 = true;
+        let origin = Origin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors[0].message, "HTTP/2 requires TLS: loopback");
+        assert_eq!(
+            report.errors[0].help.as_deref(),
+            Some("Enable TLS on the bind or disable HTTP/2.")
+        );
+    }
+
+    #[test]
+    fn redirect_should_not_exist_without_tls() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut bind = minimal_bind();
+        bind.redirect_http_to_https = Some(RedirectSpec {
+            port: 8080,
+            status: 308,
+        });
+        let origin = Origin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(
+            report.errors[0].message,
+            "redirect_http_to_https requires TLS: loopback"
+        );
+        assert_eq!(
+            report.errors[0].help.as_deref(),
+            Some("Enable TLS on the bind or remove redirect_http_to_https.")
+        );
+    }
+}

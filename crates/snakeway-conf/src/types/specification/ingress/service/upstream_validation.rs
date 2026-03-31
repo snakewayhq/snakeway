@@ -39,3 +39,55 @@ impl ValidateSpec for EndpointTlsSpec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{EndpointSpec, HostSpec, Origin, UpstreamSpec};
+    use crate::validation::{ValidateSpec, ValidationReport};
+    use std::net::IpAddr;
+    use std::str::FromStr;
+
+    fn minimal_upstream() -> UpstreamSpec {
+        UpstreamSpec {
+            endpoint: Some(EndpointSpec {
+                host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                port: 3000,
+                tls: None,
+            }),
+            weight: 1,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn weight_greater_than_zero() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut upstream = minimal_upstream();
+        upstream.weight = 0;
+        let origin = Origin::test("upstream");
+
+        // Act
+        upstream.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("invalid upstream weight: 0"));
+    }
+
+    #[test]
+    fn weight_not_greater_than_1000() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut upstream = minimal_upstream();
+        upstream.weight = 1001;
+        let origin = Origin::test("upstream");
+
+        // Act
+        upstream.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("invalid upstream weight: 1001"));
+    }
+}

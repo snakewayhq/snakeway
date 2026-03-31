@@ -26,3 +26,118 @@ impl ValidateSpec for CircuitBreakerSpec {
         validate_range_field!(SUCCESS_THRESHOLD, self.success_threshold, report, origin);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{CircuitBreakerSpec, Origin};
+    use crate::validation::{ValidateSpec, ValidationReport};
+
+    #[test]
+    fn valid_circuit_breaker() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = CircuitBreakerSpec {
+            enable_auto_recovery: true,
+            failure_threshold: 5,
+            open_duration_milliseconds: 1000,
+            half_open_max_requests: 1,
+            success_threshold: 2,
+            ..Default::default()
+        };
+        let origin = Origin::test("circuit_breaker");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn failure_threshold_out_of_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = CircuitBreakerSpec {
+            enable_auto_recovery: true,
+            failure_threshold: 0,
+            open_duration_milliseconds: 1000,
+            half_open_max_requests: 1,
+            success_threshold: 2,
+            ..Default::default()
+        };
+        let origin = Origin::test("circuit_breaker");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("failure_threshold"));
+    }
+
+    #[test]
+    fn open_duration_out_of_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = CircuitBreakerSpec {
+            enable_auto_recovery: true,
+            failure_threshold: 5,
+            open_duration_milliseconds: 0,
+            half_open_max_requests: 1,
+            success_threshold: 2,
+            ..Default::default()
+        };
+        let origin = Origin::test("circuit_breaker");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("open_duration_milliseconds"));
+    }
+
+    #[test]
+    fn half_open_max_requests_out_of_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = CircuitBreakerSpec {
+            enable_auto_recovery: true,
+            failure_threshold: 5,
+            open_duration_milliseconds: 1000,
+            half_open_max_requests: 10001,
+            success_threshold: 2,
+            ..Default::default()
+        };
+        let origin = Origin::test("circuit_breaker");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("half_open_max_requests"));
+    }
+
+    #[test]
+    fn success_threshold_out_of_range() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = CircuitBreakerSpec {
+            enable_auto_recovery: true,
+            failure_threshold: 5,
+            open_duration_milliseconds: 1000,
+            half_open_max_requests: 1,
+            success_threshold: 0,
+            ..Default::default()
+        };
+        let origin = Origin::test("circuit_breaker");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        let error = report.errors.first().expect("expected at least one error");
+        assert!(error.message.contains("success_threshold"));
+    }
+}

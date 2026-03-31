@@ -11,3 +11,53 @@ impl ValidateSpec for StaticRouteSpec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{Origin, StaticRouteSpec};
+    use crate::validation::{ValidateSpec, ValidationReport};
+    use std::path::PathBuf;
+
+    #[test]
+    fn static_file_dir_does_not_exist() {
+        // Arrange
+        let file_dir = "/non/existent/static";
+        let expected_error = format!("invalid static directory: {}", file_dir);
+        let mut report = ValidationReport::default();
+        let spec = StaticRouteSpec {
+            file_dir: PathBuf::from(file_dir),
+            ..Default::default()
+        };
+        let origin = Origin::test("static_files");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors.first().unwrap().message, expected_error);
+    }
+
+    #[test]
+    fn static_file_dir_is_not_relative() {
+        // Arrange
+        let file_dir = "./www";
+        let expected_error0 = format!("invalid static directory: {}", file_dir);
+        let expected_error1 = format!(
+            "static file directory must be an absolute path: {}",
+            file_dir
+        );
+        let mut report = ValidationReport::default();
+        let spec = StaticRouteSpec {
+            file_dir: PathBuf::from(file_dir),
+            ..Default::default()
+        };
+        let origin = Origin::test("static_files");
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors[0].message, expected_error0);
+        assert_eq!(report.errors[1].message, expected_error1);
+    }
+}

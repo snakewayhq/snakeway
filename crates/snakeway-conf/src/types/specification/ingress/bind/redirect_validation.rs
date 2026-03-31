@@ -15,3 +15,79 @@ impl ValidateSpec for RedirectSpec {
         validate_range_field!(RESPONSE_CODE, self.status, report, origin);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{Origin, RedirectSpec};
+    use crate::validation::{ValidateSpec, ValidationReport};
+
+    fn test_origin() -> Origin {
+        Origin::test("redirect_http_to_https")
+    }
+
+    #[test]
+    fn valid_3xx_status_produces_no_errors() {
+        // Arrange
+        let spec = RedirectSpec {
+            port: 8080,
+            status: 308,
+        };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.errors.is_empty());
+    }
+
+    #[test]
+    fn valid_non_3xx_status_produces_error_bottom_of_range() {
+        // Arrange
+        let status = 299;
+        let expected_error = format!("invalid status: {status} (must be between 300 and 399)");
+        let spec = RedirectSpec { port: 8080, status };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors[0].message, expected_error);
+    }
+
+    #[test]
+    fn valid_non_3xx_status_produces_error_top_of_range() {
+        // Arrange
+        let status = 400;
+        let expected_error = format!("invalid status: {status} (must be between 300 and 399)");
+        let spec = RedirectSpec { port: 8080, status };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors[0].message, expected_error);
+    }
+
+    #[test]
+    fn invalid_port_produces_error() {
+        // Arrange
+        let spec = RedirectSpec {
+            port: 0,
+            status: 308,
+        };
+        let origin = test_origin();
+        let mut report = ValidationReport::default();
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors[0].message, "invalid port: 0");
+    }
+}

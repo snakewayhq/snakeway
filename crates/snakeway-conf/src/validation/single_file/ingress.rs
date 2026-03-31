@@ -101,3 +101,166 @@ fn validate_listener_uniqueness(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_ingresses;
+    use crate::types::*;
+    use std::net::IpAddr;
+    use std::str::FromStr;
+
+    use crate::validation::ValidationReport;
+
+    fn minimal_service() -> ServiceSpec {
+        ServiceSpec {
+            routes: vec![ServiceRouteSpec {
+                path: "/".to_string(),
+                hosts: vec!["example.com".to_string()],
+                ..Default::default()
+            }],
+            upstreams: vec![UpstreamSpec {
+                endpoint: Some(EndpointSpec {
+                    host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                    port: 8080,
+                    tls: None,
+                }),
+                weight: 1,
+                ..Default::default()
+            }],
+            ..Default::default()
+        }
+    }
+
+    fn minimal_bind() -> BindSpec {
+        BindSpec {
+            interface: BindInterfaceInput::Keyword("loopback".to_string()),
+            port: 8080,
+            ..Default::default()
+        }
+    }
+
+    fn minimal_ingress() -> IngressSpec {
+        IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![minimal_service()],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn duplicate_bind_addr() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress1 = minimal_ingress();
+        let ingress2 = minimal_ingress();
+
+        // Act
+        validate_ingresses(&[ingress1, ingress2], &mut report);
+
+        // Assert
+        assert_eq!(
+            report.errors[0].message,
+            "duplicate bind address: 127.0.0.1:8080"
+        );
+    }
+
+    #[test]
+    fn duplicate_admin_and_public_bind() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let port = 9000;
+        let interface = BindInterfaceInput::Keyword("loopback".to_string());
+        let ingress = IngressSpec {
+            bind: Some(BindSpec {
+                interface: interface.clone(),
+                port,
+                ..Default::default()
+            }),
+            bind_admin: Some(BindAdminSpec {
+                interface: interface.clone(),
+                port,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message == format!("duplicate bind address: 127.0.0.1:{}", port))
+        );
+    }
+
+    #[test]
+    fn sock_file_not_reused_across_services() {
+        // Arrange
+        let sock = "/tmp/test.sock".to_string();
+        let expected_error = format!("duplicate upstream sock: {}", sock);
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![
+                ServiceSpec {
+                    upstreams: vec![UpstreamSpec {
+                        sock: Some(sock.clone()),
+                        weight: 1,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+                ServiceSpec {
+                    upstreams: vec![UpstreamSpec {
+                        sock: Some(sock.clone()),
+                        weight: 1,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(report.errors.iter().any(|e| e.message == expected_error));
+    }
+
+    #[test]
+    fn validate_multiple_services_at_once() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![
+                minimal_service(),
+                ServiceSpec {
+                    origin: Origin {
+                        section: "service_2".to_string(),
+                        ..Default::default()
+                    },
+                    upstreams: vec![], // Invalid: no upstreams
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("service has no upstream backends"))
+        );
+    }
+}
