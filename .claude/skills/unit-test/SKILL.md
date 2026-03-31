@@ -152,6 +152,7 @@ Helper functions must not contain assertions — they are pure setup utilities.
 - Prefer `matches!(value, Pattern)` over `assert!(matches!(value, Pattern))` for enum variants
   when no message is needed. When a failure message would be useful, write it out with
   `assert!(matches!(...), "explanation")`.
+- Assertions should be high quality, meaning they should actually serve to validate the subject under test meaningfully.
 
 ## Running Unit Tests
 
