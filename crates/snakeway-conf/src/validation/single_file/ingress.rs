@@ -11,11 +11,19 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
     let mut seen_upstream_socks = HashSet::new();
 
     for ingress in ingresses {
-        //---------------------------------------------------------------------
-        // Validate listener uniqueness.
-        //---------------------------------------------------------------------
         let maybe_bind = ingress.bind.as_ref();
+        let maybe_bind_admin = ingress.bind_admin.as_ref();
+
+        // There must be at least one bind or admin bind.
+        if maybe_bind.is_none() && maybe_bind_admin.is_none() {
+            report.missing_bind(&ingress.origin);
+        }
+
+        //---------------------------------------------------------------------
+        // Bind uniqueness checks.
+        //---------------------------------------------------------------------
         if let Some(bind) = maybe_bind {
+            // Validate listener uniqueness.
             validate_listener_uniqueness(
                 &bind.interface,
                 bind.port,
@@ -23,9 +31,18 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                 report,
                 &mut seen_listener_keys,
             );
+
+            // Validate redirects' port uniqueness.
+            if let Some(redirect) = &bind.redirect_http_to_https
+                && !seen_redirect_ports.insert(redirect.port)
+            {
+                report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
+            }
         }
 
-        let maybe_bind_admin = ingress.bind_admin.as_ref();
+        //---------------------------------------------------------------------
+        // Admin bind uniqueness checks.
+        //---------------------------------------------------------------------
         if let Some(bind_admin) = maybe_bind_admin {
             validate_listener_uniqueness(
                 &bind_admin.interface,
@@ -34,22 +51,6 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                 report,
                 &mut seen_listener_keys,
             );
-        }
-
-        //---------------------------------------------------------------------
-        // Bind validation.
-        //---------------------------------------------------------------------
-        if let Some(bind) = &ingress.bind {
-            if let Some(redirect) = &bind.redirect_http_to_https
-                && !seen_redirect_ports.insert(redirect.port)
-            {
-                report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
-            }
-        }
-
-        // There must be at least one bind or admin bind.
-        if ingress.bind.is_none() && ingress.bind_admin.is_none() {
-            report.missing_bind(&ingress.origin);
         }
 
         //---------------------------------------------------------------------
@@ -80,6 +81,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
     }
 }
 
+/// Verify that a socket address (ip:port) is not used more than once.
 fn validate_listener_uniqueness(
     bind_interface_input: &BindInterfaceInput,
     port: u16,
