@@ -60,3 +60,105 @@ pub(crate) fn validate_trusted_proxies(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hostname_empty_rejected() {
+        // Arrange
+        let input = "";
+
+        // Act
+        let result = is_valid_hostname(input);
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn hostname_too_long_rejected() {
+        // Arrange
+        let input = "a".repeat(254);
+
+        // Act
+        let result = is_valid_hostname(&input);
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn hostname_label_too_long_rejected() {
+        // Arrange
+        let long_label = "a".repeat(64);
+        let input = format!("{long_label}.com");
+
+        // Act
+        let result = is_valid_hostname(&input);
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn hostname_consecutive_dots_rejected() {
+        // Arrange
+        let input = "example..com";
+
+        // Act
+        let result = is_valid_hostname(input);
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn hostname_leading_hyphen_rejected() {
+        // Arrange
+        let input = "-example.com";
+
+        // Act
+        let result = is_valid_hostname(input);
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn hostname_trailing_hyphen_rejected() {
+        // Arrange
+        let input = "example-.com";
+
+        // Act
+        let result = is_valid_hostname(input);
+
+        // Assert
+        assert!(!result);
+    }
+
+    #[test]
+    fn valid_hostname() {
+        // Arrange
+        let input = "example.com";
+
+        // Act
+        let result = is_valid_hostname(input);
+
+        // Assert
+        assert!(result);
+    }
+
+    #[test]
+    fn valid_single_label() {
+        // Arrange
+        let input = "localhost";
+
+        // Act
+        let result = is_valid_hostname(input);
+
+        // Assert
+        assert!(result);
+    }
+}

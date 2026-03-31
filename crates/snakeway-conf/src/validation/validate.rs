@@ -27,3 +27,63 @@ pub(crate) fn validate_spec(
 
     report
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{BindInterfaceInput, BindSpec, IngressSpec, ServerSpec};
+
+    #[test]
+    fn valid_version_runs_all_validation() {
+        // Arrange
+        let server = ServerSpec {
+            version: 1,
+            ..Default::default()
+        };
+        let ingress = IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port: 8080,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate_spec(&server, &[ingress], &[]);
+
+        // Assert
+        assert!(
+            report.errors.is_empty(),
+            "expected no errors, got: {:?}",
+            report.errors
+        );
+    }
+
+    #[test]
+    fn invalid_version_produces_error() {
+        // Arrange
+        let server = ServerSpec {
+            version: 99,
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate_spec(&server, &[], &[]);
+
+        // Assert
+        assert!(
+            !report.errors.is_empty(),
+            "expected at least one error for invalid version"
+        );
+        let has_version_error = report
+            .errors
+            .iter()
+            .any(|e| e.message.contains("invalid config version"));
+        assert!(
+            has_version_error,
+            "expected error about invalid config version, got: {:?}",
+            report.errors
+        );
+    }
+}
