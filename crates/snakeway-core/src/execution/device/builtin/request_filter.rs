@@ -10,17 +10,13 @@ use std::time::Duration;
 ///
 /// This struct uses `SmallVec` for storing lists of HTTP methods and headers.
 /// SmallVec is a special list type that stores a few items directly inside itself
-/// (like a small backpack), and only allocates extra memory when you need more space.
+/// and only allocates extra memory when you need more space.
 ///
 /// For example, `SmallVec<[Method; 4]>` can hold up to 4 HTTP methods without needing
 /// to allocate memory separately. Since most filters only check a few methods
 /// (like GET, POST, PUT, DELETE), this saves memory and makes the code faster.
 /// The same applies to headers - most filters only care about a handful of headers,
 /// so storing 8 directly is usually enough.
-///
-/// Think of it like this: instead of always using a big warehouse (heap allocation)
-/// to store a few items, we use a small shelf (stack storage) first, and only rent
-/// warehouse space when we really need it.
 #[derive(Debug)]
 pub struct RequestFilterDevice {
     pub(crate) allow_methods: SmallVec<[Method; 4]>,
@@ -36,21 +32,6 @@ pub struct RequestFilterDevice {
 }
 
 impl RequestFilterDevice {
-    pub(crate) fn from_config(cfg: RequestFilterDeviceConfig) -> anyhow::Result<Self> {
-        Ok(Self {
-            allow_methods: cfg.allow_methods.into_iter().collect(),
-            deny_methods: cfg.deny_methods.into_iter().collect(),
-            deny_headers: cfg.deny_headers.into_iter().collect(),
-            allow_headers: cfg.allow_headers.into_iter().collect(),
-            required_headers: cfg.required_headers.into_iter().collect(),
-            max_header_bytes: cfg.max_header_bytes,
-            max_body_bytes: cfg.max_body_bytes,
-            max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
-            deny_status: cfg.deny_status,
-            client_body_timeout: cfg.client_body_timeout,
-        })
-    }
-
     fn deny(
         &self,
         ctx: &RequestCtx,
@@ -68,6 +49,23 @@ impl RequestFilterDevice {
             Default::default(),
             reason.as_bytes().to_vec(),
         ))
+    }
+}
+
+impl From<RequestFilterDeviceConfig> for RequestFilterDevice {
+    fn from(cfg: RequestFilterDeviceConfig) -> Self {
+        Self {
+            allow_methods: cfg.allow_methods,
+            deny_methods: cfg.deny_methods,
+            deny_headers: cfg.deny_headers,
+            allow_headers: cfg.allow_headers,
+            required_headers: cfg.required_headers,
+            max_header_bytes: cfg.max_header_bytes,
+            max_body_bytes: cfg.max_body_bytes,
+            max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
+            deny_status: cfg.deny_status,
+            client_body_timeout: cfg.client_body_timeout,
+        }
     }
 }
 

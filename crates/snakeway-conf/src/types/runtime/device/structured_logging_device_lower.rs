@@ -13,8 +13,16 @@ impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
             enable: spec.enable,
             level: spec.level.into(),
             include_headers: spec.include_headers,
-            allowed_headers: spec.allowed_headers,
-            redacted_headers: spec.redacted_headers,
+            allowed_headers: spec
+                .allowed_headers
+                .into_iter()
+                .map(|h| h.to_lowercase())
+                .collect(),
+            redacted_headers: spec
+                .redacted_headers
+                .into_iter()
+                .map(|h| h.to_lowercase())
+                .collect(),
             include_identity: spec.include_identity,
             identity_fields: spec.identity_fields.into_iter().map(|f| f.into()).collect(),
             events: spec
@@ -83,6 +91,7 @@ impl From<IdentityFieldSpec> for IdentityFieldConfig {
 mod tests {
     use super::*;
     use crate::types::specification::Origin;
+    use std::collections::HashSet;
 
     #[test]
     fn from_spec_maps_basic_fields() {
@@ -107,8 +116,14 @@ mod tests {
         assert!(config.enable);
         assert!(matches!(config.level, LogLevelConfig::Info));
         assert!(config.include_headers);
-        assert_eq!(config.allowed_headers, vec!["content-type"]);
-        assert_eq!(config.redacted_headers, vec!["authorization"]);
+        assert_eq!(
+            config.allowed_headers,
+            HashSet::from(["content-type".to_string()])
+        );
+        assert_eq!(
+            config.redacted_headers,
+            HashSet::from(["authorization".to_string()])
+        );
         assert!(config.include_identity);
         assert_eq!(config.identity_fields.len(), 1);
         assert!(matches!(
