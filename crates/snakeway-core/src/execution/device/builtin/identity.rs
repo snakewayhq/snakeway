@@ -29,7 +29,7 @@ pub(crate) struct IdentityDevice {
 }
 
 #[derive(Debug, Error)]
-pub enum IdentityDeviceInitError {
+pub(crate) enum IdentityDeviceInitError {
     #[error("failed to load GeoIP DB {path}: {source}")]
     LoadGeoIpDb {
         path: PathBuf,
