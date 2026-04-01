@@ -36,21 +36,6 @@ pub struct RequestFilterDevice {
 }
 
 impl RequestFilterDevice {
-    pub(crate) fn from_config(cfg: RequestFilterDeviceConfig) -> anyhow::Result<Self> {
-        Ok(Self {
-            allow_methods: cfg.allow_methods.into_iter().collect(),
-            deny_methods: cfg.deny_methods.into_iter().collect(),
-            deny_headers: cfg.deny_headers.into_iter().collect(),
-            allow_headers: cfg.allow_headers.into_iter().collect(),
-            required_headers: cfg.required_headers.into_iter().collect(),
-            max_header_bytes: cfg.max_header_bytes,
-            max_body_bytes: cfg.max_body_bytes,
-            max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
-            deny_status: cfg.deny_status,
-            client_body_timeout: cfg.client_body_timeout,
-        })
-    }
-
     fn deny(
         &self,
         ctx: &RequestCtx,
@@ -68,6 +53,25 @@ impl RequestFilterDevice {
             Default::default(),
             reason.as_bytes().to_vec(),
         ))
+    }
+}
+
+impl TryFrom<RequestFilterDeviceConfig> for RequestFilterDevice {
+    type Error = anyhow::Error;
+
+    fn try_from(cfg: RequestFilterDeviceConfig) -> Result<Self, Self::Error> {
+        Ok(Self {
+            allow_methods: cfg.allow_methods.into_iter().collect(),
+            deny_methods: cfg.deny_methods.into_iter().collect(),
+            deny_headers: cfg.deny_headers.into_iter().collect(),
+            allow_headers: cfg.allow_headers.into_iter().collect(),
+            required_headers: cfg.required_headers.into_iter().collect(),
+            max_header_bytes: cfg.max_header_bytes,
+            max_body_bytes: cfg.max_body_bytes,
+            max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
+            deny_status: cfg.deny_status,
+            client_body_timeout: cfg.client_body_timeout,
+        })
     }
 }
 
