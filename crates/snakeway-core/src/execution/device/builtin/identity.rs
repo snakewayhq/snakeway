@@ -57,7 +57,7 @@ impl TryFrom<IdentityDeviceConfig> for IdentityDevice {
                 maxminddb::Reader::open_mmap(path).map_err(|e| {
                     IdentityDeviceInitError::LoadGeoIpDb {
                         path: path.clone(),
-                        source: e.into(),
+                        source: e,
                     }
                 })?
             }),
@@ -69,7 +69,7 @@ impl TryFrom<IdentityDeviceConfig> for IdentityDevice {
                 maxminddb::Reader::open_mmap(path).map_err(|e| {
                     IdentityDeviceInitError::LoadGeoIpDb {
                         path: path.clone(),
-                        source: e.into(),
+                        source: e,
                     }
                 })?
             }),
@@ -80,7 +80,7 @@ impl TryFrom<IdentityDeviceConfig> for IdentityDevice {
                 maxminddb::Reader::open_mmap(path).map_err(|e| {
                     IdentityDeviceInitError::LoadGeoIpDb {
                         path: path.clone(),
-                        source: e.into(),
+                        source: e,
                     }
                 })?
             }),
@@ -90,7 +90,7 @@ impl TryFrom<IdentityDeviceConfig> for IdentityDevice {
         let ua_engine = if cfg.enable_user_agent {
             Some(
                 build_ua_engine(cfg.ua_engine, cfg.ua_parser_regexes.as_deref())
-                    .map_err(|e| IdentityDeviceInitError::BuildUaEngine(e))?,
+                    .map_err(IdentityDeviceInitError::BuildUaEngine)?,
             )
         } else {
             None
@@ -101,7 +101,7 @@ impl TryFrom<IdentityDeviceConfig> for IdentityDevice {
             .iter()
             .map(|s| s.parse::<IpNet>())
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| IdentityDeviceInitError::ParseIpNet(e))?;
+            .map_err(IdentityDeviceInitError::ParseIpNet)?;
 
         Ok(Self {
             // IP
