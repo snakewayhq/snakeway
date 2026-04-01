@@ -80,7 +80,7 @@ impl Router {
         }
 
         for route in &self.routes {
-            if path_matches(&route.path, request_path) && route_matches_host(host, route) {
+            if path_matches_prefix(&route.path, request_path) && route_matches_host(host, route) {
                 return Ok(route);
             }
         }
@@ -89,19 +89,28 @@ impl Router {
     }
 }
 
-fn path_matches(route_path: &str, request_path: &str) -> bool {
-    if route_path == "/" {
+/// Tests whether a request path falls under the given prefix using
+/// slash-boundary-aware prefix matching.
+///
+/// Returns `true` when:
+/// - `prefix` is `"/"` (matches everything),
+/// - `request_path` equals `prefix` exactly, or
+/// - `request_path` starts with `prefix` and the next character is `"/"`.
+///
+/// The slash boundary check prevents `/api` from matching `/apikeys`.
+pub(crate) fn path_matches_prefix(prefix: &str, request_path: &str) -> bool {
+    if prefix == "/" {
         return true;
     }
 
-    if request_path == route_path {
+    if request_path == prefix {
         return true;
     }
 
-    request_path.starts_with(route_path)
+    request_path.starts_with(prefix)
         && request_path
             .as_bytes()
-            .get(route_path.len())
+            .get(prefix.len())
             .map(|b| *b == b'/')
             .unwrap_or(false)
 }
