@@ -486,10 +486,18 @@ impl ValidationReport {
         )
     }
 
+    pub(crate) fn server_tls_acme_data_dir_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME data_dir path is required".to_string(),
+            origin,
+            None,
+        )
+    }
+
     pub(crate) fn server_tls_acme_data_dir_is_invalid(&mut self, data_dir: &Path, origin: &Origin) {
         self.error(
             format!(
-                "server TLS ACME data directory does not exist or is not a directory: {}",
+                "server TLS ACME data_dir does not exist or is not a directory: {}",
                 data_dir.to_string_lossy()
             ),
             origin,
@@ -497,12 +505,20 @@ impl ValidationReport {
         )
     }
 
-    pub(crate) fn server_tls_filesystem_cert_store_must_have_a_cert_directory(
-        &mut self,
-        origin: &Origin,
-    ) {
+    pub(crate) fn server_tls_cert_dir_cannot_be_empty(&mut self, origin: &Origin) {
         self.error(
-            "server TLS filesystem cert store must have a certificate directory".to_string(),
+            "server TLS filesystem cert_dir path is required".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub(crate) fn server_tls_cert_dir_is_invalid(&mut self, cert_dir: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "server TLS cert_dir does not exist or is not a directory: {}",
+                cert_dir.to_string_lossy()
+            ),
             origin,
             None,
         )
