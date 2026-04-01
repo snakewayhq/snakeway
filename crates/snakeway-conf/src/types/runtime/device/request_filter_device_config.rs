@@ -22,6 +22,7 @@ pub struct RequestFilterDeviceConfig {
     pub max_suspicious_body_bytes: usize,
     pub deny_status: Option<u16>,
     pub client_body_timeout: Option<Duration>,
+    pub paths: SmallVec<[String; 4]>,
 }
 
 // Serialization helpers

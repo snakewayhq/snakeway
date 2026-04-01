@@ -15,6 +15,12 @@ impl ValidateSpec for RequestRateLimitingDeviceSpec {
             origin
         );
         validate_range_field!(WINDOW_SECONDS, self.window_seconds, report, origin);
+
+        for path in &self.paths {
+            if !path.starts_with('/') {
+                report.device_path_must_start_with_slash(path, origin);
+            }
+        }
     }
 }
 
@@ -87,5 +93,30 @@ mod tests {
 
         // Assert
         assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn path_without_leading_slash_is_invalid() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = RequestRateLimitingDeviceSpec {
+            enable: true,
+            max_requests_per_second: 100,
+            window_seconds: 10,
+            paths: vec!["api/v1".to_string()],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("must start with '/'"))
+        );
     }
 }

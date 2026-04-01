@@ -78,6 +78,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
             max_suspicious_body_bytes: spec.max_suspicious_body_bytes,
             deny_status: spec.deny_status,
             client_body_timeout: spec.client_body_timeout_seconds.map(Duration::from_secs),
+            paths: spec.paths.into_iter().collect(),
         })
     }
 }
@@ -110,6 +111,7 @@ mod tests {
             max_suspicious_body_bytes: 8 * 1024,
             client_body_timeout_seconds: None,
             deny_status: None,
+            paths: vec![],
         }
     }
 

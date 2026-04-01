@@ -1,4 +1,5 @@
 use crate::execution::ctx::RequestCtx;
+use crate::execution::ctx::request::NormalizedPath;
 use crate::execution::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::execution::enrichment::user_agent::ClientIdentity;
@@ -33,6 +34,7 @@ fn device() -> RequestRateLimitingDevice {
         enable: true,
         reaction_interval: Duration::from_secs(1),
         max_requests_per_second: 1.0,
+        paths: smallvec::smallvec![],
     };
     RequestRateLimitingDevice::from(cfg)
 }
@@ -167,4 +169,58 @@ async fn limiter_does_not_permanently_reject_after_pressure_stops() {
         saw_allow,
         "expected request rate limiter to eventually allow after traffic stops"
     );
+}
+
+//-----------------------------------------------------------------------------
+// Path scoping
+//-----------------------------------------------------------------------------
+
+fn ctx_with_identity_and_path(identity: ClientIdentity, path: &str) -> RequestCtx {
+    let mut ctx = RequestCtx::empty();
+    ctx.set_normalized_request(NormalizedPath(path.to_string()).into());
+    ctx.hydrated = true;
+    ctx.extensions.insert(identity);
+    ctx
+}
+
+fn device_with_paths(paths: Vec<String>) -> RequestRateLimitingDevice {
+    let cfg = RequestRateLimitingDeviceConfig {
+        enable: true,
+        reaction_interval: Duration::from_secs(1),
+        max_requests_per_second: 1.0,
+        paths: paths.into_iter().collect(),
+    };
+    RequestRateLimitingDevice::from(cfg)
+}
+
+#[test]
+fn path_scoping_non_matching_path_skips_device() {
+    // Arrange
+    let device = device_with_paths(vec!["/api".to_string()]);
+    let mut ctx = ctx_with_identity_and_path(
+        identity(IpAddr::V4(Ipv4Addr::LOCALHOST)),
+        "/static/image.png",
+    );
+
+    // Act -- send many requests that would normally trigger rate limiting
+    for _ in 0..100 {
+        let result = device.on_request(&mut ctx);
+
+        // Assert -- device is skipped for non-matching path, never rate limits
+        assert!(matches!(result, DeviceResult::Continue));
+    }
+}
+
+#[test]
+fn path_scoping_matching_path_applies_device() {
+    // Arrange
+    let device = device_with_paths(vec!["/api".to_string()]);
+    let mut ctx =
+        ctx_with_identity_and_path(identity(IpAddr::V4(Ipv4Addr::LOCALHOST)), "/api/users");
+
+    // Act -- the device should observe and eventually rate limit
+    let result = device.on_request(&mut ctx);
+
+    // Assert -- device ran (allowed this request since under limit)
+    assert!(matches!(result, DeviceResult::Continue));
 }

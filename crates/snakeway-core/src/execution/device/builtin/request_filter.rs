@@ -1,5 +1,6 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::route::path_matches_prefix;
 use bytes::Bytes;
 use http::{HeaderName, Method, StatusCode};
 use smallvec::SmallVec;
@@ -29,6 +30,7 @@ pub struct RequestFilterDevice {
     pub(crate) max_suspicious_body_bytes: usize,
     pub(crate) deny_status: Option<u16>,
     pub(crate) client_body_timeout: Option<Duration>,
+    pub(crate) paths: SmallVec<[String; 4]>,
 }
 
 impl RequestFilterDevice {
@@ -65,6 +67,11 @@ impl From<RequestFilterDeviceConfig> for RequestFilterDevice {
             max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
             deny_status: cfg.deny_status,
             client_body_timeout: cfg.client_body_timeout,
+            paths: {
+                let mut paths = cfg.paths;
+                paths.sort_by_key(|p| std::cmp::Reverse(p.len()));
+                paths
+            },
         }
     }
 }
@@ -83,6 +90,16 @@ impl Device for RequestFilterDevice {
     /// 3. Header gates
     /// 4. Body size limit
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        // Skip if the request path does not match any configured path scope.
+        if !self.paths.is_empty()
+            && !self
+                .paths
+                .iter()
+                .any(|p| path_matches_prefix(p, ctx.canonical_path()))
+        {
+            return DeviceResult::Continue;
+        }
+
         //---------------------------------------------------------------------
         // 1. Header size limit
         //---------------------------------------------------------------------
@@ -183,6 +200,16 @@ impl Device for RequestFilterDevice {
         maybe_chunk: &mut Option<Bytes>,
         _end_of_stream: bool,
     ) -> DeviceResult {
+        // Skip if the request path does not match any configured path scope.
+        if !self.paths.is_empty()
+            && !self
+                .paths
+                .iter()
+                .any(|p| path_matches_prefix(p, ctx.canonical_path()))
+        {
+            return DeviceResult::Continue;
+        }
+
         //---------------------------------------------------------------------
         // 4. Body size limit gate
         //---------------------------------------------------------------------

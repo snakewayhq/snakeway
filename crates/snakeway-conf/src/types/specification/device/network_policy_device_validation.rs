@@ -9,6 +9,12 @@ impl ValidateSpec for NetworkPolicyDeviceSpec {
                 report.invalid_network_policy_cidr(cidr, origin);
             }
         }
+
+        for path in &self.paths {
+            if !path.starts_with('/') {
+                report.device_path_must_start_with_slash(path, origin);
+            }
+        }
     }
 }
 
@@ -55,5 +61,29 @@ mod tests {
 
         // Assert
         assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn path_without_leading_slash_is_invalid() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = NetworkPolicyDeviceSpec {
+            enable: true,
+            cidr_allow: vec!["10.0.0.0/8".to_string()],
+            paths: vec!["api/v1".to_string()],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("must start with '/'"))
+        );
     }
 }
