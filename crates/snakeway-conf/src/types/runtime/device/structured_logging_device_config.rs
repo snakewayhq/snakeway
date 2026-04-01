@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -12,10 +13,10 @@ pub struct StructuredLoggingDeviceConfig {
 
     /// Allowlist of headers to include.
     /// If empty, all headers are eligible (subject to redaction).
-    pub allowed_headers: Vec<String>,
+    pub allowed_headers: HashSet<String>,
 
     /// Headers to redact (case-insensitive).
-    pub redacted_headers: Vec<String>,
+    pub redacted_headers: HashSet<String>,
 
     /// Identity logging.
     pub include_identity: bool,

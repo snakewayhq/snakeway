@@ -13,8 +13,16 @@ impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
             enable: spec.enable,
             level: spec.level.into(),
             include_headers: spec.include_headers,
-            allowed_headers: spec.allowed_headers,
-            redacted_headers: spec.redacted_headers,
+            allowed_headers: spec
+                .allowed_headers
+                .into_iter()
+                .map(|h| h.to_lowercase())
+                .collect(),
+            redacted_headers: spec
+                .redacted_headers
+                .into_iter()
+                .map(|h| h.to_lowercase())
+                .collect(),
             include_identity: spec.include_identity,
             identity_fields: spec.identity_fields.into_iter().map(|f| f.into()).collect(),
             events: spec

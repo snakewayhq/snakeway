@@ -81,7 +81,7 @@ impl DeviceRegistry {
                 // other devices' outputs.
                 DeviceConfig::StructuredLogging(cfg) => {
                     let device_config = cfg.clone();
-                    let device = Arc::new(StructuredLoggingDevice::from_config(device_config)?);
+                    let device = Arc::new(StructuredLoggingDevice::try_from(device_config)?);
                     info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
