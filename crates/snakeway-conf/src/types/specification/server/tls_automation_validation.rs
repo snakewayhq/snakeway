@@ -34,7 +34,9 @@ impl ValidateSpec for AcmeServerSpec {
             report.server_tls_acme_ca_file_invalid(ca_file, &e, origin);
         }
 
-        if !self.data_dir.is_dir() {
+        if self.data_dir.is_empty() {
+            report.server_tls_acme_data_dir_cannot_be_empty(origin);
+        } else if !self.data_dir.is_dir() {
             report.server_tls_acme_data_dir_is_invalid(&self.data_dir, origin);
         }
     }
@@ -45,7 +47,9 @@ impl ValidateSpec for CertStoreSpec {
         match self {
             CertStoreSpec::Filesystem { cert_dir } => {
                 if cert_dir.is_empty() {
-                    report.server_tls_filesystem_cert_store_must_have_a_cert_directory(origin);
+                    report.server_tls_cert_dir_cannot_be_empty(origin);
+                } else if !cert_dir.is_dir() {
+                    report.server_tls_cert_dir_is_invalid(cert_dir, origin);
                 }
             }
             CertStoreSpec::Memory => {}
@@ -164,7 +168,32 @@ mod tests {
     }
 
     #[test]
-    fn acme_data_dir_must_exist() {
+    fn acme_data_dir_cannot_be_empty() {
+        // Arrange
+        let origin = Origin::test("tls_automation");
+        let mut report = ValidationReport::default();
+        let spec = AcmeServerSpec {
+            directory_url: "https://acme.example.com/directory".to_string(),
+            contact_email: vec!["admin@example.com".to_string()],
+            data_dir: PathBuf::new(),
+            ca_file: None,
+        };
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("data_dir") && e.message.contains("path is required"))
+        );
+    }
+
+    #[test]
+    fn acme_data_dir_must_be_a_directory() {
         // Arrange
         let origin = Origin::test("tls_automation");
         let mut report = ValidationReport::default();
@@ -184,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn cert_store_filesystem_requires_cert_dir() {
+    fn cert_dir_cannot_be_empty() {
         // Arrange
         let origin = Origin::test("tls_automation");
         let mut report = ValidationReport::default();
@@ -201,8 +230,25 @@ mod tests {
             report
                 .errors
                 .iter()
-                .any(|e| e.message.contains("must have a certificate directory"))
+                .any(|e| e.message.contains("cert_dir") && e.message.contains("path is required"))
         );
+    }
+
+    #[test]
+    fn cert_dir_must_be_a_directory() {
+        // Arrange
+        let origin = Origin::test("tls_automation");
+        let mut report = ValidationReport::default();
+        let spec = CertStoreSpec::Filesystem {
+            cert_dir: PathBuf::from("/non/existent/cert_dir"),
+        };
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(report.errors.iter().any(|e| e.message.contains("cert_dir")));
     }
 
     #[test]

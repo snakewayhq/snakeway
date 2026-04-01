@@ -47,12 +47,9 @@ pub(crate) fn validate_tls(
                     "ACME configured with memory store. Certs will be discarded on restart."
                 );
             }
-            CertStoreSpec::Filesystem { cert_dir } => {
-                if cert_dir.as_os_str().is_empty() {
-                    report.server_tls_filesystem_cert_store_must_have_a_cert_directory(
-                        &server.origin,
-                    );
-                }
+            CertStoreSpec::Filesystem { .. } => {
+                // cert_dir validation (empty check, create-or-verify) is handled
+                // by CertStoreSpec::validate in the single-file validation pass.
             }
         }
     }

@@ -8,7 +8,7 @@ use crate::data_plane::bootstrap::build_pingora_server;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::{TrafficManager, TrafficSnapshot};
 use crate::runtime::{ReloadError, build_runtime_state, reload_runtime_state};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use arc_swap::ArcSwap;
 use nix::NixPath;
 use snakeway_conf::types::{CertStoreConfig, ListenerConfig, RuntimeConfig, TlsAutomationConfig};
@@ -192,9 +192,6 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
 fn build_cert_store(tls_automation_cfg: &TlsAutomationConfig) -> Result<Arc<dyn CertStore>> {
     match &tls_automation_cfg.cert_store {
         CertStoreConfig::Filesystem { cert_dir } => {
-            // Attempt to create the cert store dir if it doesn't exist.
-            std::fs::create_dir_all(cert_dir)
-                .map_err(|e| anyhow!("failed to create cert store dir: {}", e))?;
             Ok(Arc::new(FilesystemCertStore::new(PathBuf::from(cert_dir))))
         }
         CertStoreConfig::Memory => Ok(Arc::new(MemoryCertStore::default())),
@@ -203,8 +200,6 @@ fn build_cert_store(tls_automation_cfg: &TlsAutomationConfig) -> Result<Arc<dyn 
 
 fn build_order_store(tls_automation_cfg: &TlsAutomationConfig) -> Result<Arc<dyn OrderStore>> {
     let order_store_dir = tls_automation_cfg.acme.data_dir.clone();
-    std::fs::create_dir_all(order_store_dir.clone())
-        .map_err(|e| anyhow!("failed to create order store dir: {}", e))?;
     Ok(Arc::new(FilesystemOrderStore::new(order_store_dir)))
 }
 
