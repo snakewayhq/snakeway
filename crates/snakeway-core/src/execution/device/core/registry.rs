@@ -49,7 +49,7 @@ impl DeviceRegistry {
                 // so that it can establish the context of the request BEFORE all other stateful devices run.
                 DeviceConfig::Identity(cfg) => {
                     let device_config = cfg.clone();
-                    let device = Arc::new(IdentityDevice::from_config(device_config)?);
+                    let device = Arc::new(IdentityDevice::try_from(device_config)?);
                     info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }

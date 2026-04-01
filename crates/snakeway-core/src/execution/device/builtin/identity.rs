@@ -5,9 +5,11 @@ use crate::execution::enrichment::user_agent::{
     ClientIdentity, GeoInfo, UaEngine, build_ua_engine,
 };
 use crate::net::resolve_client_ip;
-use ipnet::IpNet;
-use maxminddb::PathElement;
+use ipnet::{AddrParseError, IpNet};
+use maxminddb::{MaxMindDbError, PathElement};
 use snakeway_conf::types::IdentityDeviceConfig;
+use std::path::PathBuf;
+use thiserror::Error;
 
 pub(crate) struct IdentityDevice {
     // IP Trust
@@ -26,31 +28,70 @@ pub(crate) struct IdentityDevice {
     max_user_agent_length: usize,
 }
 
-impl IdentityDevice {
-    pub(crate) fn from_config(cfg: IdentityDeviceConfig) -> anyhow::Result<Self> {
+#[derive(Debug, Error)]
+pub enum IdentityDeviceInitError {
+    #[error("failed to load GeoIP DB {path}: {source}")]
+    LoadGeoIpDb {
+        path: PathBuf,
+        #[source]
+        source: MaxMindDbError,
+    },
+
+    #[error("failed to build user-agent engine: {0}")]
+    BuildUaEngine(anyhow::Error),
+
+    #[error("failed to parse IP address: {0}")]
+    ParseIpNet(AddrParseError),
+}
+
+impl TryFrom<IdentityDeviceConfig> for IdentityDevice {
+    type Error = IdentityDeviceInitError;
+
+    fn try_from(cfg: IdentityDeviceConfig) -> Result<Self, Self::Error> {
         // Safety note on these memory-mapped GeoIP files...
         // 1. File is opened read-only
         // 2. Lifetime is bound to IdentityDevice
         // 3. Snakeway does not mutate the mmdb file
         let geoip_city_db = match (cfg.enable_geoip, &cfg.geoip_city_db) {
-            (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
+            (true, Some(path)) => Some(unsafe {
+                maxminddb::Reader::open_mmap(path).map_err(|e| {
+                    IdentityDeviceInitError::LoadGeoIpDb {
+                        path: path.clone(),
+                        source: e.into(),
+                    }
+                })?
+            }),
             _ => None,
         };
 
         let geoip_isp_db = match (cfg.enable_geoip, &cfg.geoip_isp_db) {
-            (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
+            (true, Some(path)) => Some(unsafe {
+                maxminddb::Reader::open_mmap(path).map_err(|e| {
+                    IdentityDeviceInitError::LoadGeoIpDb {
+                        path: path.clone(),
+                        source: e.into(),
+                    }
+                })?
+            }),
             _ => None,
         };
         let geoip_connection_type_db = match (cfg.enable_geoip, &cfg.geoip_connection_type_db) {
-            (true, Some(path)) => Some(unsafe { maxminddb::Reader::open_mmap(path)? }),
+            (true, Some(path)) => Some(unsafe {
+                maxminddb::Reader::open_mmap(path).map_err(|e| {
+                    IdentityDeviceInitError::LoadGeoIpDb {
+                        path: path.clone(),
+                        source: e.into(),
+                    }
+                })?
+            }),
             _ => None,
         };
 
         let ua_engine = if cfg.enable_user_agent {
-            Some(build_ua_engine(
-                cfg.ua_engine,
-                cfg.ua_parser_regexes.as_deref(),
-            )?)
+            Some(
+                build_ua_engine(cfg.ua_engine, cfg.ua_parser_regexes.as_deref())
+                    .map_err(|e| IdentityDeviceInitError::BuildUaEngine(e))?,
+            )
         } else {
             None
         };
@@ -59,7 +100,8 @@ impl IdentityDevice {
             .trusted_proxies
             .iter()
             .map(|s| s.parse::<IpNet>())
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| IdentityDeviceInitError::ParseIpNet(e))?;
 
         Ok(Self {
             // IP
