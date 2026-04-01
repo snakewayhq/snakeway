@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
-ipnet-trie = { workspace = true }
 nix = { workspace = true, features = ["signal"] }
 openssl = { workspace = true }
 http = { workspace = true }
@@ -20,5 +19,4 @@ tracing = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]
-pretty_assertions = { workspace = true }
 rcgen = { workspace = true }
