@@ -679,6 +679,14 @@ impl ValidationReport {
         )
     }
 
+    pub(crate) fn device_path_must_start_with_slash(&mut self, path: &str, origin: &Origin) {
+        self.error(
+            format!("device path must start with '/': {path}"),
+            origin,
+            None,
+        )
+    }
+
     pub(crate) fn structured_logging_identity_fields_empty(&mut self, origin: &Origin) {
         self.warning(
             "structured logging identity fields cannot be empty".to_string(),
