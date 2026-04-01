@@ -39,8 +39,8 @@ impl DeviceRegistry {
                 // The request filter device specifically must run before the identity device,
                 // as this allows it to short-circuit the request early to avoid unnecessary allocations.
                 DeviceConfig::RequestFilter(cfg) => {
-                    let device_config = cfg.clone();
-                    let device = Arc::new(RequestFilterDevice::from_config(device_config)?);
+                    let device_config = cfg.as_ref().clone();
+                    let device = Arc::new(RequestFilterDevice::from(device_config));
                     info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }
@@ -81,7 +81,7 @@ impl DeviceRegistry {
                 // other devices' outputs.
                 DeviceConfig::StructuredLogging(cfg) => {
                     let device_config = cfg.clone();
-                    let device = Arc::new(StructuredLoggingDevice::try_from(device_config)?);
+                    let device = Arc::new(StructuredLoggingDevice::from(device_config));
                     info!("loaded device: {}", device.name());
                     self.devices.push(device);
                 }

@@ -7,7 +7,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DeviceConfig {
-    RequestFilter(RequestFilterDeviceConfig),
+    RequestFilter(Box<RequestFilterDeviceConfig>),
     Identity(IdentityDeviceConfig),
     NetworkPolicy(NetworkPolicyDeviceConfig),
     Wasm(WasmDeviceConfig),

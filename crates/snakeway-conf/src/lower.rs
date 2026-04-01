@@ -145,7 +145,9 @@ pub(crate) fn lower_configs(
     let devices = device_specs
         .into_iter()
         .map(|spec| match spec {
-            DeviceSpec::RequestFilter(d) => d.try_into().map(DeviceConfig::RequestFilter),
+            DeviceSpec::RequestFilter(d) => d
+                .try_into()
+                .map(|c| DeviceConfig::RequestFilter(Box::new(c))),
             DeviceSpec::Identity(d) => Ok(DeviceConfig::Identity(d.into())),
             DeviceSpec::NetworkPolicy(d) => d.try_into().map(DeviceConfig::NetworkPolicy),
             DeviceSpec::Wasm(d) => Ok(DeviceConfig::Wasm(d.into())),

@@ -56,22 +56,20 @@ impl RequestFilterDevice {
     }
 }
 
-impl TryFrom<RequestFilterDeviceConfig> for RequestFilterDevice {
-    type Error = anyhow::Error;
-
-    fn try_from(cfg: RequestFilterDeviceConfig) -> Result<Self, Self::Error> {
-        Ok(Self {
-            allow_methods: cfg.allow_methods.into_iter().collect(),
-            deny_methods: cfg.deny_methods.into_iter().collect(),
-            deny_headers: cfg.deny_headers.into_iter().collect(),
-            allow_headers: cfg.allow_headers.into_iter().collect(),
-            required_headers: cfg.required_headers.into_iter().collect(),
+impl From<RequestFilterDeviceConfig> for RequestFilterDevice {
+    fn from(cfg: RequestFilterDeviceConfig) -> Self {
+        Self {
+            allow_methods: cfg.allow_methods,
+            deny_methods: cfg.deny_methods,
+            deny_headers: cfg.deny_headers,
+            allow_headers: cfg.allow_headers,
+            required_headers: cfg.required_headers,
             max_header_bytes: cfg.max_header_bytes,
             max_body_bytes: cfg.max_body_bytes,
             max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
             deny_status: cfg.deny_status,
             client_body_timeout: cfg.client_body_timeout,
-        })
+        }
     }
 }
 
