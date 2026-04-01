@@ -10,17 +10,13 @@ use std::time::Duration;
 ///
 /// This struct uses `SmallVec` for storing lists of HTTP methods and headers.
 /// SmallVec is a special list type that stores a few items directly inside itself
-/// (like a small backpack), and only allocates extra memory when you need more space.
+/// and only allocates extra memory when you need more space.
 ///
 /// For example, `SmallVec<[Method; 4]>` can hold up to 4 HTTP methods without needing
 /// to allocate memory separately. Since most filters only check a few methods
 /// (like GET, POST, PUT, DELETE), this saves memory and makes the code faster.
 /// The same applies to headers - most filters only care about a handful of headers,
 /// so storing 8 directly is usually enough.
-///
-/// Think of it like this: instead of always using a big warehouse (heap allocation)
-/// to store a few items, we use a small shelf (stack storage) first, and only rent
-/// warehouse space when we really need it.
 #[derive(Debug)]
 pub struct RequestFilterDevice {
     pub(crate) allow_methods: SmallVec<[Method; 4]>,
