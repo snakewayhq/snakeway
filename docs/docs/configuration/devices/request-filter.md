@@ -29,19 +29,20 @@ request_filter_device = {
 
 ## Field Reference
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enable` | boolean | `false` | Enable or disable the device. |
-| `allow_methods` | list of strings | `[]` | HTTP methods to allow. Empty means all allowed. |
-| `deny_methods` | list of strings | `[]` | HTTP methods to deny. Takes precedence over allow. |
-| `required_headers` | list of strings | `[]` | Headers that must be present on every request. |
-| `deny_headers` | list of strings | `[]` | Headers that cause rejection if present. |
-| `allow_headers` | list of strings | `[]` | If non-empty, only these headers may appear. |
-| `max_header_bytes` | integer | `16384` | Maximum total header size in bytes (16 KB). |
-| `max_body_bytes` | integer | `1048576` | Maximum body size for methods with body semantics (1 MB). |
-| `max_suspicious_body_bytes` | integer | `8192` | Maximum body size for methods where a body is unusual (8 KB). |
-| `client_body_timeout_seconds` | integer | not set | Per-read timeout for client body data, in seconds. |
-| `deny_status` | integer | varies | Override the HTTP status code used for all rejections. |
+| Field                         | Type            | Default   | Description                                                                                     |
+|-------------------------------|-----------------|-----------|-------------------------------------------------------------------------------------------------|
+| `enable`                      | boolean         | `false`   | Enable or disable the device.                                                                   |
+| `allow_methods`               | list of strings | `[]`      | HTTP methods to allow. Empty means all allowed.                                                 |
+| `deny_methods`                | list of strings | `[]`      | HTTP methods to deny. Takes precedence over allow.                                              |
+| `required_headers`            | list of strings | `[]`      | Headers that must be present on every request.                                                  |
+| `deny_headers`                | list of strings | `[]`      | Headers that cause rejection if present.                                                        |
+| `allow_headers`               | list of strings | `[]`      | If non-empty, only these headers may appear.                                                    |
+| `max_header_bytes`            | integer         | `16384`   | Maximum total header size in bytes (16 KB).                                                     |
+| `max_body_bytes`              | integer         | `1048576` | Maximum body size for methods with body semantics (1 MB).                                       |
+| `max_suspicious_body_bytes`   | integer         | `8192`    | Maximum body size for methods where a body is unusual (8 KB).                                   |
+| `client_body_timeout_seconds` | integer         | not set   | Per-read timeout for client body data, in seconds.                                              |
+| `deny_status`                 | integer         | varies    | Override the HTTP status code used for all rejections.                                          |
+| `paths`                       | list of strings | `[]`      | Path prefixes this device applies to. Empty means all paths. See [Path Scoping](#path-scoping). |
 
 ## Method Filtering
 
@@ -182,3 +183,19 @@ When set, this status code is used for all denials.
 This allows operators to optionally prevent leaking information about specific rules to clients.
 
 Invalid status codes are rejected at configuration load time.
+
+## Path Scoping
+
+By default, the Request Filter device applies to all requests. The `paths` field restricts enforcement to requests
+matching one or more path prefixes.
+
+```hcl
+request_filter_device = {
+  enable = true
+  allow_methods = ["GET", "POST"]
+  paths = ["/api/"]
+}
+```
+
+Path matching uses prefix semantics with slash-boundary awareness: `/api` matches `/api/users` but not `/apikeys`. When
+`paths` is empty or omitted, the device applies to all requests.
