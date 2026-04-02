@@ -172,7 +172,7 @@ polish.
 - [x] Make UA Parser regex file overridable in the config (similar to MMDB files)
 - [x] Review device subsystem against the mature configuration subsystem
 - [ ] Consider discrete `on_response_header` and `on_response_body` hooks
-- [ ] Consider scoping network policy and rate limiting to specific paths
+- [x] Consider scoping network policy and rate limiting to specific paths
 
 **Routing**
 
