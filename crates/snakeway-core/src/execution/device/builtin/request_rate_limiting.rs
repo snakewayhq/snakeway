@@ -1,6 +1,8 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use pingora_limits::rate::Rate;
+use smallvec::SmallVec;
 use snakeway_conf::types::RequestRateLimitingDeviceConfig;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
@@ -10,6 +12,7 @@ use tracing::debug;
 pub(crate) struct RequestRateLimitingDevice {
     rate: Arc<Rate>,
     max_requests_per_second: f64,
+    paths: SmallVec<[String; 4]>,
 }
 
 impl Debug for RequestRateLimitingDevice {
@@ -22,9 +25,12 @@ impl Debug for RequestRateLimitingDevice {
 
 impl From<RequestRateLimitingDeviceConfig> for RequestRateLimitingDevice {
     fn from(cfg: RequestRateLimitingDeviceConfig) -> Self {
+        let mut paths = cfg.paths;
+        sort_paths_longest_first(&mut paths);
         Self {
             rate: Arc::new(Rate::new(cfg.reaction_interval)),
             max_requests_per_second: cfg.max_requests_per_second,
+            paths,
         }
     }
 }
@@ -47,6 +53,10 @@ impl Device for RequestRateLimitingDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
+            return DeviceResult::Continue;
+        }
+
         // No identity, then short-circuit the device.
         // However, this should never happen, as the identity device must run before this device.
         // A config validation error would have been caught earlier.

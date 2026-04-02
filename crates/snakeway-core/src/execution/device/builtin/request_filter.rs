@@ -1,5 +1,6 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use bytes::Bytes;
 use http::{HeaderName, Method, StatusCode};
 use smallvec::SmallVec;
@@ -29,6 +30,7 @@ pub struct RequestFilterDevice {
     pub(crate) max_suspicious_body_bytes: usize,
     pub(crate) deny_status: Option<u16>,
     pub(crate) client_body_timeout: Option<Duration>,
+    pub(crate) paths: SmallVec<[String; 4]>,
 }
 
 impl RequestFilterDevice {
@@ -65,6 +67,11 @@ impl From<RequestFilterDeviceConfig> for RequestFilterDevice {
             max_suspicious_body_bytes: cfg.max_suspicious_body_bytes,
             deny_status: cfg.deny_status,
             client_body_timeout: cfg.client_body_timeout,
+            paths: {
+                let mut paths = cfg.paths;
+                sort_paths_longest_first(&mut paths);
+                paths
+            },
         }
     }
 }
@@ -83,6 +90,10 @@ impl Device for RequestFilterDevice {
     /// 3. Header gates
     /// 4. Body size limit
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
+            return DeviceResult::Continue;
+        }
+
         //---------------------------------------------------------------------
         // 1. Header size limit
         //---------------------------------------------------------------------
@@ -183,6 +194,10 @@ impl Device for RequestFilterDevice {
         maybe_chunk: &mut Option<Bytes>,
         _end_of_stream: bool,
     ) -> DeviceResult {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
+            return DeviceResult::Continue;
+        }
+
         //---------------------------------------------------------------------
         // 4. Body size limit gate
         //---------------------------------------------------------------------
