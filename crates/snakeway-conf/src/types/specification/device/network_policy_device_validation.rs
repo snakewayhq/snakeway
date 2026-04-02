@@ -1,4 +1,5 @@
 use crate::types::{NetworkPolicyDeviceSpec, Origin};
+use crate::validation::validator::validate_device_paths;
 use crate::validation::{ValidateSpec, ValidationReport};
 use ipnet::IpNet;
 
@@ -10,11 +11,7 @@ impl ValidateSpec for NetworkPolicyDeviceSpec {
             }
         }
 
-        for path in &self.paths {
-            if !path.starts_with('/') {
-                report.device_path_must_start_with_slash(path, origin);
-            }
-        }
+        validate_device_paths(&self.paths, report, origin);
     }
 }
 

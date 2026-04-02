@@ -89,6 +89,19 @@ impl Router {
     }
 }
 
+/// Returns `true` if the request path matches at least one of the given
+/// path prefixes. Callers should skip this check entirely when `scopes`
+/// is empty (meaning the device applies to all paths).
+pub(crate) fn request_path_in_scope(scopes: &[String], request_path: &str) -> bool {
+    scopes.iter().any(|p| path_matches_prefix(p, request_path))
+}
+
+/// Sorts path prefixes by descending length so that longer (more specific)
+/// prefixes are tested first during matching.
+pub(crate) fn sort_paths_longest_first(paths: &mut [String]) {
+    paths.sort_by_key(|p| std::cmp::Reverse(p.len()));
+}
+
 /// Tests whether a request path falls under the given prefix using
 /// slash-boundary-aware prefix matching.
 ///

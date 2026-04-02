@@ -1,6 +1,6 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
-use crate::execution::route::path_matches_prefix;
+use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use bytes::Bytes;
 use http::{HeaderName, Method, StatusCode};
 use smallvec::SmallVec;
@@ -69,7 +69,7 @@ impl From<RequestFilterDeviceConfig> for RequestFilterDevice {
             client_body_timeout: cfg.client_body_timeout,
             paths: {
                 let mut paths = cfg.paths;
-                paths.sort_by_key(|p| std::cmp::Reverse(p.len()));
+                sort_paths_longest_first(&mut paths);
                 paths
             },
         }
@@ -90,13 +90,7 @@ impl Device for RequestFilterDevice {
     /// 3. Header gates
     /// 4. Body size limit
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        // Skip if the request path does not match any configured path scope.
-        if !self.paths.is_empty()
-            && !self
-                .paths
-                .iter()
-                .any(|p| path_matches_prefix(p, ctx.canonical_path()))
-        {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
             return DeviceResult::Continue;
         }
 
@@ -200,13 +194,7 @@ impl Device for RequestFilterDevice {
         maybe_chunk: &mut Option<Bytes>,
         _end_of_stream: bool,
     ) -> DeviceResult {
-        // Skip if the request path does not match any configured path scope.
-        if !self.paths.is_empty()
-            && !self
-                .paths
-                .iter()
-                .any(|p| path_matches_prefix(p, ctx.canonical_path()))
-        {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
             return DeviceResult::Continue;
         }
 

@@ -1,5 +1,7 @@
 use crate::types::{Origin, RequestFilterDeviceSpec};
-use crate::validation::validator::{validate_http_header_name, validate_http_method};
+use crate::validation::validator::{
+    validate_device_paths, validate_http_header_name, validate_http_method,
+};
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
@@ -32,11 +34,7 @@ impl ValidateSpec for RequestFilterDeviceSpec {
             validate_http_header_name(header, report, origin);
         }
 
-        for path in &self.paths {
-            if !path.starts_with('/') {
-                report.device_path_must_start_with_slash(path, origin);
-            }
-        }
+        validate_device_paths(&self.paths, report, origin);
     }
 }
 

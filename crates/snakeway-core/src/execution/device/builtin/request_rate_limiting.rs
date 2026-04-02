@@ -1,6 +1,6 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
-use crate::execution::route::path_matches_prefix;
+use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use pingora_limits::rate::Rate;
 use smallvec::SmallVec;
 use snakeway_conf::types::RequestRateLimitingDeviceConfig;
@@ -26,7 +26,7 @@ impl Debug for RequestRateLimitingDevice {
 impl From<RequestRateLimitingDeviceConfig> for RequestRateLimitingDevice {
     fn from(cfg: RequestRateLimitingDeviceConfig) -> Self {
         let mut paths = cfg.paths;
-        paths.sort_by_key(|p| std::cmp::Reverse(p.len()));
+        sort_paths_longest_first(&mut paths);
         Self {
             rate: Arc::new(Rate::new(cfg.reaction_interval)),
             max_requests_per_second: cfg.max_requests_per_second,
@@ -53,13 +53,7 @@ impl Device for RequestRateLimitingDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        // Skip if the request path does not match any configured path scope.
-        if !self.paths.is_empty()
-            && !self
-                .paths
-                .iter()
-                .any(|p| path_matches_prefix(p, ctx.canonical_path()))
-        {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
             return DeviceResult::Continue;
         }
 

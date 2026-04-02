@@ -1,4 +1,5 @@
 use crate::types::{Origin, RequestRateLimitingDeviceSpec};
+use crate::validation::validator::validate_device_paths;
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
@@ -16,11 +17,7 @@ impl ValidateSpec for RequestRateLimitingDeviceSpec {
         );
         validate_range_field!(WINDOW_SECONDS, self.window_seconds, report, origin);
 
-        for path in &self.paths {
-            if !path.starts_with('/') {
-                report.device_path_must_start_with_slash(path, origin);
-            }
-        }
+        validate_device_paths(&self.paths, report, origin);
     }
 }
 

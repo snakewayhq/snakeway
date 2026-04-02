@@ -1,6 +1,6 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
-use crate::execution::route::path_matches_prefix;
+use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use crate::net::CidrCollection;
 use smallvec::SmallVec;
 use snakeway_conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
@@ -23,7 +23,7 @@ pub(crate) enum OnInvalidForwarded {
 impl From<NetworkPolicyDeviceConfig> for NetworkPolicyDevice {
     fn from(cfg: NetworkPolicyDeviceConfig) -> Self {
         let mut paths = cfg.paths;
-        paths.sort_by_key(|p| std::cmp::Reverse(p.len()));
+        sort_paths_longest_first(&mut paths);
         Self {
             cidr_allow: cfg.cidr_allow.into(),
             allow_forwarded: cfg.forwarding.allow,
@@ -59,13 +59,7 @@ impl Device for NetworkPolicyDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
-        // Skip if the request path does not match any configured path scope.
-        if !self.paths.is_empty()
-            && !self
-                .paths
-                .iter()
-                .any(|p| path_matches_prefix(p, ctx.canonical_path()))
-        {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
             return DeviceResult::Continue;
         }
 
