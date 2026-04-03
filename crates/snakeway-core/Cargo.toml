@@ -81,7 +81,8 @@ opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
 opentelemetry = { workspace = true }
 tracing-opentelemetry = { workspace = true }
-hostname = "0.4.2"
+hostname = { workspace = true }
+opentelemetry-appender-tracing = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
