@@ -28,7 +28,7 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
     // Otherwise, their subscriber types become dependent on the fmt writer type
     // (stdout vs. NonBlocking file writer), which causes nasty trait errors.
     let otel_filter = EnvFilter::new("info")
-        .add_directive("hyper=off".parse().unwrap())
+        .add_directive("pingora=off".parse().unwrap())
         .add_directive("tonic=off".parse().unwrap())
         .add_directive("h2=off".parse().unwrap())
         .add_directive("reqwest=off".parse().unwrap());
