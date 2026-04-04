@@ -64,6 +64,7 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
         Registry::default()
             .with(env_filter)
             .with(tracer_layer)
+            .with(logger_layer)
             .with(fmt_layer)
             .init();
     }
