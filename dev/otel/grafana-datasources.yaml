@@ -6,6 +6,7 @@ datasources:
     access: proxy
     url: http://snakeway-tempo:3200
     isDefault: true
+    uid: tempo
     jsonData:
       tracesToLogsV2:
         datasourceUid: loki
@@ -18,3 +19,11 @@ datasources:
     type: loki
     url: http://snakeway-loki:3100
     uid: loki
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          matcherType: label
+          matcherRegex: trace_id
+          url: '$${__value.raw}'
+          datasourceUid: tempo
+          urlDisplayLabel: View Trace in Tempo
