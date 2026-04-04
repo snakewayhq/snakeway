@@ -46,6 +46,16 @@ services:
       - snakeway-grafana-data:/var/lib/grafana
     depends_on:
       - tempo
+      - loki
+
+  loki:
+    container_name: snakeway-loki
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./dev/otel/loki-local-config.yaml:/etc/loki/local-config.yaml
 
   origin:
     container_name: snakeway-origin
