@@ -164,7 +164,7 @@ polish.
   - [x] Parent-based sampling
   - [x] Per-phase child spans (routing, upstream selection, upstream request/response, response)
   - [ ] Metrics instrumentation (counters, histograms)
-  - [ ] Additional sampling strategies
+  - [x] Configurable trace-ID-ratio sampling
 
 **Configuration**
 

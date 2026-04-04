@@ -83,13 +83,16 @@ instances in multi‑node deployments.
 
 ### Sampling
 
-The current implementation supports a parent‑based sampling model. The
-sampling decision propagates across nested spans so that trace
-hierarchies remain coherent.
+Snakeway uses a parent-based sampling model. When an incoming request
+carries a sampled W3C Trace Context, the proxy always honors that
+decision and samples the request. When no parent context is present,
+the `sampling_ratio` setting determines what fraction of root traces
+are sampled using a deterministic trace-ID-ratio algorithm.
 
-Additional sampling strategies may be introduced later, but the default
-configuration ensures that traces remain complete once a root span has
-been sampled.
+The default `sampling_ratio` of `1.0` samples all root traces. Setting
+it to a lower value (e.g., `0.1` for 10%) reduces trace volume in
+high-traffic deployments while preserving complete traces for every
+sampled request.
 
 ### Request Instrumentation
 

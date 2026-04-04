@@ -47,10 +47,11 @@ server {
 
   observability {
     otel {
-      enable       = true
-      endpoint     = "http://localhost:4317"
-      service_name = "my-proxy"
-      sampling     = "parent_based"
+      enable         = true
+      endpoint       = "http://localhost:4317"
+      service_name   = "my-proxy"
+      sampling        = "parent_based"
+      sampling_ratio  = 0.1  # sample 10% of root traces
     }
   }
 }
@@ -75,7 +76,12 @@ telemetry.
 `observability.otel.sampling` string, default: `"parent_based"`.
 Sampling strategy. Currently only `"parent_based"` is supported.
 Parent-based sampling defers to the incoming trace's sampling decision
-when present and samples all root spans.
+when present and uses `sampling_ratio` for root spans.
+
+`observability.otel.sampling_ratio` float, default: `1.0`. Controls
+what fraction of root traces are sampled (0.0 to 1.0). Only applies
+when no parent trace context is present. Set to `0.1` to sample 10% of
+root traces, or `1.0` to sample all.
 
 ## PID File and Reload Behavior
 
