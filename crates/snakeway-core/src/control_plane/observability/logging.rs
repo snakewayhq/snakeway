@@ -32,7 +32,6 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
         .add_directive("tonic=off".parse().unwrap())
         .add_directive("h2=off".parse().unwrap())
         .add_directive("reqwest=off".parse().unwrap());
-
     let (tracer_provider, logger_provider) = match maybe_telemetry_providers {
         None => (None, None),
         Some(providers) => (
@@ -40,9 +39,7 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
             Some(providers.logger_provider),
         ),
     };
-
     let tracer_layer = tracer_provider.map(|p| OpenTelemetryLayer::new(p.tracer("snakeway")));
-
     let logger_layer =
         logger_provider.map(|p| OpenTelemetryTracingBridge::new(&p).with_filter(otel_filter));
 
@@ -56,7 +53,6 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
             .with(env_filter)
             .with(tracer_layer)
             .with(logger_layer)
-            // .with(meter_layer)
             .with(fmt_layer)
             .init();
 
