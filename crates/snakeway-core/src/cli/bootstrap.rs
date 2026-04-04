@@ -3,7 +3,7 @@ use crate::cli::logs::run_logs;
 use crate::cli::route::RouteCmd;
 use crate::cli::wasm_device::WasmDeviceCmd;
 use crate::cli::{reload, route, wasm_device};
-use crate::control_plane::observability::{LogMode, default_log_mode, init_logging};
+use crate::control_plane::observability::init_logging;
 use crate::server;
 use clap::{Parser, Subcommand};
 use std::process::exit;
@@ -137,4 +137,20 @@ pub fn run_cli() {
             server::start_server("./config");
         }
     }
+}
+
+pub(crate) fn default_log_mode() -> LogMode {
+    use std::io::IsTerminal;
+    if std::io::stdout().is_terminal() {
+        LogMode::Pretty
+    } else {
+        LogMode::Raw
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum LogMode {
+    Raw,
+    Pretty,
+    Stats,
 }

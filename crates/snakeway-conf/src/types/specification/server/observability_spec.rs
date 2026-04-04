@@ -2,7 +2,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ObservabilitySpec {
+    pub logging: Option<LoggingSpec>,
     pub otel: Option<OtelSpec>,
+}
+
+#[derive(Debug, Deserialize, Default, Serialize)]
+pub struct LoggingSpec {
+    pub enable: bool,
+    pub log_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Default, Serialize)]

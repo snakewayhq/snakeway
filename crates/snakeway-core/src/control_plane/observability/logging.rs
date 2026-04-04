@@ -76,29 +76,9 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
 pub(crate) fn init_logging(telemetry_providers: Option<TelemetryProviders>) {
     if std::env::var("TOKIO_CONSOLE").is_ok() {
         // Tokio console logging is specifically for interactive debugging and profiling.
-        init_console_logging();
+        console_subscriber::init();
     } else {
         // Normal logging for production and non-interactive use.
         init_normal_logging(telemetry_providers);
     }
-}
-
-fn init_console_logging() {
-    console_subscriber::init();
-}
-
-pub(crate) fn default_log_mode() -> LogMode {
-    use std::io::IsTerminal;
-    if std::io::stdout().is_terminal() {
-        LogMode::Pretty
-    } else {
-        LogMode::Raw
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum LogMode {
-    Raw,
-    Pretty,
-    Stats,
 }
