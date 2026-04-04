@@ -158,7 +158,13 @@ polish.
 
 - [x] Clean, forward-looking architecture
 - [ ] Production-grade test suite (150+ integration tests)
-- [ ] OpenTelemetry support
+- OpenTelemetry support
+  - [x] OTLP export (traces, logs, metrics)
+  - [x] W3C Trace Context propagation
+  - [x] Parent-based sampling
+  - [ ] Per-phase child spans (routing, device pipeline, upstream)
+  - [ ] Metrics instrumentation (counters, histograms)
+  - [ ] Additional sampling strategies
 
 **Configuration**
 
