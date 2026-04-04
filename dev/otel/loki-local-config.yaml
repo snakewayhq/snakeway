@@ -24,3 +24,6 @@ schema_config:
 storage_config:
   filesystem:
     directory: /tmp/loki/chunks
+
+limits_config:
+  allow_structured_metadata: true
