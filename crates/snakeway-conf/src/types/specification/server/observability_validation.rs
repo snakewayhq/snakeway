@@ -1,5 +1,9 @@
 use crate::types::{ObservabilitySpec, Origin, OtelSpec};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
+
+range_constraint!(SAMPLING_RATIO, f64, min: 0.0, max: 1.0);
 
 impl ValidateSpec for ObservabilitySpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -24,6 +28,8 @@ impl ValidateSpec for OtelSpec {
         if self.service_name.is_empty() {
             report.otel_service_name_cannot_be_empty(origin);
         }
+
+        validate_range_field!(SAMPLING_RATIO, self.sampling_ratio, report, origin);
     }
 }
 
@@ -38,6 +44,7 @@ mod tests {
             endpoint: "http://localhost:4317".to_string(),
             service_name: "snakeway".to_string(),
             sampling: SamplingTypeSpec::ParentBased,
+            sampling_ratio: 1.0,
         }
     }
 
@@ -51,6 +58,7 @@ mod tests {
             endpoint: String::new(),
             service_name: String::new(),
             sampling: SamplingTypeSpec::ParentBased,
+            sampling_ratio: 1.0,
         };
 
         // Act
@@ -159,6 +167,69 @@ mod tests {
 
         // Assert
         assert!(report.has_violations());
+    }
+
+    #[test]
+    fn otel_sampling_ratio_below_zero() {
+        // Arrange
+        let origin = Origin::test("observability");
+        let mut report = ValidationReport::default();
+        let spec = OtelSpec {
+            sampling_ratio: -0.1,
+            ..default_otel()
+        };
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("sampling_ratio"))
+        );
+    }
+
+    #[test]
+    fn otel_sampling_ratio_above_one() {
+        // Arrange
+        let origin = Origin::test("observability");
+        let mut report = ValidationReport::default();
+        let spec = OtelSpec {
+            sampling_ratio: 1.1,
+            ..default_otel()
+        };
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("sampling_ratio"))
+        );
+    }
+
+    #[test]
+    fn otel_sampling_ratio_valid_fraction() {
+        // Arrange
+        let origin = Origin::test("observability");
+        let mut report = ValidationReport::default();
+        let spec = OtelSpec {
+            sampling_ratio: 0.5,
+            ..default_otel()
+        };
+
+        // Act
+        spec.validate(&origin, &mut report);
+
+        // Assert
+        assert!(!report.has_violations());
     }
 
     #[test]

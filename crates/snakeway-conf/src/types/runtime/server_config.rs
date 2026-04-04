@@ -63,6 +63,7 @@ pub struct OtelConfig {
     pub endpoint: String,
     pub service_name: String,
     pub sampling: SamplingTypeConfig,
+    pub sampling_ratio: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]

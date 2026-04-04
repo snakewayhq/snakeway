@@ -74,6 +74,7 @@ impl From<OtelSpec> for OtelConfig {
             endpoint: spec.endpoint,
             service_name: spec.service_name,
             sampling: spec.sampling.into(),
+            sampling_ratio: spec.sampling_ratio,
         }
     }
 }

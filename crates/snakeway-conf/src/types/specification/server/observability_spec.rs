@@ -11,6 +11,12 @@ pub struct OtelSpec {
     pub endpoint: String,
     pub service_name: String,
     pub sampling: SamplingTypeSpec,
+    #[serde(default = "default_sampling_ratio")]
+    pub sampling_ratio: f64,
+}
+
+fn default_sampling_ratio() -> f64 {
+    1.0
 }
 
 #[derive(Debug, Deserialize, Default, Serialize)]
