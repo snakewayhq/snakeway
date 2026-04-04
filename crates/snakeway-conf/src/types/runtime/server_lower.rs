@@ -1,11 +1,10 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, SamplingTypeSpec, ServerSpec,
-    TlsAutomationSpec,
+    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, ServerSpec, TlsAutomationSpec,
 };
 
 use super::{
-    AcmeServerConfig, CertStoreConfig, ObservabilityConfig, OtelConfig, SamplingTypeConfig,
-    ServerConfig, TlsAutomationConfig,
+    AcmeServerConfig, CertStoreConfig, ObservabilityConfig, OtelConfig, ServerConfig,
+    TlsAutomationConfig,
 };
 
 impl TryFrom<ServerSpec> for ServerConfig {
@@ -73,16 +72,7 @@ impl From<OtelSpec> for OtelConfig {
             enable: spec.enable,
             endpoint: spec.endpoint,
             service_name: spec.service_name,
-            sampling: spec.sampling.into(),
             sampling_ratio: spec.sampling_ratio,
-        }
-    }
-}
-
-impl From<SamplingTypeSpec> for SamplingTypeConfig {
-    fn from(spec: SamplingTypeSpec) -> Self {
-        match spec {
-            SamplingTypeSpec::ParentBased => Self::ParentBased,
         }
     }
 }

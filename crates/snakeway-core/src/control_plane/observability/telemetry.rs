@@ -8,7 +8,7 @@ use opentelemetry_sdk::{
     propagation::TraceContextPropagator,
     trace::{Sampler, SdkTracerProvider},
 };
-use snakeway_conf::types::{RuntimeConfig, SamplingTypeConfig};
+use snakeway_conf::types::RuntimeConfig;
 use tracing::{info, warn};
 
 /// Global tracer provider so we can flush spans on shutdown.
@@ -75,12 +75,7 @@ pub(crate) async fn init_telemetry(
     // Sampling
     //-------------------------------------------------------------------------
 
-    let sampler = match otel.sampling {
-        SamplingTypeConfig::ParentBased => {
-            let root_sampler = Sampler::TraceIdRatioBased(otel.sampling_ratio);
-            Sampler::ParentBased(Box::new(root_sampler))
-        }
-    };
+    let sampler = Sampler::ParentBased(Box::new(Sampler::TraceIdRatioBased(otel.sampling_ratio)));
 
     //-------------------------------------------------------------------------
     // Resource metadata

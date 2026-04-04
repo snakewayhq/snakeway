@@ -62,13 +62,5 @@ pub struct OtelConfig {
     pub enable: bool,
     pub endpoint: String,
     pub service_name: String,
-    pub sampling: SamplingTypeConfig,
     pub sampling_ratio: f64,
-}
-
-#[derive(Debug, Clone, Deserialize, Default, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SamplingTypeConfig {
-    #[default]
-    ParentBased,
 }

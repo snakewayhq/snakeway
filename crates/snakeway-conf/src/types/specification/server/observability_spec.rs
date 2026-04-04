@@ -10,18 +10,10 @@ pub struct OtelSpec {
     pub enable: bool,
     pub endpoint: String,
     pub service_name: String,
-    pub sampling: SamplingTypeSpec,
     #[serde(default = "default_sampling_ratio")]
     pub sampling_ratio: f64,
 }
 
 fn default_sampling_ratio() -> f64 {
     1.0
-}
-
-#[derive(Debug, Deserialize, Default, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SamplingTypeSpec {
-    #[default]
-    ParentBased,
 }

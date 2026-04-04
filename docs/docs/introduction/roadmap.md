@@ -161,10 +161,9 @@ polish.
 - OpenTelemetry support
   - [x] OTLP export (traces, logs, metrics)
   - [x] W3C Trace Context propagation
-  - [x] Parent-based sampling
+  - [x] Configurable sampling (parent-based with trace-ID ratio)
   - [x] Per-phase child spans (routing, upstream selection, upstream request/response, response)
   - [ ] Metrics instrumentation (counters, histograms)
-  - [x] Configurable trace-ID-ratio sampling
 
 **Configuration**
 

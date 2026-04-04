@@ -50,8 +50,7 @@ server {
       enable         = true
       endpoint       = "http://localhost:4317"
       service_name   = "my-proxy"
-      sampling        = "parent_based"
-      sampling_ratio  = 0.1  # sample 10% of root traces
+      sampling_ratio = 0.1  # sample 10% of root traces
     }
   }
 }
@@ -73,15 +72,12 @@ endpoint for the OTLP exporter (e.g., `http://localhost:4317`).
 Value used for the `service.name` resource attribute in exported
 telemetry.
 
-`observability.otel.sampling` string, default: `"parent_based"`.
-Sampling strategy. Currently only `"parent_based"` is supported.
-Parent-based sampling defers to the incoming trace's sampling decision
-when present and uses `sampling_ratio` for root spans.
-
 `observability.otel.sampling_ratio` float, default: `1.0`. Controls
-what fraction of root traces are sampled (0.0 to 1.0). Only applies
-when no parent trace context is present. Set to `0.1` to sample 10% of
-root traces, or `1.0` to sample all.
+what fraction of root traces are sampled (0.0 to 1.0). When an incoming
+request carries a sampled W3C Trace Context, Snakeway always honors
+that decision. For requests without a parent context, this ratio
+determines sampling probability. Set to `0.1` to sample 10% of root
+traces, or `1.0` to sample all.
 
 ## PID File and Reload Behavior
 

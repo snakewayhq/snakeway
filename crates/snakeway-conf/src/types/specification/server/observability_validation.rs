@@ -35,7 +35,7 @@ impl ValidateSpec for OtelSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ObservabilitySpec, Origin, OtelSpec, SamplingTypeSpec};
+    use crate::types::{ObservabilitySpec, Origin, OtelSpec};
     use crate::validation::{ValidateSpec, ValidationReport};
 
     fn default_otel() -> OtelSpec {
@@ -43,7 +43,6 @@ mod tests {
             enable: true,
             endpoint: "http://localhost:4317".to_string(),
             service_name: "snakeway".to_string(),
-            sampling: SamplingTypeSpec::ParentBased,
             sampling_ratio: 1.0,
         }
     }
@@ -57,7 +56,6 @@ mod tests {
             enable: false,
             endpoint: String::new(),
             service_name: String::new(),
-            sampling: SamplingTypeSpec::ParentBased,
             sampling_ratio: 1.0,
         };
 
