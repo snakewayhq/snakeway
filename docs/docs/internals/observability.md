@@ -46,8 +46,7 @@ The logging system supports two output modes:
 - standard output for container environments
 - rolling file logs when `SNAKEWAY_LOG_DIR` is configured
 
-File logging uses a non‑blocking writer to ensure the request path is
-not affected by disk IO.
+File logging uses a non‑blocking writer to ensure disk IO does not affect the request path.
 
 ### Distributed Tracing
 
