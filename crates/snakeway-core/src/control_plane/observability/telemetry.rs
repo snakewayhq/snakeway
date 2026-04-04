@@ -122,17 +122,17 @@ pub(crate) async fn init_telemetry(
     let is_tracer_initialized = TRACER_PROVIDER.set(tracer_provider.clone()).is_err();
     let is_meter_initialized = METER_PROVIDER.set(meter_provider.clone()).is_err();
 
-    // Store globally so we can flush on shutdown.
-    // The clone is a reference-counted handle; both instances share the same provider.
     if is_tracer_initialized {
         warn!("tracer provider was already initialized; skipping re-initialization");
     } else {
+        // Allows for flushing spans on shutdown.
         global::set_tracer_provider(tracer_provider.clone());
     }
 
     if is_meter_initialized {
         warn!("meter provider was already initialized; skipping re-initialization");
     } else {
+        // Allows for flushing metrics on shutdown.
         global::set_meter_provider(meter_provider.clone());
     }
 
