@@ -78,6 +78,14 @@ The Rust tracing framework handles process-level events (startup, shutdown, circ
 
 The two layers complement each other: tracing gives you system-level visibility, while the Structured Logging device gives you request-level visibility.
 
+## OpenTelemetry Log Export
+
+When OpenTelemetry is enabled in the [server configuration](/docs/configuration/entry-point/server#observability), Snakeway exports log events to the configured OTLP endpoint in addition to normal stdout or file output. The `opentelemetry-appender-tracing` bridge converts `tracing` events into OpenTelemetry log records and sends them via a batch processor that runs on the control plane runtime, so log export does not block request processing.
+
+An internal filter suppresses noisy internal crates (`pingora`, `tonic`, `h2`, `reqwest`) from the OTLP export. Application-level events at `info` and above are exported.
+
+No additional configuration is required beyond enabling the `observability.otel` block. The same endpoint serves traces, logs, and metrics.
+
 ## Troubleshooting
 
 **No log output appears.** Verify that `TOKIO_CONSOLE` is not set. When Tokio Console mode is active, normal log output is suppressed entirely.

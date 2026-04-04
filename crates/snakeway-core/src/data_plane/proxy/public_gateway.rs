@@ -1,3 +1,4 @@
+use crate::control_plane::observability::{HeaderExtractor, RequestHeaderInjector};
 use crate::data_plane::proxy::error_classification::classify_pingora_error;
 use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
 use crate::data_plane::proxy::handlers::StaticFileHandler;
@@ -19,6 +20,7 @@ use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
 use std::sync::Arc;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
@@ -273,6 +275,13 @@ impl ProxyHttp for PublicGateway {
             e.as_pingora_error()
         })?;
 
+        // Extract W3C Trace Context from downstream request headers.
+        // When no traceparent header is present, the context is empty and
+        // set_parent below becomes a no-op (the span stays a root).
+        let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+            prop.extract(&HeaderExtractor(&session.req_header().headers))
+        });
+
         // Setup request root span and add it to the request context.
         let request_id = ctx.request_id().unwrap_or_else(|| "unknown".into());
 
@@ -286,6 +295,10 @@ impl ProxyHttp for PublicGateway {
             listener = %self.listener,
             route = tracing::field::Empty,
         );
+
+        // Link the request span to the extracted upstream trace context.
+        let _ = span.set_parent(parent_cx);
+
         ctx.request_span = Some(span);
         let _span = ctx.request_span.clone();
         let _enter = _span.as_ref().map(|s| s.enter());
@@ -494,6 +507,15 @@ impl ProxyHttp for PublicGateway {
                     upstream.insert_header(header::UPGRADE, "websocket")?;
                     upstream.insert_header(header::CONNECTION, "Upgrade")?;
                 }
+
+                // Inject W3C Trace Context into upstream request headers so
+                // the upstream service can continue the distributed trace.
+                opentelemetry::global::get_text_map_propagator(|prop| {
+                    prop.inject_context(
+                        &tracing::Span::current().context(),
+                        &mut RequestHeaderInjector(upstream),
+                    );
+                });
 
                 Ok(())
             }

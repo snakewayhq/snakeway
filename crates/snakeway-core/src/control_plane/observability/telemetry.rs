@@ -5,6 +5,7 @@ use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::{
     Resource,
+    propagation::TraceContextPropagator,
     trace::{Sampler, SdkTracerProvider},
 };
 use snakeway_conf::types::{RuntimeConfig, SamplingTypeConfig};
@@ -135,6 +136,11 @@ pub(crate) async fn init_telemetry(
         // Allows for flushing metrics on shutdown.
         global::set_meter_provider(meter_provider.clone());
     }
+
+    // Register W3C Trace Context propagator globally.
+    // Enables extraction of traceparent/tracestate from incoming requests
+    // and injection into upstream requests.
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
     info!("OpenTelemetry support initialized");
 
