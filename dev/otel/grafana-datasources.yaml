@@ -27,3 +27,8 @@ datasources:
           url: '$${__value.raw}'
           datasourceUid: tempo
           urlDisplayLabel: View Trace in Tempo
+
+  - name: Prometheus
+    type: prometheus
+    url: http://snakeway-prometheus:9090
+    uid: prometheus

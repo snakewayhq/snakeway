@@ -21,17 +21,10 @@ services:
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus scrape endpoint
     depends_on:
       - tempo
-
-  tempo:
-    container_name: snakeway-tempo
-    image: grafana/tempo:2.10.1
-    command: [ "-config.file=/etc/tempo.yaml" ]
-    volumes:
-      - ./dev/otel/tempo.yaml:/etc/tempo.yaml
-    ports:
-      - "3200:3200"
+      - loki
 
   grafana:
     container_name: snakeway-grafana
@@ -47,6 +40,16 @@ services:
     depends_on:
       - tempo
       - loki
+      - prometheus
+
+  tempo:
+    container_name: snakeway-tempo
+    image: grafana/tempo:2.10.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./dev/otel/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
 
   loki:
     container_name: snakeway-loki
@@ -56,6 +59,20 @@ services:
       - "3100:3100"
     volumes:
       - ./dev/otel/loki-local-config.yaml:/etc/loki/local-config.yaml
+
+  prometheus:
+    container_name: snakeway-prometheus
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./dev/otel/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - snakeway-prometheus-data:/prometheus
+    depends_on:
+      - otel-collector
 
   origin:
     container_name: snakeway-origin
@@ -75,4 +92,5 @@ services:
 
 volumes:
   snakeway-grafana-data:
+  snakeway-prometheus-data:
   snakeway-origin-tmp:
