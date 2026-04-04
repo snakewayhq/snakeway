@@ -76,7 +76,10 @@ pub(crate) async fn init_telemetry(
     //-------------------------------------------------------------------------
 
     let sampler = match otel.sampling {
-        SamplingTypeConfig::ParentBased => Sampler::ParentBased(Box::new(Sampler::AlwaysOn)),
+        SamplingTypeConfig::ParentBased => {
+            let root_sampler = Sampler::TraceIdRatioBased(otel.sampling_ratio);
+            Sampler::ParentBased(Box::new(root_sampler))
+        }
     };
 
     //-------------------------------------------------------------------------
