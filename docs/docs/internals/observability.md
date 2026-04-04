@@ -93,7 +93,7 @@ been sampled.
 
 ### Request Instrumentation
 
-A single `request` span is created for every proxied request inside the
+A root `request` span is created for every proxied request inside the
 Pingora `request_filter` hook. The span carries the following fields:
 
 - `http.method`
@@ -110,8 +110,13 @@ parented to the upstream trace. The same trace context is injected into
 the request sent to the upstream service, so Snakeway appears as an
 intermediate span in a distributed trace.
 
-Additional span granularity (routing decisions, device pipeline stages,
-upstream connection timing) is planned for a future phase.
+Child spans are created for each major phase of request processing:
+
+- `routing` -- on-request device pipeline execution and route matching
+- `upstream_selection` -- traffic decision, upstream peer creation, and circuit breaker admission
+- `upstream_request` -- before-proxy device pipeline, header mutation, and trace context injection
+- `upstream_response` -- after-proxy device pipeline and response status mutation
+- `response` -- on-response device pipeline and upstream outcome determination
 
 ### Log Export
 

@@ -180,7 +180,8 @@ impl ProxyHttp for PublicGateway {
         _session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let _enter = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _selection_span = tracing::info_span!("upstream_selection").entered();
         let state = self.gw_ctx.state();
 
         let service_name = ctx
@@ -305,6 +306,10 @@ impl ProxyHttp for PublicGateway {
 
         // Grab state.
         let state = self.gw_ctx.state();
+
+        // Child span covering on_request devices, route matching, and service selection.
+        let _routing_span = tracing::info_span!("routing");
+        let _routing_enter = _routing_span.enter();
 
         // Run on_request devices first (applies to both static and upstream requests).
         match DevicePipeline::run_on_request(state.devices.all(), ctx) {
@@ -478,8 +483,10 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let _span = ctx.request_span.clone();
-        let _enter = _span.as_ref().map(|s| s.enter());
+        let _root_span = ctx.request_span.clone();
+        let _root = _root_span.as_ref().map(|s| s.enter());
+        let _req_span = tracing::info_span!("upstream_request");
+        let _req_enter = _req_span.enter();
 
         if upstream.version == Version::HTTP_2 {
             let authority = ctx
@@ -539,7 +546,8 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let _enter = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _resp_span = tracing::info_span!("upstream_response").entered();
         let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
@@ -583,7 +591,8 @@ impl ProxyHttp for PublicGateway {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let _enter = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _resp_span = tracing::info_span!("response").entered();
         if ctx.ws_opened || ctx.is_http2() {
             // Do not run on_response devices for WebSockets or HTTP/2.
             // For WebSockets and HTTP/2, this is not a real "response."

@@ -162,7 +162,7 @@ polish.
   - [x] OTLP export (traces, logs, metrics)
   - [x] W3C Trace Context propagation
   - [x] Parent-based sampling
-  - [ ] Per-phase child spans (routing, device pipeline, upstream)
+  - [x] Per-phase child spans (routing, upstream selection, upstream request/response, response)
   - [ ] Metrics instrumentation (counters, histograms)
   - [ ] Additional sampling strategies
 
