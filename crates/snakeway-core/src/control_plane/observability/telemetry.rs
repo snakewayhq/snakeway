@@ -14,7 +14,7 @@ use tracing::{info, warn};
 static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
 
 /// Global metrics provider so we can flush metrics on shutdown.
-static METRICS_PROVIDER: OnceCell<SdkMeterProvider> = OnceCell::new();
+static METER_PROVIDER: OnceCell<SdkMeterProvider> = OnceCell::new();
 
 /// Initialize OpenTelemetry tracing if configured.
 ///
@@ -113,21 +113,28 @@ pub(crate) async fn init_telemetry(
         .with_batch_exporter(log_exporter)
         .build();
 
-    // Metrics/meter
+    // Metrics
     let meter_provider = SdkMeterProvider::builder()
         .with_resource(resource.clone())
         .with_periodic_exporter(metric_exporter)
         .build();
 
+    let is_tracer_initialized = TRACER_PROVIDER.set(tracer_provider.clone()).is_err();
+    let is_meter_initialized = METER_PROVIDER.set(meter_provider.clone()).is_err();
+
     // Store globally so we can flush on shutdown.
     // The clone is a reference-counted handle; both instances share the same provider.
-    if TRACER_PROVIDER.set(tracer_provider.clone()).is_err() {
+    if is_tracer_initialized {
         warn!("tracer provider was already initialized; skipping re-initialization");
-        return Ok(None);
+    } else {
+        global::set_tracer_provider(tracer_provider.clone());
     }
 
-    global::set_tracer_provider(tracer_provider.clone());
-    global::set_meter_provider(meter_provider.clone());
+    if is_meter_initialized {
+        warn!("meter provider was already initialized; skipping re-initialization");
+    } else {
+        global::set_meter_provider(meter_provider.clone());
+    }
 
     info!("OpenTelemetry support initialized");
 
@@ -148,7 +155,7 @@ pub(crate) fn shutdown() {
         let _ = provider.shutdown();
     }
 
-    if let Some(provider) = METRICS_PROVIDER.get() {
+    if let Some(provider) = METER_PROVIDER.get() {
         let _ = provider.shutdown();
     }
 }
