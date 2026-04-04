@@ -93,25 +93,43 @@ been sampled.
 
 ### Request Instrumentation
 
-Request processing is instrumented through spans created within the
-Pingora gateway implementation. A typical trace hierarchy represents the
-full request lifecycle:
+A single `request` span is created for every proxied request inside the
+Pingora `request_filter` hook. The span carries the following fields:
 
-- request span
-- routing span
-- device pipeline spans
-- upstream proxy span
+- `http.method`
+- `http.host`
+- `http.path`
+- `client.ip`
+- `request.id`
+- `listener`
+- `route`
 
-The device pipeline model allows individual devices to emit spans
-describing enrichment, filtering, or policy evaluation performed on the
-request.
+When the incoming request includes W3C Trace Context headers
+(`traceparent` / `tracestate`), the request span is automatically
+parented to the upstream trace. The same trace context is injected into
+the request sent to the upstream service, so Snakeway appears as an
+intermediate span in a distributed trace.
+
+Additional span granularity (routing decisions, device pipeline stages,
+upstream connection timing) is planned for a future phase.
+
+### Log Export
+
+When OpenTelemetry is enabled, log events emitted through the `tracing`
+framework are also exported to the configured OTLP endpoint. The
+`opentelemetry-appender-tracing` bridge converts `tracing` events into
+OpenTelemetry log records and sends them via a batch processor on the
+control plane runtime.
+
+An internal filter suppresses noisy crates (`pingora`, `tonic`, `h2`,
+`reqwest`) so that only application-level events are exported.
 
 ### Shutdown Behavior
 
-The OpenTelemetry tracer provider is stored globally so that the
-exporter can flush pending spans during shutdown. This ensures that
-traces generated during the final moments of process execution are not
-lost.
+The OpenTelemetry tracer, logger, and meter providers are stored
+globally so that exporters can flush pending data during shutdown. This
+ensures that traces and logs generated during the final moments of
+process execution are not lost.
 
-Graceful shutdown hooks trigger exporter shutdown before the process
+Graceful shutdown hooks trigger provider shutdown before the process
 exits.
