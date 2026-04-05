@@ -111,6 +111,90 @@ jobs:
           report_paths: target/nextest/ci/junit.xml
           check_name: Integration Tests
 
+      - name: Generate integration test badge
+        if: always()
+        run: |
+          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          mkdir -p integration-badge
+          jq -n --arg total "$INTEG" \
+            '{schemaVersion:1,label:"integration tests",message:($total+" passed"),color:"brightgreen"}' \
+            > integration-badge/integration-tests-badge.json
+
+      - name: Upload integration test badge
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-badge
+          path: integration-badge/
+
+      - name: Tear down Pebble
+        if: always()
+        run: docker compose -f docker-compose-dev.yml down --volumes --remove-orphans
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install system dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y mold
+
+      - name: Configure sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: coverage
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run tests with coverage instrumentation
+        run: |
+          cargo llvm-cov \
+            -p snakeway-core -p snakeway-conf -p snakeway \
+            --features static_files,wasm \
+            --ignore-filename-regex 'pingora|tests/|examples/' \
+            --json --output-path coverage.json
+
+      - name: Generate reports and badges
+        run: |
+          cargo llvm-cov report \
+            --ignore-filename-regex 'pingora|tests/|examples/' \
+            --html \
+            --output-dir coverage-html
+          PCT=$(jq '.data[0].totals.lines.percent | . * 10 | floor | . / 10' coverage.json)
+          echo "COVERAGE_PCT=${PCT}" >> "$GITHUB_ENV"
+          echo "## Coverage: ${PCT}%" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg pct "$PCT" \
+            '{schemaVersion:1,label:"coverage",message:($pct+"%"),color:(if ($pct|tonumber)>=80 then "brightgreen" elif ($pct|tonumber)>=60 then "yellow" else "red" end)}' \
+            > coverage-html/badge.json
+
+      - name: Count tests and generate badge
+        run: |
+          UNIT=$(cargo test -p snakeway-core -p snakeway-conf -p snakeway --features static_files,wasm -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          echo "## Tests: ${UNIT}" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg total "$UNIT" \
+            '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
+            > coverage-html/tests-badge.json
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html/
+
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
     runs-on: ubuntu-latest
