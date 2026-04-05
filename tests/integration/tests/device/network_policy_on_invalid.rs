@@ -2,14 +2,15 @@ use integration::conf::ConfigBuilder;
 use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_core::testing_api::conf::types::OnInvalidForwardedSpec;
 
 /// The `ForwardingSpec.on_invalid` field controls what happens when a
 /// request arrives with an X-Forwarded-For header whose value cannot be
 /// parsed as a valid IP address (e.g. `not-a-valid-ip`).
 ///
-/// Two behaviours are possible:
-/// - `Deny`   — return 403 Forbidden (the default)
-/// - `Ignore` — discard the invalid header and use the real connection IP
+/// Two behaviors are possible:
+/// - `Deny`   - return 403 Forbidden (the default)
+/// - `Ignore` - discard the invalid header and use the real connection IP
 
 //-----------------------------------------------------------------------------
 // on_invalid: Deny (default)
@@ -24,15 +25,17 @@ use reqwest::StatusCode;
 #[test]
 fn network_policy_denies_invalid_xff_by_default() {
     // Arrange
+    let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+    np.forwarding.allow = true;
+    // on_invalid = Deny is the default
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        // forwarding.allow = true, on_invalid = Deny (default)
-        .with_network_policy_allowing_forwarded_requests()
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
+        .with_network_policy(np)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    // Act — send a syntactically invalid X-Forwarded-For value
+    // Act -- send a syntactically invalid X-Forwarded-For value
     let res = srv
         .get("/api")
         .header("x-forwarded-for", "not-a-valid-ip")
@@ -64,22 +67,24 @@ fn network_policy_denies_invalid_xff_by_default() {
 #[test]
 fn network_policy_ignores_invalid_xff_when_configured() {
     // Arrange
+    let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+    np.forwarding.allow = true;
+    np.forwarding.on_invalid = OnInvalidForwardedSpec::Ignore;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        // forwarding.allow = true, on_invalid = Ignore
-        .with_network_policy_ignoring_invalid_forwarded()
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
+        .with_network_policy(np)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    // Act — same malformed header, different policy
+    // Act -- same malformed header, different policy
     let res = srv
         .get("/api")
         .header("x-forwarded-for", "not-a-valid-ip")
         .send()
         .unwrap();
 
-    // Assert — invalid XFF ignored; real connection IP (127.0.0.1) used
+    // Assert -- invalid XFF ignored; real connection IP (127.0.0.1) used
     assert_eq!(
         res.status(),
         StatusCode::OK,

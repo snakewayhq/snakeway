@@ -45,9 +45,11 @@ fn request_filter_denies_disallowed_method() {
 
 #[test]
 fn request_filter_deny_methods_take_precedence() {
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.deny_methods = vec!["GET".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device_that_denies_get_method()
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -72,9 +74,11 @@ fn request_filter_denies_forbidden_header() {
 
 #[test]
 fn request_filter_requires_a_header_that_is_not_provided() {
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.required_headers = vec!["x-required".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device_that_requires_header()
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -85,9 +89,18 @@ fn request_filter_requires_a_header_that_is_not_provided() {
 
 #[test]
 fn request_filter_allows_only_whitelisted_headers() {
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.allow_headers = vec![
+        "Host".to_string(),
+        "X-Custom-Allowed".to_string(),
+        "Accept".to_string(),
+        "Accept-Encoding".to_string(),
+        "User-Agent".to_string(),
+        "Content-Length".to_string(),
+    ];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device_that_allows_specific_headers()
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -102,9 +115,18 @@ fn request_filter_allows_only_whitelisted_headers() {
 
 #[test]
 fn request_filter_blocks_non_whitelisted_headers() {
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.allow_headers = vec![
+        "Host".to_string(),
+        "X-Custom-Allowed".to_string(),
+        "Accept".to_string(),
+        "Accept-Encoding".to_string(),
+        "User-Agent".to_string(),
+        "Content-Length".to_string(),
+    ];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device_that_allows_specific_headers()
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -150,9 +172,12 @@ fn request_filter_enforces_suspicious_body_size_limit() {
 
 #[test]
 fn request_filter_uses_custom_deny_status() {
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.deny_methods = vec!["DELETE".to_string()];
+    rf.deny_status = Some(406);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device_that_overrides_deny_status()
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
