@@ -533,6 +533,36 @@ impl ValidationReport {
     }
 }
 
+/// Observability Spec Validation
+impl ValidationReport {
+    pub(crate) fn otel_endpoint_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "observability.otel.endpoint cannot be empty when enabled".to_string(),
+            origin,
+            Some(
+                "Provide the gRPC endpoint for the OTLP exporter (e.g., http://localhost:4317)."
+                    .to_string(),
+            ),
+        )
+    }
+
+    pub(crate) fn otel_endpoint_must_be_valid_url(&mut self, origin: &Origin) {
+        self.error(
+            "observability.otel.endpoint must be a valid URL".to_string(),
+            origin,
+            Some("The endpoint must start with http:// or https://.".to_string()),
+        )
+    }
+
+    pub(crate) fn otel_service_name_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "observability.otel.service_name cannot be empty when enabled".to_string(),
+            origin,
+            None,
+        )
+    }
+}
+
 /// Wasm Device Spec Validation
 impl ValidationReport {
     pub(crate) fn wasm_device_path_is_empty(&mut self, path: Display, origin: &Origin) {

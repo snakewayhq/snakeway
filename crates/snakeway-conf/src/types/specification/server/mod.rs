@@ -1,4 +1,5 @@
 mod observability_spec;
+mod observability_validation;
 mod server_spec;
 mod server_validation;
 mod tls_automation_spec;

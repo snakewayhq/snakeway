@@ -37,6 +37,10 @@ impl ValidateSpec for ServerSpec {
         if let Some(tls_automation) = &self.tls_automation {
             tls_automation.validate(origin, report);
         }
+
+        if let Some(observability) = &self.observability {
+            observability.validate(origin, report);
+        }
     }
 }
 

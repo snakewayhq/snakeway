@@ -25,12 +25,12 @@ Config types        ← "what the proxy actually runs"
 
 The orchestrating code lives in four files:
 
-| File | Role |
-|------|------|
-| `crates/snakeway-conf/src/loader.rs` | Entry point: reads files, calls validate, calls lower |
-| `crates/snakeway-conf/src/validation/validate.rs` | Calls all validators, returns `ValidationReport` |
-| `crates/snakeway-conf/src/lower.rs` | Converts every Spec type into its Config counterpart |
-| `crates/snakeway-conf/src/validation/report.rs` | Defines `ValidationReport` and all typed error helpers |
+| File                                              | Role                                                   |
+|---------------------------------------------------|--------------------------------------------------------|
+| `crates/snakeway-conf/src/loader.rs`              | Entry point: reads files, calls validate, calls lower  |
+| `crates/snakeway-conf/src/validation/validate.rs` | Calls all validators, returns `ValidationReport`       |
+| `crates/snakeway-conf/src/lower.rs`               | Converts every Spec type into its Config counterpart   |
+| `crates/snakeway-conf/src/validation/report.rs`   | Defines `ValidationReport` and all typed error helpers |
 
 ---
 
@@ -75,8 +75,12 @@ pub trait ValidateSpec {
 }
 ```
 
-Implementations live in `crates/snakeway-conf/src/validation/spec_impls/`. Cross-field and
-cross-file checks remain in the centralized validators (`validation/single_file/` and
+Implementations live in `*_validation.rs` files.
+For example, `crates/snakeway-conf/src/types/specification/server/server_validation.rs`.
+This validation file should reference the corresponding spec file:
+`crates/snakeway-conf/src/types/specification/server/server_spec.rs`
+
+Cross-field and cross-file checks are in the centralized validators(`validation/single_file/` and
 `validation/multi_file/`). The centralized validators call `spec.validate(origin, report)`
 first, then add their own relational checks.
 
@@ -152,7 +156,8 @@ by the caller in `lower.rs` — no changes to `lower.rs` are needed for server f
 
 Field-local validation goes in the `ValidateSpec` trait impl for the spec type.
 
-**File:** `crates/snakeway-conf/src/validation/spec_impls/server.rs`
+**Spec File:** `crates/snakeway-conf/src/types/specification/server/server_spec.rs`
+**Validation File:** `crates/snakeway-conf/src/types/specification/server/server_validation.rs`
 
 Add your check inside the `ValidateSpec` impl for `ServerSpec`:
 
@@ -216,13 +221,13 @@ just lint
 
 Ingress settings live in `ingress.d/*.hcl`. The same four steps apply but the files differ:
 
-| Step | File |
-|------|------|
-| Spec field | `crates/snakeway-conf/src/types/specification/ingress.rs` (or `bind/`, `service/`, etc.) |
-| Config field | The matching file under `crates/snakeway-conf/src/types/runtime/` |
-| Conversion | `From`/`TryFrom` impl in the runtime file |
-| Validation | `crates/snakeway-conf/src/validation/single_file/ingress.rs` — `validate_ingress()` or one of its sub-functions |
-| Lowering | `crates/snakeway-conf/src/lower.rs` — update the relevant `lower_configs()` section (listeners, services, static files) to plumb the new field through |
+| Step         | File                                                                                                                                                   |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Spec field   | `crates/snakeway-conf/src/types/specification/ingress.rs` (or `bind/`, `service/`, etc.)                                                               |
+| Config field | The matching file under `crates/snakeway-conf/src/types/runtime/`                                                                                      |
+| Conversion   | `From`/`TryFrom` impl in the runtime file                                                                                                              |
+| Validation   | `crates/snakeway-conf/src/validation/single_file/ingress.rs` — `validate_ingress()` or one of its sub-functions                                        |
+| Lowering     | `crates/snakeway-conf/src/lower.rs` — update the relevant `lower_configs()` section (listeners, services, static files) to plumb the new field through |
 
 Note that `lower.rs` **does** need updating for ingress fields because the lowering loop
 there explicitly constructs `ListenerConfig`, `ServiceConfig`, etc.

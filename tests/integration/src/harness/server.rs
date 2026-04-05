@@ -161,6 +161,7 @@ impl TestServer {
             connection_manager,
             cert_manager,
             reload,
+            None, // metrics (OTel disabled in tests)
         )
         .expect("failed to build snakeway server");
 

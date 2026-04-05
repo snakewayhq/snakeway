@@ -1,16 +1,23 @@
+use super::Metrics;
 use once_cell::sync::OnceCell;
-use opentelemetry::trace::TracerProvider;
 use opentelemetry::{KeyValue, global};
-use opentelemetry_otlp::{SpanExporter, WithExportConfig};
+use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter, WithExportConfig};
+use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::{
     Resource,
-    trace::{Sampler, SdkTracerProvider, Tracer},
+    propagation::TraceContextPropagator,
+    trace::{Sampler, SdkTracerProvider},
 };
-use snakeway_conf::types::{RuntimeConfig, SamplingTypeConfig};
+use snakeway_conf::types::RuntimeConfig;
+use std::sync::Arc;
 use tracing::{info, warn};
 
 /// Global tracer provider so we can flush spans on shutdown.
 static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
+
+/// Global metrics provider so we can flush metrics on shutdown.
+static METER_PROVIDER: OnceCell<SdkMeterProvider> = OnceCell::new();
 
 /// Initialize OpenTelemetry tracing if configured.
 ///
@@ -22,7 +29,7 @@ static TRACER_PROVIDER: OnceCell<SdkTracerProvider> = OnceCell::new();
 /// `Err(...)` when the exporter fails to build.
 pub(crate) async fn init_telemetry(
     config: &RuntimeConfig,
-) -> Result<Option<Tracer>, Box<dyn std::error::Error>> {
+) -> Result<Option<TelemetryProviders>, Box<dyn std::error::Error>> {
     let Some(obs) = &config.server.observability else {
         return Ok(None);
     };
@@ -45,22 +52,32 @@ pub(crate) async fn init_telemetry(
     );
 
     //-------------------------------------------------------------------------
-    // Exporter
+    // Exporters
     //-------------------------------------------------------------------------
 
-    let exporter = SpanExporter::builder()
+    let span_exporter = SpanExporter::builder()
         .with_tonic()
         .with_endpoint(endpoint)
         .build()
-        .map_err(|e| format!("failed to create OTLP exporter: {e}"))?;
+        .map_err(|e| format!("failed to create OTLP span exporter: {e}"))?;
+
+    let log_exporter = LogExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint)
+        .build()
+        .map_err(|e| format!("failed to create OTLP log exporter: {e}"))?;
+
+    let metric_exporter = MetricExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint)
+        .build()
+        .map_err(|e| format!("failed to create OTLP metric exporter: {e}"))?;
 
     //-------------------------------------------------------------------------
     // Sampling
     //-------------------------------------------------------------------------
 
-    let sampler = match otel.sampling {
-        SamplingTypeConfig::ParentBased => Sampler::ParentBased(Box::new(Sampler::AlwaysOn)),
-    };
+    let sampler = Sampler::ParentBased(Box::new(Sampler::TraceIdRatioBased(otel.sampling_ratio)));
 
     //-------------------------------------------------------------------------
     // Resource metadata
@@ -81,34 +98,74 @@ pub(crate) async fn init_telemetry(
         .build();
 
     //-------------------------------------------------------------------------
-    // Tracer provider
+    // Providers
     //-------------------------------------------------------------------------
 
+    // Spans
     let tracer_provider = SdkTracerProvider::builder()
         .with_sampler(sampler)
-        .with_batch_exporter(exporter)
-        .with_resource(resource)
+        .with_batch_exporter(span_exporter)
+        .with_resource(resource.clone())
         .build();
 
-    let tracer = tracer_provider.tracer("snakeway");
+    // Logs
+    let logger_provider = SdkLoggerProvider::builder()
+        .with_resource(resource.clone())
+        .with_batch_exporter(log_exporter)
+        .build();
 
-    // Store globally so we can flush on shutdown.
-    // The clone is a reference-counted handle; both instances share the same provider.
-    if TRACER_PROVIDER.set(tracer_provider.clone()).is_err() {
+    // Metrics
+    let meter_provider = SdkMeterProvider::builder()
+        .with_resource(resource.clone())
+        .with_periodic_exporter(metric_exporter)
+        .build();
+
+    let is_tracer_initialized = TRACER_PROVIDER.set(tracer_provider.clone()).is_err();
+    let is_meter_initialized = METER_PROVIDER.set(meter_provider.clone()).is_err();
+
+    if is_tracer_initialized {
         warn!("tracer provider was already initialized; skipping re-initialization");
-        return Ok(None);
+    } else {
+        // Allows for flushing spans on shutdown.
+        global::set_tracer_provider(tracer_provider.clone());
     }
 
-    global::set_tracer_provider(tracer_provider);
+    if is_meter_initialized {
+        warn!("meter provider was already initialized; skipping re-initialization");
+    } else {
+        // Allows for flushing metrics on shutdown.
+        global::set_meter_provider(meter_provider.clone());
+    }
 
-    info!("OpenTelemetry tracing initialized");
+    // Register W3C Trace Context propagator globally.
+    // Enables extraction of traceparent/tracestate from incoming requests
+    // and injection into upstream requests.
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
-    Ok(Some(tracer))
+    info!("OpenTelemetry support initialized");
+
+    let metrics = Arc::new(Metrics::new(&global::meter("snakeway")));
+
+    Ok(Some(TelemetryProviders {
+        tracer_provider,
+        logger_provider,
+        metrics,
+    }))
+}
+
+pub(crate) struct TelemetryProviders {
+    pub(crate) tracer_provider: SdkTracerProvider,
+    pub(crate) logger_provider: SdkLoggerProvider,
+    pub(crate) metrics: Arc<Metrics>,
 }
 
 /// Shutdown telemetry and flush remaining spans.
 pub(crate) fn shutdown() {
     if let Some(provider) = TRACER_PROVIDER.get() {
+        let _ = provider.shutdown();
+    }
+
+    if let Some(provider) = METER_PROVIDER.get() {
         let _ = provider.shutdown();
     }
 }

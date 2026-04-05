@@ -22,3 +22,23 @@ storage:
     backend: local
     local:
       path: /tmp/tempo
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://snakeway-prometheus:9090/api/v1/write
+        send_exemplars: true
+  processor:
+    span_metrics:
+      dimensions:
+        - span.name
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [ span-metrics ]
+      generate_native_histograms: classic

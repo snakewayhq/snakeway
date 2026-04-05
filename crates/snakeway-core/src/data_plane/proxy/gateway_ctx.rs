@@ -1,3 +1,4 @@
+use crate::control_plane::observability::Metrics;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
 use crate::runtime::RuntimeState;
@@ -8,6 +9,7 @@ pub(crate) struct GatewayCtx {
     state: Arc<ArcSwap<RuntimeState>>,
     pub(crate) traffic_manager: Arc<TrafficManager>,
     pub(crate) connection_manager: Arc<WsConnectionManager>,
+    pub(crate) metrics: Option<Arc<Metrics>>,
 }
 
 impl GatewayCtx {
@@ -15,11 +17,13 @@ impl GatewayCtx {
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
+        metrics: Option<Arc<Metrics>>,
     ) -> Self {
         Self {
             state,
             traffic_manager,
             connection_manager,
+            metrics,
         }
     }
 

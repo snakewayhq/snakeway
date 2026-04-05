@@ -15,8 +15,24 @@ exporters:
     tls:
       insecure: true
 
+  otlphttp/loki:
+    endpoint: http://snakeway-loki:3100/otlp
+    tls:
+      insecure: true
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
+
 service:
   pipelines:
     traces:
       receivers: [ otlp ]
       exporters: [ debug, otlp/tempo ]
+
+    logs:
+      receivers: [ otlp ]
+      exporters: [ debug, otlphttp/loki ]
+
+    metrics:
+      receivers: [ otlp ]
+      exporters: [ prometheus ]

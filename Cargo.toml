@@ -83,4 +83,6 @@ opentelemetry_sdk = "0.31"
 opentelemetry-otlp = "0.31"
 opentelemetry = "0.31"
 tracing-opentelemetry = "0.32"
+opentelemetry-appender-tracing = "0.31.1"
 criterion = { version = "0.5", features = ["html_reports"] }
+hostname = "0.4.2"
