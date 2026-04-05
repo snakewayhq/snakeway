@@ -132,6 +132,30 @@ control plane runtime.
 An internal filter suppresses noisy crates (`pingora`, `tonic`, `h2`,
 `reqwest`) so that only application-level events are exported.
 
+### Metrics
+
+When OpenTelemetry is enabled, Snakeway exports the following metric
+instruments via the OTLP exporter:
+
+| Metric                              | Type           | Attributes                     |
+|-------------------------------------|----------------|--------------------------------|
+| `snakeway.http.requests`            | Counter        | method, status, service, route |
+| `snakeway.http.request.duration`    | Histogram (ms) | service, upstream              |
+| `snakeway.http.errors`              | Counter        | service, upstream, error.type  |
+| `snakeway.upstream.active_requests` | Gauge          | service, upstream              |
+| `snakeway.upstream.health`          | Gauge (0/1)    | service, upstream              |
+| `snakeway.circuit_breaker.state`    | Gauge (0/1/2)  | service, upstream              |
+
+All per-request metrics are recorded in the Pingora `logging` hook,
+which runs last and has access to the complete request context including
+service, upstream, outcome, and timing.
+
+Circuit breaker state values:
+
+0 = closed (healthy)
+1 = open (tripped)
+2 = half-open (recovery testing).
+
 ### Shutdown Behavior
 
 The OpenTelemetry tracer, logger, and meter providers are stored

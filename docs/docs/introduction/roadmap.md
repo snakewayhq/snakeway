@@ -163,7 +163,7 @@ polish.
   - [x] W3C Trace Context propagation
   - [x] Configurable sampling (parent-based with trace-ID ratio)
   - [x] Per-phase child spans (routing, upstream selection, upstream request/response, response)
-  - [ ] Metrics instrumentation (counters, histograms)
+  - [x] Metrics instrumentation (request throughput, latency, errors, upstream health, circuit breaker)
 
 **Configuration**
 

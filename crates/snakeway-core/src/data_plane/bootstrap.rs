@@ -1,4 +1,5 @@
 use crate::control_plane::acme::CertManager;
+use crate::control_plane::observability::Metrics;
 use crate::control_plane::reload::ReloadHandle;
 use crate::data_plane::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::data_plane::tls_handshake::{CertMode, build_tls_callbacks};
@@ -32,6 +33,7 @@ pub fn build_pingora_server(
     connection_manager: Arc<WsConnectionManager>,
     cert_manager: Option<Arc<CertManager>>,
     reload: Arc<ReloadHandle>,
+    metrics: Option<Arc<Metrics>>,
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
@@ -69,6 +71,7 @@ pub fn build_pingora_server(
             state.clone(),
             traffic_manager.clone(),
             connection_manager.clone(),
+            metrics.clone(),
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
 

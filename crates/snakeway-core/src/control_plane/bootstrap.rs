@@ -50,6 +50,8 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
             None
         });
 
+    let metrics = telemetry_providers.as_ref().map(|p| Arc::clone(&p.metrics));
+
     observability::init_logging(telemetry_providers);
 
     // Set up the Cert Store and Manager.
@@ -168,6 +170,7 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
         Arc::clone(&connection_manager),
         cert_manager,
         reload.clone(),
+        metrics,
     )
     .map_err(|e| {
         error!(error = %e, "failed to build Pingora server");

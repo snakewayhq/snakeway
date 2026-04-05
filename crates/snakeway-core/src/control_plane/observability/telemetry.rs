@@ -1,3 +1,4 @@
+use super::Metrics;
 use once_cell::sync::OnceCell;
 use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter, WithExportConfig};
@@ -9,6 +10,7 @@ use opentelemetry_sdk::{
     trace::{Sampler, SdkTracerProvider},
 };
 use snakeway_conf::types::RuntimeConfig;
+use std::sync::Arc;
 use tracing::{info, warn};
 
 /// Global tracer provider so we can flush spans on shutdown.
@@ -142,15 +144,19 @@ pub(crate) async fn init_telemetry(
 
     info!("OpenTelemetry support initialized");
 
+    let metrics = Arc::new(Metrics::new(&global::meter("snakeway")));
+
     Ok(Some(TelemetryProviders {
         tracer_provider,
         logger_provider,
+        metrics,
     }))
 }
 
 pub(crate) struct TelemetryProviders {
     pub(crate) tracer_provider: SdkTracerProvider,
     pub(crate) logger_provider: SdkLoggerProvider,
+    pub(crate) metrics: Arc<Metrics>,
 }
 
 /// Shutdown telemetry and flush remaining spans.

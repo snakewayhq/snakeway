@@ -1,4 +1,4 @@
-use crate::control_plane::observability::{HeaderExtractor, RequestHeaderInjector};
+use crate::control_plane::observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use crate::data_plane::proxy::error_classification::classify_pingora_error;
 use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
 use crate::data_plane::proxy::handlers::StaticFileHandler;
@@ -9,13 +9,15 @@ use crate::execution::device::core::pipeline::DevicePipeline;
 use crate::execution::device::core::result::DeviceResult;
 use crate::execution::route::RouteRuntime;
 use crate::execution::traffic::{
-    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
+    UpstreamOutcome,
 };
 use crate::runtime::{RuntimeState, UpstreamRuntime};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{StatusCode, Version, header};
+use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
@@ -37,8 +39,9 @@ impl PublicGateway {
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
+        metrics: Option<Arc<Metrics>>,
     ) -> Self {
-        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager);
+        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
             listener,
             gw_ctx,
@@ -657,10 +660,117 @@ impl ProxyHttp for PublicGateway {
         }
         // Finalize request guard...
         self.finalize_admission_guard(ctx);
+
+        // Record metrics (no-op when OTel is disabled).
+        self.record_metrics(ctx);
     }
 }
 
 impl PublicGateway {
+    fn record_metrics(&self, ctx: &RequestCtx) {
+        use crate::execution::traffic::circuit::CircuitState;
+
+        let Some(metrics) = &self.gw_ctx.metrics else {
+            return;
+        };
+
+        let service = ctx.service.as_deref().unwrap_or("unknown");
+        let route = ctx
+            .route_id
+            .as_ref()
+            .map(|r| r.as_str())
+            .unwrap_or_else(|| "unknown".into());
+        let method = ctx.method_str();
+
+        let status = match &ctx.upstream_outcome {
+            Some(UpstreamOutcome::Success) => "2xx",
+            Some(UpstreamOutcome::HttpStatus(s)) if *s >= 500 => "5xx",
+            Some(UpstreamOutcome::HttpStatus(s)) if *s >= 400 => "4xx",
+            Some(UpstreamOutcome::HttpStatus(_)) => "other",
+            Some(UpstreamOutcome::Transport(_)) => "transport_error",
+            None => "no_upstream",
+        };
+
+        let request_attrs = &[
+            KeyValue::new("method", method.to_string()),
+            KeyValue::new("status", status),
+            KeyValue::new("service", service.to_string()),
+            KeyValue::new("route", route),
+        ];
+
+        metrics.http_requests.add(1, request_attrs);
+
+        // Duration and upstream-scoped metrics.
+        if let Some((service_id, upstream_id)) = &ctx.selected_upstream {
+            let duration_ms = ctx.request_start.elapsed().as_secs_f64() * 1000.0;
+            let upstream_str = upstream_id.0.to_string();
+            let upstream_attrs = &[
+                KeyValue::new("service", service_id.0.clone()),
+                KeyValue::new("upstream", upstream_str.clone()),
+            ];
+
+            metrics
+                .http_request_duration
+                .record(duration_ms, upstream_attrs);
+
+            // Error counter.
+            match &ctx.upstream_outcome {
+                Some(UpstreamOutcome::HttpStatus(s)) if *s >= 500 => {
+                    metrics.http_errors.add(
+                        1,
+                        &[
+                            KeyValue::new("service", service_id.0.clone()),
+                            KeyValue::new("upstream", upstream_str.clone()),
+                            KeyValue::new("error.type", "http_5xx"),
+                        ],
+                    );
+                }
+                Some(UpstreamOutcome::Transport(failure)) => {
+                    let error_type = match failure {
+                        TransportFailure::Connect => "connect",
+                        TransportFailure::Timeout => "timeout",
+                        TransportFailure::Reset => "reset",
+                        TransportFailure::Protocol => "protocol",
+                        TransportFailure::Tls => "tls",
+                    };
+                    metrics.http_errors.add(
+                        1,
+                        &[
+                            KeyValue::new("service", service_id.0.clone()),
+                            KeyValue::new("upstream", upstream_str.clone()),
+                            KeyValue::new("error.type", error_type),
+                        ],
+                    );
+                }
+                _ => {}
+            }
+
+            // Gauge: active requests.
+            let tm = &self.gw_ctx.traffic_manager;
+            metrics
+                .upstream_active_requests
+                .record(tm.active_requests(service_id, upstream_id), upstream_attrs);
+
+            // Gauge: health status.
+            let healthy = tm.health_status(service_id, upstream_id).healthy;
+            metrics
+                .upstream_health
+                .record(u64::from(healthy), upstream_attrs);
+
+            // Gauge: circuit breaker state.
+            if let Some(cb) = tm.circuit.get(&(service_id.clone(), *upstream_id)) {
+                let state_value = match cb.state() {
+                    CircuitState::Closed => 0,
+                    CircuitState::Open => 1,
+                    CircuitState::HalfOpen => 2,
+                };
+                metrics
+                    .circuit_breaker_state
+                    .record(state_value, upstream_attrs);
+            }
+        }
+    }
+
     /// Select an upstream for the given request.
     fn select_upstream<'a>(
         &self,
