@@ -2,6 +2,7 @@ use integration::conf::ConfigBuilder;
 use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_core::testing_api::conf::types::OnInvalidForwardedSpec;
 
 /// The `ForwardingSpec.on_invalid` field controls what happens when a
 /// request arrives with an X-Forwarded-For header whose value cannot be
@@ -24,11 +25,15 @@ use reqwest::StatusCode;
 #[test]
 fn network_policy_denies_invalid_xff_by_default() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
+    let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+    np.forwarding.allow = true;
+    // on_invalid = Deny is the default
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        // forwarding.allow = true, on_invalid = Deny (default)
-        .with_network_policy_allowing_forwarded_requests()
+        .with_identity_device(id)
+        .with_network_policy(np)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -64,11 +69,15 @@ fn network_policy_denies_invalid_xff_by_default() {
 #[test]
 fn network_policy_ignores_invalid_xff_when_configured() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
+    let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+    np.forwarding.allow = true;
+    np.forwarding.on_invalid = OnInvalidForwardedSpec::Ignore;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        // forwarding.allow = true, on_invalid = Ignore
-        .with_network_policy_ignoring_invalid_forwarded()
+        .with_identity_device(id)
+        .with_network_policy(np)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 

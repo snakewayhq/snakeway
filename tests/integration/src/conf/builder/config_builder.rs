@@ -127,7 +127,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub(crate) fn make_connection_filter(
+    pub fn make_connection_filter(
         cidr_allow: Option<&[&str]>,
         cidr_deny: Option<&[&str]>,
         ipv4_enabled: bool,
@@ -154,48 +154,8 @@ impl ConfigBuilder {
             on_no_peer_addr,
         }
     }
-    pub fn with_connection_filter_cidr_deny_list(self, cidr_deny: &[&str]) -> Self {
-        let connection_filter =
-            Self::make_connection_filter(None, Some(cidr_deny), true, true, OnNoPeerAddrSpec::Deny);
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_cidr_allow_list(self, cidr_allow: &[&str]) -> Self {
-        let connection_filter = Self::make_connection_filter(
-            Some(cidr_allow),
-            None,
-            true,
-            true,
-            OnNoPeerAddrSpec::Deny,
-        );
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_cidr_allow_and_deny_list(
-        self,
-        cidr_allow: &[&str],
-        cidr_deny: &[&str],
-    ) -> Self {
-        let connection_filter = Self::make_connection_filter(
-            Some(cidr_allow),
-            Some(cidr_deny),
-            true,
-            true,
-            OnNoPeerAddrSpec::Deny,
-        );
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_deny_when_no_ip(self) -> Self {
-        let connection_filter =
-            Self::make_connection_filter(None, None, true, true, OnNoPeerAddrSpec::Deny);
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_ipv4_disabled(self) -> Self {
-        let connection_filter =
-            Self::make_connection_filter(None, None, false, true, OnNoPeerAddrSpec::Deny);
-        self.set_connection_filter_on_last_bind(&connection_filter)
+    pub fn with_connection_filter(self, spec: NetworkConnectionFilterSpec) -> Self {
+        self.set_connection_filter_on_last_bind(&spec)
     }
 }
 

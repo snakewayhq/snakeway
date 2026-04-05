@@ -9,21 +9,12 @@ use std::path::PathBuf;
 
 /// Identity Device
 impl ConfigBuilder {
-    pub fn with_identity_device_and_no_geo(mut self) -> Self {
-        let mut identity_device = Self::make_identity_device();
-        identity_device.enable_geoip = false;
-        self.identity_device_spec = Some(identity_device);
+    pub fn with_identity_device(mut self, spec: IdentityDeviceSpec) -> Self {
+        self.identity_device_spec = Some(spec);
         self
     }
 
-    pub fn with_identity_device_and_trusted_proxy(mut self) -> Self {
-        let mut identity_device = Self::make_identity_device();
-        identity_device.trusted_proxies = vec!["127.0.0.1/32".to_string()];
-        self.identity_device_spec = Some(identity_device);
-        self
-    }
-
-    pub(crate) fn make_identity_device() -> IdentityDeviceSpec {
+    pub fn make_identity_device() -> IdentityDeviceSpec {
         IdentityDeviceSpec {
             enable: true,
             trusted_proxies: vec![],
@@ -41,8 +32,8 @@ impl ConfigBuilder {
 
 /// Structured Logging Device
 impl ConfigBuilder {
-    pub fn with_structured_logging_device(mut self) -> Self {
-        self.structured_logging_device_spec = Some(Self::make_structured_logging_device());
+    pub fn with_structured_logging(mut self, spec: StructuredLoggingDeviceSpec) -> Self {
+        self.structured_logging_device_spec = Some(spec);
         self
     }
 
@@ -82,51 +73,8 @@ impl ConfigBuilder {
 
 /// Request Filter Device
 impl ConfigBuilder {
-    pub fn with_request_filter_device(mut self) -> Self {
-        self.request_filter_device_spec = Some(Self::make_request_filter_device_spec());
-        self
-    }
-
-    pub fn with_request_filter_device_that_denies_get_method(mut self) -> Self {
-        let mut device_spec = Self::make_request_filter_device_spec();
-        device_spec.deny_methods = vec!["GET".to_string()];
-        self.request_filter_device_spec = Some(device_spec);
-        self
-    }
-
-    pub fn with_request_filter_device_that_requires_header(mut self) -> Self {
-        let mut device_spec = Self::make_request_filter_device_spec();
-        device_spec.required_headers = vec!["x-required".to_string()];
-        self.request_filter_device_spec = Some(device_spec);
-        self
-    }
-
-    pub fn with_request_filter_device_that_allows_specific_headers(mut self) -> Self {
-        let mut device_spec = Self::make_request_filter_device_spec();
-        device_spec.allow_headers = vec![
-            "Host".to_string(),
-            "X-Custom-Allowed".to_string(),
-            "Accept".to_string(),
-            "Accept-Encoding".to_string(),
-            "User-Agent".to_string(),
-            "Content-Length".to_string(),
-        ];
-        self.request_filter_device_spec = Some(device_spec);
-        self
-    }
-
-    pub fn with_request_filter_device_that_overrides_deny_status(mut self) -> Self {
-        let mut device_spec = Self::make_request_filter_device_spec();
-        device_spec.deny_methods = vec!["DELETE".to_string()];
-        device_spec.deny_status = Some(406);
-        self.request_filter_device_spec = Some(device_spec);
-        self
-    }
-
-    pub fn with_request_filter_device_with_body_timeout(mut self, timeout_seconds: u64) -> Self {
-        let mut device_spec = Self::make_request_filter_device_spec();
-        device_spec.client_body_timeout_seconds = Some(timeout_seconds);
-        self.request_filter_device_spec = Some(device_spec);
+    pub fn with_request_filter(mut self, spec: RequestFilterDeviceSpec) -> Self {
+        self.request_filter_device_spec = Some(spec);
         self
     }
 
@@ -149,41 +97,8 @@ impl ConfigBuilder {
 
 /// Network Policy Device
 impl ConfigBuilder {
-    pub fn with_network_policy_allowing_localhost(mut self) -> Self {
-        let device = Self::make_network_policy_device_spec(vec!["127.0.0.1/32"]);
-        self.network_policy_device_spec = Some(device);
-        self
-    }
-
-    pub fn with_network_policy_allowing_private_range_only(mut self) -> Self {
-        let device = Self::make_network_policy_device_spec(vec!["10.0.0.0/8"]);
-        self.network_policy_device_spec = Some(device);
-        self
-    }
-
-    pub fn with_network_policy_disallowing_forwarded_requests(mut self) -> Self {
-        let mut device = Self::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-        device.forwarding.allow = false;
-        self.network_policy_device_spec = Some(device);
-        self
-    }
-
-    pub fn with_network_policy_allowing_forwarded_requests(mut self) -> Self {
-        let mut device = Self::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-        device.forwarding.allow = true;
-        self.network_policy_device_spec = Some(device);
-        self
-    }
-
-    /// Like `with_network_policy_allowing_forwarded_requests` but sets
-    /// `on_invalid = Ignore` so that a malformed X-Forwarded-For value is
-    /// silently discarded and the real connection IP is used instead of
-    /// returning 403.
-    pub fn with_network_policy_ignoring_invalid_forwarded(mut self) -> Self {
-        let mut device = Self::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-        device.forwarding.allow = true;
-        device.forwarding.on_invalid = OnInvalidForwardedSpec::Ignore;
-        self.network_policy_device_spec = Some(device);
+    pub fn with_network_policy(mut self, spec: NetworkPolicyDeviceSpec) -> Self {
+        self.network_policy_device_spec = Some(spec);
         self
     }
 

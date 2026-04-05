@@ -18,7 +18,7 @@ fn structured_logging_does_not_prevent_proxying() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_structured_logging_device()
+        .with_structured_logging(ConfigBuilder::make_structured_logging_device())
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -42,10 +42,12 @@ fn structured_logging_does_not_prevent_proxying() {
 #[test]
 fn structured_logging_with_identity_device_does_not_prevent_proxying() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.enable_geoip = false;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_no_geo()
-        .with_structured_logging_device()
+        .with_identity_device(id)
+        .with_structured_logging(ConfigBuilder::make_structured_logging_device())
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -76,11 +78,13 @@ fn structured_logging_with_identity_device_does_not_prevent_proxying() {
 #[test]
 fn structured_logging_combined_with_request_filter_does_not_prevent_proxying() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.enable_geoip = false;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_no_geo()
-        .with_structured_logging_device()
-        .with_request_filter_device()
+        .with_identity_device(id)
+        .with_structured_logging(ConfigBuilder::make_structured_logging_device())
+        .with_request_filter(ConfigBuilder::make_request_filter_device_spec())
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -100,11 +104,15 @@ fn structured_logging_combined_with_request_filter_does_not_prevent_proxying() {
 #[test]
 fn structured_logging_on_rejected_request_does_not_crash() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.enable_geoip = false;
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.deny_methods = vec!["GET".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_no_geo()
-        .with_structured_logging_device()
-        .with_request_filter_device_that_denies_get_method()
+        .with_identity_device(id)
+        .with_structured_logging(ConfigBuilder::make_structured_logging_device())
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 

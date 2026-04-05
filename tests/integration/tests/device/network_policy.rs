@@ -20,10 +20,14 @@ fn network_policy_disabled_allows_request() {
 #[test]
 fn network_policy_allows_request_from_allowed_cidr() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        .with_network_policy_allowing_localhost()
+        .with_identity_device(id)
+        .with_network_policy(ConfigBuilder::make_network_policy_device_spec(vec![
+            "127.0.0.1/32",
+        ]))
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -38,10 +42,14 @@ fn network_policy_allows_request_from_allowed_cidr() {
 #[test]
 fn network_policy_denies_request_from_disallowed_cidr() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        .with_network_policy_allowing_private_range_only()
+        .with_identity_device(id)
+        .with_network_policy(ConfigBuilder::make_network_policy_device_spec(vec![
+            "10.0.0.0/8",
+        ]))
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -59,7 +67,9 @@ fn network_policy_requires_identity_device() {
     let result = panic::catch_unwind(|| {
         ConfigBuilder::default()
             .with_http_ingress()
-            .with_network_policy_allowing_localhost()
+            .with_network_policy(ConfigBuilder::make_network_policy_device_spec(vec![
+                "127.0.0.1/32",
+            ]))
             .build();
     });
 
@@ -73,10 +83,14 @@ fn network_policy_requires_identity_device() {
 #[test]
 fn network_policy_denies_forwarded_request_when_forwarding_not_allowed() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
+    let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+    np.forwarding.allow = false;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        .with_network_policy_disallowing_forwarded_requests()
+        .with_identity_device(id)
+        .with_network_policy(np)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -95,10 +109,14 @@ fn network_policy_denies_forwarded_request_when_forwarding_not_allowed() {
 #[test]
 fn network_policy_allows_forwarded_request_when_allowed() {
     // Arrange
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
+    let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
+    np.forwarding.allow = true;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
-        .with_network_policy_allowing_forwarded_requests()
+        .with_identity_device(id)
+        .with_network_policy(np)
         .build();
 
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);

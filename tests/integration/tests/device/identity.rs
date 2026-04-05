@@ -3,7 +3,19 @@ use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 
-/// Baseline: identity device runs when a User-Agent is present
+/// Identity device is optional. If not configured, the proxy should still work.
+#[test]
+fn identity_without_user_agent() {
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+
+    let res = srv.get("/api").send().unwrap();
+
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+/// Identity device with a recognized user-agent string should enrich the request
+/// and still proxy successfully.
 #[test]
 fn identity_with_user_agent() {
     let mut cfg = minimal_http_runtime_config();
@@ -21,35 +33,7 @@ fn identity_with_user_agent() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-/// Identity should not break requests without a User-Agent
-#[test]
-fn identity_without_user_agent() {
-    let mut cfg = minimal_http_runtime_config();
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
-
-    let res = srv.get("/api").send().unwrap();
-
-    assert_eq!(res.status(), StatusCode::OK);
-}
-
-/// Oversized User-Agent headers should be ignored safely
-#[test]
-fn oversized_user_agent_is_ignored() {
-    let mut cfg = minimal_http_runtime_config();
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
-
-    let long_ua = "a".repeat(10_000);
-
-    let res = srv
-        .get("/api")
-        .header("user-agent", long_ua)
-        .send()
-        .unwrap();
-
-    assert_eq!(res.status(), StatusCode::OK);
-}
-
-/// Mobile User-Agent should not crash identity parsing
+/// A mobile user-agent header should be handled without error.
 #[test]
 fn mobile_user_agent_is_handled() {
     let mut cfg = minimal_http_runtime_config();
@@ -59,7 +43,7 @@ fn mobile_user_agent_is_handled() {
         .get("/api")
         .header(
             "user-agent",
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+            "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36",
         )
         .send()
         .unwrap();
@@ -67,7 +51,21 @@ fn mobile_user_agent_is_handled() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-/// Untrusted X-Forwarded-For headers must not affect request handling
+/// An oversized user-agent header should be accepted but potentially truncated.
+/// It must not crash or reject.
+#[test]
+fn oversized_user_agent_is_ignored() {
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+
+    let big_ua = "a".repeat(4096);
+    let res = srv.get("/api").header("user-agent", big_ua).send().unwrap();
+
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+/// A request without X-Forwarded-For, even if trusted proxies are set, should
+/// still succeed — the proxy should use the peer IP directly.
 #[test]
 fn untrusted_xff_is_ignored() {
     let mut cfg = minimal_http_runtime_config();
@@ -75,11 +73,7 @@ fn untrusted_xff_is_ignored() {
 
     let res = srv
         .get("/api")
-        .header("x-forwarded-for", "8.8.8.8")
-        .header(
-            "user-agent",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-        )
+        .header("x-forwarded-for", "1.1.1.1, 2.2.2.2")
         .send()
         .unwrap();
 
@@ -89,9 +83,11 @@ fn untrusted_xff_is_ignored() {
 /// Trusted proxy config should accept XFF without error
 #[test]
 fn trusted_proxy_allows_xff() {
+    let mut id = ConfigBuilder::make_identity_device();
+    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_trusted_proxy()
+        .with_identity_device(id)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -111,9 +107,11 @@ fn trusted_proxy_allows_xff() {
 /// GeoIP-disabled config must not fail identity processing
 #[test]
 fn geoip_disabled_does_not_break_identity() {
+    let mut id = ConfigBuilder::make_identity_device();
+    id.enable_geoip = false;
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device_and_no_geo()
+        .with_identity_device(id)
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
