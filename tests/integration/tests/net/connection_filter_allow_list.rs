@@ -2,10 +2,12 @@ use integration::conf::ConfigBuilder;
 use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_core::testing_api::conf::types::OnNoPeerAddrSpec;
+use snakeway_core::testing_api::conf::types::{
+    CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec,
+};
 
 /// The `NetworkConnectionFilterSpec.cidr.allow` field specifies a set of
-/// CIDR ranges whose connections are permitted at the TCP layer -- before
+/// CIDR ranges whose connections are permitted at the TCP layer - before
 /// any HTTP parsing occurs.  All other connections are dropped.
 ///
 /// This is distinct from the device-level `NetworkPolicyDevice` CIDR
@@ -24,16 +26,19 @@ use snakeway_core::testing_api::conf::types::OnNoPeerAddrSpec;
 #[test]
 fn cidr_allow_list_permits_matching_ip() {
     // Arrange
-    let filter = ConfigBuilder::make_connection_filter(
-        Some(&["127.0.0.1/32"]),
-        None,
-        true,
-        true,
-        OnNoPeerAddrSpec::Deny,
-    );
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_filter(filter)
+        .with_connection_filter(NetworkConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec!["127.0.0.1/32".to_string()],
+                deny: vec![],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -52,21 +57,24 @@ fn cidr_allow_list_permits_matching_ip() {
 /// 127.0.0.1 (e.g. 10.0.0.0/8), connections from localhost must be
 /// dropped at the TCP layer.
 ///
-/// The client-side error (connection refused / reset) is expected -- the
+/// The client-side error (connection refused / reset) is expected - the
 /// proxy drops the connection before sending any HTTP response.
 #[test]
 fn cidr_allow_list_blocks_non_matching_ip() {
     // Arrange
-    let filter = ConfigBuilder::make_connection_filter(
-        Some(&["10.0.0.0/8"]),
-        None,
-        true,
-        true,
-        OnNoPeerAddrSpec::Deny,
-    );
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_filter(filter)
+        .with_connection_filter(NetworkConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec!["10.0.0.0/8".to_string()],
+                deny: vec![],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -93,16 +101,19 @@ fn cidr_allow_list_blocks_non_matching_ip() {
 #[test]
 fn cidr_allow_and_deny_deny_takes_precedence() {
     // Arrange
-    let filter = ConfigBuilder::make_connection_filter(
-        Some(&["127.0.0.1/32"]),
-        Some(&["127.0.0.1/32"]),
-        true,
-        true,
-        OnNoPeerAddrSpec::Deny,
-    );
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_filter(filter)
+        .with_connection_filter(NetworkConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec!["127.0.0.1/32".to_string()],
+                deny: vec!["127.0.0.1/32".to_string()],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 

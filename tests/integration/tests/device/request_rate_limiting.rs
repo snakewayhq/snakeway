@@ -6,12 +6,6 @@ use std::panic;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-fn identity_with_trusted_proxy() -> snakeway_core::testing_api::conf::types::IdentityDeviceSpec {
-    let mut id = ConfigBuilder::make_identity_device();
-    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
-    id
-}
-
 //-----------------------------------------------------------------------------
 // Disabled / wiring tests
 //-----------------------------------------------------------------------------
@@ -55,7 +49,7 @@ fn request_rate_limit_allows_single_request_under_limit() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device(identity_with_trusted_proxy())
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
         .with_request_rate_limiting(10, 1)
         .build();
 
@@ -77,7 +71,7 @@ fn request_rate_limit_eventually_rejects_under_sustained_pressure() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device(identity_with_trusted_proxy())
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
         .with_request_rate_limiting(3, 1)
         .build();
 
@@ -115,7 +109,7 @@ fn request_rate_limit_does_not_permanently_reject_after_pressure_stops() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device(identity_with_trusted_proxy())
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
         .with_request_rate_limiting(3, 1)
         .build();
 

@@ -83,11 +83,9 @@ fn untrusted_xff_is_ignored() {
 /// Trusted proxy config should accept XFF without error
 #[test]
 fn trusted_proxy_allows_xff() {
-    let mut id = ConfigBuilder::make_identity_device();
-    id.trusted_proxies = vec!["127.0.0.1/32".to_string()];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_identity_device(id)
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 

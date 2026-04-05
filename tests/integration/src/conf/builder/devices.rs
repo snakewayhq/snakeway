@@ -28,6 +28,12 @@ impl ConfigBuilder {
             ..Default::default()
         }
     }
+
+    pub fn make_identity_device_with_trusted_proxy() -> IdentityDeviceSpec {
+        let mut spec = Self::make_identity_device();
+        spec.trusted_proxies = vec!["127.0.0.1/32".to_string()];
+        spec
+    }
 }
 
 /// Structured Logging Device

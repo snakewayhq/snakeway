@@ -1,9 +1,9 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
 use snakeway_core::testing_api::conf::types::{
-    AcmeChallengeSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
-    DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
-    NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
+    AcmeChallengeSpec, BindInterfaceInput, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
+    IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,
+    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
+    StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use snakeway_core::testing_api::conf::{load_config_from_specs, types::RuntimeConfig};
 use std::path::PathBuf;
@@ -127,33 +127,6 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn make_connection_filter(
-        cidr_allow: Option<&[&str]>,
-        cidr_deny: Option<&[&str]>,
-        ipv4_enabled: bool,
-        ipv6_enabled: bool,
-        on_no_peer_addr: OnNoPeerAddrSpec,
-    ) -> NetworkConnectionFilterSpec {
-        NetworkConnectionFilterSpec {
-            cidr: CidrSpec {
-                allow: cidr_allow
-                    .unwrap_or(&[])
-                    .iter()
-                    .map(|c| c.parse().expect("invalid CIDR in allowlist"))
-                    .collect(),
-                deny: cidr_deny
-                    .unwrap_or(&[])
-                    .iter()
-                    .map(|c| c.parse().expect("invalid CIDR in denylist"))
-                    .collect(),
-            },
-            ip_family: IpFamilySpec {
-                ipv4: ipv4_enabled,
-                ipv6: ipv6_enabled,
-            },
-            on_no_peer_addr,
-        }
-    }
     pub fn with_connection_filter(self, spec: NetworkConnectionFilterSpec) -> Self {
         self.set_connection_filter_on_last_bind(&spec)
     }
