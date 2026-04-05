@@ -14,10 +14,9 @@ on:
   pull_request:
 
 jobs:
-  lint:
-    name: Lint and format
+  validate:
+    name: Validate (lint, unit test, integration test)
     runs-on: ubuntu-latest
-
     env:
       RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
 
@@ -25,66 +24,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Configure test hostname
+        run: echo "127.0.0.1 snakeway.test" | sudo tee -a /etc/hosts
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install mold
-        run: sudo apt-get update -y && sudo apt-get install -y mold
-
-      - name: Install sccache
-        run: cargo install sccache
+      - name: Install system dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y mold protobuf-compiler
 
       - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-
-      - name: Cache sccache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/sccache
-          key: ${{ runner.os }}-sccache-lint-${{ hashFiles('**/Cargo.lock') }}
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          key: validation
 
+      # Format check.
       - name: cargo fmt
         run: cargo fmt -- --check
 
+      # Lint check.
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
-    name: Unit tests (nextest)
-    runs-on: ubuntu-latest
-    needs: lint
-
-    env:
-      RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install mold
-        run: sudo apt-get update -y && sudo apt-get install -y mold
-
-      - name: Install sccache
-        run: cargo install sccache
-
-      - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-
-      - name: Cache sccache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/sccache
-          key: ${{ runner.os }}-sccache-test-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-
+      # Unit test check.
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
@@ -103,54 +68,53 @@ jobs:
           report_paths: target/nextest/ci/junit.xml
           check_name: Unit Tests
 
-  integration-test:
-    name: Integration tests
-    runs-on: ubuntu-latest
-    needs: lint
+      # Integration test check.
+      - name: Generate TLS test certificates
+        run: bash ./dev/gen-test-certs.sh
 
-    env:
-      RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+      - name: Start Pebble (ACME test server)
+        run: docker compose -f docker-compose-dev.yml up pebble -d --remove-orphans
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Wait for Pebble to be ready
+        run: |
+          set -euo pipefail
+          echo "Polling Pebble ACME directory at https://localhost:14000/dir ..."
+          for i in $(seq 1 30); do
+            if curl --silent --fail --insecure \
+                --output /dev/null \
+                https://localhost:14000/dir 2>/dev/null; then
+              echo "Pebble is ready (attempt ${i}/30)"
+              exit 0
+            fi
+            echo "  attempt ${i}/30 — not ready yet, sleeping 2s"
+            sleep 2
+          done
+          echo "::error::Pebble did not become ready within 60 seconds"
+          docker compose -f docker-compose-dev.yml logs pebble
+          exit 1
 
-      - name: Configure test hostname
-        run: echo "127.0.0.1 snakeway.test" | sudo tee -a /etc/hosts
+      - name: Fetch Pebble CA certificate
+        run: |
+          mkdir -p tests/integration/certs
+          docker cp snakeway-pebble:/test/certs/pebble.minica.pem \
+            tests/integration/certs/pebble-ca.pem
+          openssl x509 -noout -subject \
+            -in tests/integration/certs/pebble-ca.pem
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Run integration tests
+        run: cargo nextest run -p integration --profile ci
 
-      - name: Install mold
-        run: sudo apt-get update -y && sudo apt-get install -y mold
-
-      - name: Install sccache
-        run: cargo install sccache
-
-      - name: Configure sccache
-        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-
-      - name: Cache sccache
-        uses: actions/cache@v5
+      - name: Publish integration test results
+        uses: mikepenz/action-junit-report@v5
+        if: always()
         with:
-          path: ~/.cache/sccache
-          key: ${{ runner.os }}-sccache-integration-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: integration-test
-
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@nextest
-
-      - name: Install protoc
-        run: sudo apt-get update -y && sudo apt-get install -y protobuf-compiler
+          report_paths: target/nextest/ci/junit.xml
+          check_name: Integration Tests
 
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
     runs-on: ubuntu-latest
-    needs: [ test, integration-test ]
+    needs: [ validate ]
     strategy:
       fail-fast: false
       matrix:
@@ -165,7 +129,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -184,7 +148,7 @@ jobs:
 
       - name: Cache cargo-zigbuild
         id: cache-zigbuild
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cargo/bin/cargo-zigbuild
           key: cargo-zigbuild-${{ runner.os }}
