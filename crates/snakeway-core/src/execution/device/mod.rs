@@ -16,6 +16,6 @@ pub(crate) fn load_wasm_device(_device_file_path: &PathBuf) -> anyhow::Result<Ar
 
 #[cfg(feature = "wasm")]
 pub(crate) fn load_wasm_device(device_file_path: &PathBuf) -> anyhow::Result<Arc<dyn Device>> {
-    let device = wasm::wasm_device::WasmDevice::load(device_file_path)?;
+    let device = wasm::WasmDevice::load(device_file_path)?;
     Ok(Arc::new(device))
 }

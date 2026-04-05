@@ -1,2 +1,4 @@
 pub(crate) mod bindings;
-pub(crate) mod wasm_device;
+mod wasm_device;
+
+pub(crate) use wasm_device::*;
