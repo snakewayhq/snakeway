@@ -96,20 +96,15 @@ mod request_header_injector_tests {
     fn injector_sets_header_on_request() {
         // Arrange
         let mut req = RequestHeader::build("GET", b"/", None).unwrap();
+        let header_value = "00-abcdef1234567890abcdef1234567890-1234567890abcdef-01";
 
         // Act
         let mut injector = RequestHeaderInjector(&mut req);
-        injector.set(
-            "traceparent",
-            "00-abcdef1234567890abcdef1234567890-1234567890abcdef-01".to_string(),
-        );
+        injector.set("traceparent", header_value.to_string());
 
         // Assert
         let value = req.headers.get("traceparent").unwrap().to_str().unwrap();
-        assert_eq!(
-            value,
-            "00-abcdef1234567890abcdef1234567890-1234567890abcdef-01"
-        );
+        assert_eq!(value, header_value);
     }
 
     #[test]
@@ -117,10 +112,11 @@ mod request_header_injector_tests {
         // Arrange
         let mut req = RequestHeader::build("GET", b"/", None).unwrap();
         let header_count_before = req.headers.len();
+        let header_value = "some-value".to_string();
 
         // Act
         let mut injector = RequestHeaderInjector(&mut req);
-        injector.set("", "some-value".to_string());
+        injector.set("", header_value);
 
         // Assert
         assert_eq!(req.headers.len(), header_count_before);
