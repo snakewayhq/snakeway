@@ -1,3 +1,4 @@
+#[cfg(feature = "otel")]
 use crate::control_plane::observability::Metrics;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
@@ -9,6 +10,7 @@ pub(crate) struct GatewayCtx {
     state: Arc<ArcSwap<RuntimeState>>,
     pub(crate) traffic_manager: Arc<TrafficManager>,
     pub(crate) connection_manager: Arc<WsConnectionManager>,
+    #[cfg(feature = "otel")]
     pub(crate) metrics: Option<Arc<Metrics>>,
 }
 
@@ -17,12 +19,13 @@ impl GatewayCtx {
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
-        metrics: Option<Arc<Metrics>>,
+        #[cfg(feature = "otel")] metrics: Option<Arc<Metrics>>,
     ) -> Self {
         Self {
             state,
             traffic_manager,
             connection_manager,
+            #[cfg(feature = "otel")]
             metrics,
         }
     }

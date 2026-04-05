@@ -43,16 +43,23 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
         .expect("failed to build control-plane Tokio runtime");
 
     // Load telemetry and logging
-    let telemetry_providers = control_rt
-        .block_on(observability::init_telemetry(&config))
-        .unwrap_or_else(|err| {
-            warn!("failed to initialize telemetry: {}", err);
-            None
-        });
+    #[cfg(feature = "otel")]
+    let metrics = {
+        let telemetry_providers = control_rt
+            .block_on(observability::init_telemetry(&config))
+            .unwrap_or_else(|err| {
+                warn!("failed to initialize telemetry: {}", err);
+                None
+            });
 
-    let metrics = telemetry_providers.as_ref().map(|p| Arc::clone(&p.metrics));
+        let m = telemetry_providers.as_ref().map(|p| Arc::clone(&p.metrics));
 
-    observability::init_logging(telemetry_providers);
+        observability::init_logging(telemetry_providers);
+        m
+    };
+
+    #[cfg(not(feature = "otel"))]
+    observability::init_logging();
 
     // Set up the Cert Store and Manager.
     let has_tls = config.listeners.iter().any(|l| l.tls_termination.is_some());
@@ -170,7 +177,10 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
         Arc::clone(&connection_manager),
         cert_manager,
         reload.clone(),
+        #[cfg(feature = "otel")]
         metrics,
+        #[cfg(not(feature = "otel"))]
+        None,
     )
     .map_err(|e| {
         error!(error = %e, "failed to build Pingora server");
@@ -180,7 +190,8 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
     // Run the pingora server.
     server.run(Default::default());
 
-    // Flush observability/
+    // Flush observability
+    #[cfg(feature = "otel")]
     observability::shutdown();
 
     // Ensure pid file cleanup on shutdown

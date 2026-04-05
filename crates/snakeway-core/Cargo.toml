@@ -4,7 +4,7 @@ version = "0.9.1"
 edition = "2024"
 
 [features]
-default = []
+default = ["otel"]
 wasm = [
     "wasmtime",
     "wasmtime-wasi",
@@ -17,6 +17,15 @@ static_files = [
     "mime_guess",
     "tokio/fs",
     "percent-encoding"
+]
+
+otel = [
+    "opentelemetry",
+    "opentelemetry_sdk",
+    "opentelemetry-otlp",
+    "tracing-opentelemetry",
+    "opentelemetry-appender-tracing",
+    "hostname",
 ]
 
 [dependencies]
@@ -73,12 +82,12 @@ instant-acme = { workspace = true }
 sha2 = { workspace = true }
 x509-parser = { workspace = true }
 url = { workspace = true }
-opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
-opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
-opentelemetry = { workspace = true }
-tracing-opentelemetry = { workspace = true }
-hostname = { workspace = true }
-opentelemetry-appender-tracing = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"], optional = true }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"], optional = true }
+opentelemetry = { workspace = true, optional = true }
+tracing-opentelemetry = { workspace = true, optional = true }
+hostname = { workspace = true, optional = true }
+opentelemetry-appender-tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

@@ -1,3 +1,4 @@
+#[cfg(feature = "otel")]
 use crate::control_plane::observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use crate::data_plane::proxy::error_classification::classify_pingora_error;
 use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
@@ -8,20 +9,23 @@ use crate::execution::device::builtin::request_filter::ClientBodyTimeout;
 use crate::execution::device::core::pipeline::DevicePipeline;
 use crate::execution::device::core::result::DeviceResult;
 use crate::execution::route::RouteRuntime;
+#[cfg(feature = "otel")]
+use crate::execution::traffic::TransportFailure;
 use crate::execution::traffic::{
-    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
-    UpstreamOutcome,
+    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use crate::runtime::{RuntimeState, UpstreamRuntime};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{StatusCode, Version, header};
+#[cfg(feature = "otel")]
 use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
 use std::sync::Arc;
+#[cfg(feature = "otel")]
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
@@ -39,9 +43,15 @@ impl PublicGateway {
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
-        metrics: Option<Arc<Metrics>>,
+        #[cfg(feature = "otel")] metrics: Option<Arc<Metrics>>,
     ) -> Self {
-        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
+        let gw_ctx = GatewayCtx::new(
+            state,
+            traffic_manager.clone(),
+            connection_manager,
+            #[cfg(feature = "otel")]
+            metrics,
+        );
         Self {
             listener,
             gw_ctx,
@@ -279,13 +289,6 @@ impl ProxyHttp for PublicGateway {
             e.as_pingora_error()
         })?;
 
-        // Extract W3C Trace Context from downstream request headers.
-        // When no traceparent header is present, the context is empty and
-        // set_parent below becomes a no-op (the span stays a root).
-        let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
-            prop.extract(&HeaderExtractor(&session.req_header().headers))
-        });
-
         // Setup request root span and add it to the request context.
         let request_id = ctx.request_id().unwrap_or_else(|| "unknown".into());
 
@@ -300,8 +303,16 @@ impl ProxyHttp for PublicGateway {
             route = tracing::field::Empty,
         );
 
-        // Link the request span to the extracted upstream trace context.
-        let _ = span.set_parent(parent_cx);
+        // Extract W3C Trace Context from downstream request headers and
+        // link the request span to the parent trace (no-op when OTel is disabled
+        // or no traceparent header is present).
+        #[cfg(feature = "otel")]
+        {
+            let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+                prop.extract(&HeaderExtractor(&session.req_header().headers))
+            });
+            let _ = span.set_parent(parent_cx);
+        }
 
         ctx.request_span = Some(span);
         let _span = ctx.request_span.clone();
@@ -520,6 +531,7 @@ impl ProxyHttp for PublicGateway {
 
                 // Inject W3C Trace Context into upstream request headers so
                 // the upstream service can continue the distributed trace.
+                #[cfg(feature = "otel")]
                 opentelemetry::global::get_text_map_propagator(|prop| {
                     prop.inject_context(
                         &tracing::Span::current().context(),
@@ -661,12 +673,14 @@ impl ProxyHttp for PublicGateway {
         // Finalize request guard...
         self.finalize_admission_guard(ctx);
 
-        // Record metrics (no-op when OTel is disabled).
+        // Record metrics (compiled out when OTel feature is disabled).
+        #[cfg(feature = "otel")]
         self.record_metrics(ctx);
     }
 }
 
 impl PublicGateway {
+    #[cfg(feature = "otel")]
     fn record_metrics(&self, ctx: &RequestCtx) {
         use crate::execution::traffic::circuit::CircuitState;
 

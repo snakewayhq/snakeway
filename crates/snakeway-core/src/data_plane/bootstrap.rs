@@ -1,4 +1,5 @@
 use crate::control_plane::acme::CertManager;
+#[cfg(feature = "otel")]
 use crate::control_plane::observability::Metrics;
 use crate::control_plane::reload::ReloadHandle;
 use crate::data_plane::proxy::{AdminGateway, PublicGateway, RedirectGateway};
@@ -33,7 +34,8 @@ pub fn build_pingora_server(
     connection_manager: Arc<WsConnectionManager>,
     cert_manager: Option<Arc<CertManager>>,
     reload: Arc<ReloadHandle>,
-    metrics: Option<Arc<Metrics>>,
+    #[cfg(feature = "otel")] metrics: Option<Arc<Metrics>>,
+    #[cfg(not(feature = "otel"))] _metrics: Option<()>,
 ) -> Result<Server, Error> {
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
@@ -71,6 +73,7 @@ pub fn build_pingora_server(
             state.clone(),
             traffic_manager.clone(),
             connection_manager.clone(),
+            #[cfg(feature = "otel")]
             metrics.clone(),
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);

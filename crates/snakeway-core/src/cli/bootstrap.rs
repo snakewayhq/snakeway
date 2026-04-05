@@ -106,7 +106,12 @@ pub fn run_cli() {
         }
 
         Some(Command::WasmDevice { cmd }) => {
-            init_logging(None);
+            {
+                #[cfg(feature = "otel")]
+                init_logging(None);
+                #[cfg(not(feature = "otel"))]
+                init_logging();
+            }
 
             if let Err(e) = wasm_device::run(cmd) {
                 eprintln!("WASM device error: {e}");
@@ -119,7 +124,12 @@ pub fn run_cli() {
         }
 
         Some(Command::Reload { pid_file }) => {
-            init_logging(None);
+            {
+                #[cfg(feature = "otel")]
+                init_logging(None);
+                #[cfg(not(feature = "otel"))]
+                init_logging();
+            }
 
             if let Err(e) = reload::run(&pid_file) {
                 eprintln!("reload failed: {e}");
