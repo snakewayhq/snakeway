@@ -45,3 +45,25 @@ impl Metrics {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn metrics_new_creates_all_instruments() {
+        // Arrange
+        let meter = opentelemetry::global::meter("test");
+
+        // Act
+        let metrics = Metrics::new(&meter);
+
+        // Assert: exercise each instrument to confirm they are usable.
+        metrics.http_requests.add(0, &[]);
+        metrics.http_request_duration.record(0.0, &[]);
+        metrics.http_errors.add(0, &[]);
+        metrics.upstream_active_requests.record(0, &[]);
+        metrics.upstream_health.record(0, &[]);
+        metrics.circuit_breaker_state.record(0, &[]);
+    }
+}

@@ -28,3 +28,103 @@ impl Injector for RequestHeaderInjector<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use opentelemetry::propagation::{Extractor, Injector};
+
+    // -------------------------------------------------------------------------
+    // HeaderExtractor
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn extractor_returns_header_value() {
+        // Arrange
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "traceparent",
+            "00-abcdef1234567890abcdef1234567890-1234567890abcdef-01"
+                .parse()
+                .unwrap(),
+        );
+
+        // Act
+        let extractor = HeaderExtractor(&headers);
+        let value = extractor.get("traceparent");
+
+        // Assert
+        assert_eq!(
+            value,
+            Some("00-abcdef1234567890abcdef1234567890-1234567890abcdef-01")
+        );
+    }
+
+    #[test]
+    fn extractor_returns_none_for_missing_key() {
+        // Arrange
+        let headers = HeaderMap::new();
+
+        // Act
+        let extractor = HeaderExtractor(&headers);
+        let value = extractor.get("traceparent");
+
+        // Assert
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn extractor_keys_returns_all_header_names() {
+        // Arrange
+        let mut headers = HeaderMap::new();
+        headers.insert("traceparent", "value1".parse().unwrap());
+        headers.insert("tracestate", "value2".parse().unwrap());
+        headers.insert("host", "example.com".parse().unwrap());
+
+        // Act
+        let extractor = HeaderExtractor(&headers);
+        let mut keys = extractor.keys();
+        keys.sort();
+
+        // Assert
+        assert_eq!(keys, vec!["host", "traceparent", "tracestate"]);
+    }
+
+    // -------------------------------------------------------------------------
+    // RequestHeaderInjector
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn injector_sets_header_on_request() {
+        // Arrange
+        let mut req = RequestHeader::build("GET", b"/", None).unwrap();
+
+        // Act
+        let mut injector = RequestHeaderInjector(&mut req);
+        injector.set(
+            "traceparent",
+            "00-abcdef1234567890abcdef1234567890-1234567890abcdef-01".to_string(),
+        );
+
+        // Assert
+        let value = req.headers.get("traceparent").unwrap().to_str().unwrap();
+        assert_eq!(
+            value,
+            "00-abcdef1234567890abcdef1234567890-1234567890abcdef-01"
+        );
+    }
+
+    #[test]
+    fn injector_ignores_invalid_header_name() {
+        // Arrange
+        let mut req = RequestHeader::build("GET", b"/", None).unwrap();
+        let header_count_before = req.headers.len();
+
+        // Act
+        let mut injector = RequestHeaderInjector(&mut req);
+        injector.set("", "some-value".to_string());
+
+        // Assert
+        assert_eq!(req.headers.len(), header_count_before);
+    }
+}
