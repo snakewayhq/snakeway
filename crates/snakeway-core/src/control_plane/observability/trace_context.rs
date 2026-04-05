@@ -30,13 +30,9 @@ impl Injector for RequestHeaderInjector<'_> {
 }
 
 #[cfg(test)]
-mod tests {
+mod header_extractor_tests {
     use super::*;
-    use opentelemetry::propagation::{Extractor, Injector};
-
-    // -------------------------------------------------------------------------
-    // HeaderExtractor
-    // -------------------------------------------------------------------------
+    use opentelemetry::propagation::Extractor;
 
     #[test]
     fn extractor_returns_header_value() {
@@ -89,10 +85,12 @@ mod tests {
         // Assert
         assert_eq!(keys, vec!["host", "traceparent", "tracestate"]);
     }
+}
 
-    // -------------------------------------------------------------------------
-    // RequestHeaderInjector
-    // -------------------------------------------------------------------------
+#[cfg(test)]
+mod request_header_injector_tests {
+    use super::*;
+    use opentelemetry::propagation::Injector;
 
     #[test]
     fn injector_sets_header_on_request() {
