@@ -141,21 +141,15 @@ jobs:
         with:
           version: "0.12.0"
 
+      - name: Configure sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}-${{ matrix.variant.name }}
 
-      - name: Cache cargo-zigbuild
-        id: cache-zigbuild
-        uses: actions/cache@v5
-        with:
-          path: ~/.cargo/bin/cargo-zigbuild
-          key: cargo-zigbuild-${{ runner.os }}
-          restore-keys: cargo-zigbuild-${{ runner.os }}
-
       - name: Install cargo-zigbuild
-        if: steps.cache-zigbuild.outputs.cache-hit != 'true'
         run: cargo install cargo-zigbuild --locked
 
       - name: Build with zigbuild
@@ -209,7 +203,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl
