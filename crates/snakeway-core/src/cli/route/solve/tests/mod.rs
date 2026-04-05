@@ -1,6 +1,6 @@
 use crate::cli::route::solve::solver::{fnv1a_hash, walk_solve};
 use crate::cli::route::solve::types::{RouteSolveOptions, SyntheticRequest};
-use crate::execution::device::core::registry::DeviceRegistry;
+use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
 use crate::runtime::{

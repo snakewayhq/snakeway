@@ -1,0 +1,67 @@
+use crate::execution::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
+use crate::execution::device::core::errors::DeviceError;
+use crate::execution::device::core::result::DeviceResult;
+use bytes::Bytes;
+
+/// A trait representing a processing unit in the HTTP proxy pipeline.
+///
+/// Devices can intercept and modify requests/responses at different stages
+/// of the proxy pipeline. Each device must be both Send and Sync to ensure
+/// thread-safety in the async runtime.
+///
+/// All methods provide default implementations that simply continue the pipeline,
+/// allowing implementations to override only the methods they care about.
+pub trait Device: Send + Sync {
+    fn name(&self) -> &str;
+
+    /// Called when a request is first received, before any processing.
+    ///
+    /// This is the first opportunity to inspect or modify the incoming request.
+    fn on_request(&self, _ctx: &mut RequestCtx) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
+    /// Called when a request body is streamed.
+    ///
+    /// This is the opportunity to inspect or modify the request body as it is streamed.
+    fn on_stream_request_body(
+        &self,
+        _ctx: &mut RequestCtx,
+        _maybe_chunk: &mut Option<Bytes>,
+        _end_of_stream: bool,
+    ) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
+    /// Called immediately before the request is proxied to the upstream server.
+    ///
+    /// Last chance to modify the request before it's sent upstream.
+    fn before_proxy(&self, _ctx: &mut RequestCtx) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
+    /// Called after receiving the response from upstream, but before processing.
+    ///
+    /// First opportunity to inspect or modify the upstream response.
+    fn after_proxy(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
+    /// Called just before sending the response back to the client.
+    ///
+    /// Final opportunity to modify the response before it's sent to the client.
+    fn on_response(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
+    /// Called when a WebSocket connection is opened.
+    fn on_ws_open(&self, _ctx: &WsCtx) {}
+
+    /// Called when a WebSocket connection is closed.
+    fn on_ws_close(&self, _ctx: &WsCloseCtx) {}
+
+    /// Called when an error occurs during request processing.
+    ///
+    /// Provides an opportunity to handle or log errors in the pipeline.
+    fn on_error(&self, _err: &DeviceError) {}
+}

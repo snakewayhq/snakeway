@@ -1,6 +1,5 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
-use crate::execution::device::core::errors::DeviceError;
-use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::device::core::{Device, DeviceError, DeviceResult};
 use crate::execution::enrichment::user_agent::{
     ClientIdentity, GeoInfo, UaEngine, build_ua_engine,
 };

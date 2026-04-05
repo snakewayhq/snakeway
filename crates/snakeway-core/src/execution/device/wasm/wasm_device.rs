@@ -11,7 +11,7 @@ use wasmtime::component::ResourceTable;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView, p2::add_to_linker_sync};
 
 use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
-use crate::execution::device::core::{Device, result::DeviceResult};
+use crate::execution::device::core::{Device, DeviceResult};
 
 use crate::execution::device::wasm::bindings::{
     Snakeway,

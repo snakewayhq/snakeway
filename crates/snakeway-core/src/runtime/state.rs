@@ -1,5 +1,5 @@
 use crate::control_plane::acme::{CertManager, SniRegistry};
-use crate::execution::device::core::registry::DeviceRegistry;
+use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;

@@ -5,8 +5,7 @@ use crate::data_plane::proxy::handlers::StaticFileHandler;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
 use crate::execution::device::builtin::request_filter::ClientBodyTimeout;
-use crate::execution::device::core::pipeline::DevicePipeline;
-use crate::execution::device::core::result::DeviceResult;
+use crate::execution::device::core::{DevicePipeline, DeviceResult};
 use crate::execution::route::RouteRuntime;
 use crate::execution::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
