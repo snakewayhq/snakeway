@@ -114,7 +114,7 @@ jobs:
       - name: Generate integration test badge
         if: always()
         run: |
-          INTEG=$(cargo test -p integration -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          INTEG=$(grep -c '<testcase ' target/nextest/ci/junit.xml 2>/dev/null || echo 0)
           mkdir -p integration-badge
           jq -n --arg total "$INTEG" \
             '{schemaVersion:1,label:"integration tests",message:($total+" passed"),color:"brightgreen"}' \
@@ -234,7 +234,7 @@ jobs:
           key: ${{ matrix.target }}-${{ matrix.variant.name }}
 
       - name: Install cargo-zigbuild
-        run: cargo install cargo-zigbuild --locked
+        uses: taiki-e/install-action@cargo-zigbuild
 
       - name: Build with zigbuild
         run: cargo zigbuild --profile dist --locked --target ${{ matrix.target }} ${{ matrix.variant.features }}
