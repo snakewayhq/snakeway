@@ -1,4 +1,4 @@
-use crate::serialization::to_hcl_string;
+use crate::cli::config::hcl::to_hcl_string;
 use snakeway_conf::types::{
     AcmeChallengeSpec, BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
     NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,

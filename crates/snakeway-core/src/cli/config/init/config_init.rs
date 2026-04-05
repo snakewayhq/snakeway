@@ -1,5 +1,5 @@
+use crate::cli::config::hcl::to_hcl_string;
 use crate::cli::config::init::templates;
-use crate::serialization::to_hcl_string;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
 use snakeway_conf::types::{

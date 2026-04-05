@@ -2,7 +2,25 @@ use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
 use crate::execution::device::core::errors::DeviceError;
 use crate::execution::device::core::{Device, result::DeviceResult};
 use crate::execution::enrichment::user_agent::ClientIdentity;
-use crate::http_event::HttpEvent;
+
+#[derive(Debug, Clone, Copy)]
+enum HttpEvent {
+    Request,
+    BeforeProxy,
+    AfterProxy,
+    Response,
+}
+
+impl HttpEvent {
+    fn as_str(self) -> &'static str {
+        match self {
+            HttpEvent::Request => "request",
+            HttpEvent::BeforeProxy => "before_proxy",
+            HttpEvent::AfterProxy => "after_proxy",
+            HttpEvent::Response => "response",
+        }
+    }
+}
 use http::HeaderMap;
 use snakeway_conf::types::{
     IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig,

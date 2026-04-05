@@ -182,7 +182,8 @@ polish.
 
 **Routing**
 
-- [ ] Review routing code for conceptual duplication
+- [x] Review routing code for conceptual duplication: reviewed, no changes needed; structural parallelism between
+  Static/Service routes is intentional
 - [x] Implement more robust path matching
 
 ---
