@@ -2,8 +2,8 @@ use crate::constants::{ACME_ORDERS_DIR, TEST_HOST};
 use crate::harness::replay_http::replay_http_fixture;
 use crate::harness::runtime_patch::patch_runtime;
 use crate::harness::upstream::{
-    start_grpc_upstream, start_http_upstream, start_http_upstream_that_reads_request,
-    start_ws_upstream,
+    start_grpc_upstream, start_http_upstream, start_http_upstream_that_echoes_headers,
+    start_http_upstream_that_reads_request, start_ws_upstream,
 };
 use crate::harness::{CapturedEvent, init_test_tracing};
 use arc_swap::ArcSwap;
@@ -14,6 +14,7 @@ use snakeway_core::control_plane::acme::FilesystemOrderStore;
 use snakeway_core::data_plane::build_pingora_server;
 use snakeway_core::execution::traffic::TrafficSnapshot;
 use snakeway_core::runtime::build_runtime_state;
+use snakeway_core::testing_api::Metrics;
 use snakeway_core::testing_api::conf::load_config;
 use snakeway_core::testing_api::conf::types::RuntimeConfig;
 use snakeway_core::testing_api::control_plane::acme::{CertManager, MemoryCertStore};
@@ -51,7 +52,22 @@ impl TestServer {
         Self::start_with_config(cfg, start_http_upstream_that_reads_request)
     }
 
+    pub fn start_http_upstream_that_echoes_headers_with_config(cfg: &mut RuntimeConfig) -> Self {
+        Self::start_with_config(cfg, start_http_upstream_that_echoes_headers)
+    }
+
     pub fn start_with_config<F>(cfg: &mut RuntimeConfig, start_upstream: F) -> Self
+    where
+        F: Fn(u16),
+    {
+        Self::start_with_config_and_metrics(cfg, start_upstream, None)
+    }
+
+    pub fn start_with_config_and_metrics<F>(
+        cfg: &mut RuntimeConfig,
+        start_upstream: F,
+        metrics: Option<Arc<Metrics>>,
+    ) -> Self
     where
         F: Fn(u16),
     {
@@ -78,7 +94,7 @@ impl TestServer {
         }
 
         // Allocate free ports only for non-redirect listeners.
-        // Redirect listeners (e.g. the ACME HTTP-01 challenge listener) use fixed ports
+        // Redirect listeners (e.g., the ACME HTTP-01 challenge listener) use fixed ports
         // that match external tooling configuration (see pebble.json httpPort = 5002).
         let listener_ports = cfg
             .listeners
@@ -161,7 +177,7 @@ impl TestServer {
             connection_manager,
             cert_manager,
             reload,
-            None, // metrics (OTel disabled in tests)
+            metrics,
         )
         .expect("failed to build snakeway server");
 

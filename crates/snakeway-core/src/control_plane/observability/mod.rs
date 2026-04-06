@@ -4,6 +4,6 @@ mod telemetry;
 mod trace_context;
 
 pub(crate) use logging::*;
-pub(crate) use metrics::*;
+pub use metrics::Metrics;
 pub(crate) use telemetry::*;
 pub(crate) use trace_context::*;

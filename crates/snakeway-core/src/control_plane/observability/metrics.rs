@@ -15,7 +15,7 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    pub(crate) fn new(meter: &Meter) -> Self {
+    pub fn new(meter: &Meter) -> Self {
         Self {
             http_requests: meter
                 .u64_counter("snakeway.http.requests")

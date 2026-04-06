@@ -61,6 +61,53 @@ pub fn start_http_upstream_that_reads_request(port: u16) {
     thread::sleep(Duration::from_millis(25));
 }
 
+/// An upstream that reads request headers and echoes them back as a JSON
+/// response body. Used by OTel propagation tests to verify that trace
+/// context headers arrive at the upstream.
+///
+/// Response format: `{"header-name": "value", ...}` (lowercased keys).
+pub fn start_http_upstream_that_echoes_headers(port: u16) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            let reader = BufReader::new(stream.try_clone().unwrap());
+
+            let mut headers = Vec::new();
+            for line in reader.lines() {
+                let line = line.unwrap_or_default();
+                if line.is_empty() {
+                    break;
+                }
+                if let Some((name, value)) = line.split_once(':') {
+                    headers.push(format!(
+                        "\"{}\":\"{}\"",
+                        name.trim().to_lowercase(),
+                        value.trim()
+                    ));
+                }
+            }
+
+            let body = format!("{{{}}}", headers.join(","));
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = stream.write_all(resp.as_bytes());
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
 pub mod helloworld {
     tonic::include_proto!("helloworld");
 }

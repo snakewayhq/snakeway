@@ -1,5 +1,6 @@
 pub(crate) mod bootstrap;
-pub(crate) mod observability;
+#[doc(hidden)]
+pub mod observability;
 pub(crate) mod pid;
 pub(crate) mod reload;
 
