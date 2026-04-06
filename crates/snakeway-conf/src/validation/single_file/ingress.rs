@@ -58,6 +58,20 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         }
 
         //---------------------------------------------------------------------
+        // Duplicate route paths within the same ingress.
+        // The router uses path as the primary lookup key within a listener,
+        // so two services cannot share the same route path prefix.
+        //---------------------------------------------------------------------
+        let mut seen_route_paths = HashSet::new();
+        for service in &ingress.services {
+            for route in &service.routes {
+                if !seen_route_paths.insert(&route.path) {
+                    report.duplicate_route_path(&route.path, &route.origin);
+                }
+            }
+        }
+
+        //---------------------------------------------------------------------
         // Bind/Route http2/websocket agreement.
         // If bind has http2 enabled, websocket routes cannot be used.
         //---------------------------------------------------------------------
@@ -393,6 +407,104 @@ mod tests {
                 .errors
                 .iter()
                 .any(|e| e.message.contains("service has no upstream backends"))
+        );
+    }
+
+    #[test]
+    fn duplicate_route_path_within_same_ingress() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let ingress = IngressSpec {
+            bind: Some(minimal_bind()),
+            services: vec![
+                ServiceSpec {
+                    routes: vec![ServiceRouteSpec {
+                        path: "/api".to_string(),
+                        hosts: vec!["a.test".to_string()],
+                        ..Default::default()
+                    }],
+                    upstreams: vec![UpstreamSpec {
+                        endpoint: Some(EndpointSpec {
+                            host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                            port: 8080,
+                            tls: None,
+                        }),
+                        weight: 1,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+                ServiceSpec {
+                    routes: vec![ServiceRouteSpec {
+                        path: "/api".to_string(),
+                        hosts: vec!["b.test".to_string()],
+                        ..Default::default()
+                    }],
+                    upstreams: vec![UpstreamSpec {
+                        endpoint: Some(EndpointSpec {
+                            host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                            port: 9090,
+                            tls: None,
+                        }),
+                        weight: 1,
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(report.errors.iter().any(|e| {
+            e.message
+                .contains("duplicate route path within the same listener: /api")
+        }));
+    }
+
+    #[test]
+    fn same_route_path_on_different_ingresses_is_allowed() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let make_ingress = |port: u16| IngressSpec {
+            bind: Some(BindSpec {
+                interface: BindInterfaceInput::Keyword("loopback".to_string()),
+                port,
+                ..Default::default()
+            }),
+            services: vec![ServiceSpec {
+                routes: vec![ServiceRouteSpec {
+                    path: "/api".to_string(),
+                    hosts: vec!["example.com".to_string()],
+                    ..Default::default()
+                }],
+                upstreams: vec![UpstreamSpec {
+                    endpoint: Some(EndpointSpec {
+                        host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
+                        port: 8080,
+                        tls: None,
+                    }),
+                    weight: 1,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        // Act
+        validate_ingresses(&[make_ingress(8080), make_ingress(9090)], &mut report);
+
+        // Assert
+        assert!(
+            !report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("duplicate route path")),
+            "same path on different listeners should be allowed"
         );
     }
 }
