@@ -1,5 +1,7 @@
 use integration::conf::ConfigBuilder;
-use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
+use integration::constants::{
+    TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY, UPSTREAM_PORT_TERTIARY,
+};
 use integration::harness::TestServer;
 use integration::harness::server::admin_client;
 use pretty_assertions::assert_eq;
@@ -235,6 +237,55 @@ fn random_distributes_across_upstreams() {
         assert!(
             *total > 0,
             "random: upstream {endpoint} should have received at least 1 request out of 100, got {total}"
+        );
+    }
+}
+
+/// Round-robin must distribute across 3 upstreams, not just 2.
+/// This verifies the load balancer generalizes beyond the common
+/// 2-upstream test setup.
+#[test]
+fn round_robin_distributes_across_3_upstreams() {
+    // Arrange
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            load_balancing_strategy: LoadBalancingStrategySpec::RoundRobin,
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_TERTIARY, false),
+            ],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let admin = admin_client();
+
+    // Act
+    for _ in 0..12 {
+        let res = srv.get("/api").send().unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let counts = parse_upstream_request_counts(&json);
+
+    // Assert
+    assert_eq!(counts.len(), 3, "should have 3 upstreams");
+    for (endpoint, total) in &counts {
+        assert!(
+            *total > 0,
+            "round-robin 3-upstream: {endpoint} should have received at least 1 request, got {total}"
         );
     }
 }
