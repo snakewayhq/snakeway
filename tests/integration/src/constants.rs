@@ -5,10 +5,17 @@
 //! propagates everywhere automatically.
 
 // ---------------------------------------------------------------------------
+// File-based configuration
+// ---------------------------------------------------------------------------
+
+/// Path to the config fixture directory.
+pub const FIXTURES_CONFIG_DIR: &str = "fixtures/config";
+
+// ---------------------------------------------------------------------------
 // HTTP Replay
 // ---------------------------------------------------------------------------
 
-/// Path to the test fixture directory.
+/// Path to the HTTP replay fixture directory.
 pub const FIXTURES_HTTP_DIR: &str = "fixtures/http";
 pub const HTTP_REPLAY_OK_RESPONSE: &str = "200 OK";
 
