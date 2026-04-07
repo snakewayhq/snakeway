@@ -43,6 +43,10 @@ pub const UPSTREAM_PORT_PRIMARY: u16 = 9000;
 /// Always patched to a dynamic free port by the test harness at startup.
 pub const UPSTREAM_PORT_SECONDARY: u16 = 9001;
 
+/// Tertiary placeholder upstream port for tests requiring 3+ upstreams.
+/// Always patched to a dynamic free port by the test harness at startup.
+pub const UPSTREAM_PORT_TERTIARY: u16 = 9002;
+
 // ---------------------------------------------------------------------------
 // Route paths
 // ---------------------------------------------------------------------------
