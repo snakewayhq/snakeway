@@ -1,37 +1,55 @@
 use integration::constants::{FIXTURES_CONFIG_DIR, TEST_HOST};
+use integration::harness::server::{free_port, wait_for_listener};
 use integration::harness::upstream::start_http_upstream;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
 use snakeway_core::testing_api::ControlPlaneServer;
 use snakeway_core::testing_api::conf::load_config;
-use std::net::TcpStream;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-fn free_port() -> u16 {
-    std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
+/// Generate an ingress HCL block with the given ports and route paths.
+fn make_ingress_hcl(listener_port: u16, upstream_port: u16, paths: &[&str]) -> String {
+    let routes: Vec<String> = paths
+        .iter()
+        .map(|p| {
+            format!(
+                r#"      {{
+        hosts = ["{TEST_HOST}"]
+        path = "{p}"
+      }}"#
+            )
+        })
+        .collect();
+
+    format!(
+        r#"bind = {{
+  interface    = "127.0.0.1"
+  port         = {listener_port}
+  enable_http2 = false
+}}
+
+services = [
+  {{
+    routes = [
+{routes}
+    ]
+
+    upstreams = [
+      {{
+        weight = 1
+        endpoint = {{ host = "127.0.0.1", port = {upstream_port} }}
+      }}
+    ]
+  }}
+]
+"#,
+        routes = routes.join(",\n")
+    )
 }
 
-fn wait_for_listener(addr: &str) {
-    let deadline = Instant::now() + Duration::from_secs(5);
-    loop {
-        match TcpStream::connect(addr) {
-            Ok(_) => return,
-            Err(_) => {
-                if Instant::now() > deadline {
-                    panic!("server failed to start at {addr}");
-                }
-                std::thread::sleep(Duration::from_millis(25));
-            }
-        }
-    }
-}
-
-/// Copy the `basic` fixture to a temp dir and patch ports in the HCL.
+/// Create a temp config dir with the `basic` fixture's snakeway.hcl and
+/// device.d, plus a generated ingress.d/api.hcl with the given ports.
 fn setup_config_dir(listener_port: u16, upstream_port: u16) -> tempfile::TempDir {
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join(FIXTURES_CONFIG_DIR)
@@ -55,21 +73,11 @@ fn setup_config_dir(listener_port: u16, upstream_port: u16) -> tempfile::TempDir
         std::fs::copy(entry.path(), device_dst.join(entry.file_name())).unwrap();
     }
 
-    // Copy and patch ingress.d/
-    let ingress_src = fixture_dir.join("ingress.d");
+    // Write generated ingress config.
     let ingress_dst = temp_dir.path().join("ingress.d");
     std::fs::create_dir_all(&ingress_dst).unwrap();
-
-    let ingress_hcl = std::fs::read_to_string(ingress_src.join("api.hcl")).unwrap();
-    let patched = ingress_hcl
-        .replace(
-            "port         = 8080",
-            &format!("port         = {listener_port}"),
-        )
-        .replace("port = 3001", &format!("port = {upstream_port}"))
-        .replace("port = 3002", &format!("port = {upstream_port}"));
-
-    std::fs::write(ingress_dst.join("api.hcl"), &patched).unwrap();
+    let ingress_hcl = make_ingress_hcl(listener_port, upstream_port, &["/api"]);
+    std::fs::write(ingress_dst.join("api.hcl"), &ingress_hcl).unwrap();
 
     temp_dir
 }
@@ -126,22 +134,30 @@ fn hot_reload_adds_new_route() {
         "/v2 should not exist before reload"
     );
 
-    // Modify the ingress config to add a /v2 route.
+    // Write a new ingress config that adds a /v2 route alongside /api.
     let ingress_path = config_dir.path().join("ingress.d").join("api.hcl");
-    let ingress_hcl = std::fs::read_to_string(&ingress_path).unwrap();
-    let updated = ingress_hcl.replace(
-        r#"path = "/api""#,
-        &format!(
-            "path = \"/api\"\n      }},\n      {{\n        hosts = [\"{TEST_HOST}\"]\n        path = \"/v2\""
-        ),
-    );
+    let updated = make_ingress_hcl(listener_port, upstream_port, &["/api", "/v2"]);
     std::fs::write(&ingress_path, &updated).unwrap();
 
-    // Trigger reload.
+    // Trigger reload and poll until the new route is live.
     running.reload.notify_reload();
 
-    // Wait for reload to take effect.
-    std::thread::sleep(Duration::from_millis(500));
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let res = client
+            .get(format!("http://{addr}/v2"))
+            .header("Host", TEST_HOST)
+            .send()
+            .unwrap();
+        if res.status() == StatusCode::OK {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "/v2 route did not become available within 5 seconds after reload"
+        );
+        std::thread::sleep(Duration::from_millis(25));
+    }
 
     // Verify /v2 now works.
     let res = client
