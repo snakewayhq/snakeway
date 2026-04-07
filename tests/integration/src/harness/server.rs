@@ -12,7 +12,7 @@ use snakeway_core::testing_api::conf::load_config;
 use snakeway_core::testing_api::conf::types::RuntimeConfig;
 use snakeway_core::testing_api::{ControlPlaneServer, Metrics};
 use std::net::TcpStream;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
