@@ -111,14 +111,13 @@ fn trailing_slash_on_path_prefix_is_matched() {
     );
 }
 
-/// A wildcard host `*.example.com` must match subdomains like
-/// `foo.example.com`.
-#[test]
-fn wildcard_host_matches_subdomain() {
+/// Build a config with the given host pattern and send a request with the
+/// given Host header. Returns the response status code.
+fn host_routing_status(host_pattern: &str, request_host: &str) -> StatusCode {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
             routes: vec![ServiceRouteSpec {
-                hosts: vec!["*.example.com".to_string()],
+                hosts: vec![host_pattern.to_string()],
                 path: "/api".to_string(),
                 ..Default::default()
             }],
@@ -131,47 +130,31 @@ fn wildcard_host_matches_subdomain() {
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    let res = srv
-        .client
+    srv.client
         .get(srv.base_url().join("/api").unwrap())
-        .header("Host", "foo.example.com")
+        .header("Host", request_host)
         .send()
-        .unwrap();
+        .unwrap()
+        .status()
+}
 
-    assert_eq!(res.status(), StatusCode::OK);
+/// A wildcard host `*.example.com` must match subdomains like
+/// `foo.example.com`.
+#[test]
+fn wildcard_host_matches_subdomain() {
+    assert_eq!(
+        host_routing_status("*.example.com", "foo.example.com"),
+        StatusCode::OK
+    );
 }
 
 /// A wildcard host `*.example.com` must NOT match the bare domain
 /// `example.com` (the wildcard requires at least one label before the dot).
 #[test]
 fn wildcard_host_does_not_match_bare_domain() {
-    let mut cfg = ConfigBuilder::default()
-        .with_custom_ingress(vec![ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec!["*.example.com".to_string()],
-                path: "/api".to_string(),
-                ..Default::default()
-            }],
-            upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
-            ],
-            ..Default::default()
-        }])
-        .build();
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
-
-    let res = srv
-        .client
-        .get(srv.base_url().join("/api").unwrap())
-        .header("Host", "example.com")
-        .send()
-        .unwrap();
-
     assert_eq!(
-        res.status(),
+        host_routing_status("*.example.com", "example.com"),
         StatusCode::NOT_FOUND,
-        "bare domain must not match wildcard *.example.com"
     );
 }
 
@@ -343,9 +326,9 @@ fn longer_path_prefix_wins_over_shorter() {
 /// the primary lookup key within a listener, so duplicate paths are not
 /// supported even when hosts differ.
 #[test]
-#[should_panic(expected = "failed to load fixture config - check above for violations")]
 fn same_path_different_hosts_is_rejected() {
-    let _cfg = ConfigBuilder::default()
+    // Arrange
+    let validated = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
                 routes: vec![ServiceRouteSpec {
@@ -372,5 +355,20 @@ fn same_path_different_hosts_is_rejected() {
                 ..Default::default()
             },
         ])
-        .build();
+        .try_build();
+
+    // Assert
+    assert!(
+        validated.validation_report.has_violations(),
+        "duplicate route paths on the same listener should produce validation errors"
+    );
+    assert!(
+        validated
+            .validation_report
+            .errors
+            .iter()
+            .any(|e| e.message.contains("duplicate route path")),
+        "should report duplicate route path; got: {:?}",
+        validated.validation_report.errors
+    );
 }
