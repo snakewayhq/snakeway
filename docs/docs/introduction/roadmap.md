@@ -157,7 +157,7 @@ polish.
 **Goals**
 
 - [x] Clean, forward-looking architecture
-- [ ] Production-grade test suite (150+ integration tests)
+- [x] Production-grade test suite (150+ integration tests)
 - OpenTelemetry support
     - [x] OTLP export (traces, logs, metrics)
     - [x] W3C Trace Context propagation
