@@ -1,19 +1,11 @@
 use integration::conf::ConfigBuilder;
 use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use integration::harness::TestServer;
+use integration::harness::server::admin_client;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use reqwest::blocking::Client;
 use snakeway_core::testing_api::conf::types::{CircuitBreakerSpec, ServiceRouteSpec, ServiceSpec};
 use std::time::Duration;
-
-fn admin_client() -> Client {
-    Client::builder()
-        .danger_accept_invalid_certs(true)
-        .timeout(Duration::from_secs(5))
-        .build()
-        .expect("failed to build admin client")
-}
 
 fn parse_upstream_circuit_states(json: &serde_json::Value) -> Vec<(String, String)> {
     let mut result = Vec::new();

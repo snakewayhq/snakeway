@@ -18,6 +18,16 @@ use std::thread;
 use std::time::{Duration, Instant};
 use url::Url;
 
+/// Build a reqwest client configured for the admin API (accepts
+/// self-signed certs, 5-second timeout).
+pub fn admin_client() -> Client {
+    Client::builder()
+        .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("failed to build admin client")
+}
+
 /// Handle to a running Snakeway test server.
 pub struct TestServer {
     base_urls: Vec<String>,

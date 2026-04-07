@@ -1,6 +1,7 @@
 use integration::conf::ConfigBuilder;
 use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use integration::harness::TestServer;
+use integration::harness::server::admin_client;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
@@ -8,14 +9,6 @@ use snakeway_core::testing_api::conf::types::{
     LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec,
 };
 use std::time::Duration;
-
-fn admin_client() -> Client {
-    Client::builder()
-        .danger_accept_invalid_certs(true)
-        .timeout(Duration::from_secs(5))
-        .build()
-        .expect("failed to build admin client")
-}
 
 fn parse_upstream_requests(json: &serde_json::Value) -> Vec<(String, u64)> {
     let mut result = Vec::new();
@@ -214,8 +207,9 @@ fn sticky_hash_routes_same_client_consistently() {
     );
 }
 
-/// Random distributes requests across upstreams. With 20 requests and
-/// 2 upstreams, the probability of all going to one is negligible.
+/// Random distributes requests across upstreams. With 100 requests and
+/// 2 upstreams, the probability of all going to one is negligible
+/// (2 * 0.5^100 ~ 1.6e-30).
 #[test]
 fn random_distributes_across_upstreams() {
     // Arrange
@@ -224,7 +218,7 @@ fn random_distributes_across_upstreams() {
     let admin = admin_client();
 
     // Act
-    for _ in 0..20 {
+    for _ in 0..100 {
         let res = srv.get("/api").send().unwrap();
         assert_eq!(res.status(), StatusCode::OK);
     }
@@ -240,7 +234,7 @@ fn random_distributes_across_upstreams() {
     for (endpoint, total) in &counts {
         assert!(
             *total > 0,
-            "random: upstream {endpoint} should have received at least 1 request out of 20, got {total}"
+            "random: upstream {endpoint} should have received at least 1 request out of 100, got {total}"
         );
     }
 }
