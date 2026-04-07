@@ -89,3 +89,31 @@ fn traceparent_not_injected_when_otel_not_configured() {
         "proxy should not inject traceparent when OTel is not configured; got body: {body}"
     );
 }
+
+/// A malformed `traceparent` header must be forwarded to the upstream
+/// unchanged. The proxy must not strip, reject, or attempt to parse
+/// trace context headers - it is a transport layer, not a validator.
+#[test]
+fn invalid_traceparent_format_is_passed_through() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_that_echoes_headers_with_config(&mut cfg);
+    let invalid_traceparent = "not-a-valid-traceparent";
+
+    // Act
+    let res = srv
+        .get("/api")
+        .header("traceparent", invalid_traceparent)
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().unwrap();
+    let echoed = get_echoed_header(&body, "traceparent");
+    assert_eq!(
+        echoed.as_deref(),
+        Some(invalid_traceparent),
+        "proxy must pass through malformed traceparent unchanged; got: {echoed:?}"
+    );
+}
