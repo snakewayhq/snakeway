@@ -1,4 +1,4 @@
-use crate::constants::{ACME_ORDERS_DIR, FIXTURES_CONFIG_DIR, TEST_HOST};
+use crate::constants::{FIXTURES_CONFIG_DIR, TEST_HOST};
 use crate::harness::replay_http::replay_http_fixture;
 use crate::harness::runtime_patch::patch_runtime;
 use crate::harness::upstream::{

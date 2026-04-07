@@ -124,23 +124,36 @@ fn round_robin_distributes_across_upstreams() {
 }
 
 /// Request-pressure selects the upstream with the fewest active requests.
-/// With sequential (non-concurrent) requests, active counts are always 0
-/// for both upstreams, so the algorithm consistently picks the one with
-/// the lowest ID (same behavior as failover). This test verifies the
-/// strategy functions correctly; concurrent load testing would be needed
-/// to verify actual pressure-based distribution.
+/// To exercise this, we use a slow upstream (200 ms delay) and send
+/// concurrent requests so that active connection counts diverge between
+/// upstreams. Both upstreams should receive traffic, unlike Failover
+/// where only the first gets requests.
 #[test]
-fn request_pressure_selects_upstream_with_least_active() {
+fn request_pressure_distributes_under_concurrent_load() {
     // Arrange
     let mut cfg = build_lb_config(LoadBalancingStrategySpec::RequestPressure);
-    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let srv = TestServer::start_with_config(
+        &mut cfg,
+        integration::harness::upstream::start_slow_http_upstream,
+    );
     let admin = admin_client();
+    let base_url = srv.base_url();
 
-    // Act
-    for _ in 0..10 {
-        let res = srv.get("/api").send().unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-    }
+    // Act -- send concurrent requests so the slow upstream holds connections
+    // open long enough for the load balancer to see active counts > 0.
+    std::thread::scope(|s| {
+        for _ in 0..10 {
+            let url = base_url.join("/api").unwrap();
+            s.spawn(move || {
+                let client = Client::builder()
+                    .timeout(Duration::from_secs(5))
+                    .build()
+                    .unwrap();
+                let res = client.get(url).header("Host", TEST_HOST).send().unwrap();
+                assert_eq!(res.status(), StatusCode::OK);
+            });
+        }
+    });
 
     let resp = admin
         .get(format!("{}/admin/upstreams", srv.admin_url()))
@@ -149,12 +162,20 @@ fn request_pressure_selects_upstream_with_least_active() {
     let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
     let counts = parse_upstream_requests(&json);
 
-    // Assert
+    // Assert -- both upstreams should have received at least one request.
+    // This distinguishes RequestPressure from Failover (which sends all
+    // traffic to a single upstream).
     let total: u64 = counts.iter().map(|(_, c)| *c).sum();
     assert_eq!(
         total, 10,
         "request-pressure: all 10 requests should be accounted for"
     );
+    for (endpoint, count) in &counts {
+        assert!(
+            *count > 0,
+            "request-pressure: upstream {endpoint} should have received at least 1 request, got {count}"
+        );
+    }
 }
 
 /// Sticky-hash routes the same client consistently to the same upstream.

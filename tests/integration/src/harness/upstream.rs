@@ -20,6 +20,38 @@ pub fn start_http_upstream(port: u16) {
     thread::sleep(Duration::from_millis(25));
 }
 
+/// An upstream that delays before responding. The delay keeps the
+/// connection active long enough for concurrent requests to exercise
+/// pressure-based load balancing.
+pub fn start_slow_http_upstream(port: u16) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            // Read headers so the proxy considers the request fully sent.
+            let reader = BufReader::new(stream.try_clone().unwrap());
+            for line in reader.lines() {
+                let line = line.unwrap_or_default();
+                if line.is_empty() {
+                    break;
+                }
+            }
+            // Hold the connection open so concurrent requests see active counts > 0.
+            thread::sleep(Duration::from_millis(200));
+            let _ = stream.write_all(HTTP_UPSTREAM_RESPONSE);
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
 /// An upstream that reads the full request before responding.
 ///
 /// Unlike `start_http_upstream` (which responds instantly without reading),
