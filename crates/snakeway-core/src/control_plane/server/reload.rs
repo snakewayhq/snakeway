@@ -29,7 +29,7 @@ impl ReloadHandle {
         self.tx.subscribe()
     }
 
-    pub(crate) fn notify_reload(&self) -> u64 {
+    pub fn notify_reload(&self) -> u64 {
         let epoch = RELOAD_EPOCH.fetch_add(1, Ordering::Relaxed) + 1;
         let _ = self.tx.send(ReloadEvent { epoch });
         tracing::info!(epoch, "reload signaled");
