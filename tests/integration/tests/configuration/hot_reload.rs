@@ -1,4 +1,4 @@
-use integration::constants::TEST_HOST;
+use integration::constants::{FIXTURES_CONFIG_DIR, TEST_HOST};
 use integration::harness::upstream::start_http_upstream;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
@@ -34,8 +34,7 @@ fn wait_for_listener(addr: &str) {
 /// Copy the `basic` fixture to a temp dir and patch ports in the HCL.
 fn setup_config_dir(listener_port: u16, upstream_port: u16) -> tempfile::TempDir {
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("fixtures")
-        .join("config")
+        .join(FIXTURES_CONFIG_DIR)
         .join("basic");
 
     let temp_dir = tempfile::tempdir().expect("failed to create temp dir");
