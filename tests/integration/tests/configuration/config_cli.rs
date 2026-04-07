@@ -27,10 +27,11 @@ fn valid_fixture_loads_without_violations() {
 #[test]
 fn missing_config_directory_returns_error() {
     // Arrange
-    let nonexistent = std::path::Path::new("/tmp/snakeway-test-nonexistent-dir");
+    let tmp = tempfile::tempdir().expect("failed to create temp dir");
+    let nonexistent = tmp.path().join("does-not-exist");
 
     // Act
-    let result = load_config(nonexistent);
+    let result = load_config(&nonexistent);
 
     // Assert
     assert!(
