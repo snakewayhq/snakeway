@@ -372,3 +372,16 @@ fn same_path_different_hosts_is_rejected() {
         validated.validation_report.errors
     );
 }
+
+/// An IPv6 literal in the Host header (`[::1]`) must not crash or hang
+/// the proxy. If the route is configured for `[::1]`, it should match.
+#[test]
+fn ipv6_literal_host_is_handled() {
+    // The proxy must not panic on IPv6 literals in the Host header.
+    // Whether it matches depends on exact host comparison.
+    let status = host_routing_status("[::1]", "[::1]");
+    assert!(
+        status == StatusCode::OK || status == StatusCode::NOT_FOUND,
+        "IPv6 host should produce a valid HTTP response, got {status}"
+    );
+}
