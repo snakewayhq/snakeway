@@ -10,7 +10,7 @@ use snakeway_core::testing_api::conf::types::{
 };
 use std::time::Duration;
 
-fn parse_upstream_requests(json: &serde_json::Value) -> Vec<(String, u64)> {
+fn parse_upstream_request_counts(json: &serde_json::Value) -> Vec<(String, u64)> {
     let mut result = Vec::new();
     if let Some(services) = json.get("services").and_then(|s| s.as_object()) {
         for (_svc, upstreams) in services {
@@ -68,7 +68,7 @@ fn failover_sends_all_to_first_upstream() {
         .send()
         .unwrap();
     let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-    let counts = parse_upstream_requests(&json);
+    let counts = parse_upstream_request_counts(&json);
 
     // Assert
     assert_eq!(counts.len(), 2, "should have 2 upstreams");
@@ -105,7 +105,7 @@ fn round_robin_distributes_across_upstreams() {
         .send()
         .unwrap();
     let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-    let counts = parse_upstream_requests(&json);
+    let counts = parse_upstream_request_counts(&json);
 
     // Assert
     for (endpoint, total) in &counts {
@@ -153,7 +153,7 @@ fn request_pressure_distributes_under_concurrent_load() {
         .send()
         .unwrap();
     let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-    let counts = parse_upstream_requests(&json);
+    let counts = parse_upstream_request_counts(&json);
 
     // Assert -- both upstreams should have received at least one request.
     // This distinguishes RequestPressure from Failover (which sends all
@@ -191,7 +191,7 @@ fn sticky_hash_routes_same_client_consistently() {
         .send()
         .unwrap();
     let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-    let counts = parse_upstream_requests(&json);
+    let counts = parse_upstream_request_counts(&json);
 
     // Assert
     let max_requests = counts.iter().map(|(_, c)| *c).max().unwrap_or(0);
@@ -228,7 +228,7 @@ fn random_distributes_across_upstreams() {
         .send()
         .unwrap();
     let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-    let counts = parse_upstream_requests(&json);
+    let counts = parse_upstream_request_counts(&json);
 
     // Assert
     for (endpoint, total) in &counts {
