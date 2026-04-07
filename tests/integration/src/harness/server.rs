@@ -237,14 +237,14 @@ impl TestServer {
     }
 
     pub fn replay_http_fixture(self, path: &str) -> String {
-        let port = self.port().clone();
+        let port = self.port();
         replay_http_fixture(path, port)
     }
 }
 
 /// Poll until the TCP port accepts connections (or panic).
 /// Accepts either a raw "host:port" address or one with an http(s):// scheme prefix.
-fn wait_for_listener(listen_addr: &str) {
+pub fn wait_for_listener(listen_addr: &str) {
     let addr = listen_addr
         .strip_prefix("https://")
         .or_else(|| listen_addr.strip_prefix("http://"))
@@ -275,7 +275,7 @@ fn events() -> Arc<Mutex<Vec<CapturedEvent>>> {
 
 /// Allocate a free port on localhost.
 /// This is required to avoid port collisions when running tests in parallel.
-fn free_port() -> u16 {
+pub fn free_port() -> u16 {
     std::net::TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()

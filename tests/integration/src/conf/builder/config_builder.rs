@@ -67,6 +67,17 @@ impl ConfigBuilder {
     }
 
     pub fn build(self) -> RuntimeConfig {
+        let validated = self.try_build();
+        if validated.validation_report.has_violations() {
+            validated.validation_report.render_pretty();
+            panic!("failed to load fixture config - check above for violations");
+        }
+        validated.config
+    }
+
+    /// Build config without panicking on validation errors.
+    /// Returns the full `ValidatedConfig` so tests can assert on the report.
+    pub fn try_build(self) -> snakeway_core::testing_api::conf::validation::ValidatedConfig {
         let mut device_specs = vec![];
 
         // Identity
@@ -98,16 +109,8 @@ impl ConfigBuilder {
             ));
         }
 
-        let validated_cfg =
-            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
-                .expect("failed to load fixture config");
-
-        if validated_cfg.validation_report.has_violations() {
-            validated_cfg.validation_report.render_pretty();
-            panic!("failed to load fixture config - check above for violations");
-        }
-
-        validated_cfg.config
+        load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
+            .expect("failed to load fixture config")
     }
 }
 
