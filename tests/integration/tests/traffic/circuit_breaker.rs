@@ -117,25 +117,31 @@ fn circuit_breaker_trips_open_after_connection_failures() {
     });
     let admin = admin_client();
 
-    // Act: send requests that will all fail (connection refused).
+    // Act: send requests that will all fail (connection refused),
+    // then poll the admin API until the circuit trips open.
     for _ in 0..5 {
         let _ = srv.get("/api").send();
     }
 
-    std::thread::sleep(Duration::from_millis(100));
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let resp = admin
+            .get(format!("{}/admin/upstreams", srv.admin_url()))
+            .send()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+        let states = parse_upstream_circuit_states(&json);
 
-    let resp = admin
-        .get(format!("{}/admin/upstreams", srv.admin_url()))
-        .send()
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
-    let states = parse_upstream_circuit_states(&json);
+        assert!(!states.is_empty(), "should have circuit breaker state data");
 
-    // Assert
-    assert!(!states.is_empty(), "should have circuit breaker state data");
-    let has_open = states.iter().any(|(_, state)| state == "open");
-    assert!(
-        has_open,
-        "circuit should be Open after consecutive connection failures; got: {states:?}"
-    );
+        if states.iter().any(|(_, state)| state == "open") {
+            break;
+        }
+
+        assert!(
+            std::time::Instant::now() < deadline,
+            "circuit did not trip Open within 5 seconds; last states: {states:?}"
+        );
+        std::thread::sleep(Duration::from_millis(25));
+    }
 }
