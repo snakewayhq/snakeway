@@ -31,6 +31,9 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
     let metrics = telemetry_providers.as_ref().map(|p| Arc::clone(&p.metrics));
 
     init_logging(telemetry_providers);
+    // Safe to drop.
+    // init_telemetry only returns owned providers and does not spawn tasks
+    // that depend on this runtime staying alive.
     drop(init_rt);
 
     let server = match metrics {
