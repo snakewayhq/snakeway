@@ -25,7 +25,7 @@ pub use server::start_server;
 
 #[doc(hidden)]
 pub mod testing_api {
+    pub use crate::cli;
     pub use crate::control_plane::{ControlPlaneServer, Metrics, RuntimeServer};
-    pub use crate::{cli, control_plane, data_plane, execution};
     pub use snakeway_conf as conf;
 }
