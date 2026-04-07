@@ -1,5 +1,4 @@
 use crate::control_plane::acme::CertManager;
-use crate::control_plane::reload::ReloadHandle;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
 use crate::runtime::UpstreamRuntime;
@@ -9,6 +8,7 @@ use pingora::http::ResponseHeader;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
 
+use crate::control_plane::ReloadHandle;
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -1,5 +1,5 @@
+use crate::control_plane::ReloadHandle;
 use crate::control_plane::acme::CertManager;
-use crate::control_plane::reload::ReloadHandle;
 use crate::data_plane::proxy::handlers::{AdminContext, AdminHandler};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::ctx::RequestCtx;

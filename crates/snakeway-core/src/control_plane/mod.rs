@@ -1,9 +1,9 @@
 pub(crate) mod bootstrap;
 #[doc(hidden)]
-pub mod observability;
-pub(crate) mod pid;
-pub(crate) mod reload;
+pub(crate) mod observability;
 
 pub mod acme;
+mod server;
 
-pub use reload::ReloadHandle;
+pub use observability::Metrics;
+pub use server::{ControlPlaneServer, ReloadHandle, RuntimeServer};
