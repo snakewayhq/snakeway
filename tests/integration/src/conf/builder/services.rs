@@ -63,6 +63,17 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_custom_ingress(mut self, services: Vec<ServiceSpec>) -> Self {
+        let bind = Self::make_bind(false);
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services,
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
     pub fn with_http_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
         let service = Self::make_service_spec();
@@ -154,7 +165,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub(crate) fn make_tcp_upstream(port: u16, use_tls: bool) -> UpstreamSpec {
+    pub fn make_tcp_upstream(port: u16, use_tls: bool) -> UpstreamSpec {
         UpstreamSpec {
             endpoint: Some(EndpointSpec {
                 host: HostSpec::Hostname(TEST_HOST.to_string()),
