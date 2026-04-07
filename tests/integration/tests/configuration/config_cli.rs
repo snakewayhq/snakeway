@@ -113,3 +113,55 @@ fn loaded_config_serializes_to_json() {
         "config JSON must be an object at the top level"
     );
 }
+
+/// An empty directory (no snakeway.hcl) must return an error, not
+/// silently produce an empty config.
+#[test]
+fn empty_config_directory_returns_error() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("failed to create temp dir");
+
+    // Act
+    let result = load_config(tmp.path());
+
+    // Assert
+    assert!(
+        result.is_err(),
+        "loading an empty config directory must return an error"
+    );
+}
+
+/// A config that references a nonexistent CA file path must produce a
+/// validation error rather than silently accepting the bad path.
+#[test]
+fn nonexistent_ca_file_produces_validation_error() {
+    // Arrange
+    use integration::conf::ConfigBuilder;
+    use snakeway_core::testing_api::conf::types::ServerSpec;
+    use std::path::PathBuf;
+
+    let validated = ConfigBuilder::default()
+        .with_server_spec(ServerSpec {
+            version: 1,
+            threads: Some(1),
+            ca_file: Some(PathBuf::from("/nonexistent/path/to/ca-cert.pem")),
+            ..Default::default()
+        })
+        .with_http_ingress()
+        .try_build();
+
+    // Assert
+    assert!(
+        validated.validation_report.has_violations(),
+        "nonexistent CA file path should produce validation errors"
+    );
+    assert!(
+        validated
+            .validation_report
+            .errors
+            .iter()
+            .any(|e| e.message.contains("CA file")),
+        "should report CA file error; got: {:?}",
+        validated.validation_report.errors
+    );
+}
