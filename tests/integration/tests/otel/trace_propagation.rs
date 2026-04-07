@@ -2,6 +2,14 @@ use integration::conf::minimal_http_runtime_config;
 use integration::harness::TestServer;
 use reqwest::StatusCode;
 
+/// Parse the echo-headers upstream response as JSON and look up a header
+/// by name (lowercased keys).
+fn get_echoed_header(body: &str, name: &str) -> Option<String> {
+    let json: serde_json::Value = serde_json::from_str(body)
+        .unwrap_or_else(|e| panic!("upstream response is not valid JSON: {e}\nbody: {body}"));
+    json.get(name).and_then(|v| v.as_str()).map(String::from)
+}
+
 /// When a client sends a request with a `traceparent` header, the proxy
 /// must forward it to the upstream unchanged. This is the fundamental
 /// requirement for a proxy to participate in distributed tracing: it must
@@ -23,9 +31,11 @@ fn traceparent_header_is_passed_through_to_upstream() {
     // Assert
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.text().unwrap();
-    assert!(
-        body.contains(traceparent),
-        "upstream must receive the traceparent header; got body: {body}"
+    let echoed = get_echoed_header(&body, "traceparent");
+    assert_eq!(
+        echoed.as_deref(),
+        Some(traceparent),
+        "upstream must receive the exact traceparent header; got: {echoed:?}"
     );
 }
 
@@ -50,9 +60,11 @@ fn tracestate_header_is_passed_through_to_upstream() {
     // Assert
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.text().unwrap();
-    assert!(
-        body.contains("tracestate"),
-        "upstream must receive the tracestate header; got body: {body}"
+    let echoed = get_echoed_header(&body, "tracestate");
+    assert_eq!(
+        echoed.as_deref(),
+        Some(tracestate),
+        "upstream must receive the exact tracestate header; got: {echoed:?}"
     );
 }
 
@@ -73,7 +85,7 @@ fn traceparent_not_injected_when_otel_not_configured() {
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.text().unwrap();
     assert!(
-        !body.contains("traceparent"),
+        get_echoed_header(&body, "traceparent").is_none(),
         "proxy should not inject traceparent when OTel is not configured; got body: {body}"
     );
 }
