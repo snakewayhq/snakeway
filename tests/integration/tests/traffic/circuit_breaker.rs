@@ -1,0 +1,149 @@
+use integration::conf::ConfigBuilder;
+use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
+use integration::harness::TestServer;
+use pretty_assertions::assert_eq;
+use reqwest::StatusCode;
+use reqwest::blocking::Client;
+use snakeway_core::testing_api::conf::types::{CircuitBreakerSpec, ServiceRouteSpec, ServiceSpec};
+use std::time::Duration;
+
+fn admin_client() -> Client {
+    Client::builder()
+        .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("failed to build admin client")
+}
+
+fn parse_upstream_circuit_states(json: &serde_json::Value) -> Vec<(String, String)> {
+    let mut result = Vec::new();
+    if let Some(services) = json.get("services").and_then(|s| s.as_object()) {
+        for (_svc, upstreams) in services {
+            if let Some(upstreams) = upstreams.as_object() {
+                for (endpoint, view) in upstreams {
+                    let state = view
+                        .get("circuit")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    result.push((endpoint.clone(), state));
+                }
+            }
+        }
+    }
+    result
+}
+
+/// With healthy upstreams and successful requests, the circuit breaker
+/// should remain in the Closed state.
+#[test]
+fn circuit_breaker_starts_closed() {
+    // Arrange
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            circuit_breaker: Some(CircuitBreakerSpec {
+                enable_auto_recovery: true,
+                failure_threshold: 3,
+                open_duration_milliseconds: 5000,
+                half_open_max_requests: 1,
+                success_threshold: 2,
+                count_http_5xx_as_failure: true,
+            }),
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+            ],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let admin = admin_client();
+
+    // Act
+    for _ in 0..5 {
+        let res = srv.get("/api").send().unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let states = parse_upstream_circuit_states(&json);
+
+    // Assert
+    assert!(!states.is_empty(), "should have circuit breaker state data");
+    for (endpoint, state) in &states {
+        assert_eq!(
+            state, "closed",
+            "circuit for {endpoint} should be Closed after successful requests"
+        );
+    }
+}
+
+/// When an upstream is unreachable (no listener on the allocated port),
+/// consecutive connection failures should trip the circuit breaker to
+/// Open. The proxy returns 502 for each failed connection attempt.
+#[test]
+fn circuit_breaker_trips_open_after_connection_failures() {
+    // Arrange: use a no-op upstream function so the allocated port has
+    // nothing listening on it. The proxy will get connection refused.
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            circuit_breaker: Some(CircuitBreakerSpec {
+                enable_auto_recovery: true,
+                failure_threshold: 2,
+                open_duration_milliseconds: 30000,
+                half_open_max_requests: 1,
+                success_threshold: 1,
+                count_http_5xx_as_failure: true,
+            }),
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            )],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+
+    let srv = TestServer::start_with_config(&mut cfg, |_port| {
+        // Intentionally do nothing: no upstream listener started.
+        // The proxy will fail to connect on every request.
+    });
+    let admin = admin_client();
+
+    // Act: send requests that will all fail (connection refused).
+    for _ in 0..5 {
+        let _ = srv.get("/api").send();
+    }
+
+    std::thread::sleep(Duration::from_millis(100));
+
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let states = parse_upstream_circuit_states(&json);
+
+    // Assert
+    assert!(!states.is_empty(), "should have circuit breaker state data");
+    let has_open = states.iter().any(|(_, state)| state == "open");
+    assert!(
+        has_open,
+        "circuit should be Open after consecutive connection failures; got: {states:?}"
+    );
+}
