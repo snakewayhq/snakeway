@@ -133,3 +133,60 @@ fn no_metrics_recorded_without_requests() {
         );
     });
 }
+
+/// The request counter must record attributes for method, status,
+/// service, and route. These dimensions are essential for filtering
+/// metrics in dashboards and alerting rules.
+#[test]
+fn request_counter_records_method_and_status_attributes() {
+    // Arrange
+    let (metrics, exporter, provider) = setup_metrics();
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_with_config_and_metrics(
+        &mut cfg,
+        integration::harness::upstream::start_http_upstream,
+        Some(metrics),
+    );
+
+    // Act
+    let res = srv.get("/api").send().unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // Assert
+    assert_metric(&exporter, &provider, "snakeway.http.requests", |metric| {
+        let metric = metric.expect("snakeway.http.requests metric not found");
+        match metric.data() {
+            AggregatedMetrics::U64(MetricData::Sum(sum)) => {
+                let dp = sum
+                    .data_points()
+                    .next()
+                    .expect("expected at least one data point");
+
+                let attrs: std::collections::HashMap<&str, String> = dp
+                    .attributes()
+                    .map(|kv| (kv.key.as_str(), format!("{}", kv.value)))
+                    .collect();
+
+                assert_eq!(
+                    attrs.get("method").map(|s| s.as_str()),
+                    Some("GET"),
+                    "method attribute should be GET; attrs: {attrs:?}"
+                );
+                assert_eq!(
+                    attrs.get("status").map(|s| s.as_str()),
+                    Some("2xx"),
+                    "status attribute should be 2xx; attrs: {attrs:?}"
+                );
+                assert!(
+                    attrs.contains_key("service"),
+                    "service attribute must be present; attrs: {attrs:?}"
+                );
+                assert!(
+                    attrs.contains_key("route"),
+                    "route attribute must be present; attrs: {attrs:?}"
+                );
+            }
+            other => panic!("expected U64 Sum for snakeway.http.requests, got: {other:?}"),
+        }
+    });
+}

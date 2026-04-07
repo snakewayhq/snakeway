@@ -2,9 +2,22 @@ use integration::conf::ConfigBuilder;
 use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use integration::harness::TestServer;
 use integration::harness::server::admin_client;
+use integration::harness::upstream::start_http_upstream;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_core::testing_api::conf::types::{HealthCheckSpec, ServiceRouteSpec, ServiceSpec};
+use snakeway_core::testing_api::conf::types::{
+    HealthCheckSpec, RuntimeConfig, ServiceRouteSpec, ServiceSpec,
+};
+use std::time::Duration;
+
+fn extract_upstream_port(cfg: &RuntimeConfig) -> u16 {
+    let svc = cfg.services.values().next().expect("no services in config");
+    let url: url::Url = svc.tcp_upstreams[0]
+        .url
+        .parse()
+        .expect("invalid upstream URL");
+    url.port().expect("no port in upstream URL")
+}
 
 fn parse_upstream_health(json: &serde_json::Value) -> Vec<(String, bool)> {
     let mut result = Vec::new();
@@ -119,5 +132,94 @@ fn health_check_disabled_reports_healthy_by_default() {
             *healthy,
             "upstream {endpoint} should be healthy when health checks are disabled"
         );
+    }
+}
+
+/// After an upstream becomes unhealthy due to consecutive failures, it
+/// must recover to healthy once the cooldown expires and a successful
+/// request is processed. Health checks are passive (driven by request
+/// outcomes), so recovery requires a real request to succeed.
+#[test]
+fn unhealthy_upstream_recovers_after_cooldown_and_success() {
+    // Arrange: single upstream, low thresholds, short cooldown.
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            health_check: Some(HealthCheckSpec {
+                enable: true,
+                failure_threshold: 2,
+                unhealthy_cooldown_seconds: 1,
+            }),
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            )],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+
+    // Start with no upstream to force failures.
+    let srv = TestServer::start_with_config(&mut cfg, |_port| {});
+    let upstream_port = extract_upstream_port(&cfg);
+    let admin = admin_client();
+
+    // Send requests that fail (connection refused) to trip health to unhealthy.
+    for _ in 0..5 {
+        let _ = srv.get("/api").send();
+    }
+
+    // Poll until at least one upstream is unhealthy.
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let resp = admin
+            .get(format!("{}/admin/upstreams", srv.admin_url()))
+            .send()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+        let health = parse_upstream_health(&json);
+        if health.iter().any(|(_, h)| !h) {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "upstream did not become unhealthy; health: {health:?}"
+        );
+        std::thread::sleep(Duration::from_millis(25));
+    }
+
+    // Start the upstream so future requests succeed.
+    start_http_upstream(upstream_port);
+
+    // Wait for the unhealthy cooldown to expire.
+    std::thread::sleep(Duration::from_millis(1200));
+
+    // Act: send requests. After cooldown, the upstream gets a trial and
+    // report_success() restores it to healthy.
+    for _ in 0..5 {
+        let _ = srv.get("/api").send();
+    }
+
+    // Assert: poll until all upstreams are healthy again.
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let resp = admin
+            .get(format!("{}/admin/upstreams", srv.admin_url()))
+            .send()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+        let health = parse_upstream_health(&json);
+        if health.iter().all(|(_, h)| *h) {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "upstream did not recover to healthy; health: {health:?}"
+        );
+        std::thread::sleep(Duration::from_millis(25));
     }
 }
