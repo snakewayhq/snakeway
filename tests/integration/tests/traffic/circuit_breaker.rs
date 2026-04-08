@@ -2,7 +2,7 @@ use integration::conf::ConfigBuilder;
 use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use integration::harness::TestServer;
 use integration::harness::server::admin_client;
-use integration::harness::upstream::start_http_upstream;
+use integration::harness::upstream::{start_http_upstream, start_slow_http_upstream};
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
@@ -246,5 +246,72 @@ fn circuit_breaker_recovers_through_half_open_to_closed() {
             "circuit did not recover to Closed; states: {states:?}"
         );
         std::thread::sleep(Duration::from_millis(25));
+    }
+}
+
+/// Under concurrent load with a slow upstream, the circuit breaker must
+/// remain Closed when all requests succeed. This verifies that concurrent
+/// in-flight requests do not spuriously trip the circuit.
+#[test]
+fn circuit_breaker_stays_closed_under_concurrent_successful_load() {
+    // Arrange: high failure threshold so successful requests never trip it.
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            circuit_breaker: Some(CircuitBreakerSpec {
+                enable_auto_recovery: true,
+                failure_threshold: 10,
+                open_duration_milliseconds: 5000,
+                half_open_max_requests: 1,
+                success_threshold: 1,
+                count_http_5xx_as_failure: true,
+            }),
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            )],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+
+    // Slow upstream holds connections for 200ms, creating real concurrency.
+    let srv = TestServer::start_with_config(&mut cfg, start_slow_http_upstream);
+    let admin = admin_client();
+    let base_url = srv.base_url();
+
+    // Act: send concurrent requests.
+    std::thread::scope(|s| {
+        for _ in 0..10 {
+            let url = base_url.join("/api").unwrap();
+            s.spawn(move || {
+                let client = reqwest::blocking::Client::builder()
+                    .timeout(Duration::from_secs(5))
+                    .build()
+                    .unwrap();
+                let res = client.get(url).header("Host", TEST_HOST).send().unwrap();
+                assert_eq!(res.status(), StatusCode::OK);
+            });
+        }
+    });
+
+    // Assert: circuit must still be Closed.
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let states = parse_upstream_circuit_states(&json);
+
+    assert!(!states.is_empty(), "should have circuit breaker state data");
+    for (endpoint, state) in &states {
+        assert_eq!(
+            state, "closed",
+            "circuit for {endpoint} should remain Closed after concurrent successful requests"
+        );
     }
 }

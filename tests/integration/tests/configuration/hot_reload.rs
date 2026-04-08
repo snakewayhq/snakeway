@@ -1,6 +1,6 @@
 use integration::constants::{FIXTURES_CONFIG_DIR, TEST_HOST};
 use integration::harness::server::{free_port, wait_for_listener};
-use integration::harness::upstream::start_http_upstream;
+use integration::harness::upstream::{start_http_upstream, start_slow_http_upstream};
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
 use snakeway_core::testing_api::ControlPlaneServer;
@@ -346,4 +346,68 @@ fn hot_reload_removes_route() {
         StatusCode::OK,
         "/api should still work after removing /v2"
     );
+}
+
+/// In-flight requests must complete successfully even when a reload is
+/// triggered mid-flight. The slow upstream (200ms delay) ensures
+/// requests are still being processed when the reload happens.
+#[test]
+fn hot_reload_while_requests_are_in_flight() {
+    // Arrange
+    let listener_port = free_port();
+    let upstream_port = free_port();
+
+    start_slow_http_upstream(upstream_port);
+
+    let config_dir = setup_config_dir(listener_port, upstream_port);
+    let validated = load_config(config_dir.path()).expect("failed to load config");
+    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated.config)
+        .expect("failed to build server");
+    let running = server.run_background();
+
+    let addr = format!("127.0.0.1:{listener_port}");
+    wait_for_listener(&addr);
+
+    // Act: send concurrent requests and trigger reload mid-flight.
+    let results: Vec<StatusCode> = std::thread::scope(|s| {
+        let handles: Vec<_> = (0..10)
+            .map(|i| {
+                let addr = &addr;
+                s.spawn(move || {
+                    // Stagger request starts slightly so some overlap with the reload.
+                    if i == 5 {
+                        std::thread::sleep(Duration::from_millis(50));
+                    }
+                    let client = Client::builder()
+                        .timeout(Duration::from_secs(5))
+                        .build()
+                        .unwrap();
+                    client
+                        .get(format!("http://{addr}/api"))
+                        .header("Host", TEST_HOST)
+                        .send()
+                        .unwrap()
+                        .status()
+                })
+            })
+            .collect();
+
+        // Trigger reload after a brief delay so some requests are in-flight.
+        std::thread::sleep(Duration::from_millis(50));
+        let ingress_path = config_dir.path().join("ingress.d").join("api.hcl");
+        let updated = make_ingress_hcl(listener_port, upstream_port, &["/api", "/v2"]);
+        std::fs::write(&ingress_path, &updated).unwrap();
+        running.reload.notify_reload();
+
+        handles.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+
+    // Assert: all in-flight requests completed without 5xx errors.
+    for (i, status) in results.iter().enumerate() {
+        assert_eq!(
+            *status,
+            StatusCode::OK,
+            "request {i} should complete successfully during reload"
+        );
+    }
 }

@@ -289,3 +289,69 @@ fn round_robin_distributes_across_3_upstreams() {
         );
     }
 }
+
+/// Sticky-hash must be deterministic: two separate batches of requests
+/// from the same client IP must route to the same upstream. The hash
+/// uses fixed seeds, so the result should be stable within a server
+/// lifetime.
+#[test]
+fn sticky_hash_is_deterministic_across_batches() {
+    // Arrange
+    let mut cfg = build_lb_config(LoadBalancingStrategySpec::StickyHash);
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let admin = admin_client();
+
+    // Act: first batch of 5 requests.
+    for _ in 0..5 {
+        let res = srv.get("/api").send().unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let counts_batch1 = parse_upstream_request_counts(&json);
+
+    // Record which upstream got all 5 requests.
+    let first_target: Vec<_> = counts_batch1
+        .iter()
+        .filter(|(_, c)| *c == 5)
+        .map(|(e, _)| e.clone())
+        .collect();
+    assert_eq!(
+        first_target.len(),
+        1,
+        "sticky-hash: all 5 requests should go to one upstream; got: {counts_batch1:?}"
+    );
+
+    // Act: second batch of 5 more requests.
+    for _ in 0..5 {
+        let res = srv.get("/api").send().unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let counts_batch2 = parse_upstream_request_counts(&json);
+
+    // Assert: the same upstream should now have all 10 requests.
+    let second_target: Vec<_> = counts_batch2
+        .iter()
+        .filter(|(_, c)| *c == 10)
+        .map(|(e, _)| e.clone())
+        .collect();
+    assert_eq!(
+        second_target.len(),
+        1,
+        "sticky-hash: all 10 requests should go to the same upstream; got: {counts_batch2:?}"
+    );
+    assert_eq!(
+        first_target[0], second_target[0],
+        "sticky-hash: second batch must route to the same upstream as the first batch"
+    );
+}

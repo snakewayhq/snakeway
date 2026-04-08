@@ -190,3 +190,53 @@ fn request_counter_records_method_and_status_attributes() {
         }
     });
 }
+
+/// When N concurrent requests are sent, the request counter must record
+/// exactly N. This verifies atomic metric recording under concurrent load.
+#[test]
+fn concurrent_requests_counted_accurately() {
+    // Arrange
+    let (metrics, exporter, provider) = setup_metrics();
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_with_config_and_metrics(
+        &mut cfg,
+        integration::harness::upstream::start_http_upstream,
+        Some(metrics),
+    );
+    let n = 20u64;
+
+    // Act: send N concurrent requests.
+    let base_url = srv.base_url();
+    std::thread::scope(|s| {
+        for _ in 0..n {
+            let url = base_url.join("/api").unwrap();
+            s.spawn(move || {
+                let client = reqwest::blocking::Client::builder()
+                    .timeout(std::time::Duration::from_secs(5))
+                    .build()
+                    .unwrap();
+                let res = client
+                    .get(url)
+                    .header("Host", integration::constants::TEST_HOST)
+                    .send()
+                    .unwrap();
+                assert_eq!(res.status(), StatusCode::OK);
+            });
+        }
+    });
+
+    // Assert
+    assert_metric(&exporter, &provider, "snakeway.http.requests", |metric| {
+        let metric = metric.expect("snakeway.http.requests metric not found");
+        match metric.data() {
+            AggregatedMetrics::U64(MetricData::Sum(sum)) => {
+                let total: u64 = sum.data_points().map(|dp| dp.value()).sum();
+                assert_eq!(
+                    total, n,
+                    "expected exactly {n} requests counted, got {total}"
+                );
+            }
+            other => panic!("expected U64 Sum, got: {other:?}"),
+        }
+    });
+}
