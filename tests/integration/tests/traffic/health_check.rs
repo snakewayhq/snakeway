@@ -8,6 +8,7 @@ use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
     HealthCheckSpec, RuntimeConfig, ServiceRouteSpec, ServiceSpec,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 fn extract_upstream_port(cfg: &RuntimeConfig) -> u16 {
@@ -222,4 +223,92 @@ fn unhealthy_upstream_recovers_after_cooldown_and_success() {
         );
         std::thread::sleep(Duration::from_millis(25));
     }
+}
+
+fn parse_upstream_request_counts(json: &serde_json::Value) -> Vec<(String, u64)> {
+    let mut result = Vec::new();
+    if let Some(services) = json.get("services").and_then(|s| s.as_object()) {
+        for (_svc, upstreams) in services {
+            if let Some(upstreams) = upstreams.as_object() {
+                for (endpoint, view) in upstreams {
+                    let total = view
+                        .get("total_requests")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    result.push((endpoint.clone(), total));
+                }
+            }
+        }
+    }
+    result
+}
+
+/// When one of two upstreams becomes unhealthy, the load balancer must
+/// skip it and route all requests to the remaining healthy upstream.
+#[test]
+fn unhealthy_upstream_is_skipped_during_routing() {
+    // Arrange: two upstreams, only the second has a real listener.
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            health_check: Some(HealthCheckSpec {
+                enable: true,
+                failure_threshold: 2,
+                unhealthy_cooldown_seconds: 30,
+            }),
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
+                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+            ],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+
+    // Start a listener only on the second upstream port. The first
+    // upstream port will have no listener (connection refused).
+    let first_call = AtomicBool::new(true);
+    let srv = TestServer::start_with_config(&mut cfg, |port| {
+        if first_call.swap(false, Ordering::SeqCst) {
+            // Skip first upstream -- no listener started.
+        } else {
+            start_http_upstream(port);
+        }
+    });
+    let admin = admin_client();
+
+    // Act: send enough requests for the first upstream to become
+    // unhealthy, then send more so all subsequent traffic goes to
+    // the healthy upstream.
+    for _ in 0..10 {
+        let _ = srv.get("/api").send();
+    }
+
+    // Allow health state to propagate.
+    std::thread::sleep(Duration::from_millis(200));
+
+    // Send a final batch that should all route to the healthy upstream.
+    for _ in 0..5 {
+        let _ = srv.get("/api").send();
+    }
+
+    // Assert: the healthy upstream received the majority of requests.
+    let resp = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+    let counts = parse_upstream_request_counts(&json);
+
+    assert_eq!(counts.len(), 2, "should have 2 upstreams");
+
+    let max_requests = counts.iter().map(|(_, c)| *c).max().unwrap_or(0);
+    assert!(
+        max_requests >= 10,
+        "the healthy upstream should have received the bulk of requests; counts: {counts:?}"
+    );
 }

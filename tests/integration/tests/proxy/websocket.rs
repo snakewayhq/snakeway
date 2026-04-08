@@ -1,8 +1,11 @@
 use futures_util::{SinkExt, StreamExt};
-use integration::conf::minimal_ws_runtime_config;
-use integration::constants::ROUTE_PATH_WS;
+use integration::conf::{ConfigBuilder, minimal_http_runtime_config, minimal_ws_runtime_config};
+use integration::constants::{
+    ROUTE_PATH_API, ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
+};
 use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
+use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
 
 #[test]
 fn websocket_echo_is_proxied() {
@@ -28,4 +31,73 @@ fn websocket_echo_is_proxied() {
         let msg = socket.next().await.unwrap().unwrap();
         assert_eq!(msg.into_text().unwrap(), "ping");
     });
+}
+
+/// When `ws_max_connections` is set to 1, the proxy must reject the
+/// second WebSocket connection. The upstream only handles one connection
+/// at a time, so we use limit=1 to test the enforcement.
+#[test]
+fn websocket_max_connections_rejects_excess() {
+    // Arrange
+    let service = ServiceSpec {
+        routes: vec![ServiceRouteSpec {
+            hosts: vec![TEST_HOST.to_string()],
+            path: ROUTE_PATH_WS.to_string(),
+            enable_websocket: true,
+            ws_max_connections: Some(1),
+            ..Default::default()
+        }],
+        upstreams: vec![
+            ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
+            ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+        ],
+        ..Default::default()
+    };
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![service])
+        .build();
+    let srv = TestServer::start_ws_upstream_with_config(&mut cfg);
+    let url = format!(
+        "ws://{}{}",
+        srv.base_url().as_str().strip_prefix("http://").unwrap(),
+        ROUTE_PATH_WS
+    );
+
+    // Act & Assert
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        // First connection should succeed.
+        let (_conn1, _) = tokio_tungstenite::connect_async(&url)
+            .await
+            .expect("first ws connect should succeed");
+
+        // Second connection should be rejected (proxy enforces max_connections=1).
+        let result = tokio_tungstenite::connect_async(&url).await;
+        assert!(
+            result.is_err(),
+            "second ws connection should fail when max_connections is 1"
+        );
+    });
+}
+
+/// Sending WebSocket upgrade headers to a route with `enable_websocket = false`
+/// must return HTTP 426 Upgrade Required.
+#[test]
+fn websocket_upgrade_on_non_ws_route_returns_426() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+
+    // Act
+    let res = srv
+        .client
+        .get(srv.base_url().join(ROUTE_PATH_API).unwrap())
+        .header("Upgrade", "websocket")
+        .header("Connection", "Upgrade")
+        .header("Host", TEST_HOST)
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status().as_u16(), 426);
 }

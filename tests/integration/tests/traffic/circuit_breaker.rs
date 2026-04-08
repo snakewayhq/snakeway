@@ -2,7 +2,9 @@ use integration::conf::ConfigBuilder;
 use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use integration::harness::TestServer;
 use integration::harness::server::admin_client;
-use integration::harness::upstream::{start_http_upstream, start_slow_http_upstream};
+use integration::harness::upstream::{
+    start_http_upstream, start_http_upstream_that_returns_5xx, start_slow_http_upstream,
+};
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
@@ -313,5 +315,66 @@ fn circuit_breaker_stays_closed_under_concurrent_successful_load() {
             state, "closed",
             "circuit for {endpoint} should remain Closed after concurrent successful requests"
         );
+    }
+}
+
+/// When `count_http_5xx_as_failure` is enabled, HTTP 500 responses from
+/// the upstream must count as failures and trip the circuit to Open.
+#[test]
+fn circuit_breaker_trips_open_on_5xx_responses() {
+    // Arrange
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            circuit_breaker: Some(CircuitBreakerSpec {
+                enable_auto_recovery: true,
+                failure_threshold: 2,
+                open_duration_milliseconds: 30000,
+                half_open_max_requests: 1,
+                success_threshold: 1,
+                count_http_5xx_as_failure: true,
+            }),
+            routes: vec![ServiceRouteSpec {
+                hosts: vec![TEST_HOST.to_string()],
+                path: "/api".to_string(),
+                ..Default::default()
+            }],
+            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            )],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+
+    let srv = TestServer::start_with_config(&mut cfg, start_http_upstream_that_returns_5xx);
+    let admin = admin_client();
+
+    // Act: send requests that return 500.
+    for _ in 0..5 {
+        let _ = srv.get("/api").send();
+    }
+
+    // Assert: poll until circuit trips to Open.
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let resp = admin
+            .get(format!("{}/admin/upstreams", srv.admin_url()))
+            .send()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+        let states = parse_upstream_circuit_states(&json);
+
+        assert!(!states.is_empty(), "should have circuit breaker state data");
+
+        if states.iter().any(|(_, state)| state == "open") {
+            break;
+        }
+
+        assert!(
+            std::time::Instant::now() < deadline,
+            "circuit did not trip Open after 5xx responses; states: {states:?}"
+        );
+        std::thread::sleep(Duration::from_millis(25));
     }
 }
