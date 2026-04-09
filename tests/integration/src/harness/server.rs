@@ -34,6 +34,9 @@ pub struct TestServer {
     listener_addrs: Vec<String>,
     admin_addrs: Vec<String>,
     pub client: Client,
+    /// Keeps the control-plane Tokio runtime alive so spawned tasks
+    /// (reload loop, ACME reconciliation) are not cancelled.
+    _runtime: Option<snakeway_core::testing_api::RuntimeServer>,
 }
 
 impl TestServer {
@@ -109,9 +112,9 @@ impl TestServer {
         }
         .expect("failed to build snakeway server");
 
-        let _running = server.run_background();
+        let running = server.run_background();
 
-        Self::from_config(cfg)
+        Self::from_config(cfg, Some(running))
     }
 
     fn start_with<F>(fixture: &str, start_upstream: F) -> Self
@@ -147,7 +150,10 @@ impl TestServer {
         Self::start_with(fixture, start_http_upstream)
     }
 
-    fn from_config(cfg: &RuntimeConfig) -> Self {
+    fn from_config(
+        cfg: &RuntimeConfig,
+        runtime: Option<snakeway_core::testing_api::RuntimeServer>,
+    ) -> Self {
         let listener_addrs: Vec<String> = cfg
             .listeners
             .iter()
@@ -182,6 +188,7 @@ impl TestServer {
             listener_addrs,
             admin_addrs,
             client,
+            _runtime: runtime,
         }
     }
 
