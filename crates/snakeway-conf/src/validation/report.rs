@@ -368,6 +368,17 @@ impl ValidationReport {
         )
     }
 
+    pub(crate) fn duplicate_route_path(&mut self, path: &str, origin: &Origin) {
+        self.error(
+            format!("duplicate route path within the same listener: {path}"),
+            origin,
+            Some(
+                "Each route path must be unique per listener. Use different path prefixes or move the route to a separate ingress file."
+                    .to_string(),
+            ),
+        )
+    }
+
     pub(crate) fn websocket_route_cannot_be_used_with_http2(
         &mut self,
         path: &str,

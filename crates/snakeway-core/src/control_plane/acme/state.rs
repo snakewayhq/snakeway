@@ -87,7 +87,8 @@ pub(crate) fn compute_state(
             OrderStatus::Finalizing => CertState::Finalizing,
             OrderStatus::Failed => {
                 // Apply simple exponential backoff
-                let backoff_secs = (1u64 << order.failure_count.min(16)) * 60;
+                let backoff_base_multiplier = 10;
+                let backoff_secs = (1u64 << order.failure_count.min(16)) * backoff_base_multiplier;
                 let retry_after = order
                     .updated_at
                     .duration_since(SystemTime::UNIX_EPOCH)

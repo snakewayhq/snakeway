@@ -120,10 +120,34 @@ impl Reconciler {
             );
 
             if let Err(e) = self
-                .step(cert_id.clone(), desired_cert, &state, order_state)
+                .step(cert_id.clone(), desired_cert, &state, order_state.clone())
                 .await
             {
                 warn!(error = %e, state = %state, "cert_manager: reconcile step failed");
+
+                // Transition the persisted order to Failed so we don't retry
+                // the same broken state forever (e.g., expired authorization).
+                // The backoff logic in compute_state will eventually return
+                // Absent, which creates a fresh order.
+                if let Some(mut failed_state) = order_state {
+                    failed_state.status = OrderStatus::Failed;
+                    failed_state.failure_count += 1;
+                    failed_state.last_error = Some(e.to_string());
+                    failed_state.updated_at = std::time::SystemTime::now();
+
+                    let store = self.cert_manager.order_store();
+                    if let Err(persist_err) =
+                        tokio::task::spawn_blocking(move || store.put(&failed_state))
+                            .await
+                            .map_err(|e| e.to_string())
+                            .and_then(|r| r.map_err(|e| e.to_string()))
+                    {
+                        error!(
+                            error = %persist_err,
+                            "cert_manager: failed to persist Failed state"
+                        );
+                    }
+                }
             }
         }
 

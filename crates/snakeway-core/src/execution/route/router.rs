@@ -56,6 +56,8 @@ impl Router {
             return Err(anyhow!("route path must start with '/': {}", path));
         }
 
+        // Config validation in snakeway-conf should prevent duplicate route
+        // paths within the same listener. This check is defense in depth.
         if self.routes.iter().any(|r| r.path == path) {
             return Err(anyhow!("duplicate route path: {}", path));
         }

@@ -2098,6 +2098,8 @@ dependencies = [
  "arc-swap",
  "futures-util",
  "http",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "pretty_assertions",
  "prost",
  "reqwest",
