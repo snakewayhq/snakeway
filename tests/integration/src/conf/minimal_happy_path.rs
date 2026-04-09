@@ -12,7 +12,7 @@ pub fn minimal_http_runtime_config() -> RuntimeConfig {
 pub fn minimal_http_runtime_config_with_request_filter() -> RuntimeConfig {
     ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device()
+        .with_request_filter(ConfigBuilder::make_request_filter_device_spec())
         .build()
 }
 

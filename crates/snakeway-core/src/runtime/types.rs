@@ -1,5 +1,5 @@
 use crate::control_plane::acme::SniRegistry;
-use crate::execution::device::core::registry::DeviceRegistry;
+use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::Router;
 use pingora::protocols::tls::CaType;
 use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};

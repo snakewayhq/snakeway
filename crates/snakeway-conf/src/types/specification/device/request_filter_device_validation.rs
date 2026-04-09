@@ -1,5 +1,7 @@
 use crate::types::{Origin, RequestFilterDeviceSpec};
-use crate::validation::validator::{validate_http_header_name, validate_http_method};
+use crate::validation::validator::{
+    validate_device_paths, validate_http_header_name, validate_http_method,
+};
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
@@ -31,6 +33,8 @@ impl ValidateSpec for RequestFilterDeviceSpec {
         for header in &self.required_headers {
             validate_http_header_name(header, report, origin);
         }
+
+        validate_device_paths(&self.paths, report, origin);
     }
 }
 
@@ -124,5 +128,28 @@ mod tests {
 
         // Assert
         assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn path_without_leading_slash_is_invalid() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = RequestFilterDeviceSpec {
+            enable: true,
+            paths: vec!["api/v1".to_string()],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("must start with '/'"))
+        );
     }
 }

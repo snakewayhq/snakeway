@@ -2,9 +2,12 @@ use integration::conf::ConfigBuilder;
 use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_core::testing_api::conf::types::{
+    CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec,
+};
 
 /// The `NetworkConnectionFilterSpec.cidr.allow` field specifies a set of
-/// CIDR ranges whose connections are permitted at the TCP layer — before
+/// CIDR ranges whose connections are permitted at the TCP layer - before
 /// any HTTP parsing occurs.  All other connections are dropped.
 ///
 /// This is distinct from the device-level `NetworkPolicyDevice` CIDR
@@ -25,7 +28,17 @@ fn cidr_allow_list_permits_matching_ip() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_filter_cidr_allow_list(&["127.0.0.1/32"])
+        .with_connection_filter(NetworkConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec!["127.0.0.1/32".to_string()],
+                deny: vec![],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
@@ -44,21 +57,31 @@ fn cidr_allow_list_permits_matching_ip() {
 /// 127.0.0.1 (e.g. 10.0.0.0/8), connections from localhost must be
 /// dropped at the TCP layer.
 ///
-/// The client-side error (connection refused / reset) is expected — the
+/// The client-side error (connection refused / reset) is expected - the
 /// proxy drops the connection before sending any HTTP response.
 #[test]
 fn cidr_allow_list_blocks_non_matching_ip() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_filter_cidr_allow_list(&["10.0.0.0/8"])
+        .with_connection_filter(NetworkConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec!["10.0.0.0/8".to_string()],
+                deny: vec![],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
-    // Act — 127.0.0.1 is not in 10.0.0.0/8, connection must be rejected
+    // Act -- 127.0.0.1 is not in 10.0.0.0/8, connection must be rejected
     let res = srv.get("/api").send();
 
-    // Assert — connection-level rejection appears as a client error
+    // Assert -- connection-level rejection appears as a client error
     assert!(
         res.is_err(),
         "connection from 127.0.0.1 must be rejected when only 10.0.0.0/8 is in the allow list"
@@ -80,14 +103,24 @@ fn cidr_allow_and_deny_deny_takes_precedence() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_connection_filter_cidr_allow_and_deny_list(&["127.0.0.1/32"], &["127.0.0.1/32"])
+        .with_connection_filter(NetworkConnectionFilterSpec {
+            cidr: CidrSpec {
+                allow: vec!["127.0.0.1/32".to_string()],
+                deny: vec!["127.0.0.1/32".to_string()],
+            },
+            ip_family: IpFamilySpec {
+                ipv4: true,
+                ipv6: true,
+            },
+            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+        })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
 
     // Act
     let res = srv.get("/api").send();
 
-    // Assert — deny-list wins; connection is dropped
+    // Assert -- deny-list wins; connection is dropped
     assert!(
         res.is_err(),
         "deny-list must take precedence over allow-list for the same CIDR"

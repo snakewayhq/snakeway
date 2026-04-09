@@ -46,8 +46,7 @@ The logging system supports two output modes:
 - standard output for container environments
 - rolling file logs when `SNAKEWAY_LOG_DIR` is configured
 
-File logging uses a non‑blocking writer to ensure the request path is
-not affected by disk IO.
+File logging uses a non‑blocking writer to ensure disk IO does not affect the request path.
 
 ### Distributed Tracing
 
@@ -84,35 +83,85 @@ instances in multi‑node deployments.
 
 ### Sampling
 
-The current implementation supports a parent‑based sampling model. The
-sampling decision propagates across nested spans so that trace
-hierarchies remain coherent.
+Snakeway uses a parent-based sampling model. When an incoming request
+carries a sampled W3C Trace Context, the proxy always honors that
+decision and samples the request. When no parent context is present,
+the `sampling_ratio` setting determines what fraction of root traces
+are sampled using a deterministic trace-ID-ratio algorithm.
 
-Additional sampling strategies may be introduced later, but the default
-configuration ensures that traces remain complete once a root span has
-been sampled.
+The default `sampling_ratio` of `1.0` samples all root traces. Setting
+it to a lower value (e.g., `0.1` for 10%) reduces trace volume in
+high-traffic deployments while preserving complete traces for every
+sampled request.
 
 ### Request Instrumentation
 
-Request processing is instrumented through spans created within the
-Pingora gateway implementation. A typical trace hierarchy represents the
-full request lifecycle:
+A root `request` span is created for every proxied request inside the
+Pingora `request_filter` hook. The span carries the following fields:
 
-- request span
-- routing span
-- device pipeline spans
-- upstream proxy span
+- `http.method`
+- `http.host`
+- `http.path`
+- `client.ip`
+- `request.id`
+- `listener`
+- `route`
 
-The device pipeline model allows individual devices to emit spans
-describing enrichment, filtering, or policy evaluation performed on the
-request.
+When the incoming request includes W3C Trace Context headers
+(`traceparent` / `tracestate`), the request span is automatically
+parented to the upstream trace. The same trace context is injected into
+the request sent to the upstream service, so Snakeway appears as an
+intermediate span in a distributed trace.
+
+Child spans are created for each major phase of request processing:
+
+- `routing` -- on-request device pipeline execution and route matching
+- `upstream_selection` -- traffic decision, upstream peer creation, and circuit breaker admission
+- `upstream_request` -- before-proxy device pipeline, header mutation, and trace context injection
+- `upstream_response` -- after-proxy device pipeline and response status mutation
+- `response` -- on-response device pipeline and upstream outcome determination
+
+### Log Export
+
+When OpenTelemetry is enabled, log events emitted through the `tracing`
+framework are also exported to the configured OTLP endpoint. The
+`opentelemetry-appender-tracing` bridge converts `tracing` events into
+OpenTelemetry log records and sends them via a batch processor on the
+control plane runtime.
+
+An internal filter suppresses noisy crates (`pingora`, `tonic`, `h2`,
+`reqwest`) so that only application-level events are exported.
+
+### Metrics
+
+When OpenTelemetry is enabled, Snakeway exports the following metric
+instruments via the OTLP exporter:
+
+| Metric                              | Type           | Attributes                     |
+|-------------------------------------|----------------|--------------------------------|
+| `snakeway.http.requests`            | Counter        | method, status, service, route |
+| `snakeway.http.request.duration`    | Histogram (ms) | service, upstream              |
+| `snakeway.http.errors`              | Counter        | service, upstream, error.type  |
+| `snakeway.upstream.active_requests` | Gauge          | service, upstream              |
+| `snakeway.upstream.health`          | Gauge (0/1)    | service, upstream              |
+| `snakeway.circuit_breaker.state`    | Gauge (0/1/2)  | service, upstream              |
+
+All per-request metrics are recorded in the Pingora `logging` hook,
+which runs last and has access to the complete request context including
+service, upstream, outcome, and timing.
+
+Circuit breaker state values:
+
+0 = closed (healthy)
+1 = open (tripped)
+2 = half-open (recovery testing).
 
 ### Shutdown Behavior
 
-The OpenTelemetry tracer provider is stored globally so that the
-exporter can flush pending spans during shutdown. This ensures that
-traces generated during the final moments of process execution are not
-lost.
+The OpenTelemetry tracer, logger, and meter providers are stored
+globally so that exporters can flush pending data during shutdown. This
+ensures that traces and logs generated during the final moments of
+process execution are not lost.
 
-Graceful shutdown hooks trigger exporter shutdown before the process
+Graceful shutdown hooks trigger provider shutdown before the process
 exits.

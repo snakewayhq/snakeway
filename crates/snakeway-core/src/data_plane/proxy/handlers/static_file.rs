@@ -1,5 +1,5 @@
 use crate::execution::ctx::RequestCtx;
-use crate::execution::device::core::registry::DeviceRegistry;
+use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::RouteEntry;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
@@ -27,8 +27,8 @@ impl StaticFileHandler {
         devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
         use crate::execution::ctx::{RequestId, ResponseCtx};
+        use crate::execution::device::core::DevicePipeline;
         use crate::execution::device::core::DeviceResult;
-        use crate::execution::device::core::pipeline::DevicePipeline;
         use pingora::http::ResponseHeader;
         use tokio::io::AsyncReadExt;
 

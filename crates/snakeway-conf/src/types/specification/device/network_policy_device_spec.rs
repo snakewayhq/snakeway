@@ -9,6 +9,10 @@ pub struct NetworkPolicyDeviceSpec {
     pub enable: bool,
     pub cidr_allow: Vec<String>,
     pub forwarding: ForwardingSpec,
+
+    /// Optional path prefixes this device applies to. Empty means all paths.
+    #[serde(default)]
+    pub paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]

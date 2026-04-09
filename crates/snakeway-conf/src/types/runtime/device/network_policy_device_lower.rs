@@ -26,6 +26,7 @@ impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
                 allow: spec.forwarding.allow,
                 on_invalid: spec.forwarding.on_invalid.into(),
             },
+            paths: spec.paths.into_iter().collect(),
         })
     }
 }
@@ -61,6 +62,7 @@ mod tests {
             enable: true,
             cidr_allow: vec!["10.0.0.0/8".to_string()],
             forwarding: ForwardingSpec::default(),
+            paths: vec![],
         };
 
         // Act
@@ -79,6 +81,7 @@ mod tests {
             enable: true,
             cidr_allow: vec!["not-a-cidr".to_string()],
             forwarding: ForwardingSpec::default(),
+            paths: vec![],
         };
 
         // Act

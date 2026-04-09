@@ -1,10 +1,12 @@
-use opentelemetry_sdk::trace::Tracer;
+use crate::control_plane::observability::TelemetryProviders;
+use opentelemetry::trace::TracerProvider;
+use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use std::sync::OnceLock;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Registry, fmt, layer::SubscriberExt};
+use tracing_subscriber::{EnvFilter, Layer, Registry, fmt, layer::SubscriberExt};
 
 /// Holds the non-blocking writer guard for the process lifetime.
 ///
@@ -19,13 +21,29 @@ static _LOG_GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 /// - Uses environment variables for log level filtering (defaults to "info" if not set)
 /// - Configures JSON output format for structured logging
 /// - Flattens event fields for cleaner log output
-fn init_normal_logging(tracer: Option<Tracer>) {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
-    // The OpenTelemetry layer must be attached before fmt::Layer.
-    // Otherwise its subscriber type becomes dependent on the fmt writer type
-    // (stdout vs NonBlocking file writer), which causes nasty trait errors.
-    let otel_layer = tracer.map(OpenTelemetryLayer::new);
+    // The OpenTelemetry layers must be attached before fmt::Layer.
+    // Otherwise, their subscriber types become dependent on the fmt writer type
+    // (stdout vs. NonBlocking file writer), which causes nasty trait errors.
+    let otel_filter = EnvFilter::new("info")
+        .add_directive("pingora=off".parse().expect("valid directive"))
+        .add_directive("hyper=off".parse().expect("valid directive"))
+        .add_directive("tower=off".parse().expect("valid directive"))
+        .add_directive("tonic=off".parse().expect("valid directive"))
+        .add_directive("h2=off".parse().expect("valid directive"))
+        .add_directive("reqwest=off".parse().expect("valid directive"));
+    let (tracer_provider, logger_provider) = match maybe_telemetry_providers {
+        None => (None, None),
+        Some(providers) => (
+            Some(providers.tracer_provider),
+            Some(providers.logger_provider),
+        ),
+    };
+    let tracer_layer = tracer_provider.map(|p| OpenTelemetryLayer::new(p.tracer("snakeway")));
+    let logger_layer =
+        logger_provider.map(|p| OpenTelemetryTracingBridge::new(&p).with_filter(otel_filter));
 
     if let Ok(dir) = std::env::var("SNAKEWAY_LOG_DIR") {
         let appender = rolling::daily(dir, "snakeway.log");
@@ -34,8 +52,9 @@ fn init_normal_logging(tracer: Option<Tracer>) {
         let fmt_layer = fmt::layer().json().flatten_event(true).with_writer(writer);
 
         Registry::default()
-            .with(filter)
-            .with(otel_layer)
+            .with(env_filter)
+            .with(tracer_layer)
+            .with(logger_layer)
             .with(fmt_layer)
             .init();
 
@@ -45,39 +64,20 @@ fn init_normal_logging(tracer: Option<Tracer>) {
         let fmt_layer = fmt::layer().json().flatten_event(true);
 
         Registry::default()
-            .with(filter)
-            .with(otel_layer)
+            .with(env_filter)
+            .with(tracer_layer)
+            .with(logger_layer)
             .with(fmt_layer)
             .init();
     }
 }
 
-pub(crate) fn init_logging(tracer: Option<Tracer>) {
+pub(crate) fn init_logging(telemetry_providers: Option<TelemetryProviders>) {
     if std::env::var("TOKIO_CONSOLE").is_ok() {
         // Tokio console logging is specifically for interactive debugging and profiling.
-        init_console_logging();
+        console_subscriber::init();
     } else {
         // Normal logging for production and non-interactive use.
-        init_normal_logging(tracer);
+        init_normal_logging(telemetry_providers);
     }
-}
-
-fn init_console_logging() {
-    console_subscriber::init();
-}
-
-pub(crate) fn default_log_mode() -> LogMode {
-    use std::io::IsTerminal;
-    if std::io::stdout().is_terminal() {
-        LogMode::Pretty
-    } else {
-        LogMode::Raw
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum LogMode {
-    Raw,
-    Pretty,
-    Stats,
 }

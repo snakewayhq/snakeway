@@ -1,9 +1,9 @@
+use super::RequestFilterDeviceConfig;
 use crate::types::RequestFilterDeviceSpec;
 use crate::validation::ConfigError;
 use http::{HeaderName, Method};
+use smallvec::SmallVec;
 use std::time::Duration;
-
-use super::RequestFilterDeviceConfig;
 
 impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
     type Error = ConfigError;
@@ -11,7 +11,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
     fn try_from(spec: RequestFilterDeviceSpec) -> Result<Self, Self::Error> {
         let origin = spec.origin.clone();
 
-        let allow_methods = spec
+        let allow_methods: SmallVec<[Method; 4]> = spec
             .allow_methods
             .into_iter()
             .map(|s| {
@@ -20,9 +20,9 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
                     origin: origin.to_string(),
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
-        let deny_methods = spec
+        let deny_methods: SmallVec<[Method; 4]> = spec
             .deny_methods
             .into_iter()
             .map(|s| {
@@ -31,7 +31,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
                     origin: origin.to_string(),
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
         let deny_headers = spec
             .deny_headers
@@ -42,9 +42,9 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
                     origin: origin.to_string(),
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
-        let allow_headers = spec
+        let allow_headers: SmallVec<[HeaderName; 8]> = spec
             .allow_headers
             .into_iter()
             .map(|s| {
@@ -53,9 +53,9 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
                     origin: origin.to_string(),
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
-        let required_headers = spec
+        let required_headers: SmallVec<[HeaderName; 8]> = spec
             .required_headers
             .into_iter()
             .map(|s| {
@@ -64,7 +64,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
                     origin: origin.to_string(),
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
         Ok(Self {
             enable: spec.enable,
@@ -78,6 +78,7 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
             max_suspicious_body_bytes: spec.max_suspicious_body_bytes,
             deny_status: spec.deny_status,
             client_body_timeout: spec.client_body_timeout_seconds.map(Duration::from_secs),
+            paths: spec.paths.into_iter().collect(),
         })
     }
 }
@@ -110,6 +111,7 @@ mod tests {
             max_suspicious_body_bytes: 8 * 1024,
             client_body_timeout_seconds: None,
             deny_status: None,
+            paths: vec![],
         }
     }
 

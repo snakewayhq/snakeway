@@ -1,4 +1,4 @@
-use crate::serialization::to_hcl_string;
+use crate::cli::config::hcl::to_hcl_string;
 use clap::ValueEnum;
 use serde::Serialize;
 use snakeway_conf::{load_config, load_spec_files};

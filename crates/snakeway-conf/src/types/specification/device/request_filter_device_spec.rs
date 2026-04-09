@@ -58,6 +58,13 @@ pub struct RequestFilterDeviceSpec {
     // Override the default granular deny status with a device-scoped value.
     //-------------------------------------------------------------------------
     pub deny_status: Option<u16>,
+
+    //-------------------------------------------------------------------------
+    // Path scoping
+    //-------------------------------------------------------------------------
+    /// Optional path prefixes this device applies to. Empty means all paths.
+    #[serde(default)]
+    pub paths: Vec<String>,
 }
 
 fn default_max_header_bytes() -> usize {

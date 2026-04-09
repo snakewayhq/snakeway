@@ -4,9 +4,7 @@ extern crate core;
 // Private / Internal
 //-----------------------------------------------------------------------------
 
-mod http_event;
 mod net;
-mod serialization;
 mod server;
 
 //-----------------------------------------------------------------------------
@@ -27,6 +25,7 @@ pub use server::start_server;
 
 #[doc(hidden)]
 pub mod testing_api {
-    pub use crate::{cli, control_plane, data_plane, execution};
+    pub use crate::cli;
+    pub use crate::control_plane::{ControlPlaneServer, Metrics, RuntimeServer};
     pub use snakeway_conf as conf;
 }

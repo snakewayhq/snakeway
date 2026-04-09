@@ -56,6 +56,8 @@ impl Router {
             return Err(anyhow!("route path must start with '/': {}", path));
         }
 
+        // Config validation in snakeway-conf should prevent duplicate route
+        // paths within the same listener. This check is defense in depth.
         if self.routes.iter().any(|r| r.path == path) {
             return Err(anyhow!("duplicate route path: {}", path));
         }
@@ -80,7 +82,7 @@ impl Router {
         }
 
         for route in &self.routes {
-            if path_matches(&route.path, request_path) && route_matches_host(host, route) {
+            if path_matches_prefix(&route.path, request_path) && route_matches_host(host, route) {
                 return Ok(route);
             }
         }
@@ -89,19 +91,41 @@ impl Router {
     }
 }
 
-fn path_matches(route_path: &str, request_path: &str) -> bool {
-    if route_path == "/" {
+/// Returns `true` if the request path matches at least one of the given
+/// path prefixes. Callers should skip this check entirely when `scopes`
+/// is empty (meaning the device applies to all paths).
+pub(crate) fn request_path_in_scope(scopes: &[String], request_path: &str) -> bool {
+    scopes.iter().any(|p| path_matches_prefix(p, request_path))
+}
+
+/// Sorts path prefixes by descending length so that longer (more specific)
+/// prefixes are tested first during matching.
+pub(crate) fn sort_paths_longest_first(paths: &mut [String]) {
+    paths.sort_by_key(|p| std::cmp::Reverse(p.len()));
+}
+
+/// Tests whether a request path falls under the given prefix using
+/// slash-boundary-aware prefix matching.
+///
+/// Returns `true` when:
+/// - `prefix` is `"/"` (matches everything),
+/// - `request_path` equals `prefix` exactly, or
+/// - `request_path` starts with `prefix` and the next character is `"/"`.
+///
+/// The slash boundary check prevents `/api` from matching `/apikeys`.
+pub(crate) fn path_matches_prefix(prefix: &str, request_path: &str) -> bool {
+    if prefix == "/" {
         return true;
     }
 
-    if request_path == route_path {
+    if request_path == prefix {
         return true;
     }
 
-    request_path.starts_with(route_path)
+    request_path.starts_with(prefix)
         && request_path
             .as_bytes()
-            .get(route_path.len())
+            .get(prefix.len())
             .map(|b| *b == b'/')
             .unwrap_or(false)
 }

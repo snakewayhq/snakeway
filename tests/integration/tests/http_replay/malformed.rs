@@ -113,9 +113,11 @@ fn request_line_without_version_should_be_rejected() {
 #[test]
 fn content_length_body_underflow_should_not_proxy_successfully() {
     // Arrange: 2-second client body timeout so the test doesn't take 60s.
+    let mut rf = ConfigBuilder::make_request_filter_device_spec();
+    rf.client_body_timeout_seconds = Some(2);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
-        .with_request_filter_device_with_body_timeout(2)
+        .with_request_filter(rf)
         .build();
     let srv = TestServer::start_http_upstream_that_reads_request_with_config(&mut cfg);
 

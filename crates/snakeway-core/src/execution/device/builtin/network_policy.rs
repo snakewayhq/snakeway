@@ -1,6 +1,8 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use crate::net::CidrCollection;
+use smallvec::SmallVec;
 use snakeway_conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
 use tracing::debug;
 
@@ -9,6 +11,7 @@ pub(crate) struct NetworkPolicyDevice {
     pub(crate) cidr_allow: CidrCollection,
     pub(crate) allow_forwarded: bool,
     pub(crate) on_invalid_forwarded: OnInvalidForwarded,
+    pub(crate) paths: SmallVec<[String; 4]>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -19,10 +22,13 @@ pub(crate) enum OnInvalidForwarded {
 
 impl From<NetworkPolicyDeviceConfig> for NetworkPolicyDevice {
     fn from(cfg: NetworkPolicyDeviceConfig) -> Self {
+        let mut paths = cfg.paths;
+        sort_paths_longest_first(&mut paths);
         Self {
             cidr_allow: cfg.cidr_allow.into(),
             allow_forwarded: cfg.forwarding.allow,
             on_invalid_forwarded: cfg.forwarding.on_invalid.into(),
+            paths,
         }
     }
 }
@@ -53,6 +59,10 @@ impl Device for NetworkPolicyDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        if !self.paths.is_empty() && !request_path_in_scope(&self.paths, ctx.canonical_path()) {
+            return DeviceResult::Continue;
+        }
+
         // No identity, then short-circuit the device.
         // However, this should never happen, as the identity device must run before this device.
         // A config validation error would have been caught earlier.

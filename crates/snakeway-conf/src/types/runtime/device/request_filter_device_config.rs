@@ -1,5 +1,6 @@
 use http::{HeaderName, Method};
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use std::time::Duration;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -7,26 +8,28 @@ use std::time::Duration;
 pub struct RequestFilterDeviceConfig {
     pub enable: bool,
     #[serde(with = "serde_method_vec")]
-    pub allow_methods: Vec<Method>,
+    pub allow_methods: SmallVec<[Method; 4]>,
     #[serde(with = "serde_method_vec")]
-    pub deny_methods: Vec<Method>,
+    pub deny_methods: SmallVec<[Method; 4]>,
     #[serde(with = "serde_header_name_vec")]
-    pub deny_headers: Vec<HeaderName>,
+    pub deny_headers: SmallVec<[HeaderName; 8]>,
     #[serde(with = "serde_header_name_vec")]
-    pub allow_headers: Vec<HeaderName>,
+    pub allow_headers: SmallVec<[HeaderName; 8]>,
     #[serde(with = "serde_header_name_vec")]
-    pub required_headers: Vec<HeaderName>,
+    pub required_headers: SmallVec<[HeaderName; 8]>,
     pub max_header_bytes: usize,
     pub max_body_bytes: usize,
     pub max_suspicious_body_bytes: usize,
     pub deny_status: Option<u16>,
     pub client_body_timeout: Option<Duration>,
+    pub paths: SmallVec<[String; 4]>,
 }
 
 // Serialization helpers
 mod serde_header_name_vec {
     use http::HeaderName;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use smallvec::SmallVec;
 
     pub fn serialize<S>(headers: &[HeaderName], serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -36,7 +39,7 @@ mod serde_header_name_vec {
         strings.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<HeaderName>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<SmallVec<[HeaderName; 8]>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -51,6 +54,7 @@ mod serde_header_name_vec {
 mod serde_method_vec {
     use http::Method;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use smallvec::SmallVec;
 
     pub fn serialize<S>(methods: &[Method], serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -60,7 +64,7 @@ mod serde_method_vec {
         strings.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Method>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<SmallVec<[Method; 4]>, D::Error>
     where
         D: Deserializer<'de>,
     {

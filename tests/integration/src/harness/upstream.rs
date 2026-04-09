@@ -20,6 +20,112 @@ pub fn start_http_upstream(port: u16) {
     thread::sleep(Duration::from_millis(25));
 }
 
+/// An upstream that delays before responding. The delay keeps the
+/// connection active long enough for concurrent requests to exercise
+/// pressure-based load balancing.
+pub fn start_slow_http_upstream(port: u16) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            // Read headers so the proxy considers the request fully sent.
+            let reader = BufReader::new(stream.try_clone().unwrap());
+            for line in reader.lines() {
+                let line = line.unwrap_or_default();
+                if line.is_empty() {
+                    break;
+                }
+            }
+            // Hold the connection open so concurrent requests see active counts > 0.
+            thread::sleep(Duration::from_millis(200));
+            let _ = stream.write_all(HTTP_UPSTREAM_RESPONSE);
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
+/// An upstream that returns HTTP 500 Internal Server Error for every request.
+/// Used to test circuit breaker `count_http_5xx_as_failure` behavior.
+pub fn start_http_upstream_that_returns_5xx(port: u16) {
+    use std::io::Write;
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            let _ = stream
+                .write_all(b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n");
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
+/// An upstream that returns a large response body of the given size.
+/// Reads request headers before responding to avoid premature close.
+pub fn start_http_upstream_with_large_response(port: u16, size_bytes: usize) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        let body = vec![b'X'; size_bytes];
+        let header = format!("HTTP/1.1 200 OK\r\nContent-Length: {size_bytes}\r\n\r\n");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            let reader = BufReader::new(stream.try_clone().unwrap());
+            for line in reader.lines() {
+                if line.unwrap_or_default().is_empty() {
+                    break;
+                }
+            }
+            let _ = stream.write_all(header.as_bytes());
+            let _ = stream.write_all(&body);
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
+/// An upstream that accepts connections but never responds.
+/// Used to test upstream timeout behavior (proxy should return 502/504).
+pub fn start_http_upstream_that_hangs(port: u16) {
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let _stream = stream.expect("stream error");
+            // Accept the connection but never write a response.
+            // The proxy should time out waiting for upstream response.
+            thread::sleep(Duration::from_secs(300));
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
 /// An upstream that reads the full request before responding.
 ///
 /// Unlike `start_http_upstream` (which responds instantly without reading),
@@ -58,6 +164,53 @@ pub fn start_http_upstream_that_reads_request(port: u16) {
     });
 
     // tiny delay so the listener is actually ready
+    thread::sleep(Duration::from_millis(25));
+}
+
+/// An upstream that reads request headers and echoes them back as a JSON
+/// response body. Used by OTel propagation tests to verify that trace
+/// context headers arrive at the upstream.
+///
+/// Response format: `{"header-name": "value", ...}` (lowercased keys).
+pub fn start_http_upstream_that_echoes_headers(port: u16) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            let reader = BufReader::new(stream.try_clone().unwrap());
+
+            let mut headers = Vec::new();
+            for line in reader.lines() {
+                let line = line.unwrap_or_default();
+                if line.is_empty() {
+                    break;
+                }
+                if let Some((name, value)) = line.split_once(':') {
+                    headers.push(format!(
+                        "\"{}\":\"{}\"",
+                        name.trim().to_lowercase(),
+                        value.trim()
+                    ));
+                }
+            }
+
+            let body = format!("{{{}}}", headers.join(","));
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = stream.write_all(resp.as_bytes());
+        }
+    });
+
     thread::sleep(Duration::from_millis(25));
 }
 

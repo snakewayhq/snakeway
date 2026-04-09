@@ -2098,6 +2098,8 @@ dependencies = [
  "arc-swap",
  "futures-util",
  "http",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "pretty_assertions",
  "prost",
  "reqwest",
@@ -2756,6 +2758,18 @@ dependencies = [
  "pin-project-lite",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "opentelemetry-appender-tracing"
+version = "0.31.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef6a1ac5ca3accf562b8c306fa8483c85f4390f768185ab775f242f7fe8fdcc2"
+dependencies = [
+ "opentelemetry",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4103,14 +4117,13 @@ dependencies = [
  "hcl-rs",
  "http",
  "ipnet",
- "ipnet-trie",
  "nix 0.31.1",
  "openssl",
  "owo-colors",
- "pretty_assertions",
  "rcgen",
  "serde",
  "serde_json",
+ "smallvec",
  "tempfile",
  "thiserror 2.0.18",
  "tracing",
@@ -4146,23 +4159,20 @@ dependencies = [
  "once_cell",
  "openssl",
  "opentelemetry",
+ "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
- "owo-colors",
  "percent-encoding",
  "pingora",
  "pingora-limits",
- "pingora-openssl",
  "pretty_assertions",
  "rand 0.9.2",
- "rcgen",
  "serde",
  "serde_json",
  "serde_yaml",
  "sha2",
  "smallvec",
  "snakeway-conf",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

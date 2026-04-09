@@ -157,26 +157,33 @@ polish.
 **Goals**
 
 - [x] Clean, forward-looking architecture
-- [ ] Production-grade test suite (150+ integration tests)
-- [ ] OpenTelemetry support
+- [x] Production-grade test suite (150+ integration tests)
+- OpenTelemetry support
+    - [x] OTLP export (traces, logs, metrics)
+    - [x] W3C Trace Context propagation
+    - [x] Configurable sampling (parent-based with trace-ID ratio)
+    - [x] Per-phase child spans (routing, upstream selection, upstream request/response, response)
+    - [x] Metrics instrumentation (request throughput, latency, errors, upstream health, circuit breaker)
 
 **Configuration**
 
 - [x] Consider moving validation logic into spec files where appropriate
-- [ ] Add parity between environment variables, CLI arguments, and defaults
-- [ ] Consolidate TLS automation directory options into a centralized `state_dir`
+- [x] Evaluate env var / CLI / config parity - current split is intentional (env vars for logging/ops, HCL for app
+  behavior, CLI for paths)
+- [x] Require pre-provisioned ACME cert_dir and data_dir (stop auto-creating directories) - matches certbot behavior
 - [x] Lazy DNS resolution for hosts (compatible with container environments)
 
 **Devices**
 
 - [x] Make UA Parser regex file overridable in the config (similar to MMDB files)
-- [ ] Review device subsystem against the mature configuration subsystem
+- [x] Review device subsystem against the mature configuration subsystem
 - [ ] Consider discrete `on_response_header` and `on_response_body` hooks
-- [ ] Consider scoping network policy and rate limiting to specific paths
+- [x] Consider scoping network policy, request filter, and rate limiting devices to specific paths
 
 **Routing**
 
-- [ ] Review routing code for conceptual duplication
+- [x] Review routing code for conceptual duplication: reviewed, no changes needed; structural parallelism between
+  Static/Service routes is intentional
 - [x] Implement more robust path matching
 
 ---

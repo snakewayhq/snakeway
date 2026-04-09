@@ -1,4 +1,5 @@
 use crate::types::{Origin, RequestRateLimitingDeviceSpec};
+use crate::validation::validator::validate_device_paths;
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
@@ -15,6 +16,8 @@ impl ValidateSpec for RequestRateLimitingDeviceSpec {
             origin
         );
         validate_range_field!(WINDOW_SECONDS, self.window_seconds, report, origin);
+
+        validate_device_paths(&self.paths, report, origin);
     }
 }
 
@@ -87,5 +90,30 @@ mod tests {
 
         // Assert
         assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn path_without_leading_slash_is_invalid() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let spec = RequestRateLimitingDeviceSpec {
+            enable: true,
+            max_requests_per_second: 100,
+            window_seconds: 10,
+            paths: vec!["api/v1".to_string()],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&spec.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report
+                .errors
+                .iter()
+                .any(|e| e.message.contains("must start with '/'"))
+        );
     }
 }

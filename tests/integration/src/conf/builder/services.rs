@@ -63,6 +63,17 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_custom_ingress(mut self, services: Vec<ServiceSpec>) -> Self {
+        let bind = Self::make_bind(false);
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services,
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
     pub fn with_http_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
         let service = Self::make_service_spec();
@@ -76,10 +87,11 @@ impl ConfigBuilder {
     }
 
     pub fn with_https_ingress(mut self) -> Self {
-        // Ensure the ACME orders directory exists before build() triggers config
-        // validation.  Validation requires data_dir.is_dir() to be true, and the
-        // directory is otherwise only created inside TestServer::start_with_config.
+        // Pre-create the ACME directories before validation runs.  Validation
+        // requires these to exist as directories (they hold private key material
+        // and should be intentionally provisioned by the operator/installer).
         std::fs::create_dir_all(ACME_ORDERS_DIR).expect("failed to create ACME orders directory");
+        std::fs::create_dir_all(ACME_CERTS_DIR).expect("failed to create ACME certs directory");
 
         self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
         self.server_spec.tls_automation =
@@ -153,7 +165,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub(crate) fn make_tcp_upstream(port: u16, use_tls: bool) -> UpstreamSpec {
+    pub fn make_tcp_upstream(port: u16, use_tls: bool) -> UpstreamSpec {
         UpstreamSpec {
             endpoint: Some(EndpointSpec {
                 host: HostSpec::Hostname(TEST_HOST.to_string()),

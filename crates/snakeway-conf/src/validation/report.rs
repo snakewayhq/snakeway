@@ -368,6 +368,17 @@ impl ValidationReport {
         )
     }
 
+    pub(crate) fn duplicate_route_path(&mut self, path: &str, origin: &Origin) {
+        self.error(
+            format!("duplicate route path within the same listener: {path}"),
+            origin,
+            Some(
+                "Each route path must be unique per listener. Use different path prefixes or move the route to a separate ingress file."
+                    .to_string(),
+            ),
+        )
+    }
+
     pub(crate) fn websocket_route_cannot_be_used_with_http2(
         &mut self,
         path: &str,
@@ -486,10 +497,18 @@ impl ValidationReport {
         )
     }
 
+    pub(crate) fn server_tls_acme_data_dir_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "server TLS ACME data_dir path is required".to_string(),
+            origin,
+            None,
+        )
+    }
+
     pub(crate) fn server_tls_acme_data_dir_is_invalid(&mut self, data_dir: &Path, origin: &Origin) {
         self.error(
             format!(
-                "server TLS ACME data directory does not exist or is not a directory: {}",
+                "server TLS ACME data_dir does not exist or is not a directory: {}",
                 data_dir.to_string_lossy()
             ),
             origin,
@@ -497,12 +516,20 @@ impl ValidationReport {
         )
     }
 
-    pub(crate) fn server_tls_filesystem_cert_store_must_have_a_cert_directory(
-        &mut self,
-        origin: &Origin,
-    ) {
+    pub(crate) fn server_tls_cert_dir_cannot_be_empty(&mut self, origin: &Origin) {
         self.error(
-            "server TLS filesystem cert store must have a certificate directory".to_string(),
+            "server TLS filesystem cert_dir path is required".to_string(),
+            origin,
+            None,
+        )
+    }
+
+    pub(crate) fn server_tls_cert_dir_is_invalid(&mut self, cert_dir: &Path, origin: &Origin) {
+        self.error(
+            format!(
+                "server TLS cert_dir does not exist or is not a directory: {}",
+                cert_dir.to_string_lossy()
+            ),
             origin,
             None,
         )
@@ -511,6 +538,36 @@ impl ValidationReport {
     pub(crate) fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &Origin) {
         self.warning(
             "server.tls_automation configured but no TLS listeners defined".to_string(),
+            origin,
+            None,
+        )
+    }
+}
+
+/// Observability Spec Validation
+impl ValidationReport {
+    pub(crate) fn otel_endpoint_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "observability.otel.endpoint cannot be empty when enabled".to_string(),
+            origin,
+            Some(
+                "Provide the gRPC endpoint for the OTLP exporter (e.g., http://localhost:4317)."
+                    .to_string(),
+            ),
+        )
+    }
+
+    pub(crate) fn otel_endpoint_must_be_valid_url(&mut self, origin: &Origin) {
+        self.error(
+            "observability.otel.endpoint must be a valid URL".to_string(),
+            origin,
+            Some("The endpoint must start with http:// or https://.".to_string()),
+        )
+    }
+
+    pub(crate) fn otel_service_name_cannot_be_empty(&mut self, origin: &Origin) {
+        self.error(
+            "observability.otel.service_name cannot be empty when enabled".to_string(),
             origin,
             None,
         )
@@ -658,6 +715,14 @@ impl ValidationReport {
     pub(crate) fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &Origin) {
         self.error(
             format!("invalid network policy CIDR: {}", cidr),
+            origin,
+            None,
+        )
+    }
+
+    pub(crate) fn device_path_must_start_with_slash(&mut self, path: &str, origin: &Origin) {
+        self.error(
+            format!("device path must start with '/': {path}"),
             origin,
             None,
         )

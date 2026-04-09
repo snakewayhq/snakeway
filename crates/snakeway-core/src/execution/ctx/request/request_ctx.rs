@@ -65,6 +65,9 @@ pub struct RequestCtx {
 
     /// Root tracing request span.
     pub(crate) request_span: Option<Span>,
+
+    /// Request start time for latency measurement.
+    pub(crate) request_start: std::time::Instant,
 }
 
 impl Default for RequestCtx {
@@ -110,6 +113,7 @@ impl RequestCtx {
 
             // Observability.
             request_span: None,
+            request_start: std::time::Instant::now(),
         }
     }
 

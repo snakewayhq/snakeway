@@ -1,9 +1,9 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
 use snakeway_core::testing_api::conf::types::{
-    AcmeChallengeSpec, BindInterfaceInput, BindSpec, CidrSpec, ConnectionRateLimitingFilterSpec,
-    DeviceSpec, IdentityDeviceSpec, IngressSpec, IpFamilySpec, NetworkConnectionFilterSpec,
-    NetworkPolicyDeviceSpec, OnNoPeerAddrSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
+    AcmeChallengeSpec, BindInterfaceInput, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
+    IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,
+    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
+    StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use snakeway_core::testing_api::conf::{load_config_from_specs, types::RuntimeConfig};
 use std::path::PathBuf;
@@ -67,6 +67,17 @@ impl ConfigBuilder {
     }
 
     pub fn build(self) -> RuntimeConfig {
+        let validated = self.try_build();
+        if validated.validation_report.has_violations() {
+            validated.validation_report.render_pretty();
+            panic!("failed to load fixture config - check above for violations");
+        }
+        validated.config
+    }
+
+    /// Build config without panicking on validation errors.
+    /// Returns the full `ValidatedConfig` so tests can assert on the report.
+    pub fn try_build(self) -> snakeway_core::testing_api::conf::validation::ValidatedConfig {
         let mut device_specs = vec![];
 
         // Identity
@@ -98,16 +109,8 @@ impl ConfigBuilder {
             ));
         }
 
-        let validated_cfg =
-            load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
-                .expect("failed to load fixture config");
-
-        if validated_cfg.validation_report.has_violations() {
-            validated_cfg.validation_report.render_pretty();
-            panic!("failed to load fixture config - check above for violations");
-        }
-
-        validated_cfg.config
+        load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
+            .expect("failed to load fixture config")
     }
 }
 
@@ -127,75 +130,8 @@ impl ConfigBuilder {
         self
     }
 
-    pub(crate) fn make_connection_filter(
-        cidr_allow: Option<&[&str]>,
-        cidr_deny: Option<&[&str]>,
-        ipv4_enabled: bool,
-        ipv6_enabled: bool,
-        on_no_peer_addr: OnNoPeerAddrSpec,
-    ) -> NetworkConnectionFilterSpec {
-        NetworkConnectionFilterSpec {
-            cidr: CidrSpec {
-                allow: cidr_allow
-                    .unwrap_or(&[])
-                    .iter()
-                    .map(|c| c.parse().expect("invalid CIDR in allowlist"))
-                    .collect(),
-                deny: cidr_deny
-                    .unwrap_or(&[])
-                    .iter()
-                    .map(|c| c.parse().expect("invalid CIDR in denylist"))
-                    .collect(),
-            },
-            ip_family: IpFamilySpec {
-                ipv4: ipv4_enabled,
-                ipv6: ipv6_enabled,
-            },
-            on_no_peer_addr,
-        }
-    }
-    pub fn with_connection_filter_cidr_deny_list(self, cidr_deny: &[&str]) -> Self {
-        let connection_filter =
-            Self::make_connection_filter(None, Some(cidr_deny), true, true, OnNoPeerAddrSpec::Deny);
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_cidr_allow_list(self, cidr_allow: &[&str]) -> Self {
-        let connection_filter = Self::make_connection_filter(
-            Some(cidr_allow),
-            None,
-            true,
-            true,
-            OnNoPeerAddrSpec::Deny,
-        );
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_cidr_allow_and_deny_list(
-        self,
-        cidr_allow: &[&str],
-        cidr_deny: &[&str],
-    ) -> Self {
-        let connection_filter = Self::make_connection_filter(
-            Some(cidr_allow),
-            Some(cidr_deny),
-            true,
-            true,
-            OnNoPeerAddrSpec::Deny,
-        );
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_deny_when_no_ip(self) -> Self {
-        let connection_filter =
-            Self::make_connection_filter(None, None, true, true, OnNoPeerAddrSpec::Deny);
-        self.set_connection_filter_on_last_bind(&connection_filter)
-    }
-
-    pub fn with_connection_filter_ipv4_disabled(self) -> Self {
-        let connection_filter =
-            Self::make_connection_filter(None, None, false, true, OnNoPeerAddrSpec::Deny);
-        self.set_connection_filter_on_last_bind(&connection_filter)
+    pub fn with_connection_filter(self, spec: NetworkConnectionFilterSpec) -> Self {
+        self.set_connection_filter_on_last_bind(&spec)
     }
 }
 

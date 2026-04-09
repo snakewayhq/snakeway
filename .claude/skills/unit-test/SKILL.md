@@ -5,65 +5,27 @@ Follow these patterns precisely when adding new tests.
 
 ## Where Tests Live
 
-### `snakeway-core`
-
-Each module places its tests in a `tests` submodule, declared at the bottom of `mod.rs`:
+Unit tests live **inline** at the bottom of the file they test, inside a
+`#[cfg(test)] mod tests { ... }` block. This is the idiomatic Rust convention
+and applies to both `snakeway-core` and `snakeway-conf`.
 
 ```rust
+// At the bottom of the file being tested:
 #[cfg(test)]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn my_test() { ... }
+}
 ```
 
-For modules with many test cases the `tests` submodule is a **directory**:
+Do not create separate `tests.rs` or `tests/` submodule directories for new tests.
+Existing test submodules in the codebase may follow an older pattern -- new tests
+should always be inline.
 
-```
-src/
-  net/
-    mod.rs          ← declares `#[cfg(test)] mod tests;`
-    tests/
-      mod.rs        ← re-exports test sub-modules
-      network_connection_filter_tests.rs
-```
-
-For simpler modules with few tests a single `tests.rs` file alongside `mod.rs` suffices.
-
-### `snakeway-conf`
-
-Validation tests live **inline** at the bottom of each `*_validation.rs` file,
-inside a `#[cfg(test)] mod tests { ... }` block. Each validation file is self-contained
-with its own helpers and imports -- do not create shared test utility modules.
-
-```
-types/specification/
-  server/
-    server_validation.rs        ← #[cfg(test)] mod tests { ... } at bottom
-  ingress/
-    bind/
-      bind_validation.rs        ← #[cfg(test)] mod tests { ... } at bottom
-      redirect_validation.rs    ← #[cfg(test)] mod tests { ... } at bottom
-    service/
-      service_validation.rs     ← #[cfg(test)] mod tests { ... } at bottom
-```
-
-Cross-ingress and cross-device tests (checks that span multiple specs) live inline
-in the centralized validation files:
-
-```
-validation/single_file/
-  ingress.rs                    ← #[cfg(test)] mod tests { ... } at bottom
-  device.rs                     ← #[cfg(test)] mod tests { ... } at bottom
-```
-
-Cross-file validation tests (checks that span multiple config files) live inline in:
-
-```
-validation/multi_file/
-  tls.rs                        ← #[cfg(test)] mod tests { ... } at bottom
-```
-
-**Key rule:** tests for a `ValidateSpec` implementation go in the same file as
-that implementation, not in a separate test directory. Construct the spec directly
-and call `.validate()` -- do not wrap in parent types unnecessarily.
+**Key rule:** tests go in the same file as the code they test. Construct types
+directly and call methods -- do not wrap in parent types unnecessarily.
 
 ## The AAA Pattern
 

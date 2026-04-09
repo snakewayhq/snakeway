@@ -5,10 +5,17 @@
 //! propagates everywhere automatically.
 
 // ---------------------------------------------------------------------------
+// File-based configuration
+// ---------------------------------------------------------------------------
+
+/// Path to the config fixture directory.
+pub const FIXTURES_CONFIG_DIR: &str = "fixtures/config";
+
+// ---------------------------------------------------------------------------
 // HTTP Replay
 // ---------------------------------------------------------------------------
 
-/// Path to the test fixture directory.
+/// Path to the HTTP replay fixture directory.
 pub const FIXTURES_HTTP_DIR: &str = "fixtures/http";
 pub const HTTP_REPLAY_OK_RESPONSE: &str = "200 OK";
 
@@ -35,6 +42,10 @@ pub const UPSTREAM_PORT_PRIMARY: u16 = 9000;
 /// Secondary placeholder upstream port used when building service specs.
 /// Always patched to a dynamic free port by the test harness at startup.
 pub const UPSTREAM_PORT_SECONDARY: u16 = 9001;
+
+/// Tertiary placeholder upstream port for tests requiring 3+ upstreams.
+/// Always patched to a dynamic free port by the test harness at startup.
+pub const UPSTREAM_PORT_TERTIARY: u16 = 9002;
 
 // ---------------------------------------------------------------------------
 // Route paths

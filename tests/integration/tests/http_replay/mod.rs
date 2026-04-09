@@ -5,6 +5,7 @@ mod encoding;
 mod headers;
 mod malformed;
 mod methods;
+mod security;
 mod smuggling;
 mod uri;
 

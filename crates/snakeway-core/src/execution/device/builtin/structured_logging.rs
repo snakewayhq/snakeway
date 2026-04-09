@@ -1,9 +1,25 @@
 use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
-use crate::execution::device::core::errors::DeviceError;
-use crate::execution::device::core::{Device, result::DeviceResult};
+use crate::execution::device::core::{Device, DeviceError, DeviceResult};
 use crate::execution::enrichment::user_agent::ClientIdentity;
-use crate::http_event::HttpEvent;
-use anyhow::Result;
+
+#[derive(Debug, Clone, Copy)]
+enum HttpEvent {
+    Request,
+    BeforeProxy,
+    AfterProxy,
+    Response,
+}
+
+impl HttpEvent {
+    fn as_str(self) -> &'static str {
+        match self {
+            HttpEvent::Request => "request",
+            HttpEvent::BeforeProxy => "before_proxy",
+            HttpEvent::AfterProxy => "after_proxy",
+            HttpEvent::Response => "response",
+        }
+    }
+}
 use http::HeaderMap;
 use snakeway_conf::types::{
     IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig,
@@ -37,7 +53,7 @@ pub(crate) struct StructuredLoggingDevice {
 
     include_headers: bool,
     allowed_headers: HashSet<String>,
-    redact_headers: HashSet<String>,
+    redacted_headers: HashSet<String>,
 
     include_identity: bool,
     identity_fields: Vec<IdentityFieldConfig>,
@@ -47,30 +63,6 @@ pub(crate) struct StructuredLoggingDevice {
 }
 
 impl StructuredLoggingDevice {
-    pub(crate) fn from_config(cfg: StructuredLoggingDeviceConfig) -> Result<Self> {
-        Ok(Self {
-            level: cfg.level,
-
-            include_headers: cfg.include_headers,
-            allowed_headers: cfg
-                .allowed_headers
-                .into_iter()
-                .map(|h| h.to_lowercase())
-                .collect(),
-            redact_headers: cfg
-                .redacted_headers
-                .into_iter()
-                .map(|h| h.to_lowercase())
-                .collect(),
-
-            include_identity: cfg.include_identity,
-            identity_fields: cfg.identity_fields,
-
-            events: cfg.events,
-            phases: cfg.phases,
-        })
-    }
-
     // ------------------------------------------------------------------------
     // Gating helpers
     // ------------------------------------------------------------------------
@@ -107,7 +99,7 @@ impl StructuredLoggingDevice {
                 continue;
             }
 
-            let val = if self.redact_headers.contains(&name_lc) {
+            let val = if self.redacted_headers.contains(&name_lc) {
                 "<redacted>".to_string()
             } else {
                 value
@@ -247,6 +239,21 @@ impl StructuredLoggingDevice {
         ctx.extensions
             .get::<RequestId>()
             .map(move |id| id.0.as_str())
+    }
+}
+
+impl From<StructuredLoggingDeviceConfig> for StructuredLoggingDevice {
+    fn from(cfg: StructuredLoggingDeviceConfig) -> Self {
+        Self {
+            level: cfg.level,
+            include_headers: cfg.include_headers,
+            allowed_headers: cfg.allowed_headers,
+            redacted_headers: cfg.redacted_headers,
+            include_identity: cfg.include_identity,
+            identity_fields: cfg.identity_fields,
+            events: cfg.events,
+            phases: cfg.phases,
+        }
     }
 }
 
