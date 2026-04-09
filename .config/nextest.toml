@@ -1,3 +1,10 @@
 [profile.ci.junit]
 path = "junit.xml"
 report-name = "snakeway-tests"
+
+# The ACME HTTP-01 test polls for certificate issuance from Pebble.
+# A transient first-attempt failure triggers a 20-second backoff before
+# retry, so the test may need up to ~90 seconds in CI.
+[[profile.ci.overrides]]
+filter = "test(acme::http01)"
+slow-timeout = { period = "120s", terminate-after = 1 }
