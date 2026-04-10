@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+      SCCACHE_GHA_ENABLED: "true"   # Enables GitHub Actions cache backend
+      RUSTC_WRAPPER: sccache
 
     steps:
       - name: Checkout
