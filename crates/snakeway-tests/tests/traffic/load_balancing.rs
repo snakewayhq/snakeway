@@ -1,15 +1,15 @@
-use integration::conf::ConfigBuilder;
-use integration::constants::{
-    TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY, UPSTREAM_PORT_TERTIARY,
-};
-use integration::harness::TestServer;
-use integration::harness::server::admin_client;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
 use snakeway_core::testing_api::conf::types::{
     LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec,
 };
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::constants::{
+    TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY, UPSTREAM_PORT_TERTIARY,
+};
+use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::server::admin_client;
 use std::time::Duration;
 
 fn parse_upstream_request_counts(json: &serde_json::Value) -> Vec<(String, u64)> {
@@ -129,7 +129,7 @@ fn request_pressure_distributes_under_concurrent_load() {
     let mut cfg = build_lb_config(LoadBalancingStrategySpec::RequestPressure);
     let srv = TestServer::start_with_config(
         &mut cfg,
-        integration::harness::upstream::start_slow_http_upstream,
+        snakeway_tests::harness::upstream::start_slow_http_upstream,
     );
     let admin = admin_client();
     let base_url = srv.base_url();

@@ -1,5 +1,5 @@
 use super::replay_fixture;
-use integration::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 
 /// CL.TE request smuggling test.
 ///

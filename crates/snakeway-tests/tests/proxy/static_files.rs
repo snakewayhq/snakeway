@@ -1,8 +1,8 @@
-use integration::conf::{ConfigBuilder, minimal_static_file_runtime_config};
-use integration::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST};
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_tests::conf::{ConfigBuilder, minimal_static_file_runtime_config};
+use snakeway_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST};
+use snakeway_tests::harness::TestServer;
 
 const INDEX_HTML: &str = "index.html";
 const IMAGES_DIR: &str = "images";

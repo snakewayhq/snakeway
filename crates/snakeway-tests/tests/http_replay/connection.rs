@@ -1,5 +1,5 @@
 use super::replay_fixture;
-use integration::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 
 /// HTTP/1.0 remains in use by legacy clients, health-check tools, and
 /// some load balancers.  An HTTP/1.1 reverse proxy should accept HTTP/1.0

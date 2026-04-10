@@ -1,7 +1,7 @@
-use integration::conf::ConfigBuilder;
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::harness::TestServer;
 
 //-----------------------------------------------------------------------------
 // Baseline: structured logging must not interfere with proxying

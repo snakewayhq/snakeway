@@ -1,5 +1,5 @@
 use super::replay_fixture;
-use integration::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 
 #[test]
 fn chrome_navigation_should_proxy() {

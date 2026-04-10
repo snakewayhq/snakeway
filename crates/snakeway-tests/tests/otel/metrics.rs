@@ -1,10 +1,10 @@
-use integration::conf::minimal_http_runtime_config;
-use integration::harness::TestServer;
 use opentelemetry::metrics::MeterProvider;
 use opentelemetry_sdk::metrics::data::{AggregatedMetrics, Metric, MetricData};
 use opentelemetry_sdk::metrics::{InMemoryMetricExporter, PeriodicReader, SdkMeterProvider};
 use reqwest::StatusCode;
 use snakeway_core::testing_api::Metrics;
+use snakeway_tests::conf::minimal_http_runtime_config;
+use snakeway_tests::harness::TestServer;
 use std::sync::Arc;
 
 fn setup_metrics() -> (Arc<Metrics>, InMemoryMetricExporter, SdkMeterProvider) {
@@ -43,7 +43,7 @@ fn request_counter_increments_after_proxied_request() {
     let mut cfg = minimal_http_runtime_config();
     let srv = TestServer::start_with_config_and_metrics(
         &mut cfg,
-        integration::harness::upstream::start_http_upstream,
+        snakeway_tests::harness::upstream::start_http_upstream,
         Some(metrics),
     );
 
@@ -76,7 +76,7 @@ fn request_duration_histogram_records_after_proxied_request() {
     let mut cfg = minimal_http_runtime_config();
     let srv = TestServer::start_with_config_and_metrics(
         &mut cfg,
-        integration::harness::upstream::start_http_upstream,
+        snakeway_tests::harness::upstream::start_http_upstream,
         Some(metrics),
     );
 
@@ -119,7 +119,7 @@ fn no_metrics_recorded_without_requests() {
     let mut cfg = minimal_http_runtime_config();
     let _srv = TestServer::start_with_config_and_metrics(
         &mut cfg,
-        integration::harness::upstream::start_http_upstream,
+        snakeway_tests::harness::upstream::start_http_upstream,
         Some(metrics),
     );
 
@@ -144,7 +144,7 @@ fn request_counter_records_method_and_status_attributes() {
     let mut cfg = minimal_http_runtime_config();
     let srv = TestServer::start_with_config_and_metrics(
         &mut cfg,
-        integration::harness::upstream::start_http_upstream,
+        snakeway_tests::harness::upstream::start_http_upstream,
         Some(metrics),
     );
 
@@ -200,7 +200,7 @@ fn concurrent_requests_counted_accurately() {
     let mut cfg = minimal_http_runtime_config();
     let srv = TestServer::start_with_config_and_metrics(
         &mut cfg,
-        integration::harness::upstream::start_http_upstream,
+        snakeway_tests::harness::upstream::start_http_upstream,
         Some(metrics),
     );
     let n = 20u64;
@@ -217,7 +217,7 @@ fn concurrent_requests_counted_accurately() {
                     .unwrap();
                 let res = client
                     .get(url)
-                    .header("Host", integration::constants::TEST_HOST)
+                    .header("Host", snakeway_tests::constants::TEST_HOST)
                     .send()
                     .unwrap();
                 assert_eq!(res.status(), StatusCode::OK);

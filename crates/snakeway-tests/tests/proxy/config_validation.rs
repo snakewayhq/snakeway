@@ -1,6 +1,6 @@
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_tests::harness::TestServer;
 
 #[test]
 fn should_load_config_files() {

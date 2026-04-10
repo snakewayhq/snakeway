@@ -1,5 +1,5 @@
 use super::replay_fixture;
-use integration::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 
 /// A minimal, perfectly-formed GET request — the most fundamental
 /// proxy operation.  If this fails everything else is moot.

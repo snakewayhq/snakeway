@@ -1,9 +1,9 @@
-use integration::conf::{ConfigBuilder, minimal_http_runtime_config};
-use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
+use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
+use snakeway_tests::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
+use snakeway_tests::harness::TestServer;
 
 /// A route configured for `/api` must also match sub-paths like
 /// `/api/users/123`.

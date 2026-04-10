@@ -1,10 +1,10 @@
-use integration::conf::ConfigBuilder;
-use integration::constants::{ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST};
 use pretty_assertions::assert_eq;
 use snakeway_core::runtime::build_runtime_state;
 use snakeway_core::testing_api::cli::route::solve::{
     RouteSolveOptions, SyntheticRequest, walk_solve,
 };
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::constants::{ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST};
 
 fn make_req(scheme: &str, host: &str, path: &str) -> SyntheticRequest {
     SyntheticRequest {

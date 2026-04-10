@@ -1,6 +1,6 @@
-use integration::conf::minimal_http_runtime_config;
-use integration::harness::TestServer;
 use reqwest::StatusCode;
+use snakeway_tests::conf::minimal_http_runtime_config;
+use snakeway_tests::harness::TestServer;
 
 /// Parse the echo-headers upstream response as JSON and look up a header
 /// by name (lowercased keys).

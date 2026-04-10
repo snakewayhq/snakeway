@@ -1,14 +1,14 @@
-use integration::conf::minimal_http_runtime_config_with_admin;
-use integration::constants::{FIXTURES_CONFIG_DIR, ROUTE_PATH_API, TEST_HOST};
-use integration::harness::TestServer;
-use integration::harness::server::{
-    admin_client as make_admin_client, free_port, wait_for_listener,
-};
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
 use snakeway_core::testing_api::ControlPlaneServer;
 use snakeway_core::testing_api::conf::load_config;
+use snakeway_tests::conf::minimal_http_runtime_config_with_admin;
+use snakeway_tests::constants::{FIXTURES_CONFIG_DIR, ROUTE_PATH_API, TEST_HOST};
+use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::server::{
+    admin_client as make_admin_client, free_port, wait_for_listener,
+};
 use std::path::Path;
 use std::time::Duration;
 
@@ -202,7 +202,7 @@ fn admin_reload_with_invalid_config_preserves_old_config() {
     let admin_port = free_port();
     let upstream_port = free_port();
 
-    integration::harness::upstream::start_http_upstream(upstream_port);
+    snakeway_tests::harness::upstream::start_http_upstream(upstream_port);
 
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join(FIXTURES_CONFIG_DIR)
