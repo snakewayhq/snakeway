@@ -311,7 +311,7 @@ test:
     cargo nextest run -p snakeway-core -p snakeway-conf --features static_files,wasm
 
 integration-test *ARGS: fetch-pebble-ca generate-dev-certs
-    cargo nextest run -p integration {{ ARGS }}
+    cargo nextest run -p snakeway-tests {{ ARGS }}
 
 test-everything: lint test integration-test generate-all-templates
     @echo "All good."

@@ -104,7 +104,7 @@ jobs:
             -in crates/snakeway-tests/certs/pebble-ca.pem
 
       - name: Run integration tests
-        run: cargo nextest run -p integration --profile ci
+        run: cargo nextest run -p snakeway-tests --profile ci
 
       - name: Publish integration test results
         uses: mikepenz/action-junit-report@v5

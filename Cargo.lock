@@ -2092,31 +2092,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "integration"
-version = "0.9.1"
-dependencies = [
- "arc-swap",
- "futures-util",
- "http",
- "opentelemetry",
- "opentelemetry_sdk",
- "pretty_assertions",
- "prost",
- "reqwest",
- "serde_json",
- "snakeway-core",
- "tempfile",
- "tokio",
- "tokio-tungstenite",
- "tonic",
- "tonic-prost",
- "tonic-prost-build",
- "tracing",
- "tracing-subscriber",
- "url",
-]
-
-[[package]]
 name = "io-extras"
 version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4186,6 +4161,31 @@ dependencies = [
  "wasmtime-wasi",
  "woothee",
  "x509-parser",
+]
+
+[[package]]
+name = "snakeway-tests"
+version = "0.9.1"
+dependencies = [
+ "arc-swap",
+ "futures-util",
+ "http",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "pretty_assertions",
+ "prost",
+ "reqwest",
+ "serde_json",
+ "snakeway-core",
+ "tempfile",
+ "tokio",
+ "tokio-tungstenite",
+ "tonic",
+ "tonic-prost",
+ "tonic-prost-build",
+ "tracing",
+ "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
