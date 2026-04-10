@@ -13,7 +13,7 @@ crates/snakeway/           # Main binary crate (entrypoint, CLI wiring)
 crates/snakeway-conf/      # Configuration library crate — handles configuration file parsing and lowering to runtime representation.
 crates/snakeway-core/      # Core library crate — all business logic lives here
 crates/snakeway-wit/       # WIT bindings for WASM device interface
-tests/integration/         # Integration test crate (separate binary, uses nextest)
+crates/snakeway-tests/     # Integration test crate (separate binary, uses nextest)
 docs/                      # Docusaurus documentation site
 k6/                        # k6 load test scripts
 ```
@@ -44,9 +44,9 @@ All tests follow the **Arrange / Act / Assert (AAA)** pattern with explicit `// 
 comments.
 See the `unit-test` skill for full conventions.
 
-## Integration Testing (`tests/integration`)
+## Integration Testing (`crates/snakeway-tests`)
 
-Integration tests live in `tests/integration` organised by feature area.
+Integration tests live in `crates/snakeway-tests` organised by feature area.
 They spin up a real Snakeway server with a real upstream and make live HTTP/WS/gRPC requests.
 
 Two sub-types:
@@ -75,15 +75,15 @@ See the `docs` skill for the spec-to-docs mapping, writing conventions, and reci
 
 ### `protoc` is not installed
 
-The `tests/integration` crate requires the Protocol Buffers compiler (`protoc`) to
+The `crates/snakeway-tests` crate requires the Protocol Buffers compiler (`protoc`) to
 compile its gRPC stubs. **`protoc` is not available in this environment and cannot
 be installed.** Do not attempt to install it.
 
 Consequence: `cargo check --workspace` and `cargo test --workspace` will always fail
-for the `tests/integration` crate with:
+for the `crates/snakeway-tests` crate with:
 
 ```
-thread 'main' panicked at tests/integration/build.rs:...:
+thread 'main' panicked at crates/snakeway-tests/build.rs:...:
 failed to compile protos: Custom { kind: NotFound, error: "Could not find `protoc`" }
 ```
 

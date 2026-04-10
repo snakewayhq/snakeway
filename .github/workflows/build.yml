@@ -97,11 +97,11 @@ jobs:
 
       - name: Fetch Pebble CA certificate
         run: |
-          mkdir -p tests/integration/certs
+          mkdir -p crates/snakeway-tests/certs
           docker cp snakeway-pebble:/test/certs/pebble.minica.pem \
-            tests/integration/certs/pebble-ca.pem
+            crates/snakeway-tests/certs/pebble-ca.pem
           openssl x509 -noout -subject \
-            -in tests/integration/certs/pebble-ca.pem
+            -in crates/snakeway-tests/certs/pebble-ca.pem
 
       - name: Run integration tests
         run: cargo nextest run -p integration --profile ci

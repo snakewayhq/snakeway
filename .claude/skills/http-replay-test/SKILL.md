@@ -9,7 +9,7 @@ header quirks, large cookies, hop-by-hop header handling, etc.
 ## How the Harness Works
 
 ```
-tests/integration/
+crates/snakeway-tests/
   fixtures/
     http/                   ← raw .http request fixture files
       headers/
@@ -59,7 +59,7 @@ pub fn replay_fixture(path: &str) -> String {
 
 ## Writing a Fixture File
 
-Create a plain text file in `tests/integration/fixtures/http/<category>/my_request.http`.
+Create a plain text file in `crates/snakeway-tests/fixtures/http/<category>/my_request.http`.
 The file contains a raw HTTP/1.1 request exactly as it would appear on the wire.
 Line endings can be `\n` — the harness normalises them to `\r\n` automatically.
 
@@ -132,8 +132,8 @@ and received a 200 response. Its absence means Snakeway rejected or blocked the 
 
 ## Declaring a New Test File
 
-1. Create the file: `tests/integration/tests/http_replay/my_category.rs`
-2. Declare it in `tests/integration/tests/http_replay/mod.rs`:
+1. Create the file: `crates/snakeway-tests/tests/http_replay/my_category.rs`
+2. Declare it in `crates/snakeway-tests/tests/http_replay/mod.rs`:
 
 ```rust
 mod browsers;
@@ -155,10 +155,10 @@ mod smuggling;
 
 ## Adding a New Category
 
-1. Create a directory: `tests/integration/fixtures/http/my_category/`
-2. Add fixture files: `tests/integration/fixtures/http/my_category/scenario_name.http`
-3. Create a test file: `tests/integration/tests/http_replay/my_category.rs`
-4. Declare it in `tests/integration/tests/http_replay/mod.rs`
+1. Create a directory: `crates/snakeway-tests/fixtures/http/my_category/`
+2. Add fixture files: `crates/snakeway-tests/fixtures/http/my_category/scenario_name.http`
+3. Create a test file: `crates/snakeway-tests/tests/http_replay/my_category.rs`
+4. Declare it in `crates/snakeway-tests/tests/http_replay/mod.rs`
 
 ## Running Replay Tests
 

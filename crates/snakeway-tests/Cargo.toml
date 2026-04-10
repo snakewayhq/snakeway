@@ -4,7 +4,7 @@ version = "0.9.1"
 edition = "2024"
 
 [dependencies]
-snakeway-core = { version = "*", path = "../../crates/snakeway-core", features = ["wasm", "static_files"] }
+snakeway-core = { workspace = true, features = ["wasm", "static_files"] }
 arc-swap = { workspace = true }
 http = { workspace = true }
 reqwest = { version = "0.12", features = ["blocking"] }
