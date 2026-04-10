@@ -1,10 +1,10 @@
-use integration::conf::ConfigBuilder;
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
     CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec,
 };
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::harness::TestServer;
 
 #[test]
 fn should_not_be_blocked_by_connection_filter() {

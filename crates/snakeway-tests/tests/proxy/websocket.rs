@@ -1,11 +1,11 @@
 use futures_util::{SinkExt, StreamExt};
-use integration::conf::{ConfigBuilder, minimal_http_runtime_config, minimal_ws_runtime_config};
-use integration::constants::{
-    ROUTE_PATH_API, ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
-};
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
+use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config, minimal_ws_runtime_config};
+use snakeway_tests::constants::{
+    ROUTE_PATH_API, ROUTE_PATH_WS, TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
+};
+use snakeway_tests::harness::TestServer;
 
 #[test]
 fn websocket_echo_is_proxied() {

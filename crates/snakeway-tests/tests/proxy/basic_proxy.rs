@@ -1,7 +1,7 @@
-use integration::conf::minimal_http_runtime_config;
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_tests::conf::minimal_http_runtime_config;
+use snakeway_tests::harness::TestServer;
 
 #[test]
 fn should_proxy_to_upstream() {

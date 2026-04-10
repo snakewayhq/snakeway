@@ -236,12 +236,12 @@ use integration::constants::{
 just integration-test
 
 # Run directly with nextest (assumes certs already exist)
-cargo nextest run -p integration
+cargo nextest run -p snakeway-tests
 
 # Run a specific test
-cargo nextest run -p integration -E 'test(serves_index_html_from_static_dir)'
+cargo nextest run -p snakeway-tests -E 'test(serves_index_html_from_static_dir)'
 ```
 
 > **Note:** The integration test suite requires Docker for ACME tests (Pebble CA).
 > For everything except ACME tests you can skip `just fetch-pebble-ca` and run
-> `cargo nextest run -p integration` directly after generating TLS certs once.
+> `cargo nextest run -p snakeway-tests` directly after generating TLS certs once.

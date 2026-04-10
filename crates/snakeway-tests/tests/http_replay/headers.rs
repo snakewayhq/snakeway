@@ -1,5 +1,5 @@
 use super::replay_fixture;
-use integration::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 
 /// Multiple values for the same header field name (e.g. two `Accept`
 /// headers) are permitted by RFC 9110 §5.3 and are semantically

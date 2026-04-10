@@ -164,10 +164,10 @@ mod smuggling;
 
 ```bash
 # Run only the http_replay test group
-cargo nextest run -p integration -E 'test(http_replay)'
+cargo nextest run -p snakeway-tests -E 'test(http_replay)'
 
 # Run a specific replay test
-cargo nextest run -p integration -E 'test(cl_te_smuggling_should_be_rejected)'
+cargo nextest run -p snakeway-tests -E 'test(cl_te_smuggling_should_be_rejected)'
 
 # Run the full integration suite (includes replay tests)
 just integration-test

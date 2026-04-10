@@ -1,14 +1,14 @@
-use integration::conf::{ConfigBuilder, minimal_http_runtime_config};
-use integration::constants::{
-    HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST, UPSTREAM_PORT_PRIMARY,
-};
-use integration::harness::TestServer;
-use integration::harness::upstream::{
-    start_http_upstream_that_hangs, start_http_upstream_with_large_response,
-};
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
+use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
+use snakeway_tests::constants::{
+    HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST, UPSTREAM_PORT_PRIMARY,
+};
+use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::upstream::{
+    start_http_upstream_that_hangs, start_http_upstream_with_large_response,
+};
 use std::time::Duration;
 
 //-----------------------------------------------------------------------------

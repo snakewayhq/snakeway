@@ -1,9 +1,9 @@
-use integration::conf::minimal_grpc_runtime_config;
-use integration::constants::{CERT_ORIGIN_CA_PEM, TEST_HOST};
-use integration::harness::TestServer;
-use integration::harness::upstream::helloworld;
-use integration::harness::upstream::helloworld::HelloRequest;
 use pretty_assertions::assert_eq;
+use snakeway_tests::conf::minimal_grpc_runtime_config;
+use snakeway_tests::constants::{CERT_ORIGIN_CA_PEM, TEST_HOST};
+use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::upstream::helloworld;
+use snakeway_tests::harness::upstream::helloworld::HelloRequest;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 
 #[test]

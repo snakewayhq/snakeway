@@ -1,8 +1,8 @@
-use integration::conf::ConfigBuilder;
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::harness::TestServer;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 //-----------------------------------------------------------------------------

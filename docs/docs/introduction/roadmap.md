@@ -228,11 +228,14 @@ The following items are not in the critical path for 1.0 but represent the longe
 
 Zero-drop reload support for seamless configuration changes under load.
 
-### Router performance optimizations
+### Router Performance
 
-- LRU cache in front of router to make route lookups O(1) instead of O(n).
+LRU cache in front of the router to make route lookups O(1) instead of O(n).
 
 ### Caching Device
+
+HTTP response caching using Pingora's native cache subsystem with pluggable storage (memory, disk, Redis, or custom
+backends).
 
 Use Pingora Native HTTP Cache.
 
@@ -252,15 +255,6 @@ Pluggable storage (supported by Pingora):
 2. memory + disk
 3. Redis
 4. custom storage
-
-### Router Performance
-
-LRU cache in front of the router to make route lookups O(1) instead of O(n).
-
-### Caching Device
-
-HTTP response caching using Pingora's native cache subsystem with pluggable storage (memory, disk, Redis, or custom
-backends).
 
 ### Full WASM Device Support
 

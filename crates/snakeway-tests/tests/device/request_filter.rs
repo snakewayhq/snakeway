@@ -1,9 +1,9 @@
-use integration::conf::{
-    ConfigBuilder, minimal_http_runtime_config, minimal_http_runtime_config_with_request_filter,
-};
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use snakeway_tests::conf::{
+    ConfigBuilder, minimal_http_runtime_config, minimal_http_runtime_config_with_request_filter,
+};
+use snakeway_tests::harness::TestServer;
 
 #[test]
 fn request_filter_disabled_allows_request() {

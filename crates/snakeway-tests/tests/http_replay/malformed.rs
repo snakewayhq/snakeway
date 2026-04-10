@@ -1,7 +1,7 @@
 use super::replay_fixture;
-use integration::conf::ConfigBuilder;
-use integration::constants::HTTP_REPLAY_OK_RESPONSE;
-use integration::harness::TestServer;
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::harness::TestServer;
 
 /// HTTP/1.1 requires a Host header (RFC 9112 §3.2).
 ///

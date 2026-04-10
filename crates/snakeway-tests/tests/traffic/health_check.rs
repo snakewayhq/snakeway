@@ -1,13 +1,13 @@
-use integration::conf::ConfigBuilder;
-use integration::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
-use integration::harness::TestServer;
-use integration::harness::server::admin_client;
-use integration::harness::upstream::start_http_upstream;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
     HealthCheckSpec, RuntimeConfig, ServiceRouteSpec, ServiceSpec,
 };
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
+use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::server::admin_client;
+use snakeway_tests::harness::upstream::start_http_upstream;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 

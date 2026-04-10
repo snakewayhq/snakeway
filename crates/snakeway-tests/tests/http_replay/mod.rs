@@ -9,8 +9,8 @@ mod security;
 mod smuggling;
 mod uri;
 
-use integration::conf::minimal_http_runtime_config;
-use integration::harness::TestServer;
+use snakeway_tests::conf::minimal_http_runtime_config;
+use snakeway_tests::harness::TestServer;
 
 pub fn replay_fixture(path: &str) -> String {
     let mut cfg = minimal_http_runtime_config();

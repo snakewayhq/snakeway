@@ -1,8 +1,8 @@
-use integration::conf::ConfigBuilder;
-use integration::harness::TestServer;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::OnInvalidForwardedSpec;
+use snakeway_tests::conf::ConfigBuilder;
+use snakeway_tests::harness::TestServer;
 
 /// The `ForwardingSpec.on_invalid` field controls what happens when a
 /// request arrives with an X-Forwarded-For header whose value cannot be

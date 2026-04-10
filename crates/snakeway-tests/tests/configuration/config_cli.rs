@@ -1,5 +1,5 @@
-use integration::constants::FIXTURES_CONFIG_DIR;
 use snakeway_core::testing_api::conf::load_config;
+use snakeway_tests::constants::FIXTURES_CONFIG_DIR;
 
 /// Loading the `basic` fixture directory must succeed without validation
 /// errors. This exercises the full config pipeline: file discovery, HCL
@@ -136,8 +136,8 @@ fn empty_config_directory_returns_error() {
 #[test]
 fn nonexistent_ca_file_produces_validation_error() {
     // Arrange
-    use integration::conf::ConfigBuilder;
     use snakeway_core::testing_api::conf::types::ServerSpec;
+    use snakeway_tests::conf::ConfigBuilder;
     use std::path::PathBuf;
 
     let validated = ConfigBuilder::default()
