@@ -1,5 +1,5 @@
 [workspace]
-members = ["tests/integration", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core"]
+members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core"]
 default-members = ["crates/snakeway"]
 exclude = [
     "crates/snakeway-wit",
@@ -31,6 +31,8 @@ strip = "symbols"           # Strip symbols to minimize binary size
 
 
 [workspace.dependencies]
+snakeway-conf = { path = "crates/snakeway-conf" }
+snakeway-core = { path = "crates/snakeway-core" }
 
 anyhow = "1.0"
 async-trait = "0.1"

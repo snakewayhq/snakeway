@@ -49,7 +49,7 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
                 directory_url: "https://127.0.0.1:14000/dir".to_string(),
                 data_dir: PathBuf::from("data/acme/orders"),
                 contact_email: vec!["admin@snakeway.test".to_string()],
-                ca_file: Some(PathBuf::from("tests/integration/certs/pebble-ca.pem")),
+                ca_file: Some(PathBuf::from("crates/snakeway-tests/certs/pebble-ca.pem")),
             },
             cert_store: CertStoreSpec::Filesystem {
                 cert_dir: PathBuf::from("data/acme/certs"),

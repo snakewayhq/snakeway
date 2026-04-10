@@ -1,16 +1,16 @@
 # Skill: integration-test — Writing Standard Integration Tests
 
 This skill covers how to write standard (non-HTTP-replay) integration tests in the
-`tests/integration` crate. These tests spin up a real Snakeway server process and
+`crates/snakeway-tests` crate. These tests spin up a real Snakeway server process and
 exercise it over real network connections.
 
 ## Where Tests Live
 
-Integration tests are Rust test files inside `tests/integration/tests/`, organised
+Integration tests are Rust test files inside `crates/snakeway-tests/tests/`, organised
 into subdirectories by feature area:
 
 ```
-tests/integration/tests/
+crates/snakeway-tests/tests/
   proxy/
     basic_proxy.rs
     static_files.rs
@@ -88,7 +88,7 @@ ConfigBuilder::default ()
 
 ### Option B — Fixture directory (for testing the HCL config loader)
 
-Pass the name of a config fixture directory under `tests/integration/fixtures/config/`:
+Pass the name of a config fixture directory under `crates/snakeway-tests/fixtures/config/`:
 
 ```rust
 let srv = TestServer::start_with_http_upstream("basic");

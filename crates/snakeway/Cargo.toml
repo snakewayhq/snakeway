@@ -10,7 +10,7 @@ wasm = ["snakeway-core/wasm"]
 static_files = ["snakeway-core/static_files"]
 
 [dependencies]
-snakeway-core = { version = "*", path = "../snakeway-core" }
+snakeway-core = { workspace = true }
 
 [[bin]]
 name = "snakeway"
