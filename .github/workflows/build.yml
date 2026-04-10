@@ -58,7 +58,7 @@ jobs:
           cargo nextest run \
             -p snakeway-conf \
             -p snakeway-core \
-            --features static_files,wasm \
+            --all-features \
             --profile ci
 
       - name: Publish unit test results
@@ -164,7 +164,7 @@ jobs:
         run: |
           cargo llvm-cov \
             -p snakeway-core -p snakeway-conf -p snakeway \
-            --features static_files,wasm \
+            --all-features \
             --ignore-filename-regex 'pingora|tests/|examples/' \
             --json --output-path coverage.json
 
@@ -183,11 +183,9 @@ jobs:
 
       - name: Count tests and generate badge
         run: |
-          UNIT=$(cargo test -p snakeway-core -p snakeway-conf -p snakeway --features static_files,wasm -- --list 2>/dev/null | grep -c ':: test$' || echo 0)
+          UNIT=$(cargo test -p snakeway-core -p snakeway-conf -p snakeway --all-features -- --list 2>/dev/null | grep -c ': test$' || echo 0)
           echo "## Tests: ${UNIT}" >> "$GITHUB_STEP_SUMMARY"
-          jq -n --arg total "$UNIT" \
-            '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
-            > coverage-html/tests-badge.json
+          jq -n --arg total "$UNIT" '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}'
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
