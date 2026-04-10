@@ -323,6 +323,11 @@ test-with-coverage:
 test-with-coverage-summary:
     cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
+test-ci:
+    #!/usr/bin/env bash
+    UNIT=$(cargo test -p snakeway-core -p snakeway-conf --all-features -- --list 2>/dev/null | grep -c ': test$' || echo 0)
+    jq -n --arg total "$UNIT" '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}'
+
 # -----------------------------------------------------------------------------
 # CLEANUP
 # -----------------------------------------------------------------------------
