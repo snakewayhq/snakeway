@@ -1,2 +1,0 @@
-mod admin;
-mod director;
