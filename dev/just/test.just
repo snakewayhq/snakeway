@@ -1,0 +1,65 @@
+start-docker:
+    docker compose -f docker-compose-dev.yml up -d --remove-orphans
+
+stop-docker:
+    docker compose -f docker-compose-dev.yml down
+
+fetch-pebble-ca: start-docker
+    @echo "Fetch Pebble's CA cert..."
+    docker cp snakeway-pebble:/test/certs/pebble.minica.pem crates/snakeway-tests/certs/pebble-ca.pem
+    @echo "Fetch Pebble's Issuing cert (used to sign HTTP requests)..."
+    @curl -k https://localhost:15000/roots/0 > crates/snakeway-tests/certs/pebble-issuing-ca.pem
+    @echo "All good."
+
+# Install Snakeway dev CA into macOS System keychain
+install-dev-ca:
+    @echo "Installing Snakeway dev CA (macOS system trust)..."
+    sudo security add-trusted-cert \
+      -d -r trustRoot \
+      -k /Library/Keychains/System.keychain \
+      crates/snakeway-tests/certs/origin-ca.pem
+    @echo "✓ Snakeway dev CA installed"
+
+# Remove Snakeway dev CA from macOS System keychain
+uninstall-dev-ca:
+    @echo "Removing Snakeway dev CA from macOS system trust..."
+    sudo security delete-certificate \
+      -c "Snakeway Dev Root CA (DO NOT TRUST IN PROD)" \
+      /Library/Keychains/System.keychain
+    @echo "✓ Snakeway dev CA removed"
+
+generate-dev-certs:
+    mkdir -p crates/snakeway-tests/certs/
+    @just fetch-pebble-ca
+    ./dev/gen-test-certs.sh
+
+generate-all-templates:
+    @mkdir -p data/templates data/acme/orders
+    @rm -fr data/templates/*
+    @echo "Creating minimal conf..."
+    @cargo run -q --all-features -- config init data/templates/minimal --template=minimal
+    @echo "\nValidating minimal conf..."
+    @cargo run -q --all-features -- config check data/templates/minimal
+
+    @echo "\nCreating dev conf..."
+    @cargo run -q --all-features -- config init data/templates/dev --template=dev
+    @echo "\nValidating dev conf..."
+    @cargo run -q --all-features -- config check data/templates/dev
+
+    @echo "\nCreating httpbin conf..."
+    @cargo run -q --all-features -- config init data/templates/httpbin --template=httpbin
+    @echo "\nValidating httpbin conf..."
+    @cargo run -q --all-features -- config check data/templates/httpbin
+
+test:
+    cargo nextest run -p snakeway-core -p snakeway-conf --features static_files,wasm
+
+integration-test *ARGS: fetch-pebble-ca generate-dev-certs
+    cargo nextest run -p snakeway-tests {{ ARGS }}
+
+test-with-coverage:
+    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
+    open target/llvm-cov/html/index.html
+
+test-with-coverage-summary:
+    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
