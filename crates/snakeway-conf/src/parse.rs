@@ -87,3 +87,243 @@ pub(crate) fn parse_ingress(path: &Path) -> Result<IngressSpec, ConfigError> {
         static_files: parsed.static_files,
     })
 }
+
+#[cfg(test)]
+mod builtin_device_tests {
+    use super::*;
+
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn parse_identity_device_file() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("identity.hcl");
+
+        fs::write(
+            &path,
+            r#"
+identity_device = {
+  enable = true
+  trusted_proxies = ["127.0.0.1/32"]
+  enable_geoip = false
+  enable_user_agent = false
+  ua_engine = "woothee"
+}
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let devices = parse_devices(&path).unwrap();
+
+        // Assert
+        assert_eq!(devices.len(), 1);
+        assert!(matches!(devices[0], DeviceSpec::Identity(_)));
+    }
+
+    #[test]
+    fn parse_structured_logging_device_file() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("structured_logging.hcl");
+
+        fs::write(
+            &path,
+            r#"
+structured_logging_device = {
+  enable = true
+  include_headers = false
+  allowed_headers = []
+  redacted_headers = []
+  level = "info"
+  include_identity = false
+  identity_fields = []
+}
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let devices = parse_devices(&path).unwrap();
+
+        // Assert
+        assert_eq!(devices.len(), 1);
+        assert!(matches!(devices[0], DeviceSpec::StructuredLogging(_)));
+    }
+}
+
+#[cfg(test)]
+mod wasm_devices_tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn parse_wasm_device_array() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("wasm.hcl");
+
+        fs::write(
+            &path,
+            r#"
+wasm_devices = [
+  { enable = false, path = "./a.wasm", config = {} },
+  { enable = true,  path = "./b.wasm", config = {} }
+]
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let devices = parse_devices(&path).unwrap();
+
+        // Assert
+        assert_eq!(devices.len(), 2);
+        assert!(devices.iter().all(|d| matches!(d, DeviceSpec::Wasm(_))));
+    }
+
+    #[test]
+    fn parse_devices_empty_file_is_ok() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("empty.hcl");
+
+        fs::write(&path, "").unwrap();
+
+        // Act
+        let devices = parse_devices(&path).unwrap();
+
+        // Assert
+        assert!(devices.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod ingress_tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn parse_ingress_bind_file() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("api.hcl");
+
+        fs::write(
+            &path,
+            r#"
+bind = {
+  interface = "127.0.0.1"
+  port = 8080
+  enable_http2 = true
+  tls = {
+    mode = "manual"
+    cert = "cert.pem"
+    key  = "key.pem"
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let ingress = parse_ingress(&path).unwrap();
+
+        // Assert
+        let bind = ingress.bind.unwrap();
+        assert_eq!(bind.origin.section, "bind");
+    }
+
+    #[test]
+    fn parse_ingress_admin_bind_file() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("admin.hcl");
+
+        fs::write(
+            &path,
+            r#"
+bind_admin = {
+  interface = "127.0.0.1"
+  port = 8080
+  tls = {
+    mode = "manual"
+    cert = "cert.pem"
+    key  = "key.pem"
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let ingress = parse_ingress(&path).unwrap();
+
+        // Assert
+        let bind_admin = ingress.bind_admin.unwrap();
+        assert_eq!(bind_admin.origin.section, "bind_admin");
+    }
+
+    #[test]
+    fn parse_ingress_services_and_routes_have_origin() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("api.hcl");
+
+        fs::write(
+            &path,
+            r#"
+services = [
+  {
+    routes = [
+      {
+        hosts = ["api.example.com"]
+        path = "/api"
+      },
+      {
+        hosts = ["ws.example.com"]
+        path = "/ws"
+      }
+    ]
+
+    upstreams = [
+      { addr = "127.0.0.1:3000" }
+    ]
+  }
+]
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let ingress = parse_ingress(&path).unwrap();
+
+        // Assert
+        let svc = &ingress.services[0];
+        assert_eq!(svc.origin.section, "service");
+        assert_eq!(svc.origin.index, Some(0));
+
+        assert_eq!(svc.routes[0].origin.section, "route");
+        assert_eq!(svc.routes[0].origin.index, Some(0));
+
+        assert_eq!(svc.routes[1].origin.index, Some(1));
+        assert_eq!(svc.upstreams[0].origin.section, "backend");
+    }
+
+    #[test]
+    fn parse_ingress_invalid_hcl_returns_error() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("bad.hcl");
+
+        fs::write(&path, "services = [").unwrap();
+
+        // Act
+        let err = parse_ingress(&path).unwrap_err();
+
+        // Assert
+        assert!(matches!(err, ConfigError::Parse { .. }));
+    }
+}

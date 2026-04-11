@@ -49,7 +49,10 @@ jobs:
 
       # Lint check.
       - name: cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
+          # Second pass without benchmarks to catch dead code only kept alive by bench targets.
+          cargo clippy --workspace --exclude snakeway-tests --lib --tests --all-features -- -D warnings
 
       # Unit test check.
       - name: Install cargo-nextest

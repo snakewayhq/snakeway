@@ -9,8 +9,6 @@ mod strategy;
 mod types;
 
 mod admission_guard;
-#[cfg(test)]
-mod tests;
 
 pub(crate) use admission_guard::*;
 pub(crate) use decision::SelectedUpstream;

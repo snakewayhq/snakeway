@@ -1,2 +1,0 @@
-mod network_policy_tests;
-mod request_rate_limiting_tests;
