@@ -57,9 +57,6 @@ test:
 integration-test *ARGS: fetch-pebble-ca generate-dev-certs
     cargo nextest run -p snakeway-tests {{ ARGS }}
 
-test-everything: lint test integration-test generate-all-templates
-    @echo "All good."
-
 test-with-coverage:
     cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
     open target/llvm-cov/html/index.html

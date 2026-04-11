@@ -5,7 +5,6 @@ install-tools: install-dev-tools install-build-tools
 brew-install packages:
     {{ if os() == "macos" { "brew install " + packages } else { "" } }}
 
-# Install build tools
 install-build-tools:
     @brew install zig
     @cargo install cargo-component cargo-zigbuild wit-bindgen-cli
