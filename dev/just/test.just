@@ -53,16 +53,16 @@ generate-all-templates:
 
 # Run unit tests
 test:
-    cargo nextest run -p snakeway-core -p snakeway-conf --features static_files,wasm
+    cargo nextest run -p snakeway-core -p snakeway-conf --features wasm
 
 # Run unit tests with coverage, and output HTML
 test-with-coverage:
-    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
     open target/llvm-cov/html/index.html
 
 # Run unit tests with coverage, and output a summary
 test-with-coverage-summary:
-    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features static_files,wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p snakeway-core -p snakeway-conf --features wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # Run integration tests
 integration-test *ARGS: fetch-pebble-ca generate-dev-certs

@@ -55,10 +55,6 @@ impl NormalizedRequest {
         &self.path
     }
 
-    pub(crate) fn set_path(&mut self, path: String) {
-        self.path.0 = path;
-    }
-
     #[allow(dead_code)] // reserved for future routing / logging / caching
     pub(crate) fn query(&self) -> &CanonicalQuery {
         &self.query
@@ -68,6 +64,21 @@ impl NormalizedRequest {
         &self.headers.header_map
     }
 
+    pub(crate) fn is_upgrade_req(&self) -> bool {
+        self.is_upgrade_req
+    }
+
+    pub(crate) fn is_http2(&self) -> bool {
+        self.protocol_version == Version::HTTP_2
+    }
+}
+
+/// WASM Device API
+#[cfg(feature = "wasm")]
+impl NormalizedRequest {
+    pub(crate) fn set_path(&mut self, path: String) {
+        self.path.0 = path;
+    }
     pub(crate) fn insert_header(
         &mut self,
         name: http::header::HeaderName,
@@ -78,14 +89,6 @@ impl NormalizedRequest {
 
     pub(crate) fn remove_header(&mut self, name: &str) {
         self.headers.header_map.remove(name);
-    }
-
-    pub(crate) fn is_upgrade_req(&self) -> bool {
-        self.is_upgrade_req
-    }
-
-    pub(crate) fn is_http2(&self) -> bool {
-        self.protocol_version == Version::HTTP_2
     }
 }
 
