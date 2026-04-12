@@ -15,7 +15,7 @@ docker-build:
 # Expects binaries staged at dist/linux/amd64/snakeway and dist/linux/arm64/snakeway
 docker-build-ci:
     docker buildx build \
-      --file Dockerfile.ci \
+      --file packaging/docker/Dockerfile \
       --platform linux/amd64,linux/arm64 \
       --tag snakeway:dev \
       .
