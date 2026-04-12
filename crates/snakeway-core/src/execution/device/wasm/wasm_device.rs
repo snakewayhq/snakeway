@@ -133,6 +133,16 @@ impl Device for WasmDevice {
         DeviceResult::Continue
     }
 
+    fn on_stream_response_body(
+        &self,
+        _ctx: &mut ResponseCtx,
+        _maybe_chunk: &mut Option<Bytes>,
+        _end_of_stream: bool,
+    ) -> DeviceResult {
+        tracing::debug!("WASM device does not implement on_stream_response_body");
+        DeviceResult::Continue
+    }
+
     fn on_response(&self, _ctx: &mut ResponseCtx) -> DeviceResult {
         tracing::debug!("WASM device does not implement on_response");
         DeviceResult::Continue

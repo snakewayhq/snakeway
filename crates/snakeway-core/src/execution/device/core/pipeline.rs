@@ -75,6 +75,17 @@ impl DevicePipeline {
         run_device_chain(devices, |dev| dev.after_proxy(ctx))
     }
 
+    pub(crate) fn on_stream_response_body(
+        devices: &[Arc<dyn Device>],
+        ctx: &mut ResponseCtx,
+        body: &mut Option<Bytes>,
+        end_of_stream: bool,
+    ) -> DeviceResult {
+        run_device_chain(devices, |dev| {
+            dev.on_stream_response_body(ctx, body, end_of_stream)
+        })
+    }
+
     pub(crate) fn run_on_response(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut ResponseCtx,

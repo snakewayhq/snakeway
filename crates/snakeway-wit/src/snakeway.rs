@@ -715,6 +715,55 @@ pub unsafe fn __post_return_after_proxy<T: Guest>(arg0: *mut u8,) { unsafe {
 } }
 #[doc(hidden)]
 #[allow(non_snake_case, unused_unsafe)]
+pub unsafe fn _export_on_stream_response_body_cabi<T: Guest>(arg0: i32,arg1: *mut u8,arg2: usize,arg3: i32,arg4: *mut u8,arg5: usize,arg6: i32,) -> i32 { unsafe {#[cfg(target_arch="wasm32")]
+_rt::run_ctors_once();let result8 = {
+  let base6 = arg1;
+  let len6 = arg2;
+  let mut result6 = _rt::Vec::with_capacity(len6);
+  for i in 0..len6 {
+    let base = base6.add(i * (4*::core::mem::size_of::<*const u8>()));
+    let e6 = {
+      let l0 = *base.add(0).cast::<*mut u8>();
+      let l1 = *base.add(::core::mem::size_of::<*const u8>()).cast::<usize>();
+      let len2 = l1;
+      let bytes2 = _rt::Vec::from_raw_parts(l0.cast(), len2, len2);
+      let l3 = *base.add(2*::core::mem::size_of::<*const u8>()).cast::<*mut u8>();
+      let l4 = *base.add(3*::core::mem::size_of::<*const u8>()).cast::<usize>();
+      let len5 = l4;
+      let bytes5 = _rt::Vec::from_raw_parts(l3.cast(), len5, len5);
+
+      Header{
+        name: _rt::string_lift(bytes2),
+        value: _rt::string_lift(bytes5),
+      }
+    };
+    result6.push(e6);
+  }
+  _rt::cabi_dealloc(base6, len6 * (4*::core::mem::size_of::<*const u8>()), ::core::mem::size_of::<*const u8>());
+  T::on_stream_response_body(Response{
+    status: arg0 as u16,
+    headers: result6,
+  }, match arg3 {
+    0 => None,
+    1 => {
+      let e = {
+        let len7 = arg5;
+
+        BodyChunk{
+          data: <_ as From<_rt::Vec<_>>>::from(_rt::Vec::from_raw_parts(arg4.cast(), len7, len7)),
+          end_of_stream: _rt::bool_lift(arg6 as u8),
+        }
+      };
+      Some(e)
+    }
+    _ => _rt::invalid_enum_discriminant(),
+  })
+};
+let BodyResult{ decision:decision9, } = result8;
+decision9.clone() as i32
+} }
+#[doc(hidden)]
+#[allow(non_snake_case, unused_unsafe)]
 pub unsafe fn _export_on_response_cabi<T: Guest>(arg0: i32,arg1: *mut u8,arg2: usize,) -> *mut u8 { unsafe {#[cfg(target_arch="wasm32")]
 _rt::run_ctors_once();let result7 = {
   let base6 = arg1;
@@ -863,55 +912,62 @@ pub trait Guest {
   /// Called after receiving the upstream response
   #[allow(async_fn_in_trait)]
   fn after_proxy(resp: Response,) -> ResponseResult;
+  /// Called (potentially multiple times) as the response body is streamed to the client
+  #[allow(async_fn_in_trait)]
+  fn on_stream_response_body(resp: Response,chunk: Option<BodyChunk>,) -> BodyResult;
   /// Called just before sending the response to the client
   #[allow(async_fn_in_trait)]
   fn on_response(resp: Response,) -> ResponseResult;
 }
 #[doc(hidden)]
 
-macro_rules! __export_snakeway_device_policy_0_2_0_cabi{
+macro_rules! __export_snakeway_device_policy_0_3_0_cabi{
   ($ty:ident with_types_in $($path_to_types:tt)*) => (const _: () = {
 
-    #[unsafe(export_name = "snakeway:device/policy@0.2.0#on-request")]
+    #[unsafe(export_name = "snakeway:device/policy@0.3.0#on-request")]
     unsafe extern "C" fn export_on_request(arg0: *mut u8,arg1: usize,arg2: *mut u8,arg3: usize,arg4: *mut u8,arg5: usize,) -> *mut u8 {
       unsafe { $($path_to_types)*::_export_on_request_cabi::<$ty>(arg0, arg1, arg2, arg3, arg4, arg5) }
     }
-    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.2.0#on-request")]
+    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.3.0#on-request")]
     unsafe extern "C" fn _post_return_on_request(arg0: *mut u8,) {
       unsafe { $($path_to_types)*::__post_return_on_request::<$ty>(arg0) }
     }
-    #[unsafe(export_name = "snakeway:device/policy@0.2.0#on-stream-request-body")]
+    #[unsafe(export_name = "snakeway:device/policy@0.3.0#on-stream-request-body")]
     unsafe extern "C" fn export_on_stream_request_body(arg0: *mut u8,arg1: usize,arg2: *mut u8,arg3: usize,arg4: *mut u8,arg5: usize,arg6: i32,arg7: *mut u8,arg8: usize,arg9: i32,) -> i32 {
       unsafe { $($path_to_types)*::_export_on_stream_request_body_cabi::<$ty>(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) }
     }
-    #[unsafe(export_name = "snakeway:device/policy@0.2.0#before-proxy")]
+    #[unsafe(export_name = "snakeway:device/policy@0.3.0#before-proxy")]
     unsafe extern "C" fn export_before_proxy(arg0: *mut u8,arg1: usize,arg2: *mut u8,arg3: usize,arg4: *mut u8,arg5: usize,) -> *mut u8 {
       unsafe { $($path_to_types)*::_export_before_proxy_cabi::<$ty>(arg0, arg1, arg2, arg3, arg4, arg5) }
     }
-    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.2.0#before-proxy")]
+    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.3.0#before-proxy")]
     unsafe extern "C" fn _post_return_before_proxy(arg0: *mut u8,) {
       unsafe { $($path_to_types)*::__post_return_before_proxy::<$ty>(arg0) }
     }
-    #[unsafe(export_name = "snakeway:device/policy@0.2.0#after-proxy")]
+    #[unsafe(export_name = "snakeway:device/policy@0.3.0#after-proxy")]
     unsafe extern "C" fn export_after_proxy(arg0: i32,arg1: *mut u8,arg2: usize,) -> *mut u8 {
       unsafe { $($path_to_types)*::_export_after_proxy_cabi::<$ty>(arg0, arg1, arg2) }
     }
-    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.2.0#after-proxy")]
+    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.3.0#after-proxy")]
     unsafe extern "C" fn _post_return_after_proxy(arg0: *mut u8,) {
       unsafe { $($path_to_types)*::__post_return_after_proxy::<$ty>(arg0) }
     }
-    #[unsafe(export_name = "snakeway:device/policy@0.2.0#on-response")]
+    #[unsafe(export_name = "snakeway:device/policy@0.3.0#on-stream-response-body")]
+    unsafe extern "C" fn export_on_stream_response_body(arg0: i32,arg1: *mut u8,arg2: usize,arg3: i32,arg4: *mut u8,arg5: usize,arg6: i32,) -> i32 {
+      unsafe { $($path_to_types)*::_export_on_stream_response_body_cabi::<$ty>(arg0, arg1, arg2, arg3, arg4, arg5, arg6) }
+    }
+    #[unsafe(export_name = "snakeway:device/policy@0.3.0#on-response")]
     unsafe extern "C" fn export_on_response(arg0: i32,arg1: *mut u8,arg2: usize,) -> *mut u8 {
       unsafe { $($path_to_types)*::_export_on_response_cabi::<$ty>(arg0, arg1, arg2) }
     }
-    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.2.0#on-response")]
+    #[unsafe(export_name = "cabi_post_snakeway:device/policy@0.3.0#on-response")]
     unsafe extern "C" fn _post_return_on_response(arg0: *mut u8,) {
       unsafe { $($path_to_types)*::__post_return_on_response::<$ty>(arg0) }
     }
   };);
 }
 #[doc(hidden)]
-pub(crate) use __export_snakeway_device_policy_0_2_0_cabi;
+pub(crate) use __export_snakeway_device_policy_0_3_0_cabi;
 
 #[cfg_attr(target_pointer_width="64", repr(align(8)))]
 #[cfg_attr(target_pointer_width="32", repr(align(4)))]
@@ -1062,19 +1118,19 @@ mod _rt {
 macro_rules! __export_snakeway_impl {
   ($ty:ident) => (self::export!($ty with_types_in self););
   ($ty:ident with_types_in $($path_to_types_root:tt)*) => (
-  $($path_to_types_root)*::exports::snakeway::device::policy::__export_snakeway_device_policy_0_2_0_cabi!($ty with_types_in $($path_to_types_root)*::exports::snakeway::device::policy);
+  $($path_to_types_root)*::exports::snakeway::device::policy::__export_snakeway_device_policy_0_3_0_cabi!($ty with_types_in $($path_to_types_root)*::exports::snakeway::device::policy);
   )
 }
 #[doc(inline)]
 pub(crate) use __export_snakeway_impl as export;
 
 #[cfg(target_arch = "wasm32")]
-#[unsafe(link_section = "component-type:wit-bindgen:0.50.0:snakeway:device@0.2.0:snakeway:encoded world")]
+#[unsafe(link_section = "component-type:wit-bindgen:0.50.0:snakeway:device@0.3.0:snakeway:encoded world")]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 804] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa5\x05\x01A\x02\x01\
-A\x02\x01B$\x01r\x02\x04names\x05values\x04\0\x06header\x03\0\0\x01p\x01\x01r\x03\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 850] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd3\x05\x01A\x02\x01\
+A\x02\x01B&\x01r\x02\x04names\x05values\x04\0\x06header\x03\0\0\x01p\x01\x01r\x03\
 \x0doriginal-paths\x0aroute-paths\x07headers\x02\x04\0\x07request\x03\0\x03\x01p\
 }\x01r\x02\x04data\x05\x0dend-of-stream\x7f\x04\0\x0abody-chunk\x03\0\x06\x01r\x02\
 \x06status{\x07headers\x02\x04\0\x08response\x03\0\x08\x01ks\x01ps\x01r\x04\x0es\
@@ -1087,8 +1143,9 @@ result\x03\0\x16\x01k\x10\x01r\x02\x08decision\x12\x05patch\x18\x04\0\x0frespons
 e-result\x03\0\x19\x01@\x01\x03req\x04\0\x17\x04\0\x0aon-request\x01\x1b\x01k\x07\
 \x01@\x02\x03req\x04\x05chunk\x1c\0\x14\x04\0\x16on-stream-request-body\x01\x1d\x04\
 \0\x0cbefore-proxy\x01\x1b\x01@\x01\x04resp\x09\0\x1a\x04\0\x0bafter-proxy\x01\x1e\
-\x04\0\x0bon-response\x01\x1e\x04\0\x1csnakeway:device/policy@0.2.0\x05\0\x04\0\x1e\
-snakeway:device/snakeway@0.2.0\x04\0\x0b\x0e\x01\0\x08snakeway\x03\0\0\0G\x09pro\
+\x01@\x02\x04resp\x09\x05chunk\x1c\0\x14\x04\0\x17on-stream-response-body\x01\x1f\
+\x04\0\x0bon-response\x01\x1e\x04\0\x1csnakeway:device/policy@0.3.0\x05\0\x04\0\x1e\
+snakeway:device/snakeway@0.3.0\x04\0\x0b\x0e\x01\0\x08snakeway\x03\0\0\0G\x09pro\
 ducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.243.0\x10wit-bindgen-rust\x06\
 0.50.0";
 
