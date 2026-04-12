@@ -117,8 +117,8 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 ///    - Static responses end here
 ///
 /// 4. request_body_filter()
-///    - Exists on ProxyHttp but not invoked in the main request path
-///    - Downstream request bodies are streamed directly to upstream
+///    - Run on_stream_request_body devices on each request body chunk
+///    - Validate Content-Length against actual bytes received
 ///
 /// 5. [unused] proxy_upstream_filter()
 ///    - Final decision whether request is allowed upstream
@@ -154,7 +154,7 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 /// 13. [unused] fail_to_connect()
 ///     - Called if upstream connection cannot be established
 ///
-/// 14. fail_to_proxy()
+/// 14. [unused] fail_to_proxy()
 ///     - Final error handling hook after retries exhausted
 ///
 /// 15. [unused] suppress_error_log()
