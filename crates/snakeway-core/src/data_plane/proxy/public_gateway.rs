@@ -15,12 +15,13 @@ use crate::runtime::{RuntimeState, UpstreamRuntime};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{StatusCode, Version, header};
+use http::{HeaderMap, StatusCode, Version, header};
 use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
@@ -141,8 +142,8 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 ///    - Run after_proxy devices
 ///    - Mutate response headers/status
 ///
-/// 10. [unused] upstream_response_body_filter()
-///     - Run on each upstream response body chunk
+/// 10. upstream_response_body_filter()
+///     - Run on_stream_response_body devices on each upstream response body chunk
 ///
 /// 11. [unused] upstream_response_trailer_filter()
 ///     - Run on upstream response trailers (if any)
@@ -570,6 +571,11 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
+        ctx.extensions.insert(UpstreamResponseSnapshot {
+            status: upstream.status,
+            headers: upstream.headers.clone(),
+        });
+
         if ctx.is_upgrade_req() && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
             // WS upgrade completed.
             // After this point, HTTP response lifecycle hooks (on_response)
@@ -581,6 +587,44 @@ impl ProxyHttp for PublicGateway {
         }
 
         Ok(())
+    }
+
+    /// Snakeway `on_stream_response_body` --> Pingora `upstream_response_body_filter`
+    ///
+    /// Intent:
+    /// INSPECT RESPONSE BODY CHUNKS AS THEY STREAM
+    fn upstream_response_body_filter(
+        &self,
+        _session: &mut Session,
+        body: &mut Option<Bytes>,
+        end_of_stream: bool,
+        ctx: &mut Self::CTX,
+    ) -> Result<Option<Duration>> {
+        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+
+        let snapshot = ctx.extensions.get::<UpstreamResponseSnapshot>();
+        let (status, headers) = match snapshot {
+            Some(s) => (s.status, s.headers.clone()),
+            None => return Ok(None),
+        };
+
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
+        let state = self.gw_ctx.state();
+
+        match DevicePipeline::on_stream_response_body(
+            state.devices.all(),
+            &mut resp_ctx,
+            body,
+            end_of_stream,
+        ) {
+            DeviceResult::Continue => Ok(None),
+            DeviceResult::Respond(_) => Ok(None),
+            DeviceResult::Error(err) => {
+                tracing::error!("device error on_stream_response_body: {err}");
+                Err(Error::new(Custom("device error on_stream_response_body")))
+            }
+        }
     }
 
     /// Snakeway `on_response` --> Pingora `response_filter`
@@ -902,3 +946,11 @@ struct DeclaredContentLength(u64);
 /// updated per-chunk in `request_body_filter`.
 #[derive(Debug, Clone, Copy)]
 struct BodyBytesReceived(u64);
+
+/// Snapshot of the upstream response status and headers, stored in extensions
+/// during `upstream_response_filter` for use by `upstream_response_body_filter`.
+#[derive(Debug, Clone)]
+struct UpstreamResponseSnapshot {
+    status: StatusCode,
+    headers: HeaderMap,
+}
