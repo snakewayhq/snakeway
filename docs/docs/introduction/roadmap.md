@@ -195,7 +195,6 @@ polish.
 - [ ] `.deb` and `.rpm` packages
 - [ ] Systemd service unit
 - [ ] Distroless Docker images
-- [ ] Helm chart
 
 **Deliverables**
 
@@ -216,7 +215,7 @@ Standard installation layout:
 - [ ] Comprehensive documentation site
 - [ ] Full operator manual
 - [ ] Benchmark suite with published results
-- [ ] Stabilized device API
+- [x] Stabilized device API
 
 ---
 
@@ -294,3 +293,7 @@ and applying runtime snapshots through the existing configuration pipeline.
 ### Admissions Control
 
 Standalone backpressure monitoring tool that integrates with the proxy for graceful load shedding.
+
+### Packaging
+
+- Helm chart
