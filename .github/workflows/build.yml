@@ -251,6 +251,63 @@ jobs:
           name: snakeway-${{ matrix.target }}-${{ matrix.variant.name }}
           path: target/${{ matrix.target }}/dist/snakeway
 
+  docker:
+    name: Publish Docker image
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download amd64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-x86_64-unknown-linux-musl-default
+          path: dist/linux/amd64
+
+      - name: Download arm64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-aarch64-unknown-linux-musl-default
+          path: dist/linux/arm64
+
+      - name: Make binaries executable
+        run: chmod +x dist/linux/amd64/snakeway dist/linux/arm64/snakeway
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: packaging/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
   release:
     name: Create release artifacts
     needs: build
