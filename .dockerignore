@@ -1,0 +1,53 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Unneeded crates
+crates/snakeway-tests
+crates/snakeway-wit
+
+# Documentation site
+docs/
+
+# IDE and editor files
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Version control
+.git/
+.gitignore
+.github/
+
+# Development and testing
+dev/
+data/
+
+# Local configuration and cache
+.cargo/
+!.cargo/config.toml
+.config/
+.claude/
+
+# Docker files (avoid recursion)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Documentation and metadata
+README.md
+LICENSE
+NOTICE
+CONTRIBUTING.md
+LLM_DISCLOSURE.md
+CLAUDE.md
+
+# Build scripts and tools
+Justfile
+build.rs
+
+# Packaging artifacts
+packaging/
