@@ -315,6 +315,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain (needed by cargo-deb and cargo-generate-rpm for metadata parsing)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install packaging tools
+        run: cargo install cargo-deb cargo-generate-rpm
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -329,6 +338,34 @@ jobs:
           ls -lh dist/snakeway-aarch64-unknown-linux-musl-default/snakeway
           ls -lh dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway
 
+      # Stage binaries where cargo-deb and cargo-generate-rpm expect them.
+      - name: Stage binaries for packaging
+        run: |
+          set -e
+          for target in x86_64-unknown-linux-musl aarch64-unknown-linux-musl; do
+            mkdir -p "target/${target}/release"
+            cp "dist/snakeway-${target}-default/snakeway" "target/${target}/release/snakeway"
+            chmod +x "target/${target}/release/snakeway"
+          done
+
+      # Build .deb packages for both architectures.
+      - name: Build .deb packages
+        run: |
+          set -e
+          cargo deb -p snakeway --no-build --no-strip \
+            --target x86_64-unknown-linux-musl
+          cargo deb -p snakeway --no-build --no-strip \
+            --target aarch64-unknown-linux-musl
+
+      # Build .rpm packages for both architectures.
+      - name: Build .rpm packages
+        run: |
+          set -e
+          cargo generate-rpm -p crates/snakeway \
+            --target x86_64-unknown-linux-musl
+          cargo generate-rpm -p crates/snakeway \
+            --target aarch64-unknown-linux-musl
+
       - name: Rename release binaries
         run: |
           set -e
@@ -342,11 +379,20 @@ jobs:
           mv dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway \
              dist/snakeway-${TAG}-aarch64-linux-musl-wasm
 
+      # Collect .deb and .rpm packages into dist/ for release.
+      - name: Collect packages
+        run: |
+          set -e
+          cp target/x86_64-unknown-linux-musl/debian/*.deb dist/
+          cp target/aarch64-unknown-linux-musl/debian/*.deb dist/
+          cp target/x86_64-unknown-linux-musl/generate-rpm/*.rpm dist/
+          cp target/aarch64-unknown-linux-musl/generate-rpm/*.rpm dist/
+
       - name: Generate SHA256 checksums
         run: |
           set -e
           cd dist
-          shasum -a 256 snakeway-v*-linux-musl* > SHA256SUMS
+          shasum -a 256 snakeway-v*-linux-musl* *.deb *.rpm > SHA256SUMS
           cat SHA256SUMS
 
       - name: Publish GitHub Release
@@ -357,4 +403,6 @@ jobs:
             dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl-wasm
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl-wasm
+            dist/*.deb
+            dist/*.rpm
             dist/SHA256SUMS
