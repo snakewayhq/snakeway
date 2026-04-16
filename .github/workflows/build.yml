@@ -395,6 +395,19 @@ jobs:
           shasum -a 256 snakeway-v*-linux-musl* *.deb *.rpm > SHA256SUMS
           cat SHA256SUMS
 
+      # GPG sign the checksums file.
+      # Requires GPG_PRIVATE_KEY and GPG_PASSPHRASE repository secrets (Settings > Secrets).
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.PRIVATE_SIGNING_KEY_SNAKEWAY_2026 }}" | gpg --batch --import
+      - name: Sign SHA256SUMS
+        run: |
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "${{ secrets.SIGNING_PASSPHRASE_SNAKEWAY_2026 }}" \
+            --detach-sign --armor \
+            --output dist/SHA256SUMS.asc \
+            dist/SHA256SUMS
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -406,3 +419,4 @@ jobs:
             dist/*.deb
             dist/*.rpm
             dist/SHA256SUMS
+            dist/SHA256SUMS.asc
