@@ -192,9 +192,9 @@ polish.
 
 **Goals**
 
-- [ ] `.deb` and `.rpm` packages
-- [ ] Systemd service unit
-- [ ] Distroless Docker images
+- [x] `.deb` and `.rpm` packages
+- [x] Systemd service unit
+- [x] Distroless Docker images
 
 **Deliverables**
 
