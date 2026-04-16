@@ -4145,14 +4145,14 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.9.1"
+version = "0.10.0-dev.1"
 dependencies = [
  "snakeway-core",
 ]
 
 [[package]]
 name = "snakeway-conf"
-version = "0.9.1"
+version = "0.10.0-dev.1"
 dependencies = [
  "glob",
  "hcl-rs",
@@ -4172,7 +4172,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-core"
-version = "0.9.1"
+version = "0.10.0-dev.1"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4231,7 +4231,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.9.1"
+version = "0.10.0-dev.1"
 dependencies = [
  "futures-util",
  "http",
