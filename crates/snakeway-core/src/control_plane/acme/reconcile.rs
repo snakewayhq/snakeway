@@ -549,32 +549,39 @@ fn desired_certificates_from_config(
         };
 
         if let TlsTerminationConfig::Acme { domains, challenge } = certificate_config {
-            let cert_id = compute_cert_id(domains, challenge);
-            out.insert(
-                cert_id,
-                DesiredCertificate {
-                    domains: domains.clone(),
-                    challenge: challenge.clone(),
-                },
-            );
+            if let Some(cert_id) = compute_cert_id(domains, challenge) {
+                out.insert(
+                    cert_id,
+                    DesiredCertificate {
+                        domains: domains.clone(),
+                        challenge: challenge.clone(),
+                    },
+                );
+            } else {
+                warn!(
+                    "acme: failed to compute certificate ID for domains {:?}, skipping",
+                    domains
+                );
+            }
         }
     }
 
     out
 }
 
-fn compute_cert_id(domains: &[String], challenge: &AcmeChallengeConfig) -> String {
+fn compute_cert_id(domains: &[String], challenge: &AcmeChallengeConfig) -> Option<String> {
     let mut hasher = Sha256::new();
 
     for d in domains {
         hasher.update(d.as_bytes());
         hasher.update(b"\0");
     }
-
     hasher.update(format!("{challenge:?}").as_bytes());
-
     let digest = hasher.finalize();
-    format!("{:x}", digest)[..32].to_string()
+
+    // Assuming the encoded digest is at least 32 characters is a (probably) safe assumption,
+    // but if not, it will fail when getting the slice and will instead return None.
+    hex::encode(digest).get(..32).map(String::from)
 }
 
 fn parse_not_after(cert_chain_pem: &str) -> anyhow::Result<std::time::SystemTime> {
