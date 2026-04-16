@@ -4304,6 +4304,7 @@ dependencies = [
  "dashmap",
  "flate2",
  "hcl-rs",
+ "hex",
  "hostname",
  "http",
  "httpdate",
