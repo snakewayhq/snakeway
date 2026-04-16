@@ -16,13 +16,13 @@ name = "snakeway"
 path = "src/main.rs"
 
 # ---------------------------------------------------------------------------
-# cargo-deb — build a .deb package
+# Build a .deb package (cargo-deb)
 #   cargo install cargo-deb
 #   cargo deb -p snakeway [--no-build --target x86_64-unknown-linux-musl]
 # ---------------------------------------------------------------------------
 [package.metadata.deb]
-maintainer = "Snakeway Authors <hello@snakeway.io>"
-copyright = "2024, Snakeway Authors"
+maintainer = "Ethan Hann <ethanhann@gmail.com>"
+copyright = "2026, Ethan Hann"
 license-file = ["../LICENSE", "0"]
 depends = "$auto"
 extended-description = """\
@@ -49,7 +49,7 @@ conf-files = [
 ]
 
 # ---------------------------------------------------------------------------
-# cargo-generate-rpm — build a .rpm package
+# Build a .rpm package (cargo-generate-rpm)
 #   cargo install cargo-generate-rpm
 #   cargo generate-rpm -p snakeway [--target x86_64-unknown-linux-musl]
 # ---------------------------------------------------------------------------

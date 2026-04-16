@@ -22,6 +22,7 @@ clap = { workspace = true, features = ["derive"] }
 console-subscriber = { workspace = true }
 ctrlc = { workspace = true }
 flate2 = { workspace = true }
+hex = { workspace = true }
 http = { workspace = true }
 httpdate = { workspace = true }
 maxminddb = { workspace = true, features = ["mmap"] }

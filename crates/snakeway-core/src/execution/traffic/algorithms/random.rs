@@ -2,7 +2,7 @@ use crate::execution::ctx::RequestCtx;
 use crate::execution::traffic::{
     ServiceId, TrafficManager, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
-use rand::{Rng, rng};
+use rand::random_range;
 
 #[derive(Debug, Default)]
 pub(crate) struct Random {}
@@ -20,7 +20,7 @@ impl TrafficStrategy for Random {
         }
 
         // This is per thread, which is ok for a random algorithm.
-        let idx = rng().random_range(0..healthy.len());
+        let idx = random_range(0..healthy.len());
         let upstream_snapshot = &healthy[idx];
 
         Some(TrafficDecision {
