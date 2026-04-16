@@ -47,6 +47,18 @@ pub trait Device: Send + Sync {
         DeviceResult::Continue
     }
 
+    /// Called when a response body is streamed to the client.
+    ///
+    /// This is the opportunity to inspect the response body as it is streamed.
+    fn on_stream_response_body(
+        &self,
+        _ctx: &mut ResponseCtx,
+        _maybe_chunk: &mut Option<Bytes>,
+        _end_of_stream: bool,
+    ) -> DeviceResult {
+        DeviceResult::Continue
+    }
+
     /// Called just before sending the response back to the client.
     ///
     /// Final opportunity to modify the response before it's sent to the client.

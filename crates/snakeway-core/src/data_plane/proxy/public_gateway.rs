@@ -15,12 +15,13 @@ use crate::runtime::{RuntimeState, UpstreamRuntime};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{StatusCode, Version, header};
+use http::{HeaderMap, StatusCode, Version, header};
 use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// PublicGateway is the core orchestration abstraction in Snakeway.
@@ -97,17 +98,19 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
     }
 }
 
-/// Pingora hook execution order in ProxyHttp...
+/// Pingora hook execution order in ProxyHttp for PublicGateway
 ///
 /// This is a giant orchestration trait implementation, so better to lay this out explicitly,
 /// especially because it might change in later Pingora versions.
+///
+/// Hooks related to caching, custom forwarding, and subrequest spawning are omitted
+/// because Snakeway does not use those Pingora features.
 ///
 /// 1. new_ctx()
 ///    - Allocate empty RequestCtx
 ///
 /// 2. [unused] early_request_filter()
-///    - Earliest hook
-///    - Runs before downstream modules
+///    - Earliest hook, runs before downstream modules
 ///
 /// 3. request_filter()
 ///    - Hydrate ctx from Session
@@ -115,55 +118,69 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 ///    - Route match (static vs proxy)
 ///    - Static responses end here
 ///
-/// 4. request_body_filter()
-///    - Exists on ProxyHttp but not invoked in the main request path
-///    - Downstream request bodies are streamed directly to upstream
-///
-/// 5. [unused] proxy_upstream_filter()
+/// 4. [unused] proxy_upstream_filter()
 ///    - Final decision whether request is allowed upstream
 ///    - May short-circuit with a response
 ///
-/// 6. upstream_peer()
+/// 5. upstream_peer()
 ///    - Select upstream (TrafficDirector)
 ///    - Circuit admission decision
 ///    - Create AdmissionGuard if admitted
 ///    - Construct HttpPeer
+///
+/// 6. [unused] connected_to_upstream()
+///    - Called after TCP/TLS connection is established or reused
 ///
 /// 7. upstream_request_filter()
 ///    - Set HTTP/2 :authority pseudo-header for gRPC
 ///    - Run before_proxy devices (header mutation, path rewriting)
 ///    - Apply upstream method/path intent from RequestCtx
 ///
-/// 8. [Pingora upstream I/O]
-///    - Connect, TLS, send request, receive response
+/// 8. request_body_filter()
+///    - Run on_stream_request_body devices on each request body chunk
+///    - Validate Content-Length against actual bytes received
 ///
-/// 9. upstream_response_filter()
-///    - Run after_proxy devices
-///    - Mutate response headers/status
+/// 9. [Pingora upstream I/O]
+///    - Send request, receive response
 ///
-/// 10. [unused] upstream_response_body_filter()
-///     - Run on each upstream response body chunk
+/// 10. upstream_response_filter()
+///     - Run after_proxy devices
+///     - Mutate response headers/status
+///     - Snapshot response for body filter
 ///
-/// 11. [unused] upstream_response_trailer_filter()
-///     - Run on upstream response trailers (if any)
+/// 11. upstream_response_body_filter()
+///     - Run on_stream_response_body devices on each upstream response body chunk
 ///
-/// 12. [unused] error_while_proxy()
-///     - Called if upstream fails mid-stream
+/// 12. [unused] upstream_response_trailer_filter()
+///     - Inspect/modify upstream response trailers
 ///
-/// 13. [unused] fail_to_connect()
-///     - Called if upstream connection cannot be established
-///
-/// 14. fail_to_proxy()
-///     - Final error handling hook after retries exhausted
-///
-/// 15. [unused] suppress_error_log()
-///     - Decide whether Pingora logs proxy failure
-///
-/// 16. response_filter()
+/// 13. response_filter()
 ///     - Run on_response devices (response header mutation)
 ///     - Determine upstream outcome (success / HTTP 5xx) for circuit breaker
 ///
-/// 17. logging() ...ALWAYS LAST
+/// 14. [unused] response_body_filter()
+///     - Inspect/modify response body chunks before sending to downstream
+///
+/// 15. [unused] response_trailer_filter()
+///     - Inspect/modify response trailers before sending to downstream
+///
+/// `Error path hooks (not in normal flow)`
+///
+/// 16. [unused] error_while_proxy()
+///     - Called if upstream fails mid-stream
+///
+/// 17. [unused] fail_to_connect()
+///     - Called if upstream connection cannot be established
+///
+/// 18. [unused] fail_to_proxy()
+///     - Final error handling hook after retries exhausted
+///
+/// 19. [unused] suppress_error_log()
+///     - Decide whether Pingora logs proxy failure
+///
+/// `Always runs`
+///
+/// 20. logging()
 ///     - Capture transport errors
 ///     - Run on_ws_close if needed
 ///     - Finalize AdmissionGuard (circuit success/failure)
@@ -570,6 +587,11 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
+        ctx.extensions.insert(UpstreamResponseSnapshot {
+            status: upstream.status,
+            headers: upstream.headers.clone(),
+        });
+
         if ctx.is_upgrade_req() && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
             // WS upgrade completed.
             // After this point, HTTP response lifecycle hooks (on_response)
@@ -629,6 +651,44 @@ impl ProxyHttp for PublicGateway {
         });
 
         Ok(())
+    }
+
+    /// Snakeway `on_stream_response_body` --> Pingora `upstream_response_body_filter`
+    ///
+    /// Intent:
+    /// INSPECT RESPONSE BODY CHUNKS AS THEY STREAM
+    fn upstream_response_body_filter(
+        &self,
+        _session: &mut Session,
+        body: &mut Option<Bytes>,
+        end_of_stream: bool,
+        ctx: &mut Self::CTX,
+    ) -> Result<Option<Duration>> {
+        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+
+        let snapshot = ctx.extensions.get::<UpstreamResponseSnapshot>();
+        let (status, headers) = match snapshot {
+            Some(s) => (s.status, s.headers.clone()),
+            None => return Ok(None),
+        };
+
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
+        let state = self.gw_ctx.state();
+
+        match DevicePipeline::on_stream_response_body(
+            state.devices.all(),
+            &mut resp_ctx,
+            body,
+            end_of_stream,
+        ) {
+            DeviceResult::Continue => Ok(None),
+            DeviceResult::Respond(_) => Ok(None),
+            DeviceResult::Error(err) => {
+                tracing::error!("device error on_stream_response_body: {err}");
+                Err(Error::new(Custom("device error on_stream_response_body")))
+            }
+        }
     }
 
     /// The final step in the Pingora request/response pipeline.
@@ -902,3 +962,11 @@ struct DeclaredContentLength(u64);
 /// updated per-chunk in `request_body_filter`.
 #[derive(Debug, Clone, Copy)]
 struct BodyBytesReceived(u64);
+
+/// Snapshot of the upstream response status and headers, stored in extensions
+/// during `upstream_response_filter` for use by `upstream_response_body_filter`.
+#[derive(Debug, Clone)]
+struct UpstreamResponseSnapshot {
+    status: StatusCode,
+    headers: HeaderMap,
+}

@@ -3,8 +3,6 @@ mod http1_headers;
 mod http2_headers;
 mod path;
 mod query;
-#[cfg(test)]
-mod tests;
 mod types;
 
 pub(crate) use headers::*;

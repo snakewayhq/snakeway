@@ -49,7 +49,10 @@ jobs:
 
       # Lint check.
       - name: cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
+          # Second pass without benchmarks to catch dead code only kept alive by bench targets.
+          cargo clippy --workspace --exclude snakeway-tests --lib --tests --all-features -- -D warnings
 
       # Unit test check.
       - name: Install cargo-nextest
@@ -248,6 +251,63 @@ jobs:
           name: snakeway-${{ matrix.target }}-${{ matrix.variant.name }}
           path: target/${{ matrix.target }}/dist/snakeway
 
+  docker:
+    name: Publish Docker image
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download amd64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-x86_64-unknown-linux-musl-default
+          path: dist/linux/amd64
+
+      - name: Download arm64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: snakeway-aarch64-unknown-linux-musl-default
+          path: dist/linux/arm64
+
+      - name: Make binaries executable
+        run: chmod +x dist/linux/amd64/snakeway dist/linux/arm64/snakeway
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: packaging/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
   release:
     name: Create release artifacts
     needs: build
@@ -255,6 +315,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain (needed by cargo-deb and cargo-generate-rpm for metadata parsing)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install packaging tools
+        run: cargo install cargo-deb cargo-generate-rpm
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -269,6 +338,34 @@ jobs:
           ls -lh dist/snakeway-aarch64-unknown-linux-musl-default/snakeway
           ls -lh dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway
 
+      # Stage binaries where cargo-deb and cargo-generate-rpm expect them.
+      - name: Stage binaries for packaging
+        run: |
+          set -e
+          for target in x86_64-unknown-linux-musl aarch64-unknown-linux-musl; do
+            mkdir -p "target/${target}/release"
+            cp "dist/snakeway-${target}-default/snakeway" "target/${target}/release/snakeway"
+            chmod +x "target/${target}/release/snakeway"
+          done
+
+      # Build .deb packages for both architectures.
+      - name: Build .deb packages
+        run: |
+          set -e
+          cargo deb -p snakeway --no-build --no-strip \
+            --target x86_64-unknown-linux-musl
+          cargo deb -p snakeway --no-build --no-strip \
+            --target aarch64-unknown-linux-musl
+
+      # Build .rpm packages for both architectures.
+      - name: Build .rpm packages
+        run: |
+          set -e
+          cargo generate-rpm -p crates/snakeway \
+            --target x86_64-unknown-linux-musl
+          cargo generate-rpm -p crates/snakeway \
+            --target aarch64-unknown-linux-musl
+
       - name: Rename release binaries
         run: |
           set -e
@@ -282,12 +379,34 @@ jobs:
           mv dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway \
              dist/snakeway-${TAG}-aarch64-linux-musl-wasm
 
+      # Collect .deb and .rpm packages into dist/ for release.
+      - name: Collect packages
+        run: |
+          set -e
+          cp target/x86_64-unknown-linux-musl/debian/*.deb dist/
+          cp target/aarch64-unknown-linux-musl/debian/*.deb dist/
+          cp target/x86_64-unknown-linux-musl/generate-rpm/*.rpm dist/
+          cp target/aarch64-unknown-linux-musl/generate-rpm/*.rpm dist/
+
       - name: Generate SHA256 checksums
         run: |
           set -e
           cd dist
-          shasum -a 256 snakeway-v*-linux-musl* > SHA256SUMS
+          shasum -a 256 snakeway-v*-linux-musl* *.deb *.rpm > SHA256SUMS
           cat SHA256SUMS
+
+      # GPG sign the checksums file.
+      # Requires GPG_PRIVATE_KEY and GPG_PASSPHRASE repository secrets (Settings > Secrets).
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.PRIVATE_SIGNING_KEY_SNAKEWAY_2026 }}" | gpg --batch --import
+      - name: Sign SHA256SUMS
+        run: |
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "${{ secrets.SIGNING_PASSPHRASE_SNAKEWAY_2026 }}" \
+            --detach-sign --armor \
+            --output dist/SHA256SUMS.asc \
+            dist/SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -297,4 +416,7 @@ jobs:
             dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl-wasm
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl-wasm
+            dist/*.deb
+            dist/*.rpm
             dist/SHA256SUMS
+            dist/SHA256SUMS.asc

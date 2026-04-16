@@ -177,7 +177,7 @@ polish.
 
 - [x] Make UA Parser regex file overridable in the config (similar to MMDB files)
 - [x] Review device subsystem against the mature configuration subsystem
-- [ ] Consider discrete `on_response_header` and `on_response_body` hooks
+- [x] Consider discrete `on_response_header` and `on_response_body` - implemented `on_stream_response_body` instead.
 - [x] Consider scoping network policy, request filter, and rate limiting devices to specific paths
 
 **Routing**
@@ -192,10 +192,9 @@ polish.
 
 **Goals**
 
-- [ ] `.deb` and `.rpm` packages
-- [ ] Systemd service unit
-- [ ] Distroless Docker images
-- [ ] Helm chart
+- [x] `.deb` and `.rpm` packages
+- [x] Systemd service unit
+- [x] Distroless Docker images
 
 **Deliverables**
 
@@ -216,7 +215,7 @@ Standard installation layout:
 - [ ] Comprehensive documentation site
 - [ ] Full operator manual
 - [ ] Benchmark suite with published results
-- [ ] Stabilized device API
+- [x] Stabilized device API
 
 ---
 
@@ -294,3 +293,7 @@ and applying runtime snapshots through the existing configuration pipeline.
 ### Admissions Control
 
 Standalone backpressure monitoring tool that integrates with the proxy for graceful load shedding.
+
+### Packaging
+
+- Helm chart

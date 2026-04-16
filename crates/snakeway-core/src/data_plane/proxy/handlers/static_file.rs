@@ -7,18 +7,6 @@ use pingora::{Custom, Error};
 pub(crate) struct StaticFileHandler;
 
 impl StaticFileHandler {
-    #[cfg(not(feature = "static_files"))]
-    pub(crate) async fn handle(
-        &self,
-        _session: &mut Session,
-        _ctx: &RequestCtx,
-        _route: &RouteEntry,
-        _devices: &DeviceRegistry,
-    ) -> pingora::Result<bool> {
-        Err(Error::new(Custom("static files disabled")))
-    }
-
-    #[cfg(feature = "static_files")]
     pub(crate) async fn handle(
         &self,
         session: &mut Session,

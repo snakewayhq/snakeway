@@ -91,6 +91,9 @@ interface policy {
   /// Called after receiving the upstream response
   after-proxy: func(resp: response) -> response-result;
 
+  /// Called (potentially multiple times) as the response body is streamed to the client
+  on-stream-response-body: func(resp: response, chunk: option<body-chunk>) -> body-result;
+
   /// Called just before sending the response to the client
   on-response: func(resp: response) -> response-result;
 }

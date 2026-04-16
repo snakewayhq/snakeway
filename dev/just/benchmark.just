@@ -31,13 +31,13 @@ benchmark-static-files:
 # Start this profile recipe, then run run-load. When this command exits, the results should be displayed.
 profile:
     @echo "Building Snakeway (release, with symbols)"
-    cargo build --release -p snakeway --features static_files
+    cargo build --release -p snakeway
     @echo "Profiling with Samply (Ctrl+C to stop)"
     samply record target/release/snakeway > /dev/null
 
 # Start this profile recipe, then run "tokio-console" at the cli
 profile-tokio:
-    RUSTFLAGS="--cfg tokio_unstable" TOKIO_CONSOLE=1 RUST_LOG=error cargo run -r -p snakeway --features static_files > /dev/null
+    RUSTFLAGS="--cfg tokio_unstable" TOKIO_CONSOLE=1 RUST_LOG=error cargo run -r -p snakeway > /dev/null
 
 # Generate meaningful profiling data against an upstream.
 run-load-against-upstream:

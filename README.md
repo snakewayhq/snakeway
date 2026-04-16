@@ -25,11 +25,13 @@ Actively developed. APIs may shift while foundations are finalized.
 
 Apache 2.0
 
-## Geo IP Database
+## Request Enrichment
+
+### Geo IP Database
 
 Any MMDB database is supported, but the default for integration tests is [IP Geolocation by DB-IP](https://db-ip.com).
 
-## User Agent Parsing
+### User Agent Parsing
 
 Uses Woothee by default, but also as a secondary options [ua-parser](https://github.com/ua-parser/uap-core).
 

@@ -71,7 +71,7 @@ impl Router {
         });
 
         // The longest prefix wins --> sort descending by path length.
-        self.routes.sort_by(|a, b| b.path.len().cmp(&a.path.len()));
+        self.routes.sort_by_key(|b| std::cmp::Reverse(b.path.len()));
 
         Ok(())
     }
