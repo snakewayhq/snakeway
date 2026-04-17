@@ -1,5 +1,7 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use snakeway_core::{IdentityDeviceConfig, UaEngineKind};
+use snakeway_core::bench_api::{
+    Device, IdentityDevice, IdentityDeviceConfig, RequestCtx, UaEngineKind,
+};
 
 /// Build an `IdentityDevice` with `n` trusted-proxy CIDR rules.
 ///
@@ -12,7 +14,7 @@ use snakeway_core::{IdentityDeviceConfig, UaEngineKind};
 fn device_with_trusted_proxies(n: usize) -> IdentityDevice {
     let trusted_proxies = (0..n).map(|i| format!("10.{i}.0.0/24")).collect();
 
-    IdentityDevice::from_config(IdentityDeviceConfig {
+    IdentityDevice::try_from(IdentityDeviceConfig {
         enable: true,
         trusted_proxies,
         max_x_forwarded_for_length: 10,
@@ -22,6 +24,7 @@ fn device_with_trusted_proxies(n: usize) -> IdentityDevice {
         geoip_connection_type_db: None,
         enable_user_agent: false,
         ua_engine: UaEngineKind::Woothee,
+        ua_parser_regexes: None,
         max_user_agent_length: 512,
     })
     .expect("valid config")
