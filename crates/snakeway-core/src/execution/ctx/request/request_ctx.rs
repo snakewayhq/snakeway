@@ -78,7 +78,7 @@ impl Default for RequestCtx {
 
 /// Hydration API
 impl RequestCtx {
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             route_id: None,
 

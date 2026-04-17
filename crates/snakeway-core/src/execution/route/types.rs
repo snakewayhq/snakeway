@@ -37,7 +37,7 @@ impl RouteRuntime {
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize)]
-pub(crate) enum RouteKind {
+pub enum RouteKind {
     Service,
     Static,
 }
@@ -64,7 +64,7 @@ impl Hash for RouteId {
 }
 
 impl RouteId {
-    pub(crate) fn service(path: &str, service: &str) -> Self {
+    pub fn service(path: &str, service: &str) -> Self {
         Self {
             kind: RouteKind::Service,
             path: Arc::from(path.trim_end_matches('/')),

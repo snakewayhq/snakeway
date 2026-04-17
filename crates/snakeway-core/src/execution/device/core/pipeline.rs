@@ -43,10 +43,7 @@ impl DevicePipeline {
 
 /// Device pipeline for HTTP events
 impl DevicePipeline {
-    pub(crate) fn run_on_request(
-        devices: &[Arc<dyn Device>],
-        ctx: &mut RequestCtx,
-    ) -> DeviceResult {
+    pub fn run_on_request(devices: &[Arc<dyn Device>], ctx: &mut RequestCtx) -> DeviceResult {
         run_device_chain(devices, |dev| dev.on_request(ctx))
     }
 

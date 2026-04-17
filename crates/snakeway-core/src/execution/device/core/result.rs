@@ -2,7 +2,7 @@ use crate::execution::ctx::ResponseCtx;
 use crate::execution::device::core::errors::DeviceError;
 
 #[derive(Debug)]
-pub(crate) enum DeviceResult {
+pub enum DeviceResult {
     /// Continue to the next device / next phase
     Continue,
 
