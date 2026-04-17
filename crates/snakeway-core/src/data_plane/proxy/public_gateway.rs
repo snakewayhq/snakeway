@@ -194,6 +194,7 @@ impl ProxyHttp for PublicGateway {
     }
 
     /// Select upstream and enforce protocol rules
+    #[hotpath::measure]
     async fn upstream_peer(
         &self,
         _session: &mut Session,
@@ -269,6 +270,7 @@ impl ProxyHttp for PublicGateway {
     }
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
+    #[hotpath::measure]
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         // Hydrate request context from session.
         // RFC 9112 §6.3: Reject CL.TE / TE.CL request smuggling attempts.
@@ -434,6 +436,7 @@ impl ProxyHttp for PublicGateway {
     /// A mismatch means the client closed the connection (or timed out) before
     /// sending the full body — forwarding a truncated body to the upstream would
     /// waste backend resources or cause incorrect behaviour.
+    #[hotpath::measure]
     async fn request_body_filter(
         &self,
         session: &mut Session,
@@ -496,6 +499,7 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// MUTATE OR ABORT UPSTREAM
+    #[hotpath::measure]
     async fn upstream_request_filter(
         &self,
         _session: &mut Session,
@@ -559,6 +563,7 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// MUTATE RESPONSE HEADERS / STATUS
+    #[hotpath::measure]
     async fn upstream_response_filter(
         &self,
         _session: &mut Session,
@@ -609,6 +614,7 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// FINAL OBSERVATION / METRICS / LOGGING
+    #[hotpath::measure]
     async fn response_filter(
         &self,
         _session: &mut Session,
@@ -657,6 +663,7 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// INSPECT RESPONSE BODY CHUNKS AS THEY STREAM
+    #[hotpath::measure]
     fn upstream_response_body_filter(
         &self,
         _session: &mut Session,
@@ -694,6 +701,7 @@ impl ProxyHttp for PublicGateway {
     /// The final step in the Pingora request/response pipeline.
     /// This function is primarily intended for logging,
     /// but it is also used for finalizing request guards.
+    #[hotpath::measure]
     async fn logging(&self, _session: &mut Session, e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,
@@ -726,6 +734,7 @@ impl ProxyHttp for PublicGateway {
 }
 
 impl PublicGateway {
+    #[hotpath::measure]
     fn record_metrics(&self, ctx: &RequestCtx) {
         use crate::execution::traffic::circuit::CircuitState;
 
@@ -831,6 +840,7 @@ impl PublicGateway {
     }
 
     /// Select an upstream for the given request.
+    #[hotpath::measure]
     fn select_upstream<'a>(
         &self,
         ctx: &RequestCtx,
@@ -877,6 +887,7 @@ impl PublicGateway {
     /// 1. WebSocket: HTTP/1.1 only
     /// 2. gRPC: HTTP/2 only (TLS required)
     /// 3. Default: Pingora defaults
+    #[hotpath::measure]
     pub(crate) fn enforce_protocol(
         &self,
         peer: &mut HttpPeer,
@@ -907,6 +918,7 @@ impl PublicGateway {
     /// - Any status code (if count_http_5xx_as_failure is false)
     ///
     /// This is called from the logging hook to ensure it runs after all other processing.
+    #[hotpath::measure]
     fn finalize_admission_guard(&self, ctx: &mut RequestCtx) {
         let (service_id, _) = match ctx.selected_upstream.as_ref() {
             Some(v) => v,
