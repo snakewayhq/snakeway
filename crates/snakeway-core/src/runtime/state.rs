@@ -3,7 +3,9 @@ use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;
-use crate::runtime::types::{TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime};
+use crate::runtime::types::{
+    ResolvedAddr, TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime,
+};
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
@@ -191,6 +193,19 @@ fn make_upstream_runtime_from_tcp(
 
     let port = authority.port_u16().unwrap_or(80);
 
+    // Resolve DNS eagerly so the data-plane hot path never calls getaddrinfo.
+    // IP literals are parsed directly; hostnames are resolved via the OS resolver.
+    let resolved_addr = if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        std::net::SocketAddr::new(ip, port)
+    } else {
+        use std::net::ToSocketAddrs;
+        (host.as_str(), port)
+            .to_socket_addrs()
+            .with_context(|| format!("failed to resolve upstream hostname '{host}'"))?
+            .next()
+            .ok_or_else(|| anyhow!("upstream hostname '{host}' resolved to no addresses"))?
+    };
+
     let addr = UpstreamAddr::Tcp {
         host: host.clone(),
         port,
@@ -237,6 +252,7 @@ fn make_upstream_runtime_from_tcp(
         id: make_upstream_id(&addr),
         host,
         port,
+        resolved_addr: ResolvedAddr::new(resolved_addr),
         use_tls,
         sni,
         weight: cfg.weight,

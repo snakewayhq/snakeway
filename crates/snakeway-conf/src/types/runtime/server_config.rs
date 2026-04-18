@@ -21,6 +21,8 @@ pub struct ServerConfig {
     pub tls_automation: Option<TlsAutomationConfig>,
 
     pub observability: Option<ObservabilityConfig>,
+
+    pub dns_refresh_interval_seconds: u64,
 }
 
 //-----------------------------------------------------------------------------

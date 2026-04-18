@@ -238,10 +238,11 @@ mod tests {
     use crate::execution::route::types::RouteId;
     use crate::execution::route::{RouteRuntime, Router};
     use crate::runtime::{
-        RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
+        ResolvedAddr, RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
     };
     use snakeway_conf::types::LoadBalancingStrategy;
     use std::collections::HashMap;
+    use std::net::ToSocketAddrs;
     use std::sync::Arc;
 
     fn make_state_with_service_route(
@@ -271,6 +272,9 @@ mod tests {
                     id: UpstreamId(i as u32),
                     host: host.to_string(),
                     port: *port,
+                    resolved_addr: ResolvedAddr::new(
+                        (*host, *port).to_socket_addrs().unwrap().next().unwrap(),
+                    ),
                     use_tls: false,
                     sni: host.to_string(),
                     weight: 1,
@@ -452,6 +456,7 @@ mod tests {
                         id: UpstreamId(0),
                         host: "127.0.0.1".into(),
                         port: 9000,
+                        resolved_addr: ResolvedAddr::new("127.0.0.1:9000".parse().unwrap()),
                         use_tls: false,
                         sni: "127.0.0.1".into(),
                         weight: 1,

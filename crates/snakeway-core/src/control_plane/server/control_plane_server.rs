@@ -268,6 +268,16 @@ impl ControlPlaneServer {
         if let Some(manager) = &self.cert_manager {
             self.control_rt.spawn(manager.clone().run_reconciliation());
         }
+
+        // Background DNS re-resolution for hostname-based upstreams.
+        {
+            use crate::runtime::dns_refresh;
+            let interval = self.config.server.dns_refresh_interval_seconds;
+            self.control_rt.spawn(dns_refresh::run_dns_refresh(
+                self.state.clone(),
+                std::time::Duration::from_secs(interval),
+            ));
+        }
     }
 }
 
