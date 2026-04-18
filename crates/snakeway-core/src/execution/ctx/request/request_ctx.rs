@@ -77,6 +77,7 @@ impl Default for RequestCtx {
 }
 
 /// Hydration API
+#[hotpath::measure_all]
 impl RequestCtx {
     pub fn empty() -> Self {
         Self {
