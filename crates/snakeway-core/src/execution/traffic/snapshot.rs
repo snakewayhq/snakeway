@@ -45,9 +45,9 @@ impl TrafficSnapshot {
                 .collect::<Vec<_>>();
 
             services.insert(
-                ServiceId(name.clone()),
+                ServiceId(name.as_str().into()),
                 ServiceSnapshot {
-                    service_id: ServiceId(name.clone()),
+                    service_id: ServiceId(name.as_str().into()),
                     strategy: svc.strategy.clone(),
                     upstreams,
                     circuit_breaker_cfg: svc.circuit_breaker_cfg.clone(),

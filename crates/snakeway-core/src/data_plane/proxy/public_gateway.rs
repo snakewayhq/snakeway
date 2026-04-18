@@ -213,7 +213,7 @@ impl ProxyHttp for PublicGateway {
             .service
             .as_ref()
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
-        let service_id = ServiceId(service_name.clone());
+        let service_id = ServiceId(service_name.as_str().into());
 
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
