@@ -1,5 +1,5 @@
 mod error;
-pub(crate) mod normalization;
+pub mod normalization;
 mod normalized_request;
 mod request_id;
 mod request_source;

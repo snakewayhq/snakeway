@@ -8,6 +8,7 @@ use crate::validation::{ConfigError, validate_spec};
 use std::fs;
 use std::path::Path;
 
+#[hotpath::measure]
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
     load_config_from_specs(server_spec, ingress_specs, device_specs)

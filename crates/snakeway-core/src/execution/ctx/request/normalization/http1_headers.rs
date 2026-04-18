@@ -1,6 +1,6 @@
 use crate::execution::ctx::request::NormalizedHeaders;
 use crate::execution::ctx::request::normalization::{NormalizationOutcome, RewriteReason};
-use http::{HeaderMap, HeaderName, HeaderValue};
+use http::{HeaderMap, HeaderValue};
 use std::collections::HashSet;
 
 /// Normalizes HTTP headers according to RFC 9110 and RFC 9112.
@@ -16,6 +16,7 @@ use std::collections::HashSet;
 /// - Rejects headers containing NUL bytes to prevent header injection attacks
 /// - Validates all header names and values are properly encoded
 /// - Strips hop-by-hop headers to prevent protocol confusion
+#[hotpath::measure]
 pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
@@ -69,28 +70,17 @@ pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<N
     }
 
     // RFC 9110 §5.1-5.3: Process and normalize each header field
-    for (name, value) in raw.iter() {
-        let name_str = name.as_str();
+    for (canonical_name, value) in raw.iter() {
+        let name_str = canonical_name.as_str();
 
         // RFC 9110 §7.6.1: Strip standard hop-by-hop headers and Connection-listed headers.
         // These headers are specific to a single transport-level connection and must not
         // be forwarded by proxies or stored by caches.
         // SECURITY: Lowercased comparison is critical - check against lowercased name_str
-        let name_lower = name_str.to_ascii_lowercase();
-        if is_standard_hop_by_hop(&name_lower) || connection_tokens.contains(&name_lower) {
+        // let name_lower = name_str.to_ascii_lowercase();
+        if is_standard_hop_by_hop(name_str) || connection_tokens.contains(name_str) {
             rewritten = true;
             continue;
-        }
-
-        // RFC 9110 §5.1: Header field names are case-insensitive. Canonicalize to lowercase
-        // for consistent processing (following RFC 3986 §6 normalization principles).
-        let canonical_name: HeaderName = match name_lower.parse() {
-            Ok(h) => h,
-            Err(_) => return NormalizationOutcome::reject_for_header_encoding_violation(),
-        };
-
-        if name_str != canonical_name.as_str() {
-            rewritten = true;
         }
 
         // RFC 9110 §5.5: Validate header field value encoding
@@ -124,7 +114,7 @@ pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<N
         // field with comma-separated values. This is semantically equivalent for most headers.
         // NOTE: Some headers (e.g., Set-Cookie) have special semantics and should not be folded,
         // but those are response headers. For request headers, comma-folding is generally safe.
-        match out.get_mut(&canonical_name) {
+        match out.get_mut(canonical_name) {
             Some(existing) => {
                 let merged = match existing.to_str() {
                     Ok(e) => format!("{}, {}", e, trimmed),

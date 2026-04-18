@@ -140,7 +140,7 @@ impl CanonicalQuery {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct NormalizedHeaders {
+pub struct NormalizedHeaders {
     header_map: HeaderMap,
 }
 

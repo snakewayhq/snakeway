@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub(crate) enum NormalizationOutcome<T> {
+pub enum NormalizationOutcome<T> {
     Accept(T),
     Rewrite {
         value: T,
@@ -32,7 +32,7 @@ impl<T> NormalizationOutcome<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum RejectReason {
+pub enum RejectReason {
     InvalidUtf8,
     PathTraversal,
     InvalidPercentEncoding,
@@ -43,7 +43,7 @@ pub(crate) enum RejectReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum RewriteReason {
+pub enum RewriteReason {
     PathCanonicalization,
     QueryCanonicalization,
     HeaderCanonicalization,

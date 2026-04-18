@@ -1,7 +1,7 @@
 use http::{HeaderMap, StatusCode};
 
 #[derive(Debug)]
-pub(crate) struct ResponseCtx {
+pub struct ResponseCtx {
     pub(crate) request_id: Option<String>,
     pub(crate) status: StatusCode,
     #[allow(dead_code)] // useful for debugger inspection

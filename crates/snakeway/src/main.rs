@@ -1,5 +1,5 @@
-use snakeway_core::run_cli;
+use snakeway_core::run;
 
 fn main() {
-    run_cli();
+    run();
 }

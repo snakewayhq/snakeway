@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize)]
-pub(crate) struct ServiceId(pub(crate) String);
+pub(crate) struct ServiceId(pub(crate) Arc<str>);
 
 impl Display for ServiceId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

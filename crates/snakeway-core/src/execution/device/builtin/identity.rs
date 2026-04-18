@@ -10,7 +10,7 @@ use snakeway_conf::types::IdentityDeviceConfig;
 use std::path::PathBuf;
 use thiserror::Error;
 
-pub(crate) struct IdentityDevice {
+pub struct IdentityDevice {
     // IP Trust
     trusted_proxies: Vec<IpNet>,
     max_x_forwarded_for_length: usize,
@@ -28,7 +28,7 @@ pub(crate) struct IdentityDevice {
 }
 
 #[derive(Debug, Error)]
-pub(crate) enum IdentityDeviceInitError {
+pub enum IdentityDeviceInitError {
     #[error("failed to load GeoIP DB {path}: {source}")]
     LoadGeoIpDb {
         path: PathBuf,
