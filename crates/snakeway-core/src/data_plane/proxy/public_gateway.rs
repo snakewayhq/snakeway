@@ -51,33 +51,34 @@ impl PublicGateway {
     }
 }
 
-// Detects CL.TE / TE.CL request smuggling attempts that Pingora's HTTP/1 parser has already
-// partially handled.
-//
-// Pingora strips `Content-Length` (and disables keepalive) when a request carries both
-// `Transfer-Encoding` and `Content-Length` per RFC 9112 §6.3 + §6.1-15.  By the time our
-// code runs the `Content-Length` header is already gone, so we cannot simply check "are both
-// headers present?"
-//
-// Observable signal: for an HTTP/1.1 request where the client did not explicitly send
-// `Connection: close`, Pingora will leave keepalive *enabled*.  The *only* case where it
-// disables keepalive despite the client not requesting it is the CL+TE detection path.  We
-// use `ServerSession::H1.will_keepalive()` to read that flag.
+/// Detects CL.TE / TE.CL smuggling attempts that Pingora's HTTP/1 parser has partially handled.
+///
+/// When a request carries both `Content-Length` and `Transfer-Encoding`, Pingora strips CL
+/// (RFC 9112 §6.3) and disables keepalive on the session (RFC 9112 §6.1-15). Since CL is gone
+/// by the time we run, we infer CL+TE from the keepalive flag instead.
+///
+/// For an HTTP/1.1 request that didn't send `Connection: close` and still has reuse budget,
+/// Pingora leaves keepalive on by default. Keepalive being off under those conditions means
+/// the CL+TE detection path fired. We read that via `ServerSession::H1.will_keepalive()`.
+///
+/// We filter out the other keepalive-off cases that would false-positive:
+///   * HTTP/1.0 — defaults to keepalive-off (1.0 + TE is already rejected upstream anyway).
+///   * Exhausted reuse counter — `will_keepalive()` is also false when reuses_remaining == 0.
+///
+/// Caveat: this relies on Pingora's current internals, not a stable API. Revisit on upgrade.
 fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
     let req = session.req_header();
 
-    // Only relevant for HTTP/1.x connections.
-    if req.version == Version::HTTP_2 {
+    // Only HTTP/1.1-1.0 defaults to keepalive-off and would false-positive,
+    // and 1.0 + TE is already rejected by Pingora's validate_request.
+    if req.version != Version::HTTP_11 {
         return false;
     }
 
-    // Transfer-Encoding must be present (Pingora retains it).
     if !req.headers.contains_key("transfer-encoding") {
         return false;
     }
 
-    // If the client explicitly requested connection close the keepalive-off state is
-    // expected and is not a signal of CL+TE detection.
     let client_closed = req
         .headers
         .get("connection")
@@ -90,10 +91,14 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
         return false;
     }
 
-    // For HTTP/1.1 requests that did not request Connection: close, Pingora enables keepalive
-    // by default.  If keepalive is off, Pingora must have detected CL+TE and disabled it.
     match session.downstream_session.as_ref() {
-        ServerSession::H1(h1) => !h1.will_keepalive(),
+        ServerSession::H1(h1) => {
+            // Exclude the reuse-counter-exhausted case, which also turns keepalive off.
+            if h1.get_keepalive_reuses_remaining() == Some(0) {
+                return false;
+            }
+            !h1.will_keepalive()
+        }
         _ => false,
     }
 }
@@ -185,6 +190,7 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 ///     - Run on_ws_close if needed
 ///     - Finalize AdmissionGuard (circuit success/failure)
 
+#[hotpath::measure_all]
 #[async_trait]
 impl ProxyHttp for PublicGateway {
     type CTX = RequestCtx;
@@ -194,7 +200,6 @@ impl ProxyHttp for PublicGateway {
     }
 
     /// Select upstream and enforce protocol rules
-    #[hotpath::measure]
     async fn upstream_peer(
         &self,
         _session: &mut Session,
@@ -270,28 +275,7 @@ impl ProxyHttp for PublicGateway {
     }
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
-    #[hotpath::measure]
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
-        // Hydrate request context from session.
-        // RFC 9112 §6.3: Reject CL.TE / TE.CL request smuggling attempts.
-        //
-        // Pingora's HTTP/1 parser strips Content-Length when both CL and Transfer-Encoding
-        // are present (RFC 9112 §6.3) and disables keepalive (RFC 9112 §6.1-15), but does
-        // not itself reject the request.  By the time `request_filter` runs, the CL header
-        // is already gone, so our header-normalization layer cannot see both headers.
-        //
-        // We detect the stripping by checking that:
-        //   1. The request is HTTP/1.x
-        //   2. Transfer-Encoding is present (Pingora keeps it)
-        //   3. The client did not explicitly send Connection: close (which would legitimately
-        //      disable keepalive for an unrelated reason)
-        //   4. Pingora nonetheless disabled keepalive — the only remaining cause is CL+TE
-        if is_cl_te_smuggling_attempt(session) {
-            tracing::warn!("request rejected: CL.TE smuggling attempt detected");
-            session.respond_error(400).await?;
-            return Ok(true);
-        }
-
         ctx.hydrate_from_session(session).map_err(|e| {
             tracing::warn!(error = %e, "request rejected during normalization");
             e.as_pingora_error()
@@ -428,6 +412,31 @@ impl ProxyHttp for PublicGateway {
         }
     }
 
+    async fn early_request_filter(&self, session: &mut Session, _ctx: &mut Self::CTX) -> Result<()>
+    where
+        Self::CTX: Send + Sync,
+    {
+        // Hydrate request context from session.
+        // RFC 9112 §6.3: Reject CL.TE / TE.CL request smuggling attempts.
+        //
+        // Pingora's HTTP/1 parser strips Content-Length when both CL and Transfer-Encoding
+        // are present (RFC 9112 §6.3) and disables keepalive (RFC 9112 §6.1-15), but does
+        // not itself reject the request.  By the time `early_request_filter` runs, the CL header
+        // is already gone, so our header-normalization layer cannot see both headers.
+        //
+        // We detect the stripping by checking that:
+        //   1. The request is HTTP/1.x
+        //   2. Transfer-Encoding is present (Pingora keeps it)
+        //   3. The client did not explicitly send Connection: close (which would legitimately
+        //      disable keepalive for an unrelated reason)
+        //   4. Pingora nonetheless disabled keepalive — the only remaining cause is CL+TE
+        if is_cl_te_smuggling_attempt(session) {
+            tracing::warn!("request rejected: CL.TE smuggling attempt detected");
+            session.respond_error(400).await?;
+        }
+        Ok(())
+    }
+
     /// A method to filter and process the request body during a streaming session.
     /// This method is currently used for running device pipeline operations on the request body.
     ///
@@ -436,7 +445,6 @@ impl ProxyHttp for PublicGateway {
     /// A mismatch means the client closed the connection (or timed out) before
     /// sending the full body — forwarding a truncated body to the upstream would
     /// waste backend resources or cause incorrect behaviour.
-    #[hotpath::measure]
     async fn request_body_filter(
         &self,
         session: &mut Session,
@@ -499,7 +507,6 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// MUTATE OR ABORT UPSTREAM
-    #[hotpath::measure]
     async fn upstream_request_filter(
         &self,
         _session: &mut Session,
@@ -563,7 +570,6 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// MUTATE RESPONSE HEADERS / STATUS
-    #[hotpath::measure]
     async fn upstream_response_filter(
         &self,
         _session: &mut Session,
@@ -614,7 +620,6 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// FINAL OBSERVATION / METRICS / LOGGING
-    #[hotpath::measure]
     async fn response_filter(
         &self,
         _session: &mut Session,
@@ -663,7 +668,6 @@ impl ProxyHttp for PublicGateway {
     ///
     /// Intent:
     /// INSPECT RESPONSE BODY CHUNKS AS THEY STREAM
-    #[hotpath::measure]
     fn upstream_response_body_filter(
         &self,
         _session: &mut Session,
@@ -701,7 +705,6 @@ impl ProxyHttp for PublicGateway {
     /// The final step in the Pingora request/response pipeline.
     /// This function is primarily intended for logging,
     /// but it is also used for finalizing request guards.
-    #[hotpath::measure]
     async fn logging(&self, _session: &mut Session, e: Option<&Error>, ctx: &mut Self::CTX)
     where
         Self::CTX: Send + Sync,
@@ -734,7 +737,6 @@ impl ProxyHttp for PublicGateway {
 }
 
 impl PublicGateway {
-    #[hotpath::measure]
     fn record_metrics(&self, ctx: &RequestCtx) {
         use crate::execution::traffic::circuit::CircuitState;
 
@@ -840,7 +842,6 @@ impl PublicGateway {
     }
 
     /// Select an upstream for the given request.
-    #[hotpath::measure]
     fn select_upstream<'a>(
         &self,
         ctx: &RequestCtx,
@@ -887,7 +888,6 @@ impl PublicGateway {
     /// 1. WebSocket: HTTP/1.1 only
     /// 2. gRPC: HTTP/2 only (TLS required)
     /// 3. Default: Pingora defaults
-    #[hotpath::measure]
     pub(crate) fn enforce_protocol(
         &self,
         peer: &mut HttpPeer,
@@ -918,7 +918,6 @@ impl PublicGateway {
     /// - Any status code (if count_http_5xx_as_failure is false)
     ///
     /// This is called from the logging hook to ensure it runs after all other processing.
-    #[hotpath::measure]
     fn finalize_admission_guard(&self, ctx: &mut RequestCtx) {
         let (service_id, _) = match ctx.selected_upstream.as_ref() {
             Some(v) => v,
