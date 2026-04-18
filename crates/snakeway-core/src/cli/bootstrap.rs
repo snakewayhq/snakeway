@@ -66,7 +66,7 @@ enum Command {
     },
 }
 
-pub fn run_cli() {
+pub fn run() {
     let cli = Cli::parse();
 
     match cli.command {
