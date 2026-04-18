@@ -92,7 +92,7 @@ mod tests {
         snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot},
         types::*,
     };
-    use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
+    use crate::runtime::{ResolvedAddr, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
     use snakeway_conf::types::LoadBalancingStrategy;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -115,6 +115,7 @@ mod tests {
                 id: UpstreamId(id as u32),
                 host: "127.0.0.1".to_string(),
                 port: id,
+                resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], id).into()),
                 use_tls: false,
                 sni: "localhost".to_string(),
                 weight: 1,
