@@ -52,7 +52,7 @@ pub(crate) struct CircuitBreakerDetailsView {
 mod tests {
     use crate::execution::traffic::snapshot::{ServiceSnapshot, TrafficSnapshot, UpstreamSnapshot};
     use crate::execution::traffic::{ServiceId, TrafficManager};
-    use crate::runtime::{UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
+    use crate::runtime::{ResolvedAddr, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime};
     use snakeway_conf::types::{HealthCheckConfig, LoadBalancingStrategy};
     use std::collections::HashMap;
     use std::time::Duration;
@@ -69,6 +69,7 @@ mod tests {
                 id: upstream_id,
                 host: upstream_host,
                 port: upstream_port,
+                resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], upstream_port).into()),
                 use_tls: false,
                 sni: "localhost".into(),
                 weight: 1,
@@ -126,6 +127,7 @@ mod tests {
                 id: upstream_id,
                 host: upstream_host,
                 port: upstream_port,
+                resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], upstream_port).into()),
                 use_tls: false,
                 sni: "localhost".into(),
                 weight: 1,
@@ -193,6 +195,7 @@ mod tests {
                         id: upstream_id,
                         host: "127.0.0.1".into(),
                         port: 8080,
+                        resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], 8080).into()),
                         use_tls: false,
                         sni: "localhost".into(),
                         weight: 1,
@@ -239,6 +242,7 @@ mod tests {
                         id: upstream_id2,
                         host: "127.0.0.1".into(),
                         port: 8081,
+                        resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], 8081).into()),
                         use_tls: false,
                         sni: "localhost".into(),
                         weight: 1,

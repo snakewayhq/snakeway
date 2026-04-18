@@ -1,9 +1,8 @@
-use crate::execution::ctx::RequestCtx;
-use crate::execution::device::builtin::request_filter::RequestFilterDevice;
-use crate::execution::device::core::Device;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::HeaderName;
-use snakeway_conf::types::RequestFilterDeviceConfig;
+use snakeway_core::bench_api::{
+    Device, RequestCtx, RequestFilterDevice, RequestFilterDeviceConfig,
+};
 
 /// Build a `RequestFilterDevice` with `n` deny-header rules.
 ///
@@ -18,14 +17,13 @@ fn device_with_deny_headers(n: usize) -> RequestFilterDevice {
         })
         .collect();
 
-    RequestFilterDevice::from_config(RequestFilterDeviceConfig {
+    RequestFilterDevice::from(RequestFilterDeviceConfig {
         deny_headers,
         max_header_bytes: usize::MAX,
         max_body_bytes: usize::MAX,
         max_suspicious_body_bytes: usize::MAX,
         ..Default::default()
     })
-    .expect("valid config")
 }
 
 fn bench_request_filter(c: &mut Criterion) {

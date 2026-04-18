@@ -24,6 +24,7 @@ impl TryFrom<ServerSpec> for ServerConfig {
                 })?,
             tls_automation: spec.tls_automation.map(Into::into),
             observability: spec.observability.map(Into::into),
+            dns_refresh_interval_seconds: spec.dns_refresh_interval_seconds,
         })
     }
 }
@@ -97,6 +98,22 @@ mod tests {
         assert!(config.ca_file.is_none());
         assert!(config.tls_automation.is_none());
         assert!(config.observability.is_none());
+        assert_eq!(config.dns_refresh_interval_seconds, 30);
+    }
+
+    #[test]
+    fn dns_refresh_interval_explicit_value() {
+        // Arrange
+        let spec = ServerSpec {
+            dns_refresh_interval_seconds: 60,
+            ..Default::default()
+        };
+
+        // Act
+        let config = ServerConfig::try_from(spec).unwrap();
+
+        // Assert
+        assert_eq!(config.dns_refresh_interval_seconds, 60);
     }
 
     #[test]

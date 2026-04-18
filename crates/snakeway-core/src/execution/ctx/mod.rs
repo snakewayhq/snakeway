@@ -1,4 +1,4 @@
-pub(crate) mod response_ctx;
+pub mod response_ctx;
 mod ws_close_ctx;
 mod ws_ctx;
 

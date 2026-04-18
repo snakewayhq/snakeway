@@ -1,7 +1,10 @@
+pub(crate) mod dns_refresh;
 mod error;
 mod state;
 mod types;
 
+#[cfg(test)]
+pub(crate) use types::ResolvedAddr;
 #[cfg(test)]
 pub(crate) use types::UpstreamTcpRuntime;
 

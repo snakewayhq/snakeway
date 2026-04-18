@@ -5,6 +5,7 @@ use crate::validation::{
 };
 
 range_constraint!(THREADS, usize, min: 1, max: 1024);
+range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, u64, min: 1, max: 3600, units: "seconds");
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -33,6 +34,13 @@ impl ValidateSpec for ServerSpec {
         if let Some(threads) = self.threads {
             validate_range_field!(THREADS, threads, report, origin);
         }
+
+        validate_range_field!(
+            DNS_REFRESH_INTERVAL_SECONDS,
+            self.dns_refresh_interval_seconds,
+            report,
+            origin
+        );
 
         if let Some(tls_automation) = &self.tls_automation {
             tls_automation.validate(origin, report);
@@ -230,6 +238,43 @@ mod tests {
         // Assert
         assert!(report.has_violations());
         assert!(report.errors.iter().any(|e| e.message.contains(&expected)));
+    }
+
+    #[test]
+    fn validate_dns_refresh_interval_valid() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let server = ServerSpec {
+            dns_refresh_interval_seconds: 60,
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&server.origin, &mut report);
+
+        // Assert
+        assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn validate_dns_refresh_interval_too_high() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let server = ServerSpec {
+            dns_refresh_interval_seconds: 3601,
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&server.origin, &mut report);
+
+        // Assert
+        assert!(report.has_violations());
+        assert!(
+            report.errors[0]
+                .message
+                .contains("invalid dns_refresh_interval_seconds: 3601seconds")
+        );
     }
 
     #[test]

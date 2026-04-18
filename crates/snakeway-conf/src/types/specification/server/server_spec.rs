@@ -26,10 +26,17 @@ pub struct ServerSpec {
     pub tls_automation: Option<TlsAutomationSpec>,
 
     pub observability: Option<ObservabilitySpec>,
+
+    #[serde(default = "default_dns_refresh_interval_seconds")]
+    pub dns_refresh_interval_seconds: u64,
 }
 
 fn default_work_stealing() -> bool {
     true
+}
+
+fn default_dns_refresh_interval_seconds() -> u64 {
+    30
 }
 
 impl Default for ServerSpec {
@@ -43,6 +50,7 @@ impl Default for ServerSpec {
             ca_file: None,
             tls_automation: None,
             observability: None,
+            dns_refresh_interval_seconds: 30,
         }
     }
 }
