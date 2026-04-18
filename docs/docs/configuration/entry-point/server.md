@@ -8,11 +8,12 @@ The `server` block in `snakeway.hcl` controls process-level settings.
 
 ```hcl
 server {
-  version = 1                          # Config format version (always 1 for now)
-  pid_file = "/var/run/snakeway.pid"    # Optional; enables signal-based reload
-  threads = 8                          # Worker threads for the proxy runtime
-  work_stealing = true                       # Allow work stealing between threads
-  ca_file = "/path/to/certs/ca.pem"    # Global CA for verifying upstream TLS
+  version = 1                              # Config format version (always 1 for now)
+  pid_file = "/var/run/snakeway.pid"       # Optional; enables signal-based reload
+  threads = 8                              # Worker threads for the proxy runtime
+  work_stealing = true                     # Allow work stealing between threads
+  ca_file = "/path/to/certs/ca.pem"        # Global CA for verifying upstream TLS
+  dns_refresh_interval_seconds = 30        # How often to re-resolve upstream hostnames
 }
 ```
 
@@ -30,6 +31,12 @@ Enabling work stealing improves throughput under uneven load.
 
 `ca_file` string, default: none. Path to a CA certificate file used to verify upstream TLS connections when no
 per-upstream `ca_file` is configured.
+
+`dns_refresh_interval_seconds` integer, default: `30`. How often (in seconds) Snakeway re-resolves
+upstream hostnames in the background. When an upstream is configured with a hostname rather than an
+IP address, Snakeway resolves it at startup and then periodically refreshes the resolved address on
+this interval. This allows DNS changes (e.g., rolling deployments, blue-green switches) to take
+effect without a config reload. Valid range: `1` to `3600`.
 
 `tls_automation` object, default: none. Configures automatic ACME certificate issuance and renewal.
 See [TLS Automation](tls-automation/index.md).
