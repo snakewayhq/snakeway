@@ -16,7 +16,7 @@ Understanding this lifecycle is critical when writing devices or reasoning about
 For **proxied requests**, the full lifecycle is:
 
 ```
-on_request → on_stream_request_body (0 or more times) → before_proxy → after_proxy → on_response
+on_request → on_stream_request_body (0 or more times) → before_proxy → after_proxy → on_stream_response_body (0 or more times) → on_response
 ```
 
 For **static file requests**, the lifecycle is intentionally shorter:
@@ -86,9 +86,24 @@ This phase observes the upstream response headers and status before they are wri
 
 The upstream connection already exists at this point.
 
+### `on_stream_response_body`
+
+**Purpose:** Inspection and mutation of the response body
+**Runs for:** Proxy routes
+
+This hook is called as the upstream response body is streamed to the client.
+It may be invoked zero or more times depending on the response size and chunking.
+
+Typical uses:
+
+- Inspect response body content
+- Enforce response size limits
+
+If a device responds here, no further body chunks are forwarded.
+
 ### `on_response`
 
-**Purpose:** Final observation and side effects  
+**Purpose:** Final observation and side effects
 **Runs for:** Proxy routes and static routes
 
 This is the final lifecycle hook. The response is considered committed or about to be committed.
@@ -104,12 +119,14 @@ Mutating the response here is allowed but discouraged for anything security-crit
 
 ## Phase Capabilities
 
-| Phase        | Continue | Respond                | Error Handling       |
-|--------------|----------|------------------------|----------------------|
-| on_request   | proceed  | respond immediately    | respond with 500     |
-| before_proxy | proceed  | abort before upstream  | respond with 500     |
-| after_proxy  | proceed  | override response      | mark error / observe |
-| on_response  | proceed  | override (discouraged) | log + metric only    |
+| Phase                   | Continue | Respond                | Error Handling       |
+|-------------------------|----------|------------------------|----------------------|
+| on_request              | proceed  | respond immediately    | respond with 500     |
+| on_stream_request_body  | proceed  | respond immediately    | respond with 500     |
+| before_proxy            | proceed  | abort before upstream  | respond with 500     |
+| after_proxy             | proceed  | override response      | mark error / observe |
+| on_stream_response_body | proceed  | stop forwarding body   | mark error / observe |
+| on_response             | proceed  | override (discouraged) | log + metric only    |
 
 ## Static Route Lifecycle Notes
 
@@ -118,8 +135,10 @@ Static file routes intentionally **short-circuit** the proxy pipeline.
 For static routes:
 
 - `on_request` **runs**
+- `on_stream_request_body` **does not run**
 - `before_proxy` **does not run**
 - `after_proxy` **does not run**
+- `on_stream_response_body` **does not run**
 - `on_response` **runs**
 
 This design ensures that static file serving is:

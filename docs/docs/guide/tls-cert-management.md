@@ -2,11 +2,14 @@
 title: TLS Cert Management
 ---
 
-Snakeway supports automated TLS certificate issuance and renewal through the ACME protocol (used by Let's Encrypt), as well as manual certificate management for environments where operators provide their own certificates.
+Snakeway supports automated TLS certificate issuance and renewal through the ACME protocol (used by Let's Encrypt), as
+well as manual certificate management for environments where operators provide their own certificates.
 
 ## Automated TLS with ACME
 
-When ACME is enabled, Snakeway handles the full certificate lifecycle: it requests certificates from the ACME directory, completes the HTTP-01 challenge, stores the issued certificate, and renews it automatically before expiration. No external tooling or cron jobs are required.
+When ACME is enabled, Snakeway handles the full certificate lifecycle: it requests certificates from the ACME directory,
+completes the HTTP-01 challenge, stores the issued certificate, and renews it automatically before expiration. No
+external tooling or cron jobs are required.
 
 ### Complete Configuration Example
 
@@ -27,13 +30,23 @@ server {
 }
 ```
 
+:::caution
+Both `data_dir` and `cert_dir` must exist before Snakeway starts.
+Snakeway will not create these directories automatically. Create them as part of your deployment setup:
+
+```shell
+mkdir -p /var/lib/snakeway/acme /var/lib/snakeway/acme/certs
+```
+
+:::
+
 The corresponding ingress file must declare ACME mode and the domains to cover:
 
 ```hcl
 bind = {
   tls = {
     mode      = "acme"
-    domains   = ["example.com", "api.example.com"]
+    domains = ["example.com", "api.example.com"]
     challenge = "http01"
   }
 }
@@ -42,18 +55,23 @@ bind = {
 ### ACME Issuance and Renewal Flow
 
 1. On startup, Snakeway checks the configured cert store for existing certificates covering the declared domains.
-2. If no valid certificate exists, or if an existing certificate will expire within `renew_within_days`, Snakeway initiates an ACME order with the configured directory URL.
+2. If no valid certificate exists, or if an existing certificate will expire within `renew_within_days`, Snakeway
+   initiates an ACME order with the configured directory URL.
 3. Snakeway completes the HTTP-01 challenge by serving the ACME token on the `/.well-known/acme-challenge/` path.
-4. Once the certificate authority validates the challenge, Snakeway retrieves the issued certificate and stores it in the configured cert store.
+4. Once the certificate authority validates the challenge, Snakeway retrieves the issued certificate and stores it in
+   the configured cert store.
 5. Snakeway periodically re-checks certificate expiry and repeats the renewal process as needed.
 
-The `renew_within_days` parameter controls how early renewal begins. A value of 30 means Snakeway will attempt renewal when the certificate has 30 or fewer days until expiration. Values between 7 and 30 are typical; lower values reduce unnecessary renewals, while higher values provide a larger buffer against transient ACME failures.
+The `renew_within_days` parameter controls how early renewal begins. A value of 30 means Snakeway will attempt renewal
+when the certificate has 30 or fewer days until expiration. Values between 7 and 30 are typical; lower values reduce
+unnecessary renewals, while higher values provide a larger buffer against transient ACME failures.
 
 ### Certificate Stores
 
 Snakeway supports two built-in certificate stores, each suited to different deployment scenarios.
 
-**Filesystem store** persists certificates to disk. This is the recommended store for production. Certificates survive process restarts without re-issuance, and the files can be backed up or inspected by operators.
+**Filesystem store** persists certificates to disk. This is the recommended store for production. Certificates survive
+process restarts without re-issuance, and the files can be backed up or inspected by operators.
 
 ```hcl
 cert_store = {
@@ -62,7 +80,9 @@ cert_store = {
 }
 ```
 
-**Memory store** holds certificates only in process memory. Certificates are lost on restart, which triggers a fresh ACME issuance. This store is useful for development, testing, and ephemeral environments where persistence is unnecessary.
+**Memory store** holds certificates only in process memory. Certificates are lost on restart, which triggers a fresh
+ACME issuance. This store is useful for development, testing, and ephemeral environments where persistence is
+unnecessary.
 
 ```hcl
 cert_store = {
@@ -71,12 +91,15 @@ cert_store = {
 ```
 
 :::caution
-The memory store will request a new certificate from the ACME provider on every restart. Let's Encrypt enforces [rate limits](https://letsencrypt.org/docs/rate-limits/) that can block issuance if you restart frequently. Use the filesystem store in production.
+The memory store will request a new certificate from the ACME provider on every restart. Let's Encrypt
+enforces [rate limits](https://letsencrypt.org/docs/rate-limits/) that can block issuance if you restart frequently. Use
+the filesystem store in production.
 :::
 
 ## Manual Certificate Management
 
-For environments where certificates are provisioned externally (purchased from a CA, generated by an internal PKI, or managed by another tool), configure the ingress bind block with paths to the PEM-encoded certificate and private key:
+For environments where certificates are provisioned externally (purchased from a CA, generated by an internal PKI, or
+managed by another tool), configure the ingress bind block with paths to the PEM-encoded certificate and private key:
 
 ```hcl
 bind = {
@@ -88,12 +111,17 @@ bind = {
 }
 ```
 
-Snakeway reads the certificate and key files at startup. To rotate a manual certificate, replace the files on disk and trigger a configuration reload via the [Admin API](/docs/guide/admin-api) or by sending SIGHUP.
+Snakeway reads the certificate and key files at startup. To rotate a manual certificate, replace the files on disk and
+trigger a configuration reload via the [Admin API](/docs/guide/admin-api) or by sending SIGHUP.
 
 ## Monitoring and Failure Recovery
 
-**Monitor certificate expiry.** Even with automated renewal, operators should monitor certificate expiration dates. If ACME renewal fails (network issues, DNS misconfiguration, rate limits), the existing certificate continues to serve traffic until it expires.
+**Monitor certificate expiry.** Even with automated renewal, operators should monitor certificate expiration dates. If
+ACME renewal fails (network issues, DNS misconfiguration, rate limits), the existing certificate continues to serve
+traffic until it expires.
 
-**Check logs for renewal errors.** Snakeway logs ACME interactions at the `info` level and errors at `warn` or `error`. Watch for repeated renewal failures and investigate the underlying cause promptly.
+**Check logs for renewal errors.** Snakeway logs ACME interactions at the `info` level and errors at `warn` or `error`.
+Watch for repeated renewal failures and investigate the underlying cause promptly.
 
-**Verify the challenge path is reachable.** HTTP-01 challenges require that `/.well-known/acme-challenge/` on port 80 is accessible from the internet. If a firewall, CDN, or upstream load balancer blocks this path, ACME validation will fail.
+**Verify the challenge path is reachable.** HTTP-01 challenges require that `/.well-known/acme-challenge/` on port 80 is
+accessible from the internet. If a firewall, CDN, or upstream load balancer blocks this path, ACME validation will fail.

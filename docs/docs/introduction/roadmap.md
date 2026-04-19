@@ -71,7 +71,7 @@ Confirm that the architecture is sound before building on top of it.
 
 - Upstream pool manager with health-check worker loop
 - Circuit breaker with configurable thresholds
-- Admin API: `/admin/health`, `/admin/stats`, `/admin/reload`
+- Admin API: `/admin/health`, `/admin/upstreams`, `/admin/stats`, `/admin/reload`
 
 ---
 

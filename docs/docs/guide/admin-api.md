@@ -2,7 +2,9 @@
 title: Admin API
 ---
 
-Snakeway includes a built-in administrative API for monitoring proxy health, inspecting upstream services, viewing traffic statistics, and triggering configuration reloads. All endpoints are served on the address configured in `bind_admin` under the `/admin/` path, and all responses are JSON-formatted.
+Snakeway includes a built-in administrative API for monitoring proxy health, inspecting upstream services, viewing
+traffic statistics, and triggering configuration reloads. All endpoints are served on the address configured in
+`bind_admin` under the `/admin/` path, and all responses are JSON-formatted.
 
 ## Configuration
 
@@ -15,14 +17,16 @@ server {
 ```
 
 :::caution
-The Admin API exposes operational data and a reload endpoint. Bind it to a loopback or internal address and restrict access at the network level.
+The Admin API exposes operational data and a reload endpoint. Bind it to a loopback or internal address and restrict
+access at the network level.
 :::
 
 ## Endpoint Reference
 
 ### `GET /admin/health`
 
-Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream health checks and circuit breaker state.
+Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream
+health checks and circuit breaker state.
 
 ```shell
 curl http://localhost:8081/admin/health
@@ -38,14 +42,15 @@ curl http://localhost:8081/admin/health
 
 **Error responses:**
 
-| Status | Meaning |
-|---|---|
-| `200 OK` | Instance is healthy. |
+| Status                    | Meaning                                       |
+|---------------------------|-----------------------------------------------|
+| `200 OK`                  | Instance is healthy.                          |
 | `503 Service Unavailable` | One or more critical upstreams are unhealthy. |
 
 ### `GET /admin/upstreams`
 
-Provides a detailed view of all registered upstreams, including their current health status, circuit breaker state, and request counters.
+Provides a detailed view of all registered upstreams, including their current health status, circuit breaker state, and
+request counters.
 
 ```shell
 curl http://localhost:8081/admin/upstreams
@@ -86,7 +91,8 @@ curl http://localhost:8081/admin/upstreams
 }
 ```
 
-The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
+The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is
+failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
 
 ### `GET /admin/stats`
 
@@ -117,16 +123,17 @@ curl http://localhost:8081/admin/stats
 
 **Metrics per service:**
 
-| Metric | Description |
-|---|---|
-| `active_requests` | Number of requests currently in flight. |
-| `total_requests` | Cumulative requests handled since last restart or reload. |
+| Metric            | Description                                                              |
+|-------------------|--------------------------------------------------------------------------|
+| `active_requests` | Number of requests currently in flight.                                  |
+| `total_requests`  | Cumulative requests handled since last restart or reload.                |
 | `total_successes` | Requests that resulted in a successful response (typically 2xx and 3xx). |
-| `total_failures` | Requests that resulted in an error (4xx, 5xx, or connection failures). |
+| `total_failures`  | Requests that resulted in an error (4xx, 5xx, or connection failures).   |
 
 ### `POST /admin/reload`
 
-Triggers a hot reload of the Snakeway configuration. Snakeway validates the new configuration before applying it. If validation fails, the existing configuration remains active.
+Triggers a hot reload of the Snakeway configuration. Snakeway validates the new configuration before applying it. If
+validation fails, the existing configuration remains active.
 
 ```shell
 curl -X POST http://localhost:8081/admin/reload
@@ -154,10 +161,50 @@ The `epoch` field is a version counter that increments with each successful relo
 
 **Error responses:**
 
-| Status | Meaning |
-|---|---|
-| `200 OK` | Reload was successfully initiated. |
+| Status            | Meaning                                                                        |
+|-------------------|--------------------------------------------------------------------------------|
+| `200 OK`          | Reload was successfully initiated.                                             |
 | `400 Bad Request` | Configuration validation failed. The response body contains the error message. |
+
+### `GET /admin/certs`
+
+Returns the current certificate inventory. Only available when TLS automation is configured. When no certificates are
+present (or TLS automation is not enabled), the response contains an empty list.
+
+```shell
+curl http://localhost:8081/admin/certs
+```
+
+**Example response:**
+
+```json
+{
+  "certs": [
+    {
+      "id": "a1b2c3d4",
+      "domains": [
+        "example.com",
+        "api.example.com"
+      ],
+      "issued_at": "2026-03-01T00:00:00Z",
+      "not_after": "2026-05-30T00:00:00Z",
+      "expires_in_seconds": 3542400,
+      "state": "Valid"
+    }
+  ]
+}
+```
+
+**Fields per certificate:**
+
+| Field                | Description                                |
+|----------------------|--------------------------------------------|
+| `id`                 | Internal certificate identifier.           |
+| `domains`            | Domain names covered by the certificate.   |
+| `issued_at`          | Timestamp when the certificate was issued. |
+| `not_after`          | Certificate expiration timestamp.          |
+| `expires_in_seconds` | Seconds remaining until expiration.        |
+| `state`              | `"Valid"` or `"Expired"`.                  |
 
 ## Circuit Breaker Transition Logs
 
@@ -188,7 +235,8 @@ When an upstream's circuit state changes, Snakeway emits a structured log event:
 
 ## Using the Admin API for Monitoring
 
-The `/admin/stats` and `/admin/upstreams` endpoints are designed to be polled by monitoring systems. A simple health check script might look like this:
+The `/admin/stats` and `/admin/upstreams` endpoints are designed to be polled by monitoring systems.
+A simple health check script might look like this:
 
 ```shell
 # Check overall health
@@ -201,4 +249,5 @@ curl -s http://localhost:8081/admin/stats | jq .
 curl -s http://localhost:8081/admin/upstreams | jq '.services.api'
 ```
 
-Stats counters reset on process restart or successful configuration reload. For long-term trend analysis, export the counters to an external time-series database at a regular polling interval.
+Stats counters reset on process restart or successful configuration reload.
+For long-term trend analysis, export the counters to an external time-series database at a regular polling interval.
