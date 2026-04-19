@@ -1,5 +1,6 @@
 [package]
 name = "snakeway"
+description = "Programmable reverse proxy built on Pingora"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -65,27 +66,22 @@ assets = [
     { source = "../../packaging/systemd/snakeway.service", dest = "/usr/lib/systemd/system/snakeway.service", mode = "644" },
 ]
 
-[package.metadata.generate-rpm.requires]
-systemd = "*"
-
-[package.metadata.generate-rpm.pre_install_script]
-script = """\
+pre_install_script = """\
 getent group  snakeway > /dev/null 2>&1 || groupadd --system snakeway
 getent passwd snakeway > /dev/null 2>&1 || \
   useradd --system --no-create-home --gid snakeway --shell /sbin/nologin snakeway
 """
-
-[package.metadata.generate-rpm.post_install_script]
-script = """\
+post_install_script = """\
 install -d -m 0750 -o snakeway -g snakeway /run/snakeway
 install -d -m 0750 -o snakeway -g snakeway /var/log/snakeway
 install -d -m 0755 /etc/snakeway/ingress.d
 install -d -m 0755 /etc/snakeway/device.d
 systemctl daemon-reload
 """
-
-[package.metadata.generate-rpm.pre_uninstall_script]
-script = """\
+pre_uninstall_script = """\
 systemctl stop    snakeway.service 2>/dev/null || true
 systemctl disable snakeway.service 2>/dev/null || true
 """
+
+[package.metadata.generate-rpm.requires]
+systemd = "*"
