@@ -149,7 +149,7 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 5: Hardening (v0.10.x)
+## Phase 5: Hardening (v0.10.0)
 
 All core features are implemented at this stage. The focus shifts to architecture review, test coverage, and operational
 polish.
