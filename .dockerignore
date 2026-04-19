@@ -49,5 +49,8 @@ CLAUDE.md
 Justfile
 build.rs
 
-# Packaging artifacts
-packaging/
+# Packaging artifacts (keep packaging/config/ for the Docker image)
+packaging/docker/
+packaging/maintainer-scripts/
+packaging/package-signing/
+packaging/systemd/

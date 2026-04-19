@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload integration test badge
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: integration-badge
           path: integration-badge/
@@ -196,7 +196,7 @@ jobs:
             > coverage-html/tests-badge.json
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-html
           path: coverage-html/
@@ -227,7 +227,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@v2
+        uses: mlugg/setup-zig@v2
         with:
           version: "0.12.0"
 
@@ -246,7 +246,7 @@ jobs:
         run: cargo zigbuild --profile dist --locked --target ${{ matrix.target }} ${{ matrix.variant.features }}
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snakeway-${{ matrix.target }}-${{ matrix.variant.name }}
           path: target/${{ matrix.target }}/dist/snakeway
@@ -262,13 +262,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download amd64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: snakeway-x86_64-unknown-linux-musl-default
           path: dist/linux/amd64
 
       - name: Download arm64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: snakeway-aarch64-unknown-linux-musl-default
           path: dist/linux/arm64
@@ -325,7 +325,7 @@ jobs:
         run: cargo install cargo-deb cargo-generate-rpm
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
 
