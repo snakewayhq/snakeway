@@ -26,7 +26,7 @@ path = "src/main.rs"
 [package.metadata.deb]
 maintainer = "Ethan Hann <ethanhann@gmail.com>"
 copyright = "2026, Ethan Hann"
-license-file = ["../LICENSE", "0"]
+license-file = ["../../LICENSE", "0"]
 depends = "$auto"
 extended-description = """\
 Snakeway is a fast, composable reverse proxy built on Pingora.
@@ -34,15 +34,15 @@ It supports HTTP/HTTPS proxying, WebSocket and gRPC proxying,
 static file serving, ACME/TLS automation, and a device middleware pipeline."""
 section = "net"
 priority = "optional"
-maintainer-scripts = "../packaging/maintainer-scripts"
-systemd-units = { unit-scripts = "../packaging/systemd", enable = true }
+maintainer-scripts = "../../packaging/maintainer-scripts"
+systemd-units = { unit-scripts = "../../packaging/systemd", enable = true }
 assets = [
     # Binary
     ["target/release/snakeway", "usr/bin/snakeway", "755"],
     # Config skeleton
-    ["../packaging/config/snakeway.hcl", "etc/snakeway/snakeway.hcl", "644"],
-    ["../packaging/config/device.d/structured_logging.hcl", "etc/snakeway/device.d/structured_logging.hcl", "644"],
-    ["../packaging/config/ingress.d/example.hcl", "etc/snakeway/ingress.d/example.hcl", "644"],
+    ["../../packaging/config/snakeway.hcl", "etc/snakeway/snakeway.hcl", "644"],
+    ["../../packaging/config/device.d/structured_logging.hcl", "etc/snakeway/device.d/structured_logging.hcl", "644"],
+    ["../../packaging/config/ingress.d/example.hcl", "etc/snakeway/ingress.d/example.hcl", "644"],
 ]
 # These files are preserved on package upgrade (dpkg conf-file handling).
 conf-files = [
@@ -59,10 +59,10 @@ conf-files = [
 [package.metadata.generate-rpm]
 assets = [
     { source = "target/release/snakeway", dest = "/usr/bin/snakeway", mode = "755" },
-    { source = "../packaging/config/snakeway.hcl", dest = "/etc/snakeway/snakeway.hcl", mode = "644", config = true },
-    { source = "../packaging/config/device.d/structured_logging.hcl", dest = "/etc/snakeway/device.d/structured_logging.hcl", mode = "644", config = true },
-    { source = "../packaging/config/ingress.d/example.hcl", dest = "/etc/snakeway/ingress.d/example.hcl", mode = "644", config = true },
-    { source = "../packaging/systemd/snakeway.service", dest = "/usr/lib/systemd/system/snakeway.service", mode = "644" },
+    { source = "../../packaging/config/snakeway.hcl", dest = "/etc/snakeway/snakeway.hcl", mode = "644", config = true },
+    { source = "../../packaging/config/device.d/structured_logging.hcl", dest = "/etc/snakeway/device.d/structured_logging.hcl", mode = "644", config = true },
+    { source = "../../packaging/config/ingress.d/example.hcl", dest = "/etc/snakeway/ingress.d/example.hcl", mode = "644", config = true },
+    { source = "../../packaging/systemd/snakeway.service", dest = "/usr/lib/systemd/system/snakeway.service", mode = "644" },
 ]
 
 [package.metadata.generate-rpm.requires]
