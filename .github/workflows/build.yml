@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload integration test badge
         if: always()
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v7
         with:
           name: integration-badge
           path: integration-badge/
@@ -196,7 +196,7 @@ jobs:
             > coverage-html/tests-badge.json
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-html
           path: coverage-html/
@@ -246,7 +246,7 @@ jobs:
         run: cargo zigbuild --profile dist --locked --target ${{ matrix.target }} ${{ matrix.variant.features }}
 
       - name: Upload binary
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v7
         with:
           name: snakeway-${{ matrix.target }}-${{ matrix.variant.name }}
           path: target/${{ matrix.target }}/dist/snakeway
