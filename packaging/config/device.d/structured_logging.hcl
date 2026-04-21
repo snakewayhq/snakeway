@@ -1,5 +1,5 @@
 structured_logging_device = {
-  enable = true
+  enable = false
 
   # Attach request/response headers to log lines.
   include_headers = false

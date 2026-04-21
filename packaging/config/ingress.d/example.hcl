@@ -2,15 +2,15 @@
 # Rename or duplicate it; every *.hcl file in this directory is loaded automatically.
 
 bind = {
-  # Listen address. Use "0.0.0.0" to accept connections on all interfaces.
-  interface    = "0.0.0.0"
+  # Listen address. Use "all" to accept connections on all interfaces (i.e., 0.0.0.0).
+  interface    = "all"
   port         = 80
-  enable_http2 = true
+  enable_http2 = false
 }
 
 services = [
   {
-    load_balancing_strategy = "round_robin"
+    load_balancing_strategy = "failover"
 
     health_check = {
       enable                     = false
@@ -31,13 +31,13 @@ services = [
       {
         # Match all traffic for these hostnames.
         hosts = ["example.com", "www.example.com"]
-        path  = "/"
+        path = "/"
       }
     ]
 
     upstreams = [
       {
-        weight   = 1
+        weight = 1
         endpoint = { host = "127.0.0.1", port = 3000 }
       }
     ]
