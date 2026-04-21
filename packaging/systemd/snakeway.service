@@ -1,6 +1,6 @@
 [Unit]
 Description=Snakeway Reverse Proxy
-Documentation=https://snakeway.io
+Documentation=https://snakeway.dev
 After=network-online.target
 Wants=network-online.target
 
