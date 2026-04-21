@@ -212,6 +212,9 @@ Standard installation layout:
 
 **Goals**
 
+- [ ] Make a config directory configurable with an environment variable and use it in packaging.
+    - This solves an ergonomics issue where an operator has to specify the non-default values at the CLI per environment
+      when troubleshooting a setup (which is annoying).
 - [ ] Comprehensive documentation site
 - [ ] Full operator manual
 - [ ] Benchmark suite with published results
