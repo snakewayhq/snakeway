@@ -1,4 +1,4 @@
-use crate::types::{BindAdminSpec, BindSpec};
+use crate::types::{AdminAuthConfig, BearerAuthConfig, BindAdminSpec, BindSpec};
 
 use super::{ListenerConfig, RedirectConfig, TlsTerminationConfig};
 
@@ -17,6 +17,7 @@ impl ListenerConfig {
             tls_termination: None,
             enable_http2: false,
             enable_admin: false,
+            admin_auth: None,
             redirect: Some(RedirectConfig::new(
                 addr.to_string(),
                 redirect_response_code,
@@ -40,6 +41,7 @@ impl ListenerConfig {
             tls_termination: maybe_tls,
             enable_http2: spec.enable_http2,
             enable_admin: false,
+            admin_auth: None,
             redirect: None,
             connection_filter,
             connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
@@ -49,12 +51,27 @@ impl ListenerConfig {
     pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
         let addr = spec.resolve().map_err(|err| err.to_string())?;
         let tls = TlsTerminationConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
+
+        // Validation guarantees bearer is Some and parses cleanly. Any error
+        // here means validation was skipped or the token file was mutated
+        // after validation; surface it as a lowering error rather than
+        // panicking.
+        let bearer_spec = spec.auth.bearer.ok_or_else(|| {
+            "admin auth is missing at lowering time (bug: validation should have caught this)"
+                .to_string()
+        })?;
+        let bearer = BearerAuthConfig::try_from(bearer_spec).map_err(|err| err.to_string())?;
+        let admin_auth = Some(AdminAuthConfig {
+            bearer: Some(bearer),
+        });
+
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
             tls_termination: Some(tls),
             enable_http2: false,
             enable_admin: true,
+            admin_auth,
             redirect: None,
             connection_filter: None,
             connection_rate_limiting_filter: None,
@@ -105,11 +122,25 @@ mod tests {
     #[test]
     fn from_bind_admin_sets_admin_flag() {
         // Arrange
+        use crate::types::{AdminAuthSpec, BearerAuthSpec};
+        use std::io::Write;
+        let mut token_file = tempfile::NamedTempFile::new().expect("tempfile");
+        token_file
+            .write_all(b"a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04\n")
+            .unwrap();
+
         let spec = BindAdminSpec {
             origin: Default::default(),
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9090,
             tls: Default::default(),
+            auth: AdminAuthSpec {
+                bearer: Some(BearerAuthSpec {
+                    token_file: token_file.path().to_path_buf(),
+                    origin: Default::default(),
+                }),
+                origin: Default::default(),
+            },
         };
 
         // Act
@@ -123,6 +154,8 @@ mod tests {
         assert!(!config.enable_http2);
         assert!(config.redirect.is_none());
         assert!(config.connection_filter.is_none());
+        assert!(config.admin_auth.is_some());
+        assert!(config.admin_auth.as_ref().unwrap().bearer.is_some());
     }
 
     #[test]

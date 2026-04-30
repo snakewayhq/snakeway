@@ -213,7 +213,7 @@ Standard installation layout:
 **Goals**
 
 - [ ] Zero-drop reload support for seamless configuration changes under load.
-- [ ] Admin API authentication.
+- [x] Admin API authentication (bearer-token scheme, required on every `bind_admin`).
 
 ---
 

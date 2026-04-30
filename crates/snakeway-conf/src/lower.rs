@@ -169,9 +169,10 @@ pub(crate) fn lower_configs(
 mod tests {
     use super::*;
     use crate::types::{
-        BindAdminSpec, BindInterfaceInput, BindSpec, EndpointSpec, HostSpec, IngressSpec,
-        ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, BindSpec, EndpointSpec,
+        HostSpec, IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
     };
+    use std::io::Write;
     use std::net::Ipv4Addr;
 
     #[test]
@@ -220,6 +221,11 @@ mod tests {
     #[test]
     fn lower_ingress_with_admin_bind() {
         // Arrange
+        let mut token_file = tempfile::NamedTempFile::new().expect("tempfile");
+        token_file
+            .write_all(b"a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04\n")
+            .unwrap();
+
         let server_spec = ServerSpec {
             version: 1,
             ..Default::default()
@@ -228,6 +234,13 @@ mod tests {
             bind_admin: Some(BindAdminSpec {
                 interface: BindInterfaceInput::Keyword("loopback".to_string()),
                 port: 9090,
+                auth: AdminAuthSpec {
+                    bearer: Some(BearerAuthSpec {
+                        token_file: token_file.path().to_path_buf(),
+                        origin: Default::default(),
+                    }),
+                    origin: Default::default(),
+                },
                 ..Default::default()
             }),
             ..Default::default()

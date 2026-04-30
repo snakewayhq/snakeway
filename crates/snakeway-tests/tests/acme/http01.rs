@@ -3,6 +3,7 @@ use reqwest::StatusCode;
 use reqwest::blocking::Client;
 use snakeway_tests::conf::minimal_https_runtime_config_with_acme;
 use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::server::admin_client;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -18,11 +19,9 @@ fn should_issue_certificate_via_http01_and_serve_tls() {
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
     let certificate_issuance_wait_seconds = 90;
 
-    // Act: wait for certificate issuance
-    let admin_client = Client::builder()
-        .danger_accept_invalid_certs(true) // Pebble CA
-        .build()
-        .unwrap();
+    // Act: wait for certificate issuance. The admin listener now requires
+    // bearer auth; the harness helper attaches the shared test token.
+    let admin_client = admin_client();
 
     let timeout = Duration::from_secs(certificate_issuance_wait_seconds);
     let start = Instant::now();

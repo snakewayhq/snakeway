@@ -7,6 +7,7 @@ use crate::execution::traffic::TrafficManager;
 use async_trait::async_trait;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
+use snakeway_conf::types::AdminAuthConfig;
 use std::sync::Arc;
 
 pub(crate) struct AdminGateway {
@@ -19,12 +20,14 @@ impl AdminGateway {
         connection_manager: Arc<WsConnectionManager>,
         reload: Arc<ReloadHandle>,
         cert_manager: Option<Arc<CertManager>>,
+        auth: Arc<AdminAuthConfig>,
     ) -> Self {
         let ctx = Arc::new(AdminContext {
             traffic: traffic_manager,
             ws: connection_manager,
             reload,
             certs: cert_manager,
+            auth,
         });
 
         Self {

@@ -94,6 +94,15 @@ rm -f \
   "${CERT_DIR}/ca.cnf" \
   "${CERT_DIR}/ca.srl"
 
-echo "✔ Test certificates generated"
+#------------------------------------------------------------------------------
+# Admin API bearer tokens
+#------------------------------------------------------------------------------
+cat > "${CERT_DIR}/admin.tokens" <<'EOF'
+a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04
+7b4e19a2c5f8d3046e9b71c8a52f9e1d4c07bfa6e93d1c24b87a90fed362014c
+EOF
+
+echo "Test certificates generated"
 echo "  CA:     ${CERT_DIR}/origin-ca.pem"
 echo "  Server: ${CERT_DIR}/server.pem"
+echo "  Tokens: ${CERT_DIR}/admin.tokens"

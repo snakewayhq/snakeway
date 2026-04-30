@@ -1,4 +1,4 @@
-use crate::constants::{FIXTURES_CONFIG_DIR, TEST_HOST};
+use crate::constants::{ADMIN_TOKEN, FIXTURES_CONFIG_DIR, TEST_HOST};
 use crate::harness::replay_http::replay_http_fixture;
 use crate::harness::runtime_patch::patch_runtime;
 use crate::harness::upstream::{
@@ -7,6 +7,7 @@ use crate::harness::upstream::{
 };
 use crate::harness::{CapturedEvent, init_test_tracing};
 use reqwest::blocking::{Client, RequestBuilder};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
 use snakeway_core::testing_api::conf::load_config;
 use snakeway_core::testing_api::conf::types::RuntimeConfig;
@@ -18,9 +19,36 @@ use std::thread;
 use std::time::{Duration, Instant};
 use url::Url;
 
-/// Build a reqwest client configured for the admin API (accepts
-/// self-signed certs, 5-second timeout).
+/// Build a reqwest client configured for the admin API (accepts self-signed
+/// certs, 5-second timeout, `Authorization: Bearer <ADMIN_TOKEN>` attached
+/// by default).
+///
+/// All admin listeners created via the test `ConfigBuilder` require bearer
+/// auth with `ADMIN_TOKEN` or `ADMIN_TOKEN_ALT`. This helper ships the
+/// header automatically so callers don't have to.
 pub fn admin_client() -> Client {
+    admin_client_with_token(ADMIN_TOKEN)
+}
+
+/// Build an admin client that sends a specific bearer token. Useful for
+/// rotation tests (exercising a second valid token) and negative tests
+/// (unknown tokens).
+pub fn admin_client_with_token(token: &str) -> Client {
+    let mut headers = HeaderMap::new();
+    let value = HeaderValue::from_str(&format!("Bearer {token}"))
+        .expect("token contains invalid header characters");
+    headers.insert(AUTHORIZATION, value);
+    Client::builder()
+        .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(5))
+        .default_headers(headers)
+        .build()
+        .expect("failed to build admin client")
+}
+
+/// Build an admin client that sends no `Authorization` header. Used by
+/// negative auth tests that expect `401`.
+pub fn admin_client_without_auth() -> Client {
     Client::builder()
         .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(5))
