@@ -6,12 +6,12 @@ use std::path::Path;
 /// Chosen so that an operator using `openssl rand -hex 16` (32 hex chars, 128
 /// bits of entropy) passes, and obvious footguns like a human-chosen
 /// password do not.
-pub const MIN_TOKEN_LENGTH: usize = 32;
+pub(crate) const MIN_TOKEN_LENGTH: usize = 32;
 
 /// A single issue discovered while parsing a token file. One-based line
 /// numbers are used so error messages match what operators see in an editor.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TokenFileIssue {
+pub(crate) enum TokenFileIssue {
     FileIoError(String),
     EmptyFile,
     EmptyLine(usize),
@@ -21,18 +21,18 @@ pub enum TokenFileIssue {
 }
 
 /// Outcome of parsing a token file. On success the caller receives the token
-/// list plus any non-fatal warnings (e.g. duplicates). On failure, every
+/// list plus any non-fatal warnings (e.g., duplicates). On failure, every
 /// issue discovered in one pass is returned so the operator can fix them all
 /// at once.
 #[derive(Debug, Clone)]
-pub struct TokenFileOutcome {
-    pub tokens: Vec<String>,
-    pub errors: Vec<TokenFileIssue>,
-    pub warnings: Vec<TokenFileIssue>,
+pub(crate) struct TokenFileOutcome {
+    pub(crate) tokens: Vec<String>,
+    pub(crate) errors: Vec<TokenFileIssue>,
+    pub(crate) warnings: Vec<TokenFileIssue>,
 }
 
 impl TokenFileOutcome {
-    pub fn is_ok(&self) -> bool {
+    pub(crate) fn is_ok(&self) -> bool {
         self.errors.is_empty()
     }
 }
@@ -48,7 +48,7 @@ impl TokenFileOutcome {
 ///   unambiguous and machine-editable.
 /// - Every token must be at least `MIN_TOKEN_LENGTH` bytes.
 /// - Duplicate tokens are warnings, not errors.
-pub fn parse_token_file(path: &Path) -> TokenFileOutcome {
+pub(crate) fn parse_token_file(path: &Path) -> TokenFileOutcome {
     let contents = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {

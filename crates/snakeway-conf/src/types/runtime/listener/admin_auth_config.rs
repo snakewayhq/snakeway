@@ -1,5 +1,5 @@
-use super::token_file_parser::{TokenFileIssue, parse_token_file};
 use crate::types::BearerAuthSpec;
+use crate::validation::validator::{TokenFileIssue, parse_token_file};
 use serde::{Deserialize, Serialize, Serializer};
 use std::fmt;
 use std::path::PathBuf;
@@ -85,7 +85,7 @@ impl<'de> Deserialize<'de> for SecretToken {
 #[derive(Debug)]
 pub struct BearerAuthLowerError {
     pub token_file: PathBuf,
-    pub issues: Vec<TokenFileIssue>,
+    pub(crate) issues: Vec<TokenFileIssue>,
 }
 
 impl fmt::Display for BearerAuthLowerError {

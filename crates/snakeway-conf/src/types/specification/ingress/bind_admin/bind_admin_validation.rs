@@ -1,8 +1,9 @@
 use crate::types::{
     AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceSpec, Origin, TlsTerminationSpec,
-    parse_token_file,
 };
-use crate::validation::validator::is_valid_port;
+use crate::validation::validator::{
+    MIN_TOKEN_LENGTH, TokenFileIssue, is_valid_port, parse_token_file,
+};
 use crate::validation::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec for BindAdminSpec {
@@ -88,7 +89,6 @@ fn validate_bearer_auth(bearer: &BearerAuthSpec, origin: &Origin, report: &mut V
 
     // Parse the file and surface every issue.
     let outcome = parse_token_file(path);
-    use crate::types::TokenFileIssue;
 
     for err in &outcome.errors {
         match err {
@@ -109,7 +109,7 @@ fn validate_bearer_auth(bearer: &BearerAuthSpec, origin: &Origin, report: &mut V
                     path,
                     *line,
                     *len,
-                    crate::types::MIN_TOKEN_LENGTH,
+                    MIN_TOKEN_LENGTH,
                     origin,
                 );
             }
