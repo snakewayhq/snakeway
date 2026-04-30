@@ -97,8 +97,8 @@ pub(crate) fn parse_token_file(path: &Path) -> TokenFileOutcome {
             });
         } else {
             first_seen.insert(token.clone(), line_no);
+            tokens.push(token);
         }
-        tokens.push(token);
     }
 
     if (!any_line_present || tokens.is_empty()) && errors.is_empty() {
@@ -229,7 +229,7 @@ mod tests {
 
         // Assert
         assert!(out.is_ok());
-        assert_eq!(out.tokens.len(), 2);
+        assert_eq!(out.tokens.len(), 1);
         assert!(
             out.warnings
                 .iter()
