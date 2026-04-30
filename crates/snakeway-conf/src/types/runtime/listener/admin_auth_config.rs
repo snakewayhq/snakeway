@@ -1,6 +1,7 @@
 use crate::types::BearerAuthSpec;
 use crate::validation::validator::{TokenFileIssue, parse_token_file};
 use serde::{Deserialize, Serialize, Serializer};
+use sha2::{Digest, Sha256};
 use std::fmt;
 use std::path::PathBuf;
 use subtle::ConstantTimeEq;
@@ -26,20 +27,29 @@ pub struct BearerAuthConfig {
 impl BearerAuthConfig {
     /// Verify a presented token against every active token in constant time.
     ///
-    /// Iterates over all tokens and accumulates the match result with a
-    /// bitwise OR, so total timing is independent of which token matched or
-    /// whether any token matched. This blocks a timing oracle on token
-    /// presence.
+    /// Both sides are hashed with SHA-256 before comparison so that
+    /// `ct_eq` always operates on fixed-length (32-byte) digests. Without
+    /// this, `subtle::ConstantTimeEq` for `[u8]` returns 0 immediately
+    /// when lengths differ, leaking the stored token length via timing.
+    ///
+    /// The loop accumulates match results with a bitwise OR so total
+    /// timing is independent of which token matched or whether any token
+    /// matched.
     pub fn verify(&self, presented: &[u8]) -> bool {
+        let presented_hash = Sha256::digest(presented);
         let mut matched: u8 = 0;
         for token in &self.tokens {
-            matched |= token.0.ct_eq(presented).unwrap_u8();
+            matched |= token.0.ct_eq(presented_hash.as_slice()).unwrap_u8();
         }
         matched == 1
     }
 }
 
 /// A token value held in a form that resists accidental disclosure.
+///
+/// Stores the SHA-256 digest of the original token, not the token itself.
+/// This ensures constant-time comparison regardless of presented token
+/// length and avoids holding raw token material in memory after startup.
 ///
 /// - `Debug` prints `<redacted>`.
 /// - `Serialize` emits `"<redacted>"` so `config dump --repr=runtime` never
@@ -53,8 +63,8 @@ impl BearerAuthConfig {
 pub struct SecretToken(Box<[u8]>);
 
 impl SecretToken {
-    pub fn new(value: impl Into<Box<[u8]>>) -> Self {
-        SecretToken(value.into())
+    pub fn new(value: &[u8]) -> Self {
+        SecretToken(Sha256::digest(value).to_vec().into_boxed_slice())
     }
 }
 
@@ -115,8 +125,8 @@ impl TryFrom<BearerAuthSpec> for BearerAuthConfig {
 
         let tokens = outcome
             .tokens
-            .into_iter()
-            .map(|s| SecretToken::new(s.into_bytes()))
+            .iter()
+            .map(|s| SecretToken::new(s.as_bytes()))
             .collect();
 
         Ok(BearerAuthConfig {
@@ -145,7 +155,7 @@ mod tests {
     #[test]
     fn debug_redacts_token_value() {
         // Arrange
-        let token = SecretToken::new(b"supersecret".to_vec());
+        let token = SecretToken::new(b"supersecret");
 
         // Act
         let rendered = format!("{:?}", token);
@@ -158,7 +168,7 @@ mod tests {
     #[test]
     fn serialize_redacts_token_value() {
         // Arrange
-        let token = SecretToken::new(b"supersecret".to_vec());
+        let token = SecretToken::new(b"supersecret");
 
         // Act
         let json = serde_json::to_string(&token).expect("serialize");
