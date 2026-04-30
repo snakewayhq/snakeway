@@ -27,11 +27,7 @@ impl CertStore for FilesystemCertStore {
 
         let meta: CertificateMeta = serde_json::from_slice(&meta_bytes).ok()?;
 
-        Some(StoredCertificate {
-            private_key_pem: key,
-            cert_chain_pem: cert,
-            meta,
-        })
+        Some(StoredCertificate::new(key, cert, meta))
     }
 
     fn put(&self, id: String, cert: StoredCertificate) -> Result<(), Error> {
@@ -44,8 +40,8 @@ impl CertStore for FilesystemCertStore {
 
         std::fs::create_dir_all(&tmp_dir)?;
 
-        std::fs::write(tmp_dir.join("key.pem"), &*cert.private_key_pem)?;
-        std::fs::write(tmp_dir.join("cert.pem"), &*cert.cert_chain_pem)?;
+        std::fs::write(tmp_dir.join("key.pem"), cert.expose_private_key_pem())?;
+        std::fs::write(tmp_dir.join("cert.pem"), &cert.cert_chain_pem)?;
 
         let meta_json = serde_json::to_vec(&cert.meta).map_err(Error::other)?;
 

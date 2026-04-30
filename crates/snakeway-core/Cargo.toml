@@ -65,6 +65,7 @@ pretty_assertions = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 smallvec = { workspace = true }
 instant-acme = { workspace = true }
+secrecy = { workspace = true }
 sha2 = { workspace = true }
 x509-parser = { workspace = true }
 url = { workspace = true }

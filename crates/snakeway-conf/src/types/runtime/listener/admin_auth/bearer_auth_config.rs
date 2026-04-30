@@ -30,7 +30,10 @@ impl BearerAuthConfig {
         let presented_hash = Sha256::digest(presented);
         let mut matched: u8 = 0;
         for token in &self.tokens {
-            matched |= token.0.ct_eq(presented_hash.as_slice()).unwrap_u8();
+            matched |= token
+                .expose_digest()
+                .ct_eq(presented_hash.as_slice())
+                .unwrap_u8();
         }
         matched == 1
     }
