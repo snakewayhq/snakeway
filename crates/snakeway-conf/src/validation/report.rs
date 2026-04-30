@@ -284,18 +284,6 @@ impl ValidationReport {
         );
     }
 
-    pub(crate) fn admin_auth_bearer_missing(&mut self, origin: &Origin) {
-        self.error(
-            "bind_admin.auth requires a scheme (bearer is currently the only supported scheme)"
-                .to_string(),
-            origin,
-            Some(
-                "Add bearer = { token_file = \"/etc/snakeway/admin.tokens\" } inside the auth block"
-                    .to_string(),
-            ),
-        );
-    }
-
     pub(crate) fn admin_auth_bearer_token_file_io_error(
         &mut self,
         path: &Path,

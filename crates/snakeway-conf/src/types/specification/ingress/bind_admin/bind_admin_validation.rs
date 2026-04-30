@@ -63,19 +63,13 @@ impl ValidateSpec for BindAdminSpec {
 
 fn validate_admin_auth(auth: &AdminAuthSpec, origin: &Origin, report: &mut ValidationReport) {
     let Some(bearer) = &auth.bearer else {
-        if auth_is_empty(auth) {
-            report.admin_auth_missing(origin);
-        } else {
-            report.admin_auth_bearer_missing(origin);
-        }
+        // No scheme is populated at all. When a second scheme is added here
+        // (e.g. mTLS), check it before falling through to admin_auth_missing.
+        report.admin_auth_missing(origin);
         return;
     };
 
     validate_bearer_auth(bearer, origin, report);
-}
-
-fn auth_is_empty(auth: &AdminAuthSpec) -> bool {
-    auth.bearer.is_none()
 }
 
 fn validate_bearer_auth(bearer: &BearerAuthSpec, origin: &Origin, report: &mut ValidationReport) {
@@ -309,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_bearer_scheme_produces_error() {
+    fn explicit_empty_auth_block_produces_error() {
         // Arrange
         let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
@@ -323,8 +317,7 @@ mod tests {
         // Act
         bind_admin.validate(&origin, &mut report);
 
-        // Assert: default auth is bearer=None, which triggers admin_auth_missing
-        // (empty block), not bearer_missing.
+        // Assert
         assert!(
             report
                 .errors
