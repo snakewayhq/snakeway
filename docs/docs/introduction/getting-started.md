@@ -17,6 +17,16 @@ short-circuit, or enrich traffic as it flows through the system.
 Snakeway is a high-performance edge proxy built on Rust and Pingora. Getting it running on your local machine is
 straightforward, whether you are building from source or using a pre-compiled binary.
 
+### Installing on Ubuntu/Debian
+
+Download the `.deb` [package](https://github.com/snakewayhq/snakeway/releases/latest) for your architecture.
+
+For example:
+
+```shell
+sudo apt install ./snakeway_0.11.0-1_amd64.deb
+```
+
 ### Building From Source
 
 To build Snakeway from source, you will need the Rust toolchain installed. If you do not have it yet, you can install it
@@ -39,7 +49,9 @@ that forwards traffic to a public API.
 
 ### 1. Initialize Your Configuration
 
-The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to define its behavior. By default, it looks for a directory named `config` in the current working directory.
+The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to define its
+behavior. By default, it looks for a directory named `config` in the current working directory. This can also be set
+via the `SNAKEWAY_CONFIG` environment variable (see [CLI reference](/docs/guide/cli#snakeway_config-environment-variable)).
 
 Generate a Snakeway configuration directory called "my-first-proxy" using the `httpbin` template:
 

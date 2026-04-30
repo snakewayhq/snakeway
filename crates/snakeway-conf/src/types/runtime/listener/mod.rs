@@ -1,3 +1,4 @@
+mod admin_auth;
 mod connection_rate_limiting_filter_config;
 mod connection_rate_limiting_filter_lower;
 mod listener_config;
@@ -7,6 +8,7 @@ mod network_connection_filter_lower;
 mod tls_termination_config;
 mod tls_termination_lower;
 
+pub use admin_auth::*;
 pub use connection_rate_limiting_filter_config::*;
 pub use listener_config::*;
 pub use network_connection_filter_config::*;

@@ -12,11 +12,18 @@ bind_admin = {
   # The port for the admin API.
   port      = 8440
 
-  # Optional: TLS configuration for the admin listener.
+  # TLS configuration for the admin listener. Required.
   tls = {
     mode = "manual"
     cert = "/path/to/certs/server.pem"
     key  = "/path/to/certs/server.key"
+  }
+
+  # Authentication. Required.
+  auth = {
+    bearer = {
+      token_file = "/etc/snakeway/admin.tokens"
+    }
   }
 }
 ```
@@ -25,17 +32,21 @@ bind_admin = {
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `interface` | `string` | (required) | The network interface to bind the admin API to. |
+| `interface` | `string` | (required) | The network interface to bind the admin API to. Loopback or a specific IP; wildcard binds are rejected. |
 | `port` | `integer` | (required) | The port to bind the admin API to. |
-| `tls.mode` | `string` | (optional) | TLS mode. Use `"manual"` to provide your own certificate and key. |
-| `tls.cert` | `string` | (optional) | Path to the TLS certificate file. |
-| `tls.key` | `string` | (optional) | Path to the TLS private key file. |
+| `tls.mode` | `string` | (required) | TLS mode. Must be `"manual"`; ACME is not supported on `bind_admin`. |
+| `tls.cert` | `string` | (required) | Path to the TLS certificate file. |
+| `tls.key` | `string` | (required) | Path to the TLS private key file. |
+| `auth.bearer.token_file` | `string` | (required) | Path to a file containing one or more bearer tokens, one per line. See the [Admin API authentication](../../guide/admin-api.md#authentication) guide. |
 
-:::danger
-The Admin API provides significant control over your proxy. Ensure that access is restricted using:
+## Defense in depth
 
-- **network-level firewalls**
-- or, by **binding only to trusted interfaces**.
+The Admin API provides significant control over the proxy. Snakeway enforces three layers on every admin request:
 
-Future versions of Snakeway may include built-in authentication for the Admin API.
+1. **Reachability.** `bind_admin` rejects wildcard interfaces (`0.0.0.0`, `::`, `"all"`). Operators must bind to loopback or a specific non-public IP.
+2. **Transport.** TLS is required. ACME is not permitted on `bind_admin` because admin certificates should not depend on a public CA.
+3. **Authentication.** Every request must carry a valid bearer token in the `Authorization` header. See [Authentication](../../guide/admin-api.md#authentication) for details on the token file format and the rotation workflow.
+
+:::caution
+Authentication is the innermost layer, not a replacement for the other two. Continue to bind the admin listener to a trusted interface and restrict access at the network level.
 :::

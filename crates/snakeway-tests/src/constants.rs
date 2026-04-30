@@ -77,6 +77,22 @@ pub const CERT_ORIGIN_CA_PEM: &str = "certs/origin-ca.pem";
 pub const CERT_PEBBLE_CA_PEM: &str = "certs/pebble-ca.pem";
 
 // ---------------------------------------------------------------------------
+// Admin API authentication fixtures
+// ---------------------------------------------------------------------------
+
+/// Path to the bearer-token file used by builder-generated admin listeners.
+pub const ADMIN_TOKEN_FILE: &str = "certs/admin.tokens";
+
+/// The first token in `ADMIN_TOKEN_FILE`. Tests authenticate by sending
+/// `Authorization: Bearer {ADMIN_TOKEN}`.
+pub const ADMIN_TOKEN: &str = "a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04";
+
+/// The second token in `ADMIN_TOKEN_FILE`. Used to exercise rotation: both
+/// tokens must be accepted by the running proxy.
+pub const ADMIN_TOKEN_ALT: &str =
+    "7b4e19a2c5f8d3046e9b71c8a52f9e1d4c07bfa6e93d1c24b87a90fed362014c";
+
+// ---------------------------------------------------------------------------
 // ACME / TLS-automation paths and config
 // ---------------------------------------------------------------------------
 

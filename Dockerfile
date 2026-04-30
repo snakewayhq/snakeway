@@ -40,5 +40,7 @@ COPY packaging/config/ /etc/snakeway/
 
 EXPOSE 80 443
 
+ENV SNAKEWAY_CONFIG=/etc/snakeway
+
 ENTRYPOINT ["/usr/local/bin/snakeway"]
-CMD ["run", "--config", "/etc/snakeway"]
+CMD ["run"]

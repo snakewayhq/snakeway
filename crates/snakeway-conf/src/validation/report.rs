@@ -271,6 +271,125 @@ impl ValidationReport {
     }
 }
 
+/// Admin Auth Spec Validation
+impl ValidationReport {
+    pub(crate) fn admin_auth_missing(&mut self, origin: &Origin) {
+        self.error(
+            "bind_admin.auth is required".to_string(),
+            origin,
+            Some(
+                "Add an auth block, e.g. auth = { bearer = { token_file = \"/etc/snakeway/admin.tokens\" } }"
+                    .to_string(),
+            ),
+        );
+    }
+
+    pub(crate) fn admin_auth_bearer_token_file_io_error(
+        &mut self,
+        path: &Path,
+        message: &str,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!(
+                "bearer token_file could not be read ({}): {}",
+                path.display(),
+                message
+            ),
+            origin,
+            None,
+        );
+    }
+
+    pub(crate) fn admin_auth_bearer_token_file_empty(&mut self, path: &Path, origin: &Origin) {
+        self.error(
+            format!("bearer token_file is empty: {}", path.display()),
+            origin,
+            Some("Add at least one token line (one token per line).".to_string()),
+        );
+    }
+
+    pub(crate) fn admin_auth_bearer_empty_line(
+        &mut self,
+        path: &Path,
+        line: usize,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!(
+                "bearer token_file {} has an empty line at line {}",
+                path.display(),
+                line
+            ),
+            origin,
+            Some(
+                "Remove the blank line. Lines must be either a token or the end of the file."
+                    .to_string(),
+            ),
+        );
+    }
+
+    pub(crate) fn admin_auth_bearer_comment_line(
+        &mut self,
+        path: &Path,
+        line: usize,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!(
+                "bearer token_file {} has a comment at line {}; comments are not permitted",
+                path.display(),
+                line
+            ),
+            origin,
+            Some("Remove the comment line.".to_string()),
+        );
+    }
+
+    pub(crate) fn admin_auth_bearer_token_too_short(
+        &mut self,
+        path: &Path,
+        line: usize,
+        len: usize,
+        min: usize,
+        origin: &Origin,
+    ) {
+        self.error(
+            format!(
+                "bearer token_file {} has a token at line {} that is {} bytes; minimum is {}",
+                path.display(),
+                line,
+                len,
+                min
+            ),
+            origin,
+            Some(
+                "Generate a token with `openssl rand -hex 32` (or any source of at least 32 bytes of random data)."
+                    .to_string(),
+            ),
+        );
+    }
+
+    pub(crate) fn admin_auth_bearer_duplicate_token(
+        &mut self,
+        path: &Path,
+        line: usize,
+        first_seen_line: usize,
+        origin: &Origin,
+    ) {
+        self.warning(
+            format!(
+                "bearer token_file {} has a duplicate token at line {} (first seen at line {})",
+                path.display(),
+                line,
+                first_seen_line
+            ),
+            origin,
+            Some("Remove the duplicate entry.".to_string()),
+        );
+    }
+}
+
 /// Static Files Spec Validation
 impl ValidationReport {
     pub(crate) fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {

@@ -61,7 +61,7 @@ enum Command {
     /// Run the Snakeway proxy (default)
     Run {
         /// Path to the Snakeway config directory
-        #[arg(long, default_value = "config")]
+        #[arg(long, default_value = "config", env = "SNAKEWAY_CONFIG")]
         config: String,
     },
 }
@@ -134,7 +134,9 @@ pub fn run() {
         }
 
         None => {
-            server::start_server("./config");
+            let config_path =
+                std::env::var(super::SNAKEWAY_CONFIG_ENV).unwrap_or_else(|_| "config".to_string());
+            server::start_server(&config_path);
         }
     }
 }

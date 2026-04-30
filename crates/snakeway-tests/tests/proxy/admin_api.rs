@@ -4,23 +4,15 @@ use reqwest::blocking::Client;
 use snakeway_core::testing_api::ControlPlaneServer;
 use snakeway_core::testing_api::conf::load_config;
 use snakeway_tests::conf::minimal_http_runtime_config_with_admin;
-use snakeway_tests::constants::{FIXTURES_CONFIG_DIR, ROUTE_PATH_API, TEST_HOST};
+use snakeway_tests::constants::{
+    ADMIN_TOKEN, ADMIN_TOKEN_ALT, ADMIN_TOKEN_FILE, FIXTURES_CONFIG_DIR, ROUTE_PATH_API, TEST_HOST,
+};
 use snakeway_tests::harness::TestServer;
 use snakeway_tests::harness::server::{
-    admin_client as make_admin_client, free_port, wait_for_listener,
+    admin_client, admin_client_with_token, admin_client_without_auth, free_port, wait_for_listener,
 };
 use std::path::Path;
 use std::time::Duration;
-
-/// Build a reqwest client that accepts the self-signed test certificate
-/// used on the admin listener.
-fn admin_client() -> Client {
-    Client::builder()
-        .danger_accept_invalid_certs(true)
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .expect("failed to build admin client")
-}
 
 //-----------------------------------------------------------------------------
 // /admin/health
@@ -259,6 +251,7 @@ services = [
     std::fs::write(ingress_dst.join("api.hcl"), &ingress_hcl).unwrap();
 
     // Write admin ingress config with TLS using absolute cert paths.
+    let token_file_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(ADMIN_TOKEN_FILE);
     let admin_hcl = format!(
         r#"bind_admin = {{
   interface = "127.0.0.1"
@@ -268,10 +261,16 @@ services = [
     cert = "{cert}"
     key  = "{key}"
   }}
+  auth = {{
+    bearer = {{
+      token_file = "{token_file}"
+    }}
+  }}
 }}
 "#,
         cert = cert_dir.join("server.pem").display(),
         key = cert_dir.join("server.key").display(),
+        token_file = token_file_path.display(),
     );
     std::fs::write(ingress_dst.join("admin.hcl"), &admin_hcl).unwrap();
 
@@ -289,7 +288,7 @@ services = [
         .timeout(Duration::from_secs(2))
         .build()
         .unwrap();
-    let admin = make_admin_client();
+    let admin = admin_client();
 
     // Verify /api works before reload.
     let res = client
@@ -329,4 +328,150 @@ services = [
         StatusCode::OK,
         "/api should still work after reload with invalid config"
     );
+}
+
+//-----------------------------------------------------------------------------
+// Authentication
+//
+// These tests exercise the layer-3 bearer auth overlay added in phase 7.
+// `with_admin_ingress()` configures the listener with the shared
+// `ADMIN_TOKEN` and `ADMIN_TOKEN_ALT` tokens, so these tests can verify
+// both the accept and reject paths without bespoke fixtures.
+//-----------------------------------------------------------------------------
+
+/// Unauthenticated callers must receive 401 on any admin endpoint, with a
+/// `WWW-Authenticate` header that names the Bearer scheme. This is the core
+/// contract that makes the overlay meaningful: requests that can reach the
+/// listener but do not present a token cannot read or trigger admin state.
+#[test]
+fn admin_missing_authorization_returns_401() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config_with_admin();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let client = admin_client_without_auth();
+
+    // Act
+    let res = client
+        .get(format!("{}/admin/health", srv.admin_url()))
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let www_auth = res
+        .headers()
+        .get("www-authenticate")
+        .expect("WWW-Authenticate header must be present on 401")
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        www_auth.starts_with("Bearer "),
+        "expected Bearer scheme in WWW-Authenticate; got {www_auth:?}"
+    );
+    assert!(
+        www_auth.contains("realm=\"snakeway-admin\""),
+        "expected realm in WWW-Authenticate; got {www_auth:?}"
+    );
+}
+
+/// A non-Bearer scheme (e.g. Basic) must be rejected, not silently coerced.
+/// This guards against an ambiguity where a future scheme slot (Basic, mTLS)
+/// accidentally authenticates via the bearer path.
+#[test]
+fn admin_wrong_scheme_returns_401() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config_with_admin();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let client = admin_client_without_auth();
+
+    // Act
+    let res = client
+        .get(format!("{}/admin/health", srv.admin_url()))
+        .header(reqwest::header::AUTHORIZATION, "Basic dXNlcjpwYXNz")
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+/// An unknown bearer token must be rejected. Verifies that the token list
+/// is actually checked and not used as a flag (i.e. any bearer passes).
+#[test]
+fn admin_invalid_token_returns_401() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config_with_admin();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let client =
+        admin_client_with_token("0000000000000000000000000000000000000000000000000000000000000000");
+
+    // Act
+    let res = client
+        .get(format!("{}/admin/health", srv.admin_url()))
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+/// The primary token in the token file must authenticate successfully.
+/// Covers the happy path: configured token → 200.
+#[test]
+fn admin_primary_token_accepted() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config_with_admin();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let client = admin_client_with_token(ADMIN_TOKEN);
+
+    // Act
+    let res = client
+        .get(format!("{}/admin/health", srv.admin_url()))
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+/// The secondary token in the token file must also authenticate. This is
+/// the contract that makes zero-downtime rotation work: a caller using a
+/// newly-added token can reach the admin API without removing the old token
+/// first.
+#[test]
+fn admin_secondary_token_accepted_for_rotation() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config_with_admin();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let client = admin_client_with_token(ADMIN_TOKEN_ALT);
+
+    // Act
+    let res = client
+        .get(format!("{}/admin/health", srv.admin_url()))
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+/// The `/admin/reload` endpoint is the only state-mutating endpoint today,
+/// so it must also require authentication. A successful 401 here shows
+/// that auth is enforced for every endpoint, not just read-only ones.
+#[test]
+fn admin_reload_requires_authentication() {
+    // Arrange
+    let mut cfg = minimal_http_runtime_config_with_admin();
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let client = admin_client_without_auth();
+
+    // Act
+    let res = client
+        .post(format!("{}/admin/reload", srv.admin_url()))
+        .send()
+        .unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }

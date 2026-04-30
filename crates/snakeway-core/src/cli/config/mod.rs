@@ -14,7 +14,7 @@ pub enum ConfigCmd {
     /// Validate configuration and exit
     Check {
         /// Path to config directory
-        #[arg(default_value = "config")]
+        #[arg(default_value = "config", env = "SNAKEWAY_CONFIG")]
         path: PathBuf,
 
         /// Suppresses all diagnostic
@@ -34,7 +34,7 @@ pub enum ConfigCmd {
 
     /// Print resolved configuration
     Dump {
-        #[arg(default_value = "config")]
+        #[arg(default_value = "config", env = "SNAKEWAY_CONFIG")]
         path: PathBuf,
 
         /// Specify the output representation: spec -> config files and runtime -> internal state
@@ -49,7 +49,7 @@ pub enum ConfigCmd {
     /// Initialize a new config directory
     Init {
         /// Where the new config directory should be created
-        #[arg(default_value = "config")]
+        #[arg(default_value = "config", env = "SNAKEWAY_CONFIG")]
         path: PathBuf,
 
         /// Specify the template to use

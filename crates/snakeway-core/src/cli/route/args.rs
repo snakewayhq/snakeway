@@ -12,7 +12,7 @@ pub(crate) struct RouteSolveArgs {
     pub(crate) url: String,
 
     /// Path to config directory
-    #[arg(long, default_value = "config")]
+    #[arg(long, default_value = "config", env = "SNAKEWAY_CONFIG")]
     pub(crate) config: std::path::PathBuf,
 
     /// HTTP method

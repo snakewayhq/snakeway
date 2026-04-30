@@ -160,11 +160,23 @@ pub fn build_pingora_server(
     //-------------------------------------------------------------------------
     for listener_cfg in config.listeners.iter().filter(|l| l.enable_admin) {
         if let Some(certificate_cfg) = &listener_cfg.tls_termination {
+            // Validation guarantees that every admin listener carries an
+            // admin_auth block; treat its absence as a bug rather than
+            // silently starting without authentication.
+            let admin_auth = listener_cfg.admin_auth.clone().ok_or_else(|| {
+                anyhow!(
+                    "admin listener {} has no admin_auth configured. \
+                     This is a bug: validation should have caught this.",
+                    listener_cfg.name
+                )
+            })?;
+
             let admin_gateway = AdminGateway::new(
                 traffic_manager.clone(),
                 connection_manager.clone(),
                 reload.clone(),
                 cert_manager.clone(),
+                Arc::new(admin_auth),
             );
             let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
 

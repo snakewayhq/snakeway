@@ -8,18 +8,81 @@ traffic statistics, and triggering configuration reloads. All endpoints are serv
 
 ## Configuration
 
-The Admin API listens on the address specified by `bind_admin` in your server configuration:
+The Admin API listens on the address specified by `bind_admin` in your ingress configuration. See the
+[Admin Bind reference](../configuration/ingress/admin-bind.md) for the full set of fields; a minimal block looks like:
 
 ```hcl
-server {
-  bind_admin = "127.0.0.1:8081"
+bind_admin = {
+  interface = "127.0.0.1"
+  port      = 8440
+  tls = {
+    mode = "manual"
+    cert = "/etc/snakeway/admin.crt"
+    key  = "/etc/snakeway/admin.key"
+  }
+  auth = {
+    bearer = {
+      token_file = "/etc/snakeway/admin.tokens"
+    }
+  }
 }
 ```
 
-:::caution
-The Admin API exposes operational data and a reload endpoint. Bind it to a loopback or internal address and restrict
-access at the network level.
-:::
+## Authentication
+
+Every admin request must present a bearer token in the `Authorization` header:
+
+```shell
+curl -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8440/admin/health
+```
+
+Requests without an `Authorization` header, with a non-`Bearer` scheme, or with an unknown token receive a `401 Unauthorized`
+response and a `WWW-Authenticate: Bearer realm="snakeway-admin"` header.
+
+### Token file format
+
+The file referenced by `auth.bearer.token_file` contains one token per line:
+
+```
+a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04
+7b4e19a2c5f8d3046e9b71c8a52f9e1d4c07bfa6e93d1c24b87a90fed362014c
+```
+
+Rules:
+
+- Each token must be at least 32 bytes after trimming whitespace. Use a high-entropy source such as `openssl rand -hex 32`.
+- Blank lines are rejected to avoid masking format mistakes.
+- Comment lines (starting with `#`) are rejected; the format is intentionally unambiguous.
+- Duplicate tokens are reported as warnings, not errors.
+
+The file should be owned by the Snakeway process user and have mode `0600` (or equivalent ACL). Filesystem permissions are
+the at-rest control; Snakeway does not hash tokens.
+
+### Token rotation
+
+Multiple tokens in the file are all accepted concurrently. The rotation workflow is:
+
+1. Generate a new token and append it to `token_file`.
+2. Run `snakeway reload` (or `POST /admin/reload`).
+3. Migrate callers to the new token.
+4. Remove the old token from `token_file`.
+5. Run `snakeway reload` again.
+
+Because both tokens are valid during steps 2–4, there is no window where a caller must choose between the old and new
+token.
+
+### Defense in depth
+
+Authentication is the innermost of three layers:
+
+1. **Reachability** via `bind_admin.interface` (no wildcard binds).
+2. **Transport** via mandatory TLS.
+3. **Authentication** via bearer token (this section).
+
+Continue to restrict the listener to a trusted interface and configure TLS. Authentication limits who can call the API
+_given_ they can reach it; it does not replace network-level restriction. This mirrors the guidance published by the
+[Envoy project](https://www.envoyproxy.io/docs/envoy/latest/operations/admin) and
+[Caddy project](https://caddyserver.com/docs/api) for their own admin interfaces.
 
 ## Endpoint Reference
 

@@ -188,7 +188,7 @@ polish.
 
 ---
 
-## Phase 6: Packaging and Distribution
+## Phase 6: Packaging and Distribution (v0.11.0)
 
 **Goals**
 
@@ -208,13 +208,22 @@ Standard installation layout:
 
 ---
 
-## Phase 7: Snakeway 1.0
+## Phase 7: Reconsidered Late Additions (v0.12.0)
 
 **Goals**
 
-- [ ] Make a config directory configurable with an environment variable and use it in packaging.
+- [ ] Zero-drop reload support for seamless configuration changes under load.
+- [x] Admin API authentication (bearer-token scheme, required on every `bind_admin`).
+- [x] Make a config directory configurable with an environment variable and use it in packaging.
     - This solves an ergonomics issue where an operator has to specify the non-default values at the CLI per environment
       when troubleshooting a setup (which is annoying).
+
+---
+
+## Phase 8: Snakeway 1.0
+
+**Goals**
+
 - [ ] Comprehensive documentation site
 - [ ] Full operator manual
 - [ ] Benchmark suite with published results
@@ -225,10 +234,6 @@ Standard installation layout:
 ## Post-1.0
 
 The following items are not in the critical path for 1.0 but represent the longer-term direction.
-
-### Enhanced Hot Reload
-
-Zero-drop reload support for seamless configuration changes under load.
 
 ### Router Performance
 
