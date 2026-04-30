@@ -488,11 +488,11 @@ impl Reconciler {
             issued_at: std::time::SystemTime::now(),
         };
 
-        let stored = StoredCertificate {
-            private_key_pem: private_key_pem.into_bytes(),
-            cert_chain_pem: cert_chain_pem.into_bytes(),
+        let stored = StoredCertificate::new(
+            private_key_pem.into_bytes(),
+            cert_chain_pem.into_bytes(),
             meta,
-        };
+        );
 
         let cert_store = self.cert_manager.cert_store();
         let id = cert_id.clone();

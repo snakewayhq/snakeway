@@ -1,12 +1,15 @@
+use secrecy::{ExposeSecret, SecretBox};
 use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::fmt;
 
 /// A token value held in a form that resists accidental disclosure.
 ///
-/// Stores the SHA-256 digest of the original token, not the token itself.
-/// This ensures constant-time comparison regardless of presented token
-/// length and avoids holding raw token material in memory after startup.
+/// Stores the SHA-256 digest of the original token inside a `SecretBox`,
+/// which zeroes the backing memory on drop. This ensures constant-time
+/// comparison regardless of presented token length, avoids holding raw
+/// token material in memory after startup, and prevents the digest from
+/// lingering after the config is dropped.
 ///
 /// - `Debug` prints `<redacted>`.
 /// - `Serialize` emits `"<redacted>"` so `config dump --repr=runtime` never
@@ -16,12 +19,21 @@ use std::fmt;
 ///   runtime config is a diagnostic artefact, not an operational one).
 /// - No `PartialEq` / `Eq` impl, to prevent accidental non-constant-time
 ///   comparisons. Use `BearerAuthConfig::verify` instead.
-#[derive(Clone)]
-pub struct SecretToken(pub(super) Box<[u8]>);
+pub struct SecretToken(SecretBox<[u8; 32]>);
 
 impl SecretToken {
     pub fn new(value: &[u8]) -> Self {
-        SecretToken(Sha256::digest(value).to_vec().into_boxed_slice())
+        SecretToken(SecretBox::new(Box::new(Sha256::digest(value).into())))
+    }
+
+    pub(super) fn expose_digest(&self) -> &[u8; 32] {
+        self.0.expose_secret()
+    }
+}
+
+impl Clone for SecretToken {
+    fn clone(&self) -> Self {
+        SecretToken(SecretBox::new(Box::new(*self.0.expose_secret())))
     }
 }
 
@@ -40,7 +52,8 @@ impl Serialize for SecretToken {
 impl<'de> Deserialize<'de> for SecretToken {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let s: String = Deserialize::deserialize(d)?;
-        Ok(SecretToken(s.into_bytes().into_boxed_slice()))
+        let bytes: [u8; 32] = Sha256::digest(s.as_bytes()).into();
+        Ok(SecretToken(SecretBox::new(Box::new(bytes))))
     }
 }
 

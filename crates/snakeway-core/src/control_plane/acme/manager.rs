@@ -87,7 +87,7 @@ impl CertManager {
 
         let leaf = chain.remove(0);
 
-        let key = PKey::<Private>::private_key_from_pem(&stored.private_key_pem)
+        let key = PKey::<Private>::private_key_from_pem(stored.expose_private_key_pem())
             .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?;
 
         let public_key = leaf
