@@ -23,6 +23,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 smallvec = { workspace = true }
 hotpath = { workspace = true }
+subtle = { workspace = true }
 
 [dev-dependencies]
 rcgen = { workspace = true }

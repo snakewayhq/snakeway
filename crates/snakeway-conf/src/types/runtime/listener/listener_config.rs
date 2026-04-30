@@ -1,5 +1,6 @@
 use crate::types::{
-    ConnectionRateLimitingFilterConfig, NetworkConnectionFilterConfig, TlsTerminationConfig,
+    AdminAuthConfig, ConnectionRateLimitingFilterConfig, NetworkConnectionFilterConfig,
+    TlsTerminationConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +20,11 @@ pub struct ListenerConfig {
 
     /// Whether a listener serves admin endpoints or not.
     pub enable_admin: bool,
+
+    /// Admin authentication config. Populated only on listeners where
+    /// `enable_admin` is true.
+    #[serde(default)]
+    pub admin_auth: Option<AdminAuthConfig>,
 
     /// Optional redirect config.
     pub redirect: Option<RedirectConfig>,

@@ -7,10 +7,14 @@ use http::{Method, StatusCode, header};
 use pingora::http::ResponseHeader;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
+use snakeway_conf::types::AdminAuthConfig;
 
 use crate::control_plane::ReloadHandle;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+/// Realm advertised on every 401 response from the admin API.
+const ADMIN_AUTH_REALM: &str = "snakeway-admin";
 
 /// Group dependencies for the admin handler.
 pub struct AdminContext {
@@ -18,6 +22,7 @@ pub struct AdminContext {
     pub ws: Arc<WsConnectionManager>,
     pub reload: Arc<ReloadHandle>,
     pub certs: Option<Arc<CertManager>>,
+    pub auth: Arc<AdminAuthConfig>,
 }
 
 /// Collects admin handler routes
@@ -54,6 +59,13 @@ impl AdminHandler {
     }
 
     pub async fn handle(&self, session: &mut Session, path: &str) -> pingora::Result<bool> {
+        // Authenticate before any endpoint dispatch. This runs before path
+        // resolution so that unauthenticated callers cannot probe which
+        // endpoints exist.
+        if !self.authenticate(session).await? {
+            return Ok(true);
+        }
+
         let endpoint = AdminEndpoint::from_path(path)
             .ok_or_else(|| Error::new(Custom("invalid admin endpoint")))?;
 
@@ -64,6 +76,92 @@ impl AdminHandler {
             AdminEndpoint::Reload => self.reload(session).await,
             AdminEndpoint::Certs => self.certs(session).await,
         }
+    }
+}
+
+/// Authentication
+impl AdminHandler {
+    /// Returns `Ok(true)` if the caller is authenticated and the pipeline
+    /// should continue. Returns `Ok(false)` after writing a `401 Unauthorized`
+    /// response; callers must short-circuit and not dispatch any endpoint.
+    async fn authenticate(&self, session: &mut Session) -> pingora::Result<bool> {
+        let Some(bearer) = &self.ctx.auth.bearer else {
+            // Validation guarantees a scheme is configured on admin listeners.
+            // If we got here without one, fail closed rather than silently
+            // allowing access.
+            tracing::warn!("admin listener has no auth scheme configured; rejecting request");
+            self.respond_unauthorized(session).await?;
+            return Ok(false);
+        };
+
+        let headers = &session.req_header().headers;
+        let Some(value) = headers.get(header::AUTHORIZATION) else {
+            tracing::warn!(
+                path = session.req_header().uri.path(),
+                reason = "missing_header",
+                "admin auth failed"
+            );
+            self.respond_unauthorized(session).await?;
+            return Ok(false);
+        };
+
+        let Ok(raw) = value.to_str() else {
+            tracing::warn!(
+                path = session.req_header().uri.path(),
+                reason = "non_ascii_header",
+                "admin auth failed"
+            );
+            self.respond_unauthorized(session).await?;
+            return Ok(false);
+        };
+
+        // Split on the first whitespace run: "<scheme> <token>".
+        let mut parts = raw.splitn(2, char::is_whitespace);
+        let scheme = parts.next().unwrap_or("");
+        let token = parts.next().unwrap_or("").trim();
+
+        if !scheme.eq_ignore_ascii_case("Bearer") {
+            tracing::warn!(
+                path = session.req_header().uri.path(),
+                reason = "wrong_scheme",
+                "admin auth failed"
+            );
+            self.respond_unauthorized(session).await?;
+            return Ok(false);
+        }
+
+        if token.is_empty() {
+            tracing::warn!(
+                path = session.req_header().uri.path(),
+                reason = "empty_token",
+                "admin auth failed"
+            );
+            self.respond_unauthorized(session).await?;
+            return Ok(false);
+        }
+
+        if !bearer.verify(token.as_bytes()) {
+            tracing::warn!(
+                path = session.req_header().uri.path(),
+                reason = "invalid_token",
+                "admin auth failed"
+            );
+            self.respond_unauthorized(session).await?;
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+
+    async fn respond_unauthorized(&self, session: &mut Session) -> pingora::Result<()> {
+        let mut resp = ResponseHeader::build(StatusCode::UNAUTHORIZED, None)?;
+        resp.insert_header(
+            header::WWW_AUTHENTICATE,
+            format!("Bearer realm=\"{ADMIN_AUTH_REALM}\""),
+        )?;
+        resp.insert_header(header::CONTENT_LENGTH, "0")?;
+        session.write_response_header(Box::new(resp), true).await?;
+        Ok(())
     }
 }
 
