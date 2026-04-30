@@ -20,7 +20,7 @@ async-trait = { workspace = true }
 arc-swap = { workspace = true }
 brotli = { workspace = true }
 bytes = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive", "env"] }
 console-subscriber = { workspace = true }
 ctrlc = { workspace = true }
 flate2 = { workspace = true }

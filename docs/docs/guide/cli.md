@@ -275,6 +275,31 @@ A specific config directory can be targeted:
 snakeway run --config /etc/snakeway
 ```
 
+### SNAKEWAY_CONFIG environment variable
+
+The `SNAKEWAY_CONFIG` environment variable sets the config directory for all commands. This avoids repeating `--config`
+on every invocation when working with a non-default config path (e.g. `/etc/snakeway` in production).
+
+```shell
+export SNAKEWAY_CONFIG=/etc/snakeway
+
+# These all use "/etc/snakeway": 
+snakeway config check
+snakeway config dump
+snakeway route solve ...
+snakeway run
+```
+
+An explicit `--config` flag always takes precedence over the environment variable:
+
+```shell
+export SNAKEWAY_CONFIG=/etc/snakeway
+snakeway run --config /tmp/debug-config   # uses /tmp/debug-config
+```
+
+The packaged systemd unit and Docker image both set this variable to `/etc/snakeway`, so operators who SSH into a
+production host can run diagnostic commands without specifying the path.
+
 ## reload
 
 Reloads via the CLI require Snakeway to be started with a [PID file](/docs/configuration/entry-point/server) (set in

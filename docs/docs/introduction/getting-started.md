@@ -50,7 +50,8 @@ that forwards traffic to a public API.
 ### 1. Initialize Your Configuration
 
 The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to define its
-behavior. By default, it looks for a directory named `config` in the current working directory.
+behavior. By default, it looks for a directory named `config` in the current working directory. This can also be set
+via the `SNAKEWAY_CONFIG` environment variable (see [CLI reference](/docs/guide/cli#snakeway_config-environment-variable)).
 
 Generate a Snakeway configuration directory called "my-first-proxy" using the `httpbin` template:
 

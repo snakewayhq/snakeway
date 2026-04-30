@@ -4,3 +4,5 @@ pub(crate) mod logs;
 pub(crate) mod reload;
 pub mod route;
 pub(crate) mod wasm_device;
+
+pub const SNAKEWAY_CONFIG_ENV: &str = "SNAKEWAY_CONFIG";

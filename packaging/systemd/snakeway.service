@@ -8,6 +8,7 @@ Wants=network-online.target
 Type=simple
 User=snakeway
 Group=snakeway
+Environment=SNAKEWAY_CONFIG=/etc/snakeway
 
 ExecStart=/usr/bin/snakeway run --config /etc/snakeway
 ExecReload=/bin/kill -HUP $MAINPID
