@@ -220,6 +220,7 @@ impl ControlPlaneServer {
                 let config_path = config_path.clone();
                 let traffic = Arc::clone(&self.traffic_manager);
                 let cert_manager_for_reload = self.cert_manager.clone();
+                let mut current_config = self.config.clone();
 
                 async move {
                     info!("Reload loop started");
@@ -235,14 +236,50 @@ impl ControlPlaneServer {
 
                         last_epoch = epoch;
 
+                        // Load and validate the new config to classify the change.
+                        let validated = match snakeway_conf::load_config(&config_path) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                error!(error = %e, "failed to reload config");
+                                continue;
+                            }
+                        };
+
+                        if !validated.is_valid() {
+                            error!(
+                                error = "configuration validation failed",
+                                error_count = validated.validation_report.errors.len(),
+                                warning_count = validated.validation_report.warnings.len(),
+                                "reload failed"
+                            );
+                            continue;
+                        }
+
+                        // Classify: can we hot-swap, or do listeners require re-exec?
+                        use crate::runtime::diff::{ConfigChangeKind, classify_config_change};
+                        let change_kind =
+                            classify_config_change(&current_config, &validated.config);
+
+                        if change_kind == ConfigChangeKind::ListenersChanged {
+                            info!("listener-level change detected; initiating zero-drop upgrade");
+                            use crate::control_plane::server::upgrade::spawn_upgrade;
+                            if let Err(e) = spawn_upgrade(&config_path) {
+                                error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                            }
+                            continue;
+                        }
+
+                        // Runtime-only change: apply in-process via ArcSwap.
                         match reload_runtime_state(&config_path, &state, &cert_manager_for_reload)
                             .await
                         {
                             Ok(reloaded_runtime_cfg) => {
                                 info!("reload successful");
 
+                                current_config = reloaded_runtime_cfg.clone();
+
                                 if let Some(manager) = &cert_manager_for_reload {
-                                    manager.reload(Arc::new(reloaded_runtime_cfg.clone()));
+                                    manager.reload(Arc::new(reloaded_runtime_cfg));
                                 }
 
                                 let new_snapshot =

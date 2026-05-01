@@ -2,7 +2,7 @@ use crate::cli::config::{ConfigCmd, check, dump, init};
 use crate::cli::logs::run_logs;
 use crate::cli::route::RouteCmd;
 use crate::cli::wasm_device::WasmDeviceCmd;
-use crate::cli::{reload, route, wasm_device};
+use crate::cli::{reload, route, upgrade, wasm_device};
 use crate::control_plane::observability::init_logging;
 use crate::server;
 use clap::{Parser, Subcommand};
@@ -47,6 +47,15 @@ enum Command {
 
     /// Reload a running Snakeway instance (SIGHUP)
     Reload {
+        /// Path to pid file
+        #[arg(long, default_value = "/tmp/snakeway.pid")]
+        pid_file: String,
+    },
+
+    /// Trigger a graceful upgrade of a running Snakeway instance (SIGQUIT).
+    /// The target process will transfer its listener FDs to a new process
+    /// started with `--upgrade`, then drain and exit.
+    Upgrade {
         /// Path to pid file
         #[arg(long, default_value = "/tmp/snakeway.pid")]
         pid_file: String,
@@ -133,6 +142,15 @@ pub fn run() {
 
             if let Err(e) = reload::run(&pid_file) {
                 eprintln!("reload failed: {e}");
+                exit(1);
+            }
+        }
+
+        Some(Command::Upgrade { pid_file }) => {
+            init_logging(None);
+
+            if let Err(e) = upgrade::run(&pid_file) {
+                eprintln!("upgrade failed: {e}");
                 exit(1);
             }
         }

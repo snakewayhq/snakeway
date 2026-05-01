@@ -64,6 +64,13 @@ pub fn build_pingora_server(
     };
     let mut server = Server::new_with_opt_and_conf(Some(opt), pingora_server_conf);
 
+    // In upgrade mode, signal the old process BEFORE bootstrap() blocks on
+    // the upgrade socket. The old process's send_fds_to retries on
+    // ENOENT/ECONNREFUSED, so it tolerates the socket not existing yet.
+    if upgrade {
+        crate::control_plane::server::upgrade::signal_old_process(&config.server.pid_file)?;
+    }
+
     server.bootstrap();
 
     // Load devices
