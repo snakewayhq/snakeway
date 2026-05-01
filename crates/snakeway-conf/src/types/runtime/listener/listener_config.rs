@@ -34,7 +34,7 @@ pub struct ListenerConfig {
     pub connection_rate_limiting_filter: Option<ConnectionRateLimitingFilterConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct RedirectConfig {
     pub destination: String,
     pub response_code: u16,
