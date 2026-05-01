@@ -3,7 +3,7 @@ use snakeway_conf::load_config;
 use std::path::Path;
 use std::process::exit;
 
-pub fn start_server(config_path: &str) {
+pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
     #[cfg(feature = "hotpath")]
     let _hotpath_guard = hotpath::HotpathGuardBuilder::new("snakeway")
         .percentiles(&[50.0, 95.0, 99.0])
@@ -15,10 +15,15 @@ pub fn start_server(config_path: &str) {
 
     validated.validation_report.render_pretty();
 
-    if validated.is_valid() {
-        start_control_plane(config_path, validated.config)
-            .expect("Failed to start Snakeway server");
-    } else {
+    if !validated.is_valid() {
         exit(1);
     }
+
+    if test {
+        println!("Configuration is valid.");
+        return;
+    }
+
+    start_control_plane(config_path, validated.config, upgrade)
+        .expect("Failed to start Snakeway server");
 }

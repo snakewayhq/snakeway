@@ -43,8 +43,12 @@ impl ControlPlaneServer {
     /// When `config_path` is `Some`, the reload loop will re-read config
     /// from that directory. When `None`, reload is not supported (typical
     /// for tests using `ConfigBuilder`).
-    pub fn build(config_path: Option<PathBuf>, config: RuntimeConfig) -> Result<Self> {
-        Self::build_inner(config_path, config, None)
+    pub fn build(
+        config_path: Option<PathBuf>,
+        config: RuntimeConfig,
+        upgrade: bool,
+    ) -> Result<Self> {
+        Self::build_inner(config_path, config, None, upgrade)
     }
 
     /// Like `build`, but uses the provided `Metrics` instance instead of
@@ -54,14 +58,16 @@ impl ControlPlaneServer {
         config_path: Option<PathBuf>,
         config: RuntimeConfig,
         metrics: Arc<Metrics>,
+        upgrade: bool,
     ) -> Result<Self> {
-        Self::build_inner(config_path, config, Some(metrics))
+        Self::build_inner(config_path, config, Some(metrics), upgrade)
     }
 
     fn build_inner(
         config_path: Option<PathBuf>,
         config: RuntimeConfig,
         metrics_override: Option<Arc<Metrics>>,
+        upgrade: bool,
     ) -> Result<Self> {
         use tokio::runtime::Builder;
 
@@ -119,6 +125,7 @@ impl ControlPlaneServer {
             cert_manager.clone(),
             reload.clone(),
             metrics.clone(),
+            upgrade,
         )
         .map_err(|e| {
             error!(error = %e, "failed to build Pingora server");

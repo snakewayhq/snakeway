@@ -29,6 +29,15 @@ pub struct ServerSpec {
 
     #[serde(default = "default_dns_refresh_interval_seconds")]
     pub dns_refresh_interval_seconds: u64,
+
+    /// Path to the Unix domain socket used for zero-drop upgrades.
+    /// Both old and new processes must agree on this path for FD transfer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upgrade_sock: Option<String>,
+
+    /// Maximum number of retries when connecting/accepting on the upgrade socket.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upgrade_max_retries: Option<usize>,
 }
 
 fn default_work_stealing() -> bool {
@@ -51,6 +60,8 @@ impl Default for ServerSpec {
             tls_automation: None,
             observability: None,
             dns_refresh_interval_seconds: 30,
+            upgrade_sock: None,
+            upgrade_max_retries: None,
         }
     }
 }

@@ -23,6 +23,12 @@ pub struct ServerConfig {
     pub observability: Option<ObservabilityConfig>,
 
     pub dns_refresh_interval_seconds: u64,
+
+    /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
+    pub upgrade_sock: Option<String>,
+
+    /// Maximum retries when connecting/accepting on the upgrade socket.
+    pub upgrade_max_retries: Option<usize>,
 }
 
 //-----------------------------------------------------------------------------

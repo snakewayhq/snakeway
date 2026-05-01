@@ -63,6 +63,16 @@ enum Command {
         /// Path to the Snakeway config directory
         #[arg(long, default_value = "config", env = "SNAKEWAY_CONFIG")]
         config: String,
+
+        /// Start in upgrade mode: receive listener FDs from a running instance
+        /// instead of binding fresh sockets. Used during zero-drop upgrades.
+        #[arg(long)]
+        upgrade: bool,
+
+        /// Validate config and exit without starting the server.
+        /// Useful for pre-checking before a zero-drop upgrade.
+        #[arg(long)]
+        test: bool,
     },
 }
 
@@ -129,14 +139,16 @@ pub fn run() {
 
         Some(Command::Run {
             config: config_path,
+            upgrade,
+            test,
         }) => {
-            server::start_server(&config_path);
+            server::start_server(&config_path, upgrade, test);
         }
 
         None => {
             let config_path =
                 std::env::var(super::SNAKEWAY_CONFIG_ENV).unwrap_or_else(|_| "config".to_string());
-            server::start_server(&config_path);
+            server::start_server(&config_path, false, false);
         }
     }
 }
