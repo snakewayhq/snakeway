@@ -7,7 +7,7 @@ use crate::control_plane::server::pid;
 use crate::control_plane::server::pid::write_pid;
 use crate::control_plane::server::reload::{ReloadEvent, ReloadHandle};
 use crate::control_plane::server::runtime_server::RuntimeServer;
-use crate::data_plane::bootstrap::build_pingora_server;
+use crate::data_plane::bootstrap::{DataPlaneServerParams, build_pingora_server};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::{TrafficManager, TrafficSnapshot};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
@@ -117,17 +117,17 @@ impl ControlPlaneServer {
         let connection_manager = Arc::new(WsConnectionManager::new());
 
         // Pingora data plane.
-        let pingora_server = build_pingora_server(
-            config.clone(),
-            state.clone(),
-            Arc::clone(&traffic_manager),
-            Arc::clone(&connection_manager),
-            cert_manager.clone(),
-            reload.clone(),
-            metrics.clone(),
+        let params = DataPlaneServerParams {
+            config: config.clone(),
+            state: state.clone(),
+            traffic_manager: Arc::clone(&traffic_manager),
+            connection_manager: Arc::clone(&connection_manager),
+            cert_manager: cert_manager.clone(),
+            reload: reload.clone(),
+            metrics: metrics.clone(),
             upgrade,
-        )
-        .map_err(|e| {
+        };
+        let pingora_server = build_pingora_server(params).map_err(|e| {
             error!(error = %e, "failed to build Pingora server");
             e
         })?;

@@ -19,6 +19,17 @@ use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
+pub struct DataPlaneServerParams {
+    pub config: RuntimeConfig,
+    pub state: Arc<ArcSwap<RuntimeState>>,
+    pub traffic_manager: Arc<TrafficManager>,
+    pub connection_manager: Arc<WsConnectionManager>,
+    pub cert_manager: Option<Arc<CertManager>>,
+    pub reload: Arc<ReloadHandle>,
+    pub metrics: Option<Arc<Metrics>>,
+    pub upgrade: bool,
+}
+
 /// Build the Pingora server.
 ///
 /// There are three types of proxy services constructed:
@@ -26,16 +37,17 @@ use tracing::{debug, warn};
 /// 1. Public: Services defined in ingress.d/* configuration files.
 /// 2. Redirect: Services created from optional redirect settings in ingress file bind blocks.
 /// 3. Admin: The Snakeway Admin API
-pub fn build_pingora_server(
-    config: RuntimeConfig,
-    state: Arc<ArcSwap<RuntimeState>>,
-    traffic_manager: Arc<TrafficManager>,
-    connection_manager: Arc<WsConnectionManager>,
-    cert_manager: Option<Arc<CertManager>>,
-    reload: Arc<ReloadHandle>,
-    metrics: Option<Arc<Metrics>>,
-    upgrade: bool,
-) -> Result<Server, Error> {
+pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Error> {
+    let DataPlaneServerParams {
+        config,
+        state,
+        traffic_manager,
+        connection_manager,
+        cert_manager,
+        reload,
+        metrics,
+        upgrade,
+    } = params;
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
 
