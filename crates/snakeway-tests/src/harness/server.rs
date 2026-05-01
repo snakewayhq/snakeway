@@ -135,8 +135,8 @@ impl TestServer {
 
         // Build and start via ControlPlaneServer (no config path = no reload).
         let server = match metrics {
-            Some(m) => ControlPlaneServer::build_with_metrics(None, cfg.clone(), m),
-            None => ControlPlaneServer::build(None, cfg.clone()),
+            Some(m) => ControlPlaneServer::build_with_metrics(None, cfg.clone(), m, false),
+            None => ControlPlaneServer::build(None, cfg.clone(), false),
         }
         .expect("failed to build snakeway server");
 

@@ -275,8 +275,9 @@ services = [
     std::fs::write(ingress_dst.join("admin.hcl"), &admin_hcl).unwrap();
 
     let validated = load_config(temp_dir.path()).expect("failed to load config");
-    let server = ControlPlaneServer::build(Some(temp_dir.path().to_path_buf()), validated.config)
-        .expect("failed to build server");
+    let server =
+        ControlPlaneServer::build(Some(temp_dir.path().to_path_buf()), validated.config, false)
+            .expect("failed to build server");
     let _running = server.run_background();
 
     let listener_addr = format!("127.0.0.1:{listener_port}");
