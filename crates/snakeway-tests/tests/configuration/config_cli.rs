@@ -1,4 +1,5 @@
 use snakeway_core::testing_api::conf::load_config;
+use snakeway_core::testing_api::conf::validation::ConfigError;
 use snakeway_tests::constants::FIXTURES_CONFIG_DIR;
 
 /// Loading the `basic` fixture directory must succeed without validation
@@ -15,10 +16,10 @@ fn valid_fixture_loads_without_violations() {
     let result = load_config(&fixture_dir);
 
     // Assert
-    let validated = result.expect("valid fixture should load successfully");
     assert!(
-        !validated.validation_report.has_violations(),
-        "valid fixture should produce no validation violations"
+        result.is_ok(),
+        "valid fixture should load successfully: {:?}",
+        result.err()
     );
 }
 
@@ -60,7 +61,7 @@ fn invalid_hcl_syntax_returns_parse_error() {
 }
 
 /// A config that parses but has semantic errors (e.g., missing required
-/// fields) must produce validation violations rather than silently
+/// fields) must produce a validation error rather than silently
 /// succeeding.
 #[test]
 fn semantically_invalid_config_reports_violations() {
@@ -73,19 +74,19 @@ fn semantically_invalid_config_reports_violations() {
     let result = load_config(&fixture_dir);
 
     // Assert
-    let validated = result.expect("semantically invalid config should still load (not hard-fail)");
-    assert!(
-        validated.validation_report.has_violations(),
-        "invalid version should produce validation violations"
-    );
-    assert!(
-        validated
-            .validation_report
-            .errors
-            .iter()
-            .any(|e| e.message.contains("invalid config version")),
-        "should report invalid config version"
-    );
+    let err = result.expect_err("semantically invalid config should return an error");
+    match err {
+        ConfigError::SemanticValidationFailed { validation_report } => {
+            assert!(
+                validation_report
+                    .errors
+                    .iter()
+                    .any(|e| e.message.contains("invalid config version")),
+                "should report invalid config version"
+            );
+        }
+        other => panic!("expected SemanticValidationFailed, got: {other:?}"),
+    }
 }
 
 /// A successfully loaded config must be serializable to JSON without
@@ -96,16 +97,15 @@ fn loaded_config_serializes_to_json() {
     let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join(FIXTURES_CONFIG_DIR)
         .join("basic");
-    let validated = load_config(&fixture_dir).expect("fixture should load");
+    let config = load_config(&fixture_dir).expect("fixture should load");
 
     // Act
-    let json = serde_json::to_string_pretty(&validated.config);
+    let json = serde_json::to_string_pretty(&config);
 
     // Assert
     let json_str = json.expect("config must serialize to JSON");
     assert!(!json_str.is_empty(), "JSON output must not be empty");
 
-    // Verify it's valid JSON by parsing it back
     let parsed: serde_json::Value =
         serde_json::from_str(&json_str).expect("serialized JSON must parse back");
     assert!(
@@ -140,7 +140,7 @@ fn nonexistent_ca_file_produces_validation_error() {
     use snakeway_tests::conf::ConfigBuilder;
     use std::path::PathBuf;
 
-    let validated = ConfigBuilder::default()
+    let result = ConfigBuilder::default()
         .with_server_spec(ServerSpec {
             version: 1,
             threads: Some(1),
@@ -151,17 +151,18 @@ fn nonexistent_ca_file_produces_validation_error() {
         .try_build();
 
     // Assert
-    assert!(
-        validated.validation_report.has_violations(),
-        "nonexistent CA file path should produce validation errors"
-    );
-    assert!(
-        validated
-            .validation_report
-            .errors
-            .iter()
-            .any(|e| e.message.contains("CA file")),
-        "should report CA file error; got: {:?}",
-        validated.validation_report.errors
-    );
+    let err = result.expect_err("nonexistent CA file should produce validation error");
+    match err {
+        ConfigError::SemanticValidationFailed { validation_report } => {
+            assert!(
+                validation_report
+                    .errors
+                    .iter()
+                    .any(|e| e.message.contains("CA file")),
+                "should report CA file error; got: {:?}",
+                validation_report.errors
+            );
+        }
+        other => panic!("expected SemanticValidationFailed, got: {other:?}"),
+    }
 }

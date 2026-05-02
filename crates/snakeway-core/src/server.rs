@@ -10,20 +10,18 @@ pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
         .format(hotpath::Format::Table)
         .build();
 
-    let validated =
-        load_config(Path::new(&config_path)).expect("Failed to load default Snakeway config");
-
-    validated.validation_report.render_pretty();
-
-    if !validated.is_valid() {
-        exit(1);
-    }
+    let config = match load_config(Path::new(&config_path)) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("{e}");
+            exit(1);
+        }
+    };
 
     if test {
         println!("Configuration is valid.");
         return;
     }
 
-    start_control_plane(config_path, validated.config, upgrade)
-        .expect("Failed to start Snakeway server");
+    start_control_plane(config_path, config, upgrade).expect("Failed to start Snakeway server");
 }

@@ -37,6 +37,10 @@ impl ValidationReport {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
 
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
     pub fn error(&mut self, message: String, origin: &Origin, help: Option<String>) {
         self.errors.push(ValidationIssue {
             severity: Severity::Error,

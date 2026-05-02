@@ -236,29 +236,17 @@ impl ControlPlaneServer {
 
                         last_epoch = epoch;
 
-                        // Load and validate the new config to classify the change.
-                        let validated = match snakeway_conf::load_config(&config_path) {
-                            Ok(v) => v,
+                        let new_config = match snakeway_conf::load_config(&config_path) {
+                            Ok(cfg) => cfg,
                             Err(e) => {
                                 error!(error = %e, "failed to reload config");
                                 continue;
                             }
                         };
 
-                        if !validated.is_valid() {
-                            error!(
-                                error = "configuration validation failed",
-                                error_count = validated.validation_report.errors.len(),
-                                warning_count = validated.validation_report.warnings.len(),
-                                "reload failed"
-                            );
-                            continue;
-                        }
-
-                        // Classify: can we hot-swap, or do listeners require re-exec?
                         use crate::runtime::diff::{ConfigChangeKind, classify_config_change};
                         let change_kind =
-                            classify_config_change(&current_config, &validated.config);
+                            classify_config_change(&current_config, &new_config);
 
                         if change_kind == ConfigChangeKind::ListenersChanged {
                             info!("listener-level change detected; initiating zero-drop upgrade");
@@ -289,14 +277,6 @@ impl ControlPlaneServer {
                             Err(reload_err) => match reload_err {
                                 ReloadError::Load(e) => {
                                     error!(error = %e, "failed to reload config");
-                                }
-                                ReloadError::InvalidConfig { report } => {
-                                    error!(
-                                        error = "configuration validation failed",
-                                        error_count = report.errors.len(),
-                                        warning_count = report.warnings.len(),
-                                        "reload failed"
-                                    )
                                 }
                                 ReloadError::Build(e) => {
                                     error!(error = %e, "failed to build runtime state");

@@ -159,9 +159,7 @@ impl TestServer {
             fixture_dir
         );
 
-        let mut cfg = load_config(&fixture_dir)
-            .expect("failed to load fixture config")
-            .config;
+        let mut cfg = load_config(&fixture_dir).expect("failed to load fixture config");
 
         Self::start_with_config(&mut cfg, start_upstream)
     }
