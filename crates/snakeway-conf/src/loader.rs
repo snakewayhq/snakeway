@@ -22,7 +22,7 @@ pub fn load_config_from_specs(
     device_specs: Vec<DeviceSpec>,
 ) -> Result<RuntimeConfig, ConfigError> {
     let validation_report = validate_spec(&server_spec, &ingress_specs, &device_specs);
-    if validation_report.has_errors() {
+    if validation_report.has_violations() {
         return Err(ConfigError::SemanticValidationFailed { validation_report });
     }
 
