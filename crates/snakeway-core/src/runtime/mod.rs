@@ -1,3 +1,4 @@
+pub(crate) mod diff;
 pub(crate) mod dns_refresh;
 mod error;
 mod state;

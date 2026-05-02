@@ -135,8 +135,8 @@ impl TestServer {
 
         // Build and start via ControlPlaneServer (no config path = no reload).
         let server = match metrics {
-            Some(m) => ControlPlaneServer::build_with_metrics(None, cfg.clone(), m),
-            None => ControlPlaneServer::build(None, cfg.clone()),
+            Some(m) => ControlPlaneServer::build_with_metrics(None, cfg.clone(), m, false),
+            None => ControlPlaneServer::build(None, cfg.clone(), false),
         }
         .expect("failed to build snakeway server");
 
@@ -159,9 +159,7 @@ impl TestServer {
             fixture_dir
         );
 
-        let mut cfg = load_config(&fixture_dir)
-            .expect("failed to load fixture config")
-            .config;
+        let mut cfg = load_config(&fixture_dir).expect("failed to load fixture config");
 
         Self::start_with_config(&mut cfg, start_upstream)
     }

@@ -86,6 +86,29 @@ that decision. For requests without a parent context, this ratio
 determines sampling probability. Set to `0.1` to sample 10% of root
 traces, or `1.0` to sample all.
 
+## Zero-Drop Upgrade
+
+`upgrade_sock` string, default: `/tmp/pingora_upgrade.sock`. Path to the Unix domain socket used
+for transferring listener file descriptors between old and new processes during a zero-drop upgrade.
+Both processes must agree on this path. Set a unique value when running multiple Snakeway instances
+on the same host.
+
+`upgrade_max_retries` integer, default: `5`. Maximum number of retries when connecting to or
+accepting on the upgrade socket during FD transfer. Each retry waits one second. Valid range: `1`
+to `60`.
+
+```hcl
+server {
+  version = 1
+  pid_file = "/var/run/snakeway.pid"
+  upgrade_sock = "/var/run/snakeway_upgrade.sock"
+  upgrade_max_retries = 10
+}
+```
+
+See the [Hot Reload internals](../../internals/hot-reload) page for details on how the upgrade
+mechanism works.
+
 ## PID File and Reload Behavior
 
 When `pid_file` is set, Snakeway writes its process ID to the specified path at startup. This enables the

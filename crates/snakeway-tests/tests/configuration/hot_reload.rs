@@ -132,7 +132,7 @@ fn hot_reload_adds_new_route() {
 
     // Load and build with config_path so the reload loop starts.
     let validated = load_config(config_dir.path()).expect("failed to load config");
-    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated.config)
+    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated, false)
         .expect("failed to build server");
     let running = server.run_background();
 
@@ -231,7 +231,7 @@ fn hot_reload_with_invalid_config_preserves_old_routes() {
 
     let config_dir = setup_config_dir(listener_port, upstream_port);
     let validated = load_config(config_dir.path()).expect("failed to load config");
-    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated.config)
+    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated, false)
         .expect("failed to build server");
     let running = server.run_background();
 
@@ -284,7 +284,7 @@ fn hot_reload_removes_route() {
 
     let config_dir = setup_config_dir_with_routes(listener_port, upstream_port, &["/api", "/v2"]);
     let validated = load_config(config_dir.path()).expect("failed to load config");
-    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated.config)
+    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated, false)
         .expect("failed to build server");
     let running = server.run_background();
 
@@ -361,7 +361,7 @@ fn hot_reload_while_requests_are_in_flight() {
 
     let config_dir = setup_config_dir(listener_port, upstream_port);
     let validated = load_config(config_dir.path()).expect("failed to load config");
-    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated.config)
+    let server = ControlPlaneServer::build(Some(config_dir.path().to_path_buf()), validated, false)
         .expect("failed to build server");
     let running = server.run_background();
 

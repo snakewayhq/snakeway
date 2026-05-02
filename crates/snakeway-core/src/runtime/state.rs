@@ -25,17 +25,9 @@ pub(crate) async fn reload_runtime_state(
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,
 ) -> Result<RuntimeConfig, ReloadError> {
-    // Parse and validate config.
-    let validated = load_config(config_path)?;
+    let config = load_config(config_path)?;
 
-    if !validated.is_valid() {
-        return Err(ReloadError::InvalidConfig {
-            report: validated.validation_report,
-        });
-    }
-
-    // Build a new runtime state OFFLINE.
-    let new_state = build_runtime_state(&validated.config, cert_manager)?;
+    let new_state = build_runtime_state(&config, cert_manager)?;
 
     // Log comparison against current state.
     let old = state.load();
@@ -59,7 +51,7 @@ pub(crate) async fn reload_runtime_state(
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
-    Ok(validated.config)
+    Ok(config)
 }
 
 pub fn build_runtime_state(

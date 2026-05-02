@@ -1,3 +1,4 @@
+use crate::validation::ValidationReport;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -47,6 +48,9 @@ pub enum ConfigError {
     #[error("invalid server configuration: {message}")]
     InvalidServerConfig { message: String },
 
+    #[error("invalid admin bind configuration: {message}")]
+    InvalidAdminBindConfig { message: String },
+
     #[error("invalid bind address: {message}")]
     InvalidBindAddress { message: String },
 
@@ -61,6 +65,9 @@ pub enum ConfigError {
 
     #[error("invalid upstream: {message}")]
     InvalidUpstream { message: String },
+
+    #[error("validation failed: {validation_report:?}")]
+    SemanticValidationFailed { validation_report: ValidationReport },
 }
 
 impl ConfigError {

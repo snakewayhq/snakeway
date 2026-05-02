@@ -77,9 +77,8 @@ pub(crate) fn run(args: RouteSolveArgs) {
         .clone()
         .or_else(|| parsed_url.query().map(|q| q.to_string()));
 
-    // 6. Load config
-    let validated = match load_config(&args.config) {
-        Ok(v) => v,
+    let config = match load_config(&args.config) {
+        Ok(cfg) => cfg,
         Err(e) => {
             eprintln!(
                 "error: failed to load config from '{}': {}",
@@ -90,14 +89,7 @@ pub(crate) fn run(args: RouteSolveArgs) {
         }
     };
 
-    if !validated.is_valid() {
-        validated.validation_report.render_pretty();
-        eprintln!("error: configuration has validation errors");
-        process::exit(EXIT_CONFIG_FAILURE);
-    }
-
-    // 7. Build runtime state (no cert manager needed for dry-run)
-    let state = match build_runtime_state(&validated.config, &None) {
+    let state = match build_runtime_state(&config, &None) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("error: failed to build runtime state: {}", e);

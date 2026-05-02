@@ -2,7 +2,7 @@ use crate::cli::config::{ConfigCmd, check, dump, init};
 use crate::cli::logs::run_logs;
 use crate::cli::route::RouteCmd;
 use crate::cli::wasm_device::WasmDeviceCmd;
-use crate::cli::{reload, route, wasm_device};
+use crate::cli::{reload, route, upgrade, wasm_device};
 use crate::control_plane::observability::init_logging;
 use crate::server;
 use clap::{Parser, Subcommand};
@@ -52,6 +52,15 @@ enum Command {
         pid_file: String,
     },
 
+    /// Trigger a graceful upgrade of a running Snakeway instance (SIGQUIT).
+    /// The target process will transfer its listener FDs to a new process
+    /// started with `--upgrade`, then drain and exit.
+    Upgrade {
+        /// Path to pid file
+        #[arg(long, default_value = "/tmp/snakeway.pid")]
+        pid_file: String,
+    },
+
     /// Route debugging tools
     Route {
         #[command(subcommand)]
@@ -63,6 +72,16 @@ enum Command {
         /// Path to the Snakeway config directory
         #[arg(long, default_value = "config", env = "SNAKEWAY_CONFIG")]
         config: String,
+
+        /// Start in upgrade mode: receive listener FDs from a running instance
+        /// instead of binding fresh sockets. Used during zero-drop upgrades.
+        #[arg(long)]
+        upgrade: bool,
+
+        /// Validate config and exit without starting the server.
+        /// Useful for pre-checking before a zero-drop upgrade.
+        #[arg(long)]
+        test: bool,
     },
 }
 
@@ -127,16 +146,27 @@ pub fn run() {
             }
         }
 
+        Some(Command::Upgrade { pid_file }) => {
+            init_logging(None);
+
+            if let Err(e) = upgrade::run(&pid_file) {
+                eprintln!("upgrade failed: {e}");
+                exit(1);
+            }
+        }
+
         Some(Command::Run {
             config: config_path,
+            upgrade,
+            test,
         }) => {
-            server::start_server(&config_path);
+            server::start_server(&config_path, upgrade, test);
         }
 
         None => {
             let config_path =
                 std::env::var(super::SNAKEWAY_CONFIG_ENV).unwrap_or_else(|_| "config".to_string());
-            server::start_server(&config_path);
+            server::start_server(&config_path, false, false);
         }
     }
 }

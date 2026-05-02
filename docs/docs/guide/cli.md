@@ -10,6 +10,7 @@ Snakeway has a set of commands to help operators:
 | route       | Route debugging tools                       |
 | run         | Run the Snakeway proxy (default)            |
 | reload      | Reload a running Snakeway instance (SIGHUP) |
+| upgrade     | Trigger a zero-drop upgrade (SIGQUIT)       |
 | logs        | Format logs from standard out               |
 | wasm-device | Debug a WASM device in isolation            |
 
@@ -275,6 +276,20 @@ A specific config directory can be targeted:
 snakeway run --config /etc/snakeway
 ```
 
+### Options
+
+| Option      | Default  | Description                                                   |
+|-------------|----------|---------------------------------------------------------------|
+| `--config`  | `config` | Path to the Snakeway config directory                         |
+| `--upgrade` | `false`  | Start in upgrade mode (receive listener FDs from old process) |
+| `--test`    | `false`  | Validate configuration and exit without starting              |
+
+`--test` loads and validates the configuration, then exits with code 0 if valid or 1 if not. This is
+useful for verifying that a new binary or config will pass validation before committing to an upgrade.
+
+`--upgrade` is not intended to be used directly by operators. It is used internally during a
+zero-drop upgrade to start the new process in FD-receive mode. See [`upgrade`](#upgrade) below.
+
 ### SNAKEWAY_CONFIG environment variable
 
 The `SNAKEWAY_CONFIG` environment variable sets the config directory for all commands. This avoids repeating `--config`
@@ -319,6 +334,46 @@ Sent SIGHUP to Snakeway (pid 77120)
 :::note
 It is also possible to reload with the [admin API](/docs/guide/admin-api/#post-adminreload).
 :::
+
+## upgrade
+
+Triggers a zero-drop upgrade of a running Snakeway instance by sending SIGQUIT. Like `reload`, this
+requires a [PID file](/docs/configuration/entry-point/server).
+
+```shell
+snakeway upgrade
+```
+
+You will see a message like:
+
+```shell
+snakeway upgrade
+Sent SIGQUIT to Snakeway (pid 77120)
+```
+
+This is the manual equivalent of what happens automatically when Snakeway's reload loop detects a
+listener-level configuration change. See the [Hot Reload internals](../internals/hot-reload) page
+for a full explanation of when this is used and what happens during the transition.
+
+:::note
+In most cases you do not need to run this command directly. When `upgrade_sock` is configured and
+Snakeway detects a listener change during a normal `reload`, it spawns the new process and sends
+SIGQUIT automatically.
+:::
+
+### Options
+
+| Option       | Default             | Description      |
+|--------------|---------------------|------------------|
+| `--pid-file` | `/tmp/snakeway.pid` | Path to pid file |
+
+### When to use upgrade vs reload
+
+| Change type                          | Command   | Mechanism               |
+|--------------------------------------|-----------|-------------------------|
+| Routes, services, devices, TLS certs | `reload`  | In-process ArcSwap      |
+| Listener address, port, TLS mode     | `upgrade` | Fork/exec + FD transfer |
+| Worker threads, work stealing        | `upgrade` | Fork/exec + FD transfer |
 
 ## logs
 

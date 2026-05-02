@@ -38,7 +38,7 @@ pub(crate) fn lower_configs(
         // -------------------------------------------------------------
         if let Some(bind_admin) = ingress.bind_admin {
             let listener_cfg = ListenerConfig::from_bind_admin(&listener_name, bind_admin)
-                .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
+                .map_err(|err| ConfigError::InvalidAdminBindConfig { message: err })?;
             listeners.push(listener_cfg);
         }
 
