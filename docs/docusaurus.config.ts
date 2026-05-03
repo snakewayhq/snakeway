@@ -59,11 +59,11 @@ const config: Config = {
             {
                 docs: {
                     sidebarPath: './sidebars.ts',
-                    editUrl: 'https://github.com/ethanhann/snakeway/tree/main/docs/',
-                    lastVersion: '0.11.1',
+                    editUrl: 'https://github.com/snakewayhq/snakeway/tree/main/docs/',
+                    lastVersion: '0.12.0',
                     versions: {
                         current: {
-                            label: '0.11.x-dev',
+                            label: '0.12.x-dev',
                             banner: 'unreleased',
                         },
                     },
@@ -100,7 +100,7 @@ const config: Config = {
                     position: 'right',
                 },
                 {
-                    href: 'https://github.com/ethanhann/snakeway',
+                    href: 'https://github.com/snakewayhq/snakeway',
                     position: 'right',
                     className: 'header-github-link',
                     'aria-label': 'GitHub repository',
@@ -132,7 +132,7 @@ const config: Config = {
                         },
                         {
                             label: 'GitHub',
-                            href: 'https://github.com/ethanhann/snakeway',
+                            href: 'https://github.com/snakewayhq/snakeway',
                         },
                     ],
                 },
