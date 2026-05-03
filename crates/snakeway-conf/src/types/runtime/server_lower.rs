@@ -25,6 +25,8 @@ impl TryFrom<ServerSpec> for ServerConfig {
             tls_automation: spec.tls_automation.map(Into::into),
             observability: spec.observability.map(Into::into),
             dns_refresh_interval_seconds: spec.dns_refresh_interval_seconds,
+            upgrade_sock: spec.upgrade_sock,
+            upgrade_max_retries: spec.upgrade_max_retries,
         })
     }
 }

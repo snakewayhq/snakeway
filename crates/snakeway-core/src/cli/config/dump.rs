@@ -19,9 +19,9 @@ pub(crate) fn dump(
     } else if matches!(repr, RepresentationFormat::Runtime) {
         let cfg = load_config(&path)?;
         match format {
-            ConfigDumpOutputFormat::Json => dump_json(&cfg.config)?,
-            ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg.config)?,
-            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg.config)?,
+            ConfigDumpOutputFormat::Json => dump_json(&cfg)?,
+            ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg)?,
+            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg)?,
         }
     }
 

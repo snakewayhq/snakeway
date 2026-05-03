@@ -8,8 +8,10 @@ use tracing::{error, warn};
 
 /// Convenience wrapper that builds and runs the server in blocking mode.
 /// This is the production entry point called by `start_server()`.
-pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<()> {
-    bail_if_port_is_in_use(&config.listeners)?;
+pub fn start_control_plane(config_path: &str, config: RuntimeConfig, upgrade: bool) -> Result<()> {
+    if !upgrade {
+        bail_if_port_is_in_use(&config.listeners)?;
+    }
 
     // Initialize telemetry and logging before building the server so
     // that metrics are available for the Pingora data plane.
@@ -38,8 +40,10 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig) -> Result<(
     drop(init_rt);
 
     let server = match metrics {
-        Some(m) => ControlPlaneServer::build_with_metrics(Some(config_path.into()), config, m)?,
-        None => ControlPlaneServer::build(Some(config_path.into()), config)?,
+        Some(m) => {
+            ControlPlaneServer::build_with_metrics(Some(config_path.into()), config, m, upgrade)?
+        }
+        None => ControlPlaneServer::build(Some(config_path.into()), config, upgrade)?,
     };
 
     server.run_blocking()

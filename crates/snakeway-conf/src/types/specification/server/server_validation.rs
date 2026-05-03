@@ -6,6 +6,7 @@ use crate::validation::{
 
 range_constraint!(THREADS, usize, min: 1, max: 1024);
 range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, u64, min: 1, max: 3600, units: "seconds");
+range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -48,6 +49,10 @@ impl ValidateSpec for ServerSpec {
 
         if let Some(observability) = &self.observability {
             observability.validate(origin, report);
+        }
+
+        if let Some(retries) = self.upgrade_max_retries {
+            validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
         }
     }
 }

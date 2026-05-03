@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 /// Paths are validated and resolved during config validation.
 /// Runtime code assumes these values are valid.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum TlsTerminationConfig {
     Manual {
@@ -16,7 +16,7 @@ pub enum TlsTerminationConfig {
     },
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum AcmeChallengeConfig {
     Http01,
 }

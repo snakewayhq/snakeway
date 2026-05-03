@@ -14,10 +14,21 @@ use openssl::ssl::SslFiletype;
 use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::server::Server;
-use pingora::server::configuration::ServerConf;
+use pingora::server::configuration::{Opt, ServerConf};
 use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
 use std::sync::Arc;
 use tracing::{debug, warn};
+
+pub struct DataPlaneServerParams {
+    pub config: RuntimeConfig,
+    pub state: Arc<ArcSwap<RuntimeState>>,
+    pub traffic_manager: Arc<TrafficManager>,
+    pub connection_manager: Arc<WsConnectionManager>,
+    pub cert_manager: Option<Arc<CertManager>>,
+    pub reload: Arc<ReloadHandle>,
+    pub metrics: Option<Arc<Metrics>>,
+    pub upgrade: bool,
+}
 
 /// Build the Pingora server.
 ///
@@ -26,20 +37,30 @@ use tracing::{debug, warn};
 /// 1. Public: Services defined in ingress.d/* configuration files.
 /// 2. Redirect: Services created from optional redirect settings in ingress file bind blocks.
 /// 3. Admin: The Snakeway Admin API
-pub fn build_pingora_server(
-    config: RuntimeConfig,
-    state: Arc<ArcSwap<RuntimeState>>,
-    traffic_manager: Arc<TrafficManager>,
-    connection_manager: Arc<WsConnectionManager>,
-    cert_manager: Option<Arc<CertManager>>,
-    reload: Arc<ReloadHandle>,
-    metrics: Option<Arc<Metrics>>,
-) -> Result<Server, Error> {
+pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Error> {
+    let DataPlaneServerParams {
+        config,
+        state,
+        traffic_manager,
+        connection_manager,
+        cert_manager,
+        reload,
+        metrics,
+        upgrade,
+    } = params;
     let mut pingora_server_conf =
         ServerConf::new().expect("Could not construct pingora server configuration");
 
     pingora_server_conf.ca_file = config.server.ca_file.clone();
     pingora_server_conf.work_stealing = config.server.work_stealing;
+
+    if let Some(sock) = &config.server.upgrade_sock {
+        pingora_server_conf.upgrade_sock = sock.clone();
+    }
+
+    if let Some(retries) = config.server.upgrade_max_retries {
+        pingora_server_conf.upgrade_sock_connect_accept_max_retries = Some(retries);
+    }
 
     if let Some(threads) = config.server.threads {
         debug!(
@@ -48,7 +69,19 @@ pub fn build_pingora_server(
         );
         pingora_server_conf.threads = threads;
     }
-    let mut server = Server::new_with_opt_and_conf(None, pingora_server_conf);
+
+    let opt = Opt {
+        upgrade,
+        ..Default::default()
+    };
+    let mut server = Server::new_with_opt_and_conf(Some(opt), pingora_server_conf);
+
+    // In upgrade mode, signal the old process BEFORE bootstrap() blocks on
+    // the upgrade socket. The old process's send_fds_to retries on
+    // ENOENT/ECONNREFUSED, so it tolerates the socket not existing yet.
+    if upgrade {
+        crate::control_plane::server::upgrade::signal_old_process(&config.server.pid_file)?;
+    }
 
     server.bootstrap();
 

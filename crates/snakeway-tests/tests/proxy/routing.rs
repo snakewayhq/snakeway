@@ -1,6 +1,7 @@
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
+use snakeway_core::testing_api::conf::validation::ConfigError;
 use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
 use snakeway_tests::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use snakeway_tests::harness::TestServer;
@@ -328,7 +329,7 @@ fn longer_path_prefix_wins_over_shorter() {
 #[test]
 fn same_path_different_hosts_is_rejected() {
     // Arrange
-    let validated = ConfigBuilder::default()
+    let result = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
                 routes: vec![ServiceRouteSpec {
@@ -358,19 +359,21 @@ fn same_path_different_hosts_is_rejected() {
         .try_build();
 
     // Assert
-    assert!(
-        validated.validation_report.has_violations(),
-        "duplicate route paths on the same listener should produce validation errors"
-    );
-    assert!(
-        validated
-            .validation_report
-            .errors
-            .iter()
-            .any(|e| e.message.contains("duplicate route path")),
-        "should report duplicate route path; got: {:?}",
-        validated.validation_report.errors
-    );
+    let err =
+        result.expect_err("duplicate route paths on the same listener should fail validation");
+    match err {
+        ConfigError::SemanticValidationFailed { validation_report } => {
+            assert!(
+                validation_report
+                    .errors
+                    .iter()
+                    .any(|e| e.message.contains("duplicate route path")),
+                "should report duplicate route path; got: {:?}",
+                validation_report.errors
+            );
+        }
+        other => panic!("expected SemanticValidationFailed, got: {other:?}"),
+    }
 }
 
 /// An IPv6 literal in the Host header (`[::1]`) must not crash or hang

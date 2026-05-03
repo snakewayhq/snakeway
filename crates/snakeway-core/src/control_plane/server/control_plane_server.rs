@@ -7,7 +7,7 @@ use crate::control_plane::server::pid;
 use crate::control_plane::server::pid::write_pid;
 use crate::control_plane::server::reload::{ReloadEvent, ReloadHandle};
 use crate::control_plane::server::runtime_server::RuntimeServer;
-use crate::data_plane::bootstrap::build_pingora_server;
+use crate::data_plane::bootstrap::{DataPlaneServerParams, build_pingora_server};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::{TrafficManager, TrafficSnapshot};
 use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
@@ -43,8 +43,12 @@ impl ControlPlaneServer {
     /// When `config_path` is `Some`, the reload loop will re-read config
     /// from that directory. When `None`, reload is not supported (typical
     /// for tests using `ConfigBuilder`).
-    pub fn build(config_path: Option<PathBuf>, config: RuntimeConfig) -> Result<Self> {
-        Self::build_inner(config_path, config, None)
+    pub fn build(
+        config_path: Option<PathBuf>,
+        config: RuntimeConfig,
+        upgrade: bool,
+    ) -> Result<Self> {
+        Self::build_inner(config_path, config, None, upgrade)
     }
 
     /// Like `build`, but uses the provided `Metrics` instance instead of
@@ -54,14 +58,16 @@ impl ControlPlaneServer {
         config_path: Option<PathBuf>,
         config: RuntimeConfig,
         metrics: Arc<Metrics>,
+        upgrade: bool,
     ) -> Result<Self> {
-        Self::build_inner(config_path, config, Some(metrics))
+        Self::build_inner(config_path, config, Some(metrics), upgrade)
     }
 
     fn build_inner(
         config_path: Option<PathBuf>,
         config: RuntimeConfig,
         metrics_override: Option<Arc<Metrics>>,
+        upgrade: bool,
     ) -> Result<Self> {
         use tokio::runtime::Builder;
 
@@ -111,16 +117,17 @@ impl ControlPlaneServer {
         let connection_manager = Arc::new(WsConnectionManager::new());
 
         // Pingora data plane.
-        let pingora_server = build_pingora_server(
-            config.clone(),
-            state.clone(),
-            Arc::clone(&traffic_manager),
-            Arc::clone(&connection_manager),
-            cert_manager.clone(),
-            reload.clone(),
-            metrics.clone(),
-        )
-        .map_err(|e| {
+        let params = DataPlaneServerParams {
+            config: config.clone(),
+            state: state.clone(),
+            traffic_manager: Arc::clone(&traffic_manager),
+            connection_manager: Arc::clone(&connection_manager),
+            cert_manager: cert_manager.clone(),
+            reload: reload.clone(),
+            metrics: metrics.clone(),
+            upgrade,
+        };
+        let pingora_server = build_pingora_server(params).map_err(|e| {
             error!(error = %e, "failed to build Pingora server");
             e
         })?;
@@ -213,6 +220,7 @@ impl ControlPlaneServer {
                 let config_path = config_path.clone();
                 let traffic = Arc::clone(&self.traffic_manager);
                 let cert_manager_for_reload = self.cert_manager.clone();
+                let mut current_config = self.config.clone();
 
                 async move {
                     info!("Reload loop started");
@@ -228,14 +236,38 @@ impl ControlPlaneServer {
 
                         last_epoch = epoch;
 
+                        let new_config = match snakeway_conf::load_config(&config_path) {
+                            Ok(cfg) => cfg,
+                            Err(e) => {
+                                error!(error = %e, "failed to reload config");
+                                continue;
+                            }
+                        };
+
+                        use crate::runtime::diff::{ConfigChangeKind, classify_config_change};
+                        let change_kind =
+                            classify_config_change(&current_config, &new_config);
+
+                        if change_kind == ConfigChangeKind::ListenersChanged {
+                            info!("listener-level change detected; initiating zero-drop upgrade");
+                            use crate::control_plane::server::upgrade::spawn_upgrade;
+                            if let Err(e) = spawn_upgrade(&config_path) {
+                                error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                            }
+                            continue;
+                        }
+
+                        // Runtime-only change: apply in-process via ArcSwap.
                         match reload_runtime_state(&config_path, &state, &cert_manager_for_reload)
                             .await
                         {
                             Ok(reloaded_runtime_cfg) => {
                                 info!("reload successful");
 
+                                current_config = reloaded_runtime_cfg.clone();
+
                                 if let Some(manager) = &cert_manager_for_reload {
-                                    manager.reload(Arc::new(reloaded_runtime_cfg.clone()));
+                                    manager.reload(Arc::new(reloaded_runtime_cfg));
                                 }
 
                                 let new_snapshot =
@@ -245,14 +277,6 @@ impl ControlPlaneServer {
                             Err(reload_err) => match reload_err {
                                 ReloadError::Load(e) => {
                                     error!(error = %e, "failed to reload config");
-                                }
-                                ReloadError::InvalidConfig { report } => {
-                                    error!(
-                                        error = "configuration validation failed",
-                                        error_count = report.errors.len(),
-                                        warning_count = report.warnings.len(),
-                                        "reload failed"
-                                    )
                                 }
                                 ReloadError::Build(e) => {
                                     error!(error = %e, "failed to build runtime state");

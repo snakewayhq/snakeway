@@ -1,5 +1,6 @@
 use clap::ValueEnum;
 use snakeway_conf::load_config;
+use snakeway_conf::validation::ConfigError;
 use std::path::PathBuf;
 
 pub(crate) fn check(
@@ -8,32 +9,12 @@ pub(crate) fn check(
     format: ConfigCheckOutputFormat,
 ) -> anyhow::Result<()> {
     match load_config(&path) {
-        Ok(validation_cfg) => {
-            let cfg = validation_cfg.config;
-            let validation_report = validation_cfg.validation_report;
-
-            // Validation...
-            if validation_report.has_violations() {
-                if !quiet {
-                    match format {
-                        ConfigCheckOutputFormat::Pretty => {
-                            validation_report.render_pretty();
-                        }
-                        ConfigCheckOutputFormat::Plain => {
-                            validation_report.render_plain();
-                        }
-                        ConfigCheckOutputFormat::Json => {
-                            validation_report.render_json();
-                        }
-                    };
-                }
-                std::process::exit(1);
+        Ok(cfg) => {
+            if quiet {
+                return Ok(());
             }
 
-            // Success...
-            if quiet {
-                // Print nothing.
-            } else if matches!(format, ConfigCheckOutputFormat::Json) {
+            if matches!(format, ConfigCheckOutputFormat::Json) {
                 let success_info = serde_json::json!({
                     "status": "success",
                     "routes": cfg.routes.len(),
@@ -46,29 +27,38 @@ pub(crate) fn check(
                     serde_json::to_string_pretty(&success_info).expect("could not format JSON")
                 );
             } else {
-                println!("✔ Config loaded successfully");
-                println!("✔ {} routes", cfg.routes.len());
-                println!("✔ {} services", cfg.services.len());
-                println!("✔ {} upstreams", cfg.services.len());
+                println!("Config loaded successfully");
+                println!("{} routes", cfg.routes.len());
+                println!("{} services", cfg.services.len());
+                println!("{} upstreams", cfg.services.len());
                 println!(
-                    "✔ {} devices enabled",
+                    "{} devices enabled",
                     cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 );
             }
             Ok(())
         }
         Err(err) => {
-            if !quiet {
-                match format {
-                    ConfigCheckOutputFormat::Pretty => {
-                        eprintln!("{}", err);
-                    }
-                    ConfigCheckOutputFormat::Plain => {
-                        eprintln!("{}", err);
-                    }
-                    ConfigCheckOutputFormat::Json => {
-                        eprintln!("{}", err);
-                    }
+            if quiet {
+                std::process::exit(1);
+            }
+
+            match err {
+                ConfigError::SemanticValidationFailed { validation_report } => {
+                    match format {
+                        ConfigCheckOutputFormat::Pretty => {
+                            validation_report.render_pretty();
+                        }
+                        ConfigCheckOutputFormat::Plain => {
+                            validation_report.render_plain();
+                        }
+                        ConfigCheckOutputFormat::Json => {
+                            validation_report.render_json();
+                        }
+                    };
+                }
+                _ => {
+                    eprintln!("{}", err);
                 }
             }
 

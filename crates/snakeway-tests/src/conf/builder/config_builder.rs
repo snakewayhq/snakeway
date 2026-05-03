@@ -67,42 +67,38 @@ impl ConfigBuilder {
     }
 
     pub fn build(self) -> RuntimeConfig {
-        let validated = self.try_build();
-        if validated.validation_report.has_violations() {
-            validated.validation_report.render_pretty();
-            panic!("failed to load fixture config - check above for violations");
+        match self.try_build() {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                eprintln!("{e}");
+                panic!("failed to load fixture config - check above for violations");
+            }
         }
-        validated.config
     }
 
-    /// Build config without panicking on validation errors.
-    /// Returns the full `ValidatedConfig` so tests can assert on the report.
-    pub fn try_build(self) -> snakeway_core::testing_api::conf::validation::ValidatedConfig {
+    pub fn try_build(
+        self,
+    ) -> Result<RuntimeConfig, snakeway_core::testing_api::conf::validation::ConfigError> {
         let mut device_specs = vec![];
 
-        // Identity
         if let Some(identity_device_spec) = self.identity_device_spec {
             device_specs.push(DeviceSpec::Identity(identity_device_spec));
         }
 
-        // Structured Logging
         if let Some(structured_logging_device_spec) = self.structured_logging_device_spec {
             device_specs.push(DeviceSpec::StructuredLogging(
                 structured_logging_device_spec,
             ));
         }
 
-        // Request Filter
         if let Some(request_filter_device_spec) = self.request_filter_device_spec {
             device_specs.push(DeviceSpec::RequestFilter(request_filter_device_spec));
         }
 
-        // Network Policy
         if let Some(network_policy_device_spec) = self.network_policy_device_spec {
             device_specs.push(DeviceSpec::NetworkPolicy(network_policy_device_spec));
         }
 
-        // Request Rate Limiting
         if let Some(request_rate_limiting_device_spec) = self.request_rate_limiting_device_spec {
             device_specs.push(DeviceSpec::RequestRateLimiting(
                 request_rate_limiting_device_spec,
@@ -110,7 +106,6 @@ impl ConfigBuilder {
         }
 
         load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
-            .expect("failed to load fixture config")
     }
 }
 

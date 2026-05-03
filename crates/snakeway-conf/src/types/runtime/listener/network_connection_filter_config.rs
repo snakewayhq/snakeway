@@ -1,7 +1,7 @@
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Default, Serialize, Clone)]
+#[derive(Debug, Deserialize, Default, Serialize, Clone, PartialEq)]
 pub struct NetworkConnectionFilterConfig {
     pub cidr_allow: Vec<IpNet>,
     pub cidr_deny: Vec<IpNet>,
@@ -10,7 +10,7 @@ pub struct NetworkConnectionFilterConfig {
     pub ip_family_ipv6: bool,
 }
 
-#[derive(Debug, Deserialize, Default, Serialize, Clone)]
+#[derive(Debug, Deserialize, Default, Serialize, Clone, PartialEq)]
 pub enum OnNoPeerAddr {
     #[default]
     Allow,
