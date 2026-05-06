@@ -78,8 +78,8 @@ mod tests {
             dns_refresh_interval_seconds: 30,
             upgrade_sock: None,
             upgrade_max_retries: None,
-            grace_period_seconds: Some(10),
-            graceful_shutdown_timeout_seconds: None,
+            shutdown_drain_seconds: Some(10),
+            shutdown_force_timeout_seconds: None,
         }
     }
 
