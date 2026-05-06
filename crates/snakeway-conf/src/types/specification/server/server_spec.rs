@@ -48,6 +48,27 @@ pub struct ServerSpec {
     /// connections are forcefully terminated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shutdown_force_timeout_seconds: Option<u64>,
+
+    /// Number of idle upstream connections kept warm per worker thread.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream_connection_pool_size: Option<usize>,
+
+    /// Number of parallel accept tasks per listener.
+    /// Higher values reduce contention under bursty connection rates.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parallel_accepts_per_listener: Option<usize>,
+
+    /// Local IP addresses used as the source for outbound upstream connections.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream_source_addresses: Option<UpstreamSourceAddressesSpec>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct UpstreamSourceAddressesSpec {
+    #[serde(default)]
+    pub ipv4: Vec<String>,
+    #[serde(default)]
+    pub ipv6: Vec<String>,
 }
 
 fn default_work_stealing() -> bool {
@@ -78,6 +99,9 @@ impl Default for ServerSpec {
             upgrade_max_retries: None,
             shutdown_drain_seconds: default_shutdown_drain_seconds(),
             shutdown_force_timeout_seconds: None,
+            upstream_connection_pool_size: None,
+            parallel_accepts_per_listener: None,
+            upstream_source_addresses: None,
         }
     }
 }

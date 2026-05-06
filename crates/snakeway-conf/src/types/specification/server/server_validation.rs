@@ -1,14 +1,17 @@
-use crate::types::{Origin, ServerSpec};
+use crate::types::{Origin, ServerSpec, UpstreamSourceAddressesSpec};
 use crate::validation::validator::validate_cert_pem;
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 range_constraint!(THREADS, usize, min: 1, max: 1024);
 range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, u64, min: 1, max: 3600, units: "seconds");
 range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
 range_constraint!(SHUTDOWN_DRAIN_SECONDS, u64, min: 0, max: 300, units: "seconds");
 range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, u64, min: 1, max: 300, units: "seconds");
+range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, usize, min: 1, max: 65535);
+range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -63,6 +66,48 @@ impl ValidateSpec for ServerSpec {
 
         if let Some(timeout) = self.shutdown_force_timeout_seconds {
             validate_range_field!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, timeout, report, origin);
+        }
+
+        if let Some(pool_size) = self.upstream_connection_pool_size {
+            validate_range_field!(UPSTREAM_CONNECTION_POOL_SIZE, pool_size, report, origin);
+        }
+
+        if let Some(accepts) = self.parallel_accepts_per_listener {
+            validate_range_field!(PARALLEL_ACCEPTS_PER_LISTENER, accepts, report, origin);
+        }
+
+        if let Some(source_addrs) = &self.upstream_source_addresses {
+            source_addrs.validate(origin, report);
+        }
+    }
+}
+
+impl ValidateSpec for UpstreamSourceAddressesSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        for addr in &self.ipv4 {
+            if addr.parse::<Ipv4Addr>().is_err() {
+                report.error(
+                    format!(
+                        "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
+                        addr
+                    ),
+                    origin,
+                    None,
+                );
+            }
+        }
+
+        for addr in &self.ipv6 {
+            if addr.parse::<Ipv6Addr>().is_err() {
+                report.error(
+                    format!(
+                        "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
+                        addr
+                    ),
+                    origin,
+                    None,
+                );
+            }
         }
     }
 }

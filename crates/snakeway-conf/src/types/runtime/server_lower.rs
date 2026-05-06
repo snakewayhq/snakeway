@@ -1,10 +1,11 @@
 use crate::types::{
     AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, ServerSpec, TlsAutomationSpec,
+    UpstreamSourceAddressesSpec,
 };
 
 use super::{
     AcmeServerConfig, CertStoreConfig, ObservabilityConfig, OtelConfig, ServerConfig,
-    TlsAutomationConfig,
+    TlsAutomationConfig, UpstreamSourceAddressesConfig,
 };
 
 impl TryFrom<ServerSpec> for ServerConfig {
@@ -29,6 +30,9 @@ impl TryFrom<ServerSpec> for ServerConfig {
             upgrade_max_retries: spec.upgrade_max_retries,
             shutdown_drain_seconds: spec.shutdown_drain_seconds,
             shutdown_force_timeout_seconds: spec.shutdown_force_timeout_seconds,
+            upstream_connection_pool_size: spec.upstream_connection_pool_size,
+            parallel_accepts_per_listener: spec.parallel_accepts_per_listener,
+            upstream_source_addresses: spec.upstream_source_addresses.map(Into::into),
         })
     }
 }
@@ -78,6 +82,15 @@ impl From<OtelSpec> for OtelConfig {
             endpoint: spec.endpoint,
             service_name: spec.service_name,
             sampling_ratio: spec.sampling_ratio,
+        }
+    }
+}
+
+impl From<UpstreamSourceAddressesSpec> for UpstreamSourceAddressesConfig {
+    fn from(spec: UpstreamSourceAddressesSpec) -> Self {
+        Self {
+            ipv4: spec.ipv4,
+            ipv6: spec.ipv6,
         }
     }
 }

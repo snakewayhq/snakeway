@@ -80,6 +80,9 @@ mod tests {
             upgrade_max_retries: None,
             shutdown_drain_seconds: Some(10),
             shutdown_force_timeout_seconds: None,
+            upstream_connection_pool_size: None,
+            parallel_accepts_per_listener: None,
+            upstream_source_addresses: None,
         }
     }
 

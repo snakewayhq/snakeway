@@ -73,6 +73,19 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         pingora_server_conf.threads = threads;
     }
 
+    if let Some(pool_size) = config.server.upstream_connection_pool_size {
+        pingora_server_conf.upstream_keepalive_pool_size = pool_size;
+    }
+
+    if let Some(accepts) = config.server.parallel_accepts_per_listener {
+        pingora_server_conf.listener_tasks_per_fd = accepts;
+    }
+
+    if let Some(source_addrs) = &config.server.upstream_source_addresses {
+        pingora_server_conf.client_bind_to_ipv4 = source_addrs.ipv4.clone();
+        pingora_server_conf.client_bind_to_ipv6 = source_addrs.ipv6.clone();
+    }
+
     let opt = Opt {
         upgrade,
         ..Default::default()

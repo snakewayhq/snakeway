@@ -35,6 +35,21 @@ pub struct ServerConfig {
 
     /// Hard ceiling on total shutdown time.
     pub shutdown_force_timeout_seconds: Option<u64>,
+
+    /// Number of idle upstream connections kept warm per worker thread.
+    pub upstream_connection_pool_size: Option<usize>,
+
+    /// Number of parallel accept tasks per listener.
+    pub parallel_accepts_per_listener: Option<usize>,
+
+    /// Local IP addresses used as the source for outbound upstream connections.
+    pub upstream_source_addresses: Option<UpstreamSourceAddressesConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpstreamSourceAddressesConfig {
+    pub ipv4: Vec<String>,
+    pub ipv6: Vec<String>,
 }
 
 //-----------------------------------------------------------------------------
