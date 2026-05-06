@@ -70,7 +70,7 @@ enum Command {
     /// Run the Snakeway proxy (default)
     Run {
         /// Path to the Snakeway config directory
-        #[arg(long, default_value = "config", env = "SNAKEWAY_CONFIG")]
+        #[arg(long, default_value = "/etc/snakeway", env = "SNAKEWAY_CONFIG")]
         config: String,
 
         /// Start in upgrade mode: receive listener FDs from a running instance
