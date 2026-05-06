@@ -7,6 +7,8 @@ use crate::validation::{
 range_constraint!(THREADS, usize, min: 1, max: 1024);
 range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, u64, min: 1, max: 3600, units: "seconds");
 range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
+range_constraint!(GRACE_PERIOD_SECONDS, u64, min: 0, max: 300, units: "seconds");
+range_constraint!(GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS, u64, min: 1, max: 300, units: "seconds");
 
 impl ValidateSpec for ServerSpec {
     fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
@@ -53,6 +55,14 @@ impl ValidateSpec for ServerSpec {
 
         if let Some(retries) = self.upgrade_max_retries {
             validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
+        }
+
+        if let Some(grace) = self.grace_period_seconds {
+            validate_range_field!(GRACE_PERIOD_SECONDS, grace, report, origin);
+        }
+
+        if let Some(timeout) = self.graceful_shutdown_timeout_seconds {
+            validate_range_field!(GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS, timeout, report, origin);
         }
     }
 }

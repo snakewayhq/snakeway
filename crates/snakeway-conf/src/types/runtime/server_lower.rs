@@ -27,6 +27,8 @@ impl TryFrom<ServerSpec> for ServerConfig {
             dns_refresh_interval_seconds: spec.dns_refresh_interval_seconds,
             upgrade_sock: spec.upgrade_sock,
             upgrade_max_retries: spec.upgrade_max_retries,
+            grace_period_seconds: spec.grace_period_seconds,
+            graceful_shutdown_timeout_seconds: spec.graceful_shutdown_timeout_seconds,
         })
     }
 }

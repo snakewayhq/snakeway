@@ -29,6 +29,12 @@ pub struct ServerConfig {
 
     /// Maximum retries when connecting/accepting on the upgrade socket.
     pub upgrade_max_retries: Option<usize>,
+
+    /// Grace period in seconds before starting the final shutdown step.
+    pub grace_period_seconds: Option<u64>,
+
+    /// Timeout in seconds for the final step of graceful shutdown.
+    pub graceful_shutdown_timeout_seconds: Option<u64>,
 }
 
 //-----------------------------------------------------------------------------

@@ -53,6 +53,9 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
 
     pingora_server_conf.ca_file = config.server.ca_file.clone();
     pingora_server_conf.work_stealing = config.server.work_stealing;
+    pingora_server_conf.grace_period_seconds = config.server.grace_period_seconds;
+    pingora_server_conf.graceful_shutdown_timeout_seconds =
+        config.server.graceful_shutdown_timeout_seconds;
 
     if let Some(sock) = &config.server.upgrade_sock {
         pingora_server_conf.upgrade_sock = sock.clone();

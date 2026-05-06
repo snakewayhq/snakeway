@@ -38,6 +38,16 @@ pub struct ServerSpec {
     /// Maximum number of retries when connecting/accepting on the upgrade socket.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upgrade_max_retries: Option<usize>,
+
+    /// Grace period in seconds before starting the final shutdown step.
+    /// Connections that finish within this window are guaranteed not to be dropped.
+    #[serde(default = "default_grace_period_seconds")]
+    pub grace_period_seconds: Option<u64>,
+
+    /// Timeout in seconds for the final step of graceful shutdown.
+    /// After this timeout, remaining connections are forcefully terminated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub graceful_shutdown_timeout_seconds: Option<u64>,
 }
 
 fn default_work_stealing() -> bool {
@@ -46,6 +56,10 @@ fn default_work_stealing() -> bool {
 
 fn default_dns_refresh_interval_seconds() -> u64 {
     30
+}
+
+fn default_grace_period_seconds() -> Option<u64> {
+    Some(10)
 }
 
 impl Default for ServerSpec {
@@ -62,6 +76,8 @@ impl Default for ServerSpec {
             dns_refresh_interval_seconds: 30,
             upgrade_sock: None,
             upgrade_max_retries: None,
+            grace_period_seconds: default_grace_period_seconds(),
+            graceful_shutdown_timeout_seconds: None,
         }
     }
 }
