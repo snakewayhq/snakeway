@@ -1,15 +1,17 @@
-use crate::types::{Origin, ServerSpec, UpstreamSourceAddressesSpec};
+use crate::types::{Origin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
 use crate::validation::validator::validate_cert_pem;
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+use super::UpstreamSourceAddressesSpec;
+
 range_constraint!(THREADS, usize, min: 1, max: 1024);
 range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, u64, min: 1, max: 3600, units: "seconds");
-range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
 range_constraint!(SHUTDOWN_DRAIN_SECONDS, u64, min: 0, max: 300, units: "seconds");
 range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, u64, min: 1, max: 300, units: "seconds");
+range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
 range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, usize, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
 
@@ -56,28 +58,52 @@ impl ValidateSpec for ServerSpec {
             observability.validate(origin, report);
         }
 
-        if let Some(retries) = self.upgrade_max_retries {
-            validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
+        if let Some(shutdown) = &self.shutdown {
+            shutdown.validate(origin, report);
         }
 
-        if let Some(drain) = self.shutdown_drain_seconds {
+        if let Some(upgrade) = &self.upgrade {
+            upgrade.validate(origin, report);
+        }
+
+        if let Some(performance) = &self.performance {
+            performance.validate(origin, report);
+        }
+
+        if let Some(source_addrs) = &self.upstream_source_addresses {
+            source_addrs.validate(origin, report);
+        }
+    }
+}
+
+impl ValidateSpec for ShutdownSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        if let Some(drain) = self.drain_seconds {
             validate_range_field!(SHUTDOWN_DRAIN_SECONDS, drain, report, origin);
         }
 
-        if let Some(timeout) = self.shutdown_force_timeout_seconds {
+        if let Some(timeout) = self.force_timeout_seconds {
             validate_range_field!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, timeout, report, origin);
         }
+    }
+}
 
+impl ValidateSpec for UpgradeSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+        if let Some(retries) = self.max_retries {
+            validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
+        }
+    }
+}
+
+impl ValidateSpec for PerformanceSpec {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
         if let Some(pool_size) = self.upstream_connection_pool_size {
             validate_range_field!(UPSTREAM_CONNECTION_POOL_SIZE, pool_size, report, origin);
         }
 
         if let Some(accepts) = self.parallel_accepts_per_listener {
             validate_range_field!(PARALLEL_ACCEPTS_PER_LISTENER, accepts, report, origin);
-        }
-
-        if let Some(source_addrs) = &self.upstream_source_addresses {
-            source_addrs.validate(origin, report);
         }
     }
 }

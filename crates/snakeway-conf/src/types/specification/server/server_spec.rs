@@ -18,9 +18,6 @@ pub struct ServerSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid_file: Option<PathBuf>,
 
-    #[serde(default = "default_work_stealing")]
-    pub work_stealing: bool,
-
     pub ca_file: Option<PathBuf>,
 
     pub tls_automation: Option<TlsAutomationSpec>,
@@ -30,37 +27,54 @@ pub struct ServerSpec {
     #[serde(default = "default_dns_refresh_interval_seconds")]
     pub dns_refresh_interval_seconds: u64,
 
-    /// Path to the Unix domain socket used for zero-drop upgrades.
-    /// Both old and new processes must agree on this path for FD transfer.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub upgrade_sock: Option<String>,
+    pub shutdown: Option<ShutdownSpec>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upgrade: Option<UpgradeSpec>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub performance: Option<PerformanceSpec>,
+
+    /// Local IP addresses used as the source for outbound upstream connections.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream_source_addresses: Option<UpstreamSourceAddressesSpec>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ShutdownSpec {
+    /// How long active connections are allowed to finish after a shutdown signal.
+    #[serde(default = "default_shutdown_drain_seconds")]
+    pub drain_seconds: Option<u64>,
+
+    /// Hard ceiling on total shutdown time.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub force_timeout_seconds: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct UpgradeSpec {
+    /// Path to the Unix domain socket used for zero-drop upgrades.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sock: Option<String>,
 
     /// Maximum number of retries when connecting/accepting on the upgrade socket.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub upgrade_max_retries: Option<usize>,
+    pub max_retries: Option<usize>,
+}
 
-    /// How long active connections are allowed to finish after a shutdown signal.
-    /// Connections that complete within this window are guaranteed not to be dropped.
-    #[serde(default = "default_shutdown_drain_seconds")]
-    pub shutdown_drain_seconds: Option<u64>,
-
-    /// Hard ceiling on total shutdown time. After this timeout, remaining
-    /// connections are forcefully terminated.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub shutdown_force_timeout_seconds: Option<u64>,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PerformanceSpec {
+    #[serde(default = "default_work_stealing")]
+    pub work_stealing: bool,
 
     /// Number of idle upstream connections kept warm per worker thread.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upstream_connection_pool_size: Option<usize>,
 
     /// Number of parallel accept tasks per listener.
-    /// Higher values reduce contention under bursty connection rates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parallel_accepts_per_listener: Option<usize>,
-
-    /// Local IP addresses used as the source for outbound upstream connections.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub upstream_source_addresses: Option<UpstreamSourceAddressesSpec>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -83,6 +97,25 @@ fn default_shutdown_drain_seconds() -> Option<u64> {
     Some(10)
 }
 
+impl Default for ShutdownSpec {
+    fn default() -> Self {
+        Self {
+            drain_seconds: default_shutdown_drain_seconds(),
+            force_timeout_seconds: None,
+        }
+    }
+}
+
+impl Default for PerformanceSpec {
+    fn default() -> Self {
+        Self {
+            work_stealing: true,
+            upstream_connection_pool_size: None,
+            parallel_accepts_per_listener: None,
+        }
+    }
+}
+
 impl Default for ServerSpec {
     fn default() -> Self {
         Self {
@@ -90,17 +123,13 @@ impl Default for ServerSpec {
             version: 1,
             threads: None,
             pid_file: None,
-            work_stealing: true,
             ca_file: None,
             tls_automation: None,
             observability: None,
             dns_refresh_interval_seconds: 30,
-            upgrade_sock: None,
-            upgrade_max_retries: None,
-            shutdown_drain_seconds: default_shutdown_drain_seconds(),
-            shutdown_force_timeout_seconds: None,
-            upstream_connection_pool_size: None,
-            parallel_accepts_per_listener: None,
+            shutdown: None,
+            upgrade: None,
+            performance: None,
             upstream_source_addresses: None,
         }
     }

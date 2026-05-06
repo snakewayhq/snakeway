@@ -15,7 +15,8 @@ pub fn classify_config_change(old: &RuntimeConfig, new: &RuntimeConfig) -> Confi
 }
 
 fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
-    old.server.threads != new.server.threads || old.server.work_stealing != new.server.work_stealing
+    old.server.threads != new.server.threads
+        || old.server.performance.work_stealing != new.server.performance.work_stealing
 }
 
 fn listeners_changed(old: &[ListenerConfig], new: &[ListenerConfig]) -> bool {
@@ -62,7 +63,10 @@ fn admin_auth_equivalent(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snakeway_conf::types::{ListenerConfig, RuntimeConfig, ServerConfig};
+    use snakeway_conf::types::{
+        ListenerConfig, PerformanceConfig, RuntimeConfig, ServerConfig, ShutdownConfig,
+        UpgradeConfig,
+    };
     use std::collections::HashMap;
     use std::path::PathBuf;
 
@@ -71,17 +75,23 @@ mod tests {
             version: 1,
             threads: None,
             pid_file: PathBuf::new(),
-            work_stealing: true,
             ca_file: None,
             tls_automation: None,
             observability: None,
             dns_refresh_interval_seconds: 30,
-            upgrade_sock: None,
-            upgrade_max_retries: None,
-            shutdown_drain_seconds: Some(10),
-            shutdown_force_timeout_seconds: None,
-            upstream_connection_pool_size: None,
-            parallel_accepts_per_listener: None,
+            shutdown: ShutdownConfig {
+                drain_seconds: Some(10),
+                force_timeout_seconds: None,
+            },
+            upgrade: UpgradeConfig {
+                sock: None,
+                max_retries: None,
+            },
+            performance: PerformanceConfig {
+                work_stealing: true,
+                upstream_connection_pool_size: None,
+                parallel_accepts_per_listener: None,
+            },
             upstream_source_addresses: None,
         }
     }
@@ -202,7 +212,7 @@ mod tests {
         // Arrange
         let old = minimal_config(vec![minimal_listener("l0", "0.0.0.0:8080")]);
         let mut new = minimal_config(vec![minimal_listener("l0", "0.0.0.0:8080")]);
-        new.server.work_stealing = false;
+        new.server.performance.work_stealing = false;
 
         // Act
         let kind = classify_config_change(&old, &new);

@@ -13,9 +13,6 @@ pub struct ServerConfig {
     /// If empty, Snakeway will not write a pid file.
     pub pid_file: PathBuf,
 
-    /// Enable work stealing between threads.
-    pub work_stealing: bool,
-
     pub ca_file: Option<String>,
 
     pub tls_automation: Option<TlsAutomationConfig>,
@@ -24,27 +21,57 @@ pub struct ServerConfig {
 
     pub dns_refresh_interval_seconds: u64,
 
-    /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
-    pub upgrade_sock: Option<String>,
+    pub shutdown: ShutdownConfig,
 
-    /// Maximum retries when connecting/accepting on the upgrade socket.
-    pub upgrade_max_retries: Option<usize>,
+    pub upgrade: UpgradeConfig,
 
-    /// How long active connections are allowed to finish after a shutdown signal.
-    pub shutdown_drain_seconds: Option<u64>,
-
-    /// Hard ceiling on total shutdown time.
-    pub shutdown_force_timeout_seconds: Option<u64>,
-
-    /// Number of idle upstream connections kept warm per worker thread.
-    pub upstream_connection_pool_size: Option<usize>,
-
-    /// Number of parallel accept tasks per listener.
-    pub parallel_accepts_per_listener: Option<usize>,
+    pub performance: PerformanceConfig,
 
     /// Local IP addresses used as the source for outbound upstream connections.
     pub upstream_source_addresses: Option<UpstreamSourceAddressesConfig>,
 }
+
+//-----------------------------------------------------------------------------
+// Shutdown
+//-----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ShutdownConfig {
+    /// How long active connections are allowed to finish after a shutdown signal.
+    pub drain_seconds: Option<u64>,
+    /// Hard ceiling on total shutdown time.
+    pub force_timeout_seconds: Option<u64>,
+}
+
+//-----------------------------------------------------------------------------
+// Upgrade
+//-----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpgradeConfig {
+    /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
+    pub sock: Option<String>,
+    /// Maximum retries when connecting/accepting on the upgrade socket.
+    pub max_retries: Option<usize>,
+}
+
+//-----------------------------------------------------------------------------
+// Performance
+//-----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PerformanceConfig {
+    /// Enable work stealing between threads.
+    pub work_stealing: bool,
+    /// Number of idle upstream connections kept warm per worker thread.
+    pub upstream_connection_pool_size: Option<usize>,
+    /// Number of parallel accept tasks per listener.
+    pub parallel_accepts_per_listener: Option<usize>,
+}
+
+//-----------------------------------------------------------------------------
+// Upstream Source Addresses
+//-----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamSourceAddressesConfig {
