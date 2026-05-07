@@ -31,7 +31,7 @@ strip = "symbols"           # Strip symbols to minimize binary size
 
 
 [workspace.dependencies]
-confval = { path = "crates/confval" }
+confval = { path = "crates/confval", features = ["serde", "color"] }
 snakeway-conf = { path = "crates/snakeway-conf" }
 snakeway-core = { path = "crates/snakeway-core" }
 

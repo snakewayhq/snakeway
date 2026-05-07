@@ -1,6 +1,5 @@
 mod error;
 mod multi_file;
-mod report;
 mod single_file;
 mod validate;
 pub(crate) mod validator;
@@ -11,4 +10,3 @@ pub(crate) use validate::validate_spec;
 pub(crate) use validator::*;
 
 pub use error::ConfigError;
-pub use report::*;
