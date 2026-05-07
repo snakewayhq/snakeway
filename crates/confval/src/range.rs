@@ -66,7 +66,7 @@ where
 /// Define a named range constraint as a const.
 ///
 /// ```rust
-/// use confval::range_constraint;
+/// use confval::{RangeConstraint, range_constraint};
 ///
 /// range_constraint!(THREADS, usize, min: 1, max: 1024);
 /// range_constraint!(PORT, u16, min: 1, max: 65535);
@@ -88,7 +88,7 @@ macro_rules! range_constraint {
 /// Validate a field against a range constraint, pushing any issue to the report.
 /// Uses `stringify!` to derive the field name at zero runtime cost.
 ///
-/// ```rust
+/// ```rust,ignore
 /// validate_range_field!(THREADS, self.threads, report, origin);
 /// validate_range_field!(PORT, port, report, origin);
 /// ```
@@ -108,4 +108,53 @@ macro_rules! validate_range_field {
             $report.error(issue);
         }
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SimpleOrigin;
+
+    fn test_origin() -> SimpleOrigin {
+        SimpleOrigin::new("test.toml", "server block")
+    }
+
+    range_constraint!(PORT, u16, min: 1, max: 65535);
+    range_constraint!(THREADS, usize, min: 1, max: 1024);
+    range_constraint!(INTERVAL, u64, min: 1, max: 3600, units: "s");
+
+    #[test]
+    fn in_range_returns_none() {
+        assert!(PORT.check(80, "port", &test_origin()).is_none());
+        assert!(PORT.check(1, "port", &test_origin()).is_none());
+        assert!(PORT.check(65535, "port", &test_origin()).is_none());
+    }
+
+    #[test]
+    fn below_min_returns_issue() {
+        let issue = PORT.check(0, "port", &test_origin()).unwrap();
+        assert!(issue.message.contains("port must be at least 1"));
+    }
+
+    #[test]
+    fn above_max_returns_issue() {
+        let issue = THREADS.check(2000, "threads", &test_origin()).unwrap();
+        assert!(issue.message.contains("threads must be at most 1024"));
+    }
+
+    #[test]
+    fn help_includes_units_when_present() {
+        let issue = INTERVAL.check(0, "interval", &test_origin()).unwrap();
+        assert!(issue.help.as_ref().unwrap().contains("s"));
+    }
+
+    #[test]
+    fn help_has_no_units_when_absent() {
+        let issue = PORT.check(0, "port", &test_origin()).unwrap();
+        let help = issue.help.as_ref().unwrap();
+        assert!(
+            !help.ends_with("s"),
+            "expected no trailing units, got: {help}"
+        );
+    }
 }
