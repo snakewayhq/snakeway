@@ -1,9 +1,9 @@
 use crate::types::{Origin, ServiceSpec};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 use std::collections::HashSet;
 
 impl ValidateSpec for ServiceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         // Validate circuit breaker.
         if let Some(cb) = &self.circuit_breaker
             && cb.enable_auto_recovery
@@ -76,7 +76,7 @@ mod tests {
         EndpointSpec, EndpointTlsSpec, HostSpec, Origin, ServiceRouteSpec, ServiceSpec,
         UpstreamSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::net::IpAddr;
     use std::str::FromStr;
 
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn valid_minimum_service() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let service = minimal_service();
         let origin = Origin::test("service");
 
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn service_must_have_an_upstream() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let service = ServiceSpec {
             upstreams: vec![],
             ..Default::default()
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn valid_websocket_service() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut service = minimal_service();
         service.routes.push(ServiceRouteSpec {
             hosts: vec!["ws.example.com".to_string()],
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn upstream_cannot_have_both_endpoint_and_sock() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut service = minimal_service();
         service.upstreams[0].endpoint = Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn upstream_must_have_either_endpoint_or_sock() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut upstream = minimal_upstream();
         upstream.endpoint = None;
         upstream.sock = None;
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn duplicate_upstream_socks_within_service() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let service = ServiceSpec {
             upstreams: vec![
                 UpstreamSpec {
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn route_with_no_hosts_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut service = minimal_service();
         service.routes.push(ServiceRouteSpec {
             hosts: vec![],
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn tls_sni_as_ip_rejected_when_verify_true() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut service = minimal_service();
         service.upstreams[0].endpoint = Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn tls_ca_file_invalid_when_verify_true() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut service = minimal_service();
         service.upstreams[0].endpoint = Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),

@@ -3,13 +3,14 @@ use crate::validation::validator::{
     validate_device_paths, validate_http_header_name, validate_http_method,
 };
 use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
+    validate_range_field,
 };
 
 range_constraint!(DENY_STATUS, u16, min: 400, max: 599);
 
 impl ValidateSpec for RequestFilterDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if let Some(deny_status) = self.deny_status {
             validate_range_field!(DENY_STATUS, deny_status, report, origin);
         }
@@ -41,12 +42,12 @@ impl ValidateSpec for RequestFilterDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::RequestFilterDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     #[test]
     fn deny_status_below_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             deny_status: Some(399),
@@ -69,7 +70,7 @@ mod tests {
     #[test]
     fn deny_status_above_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             deny_status: Some(600),
@@ -92,7 +93,7 @@ mod tests {
     #[test]
     fn invalid_http_method_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             allow_methods: vec!["INVALID METHOD".to_string()],
@@ -115,7 +116,7 @@ mod tests {
     #[test]
     fn valid_request_filter() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             deny_status: Some(403),
@@ -133,7 +134,7 @@ mod tests {
     #[test]
     fn path_without_leading_slash_is_invalid() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             paths: vec!["api/v1".to_string()],

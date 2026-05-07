@@ -1,13 +1,14 @@
 use crate::types::{Origin, RedirectSpec};
 use crate::validation::validator::is_valid_port;
 use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
+    validate_range_field,
 };
 
 range_constraint!(RESPONSE_CODE, u16, min: 300, max: 399);
 
 impl ValidateSpec for RedirectSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
         }
@@ -19,7 +20,7 @@ impl ValidateSpec for RedirectSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{Origin, RedirectSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     fn test_origin() -> Origin {
         Origin::test("redirect_http_to_https")
@@ -33,7 +34,7 @@ mod tests {
             status: 308,
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -49,7 +50,7 @@ mod tests {
         let expected_error = format!("invalid status: {status} (must be between 300 and 399)");
         let spec = RedirectSpec { port: 8080, status };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -65,7 +66,7 @@ mod tests {
         let expected_error = format!("invalid status: {status} (must be between 300 and 399)");
         let spec = RedirectSpec { port: 8080, status };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -82,7 +83,7 @@ mod tests {
             status: 308,
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);

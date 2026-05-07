@@ -1,8 +1,8 @@
 use crate::types::DeviceSpec;
-use crate::validation::ValidationReport;
+use crate::validation::ValidationReportDeprecated;
 use crate::validation::validate_spec_trait::ValidateSpec;
 
-pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReportDeprecated) {
     let mut identity_seen = false;
     let mut identity_enabled = false;
     let mut network_policy_seen = false;
@@ -117,13 +117,13 @@ mod tests {
         DeviceSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestRateLimitingDeviceSpec,
         StructuredLoggingDeviceSpec, WasmDeviceSpec,
     };
-    use crate::validation::{ValidationReport, validate_devices};
+    use crate::validation::{ValidationReportDeprecated, validate_devices};
     use std::path::PathBuf;
 
     #[test]
     fn validate_wasm_device_valid() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().unwrap();
 
         let wasm_file = dir.path().join("plugin.wasm");
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn validate_wasm_device_disabled_skips_validation() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Wasm(WasmDeviceSpec {
             enable: false,
             path: PathBuf::from("/non/existent/path"),
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn validate_wasm_device_path_empty() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Wasm(WasmDeviceSpec {
             enable: true,
             path: PathBuf::from(""),
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn validate_wasm_device_path_does_not_exist() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Wasm(WasmDeviceSpec {
             enable: true,
             path: PathBuf::from("/non/existent/path/to/wasm"),
@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn validate_wasm_device_path_is_not_a_file() {
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().unwrap();
 
         let device = DeviceSpec::Wasm(WasmDeviceSpec {
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn validate_identity_device_valid() {
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().unwrap();
 
         let geoip = dir.path().join("geoip.mmdb");
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn validate_identity_device_invalid_trusted_proxy() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             trusted_proxies: vec!["not-an-ip".to_string()],
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn validate_identity_device_trusted_proxy_catch_all_v4() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             trusted_proxies: vec!["0.0.0.0/0".to_string()],
@@ -307,7 +307,7 @@ mod tests {
     #[test]
     fn validate_identity_device_trusted_proxy_catch_all_v6() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             trusted_proxies: vec!["::/0".to_string()],
@@ -331,7 +331,7 @@ mod tests {
     #[test]
     fn validate_identity_device_trusted_proxy_public_ip_warning() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             trusted_proxies: vec!["8.8.8.8/32".to_string()],
@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn validate_identity_device_geoip_db_empty() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             enable_geoip: true,
@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn validate_identity_device_geoip_db_does_not_exist() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             enable_geoip: true,
@@ -402,7 +402,7 @@ mod tests {
 
     #[test]
     fn validate_identity_device_geoip_db_is_not_a_file() {
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().unwrap();
 
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn duplicate_identity_device_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device_a = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             ..Default::default()
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn network_policy_requires_identity_device() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::NetworkPolicy(NetworkPolicyDeviceSpec {
             enable: true,
             cidr_allow: vec!["10.0.0.0/8".to_string()],
@@ -474,7 +474,7 @@ mod tests {
     #[test]
     fn rate_limiting_requires_identity_device() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::RequestRateLimiting(RequestRateLimitingDeviceSpec {
             enable: true,
             max_requests_per_second: 100,
@@ -498,7 +498,7 @@ mod tests {
     #[test]
     fn structured_logging_identity_fields_empty() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::StructuredLogging(StructuredLoggingDeviceSpec {
             enable: true,
             include_identity: true,
@@ -522,7 +522,7 @@ mod tests {
     #[test]
     fn structured_logging_headers_without_config() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::StructuredLogging(StructuredLoggingDeviceSpec {
             enable: true,
             include_headers: true,
@@ -545,7 +545,7 @@ mod tests {
     #[test]
     fn identity_geoip_enabled_without_db_produces_warning() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let device = DeviceSpec::Identity(IdentityDeviceSpec {
             enable: true,
             enable_geoip: true,

@@ -1,8 +1,8 @@
 use crate::types::{NetworkConnectionFilterSpec, Origin};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for NetworkConnectionFilterSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if !self.ip_family.ipv4 && !self.ip_family.ipv6 {
             report.connection_filter_requires_at_least_one_ip_family(origin);
         }
@@ -26,7 +26,7 @@ mod tests {
     use crate::types::{
         CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec, Origin,
     };
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     fn test_origin() -> Origin {
         Origin::test("connection_filter")
@@ -44,7 +44,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -68,7 +68,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -92,7 +92,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -116,7 +116,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);

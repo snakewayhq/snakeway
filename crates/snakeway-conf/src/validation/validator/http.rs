@@ -1,10 +1,10 @@
 use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::validation::ValidationReportDeprecated;
 use http::{HeaderName, Method};
 
 pub(crate) fn validate_http_header_name(
     header: &str,
-    report: &mut ValidationReport,
+    report: &mut ValidationReportDeprecated,
     origin: &Origin,
 ) {
     if HeaderName::from_bytes(header.as_bytes()).is_err() {
@@ -12,7 +12,11 @@ pub(crate) fn validate_http_header_name(
     }
 }
 
-pub(crate) fn validate_http_method(method: &str, report: &mut ValidationReport, origin: &Origin) {
+pub(crate) fn validate_http_method(
+    method: &str,
+    report: &mut ValidationReportDeprecated,
+    origin: &Origin,
+) {
     if Method::from_bytes(method.as_bytes()).is_err() {
         report.invalid_http_method(method, origin);
     }
@@ -25,7 +29,7 @@ mod tests {
     #[test]
     fn valid_header_name() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let origin = Origin::test("test");
 
         // Act
@@ -38,7 +42,7 @@ mod tests {
     #[test]
     fn invalid_header_name() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let origin = Origin::test("test");
 
         // Act
@@ -59,7 +63,7 @@ mod tests {
     #[test]
     fn valid_http_method() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let origin = Origin::test("test");
 
         // Act
@@ -72,7 +76,7 @@ mod tests {
     #[test]
     fn invalid_http_method() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let origin = Origin::test("test");
 
         // Act

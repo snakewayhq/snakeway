@@ -1,10 +1,10 @@
 use crate::types::{CertStoreSpec, IngressSpec, ServerSpec, TlsTerminationSpec};
-use crate::validation::ValidationReport;
+use crate::validation::ValidationReportDeprecated;
 
 pub(crate) fn validate_tls(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
-    report: &mut ValidationReport,
+    report: &mut ValidationReportDeprecated,
 ) {
     let mut any_tls_listener = false;
     let mut any_acme_listener = false;
@@ -64,7 +64,7 @@ pub(crate) fn validate_tls(
 mod tests {
     use super::validate_tls;
     use crate::types::*;
-    use crate::validation::ValidationReport;
+    use crate::validation::ValidationReportDeprecated;
     use std::net::IpAddr;
     use std::path::PathBuf;
     use std::str::FromStr;
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn acme_requires_tls_automation() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             tls_automation: None,
             ..Default::default()
@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn tls_automation_without_tls_listeners_produces_warning() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             tls_automation: Some(minimal_tls_automation()),
             ..Default::default()
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn valid_acme_with_tls_automation() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             tls_automation: Some(minimal_tls_automation()),
             ..Default::default()

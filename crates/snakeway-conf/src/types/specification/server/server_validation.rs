@@ -1,7 +1,8 @@
 use crate::types::{Origin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
 use crate::validation::validator::validate_cert_pem;
 use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
+    validate_range_field,
 };
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -16,7 +17,7 @@ range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, usize, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
 
 impl ValidateSpec for ServerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if self.version != 1 {
             report.invalid_config_version(&self.version, origin);
         }
@@ -77,7 +78,7 @@ impl ValidateSpec for ServerSpec {
 }
 
 impl ValidateSpec for ShutdownSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if let Some(drain) = self.drain_seconds {
             validate_range_field!(SHUTDOWN_DRAIN_SECONDS, drain, report, origin);
         }
@@ -89,7 +90,7 @@ impl ValidateSpec for ShutdownSpec {
 }
 
 impl ValidateSpec for UpgradeSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if let Some(retries) = self.max_retries {
             validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
         }
@@ -97,7 +98,7 @@ impl ValidateSpec for UpgradeSpec {
 }
 
 impl ValidateSpec for PerformanceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if let Some(pool_size) = self.upstream_connection_pool_size {
             validate_range_field!(UPSTREAM_CONNECTION_POOL_SIZE, pool_size, report, origin);
         }
@@ -109,7 +110,7 @@ impl ValidateSpec for PerformanceSpec {
 }
 
 impl ValidateSpec for UpstreamSourceAddressesSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         for addr in &self.ipv4 {
             if addr.parse::<Ipv4Addr>().is_err() {
                 report.error(
@@ -141,13 +142,13 @@ impl ValidateSpec for UpstreamSourceAddressesSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::ServerSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::path::PathBuf;
 
     #[test]
     fn validate_server_version_valid() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             version: 1,
             ..Default::default()
@@ -163,7 +164,7 @@ mod tests {
     #[test]
     fn validate_server_version_invalid() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             version: 2,
             ..Default::default()
@@ -184,7 +185,7 @@ mod tests {
     #[test]
     fn validate_server_valid_config() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             version: 1,
             threads: Some(4),
@@ -201,7 +202,7 @@ mod tests {
     #[test]
     fn validate_server_pid_file_parent_dir_does_not_exist() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             pid_file: Some(PathBuf::from("/non/existent/path/snakeway.pid")),
             ..Default::default()
@@ -223,7 +224,7 @@ mod tests {
     fn validate_server_ca_file_does_not_exist() {
         // Arrange
         let ca_file = PathBuf::from("/non/existent/ca.pem");
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             ca_file: Some(ca_file.clone()),
             ..Default::default()
@@ -244,7 +245,7 @@ mod tests {
     #[test]
     fn validate_server_threads_too_low() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             threads: Some(0),
             ..Default::default()
@@ -261,7 +262,7 @@ mod tests {
     #[test]
     fn validate_server_threads_too_high() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             threads: Some(1025),
             ..Default::default()
@@ -278,7 +279,7 @@ mod tests {
     #[test]
     fn validate_server_pid_file_parent_is_not_a_dir() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().unwrap();
 
         // Create a file that will be used as the "parent"
@@ -312,7 +313,7 @@ mod tests {
             "server CA file is invalid: file does not exist: {}",
             ca_file.to_string_lossy()
         );
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             ca_file: Some(ca_file.clone()),
             ..Default::default()
@@ -329,7 +330,7 @@ mod tests {
     #[test]
     fn validate_dns_refresh_interval_valid() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             dns_refresh_interval_seconds: 60,
             ..Default::default()
@@ -345,7 +346,7 @@ mod tests {
     #[test]
     fn validate_dns_refresh_interval_too_high() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let server = ServerSpec {
             dns_refresh_interval_seconds: 3601,
             ..Default::default()
@@ -366,7 +367,7 @@ mod tests {
     #[test]
     fn validate_server_valid_pid_and_ca_files() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().unwrap();
 
         let pid_dir = dir.path().join("pid");

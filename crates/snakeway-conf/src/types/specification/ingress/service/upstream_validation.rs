@@ -1,9 +1,9 @@
 use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
 use crate::validation::validator::{is_valid_hostname, is_valid_port};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for UpstreamSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if self.weight == 0 || self.weight > 1_000 {
             report.invalid_upstream_weight(&self.weight, origin);
         }
@@ -11,7 +11,7 @@ impl ValidateSpec for UpstreamSpec {
 }
 
 impl ValidateSpec for EndpointSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         match &self.host {
             HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
                 report.invalid_upstream_ip(ip, origin);
@@ -33,7 +33,7 @@ impl ValidateSpec for EndpointSpec {
 }
 
 impl ValidateSpec for EndpointTlsSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if self.sni.trim().is_empty() {
             report.upstream_tls_sni_required(origin);
         }
@@ -43,7 +43,7 @@ impl ValidateSpec for EndpointTlsSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::net::IpAddr;
     use std::str::FromStr;
 
@@ -62,7 +62,7 @@ mod tests {
     #[test]
     fn weight_greater_than_zero() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut upstream = minimal_upstream();
         upstream.weight = 0;
         let origin = Origin::test("upstream");
@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn weight_not_greater_than_1000() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let mut upstream = minimal_upstream();
         upstream.weight = 1001;
         let origin = Origin::test("upstream");
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn endpoint_ip_unspecified_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let endpoint = EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("0.0.0.0").unwrap()),
             port: 3000,
@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn endpoint_ip_multicast_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let endpoint = EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("224.0.0.1").unwrap()),
             port: 3000,
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn endpoint_invalid_hostname_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let endpoint = EndpointSpec {
             host: HostSpec::Hostname("-invalid".to_string()),
             port: 3000,
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn endpoint_port_zero_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let endpoint = EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
             port: 0,
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn valid_endpoint() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let endpoint = EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
             port: 3000,
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn endpoint_tls_sni_empty_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let tls = EndpointTlsSpec {
             sni: "".to_string(),
             verify: false,
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn endpoint_tls_sni_whitespace_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let tls = EndpointTlsSpec {
             sni: "  ".to_string(),
             verify: false,

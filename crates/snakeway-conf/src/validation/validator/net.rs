@@ -1,5 +1,5 @@
 use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::validation::ValidationReportDeprecated;
 use ipnet::IpNet;
 use std::net::IpAddr;
 
@@ -38,7 +38,7 @@ fn is_non_public_infra_network(net: &IpNet) -> bool {
 
 pub(crate) fn validate_trusted_proxies(
     proxies: &[String],
-    report: &mut ValidationReport,
+    report: &mut ValidationReportDeprecated,
     origin: &Origin,
 ) {
     let mut networks = Vec::new();

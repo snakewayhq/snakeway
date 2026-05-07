@@ -1,9 +1,9 @@
 use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::validation::ValidationReportDeprecated;
 
 pub(crate) fn validate_device_paths(
     paths: &[String],
-    report: &mut ValidationReport,
+    report: &mut ValidationReportDeprecated,
     origin: &Origin,
 ) {
     for path in paths {

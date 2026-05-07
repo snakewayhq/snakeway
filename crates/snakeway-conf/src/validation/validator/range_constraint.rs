@@ -1,5 +1,5 @@
 use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::validation::ValidationReportDeprecated;
 
 #[derive(Debug, Clone)]
 pub(crate) struct RangeConstraint<T> {
@@ -18,7 +18,7 @@ where
         &self,
         value: T,
         field: &'static str,
-        report: &mut ValidationReport,
+        report: &mut ValidationReportDeprecated,
         origin: &Origin,
     ) {
         if value < self.min || value > self.max {

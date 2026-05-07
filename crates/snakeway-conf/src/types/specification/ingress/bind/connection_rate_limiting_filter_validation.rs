@@ -1,13 +1,14 @@
 use crate::types::{ConnectionRateLimitingFilterSpec, Origin};
 use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
+    validate_range_field,
 };
 
 range_constraint!(REACTION_INTERVAL_IN_SECONDS, u16, min: 1, max: 60, units: "seconds");
 range_constraint!(MAX_CONNECTIONS_PER_SECOND, u16, min: 1, max: 30_000);
 
 impl ValidateSpec for ConnectionRateLimitingFilterSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         validate_range_field!(
             REACTION_INTERVAL_IN_SECONDS,
             self.window_seconds,
@@ -26,7 +27,7 @@ impl ValidateSpec for ConnectionRateLimitingFilterSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{ConnectionRateLimitingFilterSpec, Origin};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     fn test_origin() -> Origin {
         Origin::test("connection_rate_limiting_filter")
@@ -40,7 +41,7 @@ mod tests {
             max_connections_per_second: 100,
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -58,7 +59,7 @@ mod tests {
             max_connections_per_second: 0,
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -80,7 +81,7 @@ mod tests {
             max_connections_per_second: 100,
         };
         let origin = test_origin();
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         spec.validate(&origin, &mut report);

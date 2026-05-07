@@ -1,8 +1,8 @@
 use crate::types::{Origin, StaticRouteSpec};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for StaticRouteSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if !self.file_dir.exists() {
             report.invalid_static_dir(&self.file_dir, origin);
         }
@@ -15,7 +15,7 @@ impl ValidateSpec for StaticRouteSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{Origin, StaticRouteSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::path::PathBuf;
 
     #[test]
@@ -23,7 +23,7 @@ mod tests {
         // Arrange
         let file_dir = "/non/existent/static";
         let expected_error = format!("invalid static directory: {}", file_dir);
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = StaticRouteSpec {
             file_dir: PathBuf::from(file_dir),
             ..Default::default()
@@ -46,7 +46,7 @@ mod tests {
             "static file directory must be an absolute path: {}",
             file_dir
         );
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = StaticRouteSpec {
             file_dir: PathBuf::from(file_dir),
             ..Default::default()

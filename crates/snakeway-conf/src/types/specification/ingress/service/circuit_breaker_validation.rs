@@ -1,6 +1,7 @@
 use crate::types::{CircuitBreakerSpec, Origin};
 use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
+    validate_range_field,
 };
 
 range_constraint!(FAILURE_THRESHOLD, u32, min: 1, max: 10_000);
@@ -9,7 +10,7 @@ range_constraint!(HALF_OPEN_MAX_REQUESTS, u32, min: 1, max: 10_000);
 range_constraint!(SUCCESS_THRESHOLD, u32, min: 1, max: 10_000);
 
 impl ValidateSpec for CircuitBreakerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         validate_range_field!(FAILURE_THRESHOLD, self.failure_threshold, report, origin);
         validate_range_field!(
             OPEN_DURATION_MS,
@@ -30,12 +31,12 @@ impl ValidateSpec for CircuitBreakerSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{CircuitBreakerSpec, Origin};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     #[test]
     fn valid_circuit_breaker() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -56,7 +57,7 @@ mod tests {
     #[test]
     fn failure_threshold_out_of_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 0,
@@ -78,7 +79,7 @@ mod tests {
     #[test]
     fn open_duration_out_of_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -100,7 +101,7 @@ mod tests {
     #[test]
     fn half_open_max_requests_out_of_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -122,7 +123,7 @@ mod tests {
     #[test]
     fn success_threshold_out_of_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,

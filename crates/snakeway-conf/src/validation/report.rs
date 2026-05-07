@@ -20,8 +20,9 @@ pub enum Severity {
     Warning,
 }
 
+#[deprecated]
 #[derive(Debug, Default)]
-pub struct ValidationReport {
+pub struct ValidationReportDeprecated {
     pub errors: Vec<ValidationIssue>,
     pub warnings: Vec<ValidationIssue>,
 }
@@ -32,7 +33,7 @@ struct ValidationReportJson<'a> {
     warnings: &'a [ValidationIssue],
 }
 
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub fn has_violations(&self) -> bool {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
@@ -166,7 +167,7 @@ impl ValidationReport {
 }
 
 /// Ingress Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn missing_bind(&mut self, origin: &Origin) {
         self.error(
             "ingress config must have a bind or bind_admin declaration".to_string(),
@@ -177,7 +178,7 @@ impl ValidationReport {
 }
 
 /// Bind Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn invalid_bind_addr(&mut self, addr: &str, origin: &Origin) {
         self.error(format!("invalid bind address: {}", addr), origin, None);
     }
@@ -272,7 +273,7 @@ impl ValidationReport {
 }
 
 /// Admin Auth Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn admin_auth_missing(&mut self, origin: &Origin) {
         self.error(
             "bind_admin.auth is required".to_string(),
@@ -391,7 +392,7 @@ impl ValidationReport {
 }
 
 /// Static Files Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &Origin) {
         self.error(
             format!("invalid static directory: {}", dir.display()),
@@ -417,7 +418,7 @@ impl ValidationReport {
 }
 
 /// Service Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn service_has_no_upstreams(&mut self, origin: &Origin) {
         self.error("service has no upstream backends".to_string(), origin, None)
     }
@@ -524,7 +525,7 @@ impl ValidationReport {
 }
 
 /// Server Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn invalid_config_version(&mut self, version: &u32, origin: &Origin) {
         self.error(format!("invalid config version: {}", version), origin, None)
     }
@@ -664,7 +665,7 @@ impl ValidationReport {
 }
 
 /// Observability Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn otel_endpoint_cannot_be_empty(&mut self, origin: &Origin) {
         self.error(
             "observability.otel.endpoint cannot be empty when enabled".to_string(),
@@ -694,7 +695,7 @@ impl ValidationReport {
 }
 
 /// Wasm Device Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn wasm_device_path_is_empty(&mut self, path: Display, origin: &Origin) {
         self.error(format!("wasm device path is empty: {}", path), origin, None)
     }
@@ -715,7 +716,7 @@ impl ValidationReport {
 }
 
 /// Builtin Identity Device Spec Validation
-impl ValidationReport {
+impl ValidationReportDeprecated {
     pub(crate) fn geoip_enabled_with_no_dbs_specified(&mut self, origin: &Origin) {
         self.warning(
             "geoip enabled with no dbs specified".to_string(),
@@ -897,7 +898,7 @@ mod tests {
     #[test]
     fn has_violations_false_when_empty() {
         // Arrange
-        let report = ValidationReport::default();
+        let report = ValidationReportDeprecated::default();
 
         // Act
         let result = report.has_violations();
@@ -909,7 +910,7 @@ mod tests {
     #[test]
     fn has_violations_true_with_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         report.error("test error".to_string(), &Origin::test("test"), None);
 
         // Act
@@ -922,7 +923,7 @@ mod tests {
     #[test]
     fn has_violations_true_with_warning() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         report.warning("test warning".to_string(), &Origin::test("test"), None);
 
         // Act
@@ -935,7 +936,7 @@ mod tests {
     #[test]
     fn error_adds_to_errors_vec() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
 
         // Act
         report.error(
@@ -954,7 +955,7 @@ mod tests {
     #[test]
     fn format_help_with_help_text() {
         // Arrange
-        let report = ValidationReport::default();
+        let report = ValidationReportDeprecated::default();
         let issue = ValidationIssue {
             severity: Severity::Error,
             message: "some error".to_string(),
@@ -976,7 +977,7 @@ mod tests {
     #[test]
     fn format_help_without_help_text() {
         // Arrange
-        let report = ValidationReport::default();
+        let report = ValidationReportDeprecated::default();
         let issue = ValidationIssue {
             severity: Severity::Error,
             message: "some error".to_string(),
@@ -998,7 +999,7 @@ mod tests {
     #[test]
     fn render_json_contains_errors_and_warnings() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         report.error("bad port".to_string(), &Origin::test("bind"), None);
         report.warning("unused field".to_string(), &Origin::test("server"), None);
 
@@ -1020,7 +1021,7 @@ mod tests {
     #[test]
     fn render_pretty_does_not_panic_with_errors() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         report.error(
             "test error".to_string(),
             &Origin::test("bind"),
@@ -1034,7 +1035,7 @@ mod tests {
     #[test]
     fn render_pretty_does_not_panic_with_warnings() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         report.warning("test warning".to_string(), &Origin::test("server"), None);
 
         // Act + Assert (no panic)

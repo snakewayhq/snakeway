@@ -1,5 +1,5 @@
 use crate::types::{DeviceSpec, IngressSpec, ServerSpec};
-use crate::validation::report::ValidationReport;
+use crate::validation::report::ValidationReportDeprecated;
 use crate::validation::{ValidateSpec, multi_file, single_file};
 
 /// Validate everything that exists in a fully parsed config.
@@ -7,8 +7,8 @@ pub(crate) fn validate_spec(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
     devices: &[DeviceSpec],
-) -> ValidationReport {
-    let mut report = ValidationReport {
+) -> ValidationReportDeprecated {
+    let mut report = ValidationReportDeprecated {
         errors: vec![],
         warnings: vec![],
     };

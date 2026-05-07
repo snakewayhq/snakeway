@@ -1,9 +1,9 @@
 use crate::types::{Origin, TlsTerminationSpec};
 use crate::validation::validator::validate_cert_key_pair;
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for TlsTerminationSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         match self {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(cert, key) {
@@ -22,7 +22,7 @@ impl ValidateSpec for TlsTerminationSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{Origin, TlsTerminationSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::path::PathBuf;
 
     use rcgen::generate_simple_self_signed;
@@ -33,7 +33,7 @@ mod tests {
     #[test]
     fn acme_tls_empty_domains_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = TlsTerminationSpec::Acme {
             domains: vec![],
             challenge: Default::default(),
@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn valid_acme_tls_with_domains() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = TlsTerminationSpec::Acme {
             domains: vec!["example.com".to_string()],
             challenge: Default::default(),
@@ -92,7 +92,7 @@ mod tests {
             .write_all(key_pem.as_bytes())
             .expect("failed to write key");
 
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = TlsTerminationSpec::Manual {
             cert: cert_path,
             key: key_path,
@@ -115,7 +115,7 @@ mod tests {
             "invalid TLS manual cert pair: file does not exist: {}",
             cert.to_string_lossy()
         );
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = TlsTerminationSpec::Manual { cert, key };
         let origin = Origin::test("tls");
 

@@ -1,9 +1,9 @@
 use crate::types::{Origin, WasmDeviceSpec};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 use nix::NixPath;
 
 impl ValidateSpec for WasmDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         if self.path.is_empty() {
             report.wasm_device_path_is_empty(self.path.display(), origin);
         }

@@ -1,9 +1,9 @@
 use crate::types::{BindAdminSpec, BindInterfaceSpec, Origin, TlsTerminationSpec};
 use crate::validation::validator::is_valid_port;
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for BindAdminSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         // Port validation.
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
@@ -63,7 +63,7 @@ mod tests {
         AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, Origin,
         TlsTerminationSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use rcgen::generate_simple_self_signed;
     use std::fs::File;
     use std::io::Write;
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn acme_tls_not_supported() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn unspecified_ip_rejected() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("0.0.0.0".to_string()),
             port: 9000,
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn invalid_bind_addr() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("bad-addr".to_string()),
             port: 9000,
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn cannot_bind_to_all_interfaces() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempdir().expect("failed to create temp dir");
 
         let cert = generate_simple_self_signed(vec!["localhost".into()])
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn missing_auth_block_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
@@ -238,7 +238,7 @@ mod tests {
     #[test]
     fn explicit_empty_auth_block_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn bearer_token_file_missing_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn bearer_token_file_empty_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let token_file = write_token_file("");
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn bearer_token_too_short_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let token_file = write_token_file("password123\n");
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -338,7 +338,7 @@ mod tests {
     #[test]
     fn bearer_comment_line_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let token_file = write_token_file(&format!("# comment\n{}\n", TEST_TOKEN));
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn bearer_duplicate_tokens_emit_warning_not_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let token_file = write_token_file(&format!("{t}\n{t}\n", t = TEST_TOKEN));
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn valid_auth_block_produces_no_errors() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempdir().expect("failed to create temp dir");
         let cert = generate_simple_self_signed(vec!["localhost".into()])
             .expect("failed to generate self-signed cert");

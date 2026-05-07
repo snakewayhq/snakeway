@@ -1,8 +1,11 @@
 use crate::types::{BindInterfaceInput, BindInterfaceSpec, IngressSpec, Origin};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 use std::collections::HashSet;
 
-pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_ingresses(
+    ingresses: &[IngressSpec],
+    report: &mut ValidationReportDeprecated,
+) {
     let mut seen_listener_keys = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
@@ -104,7 +107,7 @@ fn validate_listener_uniqueness(
     bind_interface_input: &BindInterfaceInput,
     port: u16,
     origin: &Origin,
-    report: &mut ValidationReport,
+    report: &mut ValidationReportDeprecated,
     seen_listener_keys: &mut HashSet<String>,
 ) {
     let maybe_interface: Result<BindInterfaceSpec, _> = bind_interface_input.clone().try_into();
@@ -123,7 +126,7 @@ mod tests {
     use std::net::IpAddr;
     use std::str::FromStr;
 
-    use crate::validation::ValidationReport;
+    use crate::validation::ValidationReportDeprecated;
 
     fn minimal_service() -> ServiceSpec {
         ServiceSpec {
@@ -164,7 +167,7 @@ mod tests {
     #[test]
     fn duplicate_bind_addr() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let ingress1 = minimal_ingress();
         let ingress2 = minimal_ingress();
 
@@ -181,7 +184,7 @@ mod tests {
     #[test]
     fn duplicate_admin_and_public_bind() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let port = 9000;
         let interface = BindInterfaceInput::Keyword("loopback".to_string());
         let ingress = IngressSpec {
@@ -215,7 +218,7 @@ mod tests {
         // Arrange
         let sock = "/tmp/test.sock".to_string();
         let expected_error = format!("duplicate upstream sock: {}", sock);
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let ingress = IngressSpec {
             bind: Some(minimal_bind()),
             services: vec![
@@ -249,7 +252,7 @@ mod tests {
     #[test]
     fn ingress_missing_bind_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let ingress = IngressSpec {
             bind: None,
             bind_admin: None,
@@ -272,7 +275,7 @@ mod tests {
     #[test]
     fn http2_with_websocket_route_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().expect("failed to create temp dir");
 
         let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
@@ -332,7 +335,7 @@ mod tests {
     #[test]
     fn duplicate_redirect_ports_across_ingresses() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let dir = tempfile::tempdir().expect("failed to create temp dir");
 
         let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
@@ -381,7 +384,7 @@ mod tests {
     #[test]
     fn validate_multiple_services_at_once() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let ingress = IngressSpec {
             bind: Some(minimal_bind()),
             services: vec![
@@ -413,7 +416,7 @@ mod tests {
     #[test]
     fn duplicate_route_path_within_same_ingress() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let ingress = IngressSpec {
             bind: Some(minimal_bind()),
             services: vec![
@@ -468,7 +471,7 @@ mod tests {
     #[test]
     fn same_route_path_on_different_ingresses_is_allowed() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let make_ingress = |port: u16| IngressSpec {
             bind: Some(BindSpec {
                 interface: BindInterfaceInput::Keyword("loopback".to_string()),

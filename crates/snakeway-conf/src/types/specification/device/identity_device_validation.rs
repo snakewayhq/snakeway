@@ -1,15 +1,15 @@
 use crate::types::{IdentityDeviceSpec, Origin};
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
 use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
-    validate_trusted_proxies,
+    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
+    validate_range_field, validate_trusted_proxies,
 };
 
 range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, usize, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, usize, min: 1, max: 4096);
 
 impl ValidateSpec for IdentityDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
         validate_trusted_proxies(&self.trusted_proxies, report, origin);
 
         validate_range_field!(
@@ -51,12 +51,12 @@ impl ValidateSpec for IdentityDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::IdentityDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     #[test]
     fn max_xff_length_below_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = IdentityDeviceSpec {
             enable: true,
             max_x_forwarded_for_length: 0,
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn max_xff_length_above_range() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = IdentityDeviceSpec {
             enable: true,
             max_x_forwarded_for_length: 2049,
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn valid_identity_device() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = ValidationReportDeprecated::default();
         let spec = IdentityDeviceSpec {
             enable: true,
             ..Default::default()
