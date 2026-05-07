@@ -365,11 +365,11 @@ fn same_path_different_hosts_is_rejected() {
         ConfigError::SemanticValidationFailed { validation_report } => {
             assert!(
                 validation_report
-                    .errors
+                    .errors()
                     .iter()
                     .any(|e| e.message.contains("duplicate route path")),
                 "should report duplicate route path; got: {:?}",
-                validation_report.errors
+                validation_report.errors()
             );
         }
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),
