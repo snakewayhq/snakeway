@@ -17,13 +17,13 @@ impl From<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Origin;
+    use crate::types::OriginDeprecated;
 
     #[test]
     fn from_spec_converts_duration_and_rate() {
         // Arrange
         let spec = RequestRateLimitingDeviceSpec {
-            origin: Origin::default(),
+            origin: OriginDeprecated::default(),
             enable: true,
             max_requests_per_second: 100,
             window_seconds: 60,

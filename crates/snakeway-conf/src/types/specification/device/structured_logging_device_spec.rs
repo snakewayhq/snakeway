@@ -1,11 +1,11 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct StructuredLoggingDeviceSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
 
     pub enable: bool,
 

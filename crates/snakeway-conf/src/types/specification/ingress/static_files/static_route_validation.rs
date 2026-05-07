@@ -1,8 +1,8 @@
-use crate::types::{Origin, StaticRouteSpec};
+use crate::types::{OriginDeprecated, StaticRouteSpec};
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for StaticRouteSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if !self.file_dir.exists() {
             report.invalid_static_dir(&self.file_dir, origin);
         }
@@ -14,7 +14,7 @@ impl ValidateSpec for StaticRouteSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Origin, StaticRouteSpec};
+    use crate::types::{OriginDeprecated, StaticRouteSpec};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::path::PathBuf;
 
@@ -28,7 +28,7 @@ mod tests {
             file_dir: PathBuf::from(file_dir),
             ..Default::default()
         };
-        let origin = Origin::test("static_files");
+        let origin = OriginDeprecated::test("static_files");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -51,7 +51,7 @@ mod tests {
             file_dir: PathBuf::from(file_dir),
             ..Default::default()
         };
-        let origin = Origin::test("static_files");
+        let origin = OriginDeprecated::test("static_files");
 
         // Act
         spec.validate(&origin, &mut report);

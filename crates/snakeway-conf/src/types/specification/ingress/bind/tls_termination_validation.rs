@@ -1,9 +1,9 @@
-use crate::types::{Origin, TlsTerminationSpec};
+use crate::types::{OriginDeprecated, TlsTerminationSpec};
 use crate::validation::validator::validate_cert_key_pair;
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for TlsTerminationSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         match self {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(cert, key) {
@@ -21,7 +21,7 @@ impl ValidateSpec for TlsTerminationSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Origin, TlsTerminationSpec};
+    use crate::types::{OriginDeprecated, TlsTerminationSpec};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::path::PathBuf;
 
@@ -38,7 +38,7 @@ mod tests {
             domains: vec![],
             challenge: Default::default(),
         };
-        let origin = Origin::test("tls");
+        let origin = OriginDeprecated::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -61,7 +61,7 @@ mod tests {
             domains: vec!["example.com".to_string()],
             challenge: Default::default(),
         };
-        let origin = Origin::test("tls");
+        let origin = OriginDeprecated::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -97,7 +97,7 @@ mod tests {
             cert: cert_path,
             key: key_path,
         };
-        let origin = Origin::test("tls");
+        let origin = OriginDeprecated::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -117,7 +117,7 @@ mod tests {
         );
         let mut report = ValidationReportDeprecated::default();
         let spec = TlsTerminationSpec::Manual { cert, key };
-        let origin = Origin::test("tls");
+        let origin = OriginDeprecated::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);

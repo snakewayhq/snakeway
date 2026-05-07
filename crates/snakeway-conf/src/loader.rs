@@ -2,7 +2,7 @@ use crate::discover::discover;
 use crate::lower::lower_configs;
 use crate::parse::{parse_devices, parse_ingress};
 use crate::types::RuntimeConfig;
-use crate::types::{DeviceSpec, EntrypointSpec, IngressSpec, Origin, ServerSpec};
+use crate::types::{DeviceSpec, EntrypointSpec, IngressSpec, OriginDeprecated, ServerSpec};
 use crate::validation::{ConfigError, validate_spec};
 
 use std::fs;
@@ -50,7 +50,7 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
         source: e,
     })?;
 
-    entry.server.origin = Origin::new(&root_path, "server", None);
+    entry.server.origin = OriginDeprecated::new(&root_path, "server", None);
 
     //--------------------------------------------------------------------------
     // Discover included files (hard fail)

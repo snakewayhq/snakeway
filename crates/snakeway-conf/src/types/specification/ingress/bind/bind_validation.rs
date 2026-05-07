@@ -1,9 +1,9 @@
-use crate::types::{BindInterfaceSpec, BindSpec, Origin};
+use crate::types::{BindInterfaceSpec, BindSpec, OriginDeprecated};
 use crate::validation::validator::is_valid_port;
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for BindSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         // Port validation.
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
@@ -56,7 +56,7 @@ impl ValidateSpec for BindSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{BindInterfaceInput, BindSpec, Origin, RedirectSpec};
+    use crate::types::{BindInterfaceInput, BindSpec, OriginDeprecated, RedirectSpec};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     fn minimal_bind() -> BindSpec {
@@ -76,7 +76,7 @@ mod tests {
             port: 0,
             ..Default::default()
         };
-        let origin = Origin::test("bind");
+        let origin = OriginDeprecated::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
@@ -100,7 +100,7 @@ mod tests {
             port: 8080,
             ..Default::default()
         };
-        let origin = Origin::test("bind");
+        let origin = OriginDeprecated::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
@@ -124,7 +124,7 @@ mod tests {
             port: 8080,
             ..Default::default()
         };
-        let origin = Origin::test("bind");
+        let origin = OriginDeprecated::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
@@ -144,7 +144,7 @@ mod tests {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
         let bind = minimal_bind();
-        let origin = Origin::test("bind");
+        let origin = OriginDeprecated::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
@@ -159,7 +159,7 @@ mod tests {
         let mut report = ValidationReportDeprecated::default();
         let mut bind = minimal_bind();
         bind.enable_http2 = true;
-        let origin = Origin::test("bind");
+        let origin = OriginDeprecated::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
@@ -181,7 +181,7 @@ mod tests {
             port: 8080,
             status: 308,
         });
-        let origin = Origin::test("bind");
+        let origin = OriginDeprecated::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);

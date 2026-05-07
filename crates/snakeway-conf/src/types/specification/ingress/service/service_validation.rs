@@ -1,9 +1,9 @@
-use crate::types::{Origin, ServiceSpec};
+use crate::types::{OriginDeprecated, ServiceSpec};
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 use std::collections::HashSet;
 
 impl ValidateSpec for ServiceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         // Validate circuit breaker.
         if let Some(cb) = &self.circuit_breaker
             && cb.enable_auto_recovery
@@ -73,7 +73,7 @@ impl ValidateSpec for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        EndpointSpec, EndpointTlsSpec, HostSpec, Origin, ServiceRouteSpec, ServiceSpec,
+        EndpointSpec, EndpointTlsSpec, HostSpec, OriginDeprecated, ServiceRouteSpec, ServiceSpec,
         UpstreamSpec,
     };
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
@@ -104,7 +104,7 @@ mod tests {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
         let service = minimal_service();
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -121,7 +121,7 @@ mod tests {
             upstreams: vec![],
             ..Default::default()
         };
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -143,7 +143,7 @@ mod tests {
             ws_max_connections: Some(1_000),
             ..Default::default()
         });
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -163,7 +163,7 @@ mod tests {
             tls: None,
         });
         service.upstreams[0].sock = Some("/tmp/test.sock".to_string());
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -186,7 +186,7 @@ mod tests {
             upstreams: vec![upstream],
             ..Default::default()
         };
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -217,7 +217,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -237,7 +237,7 @@ mod tests {
             path: "/".to_string(),
             ..Default::default()
         });
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -261,7 +261,7 @@ mod tests {
                 ca_file: None,
             }),
         });
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -285,7 +285,7 @@ mod tests {
                 ca_file: Some("/nonexistent/ca.pem".into()),
             }),
         });
-        let origin = Origin::test("service");
+        let origin = OriginDeprecated::test("service");
 
         // Act
         service.validate(&origin, &mut report);

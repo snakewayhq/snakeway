@@ -1,10 +1,10 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use crate::validation::ValidationReportDeprecated;
 
 pub(crate) fn validate_device_paths(
     paths: &[String],
     report: &mut ValidationReportDeprecated,
-    origin: &Origin,
+    origin: &OriginDeprecated,
 ) {
     for path in paths {
         if !path.starts_with('/') {

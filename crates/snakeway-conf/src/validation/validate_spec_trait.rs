@@ -1,4 +1,4 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use crate::validation::report::ValidationReportDeprecated;
 
 /// Spec types implement this trait to validate their own field-local invariants.
@@ -10,5 +10,5 @@ use crate::validation::report::ValidationReportDeprecated;
 /// The `origin` parameter carries the source file location for error messages.
 /// It is passed explicitly because nested specs do not carry their own origin.
 pub trait ValidateSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated);
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated);
 }

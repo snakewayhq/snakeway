@@ -90,14 +90,14 @@ impl From<IdentityFieldSpec> for IdentityFieldConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::specification::Origin;
+    use crate::types::specification::OriginDeprecated;
     use std::collections::HashSet;
 
     #[test]
     fn from_spec_maps_basic_fields() {
         // Arrange
         let spec = StructuredLoggingDeviceSpec {
-            origin: Origin::default(),
+            origin: OriginDeprecated::default(),
             enable: true,
             level: LogLevelSpec::Info,
             include_headers: true,
@@ -163,7 +163,7 @@ mod tests {
     fn from_spec_maps_events_and_phases() {
         // Arrange
         let spec = StructuredLoggingDeviceSpec {
-            origin: Origin::default(),
+            origin: OriginDeprecated::default(),
             enable: true,
             level: LogLevelSpec::Info,
             include_headers: false,

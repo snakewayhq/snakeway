@@ -1,11 +1,11 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use crate::validation::ValidationReportDeprecated;
 use http::{HeaderName, Method};
 
 pub(crate) fn validate_http_header_name(
     header: &str,
     report: &mut ValidationReportDeprecated,
-    origin: &Origin,
+    origin: &OriginDeprecated,
 ) {
     if HeaderName::from_bytes(header.as_bytes()).is_err() {
         report.invalid_http_header_name(header, origin);
@@ -15,7 +15,7 @@ pub(crate) fn validate_http_header_name(
 pub(crate) fn validate_http_method(
     method: &str,
     report: &mut ValidationReportDeprecated,
-    origin: &Origin,
+    origin: &OriginDeprecated,
 ) {
     if Method::from_bytes(method.as_bytes()).is_err() {
         report.invalid_http_method(method, origin);
@@ -30,7 +30,7 @@ mod tests {
     fn valid_header_name() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("test");
+        let origin = OriginDeprecated::test("test");
 
         // Act
         validate_http_header_name("content-type", &mut report, &origin);
@@ -43,7 +43,7 @@ mod tests {
     fn invalid_header_name() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("test");
+        let origin = OriginDeprecated::test("test");
 
         // Act
         validate_http_header_name("invalid header!", &mut report, &origin);
@@ -64,7 +64,7 @@ mod tests {
     fn valid_http_method() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("test");
+        let origin = OriginDeprecated::test("test");
 
         // Act
         validate_http_method("GET", &mut report, &origin);
@@ -77,7 +77,7 @@ mod tests {
     fn invalid_http_method() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("test");
+        let origin = OriginDeprecated::test("test");
 
         // Act
         validate_http_method("INVALID METHOD", &mut report, &origin);

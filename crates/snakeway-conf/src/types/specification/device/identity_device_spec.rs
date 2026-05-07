@@ -1,4 +1,4 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[serde(deny_unknown_fields)]
 pub struct IdentityDeviceSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
 
     pub enable: bool,
 

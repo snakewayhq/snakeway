@@ -1,4 +1,4 @@
-use crate::types::{ObservabilitySpec, Origin, OtelSpec};
+use crate::types::{ObservabilitySpec, OriginDeprecated, OtelSpec};
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
     validate_range_field,
@@ -7,7 +7,7 @@ use crate::validation::{
 range_constraint!(SAMPLING_RATIO, f64, min: 0.0, max: 1.0);
 
 impl ValidateSpec for ObservabilitySpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if let Some(otel) = &self.otel {
             otel.validate(origin, report);
         }
@@ -15,7 +15,7 @@ impl ValidateSpec for ObservabilitySpec {
 }
 
 impl ValidateSpec for OtelSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if !self.enable {
             return;
         }
@@ -36,7 +36,7 @@ impl ValidateSpec for OtelSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ObservabilitySpec, Origin, OtelSpec};
+    use crate::types::{ObservabilitySpec, OriginDeprecated, OtelSpec};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     fn default_otel() -> OtelSpec {
@@ -51,7 +51,7 @@ mod tests {
     #[test]
     fn otel_disabled_skips_validation() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             enable: false,
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn otel_endpoint_cannot_be_empty() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             endpoint: String::new(),
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn otel_endpoint_must_be_valid_url() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             endpoint: "not-a-url".to_string(),
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn otel_service_name_cannot_be_empty() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             service_name: String::new(),
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn otel_valid_config() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = default_otel();
 
@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn observability_delegates_to_otel() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = ObservabilitySpec {
             otel: Some(OtelSpec {
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn otel_sampling_ratio_below_zero() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             sampling_ratio: -0.1,
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn otel_sampling_ratio_above_one() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             sampling_ratio: 1.1,
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn otel_sampling_ratio_valid_fraction() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = OtelSpec {
             sampling_ratio: 0.5,
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn observability_without_otel_is_valid() {
         // Arrange
-        let origin = Origin::test("observability");
+        let origin = OriginDeprecated::test("observability");
         let mut report = ValidationReportDeprecated::default();
         let spec = ObservabilitySpec { otel: None };
 

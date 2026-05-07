@@ -1,4 +1,4 @@
-use crate::types::{IdentityDeviceSpec, Origin};
+use crate::types::{IdentityDeviceSpec, OriginDeprecated};
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
@@ -9,7 +9,7 @@ range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, usize, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, usize, min: 1, max: 4096);
 
 impl ValidateSpec for IdentityDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         validate_trusted_proxies(&self.trusted_proxies, report, origin);
 
         validate_range_field!(

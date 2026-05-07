@@ -1,11 +1,11 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct StaticRouteSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
     pub hosts: Vec<String>,
     pub path: String,
     pub file_dir: PathBuf,

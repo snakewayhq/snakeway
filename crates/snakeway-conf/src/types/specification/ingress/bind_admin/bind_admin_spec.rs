@@ -2,7 +2,7 @@ use crate::resolution::ResolveError;
 use crate::types::specification::ingress::bind_interface_spec::{
     BindInterfaceInput, BindInterfaceSpec,
 };
-use crate::types::{AdminAuthSpec, Origin, TlsTerminationSpec};
+use crate::types::{AdminAuthSpec, OriginDeprecated, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -10,7 +10,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Deserialize, Default, Serialize)]
 pub struct BindAdminSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
     pub interface: BindInterfaceInput,
     pub port: u16,
     pub tls: TlsTerminationSpec,

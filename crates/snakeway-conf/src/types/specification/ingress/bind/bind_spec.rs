@@ -1,7 +1,7 @@
 use crate::resolution::ResolveError;
 use crate::types::{
     BindInterfaceInput, BindInterfaceSpec, ConnectionRateLimitingFilterSpec,
-    NetworkConnectionFilterSpec, Origin, RedirectSpec, TlsTerminationSpec,
+    NetworkConnectionFilterSpec, OriginDeprecated, RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Deserialize, Default, Serialize, Clone)]
 pub struct BindSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
     pub interface: BindInterfaceInput,
     pub port: u16,
     #[serde(skip_serializing_if = "Option::is_none")]

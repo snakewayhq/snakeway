@@ -1,8 +1,8 @@
-use crate::types::{NetworkConnectionFilterSpec, Origin};
+use crate::types::{NetworkConnectionFilterSpec, OriginDeprecated};
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for NetworkConnectionFilterSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if !self.ip_family.ipv4 && !self.ip_family.ipv6 {
             report.connection_filter_requires_at_least_one_ip_family(origin);
         }
@@ -24,12 +24,12 @@ impl ValidateSpec for NetworkConnectionFilterSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec, Origin,
+        CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec, OriginDeprecated,
     };
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
-    fn test_origin() -> Origin {
-        Origin::test("connection_filter")
+    fn test_origin() -> OriginDeprecated {
+        OriginDeprecated::test("connection_filter")
     }
 
     #[test]

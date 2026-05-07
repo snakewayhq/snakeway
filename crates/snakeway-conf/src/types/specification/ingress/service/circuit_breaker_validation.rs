@@ -1,4 +1,4 @@
-use crate::types::{CircuitBreakerSpec, Origin};
+use crate::types::{CircuitBreakerSpec, OriginDeprecated};
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
     validate_range_field,
@@ -10,7 +10,7 @@ range_constraint!(HALF_OPEN_MAX_REQUESTS, u32, min: 1, max: 10_000);
 range_constraint!(SUCCESS_THRESHOLD, u32, min: 1, max: 10_000);
 
 impl ValidateSpec for CircuitBreakerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         validate_range_field!(FAILURE_THRESHOLD, self.failure_threshold, report, origin);
         validate_range_field!(
             OPEN_DURATION_MS,
@@ -30,7 +30,7 @@ impl ValidateSpec for CircuitBreakerSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{CircuitBreakerSpec, Origin};
+    use crate::types::{CircuitBreakerSpec, OriginDeprecated};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
     #[test]
@@ -45,7 +45,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = OriginDeprecated::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -66,7 +66,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = OriginDeprecated::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -88,7 +88,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = OriginDeprecated::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -110,7 +110,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = OriginDeprecated::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -132,7 +132,7 @@ mod tests {
             success_threshold: 0,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = OriginDeprecated::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);

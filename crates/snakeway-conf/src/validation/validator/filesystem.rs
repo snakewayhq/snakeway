@@ -1,4 +1,4 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use crate::validation::ValidationReportDeprecated;
 use nix::NixPath;
 use std::fs;
@@ -21,7 +21,7 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 pub(crate) fn validate_geoip_db_file(
     geoip_db: &Path,
     report: &mut ValidationReportDeprecated,
-    origin: &Origin,
+    origin: &OriginDeprecated,
 ) {
     if !geoip_db.is_file() {
         if NixPath::is_empty(geoip_db) {
@@ -39,7 +39,7 @@ pub(crate) fn validate_geoip_db_file(
 pub(crate) fn validate_ua_parser_regexes_file(
     path: &Path,
     report: &mut ValidationReportDeprecated,
-    origin: &Origin,
+    origin: &OriginDeprecated,
 ) {
     if NixPath::is_empty(path) {
         report.ua_parser_regexes_path_is_empty(path.display(), origin);
@@ -129,7 +129,7 @@ mod tests {
     fn validate_ua_parser_empty_path() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("ua_parser");
+        let origin = OriginDeprecated::test("ua_parser");
         let path = Path::new("");
 
         // Act
@@ -144,7 +144,7 @@ mod tests {
     fn validate_ua_parser_not_found() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("ua_parser");
+        let origin = OriginDeprecated::test("ua_parser");
         let path = Path::new("/nonexistent/regexes.yaml");
 
         // Act
@@ -165,7 +165,7 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("failed to create temp dir");
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("ua_parser");
+        let origin = OriginDeprecated::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(dir.path(), &mut report, &origin);
@@ -189,7 +189,7 @@ mod tests {
         f.write_all(b"some random content")
             .expect("failed to write");
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("ua_parser");
+        let origin = OriginDeprecated::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(&path, &mut report, &origin);
@@ -213,7 +213,7 @@ mod tests {
         f.write_all(b"user_agent_parsers:\n  - regex: '.*'\n")
             .expect("failed to write");
         let mut report = ValidationReportDeprecated::default();
-        let origin = Origin::test("ua_parser");
+        let origin = OriginDeprecated::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(&path, &mut report, &origin);

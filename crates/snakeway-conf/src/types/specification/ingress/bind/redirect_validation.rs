@@ -1,4 +1,4 @@
-use crate::types::{Origin, RedirectSpec};
+use crate::types::{OriginDeprecated, RedirectSpec};
 use crate::validation::validator::is_valid_port;
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
@@ -8,7 +8,7 @@ use crate::validation::{
 range_constraint!(RESPONSE_CODE, u16, min: 300, max: 399);
 
 impl ValidateSpec for RedirectSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
         }
@@ -19,11 +19,11 @@ impl ValidateSpec for RedirectSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Origin, RedirectSpec};
+    use crate::types::{OriginDeprecated, RedirectSpec};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
-    fn test_origin() -> Origin {
-        Origin::test("redirect_http_to_https")
+    fn test_origin() -> OriginDeprecated {
+        OriginDeprecated::test("redirect_http_to_https")
     }
 
     #[test]

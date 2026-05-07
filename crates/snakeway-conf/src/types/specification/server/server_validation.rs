@@ -1,4 +1,4 @@
-use crate::types::{Origin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
+use crate::types::{OriginDeprecated, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
 use crate::validation::validator::validate_cert_pem;
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
@@ -17,7 +17,7 @@ range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, usize, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
 
 impl ValidateSpec for ServerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if self.version != 1 {
             report.invalid_config_version(&self.version, origin);
         }
@@ -78,7 +78,7 @@ impl ValidateSpec for ServerSpec {
 }
 
 impl ValidateSpec for ShutdownSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if let Some(drain) = self.drain_seconds {
             validate_range_field!(SHUTDOWN_DRAIN_SECONDS, drain, report, origin);
         }
@@ -90,7 +90,7 @@ impl ValidateSpec for ShutdownSpec {
 }
 
 impl ValidateSpec for UpgradeSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if let Some(retries) = self.max_retries {
             validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
         }
@@ -98,7 +98,7 @@ impl ValidateSpec for UpgradeSpec {
 }
 
 impl ValidateSpec for PerformanceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if let Some(pool_size) = self.upstream_connection_pool_size {
             validate_range_field!(UPSTREAM_CONNECTION_POOL_SIZE, pool_size, report, origin);
         }
@@ -110,7 +110,7 @@ impl ValidateSpec for PerformanceSpec {
 }
 
 impl ValidateSpec for UpstreamSourceAddressesSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         for addr in &self.ipv4 {
             if addr.parse::<Ipv4Addr>().is_err() {
                 report.error(

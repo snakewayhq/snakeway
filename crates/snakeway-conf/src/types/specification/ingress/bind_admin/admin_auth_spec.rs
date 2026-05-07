@@ -1,4 +1,4 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -10,7 +10,7 @@ use std::path::PathBuf;
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct AdminAuthSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
     pub bearer: Option<BearerAuthSpec>,
 }
 
@@ -18,6 +18,6 @@ pub struct AdminAuthSpec {
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct BearerAuthSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: OriginDeprecated,
     pub token_file: PathBuf,
 }

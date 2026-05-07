@@ -1,5 +1,5 @@
 use crate::types::{
-    IdentityDeviceSpec, NetworkPolicyDeviceSpec, Origin, RequestFilterDeviceSpec,
+    IdentityDeviceSpec, NetworkPolicyDeviceSpec, OriginDeprecated, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::Serialize;
@@ -16,7 +16,7 @@ pub enum DeviceSpec {
 }
 
 impl DeviceSpec {
-    pub fn origin(&self) -> &Origin {
+    pub fn origin(&self) -> &OriginDeprecated {
         match self {
             DeviceSpec::RequestFilter(s) => &s.origin,
             DeviceSpec::Identity(s) => &s.origin,

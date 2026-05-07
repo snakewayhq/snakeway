@@ -1,4 +1,4 @@
-use crate::types::{Origin, RequestFilterDeviceSpec};
+use crate::types::{OriginDeprecated, RequestFilterDeviceSpec};
 use crate::validation::validator::{
     validate_device_paths, validate_http_header_name, validate_http_method,
 };
@@ -10,7 +10,7 @@ use crate::validation::{
 range_constraint!(DENY_STATUS, u16, min: 400, max: 599);
 
 impl ValidateSpec for RequestFilterDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if let Some(deny_status) = self.deny_status {
             validate_range_field!(DENY_STATUS, deny_status, report, origin);
         }

@@ -1,4 +1,4 @@
-use crate::types::{ConnectionRateLimitingFilterSpec, Origin};
+use crate::types::{ConnectionRateLimitingFilterSpec, OriginDeprecated};
 use crate::validation::{
     RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
     validate_range_field,
@@ -8,7 +8,7 @@ range_constraint!(REACTION_INTERVAL_IN_SECONDS, u16, min: 1, max: 60, units: "se
 range_constraint!(MAX_CONNECTIONS_PER_SECOND, u16, min: 1, max: 30_000);
 
 impl ValidateSpec for ConnectionRateLimitingFilterSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         validate_range_field!(
             REACTION_INTERVAL_IN_SECONDS,
             self.window_seconds,
@@ -26,11 +26,11 @@ impl ValidateSpec for ConnectionRateLimitingFilterSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ConnectionRateLimitingFilterSpec, Origin};
+    use crate::types::{ConnectionRateLimitingFilterSpec, OriginDeprecated};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
-    fn test_origin() -> Origin {
-        Origin::test("connection_rate_limiting_filter")
+    fn test_origin() -> OriginDeprecated {
+        OriginDeprecated::test("connection_rate_limiting_filter")
     }
 
     #[test]

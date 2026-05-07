@@ -1,9 +1,9 @@
-use crate::types::{BindAdminSpec, BindInterfaceSpec, Origin, TlsTerminationSpec};
+use crate::types::{BindAdminSpec, BindInterfaceSpec, OriginDeprecated, TlsTerminationSpec};
 use crate::validation::validator::is_valid_port;
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for BindAdminSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         // Port validation.
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
@@ -60,7 +60,7 @@ impl ValidateSpec for BindAdminSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, Origin,
+        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, OriginDeprecated,
         TlsTerminationSpec,
     };
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
@@ -101,7 +101,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -125,7 +125,7 @@ mod tests {
             port: 9000,
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -144,7 +144,7 @@ mod tests {
             port: 9000,
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -193,7 +193,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -219,7 +219,7 @@ mod tests {
             port: 9000,
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -245,7 +245,7 @@ mod tests {
             auth: AdminAuthSpec::default(),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -269,7 +269,7 @@ mod tests {
             auth: valid_bearer_auth(PathBuf::from("/nonexistent/path/to/tokens.txt")),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -296,7 +296,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -321,7 +321,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -346,7 +346,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -371,7 +371,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -412,7 +412,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = OriginDeprecated::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);

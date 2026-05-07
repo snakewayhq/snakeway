@@ -1,4 +1,4 @@
-use crate::types::Origin;
+use crate::types::OriginDeprecated;
 use crate::validation::ValidationReportDeprecated;
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ where
         value: T,
         field: &'static str,
         report: &mut ValidationReportDeprecated,
-        origin: &Origin,
+        origin: &OriginDeprecated,
     ) {
         if value < self.min || value > self.max {
             let units = self.units.unwrap_or("");

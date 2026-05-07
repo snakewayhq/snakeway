@@ -1,9 +1,9 @@
-use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
+use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, OriginDeprecated, UpstreamSpec};
 use crate::validation::validator::{is_valid_hostname, is_valid_port};
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 
 impl ValidateSpec for UpstreamSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if self.weight == 0 || self.weight > 1_000 {
             report.invalid_upstream_weight(&self.weight, origin);
         }
@@ -11,7 +11,7 @@ impl ValidateSpec for UpstreamSpec {
 }
 
 impl ValidateSpec for EndpointSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         match &self.host {
             HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
                 report.invalid_upstream_ip(ip, origin);
@@ -33,7 +33,7 @@ impl ValidateSpec for EndpointSpec {
 }
 
 impl ValidateSpec for EndpointTlsSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if self.sni.trim().is_empty() {
             report.upstream_tls_sni_required(origin);
         }
@@ -42,7 +42,7 @@ impl ValidateSpec for EndpointTlsSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
+    use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, OriginDeprecated, UpstreamSpec};
     use crate::validation::{ValidateSpec, ValidationReportDeprecated};
     use std::net::IpAddr;
     use std::str::FromStr;
@@ -65,7 +65,7 @@ mod tests {
         let mut report = ValidationReportDeprecated::default();
         let mut upstream = minimal_upstream();
         upstream.weight = 0;
-        let origin = Origin::test("upstream");
+        let origin = OriginDeprecated::test("upstream");
 
         // Act
         upstream.validate(&origin, &mut report);
@@ -81,7 +81,7 @@ mod tests {
         let mut report = ValidationReportDeprecated::default();
         let mut upstream = minimal_upstream();
         upstream.weight = 1001;
-        let origin = Origin::test("upstream");
+        let origin = OriginDeprecated::test("upstream");
 
         // Act
         upstream.validate(&origin, &mut report);
@@ -100,7 +100,7 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = OriginDeprecated::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
@@ -119,7 +119,7 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = OriginDeprecated::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
@@ -138,7 +138,7 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = OriginDeprecated::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
@@ -161,7 +161,7 @@ mod tests {
             port: 0,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = OriginDeprecated::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
@@ -180,7 +180,7 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = OriginDeprecated::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
@@ -198,7 +198,7 @@ mod tests {
             verify: false,
             ca_file: None,
         };
-        let origin = Origin::test("tls");
+        let origin = OriginDeprecated::test("tls");
 
         // Act
         tls.validate(&origin, &mut report);
@@ -217,7 +217,7 @@ mod tests {
             verify: false,
             ca_file: None,
         };
-        let origin = Origin::test("tls");
+        let origin = OriginDeprecated::test("tls");
 
         // Act
         tls.validate(&origin, &mut report);

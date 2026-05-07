@@ -1,10 +1,10 @@
-use crate::types::{NetworkPolicyDeviceSpec, Origin};
+use crate::types::{NetworkPolicyDeviceSpec, OriginDeprecated};
 use crate::validation::validator::validate_device_paths;
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 use ipnet::IpNet;
 
 impl ValidateSpec for NetworkPolicyDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         for cidr in &self.cidr_allow {
             if cidr.parse::<IpNet>().is_err() {
                 report.invalid_network_policy_cidr(cidr, origin);

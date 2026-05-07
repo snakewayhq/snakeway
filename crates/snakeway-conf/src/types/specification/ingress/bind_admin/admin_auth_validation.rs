@@ -1,10 +1,10 @@
-use crate::types::{AdminAuthSpec, BearerAuthSpec, Origin};
+use crate::types::{AdminAuthSpec, BearerAuthSpec, OriginDeprecated};
 use crate::validation::{
     MIN_TOKEN_LENGTH, TokenFileIssue, ValidateSpec, ValidationReportDeprecated, parse_token_file,
 };
 
 impl ValidateSpec for AdminAuthSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         if let Some(bearer) = &self.bearer {
             bearer.validate(origin, report);
         } else {
@@ -14,7 +14,7 @@ impl ValidateSpec for AdminAuthSpec {
 }
 
 impl ValidateSpec for BearerAuthSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReportDeprecated) {
+    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
         let path = self.token_file.as_path();
 
         // token_file must be set (reject the default empty path directly).
