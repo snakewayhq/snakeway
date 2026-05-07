@@ -52,13 +52,16 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         ServerConf::new().expect("Could not construct pingora server configuration");
 
     pingora_server_conf.ca_file = config.server.ca_file.clone();
-    pingora_server_conf.work_stealing = config.server.work_stealing;
+    pingora_server_conf.work_stealing = config.server.performance.work_stealing;
+    pingora_server_conf.grace_period_seconds = config.server.shutdown.drain_seconds;
+    pingora_server_conf.graceful_shutdown_timeout_seconds =
+        config.server.shutdown.force_timeout_seconds;
 
-    if let Some(sock) = &config.server.upgrade_sock {
+    if let Some(sock) = &config.server.upgrade.sock {
         pingora_server_conf.upgrade_sock = sock.clone();
     }
 
-    if let Some(retries) = config.server.upgrade_max_retries {
+    if let Some(retries) = config.server.upgrade.max_retries {
         pingora_server_conf.upgrade_sock_connect_accept_max_retries = Some(retries);
     }
 
@@ -68,6 +71,19 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             "Creating Pingora server with overridden worker threads"
         );
         pingora_server_conf.threads = threads;
+    }
+
+    if let Some(pool_size) = config.server.performance.upstream_connection_pool_size {
+        pingora_server_conf.upstream_keepalive_pool_size = pool_size;
+    }
+
+    if let Some(accepts) = config.server.performance.parallel_accepts_per_listener {
+        pingora_server_conf.listener_tasks_per_fd = accepts;
+    }
+
+    if let Some(source_addrs) = &config.server.upstream_source_addresses {
+        pingora_server_conf.client_bind_to_ipv4 = source_addrs.ipv4.clone();
+        pingora_server_conf.client_bind_to_ipv6 = source_addrs.ipv6.clone();
     }
 
     let opt = Opt {
