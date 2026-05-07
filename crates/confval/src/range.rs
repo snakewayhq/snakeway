@@ -6,6 +6,7 @@ pub struct RangeConstraint<T> {
     pub min: T,
     pub max: T,
     pub units: Option<&'static str>,
+    pub help: Option<&'static str>,
 }
 
 impl<T> RangeConstraint<T>
@@ -17,6 +18,7 @@ where
             min,
             max,
             units: None,
+            help: None,
         }
     }
 
@@ -25,6 +27,7 @@ where
             min,
             max,
             units: Some(units),
+            help: None,
         }
     }
 
@@ -36,26 +39,32 @@ where
         origin: &O,
     ) -> Option<ValidationIssue<O>> {
         if value < self.min {
-            Some(ValidationIssue::error_with_help(
-                format!("{} must be at least {}", field, self.min),
-                origin.clone(),
+            let help = self.help.map(String::from).unwrap_or_else(|| {
                 format!(
                     "Set {} to at least {}{}",
                     field,
                     self.min,
                     self.units.unwrap_or("")
-                ),
+                )
+            });
+            Some(ValidationIssue::error_with_help(
+                format!("{} must be at least {}", field, self.min),
+                origin.clone(),
+                help,
             ))
         } else if value > self.max {
-            Some(ValidationIssue::error_with_help(
-                format!("{} must be at most {}", field, self.max),
-                origin.clone(),
+            let help = self.help.map(String::from).unwrap_or_else(|| {
                 format!(
                     "Set {} to at most {}{}",
                     field,
                     self.max,
                     self.units.unwrap_or("")
-                ),
+                )
+            });
+            Some(ValidationIssue::error_with_help(
+                format!("{} must be at most {}", field, self.max),
+                origin.clone(),
+                help,
             ))
         } else {
             None
@@ -71,14 +80,32 @@ where
 /// range_constraint!(THREADS, usize, min: 1, max: 1024);
 /// range_constraint!(PORT, u16, min: 1, max: 65535);
 /// range_constraint!(INTERVAL, u64, min: 1, max: 3600, units: "s");
+/// range_constraint!(WORKERS, usize, min: 1, max: 128, help: "Match this to your CPU core count.");
 /// ```
 #[macro_export]
 macro_rules! range_constraint {
+    ($name:ident, $T:ty, min: $min:expr, max: $max:expr, help: $help:literal) => {
+        const $name: RangeConstraint<$T> = $crate::RangeConstraint {
+            min: $min,
+            max: $max,
+            units: None,
+            help: Some($help),
+        };
+    };
+    ($name:ident, $T:ty, min: $min:expr, max: $max:expr, units: $units:literal, help: $help:literal) => {
+        const $name: RangeConstraint<$T> = $crate::RangeConstraint {
+            min: $min,
+            max: $max,
+            units: Some($units),
+            help: Some($help),
+        };
+    };
     ($name:ident, $T:ty, min: $min:expr, max: $max:expr $(, units: $units:literal)?) => {
         const $name: RangeConstraint<$T> = $crate::RangeConstraint {
             min: $min,
             max: $max,
             units: range_constraint!(@units $($units)?),
+            help: None,
         };
     };
     (@units $units:literal) => { Some($units) };
@@ -122,6 +149,8 @@ mod tests {
     range_constraint!(PORT, u16, min: 1, max: 65535);
     range_constraint!(THREADS, usize, min: 1, max: 1024);
     range_constraint!(INTERVAL, u64, min: 1, max: 3600, units: "s");
+    range_constraint!(WORKERS, usize, min: 1, max: 128, help: "Match this to your CPU core count.");
+    range_constraint!(TIMEOUT, u64, min: 1, max: 300, units: "s", help: "Keep this under 5 minutes for responsive shutdowns.");
 
     #[test]
     fn in_range_returns_none() {
@@ -155,6 +184,33 @@ mod tests {
         assert!(
             !help.ends_with("s"),
             "expected no trailing units, got: {help}"
+        );
+    }
+
+    #[test]
+    fn custom_help_overrides_generated() {
+        let issue = WORKERS.check(0, "workers", &test_origin()).unwrap();
+        assert_eq!(
+            issue.help.as_deref(),
+            Some("Match this to your CPU core count.")
+        );
+    }
+
+    #[test]
+    fn custom_help_with_units() {
+        let issue = TIMEOUT.check(0, "timeout", &test_origin()).unwrap();
+        assert_eq!(
+            issue.help.as_deref(),
+            Some("Keep this under 5 minutes for responsive shutdowns.")
+        );
+    }
+
+    #[test]
+    fn custom_help_on_above_max() {
+        let issue = WORKERS.check(999, "workers", &test_origin()).unwrap();
+        assert_eq!(
+            issue.help.as_deref(),
+            Some("Match this to your CPU core count.")
         );
     }
 }
