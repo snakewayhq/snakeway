@@ -1,7 +1,9 @@
 use crate::types::{HclOrigin, IdentityDeviceSpec};
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use confval::{ValidateSpec, ValidationReport, range_constraint, validate_range_field};
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
 
 range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, usize, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, usize, min: 1, max: 4096);
@@ -68,7 +70,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("max_x_forwarded_for_length"))
         );
@@ -91,7 +93,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("max_x_forwarded_for_length"))
         );

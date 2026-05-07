@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, ServiceRouteSpec};
+use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec<HclOrigin> for ServiceRouteSpec {

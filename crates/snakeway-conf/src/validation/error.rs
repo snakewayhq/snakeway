@@ -1,4 +1,5 @@
-use crate::validation::ValidationReportDeprecated;
+use crate::types::HclOrigin;
+use confval::ValidationReport;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -68,7 +69,7 @@ pub enum ConfigError {
 
     #[error("validation failed: {validation_report:?}")]
     SemanticValidationFailed {
-        validation_report: ValidationReportDeprecated,
+        validation_report: ValidationReport<HclOrigin>,
     },
 }
 

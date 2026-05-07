@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, NetworkConnectionFilterSpec};
+use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec<HclOrigin> for NetworkConnectionFilterSpec {
@@ -50,7 +51,7 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
     }
 
     #[test]
@@ -74,7 +75,7 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
     }
 
     #[test]
@@ -98,7 +99,7 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
     }
 
     #[test]
@@ -122,6 +123,6 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
+        assert!(report.errors().is_empty());
     }
 }

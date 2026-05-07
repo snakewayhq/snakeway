@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, TlsTerminationSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_cert_key_pair;
 use confval::{ValidateSpec, ValidationReport};
 
@@ -47,7 +48,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.to_lowercase().contains("domain"))
         );
@@ -123,6 +124,6 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, expected_error);
+        assert_eq!(report.errors()[0].message, expected_error);
     }
 }

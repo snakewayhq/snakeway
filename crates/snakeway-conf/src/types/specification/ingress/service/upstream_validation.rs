@@ -1,4 +1,5 @@
 use crate::types::{EndpointSpec, EndpointTlsSpec, HclOrigin, HostSpec, UpstreamSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::{is_valid_hostname, is_valid_port};
 use confval::{ValidateSpec, ValidationReport};
 
@@ -71,7 +72,10 @@ mod tests {
         upstream.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream weight: 0"));
     }
 
@@ -87,7 +91,10 @@ mod tests {
         upstream.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream weight: 1001"));
     }
 
@@ -106,7 +113,10 @@ mod tests {
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream ip: 0.0.0.0"));
     }
 
@@ -125,7 +135,10 @@ mod tests {
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream ip: 224.0.0.1"));
     }
 
@@ -144,7 +157,10 @@ mod tests {
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(
             error
                 .message
@@ -167,7 +183,10 @@ mod tests {
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid port: 0"));
     }
 
@@ -204,7 +223,10 @@ mod tests {
         tls.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS SNI required"));
     }
 
@@ -223,7 +245,10 @@ mod tests {
         tls.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS SNI required"));
     }
 }

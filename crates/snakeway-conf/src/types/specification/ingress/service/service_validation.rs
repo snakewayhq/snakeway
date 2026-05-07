@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, ServiceSpec};
+use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
@@ -127,7 +128,10 @@ mod tests {
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("service has no upstream backends"));
     }
 
@@ -170,7 +174,7 @@ mod tests {
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "upstream cannot have both sock /tmp/test.sock and endpoint: 127.0.0.1:3000"
         );
     }
@@ -193,7 +197,7 @@ mod tests {
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "invalid upstream - it must have a sock or an endpoint, but neither are defined"
         );
     }
@@ -223,7 +227,10 @@ mod tests {
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("duplicate upstream sock"));
     }
 
@@ -243,7 +250,10 @@ mod tests {
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("route has no hosts"));
     }
 
@@ -267,7 +277,10 @@ mod tests {
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS SNI must be DNS name"));
     }
 
@@ -291,7 +304,10 @@ mod tests {
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS has invalid CA file"));
     }
 }

@@ -1,4 +1,5 @@
 use crate::types::{BindInterfaceSpec, BindSpec, HclOrigin};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::is_valid_port;
 use confval::{ValidateSpec, ValidationReport};
 
@@ -85,7 +86,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid port: 0"))
         );
@@ -109,7 +110,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid bind address: 0.0.0.0"))
         );
@@ -133,7 +134,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid bind address"))
         );
@@ -165,9 +166,9 @@ mod tests {
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, "HTTP/2 requires TLS: loopback");
+        assert_eq!(report.errors()[0].message, "HTTP/2 requires TLS: loopback");
         assert_eq!(
-            report.errors[0].help.as_deref(),
+            report.errors()[0].help.as_deref(),
             Some("Enable TLS on the bind or disable HTTP/2.")
         );
     }
@@ -188,11 +189,11 @@ mod tests {
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "redirect_http_to_https requires TLS: loopback"
         );
         assert_eq!(
-            report.errors[0].help.as_deref(),
+            report.errors()[0].help.as_deref(),
             Some("Enable TLS on the bind or remove redirect_http_to_https.")
         );
     }

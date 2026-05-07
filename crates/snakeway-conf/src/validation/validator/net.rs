@@ -1,4 +1,5 @@
 use crate::types::HclOrigin;
+use crate::validation::ValidationReportExt;
 use confval::ValidationReport;
 use ipnet::IpNet;
 use std::net::IpAddr;

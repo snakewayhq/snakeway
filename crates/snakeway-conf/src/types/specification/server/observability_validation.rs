@@ -1,5 +1,8 @@
 use crate::types::{HclOrigin, ObservabilitySpec, OtelSpec};
-use confval::{ValidateSpec, ValidationReport, range_constraint, validate_range_field};
+use crate::validation::ValidationReportExt;
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
 
 range_constraint!(SAMPLING_RATIO, f64, min: 0.0, max: 1.0);
 

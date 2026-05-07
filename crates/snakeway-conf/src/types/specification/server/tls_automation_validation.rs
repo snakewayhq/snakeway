@@ -1,7 +1,10 @@
 use crate::types::{AcmeServerSpec, CertStoreSpec, HclOrigin, TlsAutomationSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_cert_pem;
 
-use confval::{ValidateSpec, ValidationReport, range_constraint, validate_range_field};
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
 use nix::NixPath;
 
 range_constraint!(RENEW_WITHIN_DAYS, u64, min: 7, max: 30, units: "days");

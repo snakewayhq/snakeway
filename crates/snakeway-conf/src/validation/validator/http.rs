@@ -1,10 +1,11 @@
 use crate::types::HclOrigin;
+use crate::validation::ValidationReportExt;
 use confval::ValidationReport;
 use http::{HeaderName, Method};
 
 pub(crate) fn validate_http_header_name(
     header: &str,
-    report: &mut ValidationReport,
+    report: &mut ValidationReport<HclOrigin>,
     origin: &HclOrigin,
 ) {
     if HeaderName::from_bytes(header.as_bytes()).is_err() {
@@ -14,7 +15,7 @@ pub(crate) fn validate_http_header_name(
 
 pub(crate) fn validate_http_method(
     method: &str,
-    report: &mut ValidationReport,
+    report: &mut ValidationReport<HclOrigin>,
     origin: &HclOrigin,
 ) {
     if Method::from_bytes(method.as_bytes()).is_err() {
@@ -50,13 +51,13 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("invalid HTTP header name"),
             "expected error to contain 'invalid HTTP header name', got: {}",
-            report.errors[0].message
+            report.errors()[0].message
         );
     }
 
@@ -84,11 +85,11 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
         assert!(
-            report.errors[0].message.contains("invalid HTTP method"),
+            report.errors()[0].message.contains("invalid HTTP method"),
             "expected error to contain 'invalid HTTP method', got: {}",
-            report.errors[0].message
+            report.errors()[0].message
         );
     }
 }

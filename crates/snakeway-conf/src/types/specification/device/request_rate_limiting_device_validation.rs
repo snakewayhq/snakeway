@@ -44,7 +44,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("max_requests_per_second"))
         );
@@ -68,7 +68,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("window_seconds"))
         );
@@ -111,7 +111,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("must start with '/'"))
         );

@@ -1,4 +1,5 @@
 use crate::types::{AdminAuthSpec, BearerAuthSpec, HclOrigin};
+use crate::validation::ValidationReportExt;
 use crate::validation::{MIN_TOKEN_LENGTH, TokenFileIssue, parse_token_file};
 use confval::{ValidateSpec, ValidationReport};
 

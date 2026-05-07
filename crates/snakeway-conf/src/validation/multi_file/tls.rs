@@ -1,10 +1,11 @@
-use crate::types::{CertStoreSpec, IngressSpec, ServerSpec, TlsTerminationSpec};
-use crate::validation::ValidationReportDeprecated;
+use crate::types::{CertStoreSpec, HclOrigin, IngressSpec, ServerSpec, TlsTerminationSpec};
+use crate::validation::ValidationReportExt;
+use confval::ValidationReport;
 
 pub(crate) fn validate_tls(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
-    report: &mut ValidationReportDeprecated,
+    report: &mut ValidationReport<HclOrigin>,
 ) {
     let mut any_tls_listener = false;
     let mut any_acme_listener = false;
@@ -64,7 +65,7 @@ pub(crate) fn validate_tls(
 mod tests {
     use super::validate_tls;
     use crate::types::*;
-    use crate::validation::ValidationReportDeprecated;
+    use confval::ValidationReport;
     use std::net::IpAddr;
     use std::path::PathBuf;
     use std::str::FromStr;
@@ -117,7 +118,7 @@ mod tests {
     #[test]
     fn acme_requires_tls_automation() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let server = ServerSpec {
             tls_automation: None,
             ..Default::default()
@@ -132,14 +133,14 @@ mod tests {
         validate_tls(&server, &[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.iter().any(|e| e.message
+        assert!(report.errors().iter().any(|e| e.message
             == "ACME configured in ingress but server.tls_automation is not configured"));
     }
 
     #[test]
     fn tls_automation_without_tls_listeners_produces_warning() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let server = ServerSpec {
             tls_automation: Some(minimal_tls_automation()),
             ..Default::default()
@@ -159,10 +160,10 @@ mod tests {
         validate_tls(&server, &[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
+        assert!(report.errors().is_empty());
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message
                     == "server.tls_automation configured but no TLS listeners defined")
@@ -172,7 +173,7 @@ mod tests {
     #[test]
     fn valid_acme_with_tls_automation() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let server = ServerSpec {
             tls_automation: Some(minimal_tls_automation()),
             ..Default::default()
@@ -187,7 +188,7 @@ mod tests {
         validate_tls(&server, &[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
-        assert!(report.warnings.is_empty());
+        assert!(report.errors().is_empty());
+        assert!(report.warnings().is_empty());
     }
 }

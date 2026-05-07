@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 use snakeway_conf::load_config;
-use snakeway_conf::validation::ConfigError;
+use snakeway_conf::validation::{ConfigError, render_json, render_plain, render_pretty};
 use std::path::PathBuf;
 
 pub(crate) fn check(
@@ -47,13 +47,13 @@ pub(crate) fn check(
                 ConfigError::SemanticValidationFailed { validation_report } => {
                     match format {
                         ConfigCheckOutputFormat::Pretty => {
-                            validation_report.render_pretty();
+                            render_pretty(&validation_report);
                         }
                         ConfigCheckOutputFormat::Plain => {
-                            validation_report.render_plain();
+                            render_plain(&validation_report);
                         }
                         ConfigCheckOutputFormat::Json => {
-                            validation_report.render_json();
+                            render_json(&validation_report);
                         }
                     };
                 }

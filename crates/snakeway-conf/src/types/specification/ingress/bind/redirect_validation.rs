@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, RedirectSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::is_valid_port;
 use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
@@ -39,14 +40,13 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
+        assert!(report.errors().is_empty());
     }
 
     #[test]
     fn valid_non_3xx_status_produces_error_bottom_of_range() {
         // Arrange
         let status = 299;
-        let expected_error = format!("invalid status: {status} (must be between 300 and 399)");
         let spec = RedirectSpec { port: 8080, status };
         let origin = test_origin();
         let mut report = ValidationReport::default();
@@ -55,14 +55,17 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, expected_error);
+        assert!(
+            report.errors()[0]
+                .message
+                .contains("status must be at least 300")
+        );
     }
 
     #[test]
     fn valid_non_3xx_status_produces_error_top_of_range() {
         // Arrange
         let status = 400;
-        let expected_error = format!("invalid status: {status} (must be between 300 and 399)");
         let spec = RedirectSpec { port: 8080, status };
         let origin = test_origin();
         let mut report = ValidationReport::default();
@@ -71,7 +74,11 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, expected_error);
+        assert!(
+            report.errors()[0]
+                .message
+                .contains("status must be at most 399")
+        );
     }
 
     #[test]
@@ -88,6 +95,6 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, "invalid port: 0");
+        assert_eq!(report.errors()[0].message, "invalid port: 0");
     }
 }

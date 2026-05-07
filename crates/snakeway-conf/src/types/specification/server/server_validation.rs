@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_cert_pem;
 use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
@@ -112,7 +113,7 @@ impl ValidateSpec<HclOrigin> for UpstreamSourceAddressesSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for addr in &self.ipv4 {
             if addr.parse::<Ipv4Addr>().is_err() {
-                report.error(
+                report.report_error(
                     format!(
                         "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
                         addr
@@ -125,7 +126,7 @@ impl ValidateSpec<HclOrigin> for UpstreamSourceAddressesSpec {
 
         for addr in &self.ipv6 {
             if addr.parse::<Ipv6Addr>().is_err() {
-                report.error(
+                report.report_error(
                     format!(
                         "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
                         addr
@@ -175,7 +176,7 @@ mod tests {
         // Assert
         assert!(report.has_issues());
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("invalid config version: 2")
         );
@@ -213,7 +214,7 @@ mod tests {
         // Assert
         assert!(report.has_issues());
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("pid file parent directory does not exist")
         );
@@ -238,7 +239,7 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors[0].message.contains(&expected));
+        assert!(report.errors()[0].message.contains(&expected));
     }
 
     #[test]
@@ -255,7 +256,11 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors[0].message.contains("invalid threads: 0"));
+        assert!(
+            report.errors()[0]
+                .message
+                .contains("threads must be at least 1")
+        );
     }
 
     #[test]
@@ -272,7 +277,11 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors[0].message.contains("invalid threads: 1025"));
+        assert!(
+            report.errors()[0]
+                .message
+                .contains("threads must be at most 1024")
+        );
     }
 
     #[test]
@@ -297,7 +306,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("pid file parent is not a directory"))
         );
@@ -323,7 +332,12 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors.iter().any(|e| e.message.contains(&expected)));
+        assert!(
+            report
+                .errors()
+                .iter()
+                .any(|e| e.message.contains(&expected))
+        );
     }
 
     #[test]
@@ -357,9 +371,9 @@ mod tests {
         // Assert
         assert!(report.has_issues());
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
-                .contains("invalid dns_refresh_interval_seconds: 3601seconds")
+                .contains("dns_refresh_interval_seconds must be at most 3600")
         );
     }
 

@@ -46,8 +46,8 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
-        assert!(report.errors[0].message.contains("window_seconds"));
+        assert_eq!(report.errors().len(), 1);
+        assert!(report.errors()[0].message.contains("window_seconds"));
     }
 
     #[test]
@@ -64,9 +64,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("max_connections_per_second")
         );
@@ -86,6 +86,6 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
+        assert!(report.errors().is_empty());
     }
 }

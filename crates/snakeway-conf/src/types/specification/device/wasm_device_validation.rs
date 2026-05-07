@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, WasmDeviceSpec};
+use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 use nix::NixPath;
 

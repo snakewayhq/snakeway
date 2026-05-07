@@ -71,7 +71,10 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("failure_threshold"));
     }
 
@@ -93,7 +96,10 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("open_duration_milliseconds"));
     }
 
@@ -115,7 +121,10 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("half_open_max_requests"));
     }
 
@@ -137,7 +146,10 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("success_threshold"));
     }
 }

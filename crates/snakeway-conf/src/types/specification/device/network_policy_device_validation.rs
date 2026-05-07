@@ -1,4 +1,5 @@
 use crate::types::{HclOrigin, NetworkPolicyDeviceSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_device_paths;
 use confval::{ValidateSpec, ValidationReport};
 use ipnet::IpNet;
@@ -37,7 +38,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid network policy CIDR"))
         );
@@ -78,7 +79,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("must start with '/'"))
         );

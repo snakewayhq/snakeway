@@ -1,9 +1,10 @@
 use crate::types::HclOrigin;
+use crate::validation::ValidationReportExt;
 use confval::ValidationReport;
 
 pub(crate) fn validate_device_paths(
     paths: &[String],
-    report: &mut ValidationReport,
+    report: &mut ValidationReport<HclOrigin>,
     origin: &HclOrigin,
 ) {
     for path in paths {

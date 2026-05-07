@@ -1,4 +1,5 @@
 use crate::types::{BindAdminSpec, BindInterfaceSpec, HclOrigin, TlsTerminationSpec};
+use crate::validation::ValidationReportExt;
 use crate::validation::validator::is_valid_port;
 use confval::{ValidateSpec, ValidationReport};
 
@@ -48,7 +49,7 @@ impl ValidateSpec<HclOrigin> for BindAdminSpec {
             // There are two ways to bind to all interfaces:
             // 1. Use "all" enum option.
             // 2. Use a specific IP address.
-            report.error(
+            report.report_error(
                 "admin API cannot bind to all interfaces".to_string(),
                 origin,
                 Some("Use loopback or a specific IP address.".to_string()),
@@ -110,7 +111,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.to_lowercase().contains("acme"))
         );
@@ -132,7 +133,12 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors.iter().any(|e| e.message.contains("0.0.0.0")));
+        assert!(
+            report
+                .errors()
+                .iter()
+                .any(|e| e.message.contains("0.0.0.0"))
+        );
     }
 
     #[test]
@@ -152,7 +158,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "invalid bind address: bad-addr")
         );
@@ -199,13 +205,13 @@ mod tests {
         bind_admin.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "admin API cannot bind to all interfaces"
         );
         assert_eq!(
-            report.errors[0].help.as_deref(),
+            report.errors()[0].help.as_deref(),
             Some("Use loopback or a specific IP address.")
         );
     }
@@ -227,11 +233,11 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "bind_admin.auth is required"),
             "expected admin_auth_missing error; got: {:?}",
-            report.errors
+            report.errors()
         );
     }
 
@@ -253,7 +259,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "bind_admin.auth is required")
         );
@@ -277,11 +283,11 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("token_file could not be read")),
             "expected io error; got: {:?}",
-            report.errors
+            report.errors()
         );
     }
 
@@ -304,7 +310,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("token_file is empty"))
         );
@@ -329,7 +335,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("minimum is 32"))
         );
@@ -354,7 +360,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("comments are not permitted"))
         );
@@ -379,12 +385,12 @@ mod tests {
         // Assert
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message.contains("duplicate token")),
             "expected duplicate warning; got warnings: {:?}, errors: {:?}",
-            report.warnings,
-            report.errors
+            report.warnings(),
+            report.errors()
         );
     }
 
@@ -419,9 +425,9 @@ mod tests {
 
         // Assert
         assert!(
-            report.errors.is_empty(),
+            report.errors().is_empty(),
             "expected no errors; got: {:?}",
-            report.errors
+            report.errors()
         );
     }
 }

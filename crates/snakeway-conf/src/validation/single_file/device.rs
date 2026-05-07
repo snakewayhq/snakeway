@@ -1,4 +1,5 @@
 use crate::types::{DeviceSpec, HclOrigin};
+use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 
 pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport<HclOrigin>) {

@@ -2,7 +2,9 @@ use crate::types::{HclOrigin, RequestFilterDeviceSpec};
 use crate::validation::validator::{
     validate_device_paths, validate_http_header_name, validate_http_method,
 };
-use confval::{ValidateSpec, ValidationReport, range_constraint, validate_range_field};
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
 
 range_constraint!(DENY_STATUS, u16, min: 400, max: 599);
 
@@ -134,7 +136,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .erros
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("must start with '/'"))
         );

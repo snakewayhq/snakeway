@@ -1,4 +1,5 @@
 use crate::types::HclOrigin;
+use crate::validation::ValidationReportExt;
 use confval::ValidationReport;
 use nix::NixPath;
 use std::fs;
@@ -20,7 +21,7 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 
 pub(crate) fn validate_geoip_db_file(
     geoip_db: &Path,
-    report: &mut ValidationReport,
+    report: &mut ValidationReport<HclOrigin>,
     origin: &HclOrigin,
 ) {
     if !geoip_db.is_file() {
@@ -38,7 +39,7 @@ pub(crate) fn validate_geoip_db_file(
 
 pub(crate) fn validate_ua_parser_regexes_file(
     path: &Path,
-    report: &mut ValidationReport,
+    report: &mut ValidationReport<HclOrigin>,
     origin: &HclOrigin,
 ) {
     if NixPath::is_empty(path) {
@@ -137,7 +138,7 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors.iter().any(|e| e.message.contains("empty")));
+        assert!(report.errors().iter().any(|e| e.message.contains("empty")));
     }
 
     #[test]
@@ -154,7 +155,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("does not exist"))
         );
@@ -174,7 +175,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("not a file"))
         );
@@ -198,7 +199,7 @@ mod tests {
         assert!(report.has_issues());
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message.contains("does not appear to be a valid"))
         );
