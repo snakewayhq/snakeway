@@ -1,5 +1,7 @@
+use crate::types::bind_issues;
+use crate::types::ingress_issues;
+use crate::types::service_issues;
 use crate::types::{BindInterfaceInput, BindInterfaceSpec, HclOrigin, IngressSpec};
-use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
@@ -24,7 +26,7 @@ pub(crate) fn validate_ingresses(
         // There must be at least one bind or admin bind.
         //---------------------------------------------------------------------
         if maybe_bind.is_none() && maybe_bind_admin.is_none() {
-            report.missing_bind(&ingress.origin);
+            report.push(ingress_issues::missing_bind(&ingress.origin));
         }
 
         //---------------------------------------------------------------------
@@ -44,7 +46,10 @@ pub(crate) fn validate_ingresses(
             if let Some(redirect) = &bind.redirect_http_to_https
                 && !seen_redirect_ports.insert(redirect.port)
             {
-                report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
+                report.push(bind_issues::duplicate_redirect_http_to_https_port(
+                    redirect.port,
+                    &bind.origin,
+                ));
             }
         }
 
@@ -70,7 +75,10 @@ pub(crate) fn validate_ingresses(
         for service in &ingress.services {
             for route in &service.routes {
                 if !seen_route_paths.insert(&route.path) {
-                    report.duplicate_route_path(&route.path, &route.origin);
+                    report.push(service_issues::duplicate_route_path(
+                        &route.path,
+                        &route.origin,
+                    ));
                 }
             }
         }
@@ -83,7 +91,10 @@ pub(crate) fn validate_ingresses(
         for service in &ingress.services {
             for route in &service.routes {
                 if bind_uses_http2 && route.enable_websocket {
-                    report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
+                    report.push(service_issues::websocket_route_cannot_be_used_with_http2(
+                        &route.path,
+                        &route.origin,
+                    ));
                 }
             }
         }
@@ -96,7 +107,10 @@ pub(crate) fn validate_ingresses(
                 if let Some(sock) = &upstream.sock
                     && !seen_upstream_socks.insert(sock.clone())
                 {
-                    report.duplicate_upstream_sock(sock, &service.origin);
+                    report.push(service_issues::duplicate_upstream_sock(
+                        sock,
+                        &service.origin,
+                    ));
                 }
             }
         }
@@ -115,7 +129,7 @@ fn validate_listener_uniqueness(
     if let Ok(interface) = maybe_interface {
         let key = interface.socket_address_literal(port);
         if !seen_listener_keys.insert(key.clone()) {
-            report.duplicate_bind_addr(&key, origin);
+            report.push(bind_issues::duplicate_bind_addr(&key, origin));
         }
     }
 }

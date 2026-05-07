@@ -1,5 +1,5 @@
+use super::bind_issues;
 use crate::types::{HclOrigin, TlsTerminationSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_cert_key_pair;
 use confval::{ValidateSpec, ValidationReport};
 
@@ -8,12 +8,14 @@ impl ValidateSpec<HclOrigin> for TlsTerminationSpec {
         match self {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(cert, key) {
-                    report.ingress_tls_manual_cert_pair_invalid(&e, origin);
+                    report.push(bind_issues::ingress_tls_manual_cert_pair_invalid(
+                        &e, origin,
+                    ));
                 }
             }
             TlsTerminationSpec::Acme { domains, .. } => {
                 if domains.is_empty() {
-                    report.acme_tls_requires_domains(origin);
+                    report.push(bind_issues::acme_tls_requires_domains(origin));
                 }
             }
         }

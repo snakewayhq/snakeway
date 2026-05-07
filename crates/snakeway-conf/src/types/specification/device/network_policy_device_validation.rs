@@ -1,5 +1,5 @@
+use super::device_issues;
 use crate::types::{HclOrigin, NetworkPolicyDeviceSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_device_paths;
 use confval::{ValidateSpec, ValidationReport};
 use ipnet::IpNet;
@@ -8,7 +8,7 @@ impl ValidateSpec<HclOrigin> for NetworkPolicyDeviceSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for cidr in &self.cidr_allow {
             if cidr.parse::<IpNet>().is_err() {
-                report.invalid_network_policy_cidr(cidr, origin);
+                report.push(device_issues::invalid_network_policy_cidr(cidr, origin));
             }
         }
 

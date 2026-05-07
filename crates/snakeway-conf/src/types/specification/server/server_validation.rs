@@ -1,8 +1,9 @@
+use crate::types::server_issues;
 use crate::types::{HclOrigin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_cert_pem;
 use confval::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+    RangeConstraint, ValidateSpec, ValidationIssue, ValidationReport, range_constraint,
+    validate_range_field,
 };
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -19,7 +20,7 @@ range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
 impl ValidateSpec<HclOrigin> for ServerSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.version != 1 {
-            report.invalid_config_version(&self.version, origin);
+            report.push(server_issues::invalid_config_version(&self.version, origin));
         }
 
         if let Some(pid_file) = self.pid_file.clone() {
@@ -28,16 +29,22 @@ impl ValidateSpec<HclOrigin> for ServerSpec {
             };
 
             if !parent.exists() {
-                report.pid_file_parent_dir_does_not_exist(pid_file.display(), origin);
+                report.push(server_issues::pid_file_parent_dir_does_not_exist(
+                    pid_file.display(),
+                    origin,
+                ));
             } else if !parent.is_dir() {
-                report.pid_file_parent_not_a_dir(pid_file.display(), origin);
+                report.push(server_issues::pid_file_parent_not_a_dir(
+                    pid_file.display(),
+                    origin,
+                ));
             }
         }
 
         if let Some(ca_file) = &self.ca_file
             && let Err(e) = validate_cert_pem(ca_file)
         {
-            report.server_ca_file_invalid(&e, origin);
+            report.push(server_issues::server_ca_file_invalid(&e, origin));
         }
 
         if let Some(threads) = self.threads {
@@ -113,27 +120,25 @@ impl ValidateSpec<HclOrigin> for UpstreamSourceAddressesSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for addr in &self.ipv4 {
             if addr.parse::<Ipv4Addr>().is_err() {
-                report.report_error(
+                report.push(ValidationIssue::error(
                     format!(
                         "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
                         addr
                     ),
-                    origin,
-                    None,
-                );
+                    origin.clone(),
+                ));
             }
         }
 
         for addr in &self.ipv6 {
             if addr.parse::<Ipv6Addr>().is_err() {
-                report.report_error(
+                report.push(ValidationIssue::error(
                     format!(
                         "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
                         addr
                     ),
-                    origin,
-                    None,
-                );
+                    origin.clone(),
+                ));
             }
         }
     }

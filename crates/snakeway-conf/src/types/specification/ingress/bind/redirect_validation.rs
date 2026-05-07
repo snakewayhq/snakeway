@@ -1,5 +1,5 @@
+use super::bind_issues;
 use crate::types::{HclOrigin, RedirectSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::is_valid_port;
 use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
@@ -10,7 +10,7 @@ range_constraint!(RESPONSE_CODE, u16, min: 300, max: 399);
 impl ValidateSpec<HclOrigin> for RedirectSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if !is_valid_port(self.port) {
-            report.invalid_port(self.port, origin);
+            report.push(bind_issues::invalid_port(self.port, origin));
         }
 
         validate_range_field!(RESPONSE_CODE, self.status, report, origin);

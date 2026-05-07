@@ -1,5 +1,5 @@
 use crate::types::HclOrigin;
-use crate::validation::ValidationReportExt;
+use crate::types::device_issues;
 use confval::ValidationReport;
 use nix::NixPath;
 use std::fs;
@@ -26,13 +26,22 @@ pub(crate) fn validate_geoip_db_file(
 ) {
     if !geoip_db.is_file() {
         if NixPath::is_empty(geoip_db) {
-            report.geoip_db_path_is_empty(geoip_db.display(), origin);
+            report.push(device_issues::geoip_db_path_is_empty(
+                geoip_db.display(),
+                origin,
+            ));
         }
         if !geoip_db.exists() {
-            report.geoip_db_path_does_not_exist(geoip_db.display(), origin);
+            report.push(device_issues::geoip_db_path_does_not_exist(
+                geoip_db.display(),
+                origin,
+            ));
         }
         if !geoip_db.is_file() {
-            report.geoip_db_is_not_a_file(geoip_db.display(), origin);
+            report.push(device_issues::geoip_db_is_not_a_file(
+                geoip_db.display(),
+                origin,
+            ));
         }
     }
 }
@@ -43,21 +52,32 @@ pub(crate) fn validate_ua_parser_regexes_file(
     origin: &HclOrigin,
 ) {
     if NixPath::is_empty(path) {
-        report.ua_parser_regexes_path_is_empty(path.display(), origin);
+        report.push(device_issues::ua_parser_regexes_path_is_empty(
+            path.display(),
+            origin,
+        ));
         return;
     }
     if !path.exists() {
-        report.ua_parser_regexes_path_does_not_exist(path.display(), origin);
+        report.push(device_issues::ua_parser_regexes_path_does_not_exist(
+            path.display(),
+            origin,
+        ));
         return;
     }
     if !path.is_file() {
-        report.ua_parser_regexes_path_is_not_a_file(path.display(), origin);
+        report.push(device_issues::ua_parser_regexes_path_is_not_a_file(
+            path.display(),
+            origin,
+        ));
         return;
     }
     if let Ok(contents) = std::fs::read_to_string(path)
         && !contents.contains("user_agent_parsers")
     {
-        report.ua_parser_regexes_file_missing_expected_content(path.display(), origin);
+        report.push(
+            device_issues::ua_parser_regexes_file_missing_expected_content(path.display(), origin),
+        );
     }
 }
 

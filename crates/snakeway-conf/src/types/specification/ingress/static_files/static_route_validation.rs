@@ -1,14 +1,20 @@
+use super::static_route_issues;
 use crate::types::{HclOrigin, StaticRouteSpec};
-use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec<HclOrigin> for StaticRouteSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if !self.file_dir.exists() {
-            report.invalid_static_dir(&self.file_dir, origin);
+            report.push(static_route_issues::invalid_static_dir(
+                &self.file_dir,
+                origin,
+            ));
         }
         if self.file_dir.is_relative() {
-            report.invalid_static_dir_must_be_absolute(&self.file_dir, origin);
+            report.push(static_route_issues::invalid_static_dir_must_be_absolute(
+                &self.file_dir,
+                origin,
+            ));
         }
     }
 }

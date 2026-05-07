@@ -1,3 +1,4 @@
+pub(crate) mod admin_auth_issues;
 mod admin_auth_spec;
 mod admin_auth_validation;
 mod bind_admin_spec;

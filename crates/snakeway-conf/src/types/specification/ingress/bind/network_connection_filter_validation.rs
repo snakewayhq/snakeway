@@ -1,22 +1,26 @@
+use super::bind_issues;
 use crate::types::{HclOrigin, NetworkConnectionFilterSpec};
-use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec<HclOrigin> for NetworkConnectionFilterSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if !self.ip_family.ipv4 && !self.ip_family.ipv6 {
-            report.connection_filter_requires_at_least_one_ip_family(origin);
+            report.push(bind_issues::connection_filter_requires_at_least_one_ip_family(origin));
         }
 
         for cidr in &self.cidr.allow {
             if cidr.parse::<ipnet::IpNet>().is_err() {
-                report.invalid_cidr_in_connection_filter_allow_list(cidr, origin);
+                report.push(bind_issues::invalid_cidr_in_connection_filter_allow_list(
+                    cidr, origin,
+                ));
             }
         }
 
         for cidr in &self.cidr.deny {
             if cidr.parse::<ipnet::IpNet>().is_err() {
-                report.invalid_cidr_in_connection_filter_deny_list(cidr, origin);
+                report.push(bind_issues::invalid_cidr_in_connection_filter_deny_list(
+                    cidr, origin,
+                ));
             }
         }
     }

@@ -1,5 +1,6 @@
+use crate::types::bind_issues;
+use crate::types::server_issues;
 use crate::types::{CertStoreSpec, HclOrigin, IngressSpec, ServerSpec, TlsTerminationSpec};
-use crate::validation::ValidationReportExt;
 use confval::ValidationReport;
 
 pub(crate) fn validate_tls(
@@ -25,7 +26,7 @@ pub(crate) fn validate_tls(
 
                     // ACME requires domains
                     if domains.is_empty() {
-                        report.acme_tls_requires_domains(&bind.origin);
+                        report.push(bind_issues::acme_tls_requires_domains(&bind.origin));
                     }
                 }
             }
@@ -35,7 +36,11 @@ pub(crate) fn validate_tls(
     // If ACME is configured anywhere, server.tls_automation must exist
     if any_acme_listener {
         let Some(tls_automation_cfg) = &server.tls_automation else {
-            report.acme_configured_in_ingress_but_server_tls_not_configured(&server.origin);
+            report.push(
+                server_issues::acme_configured_in_ingress_but_server_tls_not_configured(
+                    &server.origin,
+                ),
+            );
             return;
         };
 
@@ -57,7 +62,8 @@ pub(crate) fn validate_tls(
 
     // Optional: warn if server.tls_automation exists but no TLS listeners
     if server.tls_automation.is_some() && !any_tls_listener {
-        report.warn_server_tls_configured_with_no_tls_listeners(&server.origin);
+        report
+            .push(server_issues::warn_server_tls_configured_with_no_tls_listeners(&server.origin));
     }
 }
 

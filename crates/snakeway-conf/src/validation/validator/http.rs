@@ -1,5 +1,5 @@
 use crate::types::HclOrigin;
-use crate::validation::ValidationReportExt;
+use crate::types::device_issues;
 use confval::ValidationReport;
 use http::{HeaderName, Method};
 
@@ -9,7 +9,7 @@ pub(crate) fn validate_http_header_name(
     origin: &HclOrigin,
 ) {
     if HeaderName::from_bytes(header.as_bytes()).is_err() {
-        report.invalid_http_header_name(header, origin);
+        report.push(device_issues::invalid_http_header_name(header, origin));
     }
 }
 
@@ -19,7 +19,7 @@ pub(crate) fn validate_http_method(
     origin: &HclOrigin,
 ) {
     if Method::from_bytes(method.as_bytes()).is_err() {
-        report.invalid_http_method(method, origin);
+        report.push(device_issues::invalid_http_method(method, origin));
     }
 }
 

@@ -1,5 +1,5 @@
+use super::service_issues;
 use crate::types::{HclOrigin, ServiceSpec};
-use crate::validation::ValidationReportExt;
 use confval::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
@@ -19,7 +19,7 @@ impl ValidateSpec<HclOrigin> for ServiceSpec {
 
         // Upstream validation.
         if self.upstreams.is_empty() {
-            report.service_has_no_upstreams(origin);
+            report.push(service_issues::service_has_no_upstreams(origin));
         }
 
         let mut seen_sock_values = HashSet::new();
@@ -29,17 +29,19 @@ impl ValidateSpec<HclOrigin> for ServiceSpec {
 
             // todo move most of this upstream validation into upstream.validate().
             if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
-                report.upstream_cannot_have_both_sock_and_endpoint(
+                report.push(service_issues::upstream_cannot_have_both_sock_and_endpoint(
                     sock,
                     &endpoint.host.to_string(),
                     endpoint.port,
                     origin,
-                );
+                ));
                 continue;
             }
 
             if upstream.sock.is_none() && upstream.endpoint.is_none() {
-                report.upstream_must_have_a_sock_or_endpoint(origin);
+                report.push(service_issues::upstream_must_have_a_sock_or_endpoint(
+                    origin,
+                ));
                 continue;
             }
 
@@ -51,13 +53,19 @@ impl ValidateSpec<HclOrigin> for ServiceSpec {
                     && tls.verify
                 {
                     if tls.sni.parse::<std::net::IpAddr>().is_ok() {
-                        report.upstream_tls_sni_must_be_dns(&upstream.origin);
+                        report.push(service_issues::upstream_tls_sni_must_be_dns(
+                            &upstream.origin,
+                        ));
                     }
 
                     if let Some(ca_file) = &tls.ca_file
                         && let Err(e) = crate::validation::validator::validate_cert_pem(ca_file)
                     {
-                        report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
+                        report.push(service_issues::upstream_tls_has_invalid_ca_file(
+                            ca_file,
+                            &e,
+                            &upstream.origin,
+                        ));
                     }
                 }
             }
@@ -65,7 +73,10 @@ impl ValidateSpec<HclOrigin> for ServiceSpec {
             if let Some(sock) = &upstream.sock
                 && !seen_sock_values.insert(sock.clone())
             {
-                report.duplicate_upstream_sock(sock, &upstream.origin);
+                report.push(service_issues::duplicate_upstream_sock(
+                    sock,
+                    &upstream.origin,
+                ));
             }
         }
     }

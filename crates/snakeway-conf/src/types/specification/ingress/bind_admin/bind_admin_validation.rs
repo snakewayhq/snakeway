@@ -1,13 +1,13 @@
+use crate::types::specification::ingress::bind::bind_issues;
 use crate::types::{BindAdminSpec, BindInterfaceSpec, HclOrigin, TlsTerminationSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::is_valid_port;
-use confval::{ValidateSpec, ValidationReport};
+use confval::{ValidateSpec, ValidationIssue, ValidationReport};
 
 impl ValidateSpec<HclOrigin> for BindAdminSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Port validation.
         if !is_valid_port(self.port) {
-            report.invalid_port(self.port, origin);
+            report.push(bind_issues::invalid_port(self.port, origin));
         }
 
         // TLS cert/key/acme validation.
@@ -16,7 +16,7 @@ impl ValidateSpec<HclOrigin> for BindAdminSpec {
                 self.tls.validate(origin, report);
             }
             TlsTerminationSpec::Acme { .. } => {
-                report.admin_bind_does_not_support_acme(origin);
+                report.push(bind_issues::admin_bind_does_not_support_acme(origin));
             }
         }
 
@@ -31,13 +31,16 @@ impl ValidateSpec<HclOrigin> for BindAdminSpec {
                 // which resolves to all interfaces.
                 // Binding to all interfaces exposes the admin API to the network,
                 // which is not allowed.
-                report.invalid_bind_addr("0.0.0.0 or ::", origin);
+                report.push(bind_issues::invalid_bind_addr("0.0.0.0 or ::", origin));
             }
             Ok(_) => {
                 // All good.
             }
             Err(_) => {
-                report.invalid_bind_addr(&self.interface.to_string(), origin);
+                report.push(bind_issues::invalid_bind_addr(
+                    &self.interface.to_string(),
+                    origin,
+                ));
                 return;
             }
         }
@@ -49,11 +52,11 @@ impl ValidateSpec<HclOrigin> for BindAdminSpec {
             // There are two ways to bind to all interfaces:
             // 1. Use "all" enum option.
             // 2. Use a specific IP address.
-            report.report_error(
-                "admin API cannot bind to all interfaces".to_string(),
-                origin,
-                Some("Use loopback or a specific IP address.".to_string()),
-            );
+            report.push(ValidationIssue::error_with_help(
+                "admin API cannot bind to all interfaces",
+                origin.clone(),
+                "Use loopback or a specific IP address.",
+            ));
         }
     }
 }

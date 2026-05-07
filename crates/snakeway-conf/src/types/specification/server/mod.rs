@@ -1,5 +1,6 @@
 mod observability_spec;
 mod observability_validation;
+pub(crate) mod server_issues;
 mod server_spec;
 mod server_validation;
 mod tls_automation_spec;

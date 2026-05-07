@@ -1,5 +1,5 @@
+use crate::types::server_issues;
 use crate::types::{AcmeServerSpec, CertStoreSpec, HclOrigin, TlsAutomationSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::validate_cert_pem;
 
 use confval::{
@@ -22,25 +22,34 @@ impl ValidateSpec<HclOrigin> for TlsAutomationSpec {
 impl ValidateSpec<HclOrigin> for AcmeServerSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.directory_url.is_empty() {
-            report.server_tls_acme_directory_url_cannot_be_empty(origin);
+            report.push(server_issues::server_tls_acme_directory_url_cannot_be_empty(origin));
         } else if !self.directory_url.starts_with("https://") {
-            report.server_tls_acme_directory_url_must_be_https(origin);
+            report.push(server_issues::server_tls_acme_directory_url_must_be_https(
+                origin,
+            ));
         }
 
         if self.contact_email.is_empty() {
-            report.server_tls_acme_contact_email_cannot_be_empty(origin);
+            report.push(server_issues::server_tls_acme_contact_email_cannot_be_empty(origin));
         }
 
         if let Some(ca_file) = &self.ca_file
             && let Err(e) = validate_cert_pem(ca_file)
         {
-            report.server_tls_acme_ca_file_invalid(ca_file, &e, origin);
+            report.push(server_issues::server_tls_acme_ca_file_invalid(
+                ca_file, &e, origin,
+            ));
         }
 
         if self.data_dir.is_empty() {
-            report.server_tls_acme_data_dir_cannot_be_empty(origin);
+            report.push(server_issues::server_tls_acme_data_dir_cannot_be_empty(
+                origin,
+            ));
         } else if !self.data_dir.is_dir() {
-            report.server_tls_acme_data_dir_is_invalid(&self.data_dir, origin);
+            report.push(server_issues::server_tls_acme_data_dir_is_invalid(
+                &self.data_dir,
+                origin,
+            ));
         }
     }
 }
@@ -50,9 +59,11 @@ impl ValidateSpec<HclOrigin> for CertStoreSpec {
         match self {
             CertStoreSpec::Filesystem { cert_dir } => {
                 if cert_dir.is_empty() {
-                    report.server_tls_cert_dir_cannot_be_empty(origin);
+                    report.push(server_issues::server_tls_cert_dir_cannot_be_empty(origin));
                 } else if !cert_dir.is_dir() {
-                    report.server_tls_cert_dir_is_invalid(cert_dir, origin);
+                    report.push(server_issues::server_tls_cert_dir_is_invalid(
+                        cert_dir, origin,
+                    ));
                 }
             }
             CertStoreSpec::Memory => {}

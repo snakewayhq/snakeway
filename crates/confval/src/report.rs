@@ -70,15 +70,15 @@ impl<O: Origin> ValidationReport<O> {
     /// Colorized, grouped-by-source format for terminals.
     /// Requires the `color` feature (pulls in `owo-colors`).
     #[cfg(feature = "color")]
-    pub fn render_pretty(&self, w: &mut impl fmt::Write) -> fmt::Result {
+    pub fn render_pretty(&self, _w: &mut impl fmt::Write) -> fmt::Result {
         todo!("implement render_pretty")
     }
 }
 
 // Behind `serde` feature
 #[cfg(feature = "serde")]
-impl<O: Origin + Serialize> ValidationReport<O> {
-    pub fn render_json(&self, w: &mut impl io::Write) -> serde_json::Result<()> {
+impl<O: Origin + serde::Serialize> ValidationReport<O> {
+    pub fn render_json(&self, _w: &mut impl std::io::Write) -> serde_json::Result<()> {
         todo!("implement render_json")
     }
 }

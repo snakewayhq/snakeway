@@ -1,12 +1,16 @@
+use super::service_issues;
+use crate::types::specification::ingress::bind::bind_issues;
 use crate::types::{EndpointSpec, EndpointTlsSpec, HclOrigin, HostSpec, UpstreamSpec};
-use crate::validation::ValidationReportExt;
 use crate::validation::validator::{is_valid_hostname, is_valid_port};
 use confval::{ValidateSpec, ValidationReport};
 
 impl ValidateSpec<HclOrigin> for UpstreamSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.weight == 0 || self.weight > 1_000 {
-            report.invalid_upstream_weight(&self.weight, origin);
+            report.push(service_issues::invalid_upstream_weight(
+                &self.weight,
+                origin,
+            ));
         }
     }
 }
@@ -15,16 +19,16 @@ impl ValidateSpec<HclOrigin> for EndpointSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         match &self.host {
             HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-                report.invalid_upstream_ip(ip, origin);
+                report.push(service_issues::invalid_upstream_ip(ip, origin));
             }
             HostSpec::Hostname(name) if !is_valid_hostname(name) => {
-                report.invalid_upstream_hostname(name, origin);
+                report.push(service_issues::invalid_upstream_hostname(name, origin));
             }
             _ => {}
         }
 
         if !is_valid_port(self.port) {
-            report.invalid_port(self.port, origin);
+            report.push(bind_issues::invalid_port(self.port, origin));
         }
 
         if let Some(tls) = &self.tls {
@@ -36,7 +40,7 @@ impl ValidateSpec<HclOrigin> for EndpointSpec {
 impl ValidateSpec<HclOrigin> for EndpointTlsSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.sni.trim().is_empty() {
-            report.upstream_tls_sni_required(origin);
+            report.push(service_issues::upstream_tls_sni_required(origin));
         }
     }
 }

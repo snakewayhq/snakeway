@@ -1,5 +1,5 @@
+use crate::types::server_issues;
 use crate::types::{HclOrigin, ObservabilitySpec, OtelSpec};
-use crate::validation::ValidationReportExt;
 use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
@@ -21,13 +21,13 @@ impl ValidateSpec<HclOrigin> for OtelSpec {
         }
 
         if self.endpoint.is_empty() {
-            report.otel_endpoint_cannot_be_empty(origin);
+            report.push(server_issues::otel_endpoint_cannot_be_empty(origin));
         } else if !self.endpoint.starts_with("http://") && !self.endpoint.starts_with("https://") {
-            report.otel_endpoint_must_be_valid_url(origin);
+            report.push(server_issues::otel_endpoint_must_be_valid_url(origin));
         }
 
         if self.service_name.is_empty() {
-            report.otel_service_name_cannot_be_empty(origin);
+            report.push(server_issues::otel_service_name_cannot_be_empty(origin));
         }
 
         validate_range_field!(SAMPLING_RATIO, self.sampling_ratio, report, origin);

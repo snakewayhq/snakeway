@@ -1,5 +1,5 @@
+use super::admin_auth_issues;
 use crate::types::{AdminAuthSpec, BearerAuthSpec, HclOrigin};
-use crate::validation::ValidationReportExt;
 use crate::validation::{MIN_TOKEN_LENGTH, TokenFileIssue, parse_token_file};
 use confval::{ValidateSpec, ValidationReport};
 
@@ -8,7 +8,7 @@ impl ValidateSpec<HclOrigin> for AdminAuthSpec {
         if let Some(bearer) = &self.bearer {
             bearer.validate(origin, report);
         } else {
-            report.admin_auth_missing(origin);
+            report.push(admin_auth_issues::admin_auth_missing(origin));
         }
     }
 }
@@ -19,7 +19,11 @@ impl ValidateSpec<HclOrigin> for BearerAuthSpec {
 
         // token_file must be set (reject the default empty path directly).
         if path.as_os_str().is_empty() {
-            report.admin_auth_bearer_token_file_io_error(path, "token_file path is empty", origin);
+            report.push(admin_auth_issues::admin_auth_bearer_token_file_io_error(
+                path,
+                "token_file path is empty",
+                origin,
+            ));
             return;
         }
 
@@ -29,25 +33,33 @@ impl ValidateSpec<HclOrigin> for BearerAuthSpec {
         for err in &outcome.errors {
             match err {
                 TokenFileIssue::FileIoError(msg) => {
-                    report.admin_auth_bearer_token_file_io_error(path, msg, origin);
+                    report.push(admin_auth_issues::admin_auth_bearer_token_file_io_error(
+                        path, msg, origin,
+                    ));
                 }
                 TokenFileIssue::EmptyFile => {
-                    report.admin_auth_bearer_token_file_empty(path, origin);
+                    report.push(admin_auth_issues::admin_auth_bearer_token_file_empty(
+                        path, origin,
+                    ));
                 }
                 TokenFileIssue::EmptyLine(line) => {
-                    report.admin_auth_bearer_empty_line(path, *line, origin);
+                    report.push(admin_auth_issues::admin_auth_bearer_empty_line(
+                        path, *line, origin,
+                    ));
                 }
                 TokenFileIssue::CommentNotAllowed(line) => {
-                    report.admin_auth_bearer_comment_line(path, *line, origin);
+                    report.push(admin_auth_issues::admin_auth_bearer_comment_line(
+                        path, *line, origin,
+                    ));
                 }
                 TokenFileIssue::TokenTooShort { line, len } => {
-                    report.admin_auth_bearer_token_too_short(
+                    report.push(admin_auth_issues::admin_auth_bearer_token_too_short(
                         path,
                         *line,
                         *len,
                         MIN_TOKEN_LENGTH,
                         origin,
-                    );
+                    ));
                 }
                 TokenFileIssue::DuplicateToken { .. } => {
                     // Duplicates are warnings and are enumerated below.
@@ -61,7 +73,12 @@ impl ValidateSpec<HclOrigin> for BearerAuthSpec {
                 first_seen_line,
             } = warn
             {
-                report.admin_auth_bearer_duplicate_token(path, *line, *first_seen_line, origin);
+                report.push(admin_auth_issues::admin_auth_bearer_duplicate_token(
+                    path,
+                    *line,
+                    *first_seen_line,
+                    origin,
+                ));
             }
         }
     }
