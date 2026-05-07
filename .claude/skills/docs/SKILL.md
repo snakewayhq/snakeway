@@ -8,15 +8,15 @@ the docs.
 
 ## Documentation Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Framework | [Docusaurus](https://docusaurus.io/) (classic preset, TypeScript) |
-| Content | Markdown/MDX in `docs/docs/` |
-| Blog | Release notes in `docs/blog/` |
-| Sidebar | Manual in `docs/sidebars.ts` |
-| Site config | `docs/docusaurus.config.ts` |
-| Build/Preview | `just docs` (runs `npm start` in `docs/`) |
-| Package manager | npm (`docs/package.json`) |
+| Component       | Technology                                                        |
+|-----------------|-------------------------------------------------------------------|
+| Framework       | [Docusaurus](https://docusaurus.io/) (classic preset, TypeScript) |
+| Content         | Markdown/MDX in `docs/docs/`                                      |
+| Blog            | Release notes in `docs/blog/`                                     |
+| Sidebar         | Manual in `docs/sidebars.ts`                                      |
+| Site config     | `docs/docusaurus.config.ts`                                       |
+| Build/Preview   | `just docs` (runs `npm start` in `docs/`)                         |
+| Package manager | npm (`docs/package.json`)                                         |
 
 ---
 
@@ -62,27 +62,32 @@ No other fields (no description, date, keywords, etc.).
 Follow these rules precisely to match the existing documentation tone:
 
 ### Tone
+
 - **Professional but accessible** — explain complex concepts in plain language
 - **Imperative and instructional** — use "you can", "configure", "enable"
 - **Concise** — dense and scannable, no verbose prose
 
 ### Structure
+
 - Every configuration reference page follows: **Overview → Configuration Example → Sections per feature**
 - Start each page with a one-line bold description of what the thing does
 - Follow immediately with a `## Configuration Example` section showing a complete HCL block
 
 ### Headings
+
 - `##` for major sections (e.g., "Method Filtering", "Body Size Limits")
 - `###` for subsections (e.g., "Required Headers", "Denied Headers")
 - `####` sparingly, for individual field documentation
 
 ### Code Blocks
+
 - Use ` ```hcl ` for all HCL configuration examples
 - Show a **complete, realistic example** at the top of each page
 - Show **focused, minimal snippets** inline within each section
 - Include comments in HCL for default values: `max_header_bytes = 16384  # 16 KB`
 
 ### Admonitions
+
 Use Docusaurus admonitions for callouts:
 
 ```markdown
@@ -100,11 +105,13 @@ Helpful advice or best practice.
 ```
 
 ### Emphasis
+
 - **Bold** for field names, important concepts, and control terms
 - `` `code` `` for literal field names, values, methods, and status codes
 - Avoid italics — use bold instead
 
 ### Lists
+
 - Bullet points for rules and behaviors
 - Numbered lists only for ordered evaluation steps
 - Nested lists for hierarchy
@@ -117,15 +124,15 @@ Helpful advice or best practice.
 
 Compare the Rust spec struct against the corresponding docs page:
 
-| Spec file | Docs page |
-|-----------|-----------|
-| `crates/snakeway-conf/src/types/specification/server.rs` | `docs/docs/configuration/entry-point.md` |
-| `crates/snakeway-conf/src/types/specification/ingress.rs` | `docs/docs/configuration/ingress.md` |
-| `crates/snakeway-conf/src/types/specification/device/request_filter.rs` | `docs/docs/configuration/devices/request-filter.md` |
-| `crates/snakeway-conf/src/types/specification/device/identity.rs` | `docs/docs/configuration/devices/identity.md` |
-| `crates/snakeway-conf/src/types/specification/device/network_policy.rs` | `docs/docs/configuration/devices/network-policy.md` |
+| Spec file                                                                      | Docs page                                                  |
+|--------------------------------------------------------------------------------|------------------------------------------------------------|
+| `crates/snakeway-conf/src/types/specification/server.rs`                       | `docs/docs/configuration/entry-point.md`                   |
+| `crates/snakeway-conf/src/types/specification/ingress.rs`                      | `docs/docs/configuration/ingress.md`                       |
+| `crates/snakeway-conf/src/types/specification/device/request_filter.rs`        | `docs/docs/configuration/devices/request-filter.md`        |
+| `crates/snakeway-conf/src/types/specification/device/identity.rs`              | `docs/docs/configuration/devices/identity.md`              |
+| `crates/snakeway-conf/src/types/specification/device/network_policy.rs`        | `docs/docs/configuration/devices/network-policy.md`        |
 | `crates/snakeway-conf/src/types/specification/device/request_rate_limiting.rs` | `docs/docs/configuration/devices/request-rate-limiting.md` |
-| `crates/snakeway-conf/src/types/specification/device/structured_logging.rs` | `docs/docs/configuration/devices/structured-logging.md` |
+| `crates/snakeway-conf/src/types/specification/device/structured_logging.rs`    | `docs/docs/configuration/devices/structured-logging.md`    |
 
 Every `pub` field on a spec struct should have a corresponding section or mention in the
 docs page. Fields with `#[serde(default = "...")]` should show the default value in the
@@ -153,6 +160,7 @@ be mentioned in multiple places (e.g., a device doc and the lifecycle doc).
 ### Step 1 — Identify the field and its docs page
 
 Read the spec struct to understand:
+
 - Field name and type
 - Default value (from `#[serde(default = "...")]` or `Default` impl)
 - What it controls (from the doc comment or implementation)
@@ -189,6 +197,7 @@ This prevents slowloris-style attacks where an attacker sends a large
 
 * Default: Pingora's default (60 seconds) when not set
 * Set to a lower value (e.g., 5–10 seconds) for public-facing deployments
+
 ```
 
 ### Step 4 — Verify
@@ -238,6 +247,7 @@ setting = "value"
 ```
 
 Description of what it does.
+
 ```
 
 ### Step 3 — Add to sidebar

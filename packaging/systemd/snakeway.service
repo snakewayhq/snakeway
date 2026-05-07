@@ -9,15 +9,19 @@ Type=simple
 User=snakeway
 Group=snakeway
 Environment=SNAKEWAY_CONFIG=/etc/snakeway
+Environment=SNAKEWAY_LOG_DIR=/var/log/snakeway
 
 ExecStart=/usr/bin/snakeway run --config /etc/snakeway
 ExecReload=/bin/kill -HUP $MAINPID
 
 Restart=on-failure
 RestartSec=5s
+TimeoutStopSec=30
 
 RuntimeDirectory=snakeway
 RuntimeDirectoryMode=0750
+LogsDirectory=snakeway
+LogsDirectoryMode=0750
 
 # Reduce attack surface
 NoNewPrivileges=true
