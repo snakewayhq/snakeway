@@ -1,5 +1,5 @@
-use crate::types::OriginDeprecated;
-use crate::validation::ValidationReportDeprecated;
+use crate::types::HclOrigin;
+use confval::ValidationReport;
 use nix::NixPath;
 use std::fs;
 use std::path::Path;
@@ -20,8 +20,8 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 
 pub(crate) fn validate_geoip_db_file(
     geoip_db: &Path,
-    report: &mut ValidationReportDeprecated,
-    origin: &OriginDeprecated,
+    report: &mut ValidationReport,
+    origin: &HclOrigin,
 ) {
     if !geoip_db.is_file() {
         if NixPath::is_empty(geoip_db) {
@@ -38,8 +38,8 @@ pub(crate) fn validate_geoip_db_file(
 
 pub(crate) fn validate_ua_parser_regexes_file(
     path: &Path,
-    report: &mut ValidationReportDeprecated,
-    origin: &OriginDeprecated,
+    report: &mut ValidationReport,
+    origin: &HclOrigin,
 ) {
     if NixPath::is_empty(path) {
         report.ua_parser_regexes_path_is_empty(path.display(), origin);
@@ -128,30 +128,30 @@ mod tests {
     #[test]
     fn validate_ua_parser_empty_path() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
-        let origin = OriginDeprecated::test("ua_parser");
+        let mut report = ValidationReport::default();
+        let origin = HclOrigin::test("ua_parser");
         let path = Path::new("");
 
         // Act
         validate_ua_parser_regexes_file(path, &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(report.errors.iter().any(|e| e.message.contains("empty")));
     }
 
     #[test]
     fn validate_ua_parser_not_found() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
-        let origin = OriginDeprecated::test("ua_parser");
+        let mut report = ValidationReport::default();
+        let origin = HclOrigin::test("ua_parser");
         let path = Path::new("/nonexistent/regexes.yaml");
 
         // Act
         validate_ua_parser_regexes_file(path, &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -164,14 +164,14 @@ mod tests {
     fn validate_ua_parser_is_directory() {
         // Arrange
         let dir = tempdir().expect("failed to create temp dir");
-        let mut report = ValidationReportDeprecated::default();
-        let origin = OriginDeprecated::test("ua_parser");
+        let mut report = ValidationReport::default();
+        let origin = HclOrigin::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(dir.path(), &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -188,14 +188,14 @@ mod tests {
         let mut f = File::create(&path).expect("failed to create file");
         f.write_all(b"some random content")
             .expect("failed to write");
-        let mut report = ValidationReportDeprecated::default();
-        let origin = OriginDeprecated::test("ua_parser");
+        let mut report = ValidationReport::default();
+        let origin = HclOrigin::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(&path, &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .warnings
@@ -212,13 +212,13 @@ mod tests {
         let mut f = File::create(&path).expect("failed to create file");
         f.write_all(b"user_agent_parsers:\n  - regex: '.*'\n")
             .expect("failed to write");
-        let mut report = ValidationReportDeprecated::default();
-        let origin = OriginDeprecated::test("ua_parser");
+        let mut report = ValidationReport::default();
+        let origin = HclOrigin::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(&path, &mut report, &origin);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 }

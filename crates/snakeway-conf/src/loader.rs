@@ -2,7 +2,7 @@ use crate::discover::discover;
 use crate::lower::lower_configs;
 use crate::parse::{parse_devices, parse_ingress};
 use crate::types::RuntimeConfig;
-use crate::types::{DeviceSpec, EntrypointSpec, IngressSpec, OriginDeprecated, ServerSpec};
+use crate::types::{DeviceSpec, EntrypointSpec, HclOrigin, IngressSpec, ServerSpec};
 use crate::validation::{ConfigError, validate_spec};
 
 use std::fs;
@@ -23,7 +23,7 @@ pub fn load_config_from_specs(
 ) -> Result<RuntimeConfig, ConfigError> {
     let validation_report = validate_spec(&server_spec, &ingress_specs, &device_specs);
 
-    if validation_report.has_violations() {
+    if validation_report.has_issues() {
         return Err(ConfigError::SemanticValidationFailed { validation_report });
     }
 
@@ -50,7 +50,7 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
         source: e,
     })?;
 
-    entry.server.origin = OriginDeprecated::new(&root_path, "server", None);
+    entry.server.origin = HclOrigin::new(&root_path, "server", None);
 
     //--------------------------------------------------------------------------
     // Discover included files (hard fail)

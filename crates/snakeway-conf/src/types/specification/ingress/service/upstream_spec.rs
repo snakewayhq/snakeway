@@ -1,5 +1,5 @@
 use crate::resolution::ResolveError;
-use crate::types::OriginDeprecated;
+use crate::types::HclOrigin;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct UpstreamSpec {
     #[serde(skip)]
-    pub origin: OriginDeprecated,
+    pub origin: HclOrigin,
     pub endpoint: Option<EndpointSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sock: Option<String>,

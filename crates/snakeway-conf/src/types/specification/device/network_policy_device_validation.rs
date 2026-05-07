@@ -1,10 +1,10 @@
-use crate::types::{NetworkPolicyDeviceSpec, OriginDeprecated};
+use crate::types::{HclOrigin, NetworkPolicyDeviceSpec};
 use crate::validation::validator::validate_device_paths;
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use confval::{ValidateSpec, ValidationReport};
 use ipnet::IpNet;
 
-impl ValidateSpec for NetworkPolicyDeviceSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for NetworkPolicyDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for cidr in &self.cidr_allow {
             if cidr.parse::<IpNet>().is_err() {
                 report.invalid_network_policy_cidr(cidr, origin);
@@ -18,12 +18,12 @@ impl ValidateSpec for NetworkPolicyDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::NetworkPolicyDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn invalid_cidr_in_allow_list() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = NetworkPolicyDeviceSpec {
             enable: true,
             cidr_allow: vec!["not-a-cidr".to_string()],
@@ -34,7 +34,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -46,7 +46,7 @@ mod tests {
     #[test]
     fn valid_network_policy() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = NetworkPolicyDeviceSpec {
             enable: true,
             cidr_allow: vec!["10.0.0.0/8".to_string()],
@@ -57,13 +57,13 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn path_without_leading_slash_is_invalid() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = NetworkPolicyDeviceSpec {
             enable: true,
             cidr_allow: vec!["10.0.0.0/8".to_string()],
@@ -75,7 +75,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors

@@ -1,9 +1,9 @@
-use crate::types::{OriginDeprecated, ServiceSpec};
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use crate::types::{HclOrigin, ServiceSpec};
+use confval::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
-impl ValidateSpec for ServiceSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for ServiceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Validate circuit breaker.
         if let Some(cb) = &self.circuit_breaker
             && cb.enable_auto_recovery
@@ -73,10 +73,10 @@ impl ValidateSpec for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        EndpointSpec, EndpointTlsSpec, HostSpec, OriginDeprecated, ServiceRouteSpec, ServiceSpec,
+        EndpointSpec, EndpointTlsSpec, HclOrigin, HostSpec, ServiceRouteSpec, ServiceSpec,
         UpstreamSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
     use std::net::IpAddr;
     use std::str::FromStr;
 
@@ -102,26 +102,26 @@ mod tests {
     #[test]
     fn valid_minimum_service() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let service = minimal_service();
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn service_must_have_an_upstream() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let service = ServiceSpec {
             upstreams: vec![],
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn valid_websocket_service() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut service = minimal_service();
         service.routes.push(ServiceRouteSpec {
             hosts: vec!["ws.example.com".to_string()],
@@ -143,19 +143,19 @@ mod tests {
             ws_max_connections: Some(1_000),
             ..Default::default()
         });
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn upstream_cannot_have_both_endpoint_and_sock() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut service = minimal_service();
         service.upstreams[0].endpoint = Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
@@ -163,7 +163,7 @@ mod tests {
             tls: None,
         });
         service.upstreams[0].sock = Some("/tmp/test.sock".to_string());
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn upstream_must_have_either_endpoint_or_sock() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut upstream = minimal_upstream();
         upstream.endpoint = None;
         upstream.sock = None;
@@ -186,7 +186,7 @@ mod tests {
             upstreams: vec![upstream],
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn duplicate_upstream_socks_within_service() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let service = ServiceSpec {
             upstreams: vec![
                 UpstreamSpec {
@@ -217,7 +217,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -230,14 +230,14 @@ mod tests {
     #[test]
     fn route_with_no_hosts_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut service = minimal_service();
         service.routes.push(ServiceRouteSpec {
             hosts: vec![],
             path: "/".to_string(),
             ..Default::default()
         });
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn tls_sni_as_ip_rejected_when_verify_true() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut service = minimal_service();
         service.upstreams[0].endpoint = Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
@@ -261,7 +261,7 @@ mod tests {
                 ca_file: None,
             }),
         });
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn tls_ca_file_invalid_when_verify_true() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut service = minimal_service();
         service.upstreams[0].endpoint = Some(EndpointSpec {
             host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
@@ -285,7 +285,7 @@ mod tests {
                 ca_file: Some("/nonexistent/ca.pem".into()),
             }),
         });
-        let origin = OriginDeprecated::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);

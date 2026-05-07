@@ -18,13 +18,13 @@ impl ServiceRouteConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::OriginDeprecated;
+    use crate::types::HclOrigin;
 
     #[test]
     fn new_maps_fields_correctly() {
         // Arrange
         let spec = ServiceRouteSpec {
-            origin: OriginDeprecated::default(),
+            origin: HclOrigin::default(),
             hosts: vec!["example.com".to_string()],
             path: "/api".to_string(),
             enable_websocket: true,

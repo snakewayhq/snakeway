@@ -1,11 +1,11 @@
-use crate::types::OriginDeprecated;
+use crate::types::HclOrigin;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequestFilterDeviceSpec {
     #[serde(skip)]
-    pub origin: OriginDeprecated,
+    pub origin: HclOrigin,
 
     /// Whether this request filter device is enabled.
     pub enable: bool,

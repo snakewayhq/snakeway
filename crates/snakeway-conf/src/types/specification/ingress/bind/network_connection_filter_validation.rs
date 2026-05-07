@@ -1,8 +1,8 @@
-use crate::types::{NetworkConnectionFilterSpec, OriginDeprecated};
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use crate::types::{HclOrigin, NetworkConnectionFilterSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for NetworkConnectionFilterSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for NetworkConnectionFilterSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if !self.ip_family.ipv4 && !self.ip_family.ipv6 {
             report.connection_filter_requires_at_least_one_ip_family(origin);
         }
@@ -24,12 +24,12 @@ impl ValidateSpec for NetworkConnectionFilterSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec, OriginDeprecated,
+        CidrSpec, HclOrigin, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
 
-    fn test_origin() -> OriginDeprecated {
-        OriginDeprecated::test("connection_filter")
+    fn test_origin() -> HclOrigin {
+        HclOrigin::test("connection_filter")
     }
 
     #[test]
@@ -44,7 +44,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -68,7 +68,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -92,7 +92,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -116,7 +116,7 @@ mod tests {
             on_no_peer_addr: OnNoPeerAddrSpec::default(),
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);

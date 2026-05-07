@@ -1,9 +1,9 @@
-use crate::types::{BindInterfaceSpec, BindSpec, OriginDeprecated};
+use crate::types::{BindInterfaceSpec, BindSpec, HclOrigin};
 use crate::validation::validator::is_valid_port;
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for BindSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for BindSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Port validation.
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
@@ -56,8 +56,8 @@ impl ValidateSpec for BindSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{BindInterfaceInput, BindSpec, OriginDeprecated, RedirectSpec};
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use crate::types::{BindInterfaceInput, BindSpec, HclOrigin, RedirectSpec};
+    use confval::{ValidateSpec, ValidationReport};
 
     fn minimal_bind() -> BindSpec {
         BindSpec {
@@ -70,19 +70,19 @@ mod tests {
     #[test]
     fn bind_port_zero_rejected() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind = BindSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 0,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -94,19 +94,19 @@ mod tests {
     #[test]
     fn bind_unspecified_ip_rejected() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind = BindSpec {
             interface: BindInterfaceInput::Keyword("0.0.0.0".to_string()),
             port: 8080,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -118,19 +118,19 @@ mod tests {
     #[test]
     fn bind_invalid_interface_rejected() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind = BindSpec {
             interface: BindInterfaceInput::Keyword("bad-keyword".to_string()),
             port: 8080,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -142,24 +142,24 @@ mod tests {
     #[test]
     fn valid_minimal_bind() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind = minimal_bind();
-        let origin = OriginDeprecated::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn http2_requires_tls() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut bind = minimal_bind();
         bind.enable_http2 = true;
-        let origin = OriginDeprecated::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
@@ -175,13 +175,13 @@ mod tests {
     #[test]
     fn redirect_should_not_exist_without_tls() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let mut bind = minimal_bind();
         bind.redirect_http_to_https = Some(RedirectSpec {
             port: 8080,
             status: 308,
         });
-        let origin = OriginDeprecated::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);

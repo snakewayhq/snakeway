@@ -1,8 +1,8 @@
-use crate::types::{OriginDeprecated, StaticFilesSpec};
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use crate::types::{HclOrigin, StaticFilesSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for StaticFilesSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for StaticFilesSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for route in &self.routes {
             route.validate(origin, report);
         }

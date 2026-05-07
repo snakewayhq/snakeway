@@ -43,14 +43,14 @@ impl From<CachePolicySpec> for CachePolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::OriginDeprecated;
+    use crate::types::HclOrigin;
     use std::path::PathBuf;
 
     #[test]
     fn new_maps_fields_correctly() {
         // Arrange
         let spec = StaticRouteSpec {
-            origin: OriginDeprecated::default(),
+            origin: HclOrigin::default(),
             hosts: vec!["static.example.com".to_string()],
             path: "/assets".to_string(),
             file_dir: PathBuf::from("/var/www/static"),

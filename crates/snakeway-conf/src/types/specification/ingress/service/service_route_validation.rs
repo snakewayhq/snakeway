@@ -1,8 +1,8 @@
-use crate::types::{OriginDeprecated, ServiceRouteSpec};
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use crate::types::{HclOrigin, ServiceRouteSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for ServiceRouteSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for ServiceRouteSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.hosts.is_empty() {
             report.route_has_no_hosts(origin);
         }

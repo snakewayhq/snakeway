@@ -1,4 +1,4 @@
-use crate::types::OriginDeprecated;
+use crate::types::HclOrigin;
 use owo_colors::OwoColorize;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -9,7 +9,7 @@ use std::path::{Display, Path};
 pub struct ValidationIssue {
     pub severity: Severity,
     pub message: String,
-    pub origin: OriginDeprecated,
+    pub origin: HclOrigin,
     pub help: Option<String>,
 }
 
@@ -34,11 +34,11 @@ struct ValidationReportJson<'a> {
 }
 
 impl ValidationReportDeprecated {
-    pub fn has_violations(&self) -> bool {
+    pub fn has_issues(&self) -> bool {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
 
-    pub fn error(&mut self, message: String, origin: &OriginDeprecated, help: Option<String>) {
+    pub fn error(&mut self, message: String, origin: &HclOrigin, help: Option<String>) {
         self.errors.push(ValidationIssue {
             severity: Severity::Error,
             message,
@@ -47,7 +47,7 @@ impl ValidationReportDeprecated {
         });
     }
 
-    fn warning(&mut self, message: String, origin: &OriginDeprecated, help: Option<String>) {
+    fn warning(&mut self, message: String, origin: &HclOrigin, help: Option<String>) {
         self.warnings.push(ValidationIssue {
             severity: Severity::Warning,
             message,
@@ -57,7 +57,7 @@ impl ValidationReportDeprecated {
     }
 
     pub fn render_json(&self) {
-        if !self.has_violations() {
+        if !self.has_issues() {
             return;
         }
         let json = ValidationReportJson {
@@ -72,7 +72,7 @@ impl ValidationReportDeprecated {
     }
 
     pub fn render_plain(&self) {
-        if !self.has_violations() {
+        if !self.has_issues() {
             return;
         }
 
@@ -106,7 +106,7 @@ impl ValidationReportDeprecated {
     }
 
     pub fn render_pretty(&self) {
-        if !self.has_violations() {
+        if !self.has_issues() {
             return;
         }
 
@@ -168,7 +168,7 @@ impl ValidationReportDeprecated {
 
 /// Ingress Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn missing_bind(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn missing_bind(&mut self, origin: &HclOrigin) {
         self.error(
             "ingress config must have a bind or bind_admin declaration".to_string(),
             origin,
@@ -179,18 +179,18 @@ impl ValidationReportDeprecated {
 
 /// Bind Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn invalid_bind_addr(&mut self, addr: &str, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_bind_addr(&mut self, addr: &str, origin: &HclOrigin) {
         self.error(format!("invalid bind address: {}", addr), origin, None);
     }
 
-    pub(crate) fn duplicate_bind_addr(&mut self, addr: &str, origin: &OriginDeprecated) {
+    pub(crate) fn duplicate_bind_addr(&mut self, addr: &str, origin: &HclOrigin) {
         self.error(format!("duplicate bind address: {}", addr), origin, None);
     }
 
     pub(crate) fn ingress_tls_manual_cert_pair_invalid(
         &mut self,
         message: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("invalid TLS manual cert pair: {}", message),
@@ -199,11 +199,11 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn acme_tls_requires_domains(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn acme_tls_requires_domains(&mut self, origin: &HclOrigin) {
         self.error("missing domains for ACME TLS".to_string(), origin, None);
     }
 
-    pub(crate) fn admin_bind_does_not_support_acme(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn admin_bind_does_not_support_acme(&mut self, origin: &HclOrigin) {
         self.error(
             "admin bind does not support ACME TLS".to_string(),
             origin,
@@ -211,7 +211,7 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn http2_requires_tls(&mut self, addr: &str, origin: &OriginDeprecated) {
+    pub(crate) fn http2_requires_tls(&mut self, addr: &str, origin: &HclOrigin) {
         self.error(
             format!("HTTP/2 requires TLS: {}", addr),
             origin,
@@ -219,11 +219,7 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn redirect_http_to_https_requires_tls(
-        &mut self,
-        addr: &str,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn redirect_http_to_https_requires_tls(&mut self, addr: &str, origin: &HclOrigin) {
         self.error(
             format!("redirect_http_to_https requires TLS: {}", addr),
             origin,
@@ -231,11 +227,7 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn duplicate_redirect_http_to_https_port(
-        &mut self,
-        port: u16,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn duplicate_redirect_http_to_https_port(&mut self, port: u16, origin: &HclOrigin) {
         self.error(
             format!("duplicate redirect_http_to_https port: {}", port),
             origin,
@@ -243,7 +235,7 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn invalid_port(&mut self, port: u16, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_port(&mut self, port: u16, origin: &HclOrigin) {
         self.error(
             format!("invalid port: {}", port),
             origin,
@@ -251,10 +243,7 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn connection_filter_requires_at_least_one_ip_family(
-        &mut self,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn connection_filter_requires_at_least_one_ip_family(&mut self, origin: &HclOrigin) {
         self.error(
             "connection_filter must enable at least one IP family".to_string(),
             origin,
@@ -265,7 +254,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn invalid_cidr_in_connection_filter_allow_list(
         &mut self,
         cidr: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("invalid CIDR in connection_filter.cidr.allow: {cidr}"),
@@ -277,7 +266,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn invalid_cidr_in_connection_filter_deny_list(
         &mut self,
         cidr: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("invalid CIDR in connection_filter.cidr.deny: {cidr}"),
@@ -289,7 +278,7 @@ impl ValidationReportDeprecated {
 
 /// Admin Auth Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn admin_auth_missing(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn admin_auth_missing(&mut self, origin: &HclOrigin) {
         self.error(
             "bind_admin.auth is required".to_string(),
             origin,
@@ -304,7 +293,7 @@ impl ValidationReportDeprecated {
         &mut self,
         path: &Path,
         message: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -317,11 +306,7 @@ impl ValidationReportDeprecated {
         );
     }
 
-    pub(crate) fn admin_auth_bearer_token_file_empty(
-        &mut self,
-        path: &Path,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn admin_auth_bearer_token_file_empty(&mut self, path: &Path, origin: &HclOrigin) {
         self.error(
             format!("bearer token_file is empty: {}", path.display()),
             origin,
@@ -333,7 +318,7 @@ impl ValidationReportDeprecated {
         &mut self,
         path: &Path,
         line: usize,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -353,7 +338,7 @@ impl ValidationReportDeprecated {
         &mut self,
         path: &Path,
         line: usize,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -372,7 +357,7 @@ impl ValidationReportDeprecated {
         line: usize,
         len: usize,
         min: usize,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -395,7 +380,7 @@ impl ValidationReportDeprecated {
         path: &Path,
         line: usize,
         first_seen_line: usize,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.warning(
             format!(
@@ -412,7 +397,7 @@ impl ValidationReportDeprecated {
 
 /// Static Files Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_static_dir(&mut self, dir: &std::path::Path, origin: &HclOrigin) {
         self.error(
             format!("invalid static directory: {}", dir.display()),
             origin,
@@ -423,7 +408,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn invalid_static_dir_must_be_absolute(
         &mut self,
         dir: &std::path::Path,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -438,11 +423,11 @@ impl ValidationReportDeprecated {
 
 /// Service Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn service_has_no_upstreams(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn service_has_no_upstreams(&mut self, origin: &HclOrigin) {
         self.error("service has no upstream backends".to_string(), origin, None)
     }
 
-    pub(crate) fn invalid_upstream_weight(&mut self, weight: &u32, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_upstream_weight(&mut self, weight: &u32, origin: &HclOrigin) {
         self.error(format!("invalid upstream weight: {}", weight), origin, None)
     }
 
@@ -451,7 +436,7 @@ impl ValidationReportDeprecated {
         sock: &str,
         host: &str,
         port: u16,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -463,26 +448,26 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn upstream_must_have_a_sock_or_endpoint(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn upstream_must_have_a_sock_or_endpoint(&mut self, origin: &HclOrigin) {
         let message =
             "invalid upstream - it must have a sock or an endpoint, but neither are defined"
                 .to_string();
         self.error(message, origin, Some("Only one can be set.".to_string()));
     }
 
-    pub(crate) fn duplicate_upstream_sock(&mut self, sock: &str, origin: &OriginDeprecated) {
+    pub(crate) fn duplicate_upstream_sock(&mut self, sock: &str, origin: &HclOrigin) {
         self.error(format!("duplicate upstream sock: {}", sock), origin, None)
     }
 
-    pub(crate) fn route_has_no_hosts(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn route_has_no_hosts(&mut self, origin: &HclOrigin) {
         self.error("route has no hosts".to_string(), origin, None)
     }
 
-    pub(crate) fn upstream_tls_sni_required(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn upstream_tls_sni_required(&mut self, origin: &HclOrigin) {
         self.error("upstream TLS SNI required".to_string(), origin, None)
     }
 
-    pub(crate) fn upstream_tls_sni_must_be_dns(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn upstream_tls_sni_must_be_dns(&mut self, origin: &HclOrigin) {
         self.error(
             "upstream TLS SNI must be DNS name".to_string(),
             origin,
@@ -494,7 +479,7 @@ impl ValidationReportDeprecated {
         &mut self,
         ca_file: &Path,
         err: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -507,7 +492,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn duplicate_route_path(&mut self, path: &str, origin: &OriginDeprecated) {
+    pub(crate) fn duplicate_route_path(&mut self, path: &str, origin: &HclOrigin) {
         self.error(
             format!("duplicate route path within the same listener: {path}"),
             origin,
@@ -521,7 +506,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn websocket_route_cannot_be_used_with_http2(
         &mut self,
         path: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("websocket route cannot be used with HTTP2: {}", path),
@@ -530,11 +515,11 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn invalid_upstream_ip(&mut self, ip: &IpAddr, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_upstream_ip(&mut self, ip: &IpAddr, origin: &HclOrigin) {
         self.error(format!("invalid upstream ip: {}", ip), origin, None)
     }
 
-    pub(crate) fn invalid_upstream_hostname(&mut self, hostname: &str, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_upstream_hostname(&mut self, hostname: &str, origin: &HclOrigin) {
         self.error(
             format!("invalid upstream hostname: {}", hostname),
             origin,
@@ -545,14 +530,14 @@ impl ValidationReportDeprecated {
 
 /// Server Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn invalid_config_version(&mut self, version: &u32, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_config_version(&mut self, version: &u32, origin: &HclOrigin) {
         self.error(format!("invalid config version: {}", version), origin, None)
     }
 
     pub(crate) fn pid_file_parent_dir_does_not_exist(
         &mut self,
         pid_file: Display,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("pid file parent directory does not exist: {}", pid_file),
@@ -561,11 +546,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn pid_file_parent_not_a_dir(
-        &mut self,
-        pid_file: Display,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn pid_file_parent_not_a_dir(&mut self, pid_file: Display, origin: &HclOrigin) {
         self.error(
             format!("pid file parent is not a directory: {}", pid_file),
             origin,
@@ -573,7 +554,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_ca_file_invalid(&mut self, message: &str, origin: &OriginDeprecated) {
+    pub(crate) fn server_ca_file_invalid(&mut self, message: &str, origin: &HclOrigin) {
         self.error(
             format!("server CA file is invalid: {}", message),
             origin,
@@ -583,7 +564,7 @@ impl ValidationReportDeprecated {
 
     pub(crate) fn acme_configured_in_ingress_but_server_tls_not_configured(
         &mut self,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             "ACME configured in ingress but server.tls_automation is not configured".to_string(),
@@ -592,10 +573,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_tls_acme_directory_url_cannot_be_empty(
-        &mut self,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn server_tls_acme_directory_url_cannot_be_empty(&mut self, origin: &HclOrigin) {
         self.error(
             "server TLS ACME directory URL cannot be empty".to_string(),
             origin,
@@ -603,10 +581,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_tls_acme_directory_url_must_be_https(
-        &mut self,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn server_tls_acme_directory_url_must_be_https(&mut self, origin: &HclOrigin) {
         self.error(
             "server TLS ACME directory URL must be a valid URL".to_string(),
             origin,
@@ -614,10 +589,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_tls_acme_contact_email_cannot_be_empty(
-        &mut self,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn server_tls_acme_contact_email_cannot_be_empty(&mut self, origin: &HclOrigin) {
         self.error(
             "server TLS ACME contact email cannot be empty".to_string(),
             origin,
@@ -629,7 +601,7 @@ impl ValidationReportDeprecated {
         &mut self,
         ca_file: &Path,
         message: &str,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -649,7 +621,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_tls_acme_data_dir_cannot_be_empty(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn server_tls_acme_data_dir_cannot_be_empty(&mut self, origin: &HclOrigin) {
         self.error(
             "server TLS ACME data_dir path is required".to_string(),
             origin,
@@ -660,7 +632,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn server_tls_acme_data_dir_is_invalid(
         &mut self,
         data_dir: &Path,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!(
@@ -672,7 +644,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_tls_cert_dir_cannot_be_empty(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn server_tls_cert_dir_cannot_be_empty(&mut self, origin: &HclOrigin) {
         self.error(
             "server TLS filesystem cert_dir path is required".to_string(),
             origin,
@@ -680,11 +652,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn server_tls_cert_dir_is_invalid(
-        &mut self,
-        cert_dir: &Path,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn server_tls_cert_dir_is_invalid(&mut self, cert_dir: &Path, origin: &HclOrigin) {
         self.error(
             format!(
                 "server TLS cert_dir does not exist or is not a directory: {}",
@@ -695,10 +663,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn warn_server_tls_configured_with_no_tls_listeners(
-        &mut self,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn warn_server_tls_configured_with_no_tls_listeners(&mut self, origin: &HclOrigin) {
         self.warning(
             "server.tls_automation configured but no TLS listeners defined".to_string(),
             origin,
@@ -709,7 +674,7 @@ impl ValidationReportDeprecated {
 
 /// Observability Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn otel_endpoint_cannot_be_empty(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn otel_endpoint_cannot_be_empty(&mut self, origin: &HclOrigin) {
         self.error(
             "observability.otel.endpoint cannot be empty when enabled".to_string(),
             origin,
@@ -720,7 +685,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn otel_endpoint_must_be_valid_url(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn otel_endpoint_must_be_valid_url(&mut self, origin: &HclOrigin) {
         self.error(
             "observability.otel.endpoint must be a valid URL".to_string(),
             origin,
@@ -728,7 +693,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn otel_service_name_cannot_be_empty(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn otel_service_name_cannot_be_empty(&mut self, origin: &HclOrigin) {
         self.error(
             "observability.otel.service_name cannot be empty when enabled".to_string(),
             origin,
@@ -739,25 +704,17 @@ impl ValidationReportDeprecated {
 
 /// Wasm Device Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn wasm_device_path_is_empty(&mut self, path: Display, origin: &OriginDeprecated) {
+    pub(crate) fn wasm_device_path_is_empty(&mut self, path: Display, origin: &HclOrigin) {
         self.error(format!("wasm device path is empty: {}", path), origin, None)
     }
-    pub(crate) fn wasm_device_path_does_not_exist(
-        &mut self,
-        path: Display,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn wasm_device_path_does_not_exist(&mut self, path: Display, origin: &HclOrigin) {
         self.error(
             format!("wasm device path does not exist: {}", path),
             origin,
             None,
         )
     }
-    pub(crate) fn wasm_device_path_is_not_a_file(
-        &mut self,
-        path: Display,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn wasm_device_path_is_not_a_file(&mut self, path: Display, origin: &HclOrigin) {
         self.error(
             format!("wasm device path is not a file: {}", path),
             origin,
@@ -768,7 +725,7 @@ impl ValidationReportDeprecated {
 
 /// Builtin Identity Device Spec Validation
 impl ValidationReportDeprecated {
-    pub(crate) fn geoip_enabled_with_no_dbs_specified(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn geoip_enabled_with_no_dbs_specified(&mut self, origin: &HclOrigin) {
         self.warning(
             "geoip enabled with no dbs specified".to_string(),
             origin,
@@ -776,21 +733,17 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn geoip_db_path_is_empty(&mut self, path: Display, origin: &OriginDeprecated) {
+    pub(crate) fn geoip_db_path_is_empty(&mut self, path: Display, origin: &HclOrigin) {
         self.error(format!("geoip db path is empty: {}", path), origin, None)
     }
-    pub(crate) fn geoip_db_path_does_not_exist(
-        &mut self,
-        path: Display,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn geoip_db_path_does_not_exist(&mut self, path: Display, origin: &HclOrigin) {
         self.error(
             format!("geoip db path does not exist: {}", path),
             origin,
             None,
         )
     }
-    pub(crate) fn geoip_db_is_not_a_file(&mut self, path: Display, origin: &OriginDeprecated) {
+    pub(crate) fn geoip_db_is_not_a_file(&mut self, path: Display, origin: &HclOrigin) {
         self.error(
             format!("geoip db path is not a file: {}", path),
             origin,
@@ -798,11 +751,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn ua_parser_regexes_path_is_empty(
-        &mut self,
-        path: Display,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn ua_parser_regexes_path_is_empty(&mut self, path: Display, origin: &HclOrigin) {
         self.error(
             format!("ua_parser_regexes path is empty: {}", path),
             origin,
@@ -813,7 +762,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn ua_parser_regexes_path_does_not_exist(
         &mut self,
         path: Display,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("ua_parser_regexes path does not exist: {}", path),
@@ -828,7 +777,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn ua_parser_regexes_path_is_not_a_file(
         &mut self,
         path: Display,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.error(
             format!("ua_parser_regexes path is not a file: {}", path),
@@ -840,7 +789,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn ua_parser_regexes_file_missing_expected_content(
         &mut self,
         path: Display,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.warning(
             format!(
@@ -855,11 +804,11 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn invalid_trusted_proxy(&mut self, proxy: &str, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_trusted_proxy(&mut self, proxy: &str, origin: &HclOrigin) {
         self.error(format!("invalid trusted proxy: {}", proxy), origin, None)
     }
 
-    pub(crate) fn trusted_proxies_cannot_trust_all_networks(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn trusted_proxies_cannot_trust_all_networks(&mut self, origin: &HclOrigin) {
         self.error(
             "trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)".to_string(),
             origin,
@@ -870,7 +819,7 @@ impl ValidationReportDeprecated {
     pub(crate) fn trusted_proxies_contains_a_public_ip_range_warning(
         &mut self,
         network: ipnet::IpNet,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.warning(
             format!("trusted_proxies should NOT contain a public IP range: {network}"),
@@ -879,11 +828,11 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn device_already_defined(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn device_already_defined(&mut self, origin: &HclOrigin) {
         self.error("device already defined".to_string(), origin, None)
     }
 
-    pub(crate) fn device_requires_identity_device(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn device_requires_identity_device(&mut self, origin: &HclOrigin) {
         self.error(
             "device requires identity device to be present and enabled".to_string(),
             origin,
@@ -891,7 +840,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn network_policy_device_requires_cidr_allow(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn network_policy_device_requires_cidr_allow(&mut self, origin: &HclOrigin) {
         self.error(
             "network policy device requires cidr_allow list to be set".to_string(),
             origin,
@@ -899,7 +848,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_network_policy_cidr(&mut self, cidr: &str, origin: &HclOrigin) {
         self.error(
             format!("invalid network policy CIDR: {}", cidr),
             origin,
@@ -907,11 +856,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn device_path_must_start_with_slash(
-        &mut self,
-        path: &str,
-        origin: &OriginDeprecated,
-    ) {
+    pub(crate) fn device_path_must_start_with_slash(&mut self, path: &str, origin: &HclOrigin) {
         self.error(
             format!("device path must start with '/': {path}"),
             origin,
@@ -919,7 +864,7 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn structured_logging_identity_fields_empty(&mut self, origin: &OriginDeprecated) {
+    pub(crate) fn structured_logging_identity_fields_empty(&mut self, origin: &HclOrigin) {
         self.warning(
             "structured logging identity fields cannot be empty".to_string(),
             origin,
@@ -929,7 +874,7 @@ impl ValidationReportDeprecated {
 
     pub(crate) fn structured_logging_includes_headers_but_no_headers_set(
         &mut self,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.warning(
             "structured logging includes headers but no headers are set".to_string(),
@@ -941,11 +886,11 @@ impl ValidationReportDeprecated {
         )
     }
 
-    pub(crate) fn invalid_http_method(&mut self, method: &str, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_http_method(&mut self, method: &str, origin: &HclOrigin) {
         self.error(format!("invalid HTTP method: {}", method), origin, None)
     }
 
-    pub(crate) fn invalid_http_header_name(&mut self, header: &str, origin: &OriginDeprecated) {
+    pub(crate) fn invalid_http_header_name(&mut self, header: &str, origin: &HclOrigin) {
         self.error(
             format!("invalid HTTP header name: {}", header),
             origin,
@@ -955,7 +900,7 @@ impl ValidationReportDeprecated {
 
     pub(crate) fn warn_max_suspicious_bytes_large_than_max_body_bytes(
         &mut self,
-        origin: &OriginDeprecated,
+        origin: &HclOrigin,
     ) {
         self.warning(
             "max_suspicious_body_bytes should not be larger than max_body_bytes".to_string(),
@@ -970,46 +915,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn has_violations_false_when_empty() {
+    fn has_issues_false_when_empty() {
         // Arrange
         let report = ValidationReportDeprecated::default();
 
         // Act
-        let result = report.has_violations();
+        let result = report.has_issues();
 
         // Assert
         assert!(!result);
     }
 
     #[test]
-    fn has_violations_true_with_error() {
+    fn has_issues_true_with_error() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        report.error(
-            "test error".to_string(),
-            &OriginDeprecated::test("test"),
-            None,
-        );
+        report.error("test error".to_string(), &HclOrigin::test("test"), None);
 
         // Act
-        let result = report.has_violations();
+        let result = report.has_issues();
 
         // Assert
         assert!(result);
     }
 
     #[test]
-    fn has_violations_true_with_warning() {
+    fn has_issues_true_with_warning() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        report.warning(
-            "test warning".to_string(),
-            &OriginDeprecated::test("test"),
-            None,
-        );
+        report.warning("test warning".to_string(), &HclOrigin::test("test"), None);
 
         // Act
-        let result = report.has_violations();
+        let result = report.has_issues();
 
         // Assert
         assert!(result);
@@ -1023,7 +960,7 @@ mod tests {
         // Act
         report.error(
             "test message".to_string(),
-            &OriginDeprecated::test("test"),
+            &HclOrigin::test("test"),
             Some("help text".to_string()),
         );
 
@@ -1041,7 +978,7 @@ mod tests {
         let issue = ValidationIssue {
             severity: Severity::Error,
             message: "some error".to_string(),
-            origin: OriginDeprecated::test("test"),
+            origin: HclOrigin::test("test"),
             help: Some("try this instead".to_string()),
         };
 
@@ -1063,7 +1000,7 @@ mod tests {
         let issue = ValidationIssue {
             severity: Severity::Error,
             message: "some error".to_string(),
-            origin: OriginDeprecated::test("test"),
+            origin: HclOrigin::test("test"),
             help: None,
         };
 
@@ -1082,16 +1019,8 @@ mod tests {
     fn render_json_contains_errors_and_warnings() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        report.error(
-            "bad port".to_string(),
-            &OriginDeprecated::test("bind"),
-            None,
-        );
-        report.warning(
-            "unused field".to_string(),
-            &OriginDeprecated::test("server"),
-            None,
-        );
+        report.error("bad port".to_string(), &HclOrigin::test("bind"), None);
+        report.warning("unused field".to_string(), &HclOrigin::test("server"), None);
 
         let json_struct = ValidationReportJson {
             errors: &report.errors,
@@ -1114,7 +1043,7 @@ mod tests {
         let mut report = ValidationReportDeprecated::default();
         report.error(
             "test error".to_string(),
-            &OriginDeprecated::test("bind"),
+            &HclOrigin::test("bind"),
             Some("try fixing it".to_string()),
         );
 
@@ -1126,11 +1055,7 @@ mod tests {
     fn render_pretty_does_not_panic_with_warnings() {
         // Arrange
         let mut report = ValidationReportDeprecated::default();
-        report.warning(
-            "test warning".to_string(),
-            &OriginDeprecated::test("server"),
-            None,
-        );
+        report.warning("test warning".to_string(), &HclOrigin::test("server"), None);
 
         // Act + Assert (no panic)
         report.render_pretty();

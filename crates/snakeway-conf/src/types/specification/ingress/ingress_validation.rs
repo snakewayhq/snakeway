@@ -1,8 +1,8 @@
-use crate::types::{IngressSpec, OriginDeprecated};
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use crate::types::{HclOrigin, IngressSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for IngressSpec {
-    fn validate(&self, _origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for IngressSpec {
+    fn validate(&self, _origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Bind validation.
         if let Some(bind) = &self.bind {
             bind.validate(&bind.origin, report);

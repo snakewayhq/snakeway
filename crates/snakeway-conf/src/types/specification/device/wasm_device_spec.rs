@@ -1,11 +1,11 @@
-use crate::types::OriginDeprecated;
+use crate::types::HclOrigin;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct WasmDeviceSpec {
     #[serde(skip)]
-    pub origin: OriginDeprecated,
+    pub origin: HclOrigin,
 
     pub enable: bool,
 

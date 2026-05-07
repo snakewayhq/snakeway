@@ -4455,6 +4455,7 @@ dependencies = [
 name = "snakeway-conf"
 version = "0.12.0"
 dependencies = [
+ "confval",
  "glob",
  "hcl-rs",
  "hotpath",

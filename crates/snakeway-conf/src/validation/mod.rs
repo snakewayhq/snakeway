@@ -3,7 +3,6 @@ mod multi_file;
 mod report;
 mod single_file;
 mod validate;
-mod validate_spec_trait;
 pub(crate) mod validator;
 
 #[cfg(test)]
@@ -13,4 +12,3 @@ pub(crate) use validator::*;
 
 pub use error::ConfigError;
 pub use report::*;
-pub use validate_spec_trait::ValidateSpec;

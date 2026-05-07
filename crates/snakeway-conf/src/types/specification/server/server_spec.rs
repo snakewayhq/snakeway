@@ -1,11 +1,11 @@
-use crate::types::{ObservabilitySpec, OriginDeprecated, TlsAutomationSpec};
+use crate::types::{HclOrigin, ObservabilitySpec, TlsAutomationSpec};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServerSpec {
     #[serde(skip)]
-    pub origin: OriginDeprecated,
+    pub origin: HclOrigin,
 
     /// Configuration schema version
     pub version: u32,

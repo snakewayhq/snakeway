@@ -1,12 +1,12 @@
 use crate::types::{
-    CircuitBreakerSpec, HealthCheckSpec, OriginDeprecated, ServiceRouteSpec, UpstreamSpec,
+    CircuitBreakerSpec, HclOrigin, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Default, Serialize)]
 pub struct ServiceSpec {
     #[serde(skip)]
-    pub origin: OriginDeprecated,
+    pub origin: HclOrigin,
     #[serde(default)]
     pub load_balancing_strategy: LoadBalancingStrategySpec,
     pub routes: Vec<ServiceRouteSpec>,

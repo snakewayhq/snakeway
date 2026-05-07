@@ -1,9 +1,9 @@
-use crate::types::{OriginDeprecated, TlsTerminationSpec};
+use crate::types::{HclOrigin, TlsTerminationSpec};
 use crate::validation::validator::validate_cert_key_pair;
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for TlsTerminationSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for TlsTerminationSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         match self {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(cert, key) {
@@ -21,8 +21,8 @@ impl ValidateSpec for TlsTerminationSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{OriginDeprecated, TlsTerminationSpec};
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use crate::types::{HclOrigin, TlsTerminationSpec};
+    use confval::{ValidateSpec, ValidationReport};
     use std::path::PathBuf;
 
     use rcgen::generate_simple_self_signed;
@@ -33,18 +33,18 @@ mod tests {
     #[test]
     fn acme_tls_empty_domains_rejected() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = TlsTerminationSpec::Acme {
             domains: vec![],
             challenge: Default::default(),
         };
-        let origin = OriginDeprecated::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -56,18 +56,18 @@ mod tests {
     #[test]
     fn valid_acme_tls_with_domains() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = TlsTerminationSpec::Acme {
             domains: vec!["example.com".to_string()],
             challenge: Default::default(),
         };
-        let origin = OriginDeprecated::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -92,18 +92,18 @@ mod tests {
             .write_all(key_pem.as_bytes())
             .expect("failed to write key");
 
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = TlsTerminationSpec::Manual {
             cert: cert_path,
             key: key_path,
         };
-        let origin = OriginDeprecated::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -115,9 +115,9 @@ mod tests {
             "invalid TLS manual cert pair: file does not exist: {}",
             cert.to_string_lossy()
         );
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = TlsTerminationSpec::Manual { cert, key };
-        let origin = OriginDeprecated::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);

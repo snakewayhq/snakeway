@@ -1,7 +1,6 @@
-use crate::types::{CircuitBreakerSpec, OriginDeprecated};
-use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
-    validate_range_field,
+use crate::types::{CircuitBreakerSpec, HclOrigin};
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
 range_constraint!(FAILURE_THRESHOLD, u32, min: 1, max: 10_000);
@@ -9,8 +8,8 @@ range_constraint!(OPEN_DURATION_MS, u64, min: 1, max: 60 * 60 * 1000, units: "ms
 range_constraint!(HALF_OPEN_MAX_REQUESTS, u32, min: 1, max: 10_000);
 range_constraint!(SUCCESS_THRESHOLD, u32, min: 1, max: 10_000);
 
-impl ValidateSpec for CircuitBreakerSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for CircuitBreakerSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_range_field!(FAILURE_THRESHOLD, self.failure_threshold, report, origin);
         validate_range_field!(
             OPEN_DURATION_MS,
@@ -30,13 +29,13 @@ impl ValidateSpec for CircuitBreakerSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{CircuitBreakerSpec, OriginDeprecated};
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use crate::types::{CircuitBreakerSpec, HclOrigin};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn valid_circuit_breaker() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -45,19 +44,19 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn failure_threshold_out_of_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 0,
@@ -66,7 +65,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -79,7 +78,7 @@ mod tests {
     #[test]
     fn open_duration_out_of_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -88,7 +87,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -101,7 +100,7 @@ mod tests {
     #[test]
     fn half_open_max_requests_out_of_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -110,7 +109,7 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
@@ -123,7 +122,7 @@ mod tests {
     #[test]
     fn success_threshold_out_of_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = CircuitBreakerSpec {
             enable_auto_recovery: true,
             failure_threshold: 5,
@@ -132,7 +131,7 @@ mod tests {
             success_threshold: 0,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);

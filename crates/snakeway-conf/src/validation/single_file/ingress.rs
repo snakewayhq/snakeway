@@ -1,4 +1,4 @@
-use crate::types::{BindInterfaceInput, BindInterfaceSpec, IngressSpec, OriginDeprecated};
+use crate::types::{BindInterfaceInput, BindInterfaceSpec, HclOrigin, IngressSpec};
 use crate::validation::{ValidateSpec, ValidationReportDeprecated};
 use std::collections::HashSet;
 
@@ -106,7 +106,7 @@ pub(crate) fn validate_ingresses(
 fn validate_listener_uniqueness(
     bind_interface_input: &BindInterfaceInput,
     port: u16,
-    origin: &OriginDeprecated,
+    origin: &HclOrigin,
     report: &mut ValidationReportDeprecated,
     seen_listener_keys: &mut HashSet<String>,
 ) {
@@ -390,7 +390,7 @@ mod tests {
             services: vec![
                 minimal_service(),
                 ServiceSpec {
-                    origin: OriginDeprecated {
+                    origin: HclOrigin {
                         section: "service_2".to_string(),
                         ..Default::default()
                     },

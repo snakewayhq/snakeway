@@ -1,15 +1,14 @@
-use crate::types::{OriginDeprecated, RequestRateLimitingDeviceSpec};
+use crate::types::{HclOrigin, RequestRateLimitingDeviceSpec};
 use crate::validation::validator::validate_device_paths;
-use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
-    validate_range_field,
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
 range_constraint!(MAX_REQUESTS_PER_SECOND, u16, min: 1, max: 30_000);
 range_constraint!(WINDOW_SECONDS, u16, min: 1, max: 60, units: "seconds");
 
-impl ValidateSpec for RequestRateLimitingDeviceSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for RequestRateLimitingDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_range_field!(
             MAX_REQUESTS_PER_SECOND,
             self.max_requests_per_second,
@@ -25,12 +24,12 @@ impl ValidateSpec for RequestRateLimitingDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::RequestRateLimitingDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn max_requests_per_second_below_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestRateLimitingDeviceSpec {
             enable: true,
             max_requests_per_second: 0,
@@ -42,7 +41,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -54,7 +53,7 @@ mod tests {
     #[test]
     fn window_seconds_below_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestRateLimitingDeviceSpec {
             enable: true,
             max_requests_per_second: 100,
@@ -66,7 +65,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -78,7 +77,7 @@ mod tests {
     #[test]
     fn valid_rate_limiting_device() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestRateLimitingDeviceSpec {
             enable: true,
             max_requests_per_second: 100,
@@ -90,13 +89,13 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn path_without_leading_slash_is_invalid() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestRateLimitingDeviceSpec {
             enable: true,
             max_requests_per_second: 100,
@@ -109,7 +108,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors

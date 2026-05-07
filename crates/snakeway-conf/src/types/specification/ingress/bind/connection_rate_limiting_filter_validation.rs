@@ -1,14 +1,13 @@
-use crate::types::{ConnectionRateLimitingFilterSpec, OriginDeprecated};
-use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
-    validate_range_field,
+use crate::types::{ConnectionRateLimitingFilterSpec, HclOrigin};
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
 range_constraint!(REACTION_INTERVAL_IN_SECONDS, u16, min: 1, max: 60, units: "seconds");
 range_constraint!(MAX_CONNECTIONS_PER_SECOND, u16, min: 1, max: 30_000);
 
-impl ValidateSpec for ConnectionRateLimitingFilterSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for ConnectionRateLimitingFilterSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_range_field!(
             REACTION_INTERVAL_IN_SECONDS,
             self.window_seconds,
@@ -26,11 +25,11 @@ impl ValidateSpec for ConnectionRateLimitingFilterSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ConnectionRateLimitingFilterSpec, OriginDeprecated};
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use crate::types::{ConnectionRateLimitingFilterSpec, HclOrigin};
+    use confval::{ValidateSpec, ValidationReport};
 
-    fn test_origin() -> OriginDeprecated {
-        OriginDeprecated::test("connection_rate_limiting_filter")
+    fn test_origin() -> HclOrigin {
+        HclOrigin::test("connection_rate_limiting_filter")
     }
 
     #[test]
@@ -41,7 +40,7 @@ mod tests {
             max_connections_per_second: 100,
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -59,7 +58,7 @@ mod tests {
             max_connections_per_second: 0,
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);
@@ -81,7 +80,7 @@ mod tests {
             max_connections_per_second: 100,
         };
         let origin = test_origin();
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
 
         // Act
         spec.validate(&origin, &mut report);

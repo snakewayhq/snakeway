@@ -1,16 +1,13 @@
-use crate::types::{OriginDeprecated, RequestFilterDeviceSpec};
+use crate::types::{HclOrigin, RequestFilterDeviceSpec};
 use crate::validation::validator::{
     validate_device_paths, validate_http_header_name, validate_http_method,
 };
-use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
-    validate_range_field,
-};
+use confval::{ValidateSpec, ValidationReport, range_constraint, validate_range_field};
 
 range_constraint!(DENY_STATUS, u16, min: 400, max: 599);
 
-impl ValidateSpec for RequestFilterDeviceSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for RequestFilterDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if let Some(deny_status) = self.deny_status {
             validate_range_field!(DENY_STATUS, deny_status, report, origin);
         }
@@ -42,12 +39,12 @@ impl ValidateSpec for RequestFilterDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::RequestFilterDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn deny_status_below_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             deny_status: Some(399),
@@ -58,19 +55,14 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|e| e.message.contains("deny_status"))
-        );
+        assert!(report.has_issues());
+        assert!(report.iter().any(|e| e.message.contains("deny_status")));
     }
 
     #[test]
     fn deny_status_above_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             deny_status: Some(600),
@@ -81,19 +73,14 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|e| e.message.contains("deny_status"))
-        );
+        assert!(report.has_issues());
+        assert!(report.iter().any(|e| e.message.contains("deny_status")));
     }
 
     #[test]
     fn invalid_http_method_rejected() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             allow_methods: vec!["INVALID METHOD".to_string()],
@@ -104,10 +91,9 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("invalid HTTP method"))
         );
@@ -116,7 +102,7 @@ mod tests {
     #[test]
     fn valid_request_filter() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             deny_status: Some(403),
@@ -128,13 +114,13 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn path_without_leading_slash_is_invalid() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = RequestFilterDeviceSpec {
             enable: true,
             paths: vec!["api/v1".to_string()],
@@ -145,10 +131,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .erros
                 .iter()
                 .any(|e| e.message.contains("must start with '/'"))
         );

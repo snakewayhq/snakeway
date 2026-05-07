@@ -86,11 +86,11 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::OriginDeprecated;
+    use crate::types::HclOrigin;
     use std::path::PathBuf;
 
-    fn test_origin() -> OriginDeprecated {
-        OriginDeprecated {
+    fn test_origin() -> HclOrigin {
+        HclOrigin {
             file: PathBuf::from("test.hcl"),
             section: "device.request_filter".to_string(),
             index: None,

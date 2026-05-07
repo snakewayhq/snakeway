@@ -1,9 +1,9 @@
-use crate::types::{BindAdminSpec, BindInterfaceSpec, OriginDeprecated, TlsTerminationSpec};
+use crate::types::{BindAdminSpec, BindInterfaceSpec, HclOrigin, TlsTerminationSpec};
 use crate::validation::validator::is_valid_port;
-use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for BindAdminSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for BindAdminSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Port validation.
         if !is_valid_port(self.port) {
             report.invalid_port(self.port, origin);
@@ -60,10 +60,10 @@ impl ValidateSpec for BindAdminSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, OriginDeprecated,
+        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, HclOrigin,
         TlsTerminationSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
     use rcgen::generate_simple_self_signed;
     use std::fs::File;
     use std::io::Write;
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn acme_tls_not_supported() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
@@ -101,13 +101,13 @@ mod tests {
             },
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -119,32 +119,32 @@ mod tests {
     #[test]
     fn unspecified_ip_rejected() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("0.0.0.0".to_string()),
             port: 9000,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(report.errors.iter().any(|e| e.message.contains("0.0.0.0")));
     }
 
     #[test]
     fn invalid_bind_addr() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("bad-addr".to_string()),
             port: 9000,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn cannot_bind_to_all_interfaces() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let dir = tempdir().expect("failed to create temp dir");
 
         let cert = generate_simple_self_signed(vec!["localhost".into()])
@@ -193,7 +193,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -213,13 +213,13 @@ mod tests {
     #[test]
     fn missing_auth_block_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -238,14 +238,14 @@ mod tests {
     #[test]
     fn explicit_empty_auth_block_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
             auth: AdminAuthSpec::default(),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -262,14 +262,14 @@ mod tests {
     #[test]
     fn bearer_token_file_missing_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
             port: 9000,
             auth: valid_bearer_auth(PathBuf::from("/nonexistent/path/to/tokens.txt")),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn bearer_token_file_empty_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let token_file = write_token_file("");
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -296,7 +296,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn bearer_token_too_short_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let token_file = write_token_file("password123\n");
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -321,7 +321,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -338,7 +338,7 @@ mod tests {
     #[test]
     fn bearer_comment_line_produces_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let token_file = write_token_file(&format!("# comment\n{}\n", TEST_TOKEN));
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -346,7 +346,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn bearer_duplicate_tokens_emit_warning_not_error() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let token_file = write_token_file(&format!("{t}\n{t}\n", t = TEST_TOKEN));
         let bind_admin = BindAdminSpec {
             interface: BindInterfaceInput::Keyword("loopback".to_string()),
@@ -371,7 +371,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn valid_auth_block_produces_no_errors() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let dir = tempdir().expect("failed to create temp dir");
         let cert = generate_simple_self_signed(vec!["localhost".into()])
             .expect("failed to generate self-signed cert");
@@ -412,7 +412,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = OriginDeprecated::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);

@@ -1,17 +1,14 @@
-use crate::types::{DeviceSpec, IngressSpec, ServerSpec};
-use crate::validation::report::ValidationReportDeprecated;
+use crate::types::{DeviceSpec, HclOrigin, IngressSpec, ServerSpec};
 use crate::validation::{ValidateSpec, multi_file, single_file};
+use confval::{ValidationIssue, ValidationReport};
 
 /// Validate everything that exists in a fully parsed config.
 pub(crate) fn validate_spec(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
     devices: &[DeviceSpec],
-) -> ValidationReportDeprecated {
-    let mut report = ValidationReportDeprecated {
-        errors: vec![],
-        warnings: vec![],
-    };
+) -> ValidationReport<&'static HclOrigin> {
+    let mut report = ValidationReport::default();
 
     if server.version == 1 {
         // Single file validation.
@@ -19,10 +16,16 @@ pub(crate) fn validate_spec(
         single_file::validate_ingresses(ingresses, &mut report);
         single_file::validate_devices(devices, &mut report);
 
-        // Multi file validation.
+        // Multi-file validation.
         multi_file::validate_tls(server, ingresses, &mut report);
     } else {
-        report.invalid_config_version(&server.version, &server.origin);
+        report.error(
+            ValidationIssue::error_with_help(
+                format!("invalid config version: {}", &server.version),
+                &server.origin,
+                "This version of SnakeWay is not compatible with this config file. Please upgrade SnakeWay."
+            )
+        );
     }
 
     report

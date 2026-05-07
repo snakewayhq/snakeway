@@ -1,15 +1,13 @@
-use crate::types::{IdentityDeviceSpec, OriginDeprecated};
+use crate::types::{HclOrigin, IdentityDeviceSpec};
+use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReportDeprecated, range_constraint,
-    validate_range_field, validate_trusted_proxies,
-};
+use confval::{ValidateSpec, ValidationReport, range_constraint, validate_range_field};
 
 range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, usize, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, usize, min: 1, max: 4096);
 
-impl ValidateSpec for IdentityDeviceSpec {
-    fn validate(&self, origin: &OriginDeprecated, report: &mut ValidationReportDeprecated) {
+impl ValidateSpec<HclOrigin> for IdentityDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_trusted_proxies(&self.trusted_proxies, report, origin);
 
         validate_range_field!(
@@ -51,12 +49,12 @@ impl ValidateSpec for IdentityDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::IdentityDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReportDeprecated};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn max_xff_length_below_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = IdentityDeviceSpec {
             enable: true,
             max_x_forwarded_for_length: 0,
@@ -67,7 +65,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -79,7 +77,7 @@ mod tests {
     #[test]
     fn max_xff_length_above_range() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = IdentityDeviceSpec {
             enable: true,
             max_x_forwarded_for_length: 2049,
@@ -90,7 +88,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
                 .errors
@@ -102,7 +100,7 @@ mod tests {
     #[test]
     fn valid_identity_device() {
         // Arrange
-        let mut report = ValidationReportDeprecated::default();
+        let mut report = ValidationReport::default();
         let spec = IdentityDeviceSpec {
             enable: true,
             ..Default::default()
@@ -112,6 +110,6 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 }

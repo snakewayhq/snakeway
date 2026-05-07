@@ -9,6 +9,7 @@ hotpath = ["hotpath/hotpath"]
 hotpath-alloc = ["hotpath/hotpath-alloc"]
 
 [dependencies]
+confval = { workspace = true }
 glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
 nix = { workspace = true, features = ["signal"] }
