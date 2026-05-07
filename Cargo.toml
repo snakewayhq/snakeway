@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core"]
+members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core", "crates/confval"]
 default-members = ["crates/snakeway"]
 exclude = [
     "crates/snakeway-wit",
