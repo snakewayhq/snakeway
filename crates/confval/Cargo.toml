@@ -1,7 +1,15 @@
 [package]
 name = "confval"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[features]
+default = []
+serde = ["dep:serde", "dep:serde_json"]
+color = ["dep:owo-colors"]
 
 [dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+owo-colors = { version = "4", optional = true }
