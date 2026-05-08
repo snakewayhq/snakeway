@@ -43,11 +43,11 @@ impl From<OnInvalidForwardedSpec> for OnInvalidForwardedConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{ForwardingSpec, Origin};
+    use crate::types::{ForwardingSpec, HclOrigin};
     use std::path::PathBuf;
 
-    fn test_origin() -> Origin {
-        Origin {
+    fn test_origin() -> HclOrigin {
+        HclOrigin {
             file: PathBuf::from("test.hcl"),
             section: "device.network_policy".to_string(),
             index: None,

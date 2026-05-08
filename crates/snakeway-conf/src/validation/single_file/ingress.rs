@@ -1,8 +1,14 @@
-use crate::types::{BindInterfaceInput, BindInterfaceSpec, IngressSpec, Origin};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::types::bind_issues;
+use crate::types::ingress_issues;
+use crate::types::service_issues;
+use crate::types::{BindInterfaceInput, BindInterfaceSpec, HclOrigin, IngressSpec};
+use confval::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
-pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_ingresses(
+    ingresses: &[IngressSpec],
+    report: &mut ValidationReport<HclOrigin>,
+) {
     let mut seen_listener_keys = HashSet::new();
     let mut seen_redirect_ports = HashSet::new();
     let mut seen_upstream_socks = HashSet::new();
@@ -20,7 +26,7 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         // There must be at least one bind or admin bind.
         //---------------------------------------------------------------------
         if maybe_bind.is_none() && maybe_bind_admin.is_none() {
-            report.missing_bind(&ingress.origin);
+            report.push(ingress_issues::missing_bind(&ingress.origin));
         }
 
         //---------------------------------------------------------------------
@@ -40,7 +46,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
             if let Some(redirect) = &bind.redirect_http_to_https
                 && !seen_redirect_ports.insert(redirect.port)
             {
-                report.duplicate_redirect_http_to_https_port(redirect.port, &bind.origin);
+                report.push(bind_issues::duplicate_redirect_http_to_https_port(
+                    redirect.port,
+                    &bind.origin,
+                ));
             }
         }
 
@@ -66,7 +75,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         for service in &ingress.services {
             for route in &service.routes {
                 if !seen_route_paths.insert(&route.path) {
-                    report.duplicate_route_path(&route.path, &route.origin);
+                    report.push(service_issues::duplicate_route_path(
+                        &route.path,
+                        &route.origin,
+                    ));
                 }
             }
         }
@@ -79,7 +91,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
         for service in &ingress.services {
             for route in &service.routes {
                 if bind_uses_http2 && route.enable_websocket {
-                    report.websocket_route_cannot_be_used_with_http2(&route.path, &route.origin);
+                    report.push(service_issues::websocket_route_cannot_be_used_with_http2(
+                        &route.path,
+                        &route.origin,
+                    ));
                 }
             }
         }
@@ -92,7 +107,10 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
                 if let Some(sock) = &upstream.sock
                     && !seen_upstream_socks.insert(sock.clone())
                 {
-                    report.duplicate_upstream_sock(sock, &service.origin);
+                    report.push(service_issues::duplicate_upstream_sock(
+                        sock,
+                        &service.origin,
+                    ));
                 }
             }
         }
@@ -103,15 +121,15 @@ pub(crate) fn validate_ingresses(ingresses: &[IngressSpec], report: &mut Validat
 fn validate_listener_uniqueness(
     bind_interface_input: &BindInterfaceInput,
     port: u16,
-    origin: &Origin,
-    report: &mut ValidationReport,
+    origin: &HclOrigin,
+    report: &mut ValidationReport<HclOrigin>,
     seen_listener_keys: &mut HashSet<String>,
 ) {
     let maybe_interface: Result<BindInterfaceSpec, _> = bind_interface_input.clone().try_into();
     if let Ok(interface) = maybe_interface {
         let key = interface.socket_address_literal(port);
         if !seen_listener_keys.insert(key.clone()) {
-            report.duplicate_bind_addr(&key, origin);
+            report.push(bind_issues::duplicate_bind_addr(&key, origin));
         }
     }
 }
@@ -123,7 +141,7 @@ mod tests {
     use std::net::IpAddr;
     use std::str::FromStr;
 
-    use crate::validation::ValidationReport;
+    use confval::ValidationReport;
 
     fn minimal_service() -> ServiceSpec {
         ServiceSpec {
@@ -173,7 +191,7 @@ mod tests {
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "duplicate bind address: 127.0.0.1:8080"
         );
     }
@@ -204,7 +222,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == format!("duplicate bind address: 127.0.0.1:{}", port))
         );
@@ -243,7 +261,7 @@ mod tests {
         validate_ingresses(&[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.iter().any(|e| e.message == expected_error));
+        assert!(report.errors().iter().any(|e| e.message == expected_error));
     }
 
     #[test]
@@ -263,7 +281,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "ingress config must have a bind or bind_admin declaration")
         );
@@ -323,7 +341,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "websocket route cannot be used with HTTP2: /ws")
         );
@@ -372,7 +390,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "duplicate redirect_http_to_https port: 9090")
         );
@@ -387,7 +405,7 @@ mod tests {
             services: vec![
                 minimal_service(),
                 ServiceSpec {
-                    origin: Origin {
+                    origin: HclOrigin {
                         section: "service_2".to_string(),
                         ..Default::default()
                     },
@@ -404,7 +422,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("service has no upstream backends"))
         );
@@ -459,7 +477,7 @@ mod tests {
         validate_ingresses(&[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.iter().any(|e| {
+        assert!(report.errors().iter().any(|e| {
             e.message
                 .contains("duplicate route path within the same listener: /api")
         }));
@@ -501,7 +519,7 @@ mod tests {
         // Assert
         assert!(
             !report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("duplicate route path")),
             "same path on different listeners should be allowed"

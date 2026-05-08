@@ -1,15 +1,15 @@
-use crate::types::{IdentityDeviceSpec, Origin};
+use crate::types::{HclOrigin, IdentityDeviceSpec};
+use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use crate::validation::{
+use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
-    validate_trusted_proxies,
 };
 
 range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, usize, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, usize, min: 1, max: 4096);
 
-impl ValidateSpec for IdentityDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for IdentityDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_trusted_proxies(&self.trusted_proxies, report, origin);
 
         validate_range_field!(
@@ -51,7 +51,7 @@ impl ValidateSpec for IdentityDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::IdentityDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn max_xff_length_below_range() {
@@ -67,10 +67,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("max_x_forwarded_for_length"))
         );
@@ -90,10 +90,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("max_x_forwarded_for_length"))
         );
@@ -112,6 +112,6 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 }

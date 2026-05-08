@@ -47,13 +47,17 @@ pub(crate) fn check(
                 ConfigError::SemanticValidationFailed { validation_report } => {
                     match format {
                         ConfigCheckOutputFormat::Pretty => {
-                            validation_report.render_pretty();
+                            let mut out = String::new();
+                            validation_report.render_pretty(&mut out).ok();
+                            eprint!("{out}");
                         }
                         ConfigCheckOutputFormat::Plain => {
-                            validation_report.render_plain();
+                            let mut out = String::new();
+                            validation_report.render_plain(&mut out).ok();
+                            eprint!("{out}");
                         }
                         ConfigCheckOutputFormat::Json => {
-                            validation_report.render_json();
+                            validation_report.render_json(&mut std::io::stderr()).ok();
                         }
                     };
                 }

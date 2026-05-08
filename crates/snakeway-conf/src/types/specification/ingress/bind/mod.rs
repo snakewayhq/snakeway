@@ -1,3 +1,4 @@
+pub(crate) mod bind_issues;
 mod bind_spec;
 mod bind_validation;
 mod connection_rate_limiting_filter_spec;

@@ -1,10 +1,10 @@
-use crate::types::Origin;
+use crate::types::HclOrigin;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ServiceRouteSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: HclOrigin,
     pub hosts: Vec<String>,
     pub path: String,
     #[serde(default)]

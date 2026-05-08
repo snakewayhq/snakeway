@@ -1,21 +1,28 @@
-use crate::types::{Origin, StaticRouteSpec};
-use crate::validation::{ValidateSpec, ValidationReport};
+use super::static_route_issues;
+use crate::types::{HclOrigin, StaticRouteSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for StaticRouteSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for StaticRouteSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if !self.file_dir.exists() {
-            report.invalid_static_dir(&self.file_dir, origin);
+            report.push(static_route_issues::invalid_static_dir(
+                &self.file_dir,
+                origin,
+            ));
         }
         if self.file_dir.is_relative() {
-            report.invalid_static_dir_must_be_absolute(&self.file_dir, origin);
+            report.push(static_route_issues::invalid_static_dir_must_be_absolute(
+                &self.file_dir,
+                origin,
+            ));
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Origin, StaticRouteSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::types::{HclOrigin, StaticRouteSpec};
+    use confval::{ValidateSpec, ValidationReport};
     use std::path::PathBuf;
 
     #[test]
@@ -28,13 +35,13 @@ mod tests {
             file_dir: PathBuf::from(file_dir),
             ..Default::default()
         };
-        let origin = Origin::test("static_files");
+        let origin = HclOrigin::test("static_files");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.first().unwrap().message, expected_error);
+        assert_eq!(report.errors().first().unwrap().message, expected_error);
     }
 
     #[test]
@@ -51,13 +58,13 @@ mod tests {
             file_dir: PathBuf::from(file_dir),
             ..Default::default()
         };
-        let origin = Origin::test("static_files");
+        let origin = HclOrigin::test("static_files");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, expected_error0);
-        assert_eq!(report.errors[1].message, expected_error1);
+        assert_eq!(report.errors()[0].message, expected_error0);
+        assert_eq!(report.errors()[1].message, expected_error1);
     }
 }

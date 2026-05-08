@@ -15,14 +15,14 @@ impl From<WasmDeviceSpec> for WasmDeviceConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Origin;
+    use crate::types::HclOrigin;
     use std::path::PathBuf;
 
     #[test]
     fn from_spec_maps_fields() {
         // Arrange
         let spec = WasmDeviceSpec {
-            origin: Origin::default(),
+            origin: HclOrigin::default(),
             enable: true,
             path: PathBuf::from("/opt/modules/filter.wasm"),
             config: Some(hcl::Value::from("test-config")),

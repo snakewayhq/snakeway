@@ -1,5 +1,5 @@
-use crate::types::{CircuitBreakerSpec, Origin};
-use crate::validation::{
+use crate::types::{CircuitBreakerSpec, HclOrigin};
+use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
@@ -8,8 +8,8 @@ range_constraint!(OPEN_DURATION_MS, u64, min: 1, max: 60 * 60 * 1000, units: "ms
 range_constraint!(HALF_OPEN_MAX_REQUESTS, u32, min: 1, max: 10_000);
 range_constraint!(SUCCESS_THRESHOLD, u32, min: 1, max: 10_000);
 
-impl ValidateSpec for CircuitBreakerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for CircuitBreakerSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_range_field!(FAILURE_THRESHOLD, self.failure_threshold, report, origin);
         validate_range_field!(
             OPEN_DURATION_MS,
@@ -29,8 +29,8 @@ impl ValidateSpec for CircuitBreakerSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{CircuitBreakerSpec, Origin};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::types::{CircuitBreakerSpec, HclOrigin};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn valid_circuit_breaker() {
@@ -44,13 +44,13 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -65,13 +65,16 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("failure_threshold"));
     }
 
@@ -87,13 +90,16 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("open_duration_milliseconds"));
     }
 
@@ -109,13 +115,16 @@ mod tests {
             success_threshold: 2,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("half_open_max_requests"));
     }
 
@@ -131,13 +140,16 @@ mod tests {
             success_threshold: 0,
             ..Default::default()
         };
-        let origin = Origin::test("circuit_breaker");
+        let origin = HclOrigin::test("circuit_breaker");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("success_threshold"));
     }
 }

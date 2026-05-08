@@ -1,9 +1,10 @@
-use crate::types::{Origin, ServiceSpec};
-use crate::validation::{ValidateSpec, ValidationReport};
+use super::service_issues;
+use crate::types::{HclOrigin, ServiceSpec};
+use confval::{ValidateSpec, ValidationReport};
 use std::collections::HashSet;
 
-impl ValidateSpec for ServiceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for ServiceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Validate circuit breaker.
         if let Some(cb) = &self.circuit_breaker
             && cb.enable_auto_recovery
@@ -18,7 +19,7 @@ impl ValidateSpec for ServiceSpec {
 
         // Upstream validation.
         if self.upstreams.is_empty() {
-            report.service_has_no_upstreams(origin);
+            report.push(service_issues::service_has_no_upstreams(origin));
         }
 
         let mut seen_sock_values = HashSet::new();
@@ -28,17 +29,19 @@ impl ValidateSpec for ServiceSpec {
 
             // todo move most of this upstream validation into upstream.validate().
             if let (Some(sock), Some(endpoint)) = (&upstream.sock, &upstream.endpoint) {
-                report.upstream_cannot_have_both_sock_and_endpoint(
+                report.push(service_issues::upstream_cannot_have_both_sock_and_endpoint(
                     sock,
                     &endpoint.host.to_string(),
                     endpoint.port,
                     origin,
-                );
+                ));
                 continue;
             }
 
             if upstream.sock.is_none() && upstream.endpoint.is_none() {
-                report.upstream_must_have_a_sock_or_endpoint(origin);
+                report.push(service_issues::upstream_must_have_a_sock_or_endpoint(
+                    origin,
+                ));
                 continue;
             }
 
@@ -50,13 +53,19 @@ impl ValidateSpec for ServiceSpec {
                     && tls.verify
                 {
                     if tls.sni.parse::<std::net::IpAddr>().is_ok() {
-                        report.upstream_tls_sni_must_be_dns(&upstream.origin);
+                        report.push(service_issues::upstream_tls_sni_must_be_dns(
+                            &upstream.origin,
+                        ));
                     }
 
                     if let Some(ca_file) = &tls.ca_file
                         && let Err(e) = crate::validation::validator::validate_cert_pem(ca_file)
                     {
-                        report.upstream_tls_has_invalid_ca_file(ca_file, &e, &upstream.origin);
+                        report.push(service_issues::upstream_tls_has_invalid_ca_file(
+                            ca_file,
+                            &e,
+                            &upstream.origin,
+                        ));
                     }
                 }
             }
@@ -64,7 +73,10 @@ impl ValidateSpec for ServiceSpec {
             if let Some(sock) = &upstream.sock
                 && !seen_sock_values.insert(sock.clone())
             {
-                report.duplicate_upstream_sock(sock, &upstream.origin);
+                report.push(service_issues::duplicate_upstream_sock(
+                    sock,
+                    &upstream.origin,
+                ));
             }
         }
     }
@@ -73,10 +85,10 @@ impl ValidateSpec for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        EndpointSpec, EndpointTlsSpec, HostSpec, Origin, ServiceRouteSpec, ServiceSpec,
+        EndpointSpec, EndpointTlsSpec, HclOrigin, HostSpec, ServiceRouteSpec, ServiceSpec,
         UpstreamSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
     use std::net::IpAddr;
     use std::str::FromStr;
 
@@ -104,13 +116,13 @@ mod tests {
         // Arrange
         let mut report = ValidationReport::default();
         let service = minimal_service();
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -121,13 +133,16 @@ mod tests {
             upstreams: vec![],
             ..Default::default()
         };
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("service has no upstream backends"));
     }
 
@@ -143,13 +158,13 @@ mod tests {
             ws_max_connections: Some(1_000),
             ..Default::default()
         });
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -163,14 +178,14 @@ mod tests {
             tls: None,
         });
         service.upstreams[0].sock = Some("/tmp/test.sock".to_string());
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "upstream cannot have both sock /tmp/test.sock and endpoint: 127.0.0.1:3000"
         );
     }
@@ -186,14 +201,14 @@ mod tests {
             upstreams: vec![upstream],
             ..Default::default()
         };
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "invalid upstream - it must have a sock or an endpoint, but neither are defined"
         );
     }
@@ -217,13 +232,16 @@ mod tests {
             ],
             ..Default::default()
         };
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("duplicate upstream sock"));
     }
 
@@ -237,13 +255,16 @@ mod tests {
             path: "/".to_string(),
             ..Default::default()
         });
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("route has no hosts"));
     }
 
@@ -261,13 +282,16 @@ mod tests {
                 ca_file: None,
             }),
         });
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS SNI must be DNS name"));
     }
 
@@ -285,13 +309,16 @@ mod tests {
                 ca_file: Some("/nonexistent/ca.pem".into()),
             }),
         });
-        let origin = Origin::test("service");
+        let origin = HclOrigin::test("service");
 
         // Act
         service.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS has invalid CA file"));
     }
 }

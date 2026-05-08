@@ -1,13 +1,16 @@
-use crate::types::{AcmeServerSpec, CertStoreSpec, Origin, TlsAutomationSpec};
+use crate::types::server_issues;
+use crate::types::{AcmeServerSpec, CertStoreSpec, HclOrigin, TlsAutomationSpec};
 use crate::validation::validator::validate_cert_pem;
-use crate::validation::{RangeConstraint, ValidateSpec, validate_range_field};
-use crate::validation::{ValidationReport, range_constraint};
+
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+};
 use nix::NixPath;
 
 range_constraint!(RENEW_WITHIN_DAYS, u64, min: 7, max: 30, units: "days");
 
-impl ValidateSpec for TlsAutomationSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for TlsAutomationSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         self.acme.validate(origin, report);
 
         validate_range_field!(RENEW_WITHIN_DAYS, self.renew_within_days, report, origin);
@@ -16,40 +19,51 @@ impl ValidateSpec for TlsAutomationSpec {
     }
 }
 
-impl ValidateSpec for AcmeServerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for AcmeServerSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.directory_url.is_empty() {
-            report.server_tls_acme_directory_url_cannot_be_empty(origin);
+            report.push(server_issues::server_tls_acme_directory_url_cannot_be_empty(origin));
         } else if !self.directory_url.starts_with("https://") {
-            report.server_tls_acme_directory_url_must_be_https(origin);
+            report.push(server_issues::server_tls_acme_directory_url_must_be_https(
+                origin,
+            ));
         }
 
         if self.contact_email.is_empty() {
-            report.server_tls_acme_contact_email_cannot_be_empty(origin);
+            report.push(server_issues::server_tls_acme_contact_email_cannot_be_empty(origin));
         }
 
         if let Some(ca_file) = &self.ca_file
             && let Err(e) = validate_cert_pem(ca_file)
         {
-            report.server_tls_acme_ca_file_invalid(ca_file, &e, origin);
+            report.push(server_issues::server_tls_acme_ca_file_invalid(
+                ca_file, &e, origin,
+            ));
         }
 
         if self.data_dir.is_empty() {
-            report.server_tls_acme_data_dir_cannot_be_empty(origin);
+            report.push(server_issues::server_tls_acme_data_dir_cannot_be_empty(
+                origin,
+            ));
         } else if !self.data_dir.is_dir() {
-            report.server_tls_acme_data_dir_is_invalid(&self.data_dir, origin);
+            report.push(server_issues::server_tls_acme_data_dir_is_invalid(
+                &self.data_dir,
+                origin,
+            ));
         }
     }
 }
 
-impl ValidateSpec for CertStoreSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for CertStoreSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         match self {
             CertStoreSpec::Filesystem { cert_dir } => {
                 if cert_dir.is_empty() {
-                    report.server_tls_cert_dir_cannot_be_empty(origin);
+                    report.push(server_issues::server_tls_cert_dir_cannot_be_empty(origin));
                 } else if !cert_dir.is_dir() {
-                    report.server_tls_cert_dir_is_invalid(cert_dir, origin);
+                    report.push(server_issues::server_tls_cert_dir_is_invalid(
+                        cert_dir, origin,
+                    ));
                 }
             }
             CertStoreSpec::Memory => {}
@@ -59,8 +73,8 @@ impl ValidateSpec for CertStoreSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{AcmeServerSpec, CertStoreSpec, Origin, TlsAutomationSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::types::{AcmeServerSpec, CertStoreSpec, HclOrigin, TlsAutomationSpec};
+    use confval::{ValidateSpec, ValidationReport};
     use std::path::PathBuf;
 
     fn default_acme() -> AcmeServerSpec {
@@ -75,7 +89,7 @@ mod tests {
     #[test]
     fn acme_directory_url_cannot_be_empty() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = AcmeServerSpec {
             directory_url: String::new(),
@@ -86,10 +100,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("directory_url")
                     || e.message.contains("cannot be empty"))
@@ -99,7 +112,7 @@ mod tests {
     #[test]
     fn acme_directory_url_must_be_https() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = AcmeServerSpec {
             directory_url: "http://example.com/acme".to_string(),
@@ -110,10 +123,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("directory URL must be a valid URL"))
         );
@@ -122,7 +134,7 @@ mod tests {
     #[test]
     fn acme_contact_email_cannot_be_empty() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = AcmeServerSpec {
             directory_url: "https://acme.example.com/directory".to_string(),
@@ -134,10 +146,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("contact email cannot be empty"))
         );
@@ -146,7 +157,7 @@ mod tests {
     #[test]
     fn acme_ca_file_invalid() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = AcmeServerSpec {
             directory_url: "https://acme.example.com/directory".to_string(),
@@ -158,10 +169,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("ca_file") || e.message.contains("ca.pem"))
         );
@@ -170,7 +180,7 @@ mod tests {
     #[test]
     fn acme_data_dir_cannot_be_empty() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = AcmeServerSpec {
             directory_url: "https://acme.example.com/directory".to_string(),
@@ -183,10 +193,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("data_dir") && e.message.contains("path is required"))
         );
@@ -195,7 +204,7 @@ mod tests {
     #[test]
     fn acme_data_dir_must_be_a_directory() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = AcmeServerSpec {
             directory_url: "https://acme.example.com/directory".to_string(),
@@ -208,14 +217,14 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors.iter().any(|e| e.message.contains("data_dir")));
+        assert!(report.has_issues());
+        assert!(report.iter().any(|e| e.message.contains("data_dir")));
     }
 
     #[test]
     fn cert_dir_cannot_be_empty() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = CertStoreSpec::Filesystem {
             cert_dir: PathBuf::new(),
@@ -225,10 +234,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("cert_dir") && e.message.contains("path is required"))
         );
@@ -237,7 +245,7 @@ mod tests {
     #[test]
     fn cert_dir_must_be_a_directory() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let spec = CertStoreSpec::Filesystem {
             cert_dir: PathBuf::from("/non/existent/cert_dir"),
@@ -247,14 +255,14 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors.iter().any(|e| e.message.contains("cert_dir")));
+        assert!(report.has_issues());
+        assert!(report.iter().any(|e| e.message.contains("cert_dir")));
     }
 
     #[test]
     fn renew_within_days_below_range() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let dir = tempfile::tempdir().unwrap();
         let spec = TlsAutomationSpec {
@@ -272,10 +280,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("renew_within_days"))
         );
@@ -284,7 +291,7 @@ mod tests {
     #[test]
     fn renew_within_days_above_range() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let dir = tempfile::tempdir().unwrap();
         let spec = TlsAutomationSpec {
@@ -302,10 +309,9 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("renew_within_days"))
         );
@@ -314,7 +320,7 @@ mod tests {
     #[test]
     fn valid_acme_server() {
         // Arrange
-        let origin = Origin::test("tls_automation");
+        let origin = HclOrigin::test("tls_automation");
         let mut report = ValidationReport::default();
         let dir = tempfile::tempdir().unwrap();
         let spec = AcmeServerSpec {
@@ -328,6 +334,6 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 }

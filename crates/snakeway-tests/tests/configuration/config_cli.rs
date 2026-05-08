@@ -79,7 +79,7 @@ fn semantically_invalid_config_reports_violations() {
         ConfigError::SemanticValidationFailed { validation_report } => {
             assert!(
                 validation_report
-                    .errors
+                    .errors()
                     .iter()
                     .any(|e| e.message.contains("invalid config version")),
                 "should report invalid config version"
@@ -156,11 +156,11 @@ fn nonexistent_ca_file_produces_validation_error() {
         ConfigError::SemanticValidationFailed { validation_report } => {
             assert!(
                 validation_report
-                    .errors
+                    .errors()
                     .iter()
                     .any(|e| e.message.contains("CA file")),
                 "should report CA file error; got: {:?}",
-                validation_report.errors
+                validation_report.errors()
             );
         }
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),

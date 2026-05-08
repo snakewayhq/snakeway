@@ -1,5 +1,6 @@
-use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::types::HclOrigin;
+use crate::types::device_issues;
+use confval::ValidationReport;
 use ipnet::IpNet;
 use std::net::IpAddr;
 
@@ -38,25 +39,29 @@ fn is_non_public_infra_network(net: &IpNet) -> bool {
 
 pub(crate) fn validate_trusted_proxies(
     proxies: &[String],
-    report: &mut ValidationReport,
-    origin: &Origin,
+    report: &mut ValidationReport<HclOrigin>,
+    origin: &HclOrigin,
 ) {
     let mut networks = Vec::new();
     for proxy in proxies {
         if let Ok(net) = proxy.parse::<IpNet>() {
             networks.push(net);
         } else {
-            report.invalid_trusted_proxy(proxy, origin);
+            report.push(device_issues::invalid_trusted_proxy(proxy, origin));
         }
     }
 
     for network in networks {
         if network.prefix_len() == 0 {
-            report.trusted_proxies_cannot_trust_all_networks(origin);
+            report.push(device_issues::trusted_proxies_cannot_trust_all_networks(
+                origin,
+            ));
         }
 
         if !is_non_public_infra_network(&network) {
-            report.trusted_proxies_contains_a_public_ip_range_warning(network, origin);
+            report.push(
+                device_issues::trusted_proxies_contains_a_public_ip_range_warning(network, origin),
+            );
         }
     }
 }
