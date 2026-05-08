@@ -236,13 +236,21 @@ impl ControlPlaneServer {
 
                         last_epoch = epoch;
 
-                        let new_config = match snakeway_conf::load_config(&config_path) {
-                            Ok(cfg) => cfg,
+                        let validated = match snakeway_conf::load_config(&config_path) {
+                            Ok(v) => v,
                             Err(e) => {
                                 error!(error = %e, "failed to reload config");
                                 continue;
                             }
                         };
+
+                        if validated.report.has_warnings() {
+                            let mut out = String::new();
+                            validated.report.render_plain(&mut out).ok();
+                            warn!("{out}");
+                        }
+
+                        let new_config = validated.config;
 
                         use crate::runtime::diff::{ConfigChangeKind, classify_config_change};
                         let change_kind =
