@@ -1,12 +1,13 @@
-use crate::types::{BindInterfaceSpec, BindSpec, Origin};
+use super::bind_issues;
+use crate::types::{BindInterfaceSpec, BindSpec, HclOrigin};
 use crate::validation::validator::is_valid_port;
-use crate::validation::{ValidateSpec, ValidationReport};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for BindSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for BindSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Port validation.
         if !is_valid_port(self.port) {
-            report.invalid_port(self.port, origin);
+            report.push(bind_issues::invalid_port(self.port, origin));
         }
 
         // Connection filters.
@@ -25,7 +26,10 @@ impl ValidateSpec for BindSpec {
 
         // HTTP/2 requires TLS.
         if self.enable_http2 && self.tls.is_none() {
-            report.http2_requires_tls(&self.interface.to_string(), origin);
+            report.push(bind_issues::http2_requires_tls(
+                &self.interface.to_string(),
+                origin,
+            ));
         }
 
         // Redirect HTTP to HTTPS validation.
@@ -35,20 +39,26 @@ impl ValidateSpec for BindSpec {
 
         // Redirect HTTP to HTTPS requires TLS.
         if self.redirect_http_to_https.is_some() && self.tls.is_none() {
-            report.redirect_http_to_https_requires_tls(&self.interface.to_string(), origin);
+            report.push(bind_issues::redirect_http_to_https_requires_tls(
+                &self.interface.to_string(),
+                origin,
+            ));
         }
 
         // Interface validation.
         let interface: Result<BindInterfaceSpec, _> = self.interface.clone().try_into();
         match interface {
             Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-                report.invalid_bind_addr("0.0.0.0", origin);
+                report.push(bind_issues::invalid_bind_addr("0.0.0.0", origin));
             }
             Ok(_) => {
                 // All good.
             }
             Err(_) => {
-                report.invalid_bind_addr(&self.interface.to_string(), origin);
+                report.push(bind_issues::invalid_bind_addr(
+                    &self.interface.to_string(),
+                    origin,
+                ));
             }
         }
     }
@@ -56,8 +66,8 @@ impl ValidateSpec for BindSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{BindInterfaceInput, BindSpec, Origin, RedirectSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::types::{BindInterfaceInput, BindSpec, HclOrigin, RedirectSpec};
+    use confval::{ValidateSpec, ValidationReport};
 
     fn minimal_bind() -> BindSpec {
         BindSpec {
@@ -76,16 +86,16 @@ mod tests {
             port: 0,
             ..Default::default()
         };
-        let origin = Origin::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid port: 0"))
         );
@@ -100,16 +110,16 @@ mod tests {
             port: 8080,
             ..Default::default()
         };
-        let origin = Origin::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid bind address: 0.0.0.0"))
         );
@@ -124,16 +134,16 @@ mod tests {
             port: 8080,
             ..Default::default()
         };
-        let origin = Origin::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid bind address"))
         );
@@ -144,13 +154,13 @@ mod tests {
         // Arrange
         let mut report = ValidationReport::default();
         let bind = minimal_bind();
-        let origin = Origin::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -159,15 +169,15 @@ mod tests {
         let mut report = ValidationReport::default();
         let mut bind = minimal_bind();
         bind.enable_http2 = true;
-        let origin = Origin::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, "HTTP/2 requires TLS: loopback");
+        assert_eq!(report.errors()[0].message, "HTTP/2 requires TLS: loopback");
         assert_eq!(
-            report.errors[0].help.as_deref(),
+            report.errors()[0].help.as_deref(),
             Some("Enable TLS on the bind or disable HTTP/2.")
         );
     }
@@ -181,18 +191,18 @@ mod tests {
             port: 8080,
             status: 308,
         });
-        let origin = Origin::test("bind");
+        let origin = HclOrigin::test("bind");
 
         // Act
         bind.validate(&origin, &mut report);
 
         // Assert
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "redirect_http_to_https requires TLS: loopback"
         );
         assert_eq!(
-            report.errors[0].help.as_deref(),
+            report.errors()[0].help.as_deref(),
             Some("Enable TLS on the bind or remove redirect_http_to_https.")
         );
     }

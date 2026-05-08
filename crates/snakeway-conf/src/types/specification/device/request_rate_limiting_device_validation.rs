@@ -1,14 +1,14 @@
-use crate::types::{Origin, RequestRateLimitingDeviceSpec};
+use crate::types::{HclOrigin, RequestRateLimitingDeviceSpec};
 use crate::validation::validator::validate_device_paths;
-use crate::validation::{
+use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
 range_constraint!(MAX_REQUESTS_PER_SECOND, u16, min: 1, max: 30_000);
 range_constraint!(WINDOW_SECONDS, u16, min: 1, max: 60, units: "seconds");
 
-impl ValidateSpec for RequestRateLimitingDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for RequestRateLimitingDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         validate_range_field!(
             MAX_REQUESTS_PER_SECOND,
             self.max_requests_per_second,
@@ -24,7 +24,7 @@ impl ValidateSpec for RequestRateLimitingDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::RequestRateLimitingDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn max_requests_per_second_below_range() {
@@ -41,10 +41,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("max_requests_per_second"))
         );
@@ -65,10 +65,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("window_seconds"))
         );
@@ -89,7 +89,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -108,10 +108,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("must start with '/'"))
         );

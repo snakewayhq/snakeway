@@ -1,5 +1,6 @@
-use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::types::HclOrigin;
+use crate::types::device_issues;
+use confval::ValidationReport;
 use nix::NixPath;
 use std::fs;
 use std::path::Path;
@@ -20,43 +21,63 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 
 pub(crate) fn validate_geoip_db_file(
     geoip_db: &Path,
-    report: &mut ValidationReport,
-    origin: &Origin,
+    report: &mut ValidationReport<HclOrigin>,
+    origin: &HclOrigin,
 ) {
     if !geoip_db.is_file() {
         if NixPath::is_empty(geoip_db) {
-            report.geoip_db_path_is_empty(geoip_db.display(), origin);
+            report.push(device_issues::geoip_db_path_is_empty(
+                geoip_db.display(),
+                origin,
+            ));
         }
         if !geoip_db.exists() {
-            report.geoip_db_path_does_not_exist(geoip_db.display(), origin);
+            report.push(device_issues::geoip_db_path_does_not_exist(
+                geoip_db.display(),
+                origin,
+            ));
         }
         if !geoip_db.is_file() {
-            report.geoip_db_is_not_a_file(geoip_db.display(), origin);
+            report.push(device_issues::geoip_db_is_not_a_file(
+                geoip_db.display(),
+                origin,
+            ));
         }
     }
 }
 
 pub(crate) fn validate_ua_parser_regexes_file(
     path: &Path,
-    report: &mut ValidationReport,
-    origin: &Origin,
+    report: &mut ValidationReport<HclOrigin>,
+    origin: &HclOrigin,
 ) {
     if NixPath::is_empty(path) {
-        report.ua_parser_regexes_path_is_empty(path.display(), origin);
+        report.push(device_issues::ua_parser_regexes_path_is_empty(
+            path.display(),
+            origin,
+        ));
         return;
     }
     if !path.exists() {
-        report.ua_parser_regexes_path_does_not_exist(path.display(), origin);
+        report.push(device_issues::ua_parser_regexes_path_does_not_exist(
+            path.display(),
+            origin,
+        ));
         return;
     }
     if !path.is_file() {
-        report.ua_parser_regexes_path_is_not_a_file(path.display(), origin);
+        report.push(device_issues::ua_parser_regexes_path_is_not_a_file(
+            path.display(),
+            origin,
+        ));
         return;
     }
     if let Ok(contents) = std::fs::read_to_string(path)
         && !contents.contains("user_agent_parsers")
     {
-        report.ua_parser_regexes_file_missing_expected_content(path.display(), origin);
+        report.push(
+            device_issues::ua_parser_regexes_file_missing_expected_content(path.display(), origin),
+        );
     }
 }
 
@@ -129,32 +150,32 @@ mod tests {
     fn validate_ua_parser_empty_path() {
         // Arrange
         let mut report = ValidationReport::default();
-        let origin = Origin::test("ua_parser");
+        let origin = HclOrigin::test("ua_parser");
         let path = Path::new("");
 
         // Act
         validate_ua_parser_regexes_file(path, &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors.iter().any(|e| e.message.contains("empty")));
+        assert!(report.has_issues());
+        assert!(report.errors().iter().any(|e| e.message.contains("empty")));
     }
 
     #[test]
     fn validate_ua_parser_not_found() {
         // Arrange
         let mut report = ValidationReport::default();
-        let origin = Origin::test("ua_parser");
+        let origin = HclOrigin::test("ua_parser");
         let path = Path::new("/nonexistent/regexes.yaml");
 
         // Act
         validate_ua_parser_regexes_file(path, &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("does not exist"))
         );
@@ -165,16 +186,16 @@ mod tests {
         // Arrange
         let dir = tempdir().expect("failed to create temp dir");
         let mut report = ValidationReport::default();
-        let origin = Origin::test("ua_parser");
+        let origin = HclOrigin::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(dir.path(), &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("not a file"))
         );
@@ -189,16 +210,16 @@ mod tests {
         f.write_all(b"some random content")
             .expect("failed to write");
         let mut report = ValidationReport::default();
-        let origin = Origin::test("ua_parser");
+        let origin = HclOrigin::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(&path, &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message.contains("does not appear to be a valid"))
         );
@@ -213,12 +234,12 @@ mod tests {
         f.write_all(b"user_agent_parsers:\n  - regex: '.*'\n")
             .expect("failed to write");
         let mut report = ValidationReport::default();
-        let origin = Origin::test("ua_parser");
+        let origin = HclOrigin::test("ua_parser");
 
         // Act
         validate_ua_parser_regexes_file(&path, &mut report, &origin);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 }

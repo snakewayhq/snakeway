@@ -1,3 +1,4 @@
+pub(crate) mod device_issues;
 mod device_spec;
 mod identity_device_spec;
 mod identity_device_validation;

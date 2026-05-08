@@ -1,10 +1,12 @@
-use crate::types::{CertStoreSpec, IngressSpec, ServerSpec, TlsTerminationSpec};
-use crate::validation::ValidationReport;
+use crate::types::bind_issues;
+use crate::types::server_issues;
+use crate::types::{CertStoreSpec, HclOrigin, IngressSpec, ServerSpec, TlsTerminationSpec};
+use confval::ValidationReport;
 
 pub(crate) fn validate_tls(
     server: &ServerSpec,
     ingresses: &[IngressSpec],
-    report: &mut ValidationReport,
+    report: &mut ValidationReport<HclOrigin>,
 ) {
     let mut any_tls_listener = false;
     let mut any_acme_listener = false;
@@ -24,7 +26,7 @@ pub(crate) fn validate_tls(
 
                     // ACME requires domains
                     if domains.is_empty() {
-                        report.acme_tls_requires_domains(&bind.origin);
+                        report.push(bind_issues::acme_tls_requires_domains(&bind.origin));
                     }
                 }
             }
@@ -34,7 +36,11 @@ pub(crate) fn validate_tls(
     // If ACME is configured anywhere, server.tls_automation must exist
     if any_acme_listener {
         let Some(tls_automation_cfg) = &server.tls_automation else {
-            report.acme_configured_in_ingress_but_server_tls_not_configured(&server.origin);
+            report.push(
+                server_issues::acme_configured_in_ingress_but_server_tls_not_configured(
+                    &server.origin,
+                ),
+            );
             return;
         };
 
@@ -56,7 +62,8 @@ pub(crate) fn validate_tls(
 
     // Optional: warn if server.tls_automation exists but no TLS listeners
     if server.tls_automation.is_some() && !any_tls_listener {
-        report.warn_server_tls_configured_with_no_tls_listeners(&server.origin);
+        report
+            .push(server_issues::warn_server_tls_configured_with_no_tls_listeners(&server.origin));
     }
 }
 
@@ -64,7 +71,7 @@ pub(crate) fn validate_tls(
 mod tests {
     use super::validate_tls;
     use crate::types::*;
-    use crate::validation::ValidationReport;
+    use confval::ValidationReport;
     use std::net::IpAddr;
     use std::path::PathBuf;
     use std::str::FromStr;
@@ -132,7 +139,7 @@ mod tests {
         validate_tls(&server, &[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.iter().any(|e| e.message
+        assert!(report.errors().iter().any(|e| e.message
             == "ACME configured in ingress but server.tls_automation is not configured"));
     }
 
@@ -159,10 +166,10 @@ mod tests {
         validate_tls(&server, &[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
+        assert!(report.errors().is_empty());
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message
                     == "server.tls_automation configured but no TLS listeners defined")
@@ -187,7 +194,7 @@ mod tests {
         validate_tls(&server, &[ingress], &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
-        assert!(report.warnings.is_empty());
+        assert!(report.errors().is_empty());
+        assert!(report.warnings().is_empty());
     }
 }

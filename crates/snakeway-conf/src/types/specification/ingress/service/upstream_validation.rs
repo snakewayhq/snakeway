@@ -1,29 +1,34 @@
-use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
+use super::service_issues;
+use crate::types::specification::ingress::bind::bind_issues;
+use crate::types::{EndpointSpec, EndpointTlsSpec, HclOrigin, HostSpec, UpstreamSpec};
 use crate::validation::validator::{is_valid_hostname, is_valid_port};
-use crate::validation::{ValidateSpec, ValidationReport};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for UpstreamSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for UpstreamSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.weight == 0 || self.weight > 1_000 {
-            report.invalid_upstream_weight(&self.weight, origin);
+            report.push(service_issues::invalid_upstream_weight(
+                &self.weight,
+                origin,
+            ));
         }
     }
 }
 
-impl ValidateSpec for EndpointSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for EndpointSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         match &self.host {
             HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-                report.invalid_upstream_ip(ip, origin);
+                report.push(service_issues::invalid_upstream_ip(ip, origin));
             }
             HostSpec::Hostname(name) if !is_valid_hostname(name) => {
-                report.invalid_upstream_hostname(name, origin);
+                report.push(service_issues::invalid_upstream_hostname(name, origin));
             }
             _ => {}
         }
 
         if !is_valid_port(self.port) {
-            report.invalid_port(self.port, origin);
+            report.push(bind_issues::invalid_port(self.port, origin));
         }
 
         if let Some(tls) = &self.tls {
@@ -32,18 +37,18 @@ impl ValidateSpec for EndpointSpec {
     }
 }
 
-impl ValidateSpec for EndpointTlsSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for EndpointTlsSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.sni.trim().is_empty() {
-            report.upstream_tls_sni_required(origin);
+            report.push(service_issues::upstream_tls_sni_required(origin));
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, Origin, UpstreamSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::types::{EndpointSpec, EndpointTlsSpec, HclOrigin, HostSpec, UpstreamSpec};
+    use confval::{ValidateSpec, ValidationReport};
     use std::net::IpAddr;
     use std::str::FromStr;
 
@@ -65,13 +70,16 @@ mod tests {
         let mut report = ValidationReport::default();
         let mut upstream = minimal_upstream();
         upstream.weight = 0;
-        let origin = Origin::test("upstream");
+        let origin = HclOrigin::test("upstream");
 
         // Act
         upstream.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream weight: 0"));
     }
 
@@ -81,13 +89,16 @@ mod tests {
         let mut report = ValidationReport::default();
         let mut upstream = minimal_upstream();
         upstream.weight = 1001;
-        let origin = Origin::test("upstream");
+        let origin = HclOrigin::test("upstream");
 
         // Act
         upstream.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream weight: 1001"));
     }
 
@@ -100,13 +111,16 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = HclOrigin::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream ip: 0.0.0.0"));
     }
 
@@ -119,13 +133,16 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = HclOrigin::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid upstream ip: 224.0.0.1"));
     }
 
@@ -138,13 +155,16 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = HclOrigin::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(
             error
                 .message
@@ -161,13 +181,16 @@ mod tests {
             port: 0,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = HclOrigin::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("invalid port: 0"));
     }
 
@@ -180,13 +203,13 @@ mod tests {
             port: 3000,
             tls: None,
         };
-        let origin = Origin::test("endpoint");
+        let origin = HclOrigin::test("endpoint");
 
         // Act
         endpoint.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -198,13 +221,16 @@ mod tests {
             verify: false,
             ca_file: None,
         };
-        let origin = Origin::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         tls.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS SNI required"));
     }
 
@@ -217,13 +243,16 @@ mod tests {
             verify: false,
             ca_file: None,
         };
-        let origin = Origin::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         tls.validate(&origin, &mut report);
 
         // Assert
-        let error = report.errors.first().expect("expected at least one error");
+        let error = report
+            .errors()
+            .first()
+            .expect("expected at least one error");
         assert!(error.message.contains("upstream TLS SNI required"));
     }
 }

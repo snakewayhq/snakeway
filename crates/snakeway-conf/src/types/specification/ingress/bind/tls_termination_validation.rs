@@ -1,18 +1,21 @@
-use crate::types::{Origin, TlsTerminationSpec};
+use super::bind_issues;
+use crate::types::{HclOrigin, TlsTerminationSpec};
 use crate::validation::validator::validate_cert_key_pair;
-use crate::validation::{ValidateSpec, ValidationReport};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for TlsTerminationSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for TlsTerminationSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         match self {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(cert, key) {
-                    report.ingress_tls_manual_cert_pair_invalid(&e, origin);
+                    report.push(bind_issues::ingress_tls_manual_cert_pair_invalid(
+                        &e, origin,
+                    ));
                 }
             }
             TlsTerminationSpec::Acme { domains, .. } => {
                 if domains.is_empty() {
-                    report.acme_tls_requires_domains(origin);
+                    report.push(bind_issues::acme_tls_requires_domains(origin));
                 }
             }
         }
@@ -21,8 +24,8 @@ impl ValidateSpec for TlsTerminationSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Origin, TlsTerminationSpec};
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use crate::types::{HclOrigin, TlsTerminationSpec};
+    use confval::{ValidateSpec, ValidationReport};
     use std::path::PathBuf;
 
     use rcgen::generate_simple_self_signed;
@@ -38,16 +41,16 @@ mod tests {
             domains: vec![],
             challenge: Default::default(),
         };
-        let origin = Origin::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.to_lowercase().contains("domain"))
         );
@@ -61,13 +64,13 @@ mod tests {
             domains: vec!["example.com".to_string()],
             challenge: Default::default(),
         };
-        let origin = Origin::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -97,13 +100,13 @@ mod tests {
             cert: cert_path,
             key: key_path,
         };
-        let origin = Origin::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -117,12 +120,12 @@ mod tests {
         );
         let mut report = ValidationReport::default();
         let spec = TlsTerminationSpec::Manual { cert, key };
-        let origin = Origin::test("tls");
+        let origin = HclOrigin::test("tls");
 
         // Act
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors[0].message, expected_error);
+        assert_eq!(report.errors()[0].message, expected_error);
     }
 }

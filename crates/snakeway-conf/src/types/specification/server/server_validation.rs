@@ -1,7 +1,9 @@
-use crate::types::{Origin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
+use crate::types::server_issues;
+use crate::types::{HclOrigin, PerformanceSpec, ServerSpec, ShutdownSpec, UpgradeSpec};
 use crate::validation::validator::validate_cert_pem;
-use crate::validation::{
-    RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
+use confval::{
+    RangeConstraint, ValidateSpec, ValidationIssue, ValidationReport, range_constraint,
+    validate_range_field,
 };
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -15,10 +17,10 @@ range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
 range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, usize, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
 
-impl ValidateSpec for ServerSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for ServerSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if self.version != 1 {
-            report.invalid_config_version(&self.version, origin);
+            report.push(server_issues::invalid_config_version(&self.version, origin));
         }
 
         if let Some(pid_file) = self.pid_file.clone() {
@@ -27,16 +29,22 @@ impl ValidateSpec for ServerSpec {
             };
 
             if !parent.exists() {
-                report.pid_file_parent_dir_does_not_exist(pid_file.display(), origin);
+                report.push(server_issues::pid_file_parent_dir_does_not_exist(
+                    pid_file.display(),
+                    origin,
+                ));
             } else if !parent.is_dir() {
-                report.pid_file_parent_not_a_dir(pid_file.display(), origin);
+                report.push(server_issues::pid_file_parent_not_a_dir(
+                    pid_file.display(),
+                    origin,
+                ));
             }
         }
 
         if let Some(ca_file) = &self.ca_file
             && let Err(e) = validate_cert_pem(ca_file)
         {
-            report.server_ca_file_invalid(&e, origin);
+            report.push(server_issues::server_ca_file_invalid(&e, origin));
         }
 
         if let Some(threads) = self.threads {
@@ -76,8 +84,8 @@ impl ValidateSpec for ServerSpec {
     }
 }
 
-impl ValidateSpec for ShutdownSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for ShutdownSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if let Some(drain) = self.drain_seconds {
             validate_range_field!(SHUTDOWN_DRAIN_SECONDS, drain, report, origin);
         }
@@ -88,16 +96,16 @@ impl ValidateSpec for ShutdownSpec {
     }
 }
 
-impl ValidateSpec for UpgradeSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for UpgradeSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if let Some(retries) = self.max_retries {
             validate_range_field!(UPGRADE_MAX_RETRIES, retries, report, origin);
         }
     }
 }
 
-impl ValidateSpec for PerformanceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for PerformanceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if let Some(pool_size) = self.upstream_connection_pool_size {
             validate_range_field!(UPSTREAM_CONNECTION_POOL_SIZE, pool_size, report, origin);
         }
@@ -108,31 +116,29 @@ impl ValidateSpec for PerformanceSpec {
     }
 }
 
-impl ValidateSpec for UpstreamSourceAddressesSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for UpstreamSourceAddressesSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for addr in &self.ipv4 {
             if addr.parse::<Ipv4Addr>().is_err() {
-                report.error(
+                report.push(ValidationIssue::error(
                     format!(
                         "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
                         addr
                     ),
-                    origin,
-                    None,
-                );
+                    origin.clone(),
+                ));
             }
         }
 
         for addr in &self.ipv6 {
             if addr.parse::<Ipv6Addr>().is_err() {
-                report.error(
+                report.push(ValidationIssue::error(
                     format!(
                         "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
                         addr
                     ),
-                    origin,
-                    None,
-                );
+                    origin.clone(),
+                ));
             }
         }
     }
@@ -141,7 +147,7 @@ impl ValidateSpec for UpstreamSourceAddressesSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::ServerSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
     use std::path::PathBuf;
 
     #[test]
@@ -157,7 +163,7 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -173,9 +179,9 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("invalid config version: 2")
         );
@@ -195,7 +201,7 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -211,9 +217,9 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("pid file parent directory does not exist")
         );
@@ -237,8 +243,8 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors[0].message.contains(&expected));
+        assert!(report.has_issues());
+        assert!(report.errors()[0].message.contains(&expected));
     }
 
     #[test]
@@ -254,8 +260,12 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors[0].message.contains("invalid threads: 0"));
+        assert!(report.has_issues());
+        assert!(
+            report.errors()[0]
+                .message
+                .contains("threads must be at least 1")
+        );
     }
 
     #[test]
@@ -271,8 +281,12 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors[0].message.contains("invalid threads: 1025"));
+        assert!(report.has_issues());
+        assert!(
+            report.errors()[0]
+                .message
+                .contains("threads must be at most 1024")
+        );
     }
 
     #[test]
@@ -294,10 +308,10 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("pid file parent is not a directory"))
         );
@@ -322,8 +336,13 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors.iter().any(|e| e.message.contains(&expected)));
+        assert!(report.has_issues());
+        assert!(
+            report
+                .errors()
+                .iter()
+                .any(|e| e.message.contains(&expected))
+        );
     }
 
     #[test]
@@ -339,7 +358,7 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -355,11 +374,11 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
-                .contains("invalid dns_refresh_interval_seconds: 3601seconds")
+                .contains("dns_refresh_interval_seconds must be at most 3600")
         );
     }
 
@@ -385,6 +404,6 @@ mod tests {
         server.validate(&server.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 }

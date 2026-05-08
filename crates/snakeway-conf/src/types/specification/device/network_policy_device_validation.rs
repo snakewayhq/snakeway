@@ -1,13 +1,14 @@
-use crate::types::{NetworkPolicyDeviceSpec, Origin};
+use super::device_issues;
+use crate::types::{HclOrigin, NetworkPolicyDeviceSpec};
 use crate::validation::validator::validate_device_paths;
-use crate::validation::{ValidateSpec, ValidationReport};
+use confval::{ValidateSpec, ValidationReport};
 use ipnet::IpNet;
 
-impl ValidateSpec for NetworkPolicyDeviceSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for NetworkPolicyDeviceSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         for cidr in &self.cidr_allow {
             if cidr.parse::<IpNet>().is_err() {
-                report.invalid_network_policy_cidr(cidr, origin);
+                report.push(device_issues::invalid_network_policy_cidr(cidr, origin));
             }
         }
 
@@ -18,7 +19,7 @@ impl ValidateSpec for NetworkPolicyDeviceSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::NetworkPolicyDeviceSpec;
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
 
     #[test]
     fn invalid_cidr_in_allow_list() {
@@ -34,10 +35,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("invalid network policy CIDR"))
         );
@@ -57,7 +58,7 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -75,10 +76,10 @@ mod tests {
         spec.validate(&spec.origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("must start with '/'"))
         );

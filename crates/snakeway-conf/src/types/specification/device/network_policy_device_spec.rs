@@ -1,10 +1,10 @@
-use crate::types::Origin;
+use crate::types::HclOrigin;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct NetworkPolicyDeviceSpec {
     #[serde(skip)]
-    pub origin: Origin,
+    pub origin: HclOrigin,
 
     pub enable: bool,
     pub cidr_allow: Vec<String>,

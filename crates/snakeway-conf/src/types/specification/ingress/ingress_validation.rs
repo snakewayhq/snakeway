@@ -1,8 +1,8 @@
-use crate::types::{IngressSpec, Origin};
-use crate::validation::{ValidateSpec, ValidationReport};
+use crate::types::{HclOrigin, IngressSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for IngressSpec {
-    fn validate(&self, _origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for IngressSpec {
+    fn validate(&self, _origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Bind validation.
         if let Some(bind) = &self.bind {
             bind.validate(&bind.origin, report);

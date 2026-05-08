@@ -1,12 +1,13 @@
-use crate::types::{BindAdminSpec, BindInterfaceSpec, Origin, TlsTerminationSpec};
+use crate::types::specification::ingress::bind::bind_issues;
+use crate::types::{BindAdminSpec, BindInterfaceSpec, HclOrigin, TlsTerminationSpec};
 use crate::validation::validator::is_valid_port;
-use crate::validation::{ValidateSpec, ValidationReport};
+use confval::{ValidateSpec, ValidationIssue, ValidationReport};
 
-impl ValidateSpec for BindAdminSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for BindAdminSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         // Port validation.
         if !is_valid_port(self.port) {
-            report.invalid_port(self.port, origin);
+            report.push(bind_issues::invalid_port(self.port, origin));
         }
 
         // TLS cert/key/acme validation.
@@ -15,7 +16,7 @@ impl ValidateSpec for BindAdminSpec {
                 self.tls.validate(origin, report);
             }
             TlsTerminationSpec::Acme { .. } => {
-                report.admin_bind_does_not_support_acme(origin);
+                report.push(bind_issues::admin_bind_does_not_support_acme(origin));
             }
         }
 
@@ -30,13 +31,16 @@ impl ValidateSpec for BindAdminSpec {
                 // which resolves to all interfaces.
                 // Binding to all interfaces exposes the admin API to the network,
                 // which is not allowed.
-                report.invalid_bind_addr("0.0.0.0 or ::", origin);
+                report.push(bind_issues::invalid_bind_addr("0.0.0.0 or ::", origin));
             }
             Ok(_) => {
                 // All good.
             }
             Err(_) => {
-                report.invalid_bind_addr(&self.interface.to_string(), origin);
+                report.push(bind_issues::invalid_bind_addr(
+                    &self.interface.to_string(),
+                    origin,
+                ));
                 return;
             }
         }
@@ -48,11 +52,11 @@ impl ValidateSpec for BindAdminSpec {
             // There are two ways to bind to all interfaces:
             // 1. Use "all" enum option.
             // 2. Use a specific IP address.
-            report.error(
-                "admin API cannot bind to all interfaces".to_string(),
-                origin,
-                Some("Use loopback or a specific IP address.".to_string()),
-            );
+            report.push(ValidationIssue::error_with_help(
+                "admin API cannot bind to all interfaces",
+                origin.clone(),
+                "Use loopback or a specific IP address.",
+            ));
         }
     }
 }
@@ -60,10 +64,10 @@ impl ValidateSpec for BindAdminSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, Origin,
+        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, HclOrigin,
         TlsTerminationSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
     use rcgen::generate_simple_self_signed;
     use std::fs::File;
     use std::io::Write;
@@ -101,16 +105,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.to_lowercase().contains("acme"))
         );
@@ -125,14 +129,19 @@ mod tests {
             port: 9000,
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.errors.iter().any(|e| e.message.contains("0.0.0.0")));
+        assert!(report.has_issues());
+        assert!(
+            report
+                .errors()
+                .iter()
+                .any(|e| e.message.contains("0.0.0.0"))
+        );
     }
 
     #[test]
@@ -144,7 +153,7 @@ mod tests {
             port: 9000,
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -152,7 +161,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "invalid bind address: bad-addr")
         );
@@ -193,19 +202,19 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
         assert_eq!(
-            report.errors[0].message,
+            report.errors()[0].message,
             "admin API cannot bind to all interfaces"
         );
         assert_eq!(
-            report.errors[0].help.as_deref(),
+            report.errors()[0].help.as_deref(),
             Some("Use loopback or a specific IP address.")
         );
     }
@@ -219,7 +228,7 @@ mod tests {
             port: 9000,
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -227,11 +236,11 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "bind_admin.auth is required"),
             "expected admin_auth_missing error; got: {:?}",
-            report.errors
+            report.errors()
         );
     }
 
@@ -245,7 +254,7 @@ mod tests {
             auth: AdminAuthSpec::default(),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -253,7 +262,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message == "bind_admin.auth is required")
         );
@@ -269,7 +278,7 @@ mod tests {
             auth: valid_bearer_auth(PathBuf::from("/nonexistent/path/to/tokens.txt")),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -277,11 +286,11 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("token_file could not be read")),
             "expected io error; got: {:?}",
-            report.errors
+            report.errors()
         );
     }
 
@@ -296,7 +305,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -304,7 +313,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("token_file is empty"))
         );
@@ -321,7 +330,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -329,7 +338,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("minimum is 32"))
         );
@@ -346,7 +355,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -354,7 +363,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors
+                .errors()
                 .iter()
                 .any(|e| e.message.contains("comments are not permitted"))
         );
@@ -371,7 +380,7 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
@@ -379,12 +388,12 @@ mod tests {
         // Assert
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message.contains("duplicate token")),
             "expected duplicate warning; got warnings: {:?}, errors: {:?}",
-            report.warnings,
-            report.errors
+            report.warnings(),
+            report.errors()
         );
     }
 
@@ -412,16 +421,16 @@ mod tests {
             auth: valid_bearer_auth(token_file.path().to_path_buf()),
             ..Default::default()
         };
-        let origin = Origin::test("bind_admin");
+        let origin = HclOrigin::test("bind_admin");
 
         // Act
         bind_admin.validate(&origin, &mut report);
 
         // Assert
         assert!(
-            report.errors.is_empty(),
+            report.errors().is_empty(),
             "expected no errors; got: {:?}",
-            report.errors
+            report.errors()
         );
     }
 }

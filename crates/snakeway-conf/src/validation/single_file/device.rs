@@ -1,8 +1,8 @@
-use crate::types::DeviceSpec;
-use crate::validation::ValidationReport;
-use crate::validation::validate_spec_trait::ValidateSpec;
+use crate::types::device_issues;
+use crate::types::{DeviceSpec, HclOrigin};
+use confval::{ValidateSpec, ValidationReport};
 
-pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport) {
+pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationReport<HclOrigin>) {
     let mut identity_seen = false;
     let mut identity_enabled = false;
     let mut network_policy_seen = false;
@@ -15,7 +15,7 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
     for device in enabled_devices {
         if let DeviceSpec::Identity(cfg) = device {
             if identity_seen {
-                report.device_already_defined(device.origin());
+                report.push(device_issues::device_already_defined(device.origin()));
             }
             identity_seen = true;
             identity_enabled = cfg.enable;
@@ -27,7 +27,9 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
                 && cfg.geoip_isp_db.is_none()
                 && cfg.geoip_connection_type_db.is_none()
             {
-                report.geoip_enabled_with_no_dbs_specified(device.origin());
+                report.push(device_issues::geoip_enabled_with_no_dbs_specified(
+                    device.origin(),
+                ));
             }
         };
     }
@@ -38,19 +40,23 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
         match device {
             DeviceSpec::RequestFilter(cfg) => {
                 if request_filter_seen {
-                    report.device_already_defined(device.origin());
+                    report.push(device_issues::device_already_defined(device.origin()));
                 }
                 request_filter_seen = true;
 
                 cfg.validate(device.origin(), report);
 
                 if cfg.max_suspicious_body_bytes > cfg.max_body_bytes {
-                    report.warn_max_suspicious_bytes_large_than_max_body_bytes(device.origin());
+                    report.push(
+                        device_issues::warn_max_suspicious_bytes_large_than_max_body_bytes(
+                            device.origin(),
+                        ),
+                    );
                 }
             }
             DeviceSpec::NetworkPolicy(cfg) => {
                 if network_policy_seen {
-                    report.device_already_defined(device.origin());
+                    report.push(device_issues::device_already_defined(device.origin()));
                 }
                 network_policy_seen = true;
 
@@ -59,18 +65,22 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
                     // It is a no-op internally if the identity device is not present, but it is
                     // import to validate its presence here to a void network policy silently
                     // being ignored.
-                    report.device_requires_identity_device(device.origin());
+                    report.push(device_issues::device_requires_identity_device(
+                        device.origin(),
+                    ));
                 }
 
                 if cfg.cidr_allow.is_empty() {
-                    report.network_policy_device_requires_cidr_allow(device.origin());
+                    report.push(device_issues::network_policy_device_requires_cidr_allow(
+                        device.origin(),
+                    ));
                 }
 
                 cfg.validate(device.origin(), report);
             }
             DeviceSpec::RequestRateLimiting(cfg) => {
                 if request_rate_limiting_device_seen {
-                    report.device_already_defined(device.origin());
+                    report.push(device_issues::device_already_defined(device.origin()));
                 }
                 request_rate_limiting_device_seen = true;
 
@@ -79,7 +89,9 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
                     // It is a no-op internally if the identity device is not present, but it is
                     // import to validate its presence here to a void request rate limiting silently
                     // being ignored.
-                    report.device_requires_identity_device(device.origin());
+                    report.push(device_issues::device_requires_identity_device(
+                        device.origin(),
+                    ));
                 }
 
                 cfg.validate(device.origin(), report);
@@ -89,19 +101,25 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
             }
             DeviceSpec::StructuredLogging(cfg) => {
                 if structured_logging_seen {
-                    report.device_already_defined(device.origin());
+                    report.push(device_issues::device_already_defined(device.origin()));
                 }
                 structured_logging_seen = true;
 
                 if cfg.include_identity && cfg.identity_fields.is_empty() {
-                    report.structured_logging_identity_fields_empty(device.origin());
+                    report.push(device_issues::structured_logging_identity_fields_empty(
+                        device.origin(),
+                    ));
                 }
 
                 if cfg.include_headers
                     && cfg.allowed_headers.is_empty()
                     && cfg.redacted_headers.is_empty()
                 {
-                    report.structured_logging_includes_headers_but_no_headers_set(device.origin());
+                    report.push(
+                        device_issues::structured_logging_includes_headers_but_no_headers_set(
+                            device.origin(),
+                        ),
+                    );
                 }
             }
             DeviceSpec::Identity(_) => {
@@ -117,7 +135,8 @@ mod tests {
         DeviceSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestRateLimitingDeviceSpec,
         StructuredLoggingDeviceSpec, WasmDeviceSpec,
     };
-    use crate::validation::{ValidationReport, validate_devices};
+    use crate::validation::validate_devices;
+    use confval::ValidationReport;
     use std::path::PathBuf;
 
     #[test]
@@ -139,7 +158,7 @@ mod tests {
         validate_devices(&[device], &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -157,7 +176,7 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -175,8 +194,8 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        let error_messages: Vec<String> = report.errors.iter().map(|e| e.message.clone()).collect();
+        assert!(report.has_issues());
+        let error_messages: Vec<String> = report.iter().map(|e| e.message.clone()).collect();
         assert!(
             error_messages
                 .iter()
@@ -204,8 +223,8 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        let error_messages: Vec<String> = report.errors.iter().map(|e| e.message.clone()).collect();
+        assert!(report.has_issues());
+        let error_messages: Vec<String> = report.iter().map(|e| e.message.clone()).collect();
         assert!(
             error_messages
                 .iter()
@@ -228,7 +247,6 @@ mod tests {
 
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("wasm device path is not a file"))
         );
@@ -253,7 +271,7 @@ mod tests {
 
         validate_devices(&[device], &mut report);
 
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
@@ -271,10 +289,9 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("invalid trusted proxy: not-an-ip"))
         );
@@ -295,10 +312,9 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("must not contain a catch-all network"))
         );
@@ -319,10 +335,9 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("must not contain a catch-all network"))
         );
@@ -343,8 +358,8 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.warnings.iter().any(|w| {
+        assert!(report.has_issues());
+        assert!(report.warnings().iter().any(|w| {
             w.message
                 .contains("should NOT contain a public IP range: 8.8.8.8/32")
         }))
@@ -366,8 +381,8 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        let error_messages: Vec<String> = report.errors.iter().map(|e| e.message.clone()).collect();
+        assert!(report.has_issues());
+        let error_messages: Vec<String> = report.iter().map(|e| e.message.clone()).collect();
         assert!(
             error_messages
                 .iter()
@@ -391,8 +406,8 @@ mod tests {
         validate_devices(&devices, &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        let error_messages: Vec<String> = report.errors.iter().map(|e| e.message.clone()).collect();
+        assert!(report.has_issues());
+        let error_messages: Vec<String> = report.iter().map(|e| e.message.clone()).collect();
         assert!(
             error_messages
                 .iter()
@@ -416,7 +431,6 @@ mod tests {
 
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("geoip db path is not a file"))
         );
@@ -439,10 +453,9 @@ mod tests {
         validate_devices(&[device_a, device_b], &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("device already defined"))
         );
@@ -462,10 +475,9 @@ mod tests {
         validate_devices(&[device], &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("requires identity device"))
         );
@@ -486,10 +498,9 @@ mod tests {
         validate_devices(&[device], &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .errors
                 .iter()
                 .any(|e| e.message.contains("requires identity device"))
         );
@@ -510,10 +521,10 @@ mod tests {
         validate_devices(&[device], &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message.contains("identity fields cannot be empty"))
         );
@@ -535,8 +546,8 @@ mod tests {
         validate_devices(&[device], &mut report);
 
         // Assert
-        assert!(report.has_violations());
-        assert!(report.warnings.iter().any(|w| {
+        assert!(report.has_issues());
+        assert!(report.warnings().iter().any(|w| {
             w.message
                 .contains("includes headers but no headers are set")
         }));
@@ -559,10 +570,10 @@ mod tests {
         validate_devices(&[device], &mut report);
 
         // Assert
-        assert!(report.has_violations());
+        assert!(report.has_issues());
         assert!(
             report
-                .warnings
+                .warnings()
                 .iter()
                 .any(|w| w.message.contains("geoip enabled with no dbs specified"))
         );

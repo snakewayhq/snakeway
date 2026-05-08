@@ -1,20 +1,25 @@
-use crate::types::Origin;
-use crate::validation::ValidationReport;
+use crate::types::HclOrigin;
+use crate::types::device_issues;
+use confval::ValidationReport;
 use http::{HeaderName, Method};
 
 pub(crate) fn validate_http_header_name(
     header: &str,
-    report: &mut ValidationReport,
-    origin: &Origin,
+    report: &mut ValidationReport<HclOrigin>,
+    origin: &HclOrigin,
 ) {
     if HeaderName::from_bytes(header.as_bytes()).is_err() {
-        report.invalid_http_header_name(header, origin);
+        report.push(device_issues::invalid_http_header_name(header, origin));
     }
 }
 
-pub(crate) fn validate_http_method(method: &str, report: &mut ValidationReport, origin: &Origin) {
+pub(crate) fn validate_http_method(
+    method: &str,
+    report: &mut ValidationReport<HclOrigin>,
+    origin: &HclOrigin,
+) {
     if Method::from_bytes(method.as_bytes()).is_err() {
-        report.invalid_http_method(method, origin);
+        report.push(device_issues::invalid_http_method(method, origin));
     }
 }
 
@@ -26,33 +31,33 @@ mod tests {
     fn valid_header_name() {
         // Arrange
         let mut report = ValidationReport::default();
-        let origin = Origin::test("test");
+        let origin = HclOrigin::test("test");
 
         // Act
         validate_http_header_name("content-type", &mut report, &origin);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn invalid_header_name() {
         // Arrange
         let mut report = ValidationReport::default();
-        let origin = Origin::test("test");
+        let origin = HclOrigin::test("test");
 
         // Act
         validate_http_header_name("invalid header!", &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
-        assert_eq!(report.errors.len(), 1);
+        assert!(report.has_issues());
+        assert_eq!(report.errors().len(), 1);
         assert!(
-            report.errors[0]
+            report.errors()[0]
                 .message
                 .contains("invalid HTTP header name"),
             "expected error to contain 'invalid HTTP header name', got: {}",
-            report.errors[0].message
+            report.errors()[0].message
         );
     }
 
@@ -60,31 +65,31 @@ mod tests {
     fn valid_http_method() {
         // Arrange
         let mut report = ValidationReport::default();
-        let origin = Origin::test("test");
+        let origin = HclOrigin::test("test");
 
         // Act
         validate_http_method("GET", &mut report, &origin);
 
         // Assert
-        assert!(!report.has_violations());
+        assert!(!report.has_issues());
     }
 
     #[test]
     fn invalid_http_method() {
         // Arrange
         let mut report = ValidationReport::default();
-        let origin = Origin::test("test");
+        let origin = HclOrigin::test("test");
 
         // Act
         validate_http_method("INVALID METHOD", &mut report, &origin);
 
         // Assert
-        assert!(report.has_violations());
-        assert_eq!(report.errors.len(), 1);
+        assert!(report.has_issues());
+        assert_eq!(report.errors().len(), 1);
         assert!(
-            report.errors[0].message.contains("invalid HTTP method"),
+            report.errors()[0].message.contains("invalid HTTP method"),
             "expected error to contain 'invalid HTTP method', got: {}",
-            report.errors[0].message
+            report.errors()[0].message
         );
     }
 }

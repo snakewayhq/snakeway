@@ -1,21 +1,26 @@
-use crate::types::{NetworkConnectionFilterSpec, Origin};
-use crate::validation::{ValidateSpec, ValidationReport};
+use super::bind_issues;
+use crate::types::{HclOrigin, NetworkConnectionFilterSpec};
+use confval::{ValidateSpec, ValidationReport};
 
-impl ValidateSpec for NetworkConnectionFilterSpec {
-    fn validate(&self, origin: &Origin, report: &mut ValidationReport) {
+impl ValidateSpec<HclOrigin> for NetworkConnectionFilterSpec {
+    fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
         if !self.ip_family.ipv4 && !self.ip_family.ipv6 {
-            report.connection_filter_requires_at_least_one_ip_family(origin);
+            report.push(bind_issues::connection_filter_requires_at_least_one_ip_family(origin));
         }
 
         for cidr in &self.cidr.allow {
             if cidr.parse::<ipnet::IpNet>().is_err() {
-                report.invalid_cidr_in_connection_filter_allow_list(cidr, origin);
+                report.push(bind_issues::invalid_cidr_in_connection_filter_allow_list(
+                    cidr, origin,
+                ));
             }
         }
 
         for cidr in &self.cidr.deny {
             if cidr.parse::<ipnet::IpNet>().is_err() {
-                report.invalid_cidr_in_connection_filter_deny_list(cidr, origin);
+                report.push(bind_issues::invalid_cidr_in_connection_filter_deny_list(
+                    cidr, origin,
+                ));
             }
         }
     }
@@ -24,12 +29,12 @@ impl ValidateSpec for NetworkConnectionFilterSpec {
 #[cfg(test)]
 mod tests {
     use crate::types::{
-        CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec, Origin,
+        CidrSpec, HclOrigin, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec,
     };
-    use crate::validation::{ValidateSpec, ValidationReport};
+    use confval::{ValidateSpec, ValidationReport};
 
-    fn test_origin() -> Origin {
-        Origin::test("connection_filter")
+    fn test_origin() -> HclOrigin {
+        HclOrigin::test("connection_filter")
     }
 
     #[test]
@@ -50,7 +55,7 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
     }
 
     #[test]
@@ -74,7 +79,7 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
     }
 
     #[test]
@@ -98,7 +103,7 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors().len(), 1);
     }
 
     #[test]
@@ -122,6 +127,6 @@ mod tests {
         spec.validate(&origin, &mut report);
 
         // Assert
-        assert!(report.errors.is_empty());
+        assert!(report.errors().is_empty());
     }
 }

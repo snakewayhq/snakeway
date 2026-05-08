@@ -1,4 +1,5 @@
-use crate::validation::ValidationReport;
+use crate::types::HclOrigin;
+use confval::ValidationReport;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -67,7 +68,9 @@ pub enum ConfigError {
     InvalidUpstream { message: String },
 
     #[error("validation failed: {validation_report:?}")]
-    SemanticValidationFailed { validation_report: ValidationReport },
+    SemanticValidationFailed {
+        validation_report: ValidationReport<HclOrigin>,
+    },
 }
 
 impl ConfigError {
