@@ -61,6 +61,7 @@ jobs:
       - name: Run unit tests (snakeway-core / snakeway-conf)
         run: |
           cargo nextest run \
+            -p confval \
             -p snakeway-conf \
             -p snakeway-core \
             --all-features \
@@ -170,7 +171,7 @@ jobs:
       - name: Run tests with coverage instrumentation
         run: |
           cargo llvm-cov \
-            -p snakeway-core -p snakeway-conf -p snakeway \
+            -p confval -p snakeway-core -p snakeway-conf -p snakeway \
             --all-features \
             --ignore-filename-regex 'pingora|tests/|examples/' \
             --json --output-path coverage.json
@@ -190,7 +191,7 @@ jobs:
 
       - name: Count tests and generate badge
         run: |
-          UNIT=$(cargo test -p snakeway-core -p snakeway-conf -p snakeway --all-features -- --list 2>/dev/null | grep -c ': test$' || echo 0)
+          UNIT=$(cargo test -p confval -p snakeway-core -p snakeway-conf -p snakeway --all-features -- --list 2>/dev/null | grep -c ': test$' || echo 0)
           echo "## Tests: ${UNIT}" >> "$GITHUB_STEP_SUMMARY"
           jq -n --arg total "$UNIT" '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
             > coverage-html/tests-badge.json

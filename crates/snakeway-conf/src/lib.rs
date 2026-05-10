@@ -7,4 +7,4 @@ mod resolution;
 pub mod types;
 pub mod validation;
 
-pub use loader::{load_config, load_config_from_specs, load_spec_files};
+pub use loader::{ValidatedConfig, load_config, load_config_from_specs, load_spec_files};

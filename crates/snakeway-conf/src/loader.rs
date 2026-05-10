@@ -4,12 +4,19 @@ use crate::parse::{parse_devices, parse_ingress};
 use crate::types::RuntimeConfig;
 use crate::types::{DeviceSpec, EntrypointSpec, HclOrigin, IngressSpec, ServerSpec};
 use crate::validation::{ConfigError, validate_spec};
+use confval::ValidationReport;
 
 use std::fs;
 use std::path::Path;
 
+#[derive(Debug)]
+pub struct ValidatedConfig {
+    pub config: RuntimeConfig,
+    pub report: ValidationReport<HclOrigin>,
+}
+
 #[hotpath::measure]
-pub fn load_config(root: &Path) -> Result<RuntimeConfig, ConfigError> {
+pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
     load_config_from_specs(server_spec, ingress_specs, device_specs)
 }
@@ -20,16 +27,19 @@ pub fn load_config_from_specs(
     server_spec: ServerSpec,
     ingress_specs: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
-) -> Result<RuntimeConfig, ConfigError> {
+) -> Result<ValidatedConfig, ConfigError> {
     let validation_report = validate_spec(&server_spec, &ingress_specs, &device_specs);
 
-    if validation_report.has_issues() {
+    if validation_report.has_errors() {
         return Err(ConfigError::SemanticValidationFailed { validation_report });
     }
 
     let config = lower_configs(server_spec, ingress_specs, device_specs)?;
 
-    Ok(config)
+    Ok(ValidatedConfig {
+        config,
+        report: validation_report,
+    })
 }
 
 pub(crate) type Spec = (ServerSpec, Vec<DeviceSpec>, Vec<IngressSpec>);

@@ -105,7 +105,7 @@ impl ConfigBuilder {
             ));
         }
 
-        load_config_from_specs(self.server_spec, self.ingress_specs, device_specs)
+        load_config_from_specs(self.server_spec, self.ingress_specs, device_specs).map(|v| v.config)
     }
 }
 

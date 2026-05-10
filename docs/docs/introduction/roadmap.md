@@ -220,7 +220,17 @@ Standard installation layout:
 
 ---
 
-## Phase 8: Snakeway 1.0
+## Phase 8: Alpha Hardening and Refinements (v0.13.0)
+
+**Goals**
+
+- [x] Move config validation primitives to discrete crate.
+- [x] Rework config validation report collection to avoid a monolithic file that lists all possible issues.
+- [x] Add sensible defaults and env vars after walking through real world deployment scenarios.
+
+---
+
+## Phase 9: Snakeway 1.0
 
 **Goals**
 

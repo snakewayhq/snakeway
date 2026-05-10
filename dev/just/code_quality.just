@@ -9,4 +9,7 @@ clippy:
 check:
     cargo check
 
+machete:
+    cargo machete
+
 lint: fmt clippy

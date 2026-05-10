@@ -112,6 +112,7 @@ const sidebars: SidebarsConfig = {
         'internals/lifecycle',
         'internals/control-plane-and-data-plane',
         'internals/configuration',
+        'internals/confval',
         'internals/hot-reload',
         'internals/tls-cert-renewal',
         'internals/observability',
