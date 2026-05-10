@@ -9,6 +9,7 @@ use confval::ValidationReport;
 use std::fs;
 use std::path::Path;
 
+#[derive(Debug)]
 pub struct ValidatedConfig {
     pub config: RuntimeConfig,
     pub report: ValidationReport<HclOrigin>,
