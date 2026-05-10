@@ -9,11 +9,18 @@ pub(crate) fn check(
     format: ConfigCheckOutputFormat,
 ) -> anyhow::Result<()> {
     match load_config(&path) {
-        Ok(cfg) => {
+        Ok(validated) => {
+            if validated.report.has_warnings() {
+                let mut out = String::new();
+                validated.report.render_plain(&mut out).ok();
+                eprint!("{out}");
+            }
+
             if quiet {
                 return Ok(());
             }
 
+            let cfg = &validated.config;
             if matches!(format, ConfigCheckOutputFormat::Json) {
                 let success_info = serde_json::json!({
                     "status": "success",

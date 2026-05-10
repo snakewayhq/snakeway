@@ -99,3 +99,6 @@ harness = false
 [[bench]]
 name = "header_scaling"
 harness = false
+
+[package.metadata.cargo-machete]
+ignored = ["hcl-rs"]

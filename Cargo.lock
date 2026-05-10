@@ -4463,7 +4463,6 @@ dependencies = [
  "ipnet",
  "nix 0.31.2",
  "openssl",
- "owo-colors",
  "rcgen",
  "secrecy",
  "serde",
