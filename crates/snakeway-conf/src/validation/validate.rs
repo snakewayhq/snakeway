@@ -23,7 +23,7 @@ pub(crate) fn validate_spec(
             ValidationIssue::error_with_help(
                 format!("invalid config version: {}", &server.version),
                 server.origin.clone(),
-                "This version of SnakeWay is not compatible with this config file. Please upgrade SnakeWay."
+                "This version of Snakeway is not compatible with this config file. Please upgrade Snakeway."
             )
         );
     }

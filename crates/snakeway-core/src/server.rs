@@ -10,13 +10,21 @@ pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
         .format(hotpath::Format::Table)
         .build();
 
-    let config = match load_config(Path::new(&config_path)) {
-        Ok(cfg) => cfg,
+    let validated = match load_config(Path::new(&config_path)) {
+        Ok(v) => v,
         Err(e) => {
             eprintln!("{e}");
             exit(1);
         }
     };
+
+    if validated.report.has_warnings() {
+        let mut out = String::new();
+        validated.report.render_plain(&mut out).ok();
+        eprint!("{out}");
+    }
+
+    let config = validated.config;
 
     if test {
         println!("Configuration is valid.");

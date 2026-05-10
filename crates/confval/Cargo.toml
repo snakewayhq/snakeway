@@ -3,6 +3,11 @@ name = "confval"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+description = "Config validation primitives for Rust"
+repository = "https://github.com/snakewayhq/snakeway"
+readme = "README.md"
+keywords = ["configuration", "validation", "config"]
+categories = ["config", "development-tools"]
 
 [features]
 default = []

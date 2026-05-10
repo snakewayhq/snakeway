@@ -26,3 +26,6 @@ opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "testing"] }
 [build-dependencies]
 tonic-prost-build = "0.14"
 
+[package.metadata.cargo-machete]
+ignored = ["prost", "tonic-prost"]
+

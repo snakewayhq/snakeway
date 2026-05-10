@@ -14,7 +14,7 @@ install-dev-tools:
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
     just brew-install "grpcurl go"
     bun i -g wscat
-    cargo install tokio-console samply cargo-nextest cargo-llvm-cov
+    cargo install tokio-console samply cargo-nextest cargo-llvm-cov machete
 
 docs:
     cd docs && npm start

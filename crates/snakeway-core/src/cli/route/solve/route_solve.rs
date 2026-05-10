@@ -78,7 +78,7 @@ pub(crate) fn run(args: RouteSolveArgs) {
         .or_else(|| parsed_url.query().map(|q| q.to_string()));
 
     let config = match load_config(&args.config) {
-        Ok(cfg) => cfg,
+        Ok(validated) => validated.config,
         Err(e) => {
             eprintln!(
                 "error: failed to load config from '{}': {}",
