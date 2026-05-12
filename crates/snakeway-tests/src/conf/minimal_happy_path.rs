@@ -20,6 +20,10 @@ pub fn minimal_grpc_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_grpc_ingress().build()
 }
 
+pub fn minimal_h2_to_h1_runtime_config() -> RuntimeConfig {
+    ConfigBuilder::default().with_h2_to_h1_ingress().build()
+}
+
 pub fn minimal_static_file_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default()
         .with_static_file_ingress(false)

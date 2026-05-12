@@ -250,8 +250,8 @@ impl ProxyHttp for PublicGateway {
         // Enforce protocol rules for this upstream and request.
         self.enforce_protocol(&mut peer, ctx, upstream)?;
 
-        // Set upstream authority for gRPC and http/2.0 requests.
-        if ctx.is_http2() {
+        // Set upstream authority for end-to-end h2 (gRPC, h2-to-h2).
+        if ctx.is_http2() && upstream.use_tls() {
             ctx.upstream_authority = Some(upstream.authority());
         }
 
@@ -628,10 +628,8 @@ impl ProxyHttp for PublicGateway {
     ) -> Result<()> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("response").entered();
-        if ctx.ws_opened || ctx.is_http2() {
-            // Do not run on_response devices for WebSockets or HTTP/2.
-            // For WebSockets and HTTP/2, this is not a real "response."
-            // For WebSockets, it is a protocol switch.
+        if ctx.ws_opened {
+            // WebSocket upgrade is a protocol switch, not a response.
             return Ok(());
         }
 
@@ -886,8 +884,9 @@ impl PublicGateway {
     ///
     /// PROTOCOL PRECEDENCE (highest to lowest):
     /// 1. WebSocket: HTTP/1.1 only
-    /// 2. gRPC: HTTP/2 only (TLS required)
-    /// 3. Default: Pingora defaults
+    /// 2. HTTP/2 + TLS upstream: end-to-end h2 (gRPC, h2-to-h2)
+    /// 3. HTTP/2 + plaintext upstream: h2-to-h1 (Pingora translates)
+    /// 4. Default: Pingora defaults
     pub(crate) fn enforce_protocol(
         &self,
         peer: &mut HttpPeer,
@@ -895,12 +894,8 @@ impl PublicGateway {
         upstream: &UpstreamRuntime,
     ) -> Result<(), BError> {
         if ctx.is_upgrade_req() {
-            // WebSockets MUST be HTTP/1.1
             peer.options.set_http_version(1, 1);
-        } else if ctx.is_http2() {
-            if !upstream.use_tls() {
-                return Err(Error::new(Custom("gRPC upstream must use TLS and HTTP/2")));
-            }
+        } else if ctx.is_http2() && upstream.use_tls() {
             peer.options.set_http_version(2, 2);
         }
         Ok(())
