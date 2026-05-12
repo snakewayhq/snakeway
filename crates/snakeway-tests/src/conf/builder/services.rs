@@ -49,6 +49,19 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn with_h2_to_h1_ingress(mut self) -> Self {
+        let mut bind = Self::make_bind(true);
+        bind.enable_http2 = true;
+        let service = Self::make_service_spec();
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services: vec![service],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
     pub fn with_ws_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
         let service = ServiceSpec {
