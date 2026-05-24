@@ -9,7 +9,8 @@ It lives in `crates/confval/` and provides the generic primitives that `snakeway
 
 - **Framework-agnostic.** Works with any config format (HCL, TOML, YAML, JSON, env vars).
 - **Zero opinion on parsing.** You parse however you want; confval validates the result.
-- **Minimal dependencies.** Core functionality has zero dependencies. `serde` and `owo-colors` are optional, behind feature flags.
+- **Minimal dependencies.** Core functionality has zero dependencies. `serde` and `owo-colors` are optional, behind
+  feature flags.
 - **Zero-cost generics.** Generic over `Origin` so each project defines its own source-location type.
 
 ## Core types
@@ -113,7 +114,7 @@ Three formats are available:
 
 ```rust
 let mut out = String::new();
-report.render_plain(&mut out).unwrap();
+report.render_plain( & mut out).unwrap();
 eprint!("{out}");
 ```
 
@@ -131,8 +132,9 @@ Snakeway enables both features in its workspace dependency.
 Snakeway extends confval with two domain-specific pieces:
 
 1. **`HclOrigin`** implements `Origin` with HCL file path and section tracking.
-2. **Issue factory functions** are named functions in `*_issues.rs` files that return `ValidationIssue<HclOrigin>` with pre-formatted messages.
-These keep error messages named and greppable while using confval's generic report.
+2. **Issue factory functions** are named functions in `*_issues.rs` files that return `ValidationIssue<HclOrigin>` with
+   pre-formatted messages.
+   These keep error messages named and greppable while using confval's generic report.
 
 ```rust
 // in server_issues.rs
@@ -141,7 +143,7 @@ pub(crate) fn invalid_config_version(version: &u32, origin: &HclOrigin) -> Valid
 }
 
 // call site in server_validation.rs
-report.push(server_issues::invalid_config_version(&self.version, origin));
+report.push(server_issues::invalid_config_version( & self .version, origin));
 ```
 
-See [Configuration Internals](configuration) for the full validation pipeline.
+See [Configuration Internals](/internals/configuration) for the full validation pipeline.
