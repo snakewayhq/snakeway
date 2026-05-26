@@ -135,7 +135,7 @@ The validation infrastructure is split across two crates:
 
 - **`confval`** provides the generic, reusable primitives: `ValidationReport<O>`,
   `ValidationIssue<O>`, `ValidateSpec<O>`, `RangeConstraint<T>`, and rendering. See
-  [confval](/internals/confval) for details.
+  [confval](confval) for details.
 - **`snakeway-conf`** provides domain-specific validation: the `HclOrigin` type, issue
   factory functions, and all the concrete `ValidateSpec<HclOrigin>` implementations.
 
