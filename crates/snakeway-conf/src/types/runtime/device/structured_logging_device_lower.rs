@@ -1,11 +1,6 @@
-use crate::types::{
-    IdentityFieldSpec, LogEventSpec, LogLevelSpec, LogPhaseSpec, StructuredLoggingDeviceSpec,
-};
+use crate::types::StructuredLoggingDeviceSpec;
 
-use super::{
-    IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig,
-    StructuredLoggingDeviceConfig,
-};
+use super::StructuredLoggingDeviceConfig;
 
 impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
     fn from(spec: StructuredLoggingDeviceSpec) -> Self {
@@ -35,62 +30,14 @@ impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
     }
 }
 
-impl From<LogLevelSpec> for LogLevelConfig {
-    fn from(level: LogLevelSpec) -> Self {
-        match level {
-            LogLevelSpec::Trace => LogLevelConfig::Trace,
-            LogLevelSpec::Debug => LogLevelConfig::Debug,
-            LogLevelSpec::Info => LogLevelConfig::Info,
-            LogLevelSpec::Warn => LogLevelConfig::Warn,
-            LogLevelSpec::Error => LogLevelConfig::Error,
-        }
-    }
-}
-
-impl From<LogEventSpec> for LogEventConfig {
-    fn from(event: LogEventSpec) -> Self {
-        match event {
-            LogEventSpec::Request => LogEventConfig::Request,
-            LogEventSpec::BeforeProxy => LogEventConfig::BeforeProxy,
-            LogEventSpec::AfterProxy => LogEventConfig::AfterProxy,
-            LogEventSpec::Response => LogEventConfig::Response,
-        }
-    }
-}
-
-impl From<LogPhaseSpec> for LogPhaseConfig {
-    fn from(phase: LogPhaseSpec) -> Self {
-        match phase {
-            LogPhaseSpec::Request => LogPhaseConfig::Request,
-            LogPhaseSpec::Response => LogPhaseConfig::Response,
-        }
-    }
-}
-
-impl From<IdentityFieldSpec> for IdentityFieldConfig {
-    fn from(value: IdentityFieldSpec) -> Self {
-        match value {
-            IdentityFieldSpec::ClientIp => IdentityFieldConfig::ClientIp,
-            IdentityFieldSpec::ProxyChain => IdentityFieldConfig::ProxyChain,
-            IdentityFieldSpec::Forwarded => IdentityFieldConfig::Forwarded,
-            IdentityFieldSpec::Trusted => IdentityFieldConfig::Trusted,
-
-            IdentityFieldSpec::Asn => IdentityFieldConfig::Asn,
-            IdentityFieldSpec::Aso => IdentityFieldConfig::Aso,
-            IdentityFieldSpec::Country => IdentityFieldConfig::Country,
-            IdentityFieldSpec::Region => IdentityFieldConfig::Region,
-            IdentityFieldSpec::ConnectionType => IdentityFieldConfig::ConnectionType,
-
-            IdentityFieldSpec::Bot => IdentityFieldConfig::Bot,
-            IdentityFieldSpec::Device => IdentityFieldConfig::Device,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::types::specification::HclOrigin;
+    use crate::types::{
+        IdentityFieldConfig, IdentityFieldSpec, LogEventConfig, LogEventSpec, LogLevelConfig,
+        LogLevelSpec, LogPhaseConfig, LogPhaseSpec,
+    };
     use std::collections::HashSet;
 
     #[test]
@@ -132,31 +79,6 @@ mod tests {
         ));
         assert!(config.events.is_none());
         assert!(config.phases.is_none());
-    }
-
-    #[test]
-    fn log_level_from_spec() {
-        // Arrange / Act / Assert
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Trace),
-            LogLevelConfig::Trace
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Debug),
-            LogLevelConfig::Debug
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Info),
-            LogLevelConfig::Info
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Warn),
-            LogLevelConfig::Warn
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Error),
-            LogLevelConfig::Error
-        ));
     }
 
     #[test]

@@ -1,7 +1,7 @@
-use crate::types::{LoadBalancingStrategySpec, ServiceSpec};
+use crate::types::ServiceSpec;
 
 use super::upstream_config::UpstreamTcpConfig;
-use super::{LoadBalancingStrategy, ServiceConfig, UpstreamUnixConfig};
+use super::{ServiceConfig, UpstreamUnixConfig};
 
 impl ServiceConfig {
     pub fn new(
@@ -23,21 +23,10 @@ impl ServiceConfig {
     }
 }
 
-impl From<LoadBalancingStrategySpec> for LoadBalancingStrategy {
-    fn from(spec: LoadBalancingStrategySpec) -> Self {
-        match spec {
-            LoadBalancingStrategySpec::Failover => Self::Failover,
-            LoadBalancingStrategySpec::RoundRobin => Self::RoundRobin,
-            LoadBalancingStrategySpec::RequestPressure => Self::RequestPressure,
-            LoadBalancingStrategySpec::StickyHash => Self::StickyHash,
-            LoadBalancingStrategySpec::Random => Self::Random,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{LoadBalancingStrategy, LoadBalancingStrategySpec};
 
     #[test]
     fn service_config_new_sets_fields() {
@@ -63,35 +52,5 @@ mod tests {
         ));
         assert!(config.tcp_upstreams.is_empty());
         assert!(config.unix_upstreams.is_empty());
-    }
-
-    #[test]
-    fn load_balancing_strategy_failover() {
-        // Arrange / Act / Assert
-        assert!(matches!(
-            LoadBalancingStrategy::from(LoadBalancingStrategySpec::Failover),
-            LoadBalancingStrategy::Failover
-        ));
-    }
-
-    #[test]
-    fn load_balancing_strategy_all_variants() {
-        // Arrange / Act / Assert
-        assert!(matches!(
-            LoadBalancingStrategy::from(LoadBalancingStrategySpec::RoundRobin),
-            LoadBalancingStrategy::RoundRobin
-        ));
-        assert!(matches!(
-            LoadBalancingStrategy::from(LoadBalancingStrategySpec::RequestPressure),
-            LoadBalancingStrategy::RequestPressure
-        ));
-        assert!(matches!(
-            LoadBalancingStrategy::from(LoadBalancingStrategySpec::StickyHash),
-            LoadBalancingStrategy::StickyHash
-        ));
-        assert!(matches!(
-            LoadBalancingStrategy::from(LoadBalancingStrategySpec::Random),
-            LoadBalancingStrategy::Random
-        ));
     }
 }

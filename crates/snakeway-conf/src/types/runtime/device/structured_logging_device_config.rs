@@ -1,3 +1,5 @@
+use crate::types::{IdentityFieldSpec, LogEventSpec, LogLevelSpec, LogPhaseSpec};
+use o2o::o2o;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -29,7 +31,8 @@ pub struct StructuredLoggingDeviceConfig {
     pub phases: Option<Vec<LogPhaseConfig>>,
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
+#[derive(o2o, Default, Debug, Deserialize, Serialize, Clone, Copy)]
+#[from_owned(LogLevelSpec)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevelConfig {
     Trace,
@@ -40,7 +43,8 @@ pub enum LogLevelConfig {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(o2o, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[from_owned(LogEventSpec)]
 #[serde(rename_all = "snake_case")]
 pub enum LogEventConfig {
     Request,
@@ -49,14 +53,16 @@ pub enum LogEventConfig {
     Response,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(o2o, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[from_owned(LogPhaseSpec)]
 #[serde(rename_all = "lowercase")]
 pub enum LogPhaseConfig {
     Request,
     Response,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(o2o, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[from_owned(IdentityFieldSpec)]
 #[serde(rename_all = "snake_case")]
 pub enum IdentityFieldConfig {
     ClientIp,
@@ -72,4 +78,34 @@ pub enum IdentityFieldConfig {
 
     Bot,
     Device,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_level_from_spec() {
+        // Arrange / Act / Assert
+        assert!(matches!(
+            LogLevelConfig::from(LogLevelSpec::Trace),
+            LogLevelConfig::Trace
+        ));
+        assert!(matches!(
+            LogLevelConfig::from(LogLevelSpec::Debug),
+            LogLevelConfig::Debug
+        ));
+        assert!(matches!(
+            LogLevelConfig::from(LogLevelSpec::Info),
+            LogLevelConfig::Info
+        ));
+        assert!(matches!(
+            LogLevelConfig::from(LogLevelSpec::Warn),
+            LogLevelConfig::Warn
+        ));
+        assert!(matches!(
+            LogLevelConfig::from(LogLevelSpec::Error),
+            LogLevelConfig::Error
+        ));
+    }
 }

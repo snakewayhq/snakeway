@@ -42,6 +42,7 @@ pub struct ServerSpec {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct ShutdownSpec {
     /// How long active connections are allowed to finish after a shutdown signal.
     #[serde(default = "default_shutdown_drain_seconds")]

@@ -1,4 +1,6 @@
+use crate::types::OnInvalidForwardedSpec;
 use ipnet::IpNet;
+use o2o::o2o;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
@@ -16,10 +18,40 @@ pub struct ForwardingConfig {
     pub on_invalid: OnInvalidForwardedConfig,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(o2o, Debug, Clone, Default, Deserialize, Serialize)]
+#[from_owned(OnInvalidForwardedSpec)]
 #[serde(rename_all = "lowercase")]
 pub enum OnInvalidForwardedConfig {
     Deny,
     #[default]
     Ignore,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn on_invalid_forwarded_deny() {
+        // Arrange
+        let spec = OnInvalidForwardedSpec::Deny;
+
+        // Act
+        let config: OnInvalidForwardedConfig = spec.into();
+
+        // Assert
+        assert!(matches!(config, OnInvalidForwardedConfig::Deny));
+    }
+
+    #[test]
+    fn on_invalid_forwarded_ignore() {
+        // Arrange
+        let spec = OnInvalidForwardedSpec::Ignore;
+
+        // Act
+        let config: OnInvalidForwardedConfig = spec.into();
+
+        // Assert
+        assert!(matches!(config, OnInvalidForwardedConfig::Ignore));
+    }
 }

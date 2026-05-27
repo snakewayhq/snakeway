@@ -1,3 +1,5 @@
+use crate::types::EndpointTlsSpec;
+use o2o::o2o;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -12,7 +14,8 @@ pub struct UpstreamTcpConfig {
 }
 
 /// Represent TLS settings for origin server connections.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
+#[from_owned(EndpointTlsSpec)]
 pub struct UpstreamTlsConfig {
     pub sni: String,
     pub verify: bool,
@@ -29,4 +32,27 @@ pub struct UpstreamUnixConfig {
     pub sni: String,
 
     pub weight: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tls_config_from_spec() {
+        // Arrange
+        let spec = EndpointTlsSpec {
+            sni: "backend.internal".to_string(),
+            verify: true,
+            ca_file: Some(PathBuf::from("/etc/ssl/ca.pem")),
+        };
+
+        // Act
+        let config: UpstreamTlsConfig = spec.into();
+
+        // Assert
+        assert_eq!(config.sni, "backend.internal");
+        assert!(config.verify);
+        assert_eq!(config.ca_file, Some(PathBuf::from("/etc/ssl/ca.pem")));
+    }
 }

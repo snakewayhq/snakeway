@@ -1,7 +1,7 @@
-use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec};
+use crate::types::{EndpointSpec, HostSpec};
 use std::net::IpAddr;
 
-use super::{UpstreamTcpConfig, UpstreamTlsConfig, UpstreamUnixConfig};
+use super::{UpstreamTcpConfig, UpstreamUnixConfig};
 
 /// Build an upstream config without performing DNS resolution.
 ///
@@ -27,16 +27,6 @@ impl UpstreamTcpConfig {
     }
 }
 
-impl From<EndpointTlsSpec> for UpstreamTlsConfig {
-    fn from(spec: EndpointTlsSpec) -> Self {
-        Self {
-            sni: spec.sni,
-            verify: spec.verify,
-            ca_file: spec.ca_file,
-        }
-    }
-}
-
 impl UpstreamUnixConfig {
     pub fn new(sock: String, use_tls: bool, weight: u32) -> Self {
         Self {
@@ -51,7 +41,7 @@ impl UpstreamUnixConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use crate::types::EndpointTlsSpec;
 
     #[test]
     fn tcp_upstream_http_url() {
@@ -133,23 +123,5 @@ mod tests {
         assert_eq!(config.sock, "/var/run/app.sock");
         assert!(!config.use_tls);
         assert_eq!(config.weight, 1);
-    }
-
-    #[test]
-    fn tls_config_from_spec() {
-        // Arrange
-        let spec = EndpointTlsSpec {
-            sni: "backend.internal".to_string(),
-            verify: true,
-            ca_file: Some(PathBuf::from("/etc/ssl/ca.pem")),
-        };
-
-        // Act
-        let config: UpstreamTlsConfig = spec.into();
-
-        // Assert
-        assert_eq!(config.sni, "backend.internal");
-        assert!(config.verify);
-        assert_eq!(config.ca_file, Some(PathBuf::from("/etc/ssl/ca.pem")));
     }
 }

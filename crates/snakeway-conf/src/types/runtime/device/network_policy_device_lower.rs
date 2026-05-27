@@ -1,8 +1,8 @@
-use crate::types::{NetworkPolicyDeviceSpec, OnInvalidForwardedSpec};
+use crate::types::NetworkPolicyDeviceSpec;
 use crate::validation::ConfigError;
 use ipnet::IpNet;
 
-use super::{ForwardingConfig, NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
+use super::{ForwardingConfig, NetworkPolicyDeviceConfig};
 
 impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
     type Error = ConfigError;
@@ -28,15 +28,6 @@ impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
             },
             paths: spec.paths.into_iter().collect(),
         })
-    }
-}
-
-impl From<OnInvalidForwardedSpec> for OnInvalidForwardedConfig {
-    fn from(spec: OnInvalidForwardedSpec) -> Self {
-        match spec {
-            OnInvalidForwardedSpec::Deny => OnInvalidForwardedConfig::Deny,
-            OnInvalidForwardedSpec::Ignore => OnInvalidForwardedConfig::Ignore,
-        }
     }
 }
 
@@ -93,29 +84,5 @@ mod tests {
             result.unwrap_err(),
             ConfigError::InvalidUpstream { .. }
         ));
-    }
-
-    #[test]
-    fn on_invalid_forwarded_deny() {
-        // Arrange
-        let spec = OnInvalidForwardedSpec::Deny;
-
-        // Act
-        let config: OnInvalidForwardedConfig = spec.into();
-
-        // Assert
-        assert!(matches!(config, OnInvalidForwardedConfig::Deny));
-    }
-
-    #[test]
-    fn on_invalid_forwarded_ignore() {
-        // Arrange
-        let spec = OnInvalidForwardedSpec::Ignore;
-
-        // Act
-        let config: OnInvalidForwardedConfig = spec.into();
-
-        // Assert
-        assert!(matches!(config, OnInvalidForwardedConfig::Ignore));
     }
 }

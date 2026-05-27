@@ -1,8 +1,7 @@
-use crate::types::OnNoPeerAddrSpec;
 use crate::types::specification::NetworkConnectionFilterSpec;
 use ipnet::IpNet;
 
-use super::{NetworkConnectionFilterConfig, OnNoPeerAddr};
+use super::NetworkConnectionFilterConfig;
 
 impl TryFrom<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
     type Error = String;
@@ -38,19 +37,10 @@ impl TryFrom<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
     }
 }
 
-impl From<OnNoPeerAddrSpec> for OnNoPeerAddr {
-    fn from(on_no_peer_addr: OnNoPeerAddrSpec) -> Self {
-        match on_no_peer_addr {
-            OnNoPeerAddrSpec::Allow => OnNoPeerAddr::Allow,
-            OnNoPeerAddrSpec::Deny => OnNoPeerAddr::Deny,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{CidrSpec, IpFamilySpec};
+    use crate::types::{CidrSpec, IpFamilySpec, OnNoPeerAddrSpec};
 
     #[test]
     fn valid_cidr_parsed() {
@@ -94,29 +84,5 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn on_no_peer_addr_allow() {
-        // Arrange
-        let spec = OnNoPeerAddrSpec::Allow;
-
-        // Act
-        let config: OnNoPeerAddr = spec.into();
-
-        // Assert
-        assert!(matches!(config, OnNoPeerAddr::Allow));
-    }
-
-    #[test]
-    fn on_no_peer_addr_deny() {
-        // Arrange
-        let spec = OnNoPeerAddrSpec::Deny;
-
-        // Act
-        let config: OnNoPeerAddr = spec.into();
-
-        // Assert
-        assert!(matches!(config, OnNoPeerAddr::Deny));
     }
 }

@@ -1,3 +1,5 @@
+use crate::types::AcmeChallengeSpec;
+use o2o::o2o;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -16,7 +18,25 @@ pub enum TlsTerminationConfig {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(o2o, Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[from_owned(AcmeChallengeSpec)]
 pub enum AcmeChallengeConfig {
     Http01,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn acme_challenge_maps_http01() {
+        // Arrange
+        let spec = AcmeChallengeSpec::Http01;
+
+        // Act
+        let config: AcmeChallengeConfig = spec.into();
+
+        // Assert
+        assert!(matches!(config, AcmeChallengeConfig::Http01));
+    }
 }

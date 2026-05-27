@@ -1,6 +1,6 @@
-use crate::types::{AcmeChallengeSpec, TlsTerminationSpec};
+use crate::types::TlsTerminationSpec;
 
-use super::{AcmeChallengeConfig, TlsTerminationConfig};
+use super::TlsTerminationConfig;
 
 impl TryFrom<TlsTerminationSpec> for TlsTerminationConfig {
     type Error = String;
@@ -30,17 +30,10 @@ impl TryFrom<TlsTerminationSpec> for TlsTerminationConfig {
     }
 }
 
-impl From<AcmeChallengeSpec> for AcmeChallengeConfig {
-    fn from(config: AcmeChallengeSpec) -> Self {
-        match config {
-            AcmeChallengeSpec::Http01 => AcmeChallengeConfig::Http01,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::AcmeChallengeSpec;
     use std::path::PathBuf;
 
     #[test]
@@ -126,17 +119,5 @@ mod tests {
             }
             _ => panic!("expected Acme variant"),
         }
-    }
-
-    #[test]
-    fn acme_challenge_maps_http01() {
-        // Arrange
-        let spec = AcmeChallengeSpec::Http01;
-
-        // Act
-        let config: AcmeChallengeConfig = spec.into();
-
-        // Assert
-        assert!(matches!(config, AcmeChallengeConfig::Http01));
     }
 }
