@@ -1,9 +1,7 @@
 mod circuit_breaker_config;
 mod health_check_config;
 mod service_config;
-mod service_lower;
 mod upstream_config;
-mod upstream_lower;
 
 pub use circuit_breaker_config::*;
 pub use health_check_config::*;

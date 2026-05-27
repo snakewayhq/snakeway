@@ -1,5 +1,4 @@
 mod bearer_auth_config;
-mod bearer_auth_lower;
 mod secret_token;
 
 pub use bearer_auth_config::*;

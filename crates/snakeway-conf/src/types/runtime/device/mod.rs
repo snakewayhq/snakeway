@@ -1,13 +1,9 @@
 mod device_config;
 mod identity_device_config;
 mod network_policy_device_config;
-mod network_policy_device_lower;
 mod request_filter_device_config;
-mod request_filter_device_lower;
 mod request_rate_limiting_device_config;
-mod request_rate_limiting_device_lower;
 mod structured_logging_device_config;
-mod structured_logging_device_lower;
 mod wasm_device_config;
 
 pub use device_config::*;
