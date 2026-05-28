@@ -4,8 +4,8 @@ use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(MAX_REQUESTS_PER_SECOND, u16, min: 1, max: 30_000);
-range_constraint!(WINDOW_SECONDS, u16, min: 1, max: 60, units: "seconds");
+range_constraint!(MAX_REQUESTS_PER_SECOND, i64, min: 1, max: 30_000);
+range_constraint!(WINDOW_SECONDS, i64, min: 1, max: 60, units: "seconds");
 
 impl ValidateSpec<HclOrigin> for RequestRateLimitingDeviceSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

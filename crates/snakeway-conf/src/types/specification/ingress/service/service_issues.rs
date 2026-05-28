@@ -8,7 +8,7 @@ pub(crate) fn service_has_no_upstreams(origin: &HclOrigin) -> ValidationIssue<Hc
 }
 
 pub(crate) fn invalid_upstream_weight(
-    weight: &u32,
+    weight: &i64,
     origin: &HclOrigin,
 ) -> ValidationIssue<HclOrigin> {
     ValidationIssue::error(
@@ -20,7 +20,7 @@ pub(crate) fn invalid_upstream_weight(
 pub(crate) fn upstream_cannot_have_both_sock_and_endpoint(
     sock: &str,
     host: &str,
-    port: u16,
+    port: i64,
     origin: &HclOrigin,
 ) -> ValidationIssue<HclOrigin> {
     ValidationIssue::error(

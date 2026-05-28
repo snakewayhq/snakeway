@@ -61,9 +61,9 @@ pub(crate) fn lower_configs(
                     .upstreams
                     .iter()
                     .filter_map(|u| {
-                        u.sock
-                            .as_ref()
-                            .map(|sock| UpstreamUnixConfig::new(sock.clone(), use_tls, u.weight))
+                        u.sock.as_ref().map(|sock| {
+                            UpstreamUnixConfig::new(sock.clone(), use_tls, u.weight as u32)
+                        })
                     })
                     .collect::<Vec<_>>();
 
@@ -73,7 +73,7 @@ pub(crate) fn lower_configs(
                     .filter_map(|u| {
                         u.endpoint
                             .as_ref()
-                            .map(|endpoint| UpstreamTcpConfig::new(u.weight, endpoint))
+                            .map(|endpoint| UpstreamTcpConfig::new(u.weight as u32, endpoint))
                     })
                     .collect::<Vec<_>>();
 
@@ -124,12 +124,12 @@ pub(crate) fn lower_configs(
                 let redirect_listener_name = format!("redirect-listener-{}", idx);
 
                 let mut socket: SocketAddr = bind_addr;
-                socket.set_port(redirect.port);
+                socket.set_port(redirect.port as u16);
 
                 let listener_cfg = ListenerConfig::from_redirect(
                     &redirect_listener_name,
                     socket.to_string(),
-                    redirect.status,
+                    redirect.status as u16,
                     bind,
                 )
                 .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;

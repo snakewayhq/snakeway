@@ -2,7 +2,7 @@ use crate::resolution::ResolveError;
 use crate::types::specification::ingress::bind_interface_spec::{
     BindInterfaceInput, BindInterfaceSpec,
 };
-use crate::types::{AdminAuthSpec, HclOrigin, TlsTerminationSpec};
+use crate::types::{AdminAuthSpec, HclInt, HclOrigin, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -12,7 +12,7 @@ pub struct BindAdminSpec {
     #[serde(skip)]
     pub origin: HclOrigin,
     pub interface: BindInterfaceInput,
-    pub port: u16,
+    pub port: HclInt,
     pub tls: TlsTerminationSpec,
     #[serde(default)]
     pub auth: AdminAuthSpec,
@@ -32,6 +32,6 @@ impl BindAdminSpec {
             BindInterfaceSpec::Ip(ip) => ip,
         };
 
-        Ok(SocketAddr::new(ip, self.port))
+        Ok(SocketAddr::new(ip, self.port as u16))
     }
 }

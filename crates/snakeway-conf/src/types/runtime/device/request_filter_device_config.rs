@@ -146,11 +146,13 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
             deny_headers,
             allow_headers,
             required_headers,
-            max_header_bytes: spec.max_header_bytes,
-            max_body_bytes: spec.max_body_bytes,
-            max_suspicious_body_bytes: spec.max_suspicious_body_bytes,
-            deny_status: spec.deny_status,
-            client_body_timeout: spec.client_body_timeout_seconds.map(Duration::from_secs),
+            max_header_bytes: spec.max_header_bytes as usize,
+            max_body_bytes: spec.max_body_bytes as usize,
+            max_suspicious_body_bytes: spec.max_suspicious_body_bytes as usize,
+            deny_status: spec.deny_status.map(|v| v as u16),
+            client_body_timeout: spec
+                .client_body_timeout_seconds
+                .map(|v| Duration::from_secs(v as u64)),
             paths: spec.paths.into_iter().collect(),
         })
     }

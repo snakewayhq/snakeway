@@ -6,10 +6,10 @@ pub struct TlsAutomationSpec {
     pub acme: AcmeServerSpec,
     pub cert_store: CertStoreSpec,
     #[serde(default = "default_renew_within_days")]
-    pub renew_within_days: u64,
+    pub renew_within_days: i64,
 }
 
-fn default_renew_within_days() -> u64 {
+fn default_renew_within_days() -> i64 {
     30
 }
 

@@ -148,8 +148,8 @@ impl ConfigBuilder {
 
     pub fn with_connection_rate_limiting_filter(
         self,
-        max_connections_per_second: u16,
-        window_seconds: u16,
+        max_connections_per_second: i64,
+        window_seconds: i64,
     ) -> Self {
         let rate_limiter = ConnectionRateLimitingFilterSpec {
             max_connections_per_second,

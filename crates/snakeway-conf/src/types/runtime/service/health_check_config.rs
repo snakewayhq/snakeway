@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 #[from_owned(HealthCheckSpec)]
 pub struct HealthCheckConfig {
     pub enable: bool,
+    #[map(~ as u64)]
     pub failure_threshold: u64,
+    #[map(~ as u64)]
     pub unhealthy_cooldown_seconds: u64,
 }
 

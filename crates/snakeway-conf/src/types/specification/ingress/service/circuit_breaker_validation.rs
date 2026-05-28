@@ -3,10 +3,10 @@ use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(FAILURE_THRESHOLD, u32, min: 1, max: 10_000);
-range_constraint!(OPEN_DURATION_MS, u64, min: 1, max: 60 * 60 * 1000, units: "ms");
-range_constraint!(HALF_OPEN_MAX_REQUESTS, u32, min: 1, max: 10_000);
-range_constraint!(SUCCESS_THRESHOLD, u32, min: 1, max: 10_000);
+range_constraint!(FAILURE_THRESHOLD, i64, min: 1, max: 10_000);
+range_constraint!(OPEN_DURATION_MS, i64, min: 1, max: 60 * 60 * 1000, units: "ms");
+range_constraint!(HALF_OPEN_MAX_REQUESTS, i64, min: 1, max: 10_000);
+range_constraint!(SUCCESS_THRESHOLD, i64, min: 1, max: 10_000);
 
 impl ValidateSpec<HclOrigin> for CircuitBreakerSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

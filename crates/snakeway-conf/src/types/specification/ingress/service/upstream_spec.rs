@@ -1,5 +1,5 @@
 use crate::resolution::ResolveError;
-use crate::types::HclOrigin;
+use crate::types::{HclInt, HclOrigin};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -13,9 +13,9 @@ pub struct UpstreamSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sock: Option<String>,
     #[serde(default = "default_weight")]
-    pub weight: u32,
+    pub weight: HclInt,
 }
-fn default_weight() -> u32 {
+fn default_weight() -> HclInt {
     1
 }
 
@@ -38,7 +38,7 @@ impl fmt::Display for HostSpec {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct EndpointSpec {
     pub host: HostSpec,
-    pub port: u16,
+    pub port: HclInt,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<EndpointTlsSpec>,
 }
@@ -55,7 +55,7 @@ impl EndpointSpec {
         let ip = match &self.host {
             HostSpec::Ip(ip) => *ip,
             HostSpec::Hostname(name) => {
-                let mut addrs = (name.as_str(), self.port)
+                let mut addrs = (name.as_str(), self.port as u16)
                     .to_socket_addrs()
                     .map_err(|_| ResolveError::DnsFailed(name.clone()))?;
 
@@ -66,6 +66,6 @@ impl EndpointSpec {
             }
         };
 
-        Ok(SocketAddr::new(ip, self.port))
+        Ok(SocketAddr::new(ip, self.port as u16))
     }
 }

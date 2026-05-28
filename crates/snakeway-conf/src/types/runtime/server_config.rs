@@ -44,8 +44,10 @@ pub struct ServerConfig {
 #[from_owned(ShutdownSpec)]
 pub struct ShutdownConfig {
     /// How long active connections are allowed to finish after a shutdown signal.
+    #[map(~.map(|v| v as u64))]
     pub drain_seconds: Option<u64>,
     /// Hard ceiling on total shutdown time.
+    #[map(~.map(|v| v as u64))]
     pub force_timeout_seconds: Option<u64>,
 }
 
@@ -59,6 +61,7 @@ pub struct UpgradeConfig {
     /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
     pub sock: Option<String>,
     /// Maximum retries when connecting/accepting on the upgrade socket.
+    #[map(~.map(|v| v as usize))]
     pub max_retries: Option<usize>,
 }
 
@@ -72,8 +75,10 @@ pub struct PerformanceConfig {
     /// Enable work stealing between threads.
     pub work_stealing: bool,
     /// Number of idle upstream connections kept warm per worker thread.
+    #[map(~.map(|v| v as usize))]
     pub upstream_connection_pool_size: Option<usize>,
     /// Number of parallel accept tasks per listener.
+    #[map(~.map(|v| v as usize))]
     pub parallel_accepts_per_listener: Option<usize>,
 }
 
@@ -99,6 +104,7 @@ pub struct TlsAutomationConfig {
     pub acme: AcmeServerConfig,
     #[map(~.into())]
     pub cert_store: CertStoreConfig,
+    #[map(~ as u64)]
     pub renew_within_days: u64,
 }
 
@@ -142,8 +148,8 @@ impl TryFrom<ServerSpec> for ServerConfig {
     type Error = String;
     fn try_from(spec: ServerSpec) -> Result<Self, Self::Error> {
         Ok(Self {
-            version: spec.version,
-            threads: spec.threads,
+            version: spec.version as u32,
+            threads: spec.threads.map(|v| v as usize),
             pid_file: spec.pid_file.unwrap_or_default(),
             ca_file: spec
                 .ca_file
@@ -154,7 +160,7 @@ impl TryFrom<ServerSpec> for ServerConfig {
                 })?,
             tls_automation: spec.tls_automation.map(Into::into),
             observability: spec.observability.map(Into::into),
-            dns_refresh_interval_seconds: spec.dns_refresh_interval_seconds,
+            dns_refresh_interval_seconds: spec.dns_refresh_interval_seconds as u64,
             shutdown: ShutdownConfig::from(spec.shutdown.unwrap_or_default()),
             upgrade: UpgradeConfig::from(spec.upgrade.unwrap_or_default()),
             performance: PerformanceConfig::from(spec.performance.unwrap_or_default()),
