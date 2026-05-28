@@ -2,7 +2,6 @@ pub mod device;
 pub mod listener;
 pub mod route;
 pub mod server_config;
-mod server_lower;
 pub mod service;
 
 pub use device::*;
