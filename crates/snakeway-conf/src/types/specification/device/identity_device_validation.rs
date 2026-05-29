@@ -5,8 +5,8 @@ use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, usize, min: 1, max: 2048);
-range_constraint!(MAX_USER_AGENT_LENGTH, usize, min: 1, max: 4096);
+range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, i64, min: 1, max: 2048);
+range_constraint!(MAX_USER_AGENT_LENGTH, i64, min: 1, max: 4096);
 
 impl ValidateSpec<HclOrigin> for IdentityDeviceSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

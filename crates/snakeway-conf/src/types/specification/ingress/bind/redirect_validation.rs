@@ -5,7 +5,7 @@ use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(RESPONSE_CODE, u16, min: 300, max: 399);
+range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 impl ValidateSpec<HclOrigin> for RedirectSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

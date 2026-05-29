@@ -1,4 +1,4 @@
-use crate::types::HclOrigin;
+use crate::types::{HclInt, HclOrigin};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -35,11 +35,11 @@ pub struct RequestFilterDeviceSpec {
     // Size limits
     //-------------------------------------------------------------------------
     #[serde(default = "default_max_header_bytes")]
-    pub max_header_bytes: usize,
+    pub max_header_bytes: HclInt,
     #[serde(default = "default_max_body_bytes")]
-    pub max_body_bytes: usize,
+    pub max_body_bytes: HclInt,
     #[serde(default = "default_max_suspicious_body_bytes")]
-    pub max_suspicious_body_bytes: usize,
+    pub max_suspicious_body_bytes: HclInt,
 
     //-------------------------------------------------------------------------
     // Timeouts
@@ -52,12 +52,12 @@ pub struct RequestFilterDeviceSpec {
     /// Applied to the downstream read timeout via Pingora's session API.
     /// `None` keeps Pingora's default (60 s).
     #[serde(default)]
-    pub client_body_timeout_seconds: Option<u64>,
+    pub client_body_timeout_seconds: Option<HclInt>,
 
     //-------------------------------------------------------------------------
     // Override the default granular deny status with a device-scoped value.
     //-------------------------------------------------------------------------
-    pub deny_status: Option<u16>,
+    pub deny_status: Option<HclInt>,
 
     //-------------------------------------------------------------------------
     // Path scoping
@@ -67,13 +67,13 @@ pub struct RequestFilterDeviceSpec {
     pub paths: Vec<String>,
 }
 
-fn default_max_header_bytes() -> usize {
+fn default_max_header_bytes() -> HclInt {
     16 * 1024 // 16 KB
 }
 
-fn default_max_body_bytes() -> usize {
+fn default_max_body_bytes() -> HclInt {
     1024 * 1024 // 1 MB
 }
-fn default_max_suspicious_body_bytes() -> usize {
+fn default_max_suspicious_body_bytes() -> HclInt {
     8 * 1024 // 8 KB
 }

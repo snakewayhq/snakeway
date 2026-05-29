@@ -25,7 +25,7 @@ impl ServiceRouteConfig {
             hosts: spec.hosts,
             path: spec.path,
             allow_websocket: spec.enable_websocket,
-            ws_max_connections: spec.ws_max_connections,
+            ws_max_connections: spec.ws_max_connections.map(|v| v as usize),
         }
     }
 }

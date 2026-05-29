@@ -1,4 +1,4 @@
-use crate::types::HclOrigin;
+use crate::types::{HclInt, HclOrigin};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -13,7 +13,7 @@ pub struct IdentityDeviceSpec {
     /// CIDR strings
     pub trusted_proxies: Vec<String>,
     #[serde(default = "default_max_x_forwarded_for_length")]
-    pub max_x_forwarded_for_length: usize,
+    pub max_x_forwarded_for_length: HclInt,
 
     pub enable_geoip: bool,
 
@@ -31,14 +31,14 @@ pub struct IdentityDeviceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ua_parser_regexes: Option<PathBuf>,
     #[serde(default = "default_max_user_agent_length")]
-    pub max_user_agent_length: usize,
+    pub max_user_agent_length: HclInt,
 }
 
-fn default_max_x_forwarded_for_length() -> usize {
+fn default_max_x_forwarded_for_length() -> HclInt {
     1024
 }
 
-fn default_max_user_agent_length() -> usize {
+fn default_max_user_agent_length() -> HclInt {
     2048
 }
 

@@ -1,6 +1,6 @@
 use crate::resolution::ResolveError;
 use crate::types::{
-    BindInterfaceInput, BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclOrigin,
+    BindInterfaceInput, BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclInt, HclOrigin,
     NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
@@ -12,7 +12,7 @@ pub struct BindSpec {
     #[serde(skip)]
     pub origin: HclOrigin,
     pub interface: BindInterfaceInput,
-    pub port: u16,
+    pub port: HclInt,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<TlsTerminationSpec>,
     pub enable_http2: bool,
@@ -37,6 +37,6 @@ impl BindSpec {
             BindInterfaceSpec::All => std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
             BindInterfaceSpec::Ip(ip) => ip,
         };
-        Ok(SocketAddr::new(ip, self.port))
+        Ok(SocketAddr::new(ip, self.port as u16))
     }
 }

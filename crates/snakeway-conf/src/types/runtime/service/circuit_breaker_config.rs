@@ -6,9 +6,13 @@ use serde::{Deserialize, Serialize};
 #[from_owned(CircuitBreakerSpec)]
 pub struct CircuitBreakerConfig {
     pub enable_auto_recovery: bool,
+    #[map(~ as u32)]
     pub failure_threshold: u32,
+    #[map(~ as u64)]
     pub open_duration_milliseconds: u64,
+    #[map(~ as u32)]
     pub half_open_max_requests: u32,
+    #[map(~ as u32)]
     pub success_threshold: u32,
     pub count_http_5xx_as_failure: bool,
 }

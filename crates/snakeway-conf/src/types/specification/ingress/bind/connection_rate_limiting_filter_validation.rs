@@ -3,8 +3,8 @@ use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(REACTION_INTERVAL_IN_SECONDS, u16, min: 1, max: 60, units: "seconds");
-range_constraint!(MAX_CONNECTIONS_PER_SECOND, u16, min: 1, max: 30_000);
+range_constraint!(REACTION_INTERVAL_IN_SECONDS, i64, min: 1, max: 60, units: "seconds");
+range_constraint!(MAX_CONNECTIONS_PER_SECOND, i64, min: 1, max: 30_000);
 
 impl ValidateSpec<HclOrigin> for ConnectionRateLimitingFilterSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

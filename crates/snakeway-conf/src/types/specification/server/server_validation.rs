@@ -9,13 +9,13 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use super::UpstreamSourceAddressesSpec;
 
-range_constraint!(THREADS, usize, min: 1, max: 1024);
-range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, u64, min: 1, max: 3600, units: "seconds");
-range_constraint!(SHUTDOWN_DRAIN_SECONDS, u64, min: 0, max: 300, units: "seconds");
-range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, u64, min: 1, max: 300, units: "seconds");
-range_constraint!(UPGRADE_MAX_RETRIES, usize, min: 1, max: 60);
-range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, usize, min: 1, max: 65535);
-range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, usize, min: 1, max: 64);
+range_constraint!(THREADS, i64, min: 1, max: 1024);
+range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, i64, min: 1, max: 3600, units: "seconds");
+range_constraint!(SHUTDOWN_DRAIN_SECONDS, i64, min: 0, max: 300, units: "seconds");
+range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, i64, min: 1, max: 300, units: "seconds");
+range_constraint!(UPGRADE_MAX_RETRIES, i64, min: 1, max: 60);
+range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, i64, min: 1, max: 65535);
+range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, i64, min: 1, max: 64);
 
 impl ValidateSpec<HclOrigin> for ServerSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

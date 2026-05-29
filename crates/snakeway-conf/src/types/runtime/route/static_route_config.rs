@@ -29,8 +29,11 @@ pub struct StaticRouteConfig {
 #[derive(o2o, Debug, Clone, Deserialize, Serialize)]
 #[from_owned(CompressionOptsSpec)]
 pub struct CompressionOptions {
+    #[map(~ as u64)]
     pub small_file_threshold: u64,
+    #[map(~ as u64)]
     pub min_gzip_size: u64,
+    #[map(~ as u64)]
     pub min_brotli_size: u64,
     pub enable_gzip: bool,
     pub enable_brotli: bool,
@@ -39,6 +42,7 @@ pub struct CompressionOptions {
 #[derive(o2o, Debug, Clone, Deserialize, Serialize)]
 #[from_owned(CachePolicySpec)]
 pub struct CachePolicy {
+    #[map(~ as u32)]
     pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
@@ -53,7 +57,7 @@ impl StaticRouteConfig {
             file_dir: spec.file_dir,
             index: spec.index,
             directory_listing: spec.directory_listing,
-            max_file_size: spec.max_file_size,
+            max_file_size: spec.max_file_size as u64,
             static_config: spec.compression.into(),
             cache_policy: spec.cache_policy.into(),
         }

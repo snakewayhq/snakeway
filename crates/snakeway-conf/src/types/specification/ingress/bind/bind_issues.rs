@@ -9,7 +9,7 @@ pub(crate) fn duplicate_bind_addr(addr: &str, origin: &HclOrigin) -> ValidationI
     ValidationIssue::error(format!("duplicate bind address: {}", addr), origin.clone())
 }
 
-pub(crate) fn invalid_port(port: u16, origin: &HclOrigin) -> ValidationIssue<HclOrigin> {
+pub(crate) fn invalid_port(port: i64, origin: &HclOrigin) -> ValidationIssue<HclOrigin> {
     ValidationIssue::error_with_help(
         format!("invalid port: {}", port),
         origin.clone(),
@@ -37,7 +37,7 @@ pub(crate) fn redirect_http_to_https_requires_tls(
 }
 
 pub(crate) fn duplicate_redirect_http_to_https_port(
-    port: u16,
+    port: i64,
     origin: &HclOrigin,
 ) -> ValidationIssue<HclOrigin> {
     ValidationIssue::error(

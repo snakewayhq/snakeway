@@ -1,4 +1,4 @@
-use crate::types::HclOrigin;
+use crate::types::{HclInt, HclOrigin};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -11,16 +11,16 @@ pub struct StaticRouteSpec {
     pub file_dir: PathBuf,
     pub index: Option<String>,
     pub directory_listing: bool,
-    pub max_file_size: u64,
+    pub max_file_size: HclInt,
     pub compression: CompressionOptsSpec,
     pub cache_policy: CachePolicySpec,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CompressionOptsSpec {
-    pub small_file_threshold: u64,
-    pub min_gzip_size: u64,
-    pub min_brotli_size: u64,
+    pub small_file_threshold: HclInt,
+    pub min_gzip_size: HclInt,
+    pub min_brotli_size: HclInt,
     pub enable_gzip: bool,
     pub enable_brotli: bool,
 }
@@ -39,7 +39,7 @@ impl Default for CompressionOptsSpec {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CachePolicySpec {
-    pub max_age_seconds: u32,
+    pub max_age_seconds: HclInt,
     pub public: bool,
     pub immutable: bool,
 }

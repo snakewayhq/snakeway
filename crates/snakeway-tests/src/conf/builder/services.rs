@@ -194,7 +194,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn make_tcp_upstream(port: u16, use_tls: bool) -> UpstreamSpec {
+    pub fn make_tcp_upstream(port: i64, use_tls: bool) -> UpstreamSpec {
         UpstreamSpec {
             endpoint: Some(EndpointSpec {
                 host: HostSpec::Hostname(TEST_HOST.to_string()),

@@ -1,25 +1,19 @@
 use crate::types::RequestRateLimitingDeviceSpec;
+use o2o::o2o;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(o2o, Debug, Clone, Default, Deserialize, Serialize)]
+#[from_owned(RequestRateLimitingDeviceSpec)]
 pub struct RequestRateLimitingDeviceConfig {
     pub enable: bool,
+    #[from(window_seconds, Duration::from_secs(~ as u64))]
     pub reaction_interval: Duration,
+    #[from(max_requests_per_second, ~ as f64)]
     pub max_requests_per_second: f64,
+    #[map(~.into_iter().collect())]
     pub paths: SmallVec<[String; 4]>,
-}
-
-impl From<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig {
-    fn from(spec: RequestRateLimitingDeviceSpec) -> Self {
-        Self {
-            enable: spec.enable,
-            reaction_interval: Duration::from_secs(spec.window_seconds as u64),
-            max_requests_per_second: spec.max_requests_per_second as f64,
-            paths: spec.paths.into_iter().collect(),
-        }
-    }
 }
 
 #[cfg(test)]

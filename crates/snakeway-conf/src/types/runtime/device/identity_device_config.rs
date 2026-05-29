@@ -12,6 +12,7 @@ pub struct IdentityDeviceConfig {
     /// CIDR strings
     pub trusted_proxies: Vec<String>,
 
+    #[map(~ as usize)]
     pub max_x_forwarded_for_length: usize,
 
     pub enable_geoip: bool,
@@ -27,6 +28,7 @@ pub struct IdentityDeviceConfig {
 
     pub ua_parser_regexes: Option<PathBuf>,
 
+    #[map(~ as usize)]
     pub max_user_agent_length: usize,
 }
 

@@ -7,7 +7,7 @@ use confval::{
 };
 use nix::NixPath;
 
-range_constraint!(RENEW_WITHIN_DAYS, u64, min: 7, max: 30, units: "days");
+range_constraint!(RENEW_WITHIN_DAYS, i64, min: 7, max: 30, units: "days");
 
 impl ValidateSpec<HclOrigin> for TlsAutomationSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {

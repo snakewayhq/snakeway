@@ -6,7 +6,7 @@ use confval::{
     RangeConstraint, ValidateSpec, ValidationReport, range_constraint, validate_range_field,
 };
 
-range_constraint!(DENY_STATUS, u16, min: 400, max: 599);
+range_constraint!(DENY_STATUS, i64, min: 400, max: 599);
 
 impl ValidateSpec<HclOrigin> for RequestFilterDeviceSpec {
     fn validate(&self, origin: &HclOrigin, report: &mut ValidationReport<HclOrigin>) {
