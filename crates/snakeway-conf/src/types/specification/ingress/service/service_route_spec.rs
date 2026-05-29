@@ -1,4 +1,4 @@
-use crate::types::HclOrigin;
+use crate::types::{HclInt, HclOrigin};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -10,5 +10,5 @@ pub struct ServiceRouteSpec {
     #[serde(default)]
     pub enable_websocket: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ws_max_connections: Option<usize>,
+    pub ws_max_connections: Option<HclInt>,
 }

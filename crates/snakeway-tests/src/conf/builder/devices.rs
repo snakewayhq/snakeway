@@ -125,8 +125,8 @@ impl ConfigBuilder {
 impl ConfigBuilder {
     pub fn with_request_rate_limiting(
         mut self,
-        max_requests_per_second: u16,
-        window_seconds: u16,
+        max_requests_per_second: i64,
+        window_seconds: i64,
     ) -> Self {
         self.request_rate_limiting_device_spec = Some(RequestRateLimitingDeviceSpec {
             enable: true,

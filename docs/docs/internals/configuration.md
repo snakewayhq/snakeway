@@ -69,6 +69,12 @@ error collection. If a spec field used a parsed type like `IpNet` or `Method`, a
 value would cause a hard serde deserialization error (single error, stops processing) instead
 of being collected into the `ValidationReport` alongside all other problems.
 
+All integer fields in spec types use the `HclInt` alias (`i64`).
+HCL's native integer type is a signed 64-bit integer, so `HclInt` accepts any value the parser can produce, including
+negatives and values outside the target range.
+The validation layer checks the range with full origin context, and the lowering layer narrows to the correct unsigned
+type via `as` casts.
+
 **Config types use the fully parsed, typed form.** `IpNet`, `Method`, `HeaderName`,
 `SocketAddr`. This is the executable representation. Downstream code should never need to
 re-parse a string it received from config.
@@ -199,7 +205,7 @@ functions returning `ValidationIssue<HclOrigin>`:
 
 ```rust
 // in server_issues.rs
-pub(crate) fn invalid_config_version(version: &u32, origin: &HclOrigin) -> ValidationIssue<HclOrigin> {
+pub(crate) fn invalid_config_version(version: &i64, origin: &HclOrigin) -> ValidationIssue<HclOrigin> {
     ValidationIssue::error(format!("invalid config version: {}", version), origin.clone())
 }
 ```

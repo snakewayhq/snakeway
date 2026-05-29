@@ -21,10 +21,11 @@ pub(crate) fn is_valid_hostname(s: &str) -> bool {
     })
 }
 
-/// Checks if a port number is valid (must be greater than 0).
-/// It is naturally bounded by the upper limit of u16 (65535).
-pub(crate) const fn is_valid_port(port: u16) -> bool {
-    port > 0
+/// Checks if a port number is valid (must be in the range 1..=65535).
+/// The spec layer uses `i64` (`HclInt`) for all numeric fields, so
+/// validation must also reject values outside the `u16` range.
+pub(crate) const fn is_valid_port(port: i64) -> bool {
+    port >= 1 && port <= 65535
 }
 
 /// NOTE: This function identifies non-globally-routable infrastructure address

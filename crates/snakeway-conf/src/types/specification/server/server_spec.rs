@@ -1,4 +1,4 @@
-use crate::types::{HclOrigin, ObservabilitySpec, TlsAutomationSpec};
+use crate::types::{HclInt, HclOrigin, ObservabilitySpec, TlsAutomationSpec};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -8,11 +8,11 @@ pub struct ServerSpec {
     pub origin: HclOrigin,
 
     /// Configuration schema version
-    pub version: u32,
+    pub version: HclInt,
 
     /// Optional number of worker threads - default is decided by Pingora.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub threads: Option<usize>,
+    pub threads: Option<HclInt>,
 
     /// Optional pid file path
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -25,7 +25,7 @@ pub struct ServerSpec {
     pub observability: Option<ObservabilitySpec>,
 
     #[serde(default = "default_dns_refresh_interval_seconds")]
-    pub dns_refresh_interval_seconds: u64,
+    pub dns_refresh_interval_seconds: HclInt,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shutdown: Option<ShutdownSpec>,
@@ -42,14 +42,15 @@ pub struct ServerSpec {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct ShutdownSpec {
     /// How long active connections are allowed to finish after a shutdown signal.
     #[serde(default = "default_shutdown_drain_seconds")]
-    pub drain_seconds: Option<u64>,
+    pub drain_seconds: Option<HclInt>,
 
     /// Hard ceiling on total shutdown time.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub force_timeout_seconds: Option<u64>,
+    pub force_timeout_seconds: Option<HclInt>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -60,7 +61,7 @@ pub struct UpgradeSpec {
 
     /// Maximum number of retries when connecting/accepting on the upgrade socket.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_retries: Option<usize>,
+    pub max_retries: Option<HclInt>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -70,11 +71,11 @@ pub struct PerformanceSpec {
 
     /// Number of idle upstream connections kept warm per worker thread.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub upstream_connection_pool_size: Option<usize>,
+    pub upstream_connection_pool_size: Option<HclInt>,
 
     /// Number of parallel accept tasks per listener.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parallel_accepts_per_listener: Option<usize>,
+    pub parallel_accepts_per_listener: Option<HclInt>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -89,11 +90,11 @@ fn default_work_stealing() -> bool {
     true
 }
 
-fn default_dns_refresh_interval_seconds() -> u64 {
+fn default_dns_refresh_interval_seconds() -> HclInt {
     30
 }
 
-fn default_shutdown_drain_seconds() -> Option<u64> {
+fn default_shutdown_drain_seconds() -> Option<HclInt> {
     Some(10)
 }
 

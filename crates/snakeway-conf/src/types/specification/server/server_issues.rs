@@ -3,7 +3,7 @@ use confval::ValidationIssue;
 use std::path::{Display, Path};
 
 pub(crate) fn invalid_config_version(
-    version: &u32,
+    version: &i64,
     origin: &HclOrigin,
 ) -> ValidationIssue<HclOrigin> {
     ValidationIssue::error(

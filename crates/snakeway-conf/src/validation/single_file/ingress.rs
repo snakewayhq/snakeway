@@ -120,14 +120,14 @@ pub(crate) fn validate_ingresses(
 /// Verify that a socket address (ip:port) is not used more than once.
 fn validate_listener_uniqueness(
     bind_interface_input: &BindInterfaceInput,
-    port: u16,
+    port: i64,
     origin: &HclOrigin,
     report: &mut ValidationReport<HclOrigin>,
     seen_listener_keys: &mut HashSet<String>,
 ) {
     let maybe_interface: Result<BindInterfaceSpec, _> = bind_interface_input.clone().try_into();
     if let Ok(interface) = maybe_interface {
-        let key = interface.socket_address_literal(port);
+        let key = interface.socket_address_literal(port as u16);
         if !seen_listener_keys.insert(key.clone()) {
             report.push(bind_issues::duplicate_bind_addr(&key, origin));
         }
@@ -363,7 +363,7 @@ mod tests {
         std::fs::write(&cert_path, &cert_pem).unwrap();
         std::fs::write(&key_path, &key_pem).unwrap();
 
-        let make_ingress = |port: u16| IngressSpec {
+        let make_ingress = |port: i64| IngressSpec {
             bind: Some(BindSpec {
                 interface: BindInterfaceInput::Keyword("loopback".to_string()),
                 port,
@@ -487,7 +487,7 @@ mod tests {
     fn same_route_path_on_different_ingresses_is_allowed() {
         // Arrange
         let mut report = ValidationReport::default();
-        let make_ingress = |port: u16| IngressSpec {
+        let make_ingress = |port: i64| IngressSpec {
             bind: Some(BindSpec {
                 interface: BindInterfaceInput::Keyword("loopback".to_string()),
                 port,

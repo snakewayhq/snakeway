@@ -29,23 +29,23 @@ pub const TEST_HOST: &str = "snakeway.test";
 
 /// Default listener port used in builder helpers (`make_bind`, `make_bind_with_acme`).
 /// Always patched to a dynamic free port by the test harness at startup.
-pub const DEFAULT_LISTENER_PORT: u16 = 8080;
+pub const DEFAULT_LISTENER_PORT: i64 = 8080;
 
 /// Default admin listener port, to distinguish between non-admin listeners during config validation.
 /// Always patched to a dynamic free port by the test harness at startup.
-pub const DEFAULT_ADMIN_LISTENER_PORT: u16 = 8443;
+pub const DEFAULT_ADMIN_LISTENER_PORT: i64 = 8443;
 
 /// Primary placeholder upstream port used when building service specs.
 /// Always patched to a dynamic free port by the test harness at startup.
-pub const UPSTREAM_PORT_PRIMARY: u16 = 9000;
+pub const UPSTREAM_PORT_PRIMARY: i64 = 9000;
 
 /// Secondary placeholder upstream port used when building service specs.
 /// Always patched to a dynamic free port by the test harness at startup.
-pub const UPSTREAM_PORT_SECONDARY: u16 = 9001;
+pub const UPSTREAM_PORT_SECONDARY: i64 = 9001;
 
 /// Tertiary placeholder upstream port for tests requiring 3+ upstreams.
 /// Always patched to a dynamic free port by the test harness at startup.
-pub const UPSTREAM_PORT_TERTIARY: u16 = 9002;
+pub const UPSTREAM_PORT_TERTIARY: i64 = 9002;
 
 // ---------------------------------------------------------------------------
 // Route paths
