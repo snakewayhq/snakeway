@@ -16,6 +16,16 @@ pub(crate) fn load_wasm_device(_device_file_path: &PathBuf) -> anyhow::Result<Ar
 
 #[cfg(feature = "wasm")]
 pub(crate) fn load_wasm_device(device_file_path: &PathBuf) -> anyhow::Result<Arc<dyn Device>> {
-    let device = wasm::WasmDevice::load(device_file_path)?;
+    use snakeway_conf::types::WasmDeviceFailPolicy;
+    let engine = wasm::create_wasm_engine()?;
+    let device = wasm::WasmDevice::load(
+        engine,
+        device_file_path,
+        "cli-test".to_string(),
+        WasmDeviceFailPolicy::Open,
+        5,
+        0,
+        std::collections::HashMap::new(),
+    )?;
     Ok(Arc::new(device))
 }

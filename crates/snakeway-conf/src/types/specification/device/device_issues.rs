@@ -42,6 +42,20 @@ pub(crate) fn invalid_network_policy_cidr(
     )
 }
 
+pub(crate) fn wasm_device_name_is_empty(origin: &HclOrigin) -> ValidationIssue<HclOrigin> {
+    ValidationIssue::error("wasm device name must not be empty", origin.clone())
+}
+
+pub(crate) fn wasm_device_duplicate_name(
+    name: &str,
+    origin: &HclOrigin,
+) -> ValidationIssue<HclOrigin> {
+    ValidationIssue::error(
+        format!("duplicate wasm device name: \"{}\"", name),
+        origin.clone(),
+    )
+}
+
 pub(crate) fn wasm_device_path_is_empty(
     path: Display,
     origin: &HclOrigin,

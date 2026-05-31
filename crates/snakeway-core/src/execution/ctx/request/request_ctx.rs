@@ -340,6 +340,11 @@ impl RequestCtx {
         self.normalized_request.insert_header(name, value);
     }
 
+    pub(crate) fn append_header(&mut self, name: HeaderName, value: HeaderValue) {
+        debug_assert!(self.hydrated);
+        self.normalized_request.append_header(name, value);
+    }
+
     pub(crate) fn remove_header(&mut self, name: &str) {
         debug_assert!(self.hydrated);
         self.normalized_request.remove_header(name);
@@ -383,6 +388,19 @@ impl RequestCtx {
     pub(crate) fn effective_host(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.effective_host()
+    }
+
+    pub(crate) fn query_string(&self) -> &str {
+        debug_assert!(self.hydrated);
+        self.normalized_request.query().raw()
+    }
+
+    pub(crate) fn scheme(&self) -> &str {
+        if self.normalized_request.sni_host.is_some() {
+            "https"
+        } else {
+            "http"
+        }
     }
 }
 

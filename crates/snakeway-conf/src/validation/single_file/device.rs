@@ -9,6 +9,7 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
     let mut request_rate_limiting_device_seen = false;
     let mut request_filter_seen = false;
     let mut structured_logging_seen = false;
+    let mut wasm_names_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     // Validate identity device spec first.
     let enabled_devices = devices.iter().filter(|device| device.is_enabled());
@@ -97,6 +98,12 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
                 cfg.validate(device.origin(), report);
             }
             DeviceSpec::Wasm(cfg) => {
+                if !wasm_names_seen.insert(cfg.name.clone()) {
+                    report.push(device_issues::wasm_device_duplicate_name(
+                        &cfg.name,
+                        device.origin(),
+                    ));
+                }
                 cfg.validate(device.origin(), report);
             }
             DeviceSpec::StructuredLogging(cfg) => {
@@ -133,7 +140,7 @@ pub(crate) fn validate_devices(devices: &[DeviceSpec], report: &mut ValidationRe
 mod tests {
     use crate::types::{
         DeviceSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestRateLimitingDeviceSpec,
-        StructuredLoggingDeviceSpec, WasmDeviceSpec,
+        StructuredLoggingDeviceSpec, WasmDeviceFailPolicy, WasmDeviceSpec,
     };
     use crate::validation::validate_devices;
     use confval::ValidationReport;
@@ -149,8 +156,10 @@ mod tests {
         std::fs::write(&wasm_file, "dummy wasm").unwrap();
 
         let device = DeviceSpec::Wasm(WasmDeviceSpec {
+            name: "test-plugin".to_string(),
             enable: true,
             path: wasm_file,
+            fail_policy: WasmDeviceFailPolicy::Open,
             ..Default::default()
         });
 

@@ -20,7 +20,7 @@ pub struct WasmDeviceSpec {
     pub path: PathBuf,
 
     /// Behavior on guest trap, timeout, or load error: "open" or "closed".
-    pub fail_policy: String,
+    pub fail_policy: WasmDeviceFailPolicy,
 
     /// Per-hook epoch deadline in milliseconds.
     #[serde(default = "default_timeout_ms")]
@@ -42,10 +42,18 @@ impl Default for WasmDeviceSpec {
             name: String::new(),
             enable: false,
             path: PathBuf::new(),
-            fail_policy: String::new(),
+            fail_policy: WasmDeviceFailPolicy::Open,
             timeout_ms: default_timeout_ms(),
             body_buffer_max: 0,
             config: HashMap::new(),
         }
     }
+}
+
+#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WasmDeviceFailPolicy {
+    #[default]
+    Open,
+    Closed,
 }

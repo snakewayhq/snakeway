@@ -169,8 +169,8 @@ mod wasm_devices_tests {
             &path,
             r#"
 wasm_devices = [
-  { enable = false, path = "./a.wasm", config = {} },
-  { enable = true,  path = "./b.wasm", config = {} }
+  { name = "dev-a", enable = false, path = "./a.wasm", fail_policy = "open" },
+  { name = "dev-b", enable = true,  path = "./b.wasm", fail_policy = "closed" }
 ]
 "#,
         )
