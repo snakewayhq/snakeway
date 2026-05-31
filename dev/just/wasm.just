@@ -2,5 +2,5 @@
 generate-wit-bindings:
     @echo "Generate bindings for WASM devices"
     wit-bindgen rust ./crates/snakeway-wit/wit \
-      --world snakeway \
+      --world device \
       --out-dir ./crates/snakeway-wit/src/
