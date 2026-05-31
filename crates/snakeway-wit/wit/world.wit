@@ -1,3 +1,4 @@
-world snakeway {
+world device {
+  import host;
   export policy;
 }
