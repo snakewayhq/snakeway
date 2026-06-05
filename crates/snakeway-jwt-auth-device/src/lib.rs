@@ -52,8 +52,23 @@
 //!
 //! **All other hooks:** Passthrough (no-op).
 
-mod bindings;
 mod config;
 mod jwt_auth_device;
 mod token_validation;
 mod types;
+
+use wit_bindgen::generate;
+
+generate!({
+    path: "../snakeway-wit/wit/",
+    world: "device",
+});
+
+/// Gathers deeply nested bindings from the Snakeway WASM runtime.
+pub(crate) mod bindings {
+    pub(crate) use crate::exports::snakeway::device::policy::Guest;
+    pub(crate) use crate::snakeway::device::{host, types};
+}
+
+use jwt_auth_device::JwtAuthDevice;
+export!(JwtAuthDevice);

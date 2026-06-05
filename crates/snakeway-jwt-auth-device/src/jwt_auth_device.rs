@@ -1,15 +1,12 @@
-use crate::bindings::exports::snakeway::device::policy::Guest;
-use crate::bindings::{
-    export, host,
-    types::{
-        Action, BodyAction, BodyChunk, BodyResult, Header, HeaderOp, Request, RequestPatch,
-        RequestResult, Response, ResponseResult, SyntheticResponse,
-    },
-};
+use crate::bindings::{Guest, host, types};
 use crate::config::AuthConfig;
 use crate::token_validation::{AuthError, ValidatedToken, validate_token};
+use types::{
+    Action, BodyAction, BodyChunk, BodyResult, Header, HeaderOp, Request, RequestPatch,
+    RequestResult, Response, ResponseResult, SyntheticResponse,
+};
 
-struct JwtAuthDevice;
+pub(crate) struct JwtAuthDevice;
 
 impl Guest for JwtAuthDevice {
     fn on_request(req: Request) -> RequestResult {
@@ -127,8 +124,6 @@ impl Guest for JwtAuthDevice {
         }
     }
 }
-
-export!(JwtAuthDevice);
 
 //-----------------------------------------------------------------------------
 // Helpers
