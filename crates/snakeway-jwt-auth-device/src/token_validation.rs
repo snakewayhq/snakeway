@@ -108,16 +108,16 @@ pub(crate) fn validate_token(
 
     let now = host::epoch_secs();
 
-    if let Some(exp) = claims.exp {
-        if now >= exp {
-            return Err(AuthError::TokenExpired);
-        }
+    if let Some(exp) = claims.exp
+        && now >= exp
+    {
+        return Err(AuthError::TokenExpired);
     }
 
-    if let Some(nbf) = claims.nbf {
-        if now < nbf {
-            return Err(AuthError::TokenNotYetValid);
-        }
+    if let Some(nbf) = claims.nbf
+        && now < nbf
+    {
+        return Err(AuthError::TokenNotYetValid);
     }
 
     Ok(ValidatedToken { claims })

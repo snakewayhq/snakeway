@@ -170,13 +170,13 @@ fn success_patch(token: &ValidatedToken, config: &AuthConfig) -> Option<RequestP
         }));
     }
 
-    if let Some(ref tenant_claim) = config.tenant_id_claim {
-        if let Some(tenant_id) = token.claims.get_claim(tenant_claim) {
-            ops.push(HeaderOp::Set(Header {
-                name: "x-tenant-id".to_string(),
-                value: tenant_id,
-            }));
-        }
+    if let Some(ref tenant_claim) = config.tenant_id_claim
+        && let Some(tenant_id) = token.claims.get_claim(tenant_claim)
+    {
+        ops.push(HeaderOp::Set(Header {
+            name: "x-tenant-id".to_string(),
+            value: tenant_id,
+        }));
     }
 
     ops.push(HeaderOp::Remove("authorization".to_string()));
