@@ -7,7 +7,7 @@ use crate::bindings::{
     },
 };
 use crate::config::AuthConfig;
-use crate::jwt_token_handling::{AuthError, ValidatedToken, validate_token};
+use crate::token_validation::{AuthError, ValidatedToken, validate_token};
 
 struct JwtAuthDevice;
 

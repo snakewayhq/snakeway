@@ -1,5 +1,5 @@
 use crate::bindings::host;
-use crate::jwt_token_handling::AuthError;
+use crate::token_validation::AuthError;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 

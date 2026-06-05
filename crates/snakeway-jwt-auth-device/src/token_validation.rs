@@ -1,15 +1,11 @@
 use crate::bindings::host;
 use crate::config::AuthConfig;
-use crate::types::HmacSha256;
-use crate::types::{JwtClaims, JwtHeader};
+pub(crate) use crate::types::{JwtClaims, JwtHeader, ValidatedToken};
 use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
-use hmac::KeyInit;
-use hmac::Mac;
-
-pub(crate) struct ValidatedToken {
-    pub(crate) claims: JwtClaims,
-}
+use hmac::{Hmac, KeyInit, Mac};
+use sha2::Sha256;
+type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug)]
 pub(crate) enum AuthError {

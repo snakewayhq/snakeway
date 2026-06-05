@@ -55,5 +55,5 @@
 mod bindings;
 mod config;
 mod jwt_auth_device;
-mod jwt_token_handling;
+mod token_validation;
 mod types;
