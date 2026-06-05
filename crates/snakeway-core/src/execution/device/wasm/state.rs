@@ -1,4 +1,4 @@
-use crate::execution::device::wasm::bindings::snakeway::device::host;
+use super::bindings::snakeway::device::host;
 use opentelemetry::KeyValue;
 use opentelemetry::metrics::Counter;
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ pub(crate) struct HostState {
     pub(crate) custom_metrics: Counter<u64>,
 }
 
-impl crate::execution::device::wasm::bindings::snakeway::device::types::Host for HostState {}
+impl super::bindings::snakeway::device::types::Host for HostState {}
 
 impl host::Host for HostState {
     fn config_get(&mut self, key: String) -> Option<String> {

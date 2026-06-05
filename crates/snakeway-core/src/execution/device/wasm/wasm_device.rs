@@ -1,25 +1,16 @@
-use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
-use crate::execution::device::core::{Device, DeviceResult};
-use crate::execution::device::wasm::bindings::{
-    Device as DeviceBindings, DevicePre,
-    exports::snakeway::device::policy,
-    snakeway::device::{
-        host, types as wit_types,
-        types::{
-            Action, BodyAction, BodyChunk, Header, HeaderOp, Request, RequestPatch, Response,
-            ResponsePatch,
-        },
-    },
-};
-use crate::execution::device::wasm::body::apply_body_result;
-use crate::execution::device::wasm::request::build_request_snapshot;
-use crate::execution::device::wasm::response::{
+use super::bindings::{Device as DeviceBindings, DevicePre};
+use super::lifecycle::apply_body_result;
+use super::lifecycle::build_request_snapshot;
+use super::lifecycle::{
     apply_request_result, apply_response_result, block_503, build_response_snapshot,
 };
-use crate::execution::device::wasm::state::HostState;
+use super::state::HostState;
+use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
+use crate::execution::device::core::{Device, DeviceResult};
+use crate::execution::device::wasm::bindings::snakeway::device::types::BodyChunk;
 use anyhow::Result;
 use bytes::Bytes;
-use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
+use http::{HeaderMap, StatusCode};
 use opentelemetry::{
     KeyValue,
     metrics::{Counter, Histogram},
@@ -28,9 +19,8 @@ use snakeway_conf::types::WasmDeviceFailPolicy;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use wasmtime::{
-    Config, Engine, Store, StoreLimits, StoreLimitsBuilder,
+    Engine, Store, StoreLimitsBuilder,
     component::{Component, Linker},
 };
 

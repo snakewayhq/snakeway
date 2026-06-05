@@ -1,9 +1,8 @@
 pub(crate) mod bindings;
-mod body;
 mod engine;
-mod request;
-mod response;
+mod lifecycle;
 mod state;
 mod wasm_device;
 
+pub(crate) use engine::create_wasm_engine;
 pub(crate) use wasm_device::*;
