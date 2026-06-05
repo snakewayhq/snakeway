@@ -1,12 +1,13 @@
-use crate::config::AuthConfig;
-use crate::export;
-use crate::exports::snakeway::device::policy::Guest;
-use crate::jwt_token_handling::{AuthError, ValidatedToken, validate_token};
-use crate::snakeway::device::host;
-use crate::snakeway::device::types::{
-    Action, BodyAction, BodyChunk, BodyResult, Header, HeaderOp, Request, RequestPatch,
-    RequestResult, Response, ResponseResult, SyntheticResponse,
+use crate::bindings::exports::snakeway::device::policy::Guest;
+use crate::bindings::{
+    export, host,
+    types::{
+        Action, BodyAction, BodyChunk, BodyResult, Header, HeaderOp, Request, RequestPatch,
+        RequestResult, Response, ResponseResult, SyntheticResponse,
+    },
 };
+use crate::config::AuthConfig;
+use crate::jwt_token_handling::{AuthError, ValidatedToken, validate_token};
 
 struct JwtAuthDevice;
 
@@ -129,9 +130,9 @@ impl Guest for JwtAuthDevice {
 
 export!(JwtAuthDevice);
 
-// ---------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 
 fn extract_bearer_token(auth_value: &str) -> Option<&str> {
     let trimmed = auth_value.trim();

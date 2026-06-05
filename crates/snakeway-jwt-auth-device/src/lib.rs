@@ -52,34 +52,8 @@
 //!
 //! **All other hooks:** Passthrough (no-op).
 
-pub(crate) mod config;
+mod bindings;
+mod config;
 mod jwt_auth_device;
 mod jwt_token_handling;
-mod jwt_types;
-
-use wit_bindgen::generate;
-
-generate!({
-    path: "../snakeway-wit/wit/",
-    world: "device",
-});
-
-use exports::snakeway::device::policy::Guest;
-
-use crate::snakeway::device::host;
-use crate::snakeway::device::types::{
-    Action, BodyAction, BodyChunk, BodyResult, Header, HeaderOp, Request, RequestPatch,
-    RequestResult, Response, ResponseResult, SyntheticResponse,
-};
-
-use crate::config::AuthConfig;
-use base64::prelude::*;
-use hmac::{Hmac, KeyInit, Mac};
-use serde::Deserialize;
-use sha2::Sha256;
-
-type HmacSha256 = Hmac<Sha256>;
-
-// ---------------------------------------------------------------------------
-// Device implementation
-// ---------------------------------------------------------------------------
+mod types;

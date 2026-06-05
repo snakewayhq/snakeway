@@ -1,7 +1,7 @@
-use crate::HmacSha256;
+use crate::bindings::host;
 use crate::config::AuthConfig;
-use crate::jwt_types::{JwtClaims, JwtHeader};
-use crate::snakeway::device::host;
+use crate::types::HmacSha256;
+use crate::types::{JwtClaims, JwtHeader};
 use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use hmac::KeyInit;
@@ -50,7 +50,7 @@ impl AuthError {
         }
     }
 
-    fn log_message(&self) -> String {
+    pub(crate) fn log_message(&self) -> String {
         match self {
             AuthError::Config(detail) => format!("config error: {detail}"),
             AuthError::UnsupportedAlgorithm(alg) => format!("unsupported algorithm: {alg}"),

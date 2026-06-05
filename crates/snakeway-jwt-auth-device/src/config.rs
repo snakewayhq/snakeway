@@ -1,5 +1,5 @@
-use crate::AuthError;
-use crate::snakeway::device::host;
+use crate::bindings::host;
+use crate::jwt_token_handling::AuthError;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 

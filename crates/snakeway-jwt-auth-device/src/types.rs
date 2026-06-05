@@ -1,4 +1,8 @@
+use hmac::Hmac;
 use serde::Deserialize;
+use sha2::Sha256;
+
+pub(crate) type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Deserialize)]
 pub(crate) struct JwtHeader {
