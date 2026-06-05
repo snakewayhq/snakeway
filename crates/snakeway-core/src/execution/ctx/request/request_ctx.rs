@@ -793,7 +793,7 @@ mod tests {
     #[tokio::test]
     async fn original_uri_is_intact() {
         // Arrange
-        let expected_uri = "http://example.test/hello?x=1";
+        let expected_uri = "/hello?x=1";
         let request = RawHttpRequest::new("GET", expected_uri)
             .header("Host", "example.test")
             .build();
