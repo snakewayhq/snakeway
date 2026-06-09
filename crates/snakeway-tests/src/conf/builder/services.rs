@@ -7,7 +7,7 @@ use crate::constants::{
 };
 use snakeway_core::testing_api::conf::types::{
     AcmeServerSpec, AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput,
-    CertStoreSpec, EndpointSpec, EndpointTlsSpec, HostSpec, IngressSpec, RedirectSpec,
+    CertStoreSpec, EndpointSpec, EndpointTlsSpec, HostSpec, Http2Spec, IngressSpec, RedirectSpec,
     ServiceRouteSpec, ServiceSpec, TlsTerminationSpec, UpstreamSpec,
 };
 use std::path::PathBuf;
@@ -52,6 +52,20 @@ impl ConfigBuilder {
     pub fn with_h2_to_h1_ingress(mut self) -> Self {
         let mut bind = Self::make_bind(true);
         bind.enable_http2 = true;
+        let service = Self::make_service_spec();
+        let ingress_spec = IngressSpec {
+            bind: Some(bind),
+            services: vec![service],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
+    pub fn with_h2_to_h1_ingress_with_http2_options(mut self, http2: Http2Spec) -> Self {
+        let mut bind = Self::make_bind(true);
+        bind.enable_http2 = true;
+        bind.http2 = Some(http2);
         let service = Self::make_service_spec();
         let ingress_spec = IngressSpec {
             bind: Some(bind),

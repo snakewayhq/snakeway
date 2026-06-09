@@ -25,6 +25,14 @@ pub(crate) fn http2_requires_tls(addr: &str, origin: &HclOrigin) -> ValidationIs
     )
 }
 
+pub(crate) fn http2_options_require_enable_http2(origin: &HclOrigin) -> ValidationIssue<HclOrigin> {
+    ValidationIssue::error_with_help(
+        "http2 settings require enable_http2 = true".to_string(),
+        origin.clone(),
+        "Set enable_http2 = true or remove the http2 block.",
+    )
+}
+
 pub(crate) fn redirect_http_to_https_requires_tls(
     addr: &str,
     origin: &HclOrigin,

@@ -1,7 +1,7 @@
 use crate::resolution::ResolveError;
 use crate::types::{
     BindInterfaceInput, BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclInt, HclOrigin,
-    NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
+    Http2Spec, NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,8 @@ pub struct BindSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<TlsTerminationSpec>,
     pub enable_http2: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http2: Option<Http2Spec>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redirect_http_to_https: Option<RedirectSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]

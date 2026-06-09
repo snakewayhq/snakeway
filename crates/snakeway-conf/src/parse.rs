@@ -237,6 +237,87 @@ bind = {
     }
 
     #[test]
+    fn parse_ingress_bind_file_with_http2_block() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("api.hcl");
+
+        fs::write(
+            &path,
+            r#"
+bind = {
+  interface = "127.0.0.1"
+  port = 8443
+  enable_http2 = true
+
+  http2 = {
+    max_concurrent_streams         = 200
+    max_header_list_size           = 65536
+    initial_window_size            = 65535
+    initial_connection_window_size = 1048576
+  }
+
+  tls = {
+    mode = "manual"
+    cert = "cert.pem"
+    key  = "key.pem"
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let ingress = parse_ingress(&path).unwrap();
+
+        // Assert
+        let bind = ingress.bind.unwrap();
+        let http2 = bind.http2.expect("http2 block should be parsed");
+        assert_eq!(http2.max_concurrent_streams, Some(200));
+        assert_eq!(http2.max_header_list_size, Some(65536));
+        assert_eq!(http2.initial_window_size, Some(65535));
+        assert_eq!(http2.initial_connection_window_size, Some(1048576));
+    }
+
+    #[test]
+    fn parse_ingress_bind_file_with_empty_http2_block() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("api.hcl");
+
+        fs::write(
+            &path,
+            r#"
+bind = {
+  interface = "127.0.0.1"
+  port = 8443
+  enable_http2 = true
+
+  http2 = {}
+
+  tls = {
+    mode = "manual"
+    cert = "cert.pem"
+    key  = "key.pem"
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        // Act
+        let ingress = parse_ingress(&path).unwrap();
+
+        // Assert
+        let bind = ingress.bind.unwrap();
+        let http2 = bind.http2.expect("empty http2 block should be parsed");
+        assert_eq!(http2.max_concurrent_streams, None);
+        assert_eq!(http2.max_header_list_size, None);
+        assert_eq!(http2.initial_window_size, None);
+        assert_eq!(http2.initial_connection_window_size, None);
+    }
+
+    #[test]
     fn parse_ingress_admin_bind_file() {
         // Arrange
         let dir = tempdir().unwrap();

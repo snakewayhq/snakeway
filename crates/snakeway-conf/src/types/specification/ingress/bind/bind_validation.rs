@@ -32,6 +32,14 @@ impl ValidateSpec<HclOrigin> for BindSpec {
             ));
         }
 
+        // HTTP/2 tuning options.
+        if let Some(http2) = &self.http2 {
+            if !self.enable_http2 {
+                report.push(bind_issues::http2_options_require_enable_http2(origin));
+            }
+            http2.validate(origin, report);
+        }
+
         // Redirect HTTP to HTTPS validation.
         if let Some(redirect) = &self.redirect_http_to_https {
             redirect.validate(origin, report);
@@ -66,7 +74,9 @@ impl ValidateSpec<HclOrigin> for BindSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{BindInterfaceInput, BindSpec, HclOrigin, RedirectSpec};
+    use crate::types::{
+        BindInterfaceInput, BindSpec, HclOrigin, Http2Spec, RedirectSpec, TlsTerminationSpec,
+    };
     use confval::{ValidateSpec, ValidationReport};
 
     fn minimal_bind() -> BindSpec {
@@ -180,6 +190,77 @@ mod tests {
             report.errors()[0].help.as_deref(),
             Some("Enable TLS on the bind or disable HTTP/2.")
         );
+    }
+
+    #[test]
+    fn http2_options_without_enable_http2_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut bind = minimal_bind();
+        bind.http2 = Some(Http2Spec::default());
+        let origin = HclOrigin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(
+            report.errors()[0].message,
+            "http2 settings require enable_http2 = true"
+        );
+        assert_eq!(
+            report.errors()[0].help.as_deref(),
+            Some("Set enable_http2 = true or remove the http2 block.")
+        );
+    }
+
+    #[test]
+    fn http2_options_with_enable_http2_accepted() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut bind = minimal_bind();
+        bind.enable_http2 = true;
+        bind.tls = Some(TlsTerminationSpec::Acme {
+            domains: vec!["example.com".to_string()],
+            challenge: Default::default(),
+        });
+        bind.http2 = Some(Http2Spec {
+            max_concurrent_streams: Some(200),
+            max_header_list_size: Some(65536),
+            initial_window_size: Some(65535),
+            initial_connection_window_size: Some(1048576),
+        });
+        let origin = HclOrigin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert!(!report.has_issues());
+    }
+
+    #[test]
+    fn http2_options_out_of_range_field_rejected() {
+        // Arrange
+        let mut report = ValidationReport::default();
+        let mut bind = minimal_bind();
+        bind.enable_http2 = true;
+        bind.tls = Some(TlsTerminationSpec::Acme {
+            domains: vec!["example.com".to_string()],
+            challenge: Default::default(),
+        });
+        bind.http2 = Some(Http2Spec {
+            initial_window_size: Some(2_147_483_648),
+            ..Default::default()
+        });
+        let origin = HclOrigin::test("bind");
+
+        // Act
+        bind.validate(&origin, &mut report);
+
+        // Assert
+        assert_eq!(report.errors().len(), 1);
+        assert!(report.errors()[0].message.contains("initial_window_size"));
     }
 
     #[test]

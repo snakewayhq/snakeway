@@ -1,6 +1,6 @@
 use crate::types::{
     AdminAuthConfig, BearerAuthConfig, BindAdminSpec, BindSpec, ConnectionRateLimitingFilterConfig,
-    NetworkConnectionFilterConfig, TlsTerminationConfig,
+    Http2Config, NetworkConnectionFilterConfig, TlsTerminationConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +17,10 @@ pub struct ListenerConfig {
 
     /// Enable HTTP/2 on this listener.
     pub enable_http2: bool,
+
+    /// Optional HTTP/2 server tuning. Only set when `enable_http2` is true.
+    #[serde(default)]
+    pub http2: Option<Http2Config>,
 
     /// Whether a listener serves admin endpoints or not.
     pub enable_admin: bool,
@@ -54,6 +58,7 @@ impl ListenerConfig {
             addr: from_addr,
             tls_termination: None,
             enable_http2: false,
+            http2: None,
             enable_admin: false,
             admin_auth: None,
             redirect: Some(RedirectConfig::new(
@@ -73,11 +78,13 @@ impl ListenerConfig {
             None
         };
         let connection_filter = spec.connection_filter.map(TryInto::try_into).transpose()?;
+        let http2 = spec.http2.map(TryInto::try_into).transpose()?;
         Ok(Self {
             name: name.to_string(),
             addr: addr.to_string(),
             tls_termination: maybe_tls,
             enable_http2: spec.enable_http2,
+            http2,
             enable_admin: false,
             admin_auth: None,
             redirect: None,
@@ -108,6 +115,7 @@ impl ListenerConfig {
             addr: addr.to_string(),
             tls_termination: Some(tls),
             enable_http2: false,
+            http2: None,
             enable_admin: true,
             admin_auth,
             redirect: None,
@@ -140,6 +148,7 @@ mod tests {
             port: 8080,
             tls: None,
             enable_http2: false,
+            http2: None,
             redirect_http_to_https: None,
             connection_filter: None,
             connection_rate_limiting_filter: None,
@@ -205,6 +214,7 @@ mod tests {
             port: 8443,
             tls: None,
             enable_http2: false,
+            http2: None,
             redirect_http_to_https: None,
             connection_filter: None,
             connection_rate_limiting_filter: None,
