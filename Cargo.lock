@@ -758,6 +758,7 @@ dependencies = [
 name = "confval"
 version = "0.1.0"
 dependencies = [
+ "hcl-edit",
  "owo-colors",
  "serde",
  "serde_json",
