@@ -1,5 +1,6 @@
 mod issue;
 mod origin;
+mod provenance;
 pub mod range;
 mod report;
 mod severity;
