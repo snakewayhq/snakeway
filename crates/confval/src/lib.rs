@@ -1,6 +1,8 @@
+#[cfg(feature = "hcl")]
+pub mod hcl;
 mod issue;
 mod origin;
-mod provenance;
+pub mod provenance;
 pub mod range;
 mod report;
 mod severity;
