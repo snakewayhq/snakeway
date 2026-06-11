@@ -14,12 +14,14 @@ default = []
 serde = ["dep:serde", "dep:serde_json"]
 color = ["dep:owo-colors"]
 hcl = ["dep:hcl-edit"]
+derive = ["hcl", "dep:confval-derive"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 owo-colors = { version = "4", optional = true }
 hcl-edit = { version = "0.9", optional = true }
+confval-derive = { version = "0.1.0", path = "../confval-derive", optional = true }
 
 [dev-dependencies]
 hcl-edit = "0.9"

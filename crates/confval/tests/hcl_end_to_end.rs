@@ -3,18 +3,15 @@
 //! lowering. These impls are the reference shape for generated code, so
 //! changes here should stay deliberate.
 
-#![cfg(feature = "hcl")]
+#![cfg(feature = "derive")]
 
-use confval::hcl::{
-    Fields, FromHcl, parse_bool_field, parse_hcl, parse_int_field, parse_single_struct,
-    parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
-};
+use confval::hcl::parse_hcl;
 use confval::provenance::{Located, Lower, Report, SourceMap, Span};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
-#[derive(Debug)]
+#[derive(Debug, confval::Spec)]
 struct ServerSpec {
     hostname: Located<String>,
     port: Located<i64>,
@@ -23,19 +20,18 @@ struct ServerSpec {
     shutdown_timeout_seconds: Located<i64>,
     pid_file: Option<Located<String>>,
     allow: Option<Located<Vec<Located<String>>>>,
+    #[confval(nested)]
     tls: Option<Located<TlsSpec>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, confval::Spec)]
 struct TlsSpec {
     cert: Located<String>,
     key: Located<String>,
 }
 
-fn check_range(value: &Option<Located<i64>>, min: i64, max: i64, name: &str, report: &mut Report) {
-    if let Some(value) = value
-        && !(min..=max).contains(&value.value)
-    {
+fn check_range(value: &Located<i64>, min: i64, max: i64, name: &str, report: &mut Report) {
+    if !(min..=max).contains(&value.value) {
         report
             .error(format!("{name} out of range: {}", value.value))
             .at(value.span)
@@ -44,97 +40,18 @@ fn check_range(value: &Option<Located<i64>>, min: i64, max: i64, name: &str, rep
     }
 }
 
-impl FromHcl for ServerSpec {
-    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
-        let mut hostname = None;
-        let mut port = None;
-        let mut daemon = None;
-        let mut max_connections = None;
-        let mut shutdown_timeout_seconds = None;
-        let mut pid_file = None;
-        let mut allow = None;
-        let mut tls = None;
-        let mut tls_seen: Option<Span> = None;
-
-        for field in fields.iter() {
-            match field.name {
-                "hostname" => hostname = parse_string_field(field, report),
-                "port" => port = parse_int_field(field, report),
-                "daemon" => daemon = parse_bool_field(field, report),
-                "max_connections" => max_connections = parse_int_field(field, report),
-                "shutdown_timeout_seconds" => {
-                    shutdown_timeout_seconds = parse_int_field(field, report);
-                }
-                "pid_file" => pid_file = parse_string_field(field, report),
-                "allow" => allow = parse_string_list_field(field, report),
-                "tls" => parse_single_struct(&mut tls, &mut tls_seen, "tls", field, report),
-                _ => report_unknown_field(field, report),
-            }
-        }
-
-        check_range(&port, 1, 65535, "port", report);
-        check_range(&max_connections, 1, 250, "max_connections", report);
-        check_range(
-            &shutdown_timeout_seconds,
-            1,
-            3600,
-            "shutdown_timeout_seconds",
-            report,
-        );
-
-        for (name, present) in [
-            ("hostname", fields.has("hostname")),
-            ("port", fields.has("port")),
-            ("daemon", fields.has("daemon")),
-            ("max_connections", fields.has("max_connections")),
-            (
-                "shutdown_timeout_seconds",
-                fields.has("shutdown_timeout_seconds"),
-            ),
-        ] {
-            if !present {
-                report_missing_field(name, fields.enclosing(), report);
-            }
-        }
-
-        Some(ServerSpec {
-            hostname: hostname?,
-            port: port?,
-            daemon: daemon?,
-            max_connections: max_connections?,
-            shutdown_timeout_seconds: shutdown_timeout_seconds?,
-            pid_file,
-            allow,
-            tls,
-        })
-    }
-}
-
-impl FromHcl for TlsSpec {
-    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
-        let mut cert = None;
-        let mut key = None;
-
-        for field in fields.iter() {
-            match field.name {
-                "cert" => cert = parse_string_field(field, report),
-                "key" => key = parse_string_field(field, report),
-                _ => report_unknown_field(field, report),
-            }
-        }
-
-        if !fields.has("cert") {
-            report_missing_field("cert", fields.enclosing(), report);
-        }
-        if !fields.has("key") {
-            report_missing_field("key", fields.enclosing(), report);
-        }
-
-        Some(TlsSpec {
-            cert: cert?,
-            key: key?,
-        })
-    }
+/// Entity validation: runs after parsing on the Located values, so spans
+/// survive without the parser's involvement.
+fn validate_server_spec(spec: &ServerSpec, report: &mut Report) {
+    check_range(&spec.port, 1, 65535, "port", report);
+    check_range(&spec.max_connections, 1, 250, "max_connections", report);
+    check_range(
+        &spec.shutdown_timeout_seconds,
+        1,
+        3600,
+        "shutdown_timeout_seconds",
+        report,
+    );
 }
 
 #[derive(Debug)]
@@ -222,6 +139,9 @@ fn load(text: &str) -> (SourceMap, Report, Option<ServerConfig>) {
     let id = sources.add("server.hcl", text);
 
     let spec: Option<ServerSpec> = parse_hcl(&sources, id, &mut report);
+    if let Some(spec) = &spec {
+        validate_server_spec(spec, &mut report);
+    }
     if report.has_errors() {
         return (sources, report, None);
     }
@@ -293,11 +213,15 @@ fn spec_values_carry_byte_accurate_spans() {
 
 #[test]
 fn all_problems_are_reported_in_one_pass() {
+    // The type mismatch is on an optional field so the tree still builds
+    // and validation runs; a mismatch on a required field stops the entity
+    // at structural errors.
     let input = r#"hostname = "127.0.0.1"
 port = 99999
-daemon = "yes"
+daemon = false
 max_connections = 100
 shutdown_timeout_seconds = 30
+pid_file = 42
 hostnme = "typo"
 "#;
     let (_, report, config) = load(input);
@@ -313,7 +237,7 @@ hostnme = "typo"
         "got: {messages:?}"
     );
     assert!(
-        messages.contains(&"expected bool, found string"),
+        messages.contains(&"expected string, found number"),
         "got: {messages:?}"
     );
     assert!(
@@ -337,6 +261,8 @@ shutdown_timeout_seconds = 30
 
     let spec: Option<ServerSpec> = parse_hcl(&sources, id, &mut report);
     let spec = spec.expect("out-of-range values still produce the tree");
+    assert!(!report.has_errors(), "parsing is structural only");
+    validate_server_spec(&spec, &mut report);
     assert_eq!(spec.port.value, 99999);
     assert!(report.has_errors());
 

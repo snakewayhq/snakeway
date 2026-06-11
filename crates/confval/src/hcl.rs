@@ -324,6 +324,45 @@ pub fn parse_struct_field<S: FromHcl>(
     }
 }
 
+/// Parses a repeated nested structure into `slot`, appending. Accepts both
+/// spellings and combinations of them: each repeated block appends one
+/// element, and an array-of-objects attribute appends one element per
+/// object. Invalid array elements are reported individually and skipped.
+pub fn parse_struct_list_field<S: FromHcl>(
+    slot: &mut Vec<Located<S>>,
+    field: &Field<'_>,
+    report: &mut Report,
+) {
+    match &field.kind {
+        FieldKind::Block(_) => {
+            if let Some(parsed) = parse_struct_field(field, report) {
+                slot.push(parsed);
+            }
+        }
+        FieldKind::Value(expr) => match expr {
+            Expression::Array(array) => {
+                for element in array.iter() {
+                    match element {
+                        Expression::Object(object) => {
+                            let enclosing = span_of(element, field.source);
+                            let fields = Fields::of_object(object, enclosing, field.source, report);
+                            if let Some(parsed) = S::from_hcl(&fields, report) {
+                                slot.push(Located::new(parsed, enclosing));
+                            }
+                        }
+                        other => {
+                            report_type_mismatch(other, "object", field.source, report);
+                        }
+                    }
+                }
+            }
+            other => {
+                report_type_mismatch(other, "block or array of objects", field.source, report);
+            }
+        },
+    }
+}
+
 /// Parses a single-occurrence nested structure into `slot`, tracking the
 /// first occurrence in `seen` so a repeated one is reported as a duplicate
 /// pointing back at the first. The first occurrence wins.
@@ -560,6 +599,65 @@ mod tests {
         assert_eq!(
             &input[value.span.start as usize..value.span.end as usize],
             "\"a.pem\""
+        );
+    }
+
+    #[test]
+    fn struct_list_field_appends_repeated_blocks() {
+        let input = "service {\n  a = 1\n}\nservice {\n  b = 2\n}\n";
+        let (_, id, body) = parse_fields(input);
+        let fields = fields_of(&body, id);
+        let mut report = Report::new();
+        let mut services: Vec<Located<Probe>> = Vec::new();
+        for field in fields.iter() {
+            parse_struct_list_field(&mut services, field, &mut report);
+        }
+        assert_eq!(services.len(), 2);
+        assert!(!report.has_issues());
+        let second = &input[services[1].span.start as usize..services[1].span.end as usize];
+        assert!(second.starts_with("service {"), "got: {second:?}");
+        assert!(second.contains("b = 2"), "got: {second:?}");
+    }
+
+    #[test]
+    fn struct_list_field_accepts_array_of_objects() {
+        let input = "services = [\n  { a = 1 },\n  { b = 2 },\n]\n";
+        let (_, id, body) = parse_fields(input);
+        let fields = fields_of(&body, id);
+        let mut report = Report::new();
+        let mut services: Vec<Located<Probe>> = Vec::new();
+        parse_struct_list_field(&mut services, fields.get("services").unwrap(), &mut report);
+        assert_eq!(services.len(), 2);
+        assert!(!report.has_issues());
+        let first = &input[services[0].span.start as usize..services[0].span.end as usize];
+        assert_eq!(first, "{ a = 1 }");
+    }
+
+    #[test]
+    fn struct_list_field_reports_each_bad_array_element() {
+        let input = "services = [{ a = 1 }, 42, true]\n";
+        let (_, id, body) = parse_fields(input);
+        let fields = fields_of(&body, id);
+        let mut report = Report::new();
+        let mut services: Vec<Located<Probe>> = Vec::new();
+        parse_struct_list_field(&mut services, fields.get("services").unwrap(), &mut report);
+        assert_eq!(services.len(), 1, "valid elements still parse");
+        assert_eq!(report.issues().len(), 2);
+        assert_eq!(report.issues()[0].message, "expected object, found number");
+        assert_eq!(report.issues()[1].message, "expected object, found bool");
+    }
+
+    #[test]
+    fn struct_list_field_rejects_scalar_values() {
+        let (_, id, body) = parse_fields("services = 1\n");
+        let fields = fields_of(&body, id);
+        let mut report = Report::new();
+        let mut services: Vec<Located<Probe>> = Vec::new();
+        parse_struct_list_field(&mut services, fields.get("services").unwrap(), &mut report);
+        assert!(services.is_empty());
+        assert_eq!(
+            report.issues()[0].message,
+            "expected block or array of objects, found number"
         );
     }
 
