@@ -31,6 +31,39 @@ where
         }
     }
 
+    /// Checks a located value, pushing a span-carrying issue to the report
+    /// if it is out of range. Message and help text are identical to
+    /// [`check`](Self::check), so both report worlds describe violations the
+    /// same way.
+    pub fn check_located(
+        &self,
+        value: &crate::provenance::Located<T>,
+        field: &'static str,
+        report: &mut crate::provenance::Report,
+    ) {
+        let (limit, kind) = if value.value < self.min {
+            (self.min, "at least")
+        } else if value.value > self.max {
+            (self.max, "at most")
+        } else {
+            return;
+        };
+        let help = self.help.map(String::from).unwrap_or_else(|| {
+            format!(
+                "Set {} to {} {}{}",
+                field,
+                kind,
+                limit,
+                self.units.unwrap_or("")
+            )
+        });
+        report
+            .error(format!("{} must be {} {}", field, kind, limit))
+            .at(value.span)
+            .help(help)
+            .emit();
+    }
+
     /// Returns `Some(issue)` if value is out of range, `None` if valid.
     pub fn check<O: Origin>(
         &self,
