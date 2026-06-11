@@ -1,5 +1,5 @@
 #[cfg(feature = "derive")]
-pub use confval_derive::Spec;
+pub use confval_derive::{Config, Spec};
 #[cfg(feature = "hcl")]
 pub mod hcl;
 mod issue;

@@ -9,7 +9,7 @@ mod source;
 mod span;
 
 pub use location::Located;
-pub use lower::Lower;
+pub use lower::{Lower, LowerAuto};
 pub use report::{Issue, IssueBuilder, Report};
 pub use source::{Source, SourceMap};
 pub use span::{SourceId, Span};

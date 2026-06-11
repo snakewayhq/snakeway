@@ -54,21 +54,64 @@ fn validate_server_spec(spec: &ServerSpec, report: &mut Report) {
     );
 }
 
-#[derive(Debug)]
+#[derive(Debug, confval::Config)]
+#[confval(lower_from = ServerSpec)]
 struct ServerConfig {
+    #[confval(lower(from = (hostname, port), with = parse_addr))]
     addr: SocketAddr,
     daemon: bool,
+    #[confval(lower(from = max_connections, with = max_connections_to_usize))]
     max_connections: usize,
+    #[confval(lower(from = shutdown_timeout_seconds, with = seconds_to_duration))]
     shutdown_timeout: Duration,
+    #[confval(lower(from = pid_file, with = pid_file_to_path))]
     pid_file: Option<PathBuf>,
+    #[confval(lower(from = allow, with = allow_to_vec))]
     allow: Vec<String>,
+    #[confval(nested)]
     tls: Option<TlsConfig>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, confval::Config)]
+#[confval(lower_from = TlsSpec)]
 struct TlsConfig {
+    #[confval(lower(from = cert, with = string_to_path))]
     cert: PathBuf,
+    #[confval(lower(from = key, with = string_to_path))]
     key: PathBuf,
+}
+
+fn max_connections_to_usize(value: &Located<i64>, _report: &mut Report) -> Option<usize> {
+    // Safe: the range was validated and the caller gates lowering on a
+    // clean report.
+    Some(value.value as usize)
+}
+
+fn seconds_to_duration(value: &Located<i64>, _report: &mut Report) -> Option<Duration> {
+    Some(Duration::from_secs(value.value as u64))
+}
+
+fn pid_file_to_path(
+    value: &Option<Located<String>>,
+    _report: &mut Report,
+) -> Option<Option<PathBuf>> {
+    Some(value.as_ref().map(|p| PathBuf::from(&p.value)))
+}
+
+fn allow_to_vec(
+    value: &Option<Located<Vec<Located<String>>>>,
+    _report: &mut Report,
+) -> Option<Vec<String>> {
+    Some(
+        value
+            .as_ref()
+            .map(|list| list.value.iter().map(|cidr| cidr.value.clone()).collect())
+            .unwrap_or_default(),
+    )
+}
+
+fn string_to_path(value: &Located<String>, _report: &mut Report) -> Option<PathBuf> {
+    Some(PathBuf::from(&value.value))
 }
 
 fn parse_addr(
@@ -86,49 +129,6 @@ fn parse_addr(
                 .emit();
             None
         }
-    }
-}
-
-impl Lower<ServerSpec> for ServerConfig {
-    fn lower(spec: &ServerSpec, report: &mut Report) -> Option<Self> {
-        let ServerSpec {
-            hostname,
-            port,
-            daemon,
-            max_connections,
-            shutdown_timeout_seconds,
-            pid_file,
-            allow,
-            tls,
-        } = spec;
-
-        let addr = parse_addr(hostname, port, report);
-        let tls = tls.as_ref().map(|tls| TlsConfig::lower(&tls.value, report));
-
-        Some(ServerConfig {
-            addr: addr?,
-            daemon: daemon.value,
-            // Safe: the range was validated and the caller gates lowering
-            // on a clean report.
-            max_connections: max_connections.value as usize,
-            shutdown_timeout: Duration::from_secs(shutdown_timeout_seconds.value as u64),
-            pid_file: pid_file.as_ref().map(|p| PathBuf::from(&p.value)),
-            allow: allow
-                .as_ref()
-                .map(|list| list.value.iter().map(|cidr| cidr.value.clone()).collect())
-                .unwrap_or_default(),
-            tls: tls?,
-        })
-    }
-}
-
-impl Lower<TlsSpec> for TlsConfig {
-    fn lower(spec: &TlsSpec, _report: &mut Report) -> Option<Self> {
-        let TlsSpec { cert, key } = spec;
-        Some(TlsConfig {
-            cert: PathBuf::from(&cert.value),
-            key: PathBuf::from(&key.value),
-        })
     }
 }
 
