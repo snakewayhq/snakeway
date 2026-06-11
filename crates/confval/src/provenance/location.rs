@@ -51,6 +51,13 @@ impl<T> Located<T> {
     }
 }
 
+/// The default value is detached: it has no source location.
+impl<T: Default> Default for Located<T> {
+    fn default() -> Self {
+        Located::detached(T::default())
+    }
+}
+
 impl<T> Deref for Located<T> {
     type Target = T;
     fn deref(&self) -> &T {
