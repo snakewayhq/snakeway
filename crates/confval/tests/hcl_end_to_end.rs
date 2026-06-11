@@ -6,12 +6,10 @@
 #![cfg(feature = "hcl")]
 
 use confval::hcl::{
-    FromHcl, parse_block, parse_bool_attr, parse_hcl, parse_int_attr, parse_string_attr,
-    parse_string_list_attr, report_duplicate_field, report_missing_field, report_unknown_block,
-    report_unknown_field, span_of,
+    Fields, FromHcl, parse_bool_field, parse_hcl, parse_int_field, parse_single_struct,
+    parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
 };
-use confval::provenance::{Located, Lower, Report, SourceId, SourceMap, Span};
-use hcl_edit::structure::{Body, Structure};
+use confval::provenance::{Located, Lower, Report, SourceMap, Span};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -34,19 +32,6 @@ struct TlsSpec {
     key: Located<String>,
 }
 
-/// Records the first occurrence of a single-occurrence field and reports
-/// any later one as a duplicate. Returns true if this occurrence must be
-/// skipped.
-fn occupied(seen: &mut Option<Span>, name: &str, span: Span, report: &mut Report) -> bool {
-    if let Some(first) = *seen {
-        report_duplicate_field(name, span, first, report);
-        true
-    } else {
-        *seen = Some(span);
-        false
-    }
-}
-
 fn check_range(value: &Option<Located<i64>>, min: i64, max: i64, name: &str, report: &mut Report) {
     if let Some(value) = value
         && !(min..=max).contains(&value.value)
@@ -60,66 +45,30 @@ fn check_range(value: &Option<Located<i64>>, min: i64, max: i64, name: &str, rep
 }
 
 impl FromHcl for ServerSpec {
-    fn from_hcl(body: &Body, source: SourceId, report: &mut Report) -> Option<Self> {
-        // Attribute keys are unique by HCL grammar (the parser rejects
-        // redefinition), so attributes need a seen flag only to distinguish
-        // "absent" from "present but invalid". Blocks may legally repeat
-        // and need full duplicate tracking.
+    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
         let mut hostname = None;
-        let mut hostname_seen = false;
         let mut port = None;
-        let mut port_seen = false;
         let mut daemon = None;
-        let mut daemon_seen = false;
         let mut max_connections = None;
-        let mut max_connections_seen = false;
         let mut shutdown_timeout_seconds = None;
-        let mut shutdown_timeout_seconds_seen = false;
         let mut pid_file = None;
         let mut allow = None;
         let mut tls = None;
-        let mut tls_seen = None;
+        let mut tls_seen: Option<Span> = None;
 
-        for structure in body.iter() {
-            match structure {
-                Structure::Attribute(attr) => match attr.key.value().as_str() {
-                    "hostname" => {
-                        hostname_seen = true;
-                        hostname = parse_string_attr(attr, source, report);
-                    }
-                    "port" => {
-                        port_seen = true;
-                        port = parse_int_attr(attr, source, report);
-                    }
-                    "daemon" => {
-                        daemon_seen = true;
-                        daemon = parse_bool_attr(attr, source, report);
-                    }
-                    "max_connections" => {
-                        max_connections_seen = true;
-                        max_connections = parse_int_attr(attr, source, report);
-                    }
-                    "shutdown_timeout_seconds" => {
-                        shutdown_timeout_seconds_seen = true;
-                        shutdown_timeout_seconds = parse_int_attr(attr, source, report);
-                    }
-                    "pid_file" => {
-                        pid_file = parse_string_attr(attr, source, report);
-                    }
-                    "allow" => {
-                        allow = parse_string_list_attr(attr, source, report);
-                    }
-                    _ => report_unknown_field(attr, source, report),
-                },
-                Structure::Block(block) => match block.ident.value().as_str() {
-                    "tls" => {
-                        let span = span_of(block, source);
-                        if !occupied(&mut tls_seen, "tls", span, report) {
-                            tls = parse_block::<TlsSpec>(block, source, report);
-                        }
-                    }
-                    _ => report_unknown_block(block, source, report),
-                },
+        for field in fields.iter() {
+            match field.name {
+                "hostname" => hostname = parse_string_field(field, report),
+                "port" => port = parse_int_field(field, report),
+                "daemon" => daemon = parse_bool_field(field, report),
+                "max_connections" => max_connections = parse_int_field(field, report),
+                "shutdown_timeout_seconds" => {
+                    shutdown_timeout_seconds = parse_int_field(field, report);
+                }
+                "pid_file" => pid_file = parse_string_field(field, report),
+                "allow" => allow = parse_string_list_field(field, report),
+                "tls" => parse_single_struct(&mut tls, &mut tls_seen, "tls", field, report),
+                _ => report_unknown_field(field, report),
             }
         }
 
@@ -133,21 +82,19 @@ impl FromHcl for ServerSpec {
             report,
         );
 
-        let enclosing = span_of(body, source);
-        if !hostname_seen {
-            report_missing_field("hostname", enclosing, report);
-        }
-        if !port_seen {
-            report_missing_field("port", enclosing, report);
-        }
-        if !daemon_seen {
-            report_missing_field("daemon", enclosing, report);
-        }
-        if !max_connections_seen {
-            report_missing_field("max_connections", enclosing, report);
-        }
-        if !shutdown_timeout_seconds_seen {
-            report_missing_field("shutdown_timeout_seconds", enclosing, report);
+        for (name, present) in [
+            ("hostname", fields.has("hostname")),
+            ("port", fields.has("port")),
+            ("daemon", fields.has("daemon")),
+            ("max_connections", fields.has("max_connections")),
+            (
+                "shutdown_timeout_seconds",
+                fields.has("shutdown_timeout_seconds"),
+            ),
+        ] {
+            if !present {
+                report_missing_field(name, fields.enclosing(), report);
+            }
         }
 
         Some(ServerSpec {
@@ -164,35 +111,23 @@ impl FromHcl for ServerSpec {
 }
 
 impl FromHcl for TlsSpec {
-    fn from_hcl(body: &Body, source: SourceId, report: &mut Report) -> Option<Self> {
+    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
         let mut cert = None;
-        let mut cert_seen = false;
         let mut key = None;
-        let mut key_seen = false;
 
-        for structure in body.iter() {
-            match structure {
-                Structure::Attribute(attr) => match attr.key.value().as_str() {
-                    "cert" => {
-                        cert_seen = true;
-                        cert = parse_string_attr(attr, source, report);
-                    }
-                    "key" => {
-                        key_seen = true;
-                        key = parse_string_attr(attr, source, report);
-                    }
-                    _ => report_unknown_field(attr, source, report),
-                },
-                Structure::Block(block) => report_unknown_block(block, source, report),
+        for field in fields.iter() {
+            match field.name {
+                "cert" => cert = parse_string_field(field, report),
+                "key" => key = parse_string_field(field, report),
+                _ => report_unknown_field(field, report),
             }
         }
 
-        let enclosing = span_of(body, source);
-        if !cert_seen {
-            report_missing_field("cert", enclosing, report);
+        if !fields.has("cert") {
+            report_missing_field("cert", fields.enclosing(), report);
         }
-        if !key_seen {
-            report_missing_field("key", enclosing, report);
+        if !fields.has("key") {
+            report_missing_field("key", fields.enclosing(), report);
         }
 
         Some(TlsSpec {
