@@ -4524,6 +4524,7 @@ version = "0.13.1"
 dependencies = [
  "confval",
  "glob",
+ "hcl-edit",
  "hcl-rs",
  "hotpath",
  "http",
@@ -4555,6 +4556,7 @@ dependencies = [
  "bytes",
  "chrono",
  "clap",
+ "confval",
  "console-subscriber",
  "criterion",
  "ctrlc",
@@ -4609,6 +4611,7 @@ dependencies = [
 name = "snakeway-tests"
 version = "0.13.1"
 dependencies = [
+ "confval",
  "futures-util",
  "http",
  "opentelemetry",
