@@ -2825,37 +2825,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "o2o"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ae833a87400b8cdd4184c7e33507069c4f5ec3850f28b4d948e9d16bfb719c1"
-dependencies = [
- "o2o-impl",
- "o2o-macros",
-]
-
-[[package]]
-name = "o2o-impl"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ab8d9676fa300d6e79c638b8d346fb0baf2013b0af1fba65b7b46fe16d00366"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "o2o-macros"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f92f47081db11ff79cb540118af9e4673ee8a625f43014785f570a6738fd004"
-dependencies = [
- "o2o-impl",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "objc2"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4535,13 +4504,10 @@ version = "0.13.1"
 dependencies = [
  "confval",
  "glob",
- "hcl-edit",
  "hcl-rs",
  "hotpath",
  "http",
  "ipnet",
- "nix 0.31.3",
- "o2o",
  "openssl",
  "rcgen",
  "secrecy",
