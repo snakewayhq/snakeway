@@ -1,8 +1,9 @@
+use crate::resolution::ResolveError;
 use crate::types::{
     AdminAuthConfig, BearerAuthConfig, BindAdminSpec, BindSpec, ConnectionRateLimitingFilterConfig,
     NetworkConnectionFilterConfig, TlsTerminationConfig,
 };
-use confval::provenance::{Lower, Report};
+use confval::provenance::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -33,22 +34,23 @@ pub struct RedirectConfig {
     pub response_code: u16,
 }
 
-/// Bridges span-first lowering into this module's `Result<_, String>`
-/// plumbing: failures here mean validation was skipped or raced, so the
-/// message is enough.
-fn lower_or_message<C, S>(spec: &S) -> Result<C, String>
-where
-    C: Lower<S>,
-{
-    let mut report = Report::new();
-    match C::lower(spec, &mut report) {
-        Some(config) if !report.has_errors() => Ok(config),
-        _ => Err(report
-            .issues()
-            .iter()
-            .map(|issue| issue.message.clone())
-            .collect::<Vec<_>>()
-            .join("; ")),
+/// Report a bind resolution failure at the interface that declared it.
+fn report_resolve_error(err: &ResolveError, interface: &Located<String>, report: &mut Report) {
+    report
+        .error(format!("invalid bind address: {err}"))
+        .at(interface.span)
+        .emit();
+}
+
+/// Lower an optional connection filter. The outer `Option` is the failure
+/// channel; the inner one mirrors the spec field being optional.
+fn lower_connection_filter(
+    spec: &BindSpec,
+    report: &mut Report,
+) -> Option<Option<NetworkConnectionFilterConfig>> {
+    match &spec.connection_filter {
+        Some(filter) => NetworkConnectionFilterConfig::lower(&filter.value, report).map(Some),
+        None => Some(None),
     }
 }
 
@@ -58,14 +60,15 @@ impl ListenerConfig {
         from_addr: String,
         redirect_response_code: u16,
         spec: &BindSpec,
-    ) -> Result<Self, String> {
-        let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let connection_filter = spec
-            .connection_filter
-            .as_ref()
-            .map(|filter| NetworkConnectionFilterConfig::try_from(&filter.value))
-            .transpose()?;
-        Ok(Self {
+        report: &mut Report,
+    ) -> Option<Self> {
+        let addr = spec
+            .resolve()
+            .map_err(|err| report_resolve_error(&err, &spec.interface, report))
+            .ok();
+        let connection_filter = lower_connection_filter(spec, report);
+
+        Some(Self {
             name: name.to_string(),
             addr: from_addr,
             tls_termination: None,
@@ -73,10 +76,10 @@ impl ListenerConfig {
             enable_admin: false,
             admin_auth: None,
             redirect: Some(RedirectConfig::new(
-                addr.to_string(),
+                addr?.to_string(),
                 redirect_response_code,
             )),
-            connection_filter,
+            connection_filter: connection_filter?,
             connection_rate_limiting_filter: spec
                 .connection_rate_limiting_filter
                 .as_ref()
@@ -84,27 +87,26 @@ impl ListenerConfig {
         })
     }
 
-    pub fn from_bind(name: &str, spec: &BindSpec) -> Result<Self, String> {
-        let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let maybe_tls = spec
-            .tls
-            .as_ref()
-            .map(|tls| lower_or_message::<TlsTerminationConfig, _>(&tls.value))
-            .transpose()?;
-        let connection_filter = spec
-            .connection_filter
-            .as_ref()
-            .map(|filter| NetworkConnectionFilterConfig::try_from(&filter.value))
-            .transpose()?;
-        Ok(Self {
+    pub fn from_bind(name: &str, spec: &BindSpec, report: &mut Report) -> Option<Self> {
+        let addr = spec
+            .resolve()
+            .map_err(|err| report_resolve_error(&err, &spec.interface, report))
+            .ok();
+        let maybe_tls = match &spec.tls {
+            Some(tls) => TlsTerminationConfig::lower(&tls.value, report).map(Some),
+            None => Some(None),
+        };
+        let connection_filter = lower_connection_filter(spec, report);
+
+        Some(Self {
             name: name.to_string(),
-            addr: addr.to_string(),
-            tls_termination: maybe_tls,
+            addr: addr?.to_string(),
+            tls_termination: maybe_tls?,
             enable_http2: spec.enable_http2.value,
             enable_admin: false,
             admin_auth: None,
             redirect: None,
-            connection_filter,
+            connection_filter: connection_filter?,
             connection_rate_limiting_filter: spec
                 .connection_rate_limiting_filter
                 .as_ref()
@@ -112,31 +114,49 @@ impl ListenerConfig {
         })
     }
 
-    pub fn from_bind_admin(name: &str, spec: &BindAdminSpec) -> Result<Self, String> {
-        let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let tls = lower_or_message::<TlsTerminationConfig, _>(&spec.tls.value)?;
+    pub fn from_bind_admin(name: &str, spec: &BindAdminSpec, report: &mut Report) -> Option<Self> {
+        let addr = spec
+            .resolve()
+            .map_err(|err| report_resolve_error(&err, &spec.interface, report))
+            .ok();
+        let tls = TlsTerminationConfig::lower(&spec.tls.value, report);
 
-        let bearer_spec = spec
+        let bearer = match spec
             .auth
             .as_ref()
             .and_then(|auth| auth.value.bearer.as_ref())
-            .ok_or_else(|| {
-                "admin auth is missing at lowering time (bug: validation should have caught this)"
-                    .to_string()
-            })?;
-        let bearer =
-            BearerAuthConfig::try_from(&bearer_spec.value).map_err(|err| err.to_string())?;
-        let admin_auth = Some(AdminAuthConfig {
-            bearer: Some(bearer),
-        });
+        {
+            Some(bearer_spec) => match BearerAuthConfig::try_from(&bearer_spec.value) {
+                Ok(bearer) => Some(bearer),
+                Err(err) => {
+                    report
+                        .error(err.to_string())
+                        .at(bearer_spec.value.token_file.span)
+                        .emit();
+                    None
+                }
+            },
+            None => {
+                report
+                    .error(
+                        "admin auth is missing at lowering time \
+                         (bug: validation should have caught this)",
+                    )
+                    .at(spec.interface.span)
+                    .emit();
+                None
+            }
+        };
 
-        Ok(Self {
+        Some(Self {
             name: name.to_string(),
-            addr: addr.to_string(),
-            tls_termination: Some(tls),
+            addr: addr?.to_string(),
+            tls_termination: Some(tls?),
             enable_http2: false,
             enable_admin: true,
-            admin_auth,
+            admin_auth: Some(AdminAuthConfig {
+                bearer: Some(bearer?),
+            }),
             redirect: None,
             connection_filter: None,
             connection_rate_limiting_filter: None,
@@ -172,7 +192,7 @@ mod tests {
         let spec = minimal_bind();
 
         // Act
-        let config = ListenerConfig::from_bind("test-listener", &spec).unwrap();
+        let config = ListenerConfig::from_bind("test-listener", &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.name, "test-listener");
@@ -205,7 +225,8 @@ mod tests {
         };
 
         // Act
-        let config = ListenerConfig::from_bind_admin("admin-listener", &spec).unwrap();
+        let config =
+            ListenerConfig::from_bind_admin("admin-listener", &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.name, "admin-listener");
@@ -233,6 +254,7 @@ mod tests {
             "127.0.0.1:8080".to_string(),
             308,
             &spec,
+            &mut Report::new(),
         )
         .unwrap();
 

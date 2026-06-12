@@ -1,5 +1,6 @@
 use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
 use crate::types::{CircuitBreakerConfig, HealthCheckConfig, ServiceSpec, UpstreamUnixConfig};
+use confval::provenance::Report;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -46,11 +47,25 @@ impl ServiceConfig {
         tcp_upstreams: Vec<UpstreamTcpConfig>,
         unix_upstreams: Vec<UpstreamUnixConfig>,
         spec: &ServiceSpec,
-    ) -> Result<Self, String> {
-        Ok(Self {
+        report: &mut Report,
+    ) -> Option<Self> {
+        let strategy: Result<LoadBalancingStrategy, String> =
+            spec.load_balancing_strategy.value.as_str().try_into();
+        let strategy = match strategy {
+            Ok(strategy) => strategy,
+            Err(message) => {
+                report
+                    .error(message)
+                    .at(spec.load_balancing_strategy.span)
+                    .emit();
+                return None;
+            }
+        };
+
+        Some(Self {
             name: name.to_string(),
             listener: listener.to_string(),
-            load_balancing_strategy: spec.load_balancing_strategy.value.as_str().try_into()?,
+            load_balancing_strategy: strategy,
             tcp_upstreams,
             unix_upstreams,
             circuit_breaker: spec
@@ -85,7 +100,15 @@ mod tests {
         };
 
         // Act
-        let config = ServiceConfig::new("my-svc", "my-listener", vec![], vec![], &spec).unwrap();
+        let config = ServiceConfig::new(
+            "my-svc",
+            "my-listener",
+            vec![],
+            vec![],
+            &spec,
+            &mut Report::new(),
+        )
+        .unwrap();
 
         // Assert
         assert_eq!(config.name, "my-svc");

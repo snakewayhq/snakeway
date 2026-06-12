@@ -1,4 +1,5 @@
 use crate::types::IdentityDeviceSpec;
+use confval::provenance::{Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -46,21 +47,34 @@ impl TryFrom<&str> for UaEngineKind {
     }
 }
 
-impl TryFrom<IdentityDeviceSpec> for IdentityDeviceConfig {
-    type Error = String;
+impl Lower<IdentityDeviceSpec> for IdentityDeviceConfig {
+    fn lower(spec: &IdentityDeviceSpec, report: &mut Report) -> Option<Self> {
+        let ua_engine = match UaEngineKind::try_from(spec.ua_engine.value.as_str()) {
+            Ok(engine) => engine,
+            Err(message) => {
+                report.error(message).at(spec.ua_engine.span).emit();
+                return None;
+            }
+        };
 
-    fn try_from(spec: IdentityDeviceSpec) -> Result<Self, Self::Error> {
-        Ok(Self {
+        Some(Self {
             enable: spec.enable.value,
-            trusted_proxies: spec.trusted_proxies.into_iter().map(|p| p.value).collect(),
+            trusted_proxies: spec
+                .trusted_proxies
+                .iter()
+                .map(|p| p.value.clone())
+                .collect(),
             max_x_forwarded_for_length: spec.max_x_forwarded_for_length.value as usize,
             enable_geoip: spec.enable_geoip.value,
-            geoip_city_db: spec.geoip_city_db.map(|p| p.value),
-            geoip_isp_db: spec.geoip_isp_db.map(|p| p.value),
-            geoip_connection_type_db: spec.geoip_connection_type_db.map(|p| p.value),
+            geoip_city_db: spec.geoip_city_db.as_ref().map(|p| p.value.clone()),
+            geoip_isp_db: spec.geoip_isp_db.as_ref().map(|p| p.value.clone()),
+            geoip_connection_type_db: spec
+                .geoip_connection_type_db
+                .as_ref()
+                .map(|p| p.value.clone()),
             enable_user_agent: spec.enable_user_agent.value,
-            ua_engine: spec.ua_engine.value.as_str().try_into()?,
-            ua_parser_regexes: spec.ua_parser_regexes.map(|p| p.value),
+            ua_engine,
+            ua_parser_regexes: spec.ua_parser_regexes.as_ref().map(|p| p.value.clone()),
             max_user_agent_length: spec.max_user_agent_length.value as usize,
         })
     }
@@ -89,7 +103,7 @@ mod tests {
         };
 
         // Act
-        let config = IdentityDeviceConfig::try_from(spec).unwrap();
+        let config = IdentityDeviceConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
         assert!(config.enable);
@@ -114,11 +128,18 @@ mod tests {
             ua_engine: Located::detached("psychic".to_string()),
             ..Default::default()
         };
+        let mut report = Report::new();
 
         // Act
-        let result = IdentityDeviceConfig::try_from(spec);
+        let result = IdentityDeviceConfig::lower(&spec, &mut report);
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message == "unknown ua_engine: psychic")
+        );
     }
 }

@@ -1,5 +1,5 @@
 use crate::types::StructuredLoggingDeviceSpec;
-use confval::provenance::Located;
+use confval::provenance::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -17,38 +17,63 @@ pub struct StructuredLoggingDeviceConfig {
     pub phases: Option<Vec<LogPhaseConfig>>,
 }
 
-impl TryFrom<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
-    type Error = String;
-
-    fn try_from(spec: StructuredLoggingDeviceSpec) -> Result<Self, Self::Error> {
+impl Lower<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
+    fn lower(spec: &StructuredLoggingDeviceSpec, report: &mut Report) -> Option<Self> {
         fn keywords<T: for<'a> TryFrom<&'a str, Error = String>>(
-            values: Vec<Located<String>>,
-        ) -> Result<Vec<T>, String> {
+            values: &[Located<String>],
+            report: &mut Report,
+            ok: &mut bool,
+        ) -> Vec<T> {
             values
-                .into_iter()
-                .map(|value| value.value.as_str().try_into())
+                .iter()
+                .filter_map(|value| match value.value.as_str().try_into() {
+                    Ok(keyword) => Some(keyword),
+                    Err(message) => {
+                        report.error(message).at(value.span).emit();
+                        *ok = false;
+                        None
+                    }
+                })
                 .collect()
         }
 
-        Ok(Self {
+        let mut ok = true;
+
+        let level = match LogLevelConfig::try_from(spec.level.value.as_str()) {
+            Ok(level) => Some(level),
+            Err(message) => {
+                report.error(message).at(spec.level.span).emit();
+                ok = false;
+                None
+            }
+        };
+
+        let config = Self {
             enable: spec.enable.value,
-            level: spec.level.value.as_str().try_into()?,
+            level: level.unwrap_or_default(),
             include_headers: spec.include_headers.value,
             allowed_headers: spec
                 .allowed_headers
-                .into_iter()
+                .iter()
                 .map(|h| h.value.to_lowercase())
                 .collect(),
             redacted_headers: spec
                 .redacted_headers
-                .into_iter()
+                .iter()
                 .map(|h| h.value.to_lowercase())
                 .collect(),
             include_identity: spec.include_identity.value,
-            identity_fields: keywords(spec.identity_fields)?,
-            events: spec.events.map(|e| keywords(e.value)).transpose()?,
-            phases: spec.phases.map(|p| keywords(p.value)).transpose()?,
-        })
+            identity_fields: keywords(&spec.identity_fields, report, &mut ok),
+            events: spec
+                .events
+                .as_ref()
+                .map(|e| keywords(&e.value, report, &mut ok)),
+            phases: spec
+                .phases
+                .as_ref()
+                .map(|p| keywords(&p.value, report, &mut ok)),
+        };
+        ok.then_some(config)
     }
 }
 
@@ -183,7 +208,7 @@ mod tests {
         };
 
         // Act
-        let config = StructuredLoggingDeviceConfig::try_from(spec).unwrap();
+        let config = StructuredLoggingDeviceConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
         assert!(config.enable);
@@ -202,11 +227,18 @@ mod tests {
             level: Located::detached("loud".to_string()),
             ..Default::default()
         };
+        let mut report = Report::new();
 
         // Act
-        let result = StructuredLoggingDeviceConfig::try_from(spec);
+        let result = StructuredLoggingDeviceConfig::lower(&spec, &mut report);
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message == "unknown level: loud")
+        );
     }
 }

@@ -1,5 +1,5 @@
 use crate::types::RequestFilterDeviceSpec;
-use crate::validation::ConfigError;
+use confval::provenance::{Located, Lower, Report};
 use http::{HeaderName, Method};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -78,56 +78,69 @@ mod serde_method_vec {
     }
 }
 
-impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
-    type Error = ConfigError;
-
-    fn try_from(spec: RequestFilterDeviceSpec) -> Result<Self, Self::Error> {
+impl Lower<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
+    fn lower(spec: &RequestFilterDeviceSpec, report: &mut Report) -> Option<Self> {
         fn methods(
-            values: Vec<confval::provenance::Located<String>>,
-        ) -> Result<SmallVec<[Method; 4]>, ConfigError> {
+            values: &[Located<String>],
+            report: &mut Report,
+            ok: &mut bool,
+        ) -> SmallVec<[Method; 4]> {
             values
-                .into_iter()
-                .map(|s| {
-                    Method::from_bytes(s.value.as_bytes()).map_err(|_| ConfigError::InvalidMethod {
-                        value: s.value.clone(),
-                        origin: "request_filter_device".to_string(),
-                    })
+                .iter()
+                .filter_map(|s| match Method::from_bytes(s.value.as_bytes()) {
+                    Ok(method) => Some(method),
+                    Err(_) => {
+                        report
+                            .error(format!("invalid method: {}", s.value))
+                            .at(s.span)
+                            .emit();
+                        *ok = false;
+                        None
+                    }
                 })
                 .collect()
         }
 
         fn headers(
-            values: Vec<confval::provenance::Located<String>>,
-        ) -> Result<SmallVec<[HeaderName; 8]>, ConfigError> {
+            values: &[Located<String>],
+            report: &mut Report,
+            ok: &mut bool,
+        ) -> SmallVec<[HeaderName; 8]> {
             values
-                .into_iter()
-                .map(|s| {
-                    HeaderName::from_bytes(s.value.as_bytes()).map_err(|_| {
-                        ConfigError::InvalidHeaderName {
-                            value: s.value.clone(),
-                            origin: "request_filter_device".to_string(),
-                        }
-                    })
+                .iter()
+                .filter_map(|s| match HeaderName::from_bytes(s.value.as_bytes()) {
+                    Ok(header) => Some(header),
+                    Err(_) => {
+                        report
+                            .error(format!("invalid header name: {}", s.value))
+                            .at(s.span)
+                            .emit();
+                        *ok = false;
+                        None
+                    }
                 })
                 .collect()
         }
 
-        Ok(Self {
+        let mut ok = true;
+        let config = Self {
             enable: spec.enable.value,
-            allow_methods: methods(spec.allow_methods)?,
-            deny_methods: methods(spec.deny_methods)?,
-            deny_headers: headers(spec.deny_headers)?,
-            allow_headers: headers(spec.allow_headers)?,
-            required_headers: headers(spec.required_headers)?,
+            allow_methods: methods(&spec.allow_methods, report, &mut ok),
+            deny_methods: methods(&spec.deny_methods, report, &mut ok),
+            deny_headers: headers(&spec.deny_headers, report, &mut ok),
+            allow_headers: headers(&spec.allow_headers, report, &mut ok),
+            required_headers: headers(&spec.required_headers, report, &mut ok),
             max_header_bytes: spec.max_header_bytes.value as usize,
             max_body_bytes: spec.max_body_bytes.value as usize,
             max_suspicious_body_bytes: spec.max_suspicious_body_bytes.value as usize,
-            deny_status: spec.deny_status.map(|v| v.value as u16),
+            deny_status: spec.deny_status.as_ref().map(|v| v.value as u16),
             client_body_timeout: spec
                 .client_body_timeout_seconds
+                .as_ref()
                 .map(|v| Duration::from_secs(v.value as u64)),
-            paths: spec.paths.into_iter().map(|p| p.value).collect(),
-        })
+            paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
+        };
+        ok.then_some(config)
     }
 }
 
@@ -157,11 +170,13 @@ mod tests {
             allow_methods: located_list(&["GET", "POST"]),
             ..default_spec()
         };
+        let mut report = Report::new();
 
         // Act
-        let config = RequestFilterDeviceConfig::try_from(spec).unwrap();
+        let config = RequestFilterDeviceConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
+        assert!(!report.has_errors());
         assert_eq!(config.allow_methods.len(), 2);
         assert_eq!(config.allow_methods[0], Method::GET);
         assert_eq!(config.allow_methods[1], Method::POST);
@@ -174,16 +189,19 @@ mod tests {
             allow_methods: located_list(&["INVALID METHOD"]),
             ..default_spec()
         };
+        let mut report = Report::new();
 
         // Act
-        let result = RequestFilterDeviceConfig::try_from(spec);
+        let result = RequestFilterDeviceConfig::lower(&spec, &mut report);
 
         // Assert
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            ConfigError::InvalidMethod { .. }
-        ));
+        assert!(result.is_none());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message == "invalid method: INVALID METHOD")
+        );
     }
 
     #[test]
@@ -193,9 +211,10 @@ mod tests {
             deny_headers: located_list(&["x-custom"]),
             ..default_spec()
         };
+        let mut report = Report::new();
 
         // Act
-        let config = RequestFilterDeviceConfig::try_from(spec).unwrap();
+        let config = RequestFilterDeviceConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert_eq!(config.deny_headers.len(), 1);
@@ -209,16 +228,19 @@ mod tests {
             deny_headers: located_list(&["invalid header!"]),
             ..default_spec()
         };
+        let mut report = Report::new();
 
         // Act
-        let result = RequestFilterDeviceConfig::try_from(spec);
+        let result = RequestFilterDeviceConfig::lower(&spec, &mut report);
 
         // Assert
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            ConfigError::InvalidHeaderName { .. }
-        ));
+        assert!(result.is_none());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message == "invalid header name: invalid header!")
+        );
     }
 
     #[test]
@@ -228,9 +250,10 @@ mod tests {
             client_body_timeout_seconds: Some(Located::detached(30)),
             ..default_spec()
         };
+        let mut report = Report::new();
 
         // Act
-        let config = RequestFilterDeviceConfig::try_from(spec).unwrap();
+        let config = RequestFilterDeviceConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert_eq!(config.client_body_timeout, Some(Duration::from_secs(30)));

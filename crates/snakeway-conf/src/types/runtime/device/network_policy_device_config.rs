@@ -1,5 +1,5 @@
 use crate::types::{NetworkPolicyDeviceSpec, ON_NO_PEER_ADDR_DENY};
-use crate::validation::ConfigError;
+use confval::provenance::{Lower, Report};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -26,21 +26,27 @@ pub enum OnInvalidForwardedConfig {
     Ignore,
 }
 
-impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
-    type Error = ConfigError;
-    fn try_from(spec: NetworkPolicyDeviceSpec) -> Result<Self, Self::Error> {
-        let cidr_allow = spec
-            .cidr_allow
-            .iter()
-            .map(|c| {
-                c.value
-                    .parse::<IpNet>()
-                    .map_err(|e| ConfigError::InvalidUpstream {
-                        message: format!("invalid network policy CIDR '{}': {}", c.value, e),
-                    })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self {
+impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
+    fn lower(spec: &NetworkPolicyDeviceSpec, report: &mut Report) -> Option<Self> {
+        let mut cidr_allow = Vec::with_capacity(spec.cidr_allow.len());
+        let mut ok = true;
+        for c in &spec.cidr_allow {
+            match c.value.parse::<IpNet>() {
+                Ok(net) => cidr_allow.push(net),
+                Err(e) => {
+                    report
+                        .error(format!("invalid network policy CIDR '{}': {}", c.value, e))
+                        .at(c.span)
+                        .emit();
+                    ok = false;
+                }
+            }
+        }
+        if !ok {
+            return None;
+        }
+
+        Some(Self {
             enable: spec.enable.value,
             cidr_allow,
             forwarding: ForwardingConfig {
@@ -51,7 +57,7 @@ impl TryFrom<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
                     OnInvalidForwardedConfig::Ignore
                 },
             },
-            paths: spec.paths.into_iter().map(|p| p.value).collect(),
+            paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         })
     }
 }
@@ -75,7 +81,9 @@ mod tests {
     #[test]
     fn valid_cidr_parsed() {
         // Arrange / Act
-        let config = NetworkPolicyDeviceConfig::try_from(spec(vec!["10.0.0.0/8"])).unwrap();
+        let config =
+            NetworkPolicyDeviceConfig::lower(&spec(vec!["10.0.0.0/8"]), &mut Report::new())
+                .unwrap();
 
         // Assert
         assert_eq!(config.cidr_allow.len(), 1);
@@ -84,15 +92,18 @@ mod tests {
 
     #[test]
     fn invalid_cidr_fails() {
-        // Arrange / Act
-        let result = NetworkPolicyDeviceConfig::try_from(spec(vec!["not-a-cidr"]));
+        // Arrange
+        let mut report = Report::new();
+
+        // Act
+        let result = NetworkPolicyDeviceConfig::lower(&spec(vec!["not-a-cidr"]), &mut report);
 
         // Assert
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            ConfigError::InvalidUpstream { .. }
-        ));
+        assert!(result.is_none());
+        assert!(report.issues().iter().any(|i| {
+            i.message
+                .contains("invalid network policy CIDR 'not-a-cidr'")
+        }));
     }
 
     #[test]
@@ -105,7 +116,7 @@ mod tests {
         });
 
         // Act
-        let config = NetworkPolicyDeviceConfig::try_from(deny).unwrap();
+        let config = NetworkPolicyDeviceConfig::lower(&deny, &mut Report::new()).unwrap();
 
         // Assert
         assert!(matches!(

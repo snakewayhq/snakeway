@@ -129,11 +129,7 @@ mod tests {
         };
 
         // Act
-        validate_tls(
-            &server,
-            &[ingress(minimal_bind_with_acme())],
-            &mut report,
-        );
+        validate_tls(&server, &[ingress(minimal_bind_with_acme())], &mut report);
 
         // Assert
         assert!(report.issues().iter().any(|i| i.message
@@ -179,11 +175,7 @@ mod tests {
         };
 
         // Act
-        validate_tls(
-            &server,
-            &[ingress(minimal_bind_with_acme())],
-            &mut report,
-        );
+        validate_tls(&server, &[ingress(minimal_bind_with_acme())], &mut report);
 
         // Assert
         assert!(!report.has_issues(), "got: {:?}", report.issues());

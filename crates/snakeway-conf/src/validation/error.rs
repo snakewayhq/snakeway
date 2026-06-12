@@ -28,32 +28,11 @@ pub enum ConfigError {
         os_string: OsString,
     },
 
-    #[error("{message}")]
-    Custom { message: String },
-
     //-------------------------------------------------------------------------
     // Validation during transformation
     //-------------------------------------------------------------------------
-    #[error("invalid server configuration: {message}")]
-    InvalidServerConfig { message: String },
-
-    #[error("invalid admin bind configuration: {message}")]
-    InvalidAdminBindConfig { message: String },
-
-    #[error("invalid bind address: {message}")]
-    InvalidBindAddress { message: String },
-
     #[error("invalid bind ip string: {0}")]
     InvalidBindIpString(String),
-
-    #[error("invalid method: {value} (origin: {origin})")]
-    InvalidMethod { value: String, origin: String },
-
-    #[error("invalid header name: {value} (origin: {origin})")]
-    InvalidHeaderName { value: String, origin: String },
-
-    #[error("invalid upstream: {message}")]
-    InvalidUpstream { message: String },
 
     #[error("validation failed: {report:?}")]
     SemanticValidationFailed {

@@ -1,4 +1,5 @@
 use crate::types::{NetworkConnectionFilterSpec, ON_NO_PEER_ADDR_DENY};
+use confval::provenance::{Located, Lower, Report};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
@@ -11,37 +12,39 @@ pub struct NetworkConnectionFilterConfig {
     pub ip_family_ipv6: bool,
 }
 
-impl TryFrom<&NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
-    type Error = String;
+fn parse_cidrs(
+    list: &[Located<String>],
+    list_name: &str,
+    report: &mut Report,
+) -> Option<Vec<IpNet>> {
+    let mut out = Vec::with_capacity(list.len());
+    let mut ok = true;
+    for c in list {
+        match c.value.parse::<IpNet>() {
+            Ok(net) => out.push(net),
+            Err(e) => {
+                report
+                    .error(format!(
+                        "invalid CIDR in {list_name} list '{}': {}",
+                        c.value, e
+                    ))
+                    .at(c.span)
+                    .emit();
+                ok = false;
+            }
+        }
+    }
+    ok.then_some(out)
+}
 
-    fn try_from(spec: &NetworkConnectionFilterSpec) -> Result<Self, Self::Error> {
-        let cidr_allow = spec
-            .cidr
-            .value
-            .allow
-            .iter()
-            .map(|c| {
-                c.value
-                    .parse::<IpNet>()
-                    .map_err(|e| format!("invalid CIDR in allow list '{}': {}", c.value, e))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+impl Lower<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
+    fn lower(spec: &NetworkConnectionFilterSpec, report: &mut Report) -> Option<Self> {
+        let cidr_allow = parse_cidrs(&spec.cidr.value.allow, "allow", report);
+        let cidr_deny = parse_cidrs(&spec.cidr.value.deny, "deny", report);
 
-        let cidr_deny = spec
-            .cidr
-            .value
-            .deny
-            .iter()
-            .map(|c| {
-                c.value
-                    .parse::<IpNet>()
-                    .map_err(|e| format!("invalid CIDR in deny list '{}': {}", c.value, e))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(Self {
-            cidr_allow,
-            cidr_deny,
+        Some(Self {
+            cidr_allow: cidr_allow?,
+            cidr_deny: cidr_deny?,
             on_no_peer_addr: if spec.on_no_peer_addr.value == ON_NO_PEER_ADDR_DENY {
                 OnNoPeerAddr::Deny
             } else {
@@ -98,11 +101,13 @@ mod tests {
             vec!["192.168.0.0/16"],
             ON_NO_PEER_ADDR_ALLOW,
         );
+        let mut report = Report::new();
 
         // Act
-        let config = NetworkConnectionFilterConfig::try_from(&spec).unwrap();
+        let config = NetworkConnectionFilterConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
+        assert!(!report.has_errors());
         assert_eq!(config.cidr_allow.len(), 1);
         assert_eq!(config.cidr_allow[0], "10.0.0.0/8".parse().unwrap());
         assert_eq!(config.cidr_deny.len(), 1);
@@ -115,21 +120,53 @@ mod tests {
     fn invalid_cidr_fails() {
         // Arrange
         let spec = filter(vec!["not-a-cidr"], vec![], ON_NO_PEER_ADDR_ALLOW);
+        let mut report = Report::new();
 
         // Act
-        let result = NetworkConnectionFilterConfig::try_from(&spec);
+        let result = NetworkConnectionFilterConfig::lower(&spec, &mut report);
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
+        assert!(report.has_errors());
+        assert!(report.issues().iter().any(|i| {
+            i.message
+                .contains("invalid CIDR in allow list 'not-a-cidr'")
+        }));
+    }
+
+    #[test]
+    fn every_invalid_cidr_reported() {
+        // Arrange
+        let spec = filter(vec!["bad-one"], vec!["bad-two"], ON_NO_PEER_ADDR_ALLOW);
+        let mut report = Report::new();
+
+        // Act
+        let result = NetworkConnectionFilterConfig::lower(&spec, &mut report);
+
+        // Assert
+        assert!(result.is_none());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message.contains("allow list 'bad-one'"))
+        );
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message.contains("deny list 'bad-two'"))
+        );
     }
 
     #[test]
     fn on_no_peer_addr_allow() {
         // Arrange
         let spec = filter(vec![], vec![], ON_NO_PEER_ADDR_ALLOW);
+        let mut report = Report::new();
 
         // Act
-        let config = NetworkConnectionFilterConfig::try_from(&spec).unwrap();
+        let config = NetworkConnectionFilterConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert!(matches!(config.on_no_peer_addr, OnNoPeerAddr::Allow));
@@ -139,9 +176,10 @@ mod tests {
     fn on_no_peer_addr_deny() {
         // Arrange
         let spec = filter(vec![], vec![], ON_NO_PEER_ADDR_DENY);
+        let mut report = Report::new();
 
         // Act
-        let config = NetworkConnectionFilterConfig::try_from(&spec).unwrap();
+        let config = NetworkConnectionFilterConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert!(matches!(config.on_no_peer_addr, OnNoPeerAddr::Deny));
