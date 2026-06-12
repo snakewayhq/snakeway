@@ -1,3 +1,4 @@
+use confval::provenance::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
@@ -106,7 +107,7 @@ fn trusted_proxy_allows_xff() {
 #[test]
 fn geoip_disabled_does_not_break_identity() {
     let mut id = ConfigBuilder::make_identity_device();
-    id.enable_geoip = false;
+    id.enable_geoip = Located::detached(false);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(id)

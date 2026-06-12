@@ -1,6 +1,7 @@
-use crate::cli::config::hcl::to_hcl_string;
+use crate::cli::config::hcl::{to_hcl_block_string, to_hcl_string};
+use confval::provenance::Located;
 use snakeway_conf::types::{
-    AcmeChallengeSpec, BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
+    ACME_CHALLENGE_HTTP01, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
     NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
     StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
@@ -16,35 +17,39 @@ pub(crate) fn generate(
         (
             "request_filter.hcl",
             DevicesFile {
-                request_filter_device: Some(RequestFilterDeviceSpec::default()),
+                request_filter_device: Some(Located::detached(RequestFilterDeviceSpec::default())),
                 ..Default::default()
             },
         ),
         (
             "identity.hcl",
             DevicesFile {
-                identity_device: Some(IdentityDeviceSpec::default()),
+                identity_device: Some(Located::detached(IdentityDeviceSpec::default())),
                 ..Default::default()
             },
         ),
         (
             "network_policy.hcl",
             DevicesFile {
-                network_policy_device: Some(NetworkPolicyDeviceSpec::default()),
+                network_policy_device: Some(Located::detached(NetworkPolicyDeviceSpec::default())),
                 ..Default::default()
             },
         ),
         (
             "request_rate_limiting.hcl",
             DevicesFile {
-                request_rate_limiting_device: Some(RequestRateLimitingDeviceSpec::default()),
+                request_rate_limiting_device: Some(Located::detached(
+                    RequestRateLimitingDeviceSpec::default(),
+                )),
                 ..Default::default()
             },
         ),
         (
             "structured_logging.hcl",
             DevicesFile {
-                structured_logging_device: Some(StructuredLoggingDeviceSpec::default()),
+                structured_logging_device: Some(Located::detached(
+                    StructuredLoggingDeviceSpec::default(),
+                )),
                 ..Default::default()
             },
         ),
@@ -58,26 +63,26 @@ pub(crate) fn generate(
     }
 
     let httpbin_ingress_spec = IngressSpec {
-        bind: Some(BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8443,
-            tls: Some(TlsTerminationSpec::Acme {
-                domains: vec!["snakeway.test".to_string()],
-                challenge: AcmeChallengeSpec::Http01,
-            }),
-            enable_http2: false,
-            redirect_http_to_https: Some(RedirectSpec {
-                port: 5002,
-                status: 308,
-            }),
+        bind: Some(Located::detached(BindSpec {
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8443),
+            tls: Some(Located::detached(TlsTerminationSpec::Acme {
+                domains: vec![Located::detached("snakeway.test".to_string())],
+                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            })),
+            enable_http2: Located::detached(false),
+            redirect_http_to_https: Some(Located::detached(RedirectSpec {
+                port: Located::detached(5002),
+                status: Located::detached(308),
+            })),
             ..Default::default()
-        }),
+        })),
         ..Default::default()
     };
 
     files_to_create.insert(
         ingress_dir_path.join("minimal.hcl"),
-        to_hcl_string(&httpbin_ingress_spec)?,
+        to_hcl_block_string(&httpbin_ingress_spec)?,
     );
 
     Ok(())

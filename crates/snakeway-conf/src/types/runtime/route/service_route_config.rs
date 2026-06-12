@@ -18,14 +18,14 @@ pub struct ServiceRouteConfig {
 }
 
 impl ServiceRouteConfig {
-    pub fn new(service: &str, listener: &str, spec: ServiceRouteSpec) -> Self {
+    pub fn new(service: &str, listener: &str, spec: &ServiceRouteSpec) -> Self {
         Self {
             service: service.to_string(),
             listener: listener.to_string(),
-            hosts: spec.hosts,
-            path: spec.path,
-            allow_websocket: spec.enable_websocket,
-            ws_max_connections: spec.ws_max_connections.map(|v| v as usize),
+            hosts: spec.hosts.iter().map(|h| h.value.clone()).collect(),
+            path: spec.path.value.clone(),
+            allow_websocket: spec.enable_websocket.value,
+            ws_max_connections: spec.ws_max_connections.as_ref().map(|v| v.value as usize),
         }
     }
 }
@@ -33,21 +33,20 @@ impl ServiceRouteConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::HclOrigin;
+    use confval::provenance::Located;
 
     #[test]
     fn new_maps_fields_correctly() {
         // Arrange
         let spec = ServiceRouteSpec {
-            origin: HclOrigin::default(),
-            hosts: vec!["example.com".to_string()],
-            path: "/api".to_string(),
-            enable_websocket: true,
-            ws_max_connections: Some(100),
+            hosts: vec![Located::detached("example.com".to_string())],
+            path: Located::detached("/api".to_string()),
+            enable_websocket: Located::detached(true),
+            ws_max_connections: Some(Located::detached(100)),
         };
 
         // Act
-        let config = ServiceRouteConfig::new("my-service", "my-listener", spec);
+        let config = ServiceRouteConfig::new("my-service", "my-listener", &spec);
 
         // Assert
         assert_eq!(config.service, "my-service");

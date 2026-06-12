@@ -1,6 +1,5 @@
 use crate::validation::ConfigError;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::net::IpAddr;
 use std::str::FromStr;
 
@@ -30,40 +29,20 @@ impl BindInterfaceSpec {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum BindInterfaceInput {
-    Keyword(String),
-}
-
-impl Default for BindInterfaceInput {
-    fn default() -> Self {
-        Self::Keyword("".to_string())
-    }
-}
-
-impl TryFrom<BindInterfaceInput> for BindInterfaceSpec {
+/// Interfaces are written as a keyword (`"loopback"`, `"all"`) or an IP
+/// address literal.
+impl TryFrom<&str> for BindInterfaceSpec {
     type Error = ConfigError;
 
-    fn try_from(input: BindInterfaceInput) -> Result<Self, Self::Error> {
+    fn try_from(input: &str) -> Result<Self, Self::Error> {
         match input {
-            BindInterfaceInput::Keyword(s) => match s.as_str() {
-                "loopback" => Ok(BindInterfaceSpec::Loopback),
-                "all" => Ok(BindInterfaceSpec::All),
-                _ => {
-                    let ip = IpAddr::from_str(&s)
-                        .map_err(|_| ConfigError::InvalidBindIpString(s.clone()))?;
-                    Ok(BindInterfaceSpec::Ip(ip))
-                }
-            },
-        }
-    }
-}
-
-impl fmt::Display for BindInterfaceInput {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            BindInterfaceInput::Keyword(s) => write!(f, "{s}"),
+            "loopback" => Ok(BindInterfaceSpec::Loopback),
+            "all" => Ok(BindInterfaceSpec::All),
+            _ => {
+                let ip = IpAddr::from_str(input)
+                    .map_err(|_| ConfigError::InvalidBindIpString(input.to_string()))?;
+                Ok(BindInterfaceSpec::Ip(ip))
+            }
         }
     }
 }

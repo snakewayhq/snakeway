@@ -1,3 +1,4 @@
+use confval::provenance::Located;
 use futures_util::{SinkExt, StreamExt};
 use pretty_assertions::assert_eq;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
@@ -40,16 +41,22 @@ fn websocket_echo_is_proxied() {
 fn websocket_max_connections_rejects_excess() {
     // Arrange
     let service = ServiceSpec {
-        routes: vec![ServiceRouteSpec {
-            hosts: vec![TEST_HOST.to_string()],
-            path: ROUTE_PATH_WS.to_string(),
-            enable_websocket: true,
-            ws_max_connections: Some(1),
+        routes: vec![Located::detached(ServiceRouteSpec {
+            hosts: vec![Located::detached(TEST_HOST.to_string())],
+            path: Located::detached(ROUTE_PATH_WS.to_string()),
+            enable_websocket: Located::detached(true),
+            ws_max_connections: Some(Located::detached(1)),
             ..Default::default()
-        }],
+        })],
         upstreams: vec![
-            ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-            ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+            Located::detached(ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            )),
+            Located::detached(ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_SECONDARY,
+                false,
+            )),
         ],
         ..Default::default()
     };

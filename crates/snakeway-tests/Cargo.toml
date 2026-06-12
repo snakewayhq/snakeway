@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 snakeway-core = { workspace = true, features = ["wasm"] }
+confval = { workspace = true }
 http = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

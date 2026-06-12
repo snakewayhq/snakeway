@@ -1,10 +1,15 @@
-use crate::types::HclOrigin;
-use crate::types::specification::ingress::static_files::static_route_spec::StaticRouteSpec;
-use serde::{Deserialize, Serialize};
+use super::static_route_spec::{StaticRouteSpec, validate_static_route};
+use confval::provenance::{Located, Report};
+use serde::Serialize;
 
-#[derive(Debug, Deserialize, Default, Serialize)]
+#[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct StaticFilesSpec {
-    #[serde(skip)]
-    pub origin: HclOrigin,
-    pub routes: Vec<StaticRouteSpec>,
+    #[confval(nested)]
+    pub routes: Vec<Located<StaticRouteSpec>>,
+}
+
+pub fn validate_static_files(spec: &StaticFilesSpec, report: &mut Report) {
+    for route in &spec.routes {
+        validate_static_route(&route.value, report);
+    }
 }

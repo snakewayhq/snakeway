@@ -1,3 +1,4 @@
+use confval::provenance::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_tests::conf::{
@@ -46,7 +47,7 @@ fn request_filter_denies_disallowed_method() {
 #[test]
 fn request_filter_deny_methods_take_precedence() {
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
-    rf.deny_methods = vec!["GET".to_string()];
+    rf.deny_methods = vec![Located::detached("GET".to_string())];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_request_filter(rf)
@@ -75,7 +76,7 @@ fn request_filter_denies_forbidden_header() {
 #[test]
 fn request_filter_requires_a_header_that_is_not_provided() {
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
-    rf.required_headers = vec!["x-required".to_string()];
+    rf.required_headers = vec![Located::detached("x-required".to_string())];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_request_filter(rf)
@@ -91,12 +92,12 @@ fn request_filter_requires_a_header_that_is_not_provided() {
 fn request_filter_allows_only_whitelisted_headers() {
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
     rf.allow_headers = vec![
-        "Host".to_string(),
-        "X-Custom-Allowed".to_string(),
-        "Accept".to_string(),
-        "Accept-Encoding".to_string(),
-        "User-Agent".to_string(),
-        "Content-Length".to_string(),
+        Located::detached("Host".to_string()),
+        Located::detached("X-Custom-Allowed".to_string()),
+        Located::detached("Accept".to_string()),
+        Located::detached("Accept-Encoding".to_string()),
+        Located::detached("User-Agent".to_string()),
+        Located::detached("Content-Length".to_string()),
     ];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
@@ -117,12 +118,12 @@ fn request_filter_allows_only_whitelisted_headers() {
 fn request_filter_blocks_non_whitelisted_headers() {
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
     rf.allow_headers = vec![
-        "Host".to_string(),
-        "X-Custom-Allowed".to_string(),
-        "Accept".to_string(),
-        "Accept-Encoding".to_string(),
-        "User-Agent".to_string(),
-        "Content-Length".to_string(),
+        Located::detached("Host".to_string()),
+        Located::detached("X-Custom-Allowed".to_string()),
+        Located::detached("Accept".to_string()),
+        Located::detached("Accept-Encoding".to_string()),
+        Located::detached("User-Agent".to_string()),
+        Located::detached("Content-Length".to_string()),
     ];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
@@ -173,8 +174,8 @@ fn request_filter_enforces_suspicious_body_size_limit() {
 #[test]
 fn request_filter_uses_custom_deny_status() {
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
-    rf.deny_methods = vec!["DELETE".to_string()];
-    rf.deny_status = Some(406);
+    rf.deny_methods = vec![Located::detached("DELETE".to_string())];
+    rf.deny_status = Some(Located::detached(406));
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_request_filter(rf)

@@ -1,7 +1,8 @@
-use crate::cli::config::hcl::to_hcl_string;
+use crate::cli::config::hcl::{to_hcl_block_string, to_hcl_string};
+use confval::provenance::Located;
 use snakeway_conf::types::{
-    BindInterfaceInput, BindSpec, DevicesFile, EndpointSpec, HostSpec, IdentityDeviceSpec,
-    IngressSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+    BindSpec, DevicesFile, EndpointSpec, IdentityDeviceSpec, IngressSpec, ServiceRouteSpec,
+    ServiceSpec, UpstreamSpec,
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -12,11 +13,11 @@ pub(crate) fn generate(
     files_to_create: &mut HashMap<PathBuf, String>,
 ) -> Result<(), anyhow::Error> {
     let identity_device_file = DevicesFile {
-        identity_device: Some(IdentityDeviceSpec {
-            enable: true,
-            enable_user_agent: true,
+        identity_device: Some(Located::detached(IdentityDeviceSpec {
+            enable: Located::detached(true),
+            enable_user_agent: Located::detached(true),
             ..Default::default()
-        }),
+        })),
         ..Default::default()
     };
 
@@ -26,36 +27,34 @@ pub(crate) fn generate(
     );
 
     let httpbin_ingress_spec = IngressSpec {
-        bind: Some(BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
+        bind: Some(Located::detached(BindSpec {
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8080),
             ..Default::default()
-        }),
-        services: vec![{
-            ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    path: "/get".to_string(),
-                    hosts: vec!["*".to_string()],
-                    ..Default::default()
-                }],
-                upstreams: vec![UpstreamSpec {
-                    endpoint: Some(EndpointSpec {
-                        host: HostSpec::Hostname("httpbin.org".to_string()),
-                        port: 80,
-                        tls: None,
-                    }),
-                    weight: 1,
-                    ..Default::default()
-                }],
+        })),
+        services: vec![Located::detached(ServiceSpec {
+            routes: vec![Located::detached(ServiceRouteSpec {
+                path: Located::detached("/get".to_string()),
+                hosts: vec![Located::detached("*".to_string())],
                 ..Default::default()
-            }
-        }],
+            })],
+            upstreams: vec![Located::detached(UpstreamSpec {
+                endpoint: Some(Located::detached(EndpointSpec {
+                    host: Located::detached("httpbin.org".to_string()),
+                    port: Located::detached(80),
+                    tls: None,
+                })),
+                sock: None,
+                weight: Located::detached(1),
+            })],
+            ..Default::default()
+        })],
         ..Default::default()
     };
 
     files_to_create.insert(
         ingress_dir_path.join("httpbin.hcl"),
-        to_hcl_string(&httpbin_ingress_spec)?,
+        to_hcl_block_string(&httpbin_ingress_spec)?,
     );
 
     Ok(())

@@ -1,10 +1,14 @@
 use crate::discover::discover;
 use crate::lower::lower_configs;
-use crate::parse::{parse_devices, parse_ingress};
+use crate::parse::flatten_devices;
 use crate::types::RuntimeConfig;
-use crate::types::{DeviceSpec, EntrypointSpec, HclOrigin, IngressSpec, ServerSpec};
+use crate::types::{
+    DeviceSpec, DevicesFile, EntrypointSpec, HclOrigin, IngressSpec, ServerConfig, ServerSpec,
+};
 use crate::validation::{ConfigError, validate_spec};
 use confval::ValidationReport;
+use confval::hcl::parse_hcl;
+use confval::provenance::{Located, Lower, Report, SourceMap, Span};
 
 use std::fs;
 use std::path::Path;
@@ -13,12 +17,33 @@ use std::path::Path;
 pub struct ValidatedConfig {
     pub config: RuntimeConfig,
     pub report: ValidationReport<HclOrigin>,
+    pub span_report: Report,
+    pub sources: SourceMap,
+}
+
+impl ValidatedConfig {
+    pub fn has_warnings(&self) -> bool {
+        self.report.has_warnings() || self.span_report.has_warnings()
+    }
+
+    /// Renders the issues from both report worlds in the plain format,
+    /// span-first issues before origin-based ones.
+    pub fn render_plain(&self, out: &mut String) {
+        self.span_report.render_plain(&self.sources, out).ok();
+        self.report.render_plain(out).ok();
+    }
 }
 
 #[hotpath::measure]
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let (server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
-    load_config_from_specs(server_spec, ingress_specs, device_specs)
+    let (sources, span_report, server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
+    load_config_from_parts(
+        sources,
+        span_report,
+        server_spec,
+        ingress_specs,
+        device_specs,
+    )
 }
 
 /// Load configs from spec definitions.
@@ -28,61 +53,155 @@ pub fn load_config_from_specs(
     ingress_specs: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
 ) -> Result<ValidatedConfig, ConfigError> {
-    let validation_report = validate_spec(&server_spec, &ingress_specs, &device_specs);
+    load_config_from_parts(
+        SourceMap::new(),
+        Report::new(),
+        server_spec,
+        ingress_specs.into_iter().map(Located::detached).collect(),
+        device_specs.into_iter().map(Located::detached).collect(),
+    )
+}
 
-    if validation_report.has_errors() {
-        return Err(ConfigError::SemanticValidationFailed { validation_report });
+fn load_config_from_parts(
+    sources: SourceMap,
+    mut span_report: Report,
+    server_spec: ServerSpec,
+    ingress_specs: Vec<Located<IngressSpec>>,
+    device_specs: Vec<Located<DeviceSpec>>,
+) -> Result<ValidatedConfig, ConfigError> {
+    let validation_report = validate_spec(
+        &server_spec,
+        &ingress_specs,
+        &device_specs,
+        &mut span_report,
+    );
+
+    // Lowering must not run on a report that contains errors.
+    if validation_report.has_errors() || span_report.has_errors() {
+        return Err(ConfigError::SemanticValidationFailed {
+            validation_report,
+            span_report,
+            sources,
+        });
     }
 
-    let config = lower_configs(server_spec, ingress_specs, device_specs)?;
+    let server_config = ServerConfig::lower(&server_spec, &mut span_report);
+    if span_report.has_errors() {
+        return Err(ConfigError::SemanticValidationFailed {
+            validation_report,
+            span_report,
+            sources,
+        });
+    }
+    let server_config =
+        server_config.expect("server lowering returned None without reporting an error");
+
+    let config = lower_configs(server_config, ingress_specs, device_specs)?;
 
     Ok(ValidatedConfig {
         config,
         report: validation_report,
+        span_report,
+        sources,
     })
 }
 
-pub(crate) type Spec = (ServerSpec, Vec<DeviceSpec>, Vec<IngressSpec>);
+pub(crate) type Spec = (
+    SourceMap,
+    Report,
+    ServerSpec,
+    Vec<Located<DeviceSpec>>,
+    Vec<Located<IngressSpec>>,
+);
 
 /// Load spec from files
 pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
+    let mut sources = SourceMap::new();
+    let mut span_report = Report::new();
+
     //--------------------------------------------------------------------------
-    // Hard fail: IO and parsing
+    // Entrypoint: span-first parsing
     //--------------------------------------------------------------------------
     let root_path = root.join("snakeway.hcl");
-    let entry = fs::read_to_string(&root_path).map_err(|e| ConfigError::ReadFile {
+    let entry_text = fs::read_to_string(&root_path).map_err(|e| ConfigError::ReadFile {
         path: root.to_path_buf(),
         source: e,
     })?;
+    let source_id = sources.add(root_path.display().to_string(), entry_text);
 
-    let mut entry: EntrypointSpec = hcl::from_str(&entry).map_err(|e| ConfigError::Parse {
-        path: root_path.to_path_buf(),
-        source: e,
-    })?;
-
-    entry.server.origin = HclOrigin::new(&root_path, "server", None);
+    // A parse that still produced a tree continues into validation so the
+    // operator sees parse and validation problems in one pass; the error
+    // gate before lowering stops the pipeline either way. Only a tree that
+    // could not be built at all stops here.
+    let entry: Option<EntrypointSpec> = parse_hcl(&sources, source_id, &mut span_report);
+    let Some(entry) = entry else {
+        debug_assert!(span_report.has_errors());
+        return Err(ConfigError::SemanticValidationFailed {
+            validation_report: ValidationReport::default(),
+            span_report,
+            sources,
+        });
+    };
 
     //--------------------------------------------------------------------------
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
-    let device_files = discover(root, &entry.include.devices)?;
-    let ingress_files = discover(root, &entry.include.ingresses)?;
+    let device_files = discover(root, &entry.include.devices.value)?;
+    let ingress_files = discover(root, &entry.include.ingresses.value)?;
 
     //--------------------------------------------------------------------------
-    // Parse devices (hard fail)
+    // Parse devices (span-first, same continue-on-Some semantics as ingress)
     //--------------------------------------------------------------------------
-    let mut parsed_devices: Vec<DeviceSpec> = Vec::new();
+    let mut parsed_devices: Vec<Located<DeviceSpec>> = Vec::new();
+    let mut any_unparseable = false;
     for path in &device_files {
-        parsed_devices.extend(parse_devices(path.as_path())?);
+        let text = fs::read_to_string(path).map_err(|e| ConfigError::ReadFile {
+            path: path.clone(),
+            source: e,
+        })?;
+        let source_id = sources.add(path.display().to_string(), &text);
+        let parsed: Option<DevicesFile> = parse_hcl(&sources, source_id, &mut span_report);
+        match parsed {
+            Some(file) => parsed_devices.extend(flatten_devices(file)),
+            None => any_unparseable = true,
+        }
     }
 
     //--------------------------------------------------------------------------
-    // Parse ingress (hard fail)
+    // Parse ingress (span-first). A parse that still produced a tree
+    // continues into validation; unparseable files stop the load after all
+    // files have been read, so every syntax error is reported in one pass.
     //--------------------------------------------------------------------------
-    let ingresses = ingress_files
-        .iter()
-        .map(|p| parse_ingress(p.as_path()))
-        .collect::<Result<Vec<_>, _>>()?;
+    let mut ingresses = Vec::new();
+    for path in &ingress_files {
+        let text = fs::read_to_string(path).map_err(|e| ConfigError::ReadFile {
+            path: path.clone(),
+            source: e,
+        })?;
+        let file_span = Span::new(
+            sources.add(path.display().to_string(), &text),
+            0,
+            text.len() as u32,
+        );
+        let parsed: Option<IngressSpec> = parse_hcl(&sources, file_span.source, &mut span_report);
+        match parsed {
+            Some(ingress) => ingresses.push(Located::new(ingress, file_span)),
+            None => any_unparseable = true,
+        }
+    }
+    if any_unparseable {
+        return Err(ConfigError::SemanticValidationFailed {
+            validation_report: ValidationReport::default(),
+            span_report,
+            sources,
+        });
+    }
 
-    Ok((entry.server, parsed_devices, ingresses))
+    Ok((
+        sources,
+        span_report,
+        entry.server,
+        parsed_devices,
+        ingresses,
+    ))
 }

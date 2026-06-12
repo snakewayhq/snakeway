@@ -1,7 +1,5 @@
-use crate::types::{
-    IdentityFieldSpec, LogEventSpec, LogLevelSpec, LogPhaseSpec, StructuredLoggingDeviceSpec,
-};
-use o2o::o2o;
+use crate::types::StructuredLoggingDeviceSpec;
+use confval::provenance::Located;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -9,60 +7,52 @@ use std::collections::HashSet;
 #[serde(deny_unknown_fields)]
 pub struct StructuredLoggingDeviceConfig {
     pub enable: bool,
-
     pub level: LogLevelConfig,
-
-    /// Headers are excluded by default.
     pub include_headers: bool,
-
-    /// Allowlist of headers to include.
-    /// If empty, all headers are eligible (subject to redaction).
     pub allowed_headers: HashSet<String>,
-
-    /// Headers to redact (case-insensitive).
     pub redacted_headers: HashSet<String>,
-
-    /// Identity logging.
     pub include_identity: bool,
-
-    /// Identity fields to include in the request context (and possibly log).
     pub identity_fields: Vec<IdentityFieldConfig>,
-
     pub events: Option<Vec<LogEventConfig>>,
-
     pub phases: Option<Vec<LogPhaseConfig>>,
 }
 
-impl From<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
-    fn from(spec: StructuredLoggingDeviceSpec) -> Self {
-        Self {
-            enable: spec.enable,
-            level: spec.level.into(),
-            include_headers: spec.include_headers,
+impl TryFrom<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig {
+    type Error = String;
+
+    fn try_from(spec: StructuredLoggingDeviceSpec) -> Result<Self, Self::Error> {
+        fn keywords<T: for<'a> TryFrom<&'a str, Error = String>>(
+            values: Vec<Located<String>>,
+        ) -> Result<Vec<T>, String> {
+            values
+                .into_iter()
+                .map(|value| value.value.as_str().try_into())
+                .collect()
+        }
+
+        Ok(Self {
+            enable: spec.enable.value,
+            level: spec.level.value.as_str().try_into()?,
+            include_headers: spec.include_headers.value,
             allowed_headers: spec
                 .allowed_headers
                 .into_iter()
-                .map(|h| h.to_lowercase())
+                .map(|h| h.value.to_lowercase())
                 .collect(),
             redacted_headers: spec
                 .redacted_headers
                 .into_iter()
-                .map(|h| h.to_lowercase())
+                .map(|h| h.value.to_lowercase())
                 .collect(),
-            include_identity: spec.include_identity,
-            identity_fields: spec.identity_fields.into_iter().map(|f| f.into()).collect(),
-            events: spec
-                .events
-                .map(|e| e.into_iter().map(|e| e.into()).collect()),
-            phases: spec
-                .phases
-                .map(|p| p.into_iter().map(|p| p.into()).collect()),
-        }
+            include_identity: spec.include_identity.value,
+            identity_fields: keywords(spec.identity_fields)?,
+            events: spec.events.map(|e| keywords(e.value)).transpose()?,
+            phases: spec.phases.map(|p| keywords(p.value)).transpose()?,
+        })
     }
 }
 
-#[derive(o2o, Default, Debug, Deserialize, Serialize, Clone, Copy)]
-#[from_owned(LogLevelSpec)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevelConfig {
     Trace,
@@ -73,8 +63,22 @@ pub enum LogLevelConfig {
     Error,
 }
 
-#[derive(o2o, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[from_owned(LogEventSpec)]
+impl TryFrom<&str> for LogLevelConfig {
+    type Error = String;
+
+    fn try_from(keyword: &str) -> Result<Self, String> {
+        match keyword {
+            "trace" => Ok(LogLevelConfig::Trace),
+            "debug" => Ok(LogLevelConfig::Debug),
+            "info" => Ok(LogLevelConfig::Info),
+            "warn" => Ok(LogLevelConfig::Warn),
+            "error" => Ok(LogLevelConfig::Error),
+            other => Err(format!("unknown level: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum LogEventConfig {
     Request,
@@ -83,16 +87,40 @@ pub enum LogEventConfig {
     Response,
 }
 
-#[derive(o2o, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[from_owned(LogPhaseSpec)]
+impl TryFrom<&str> for LogEventConfig {
+    type Error = String;
+
+    fn try_from(keyword: &str) -> Result<Self, String> {
+        match keyword {
+            "request" => Ok(LogEventConfig::Request),
+            "before_proxy" => Ok(LogEventConfig::BeforeProxy),
+            "after_proxy" => Ok(LogEventConfig::AfterProxy),
+            "response" => Ok(LogEventConfig::Response),
+            other => Err(format!("unknown event: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LogPhaseConfig {
     Request,
     Response,
 }
 
-#[derive(o2o, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[from_owned(IdentityFieldSpec)]
+impl TryFrom<&str> for LogPhaseConfig {
+    type Error = String;
+
+    fn try_from(keyword: &str) -> Result<Self, String> {
+        match keyword {
+            "request" => Ok(LogPhaseConfig::Request),
+            "response" => Ok(LogPhaseConfig::Response),
+            other => Err(format!("unknown phase: {other}")),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IdentityFieldConfig {
     ClientIp,
@@ -110,105 +138,75 @@ pub enum IdentityFieldConfig {
     Device,
 }
 
+impl TryFrom<&str> for IdentityFieldConfig {
+    type Error = String;
+
+    fn try_from(keyword: &str) -> Result<Self, String> {
+        match keyword {
+            "client_ip" => Ok(IdentityFieldConfig::ClientIp),
+            "proxy_chain" => Ok(IdentityFieldConfig::ProxyChain),
+            "forwarded" => Ok(IdentityFieldConfig::Forwarded),
+            "trusted" => Ok(IdentityFieldConfig::Trusted),
+            "asn" => Ok(IdentityFieldConfig::Asn),
+            "aso" => Ok(IdentityFieldConfig::Aso),
+            "country" => Ok(IdentityFieldConfig::Country),
+            "region" => Ok(IdentityFieldConfig::Region),
+            "connection_type" => Ok(IdentityFieldConfig::ConnectionType),
+            "bot" => Ok(IdentityFieldConfig::Bot),
+            "device" => Ok(IdentityFieldConfig::Device),
+            other => Err(format!("unknown identity field: {other}")),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::HclOrigin;
 
     #[test]
-    fn log_level_from_spec() {
-        // Arrange / Act / Assert
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Trace),
-            LogLevelConfig::Trace
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Debug),
-            LogLevelConfig::Debug
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Info),
-            LogLevelConfig::Info
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Warn),
-            LogLevelConfig::Warn
-        ));
-        assert!(matches!(
-            LogLevelConfig::from(LogLevelSpec::Error),
-            LogLevelConfig::Error
-        ));
-    }
-
-    #[test]
-    fn from_spec_maps_basic_fields() {
+    fn from_spec_maps_fields() {
         // Arrange
         let spec = StructuredLoggingDeviceSpec {
-            origin: HclOrigin::default(),
-            enable: true,
-            level: LogLevelSpec::Info,
-            include_headers: true,
-            allowed_headers: vec!["content-type".to_string()],
-            redacted_headers: vec!["authorization".to_string()],
-            include_identity: true,
-            identity_fields: vec![IdentityFieldSpec::ClientIp],
-            events: None,
-            phases: None,
+            enable: Located::detached(true),
+            level: Located::detached("info".to_string()),
+            include_headers: Located::detached(true),
+            allowed_headers: vec![Located::detached("X-Request-Id".to_string())],
+            redacted_headers: vec![Located::detached("Authorization".to_string())],
+            include_identity: Located::detached(true),
+            identity_fields: vec![Located::detached("client_ip".to_string())],
+            events: Some(Located::detached(vec![Located::detached(
+                "before_proxy".to_string(),
+            )])),
+            phases: Some(Located::detached(vec![Located::detached(
+                "request".to_string(),
+            )])),
         };
 
         // Act
-        let config: StructuredLoggingDeviceConfig = spec.into();
+        let config = StructuredLoggingDeviceConfig::try_from(spec).unwrap();
 
         // Assert
         assert!(config.enable);
         assert!(matches!(config.level, LogLevelConfig::Info));
-        assert!(config.include_headers);
-        assert_eq!(
-            config.allowed_headers,
-            HashSet::from(["content-type".to_string()])
-        );
-        assert_eq!(
-            config.redacted_headers,
-            HashSet::from(["authorization".to_string()])
-        );
-        assert!(config.include_identity);
-        assert_eq!(config.identity_fields.len(), 1);
-        assert!(matches!(
-            config.identity_fields[0],
-            IdentityFieldConfig::ClientIp
-        ));
-        assert!(config.events.is_none());
-        assert!(config.phases.is_none());
+        assert!(config.allowed_headers.contains("x-request-id"));
+        assert!(config.redacted_headers.contains("authorization"));
+        assert_eq!(config.identity_fields, vec![IdentityFieldConfig::ClientIp]);
+        assert_eq!(config.events, Some(vec![LogEventConfig::BeforeProxy]));
+        assert_eq!(config.phases, Some(vec![LogPhaseConfig::Request]));
     }
 
     #[test]
-    fn from_spec_maps_events_and_phases() {
+    fn unknown_level_fails() {
         // Arrange
         let spec = StructuredLoggingDeviceSpec {
-            origin: HclOrigin::default(),
-            enable: true,
-            level: LogLevelSpec::Info,
-            include_headers: false,
-            allowed_headers: vec![],
-            redacted_headers: vec![],
-            include_identity: false,
-            identity_fields: vec![],
-            events: Some(vec![LogEventSpec::Request, LogEventSpec::Response]),
-            phases: Some(vec![LogPhaseSpec::Request, LogPhaseSpec::Response]),
+            level: Located::detached("loud".to_string()),
+            ..Default::default()
         };
 
         // Act
-        let config: StructuredLoggingDeviceConfig = spec.into();
+        let result = StructuredLoggingDeviceConfig::try_from(spec);
 
         // Assert
-        let events = config.events.expect("events should be Some");
-        assert_eq!(events.len(), 2);
-        assert!(matches!(events[0], LogEventConfig::Request));
-        assert!(matches!(events[1], LogEventConfig::Response));
-
-        let phases = config.phases.expect("phases should be Some");
-        assert_eq!(phases.len(), 2);
-        assert!(matches!(phases[0], LogPhaseConfig::Request));
-        assert!(matches!(phases[1], LogPhaseConfig::Response));
+        assert!(result.is_err());
     }
 }

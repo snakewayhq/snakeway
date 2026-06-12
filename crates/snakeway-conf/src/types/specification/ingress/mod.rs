@@ -1,9 +1,7 @@
 mod bind;
 mod bind_admin;
 mod bind_interface_spec;
-pub(crate) mod ingress_issues;
 mod ingress_spec;
-mod ingress_validation;
 mod service;
 mod static_files;
 

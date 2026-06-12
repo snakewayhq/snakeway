@@ -1,15 +1,21 @@
 use crate::types::HealthCheckSpec;
-use o2o::o2o;
 use serde::{Deserialize, Serialize};
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize, Default)]
-#[from_owned(HealthCheckSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct HealthCheckConfig {
     pub enable: bool,
-    #[map(~ as u64)]
     pub failure_threshold: u64,
-    #[map(~ as u64)]
     pub unhealthy_cooldown_seconds: u64,
+}
+
+impl From<&HealthCheckSpec> for HealthCheckConfig {
+    fn from(spec: &HealthCheckSpec) -> Self {
+        Self {
+            enable: spec.enable.value,
+            failure_threshold: spec.failure_threshold.value as u64,
+            unhealthy_cooldown_seconds: spec.unhealthy_cooldown_seconds.value as u64,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -19,14 +25,15 @@ mod tests {
     #[test]
     fn from_spec_maps_all_fields() {
         // Arrange
+        use confval::provenance::Located;
         let spec = HealthCheckSpec {
-            enable: true,
-            failure_threshold: 7,
-            unhealthy_cooldown_seconds: 30,
+            enable: Located::detached(true),
+            failure_threshold: Located::detached(7),
+            unhealthy_cooldown_seconds: Located::detached(30),
         };
 
         // Act
-        let config: HealthCheckConfig = spec.into();
+        let config: HealthCheckConfig = (&spec).into();
 
         // Assert
         assert!(config.enable);

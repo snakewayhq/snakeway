@@ -1,5 +1,4 @@
 use crate::types::{CachePolicySpec, CompressionOptsSpec, StaticRouteSpec};
-use o2o::o2o;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -26,40 +25,56 @@ pub struct StaticRouteConfig {
     pub cache_policy: CachePolicy,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(CompressionOptsSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CompressionOptions {
-    #[map(~ as u64)]
     pub small_file_threshold: u64,
-    #[map(~ as u64)]
     pub min_gzip_size: u64,
-    #[map(~ as u64)]
     pub min_brotli_size: u64,
     pub enable_gzip: bool,
     pub enable_brotli: bool,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(CachePolicySpec)]
+impl From<&CompressionOptsSpec> for CompressionOptions {
+    fn from(spec: &CompressionOptsSpec) -> Self {
+        Self {
+            small_file_threshold: spec.small_file_threshold.value as u64,
+            min_gzip_size: spec.min_gzip_size.value as u64,
+            min_brotli_size: spec.min_brotli_size.value as u64,
+            enable_gzip: spec.enable_gzip.value,
+            enable_brotli: spec.enable_brotli.value,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CachePolicy {
-    #[map(~ as u32)]
     pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
 }
 
+impl From<&CachePolicySpec> for CachePolicy {
+    fn from(spec: &CachePolicySpec) -> Self {
+        Self {
+            max_age_seconds: spec.max_age_seconds.value as u32,
+            public: spec.public.value,
+            immutable: spec.immutable.value,
+        }
+    }
+}
+
 impl StaticRouteConfig {
-    pub fn new(listener: &str, spec: StaticRouteSpec) -> Self {
+    pub fn new(listener: &str, spec: &StaticRouteSpec) -> Self {
         Self {
             listener: listener.to_string(),
-            hosts: spec.hosts,
-            path: spec.path,
-            file_dir: spec.file_dir,
-            index: spec.index,
-            directory_listing: spec.directory_listing,
-            max_file_size: spec.max_file_size as u64,
-            static_config: spec.compression.into(),
-            cache_policy: spec.cache_policy.into(),
+            hosts: spec.hosts.iter().map(|h| h.value.clone()).collect(),
+            path: spec.path.value.clone(),
+            file_dir: spec.file_dir.value.clone(),
+            index: spec.index.as_ref().map(|i| i.value.clone()),
+            directory_listing: spec.directory_listing.value,
+            max_file_size: spec.max_file_size.value as u64,
+            static_config: (&spec.compression.value).into(),
+            cache_policy: (&spec.cache_policy.value).into(),
         }
     }
 }
@@ -67,25 +82,24 @@ impl StaticRouteConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::HclOrigin;
 
     #[test]
     fn new_maps_fields_correctly() {
         // Arrange
+        use confval::provenance::Located;
         let spec = StaticRouteSpec {
-            origin: HclOrigin::default(),
-            hosts: vec!["static.example.com".to_string()],
-            path: "/assets".to_string(),
-            file_dir: PathBuf::from("/var/www/static"),
-            index: Some("index.html".to_string()),
-            directory_listing: true,
-            max_file_size: 10_000_000,
-            compression: CompressionOptsSpec::default(),
-            cache_policy: CachePolicySpec::default(),
+            hosts: vec![Located::detached("static.example.com".to_string())],
+            path: Located::detached("/assets".to_string()),
+            file_dir: Located::detached(PathBuf::from("/var/www/static")),
+            index: Some(Located::detached("index.html".to_string())),
+            directory_listing: Located::detached(true),
+            max_file_size: Located::detached(10_000_000),
+            compression: Located::detached(CompressionOptsSpec::default()),
+            cache_policy: Located::detached(CachePolicySpec::default()),
         };
 
         // Act
-        let config = StaticRouteConfig::new("my-listener", spec);
+        let config = StaticRouteConfig::new("my-listener", &spec);
 
         // Assert
         assert_eq!(config.listener, "my-listener");

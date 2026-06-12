@@ -1,135 +1,153 @@
-use crate::types::bind_issues;
-use crate::types::ingress_issues;
-use crate::types::service_issues;
-use crate::types::{BindInterfaceInput, BindInterfaceSpec, HclOrigin, IngressSpec};
-use confval::{ValidateSpec, ValidationReport};
-use std::collections::HashSet;
+use crate::types::{
+    BindInterfaceSpec, IngressSpec, validate_bind, validate_bind_admin, validate_service,
+    validate_static_files,
+};
+use confval::provenance::{Located, Report, Span};
+use std::collections::{HashMap, HashSet};
 
-pub(crate) fn validate_ingresses(
-    ingresses: &[IngressSpec],
-    report: &mut ValidationReport<HclOrigin>,
-) {
-    let mut seen_listener_keys = HashSet::new();
-    let mut seen_redirect_ports = HashSet::new();
-    let mut seen_upstream_socks = HashSet::new();
+pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mut Report) {
+    let mut seen_listener_keys: HashMap<String, Span> = HashMap::new();
+    let mut seen_redirect_ports: HashMap<i64, Span> = HashMap::new();
+    let mut seen_upstream_socks: HashMap<String, Span> = HashMap::new();
 
     for ingress in ingresses {
-        // Ingress validation.
-        ingress.validate(&ingress.origin, report);
+        validate_ingress_entity(ingress, report);
 
-        // Cross-ingress validation checks depend on the ingress's bind and/or bind_admin.
-        let maybe_bind = ingress.bind.as_ref();
-        let maybe_bind_admin = ingress.bind_admin.as_ref();
+        let maybe_bind = ingress.value.bind.as_ref();
+        let maybe_bind_admin = ingress.value.bind_admin.as_ref();
 
-        //---------------------------------------------------------------------
-        // Bind/Admin bind presence check.
-        // There must be at least one bind or admin bind.
-        //---------------------------------------------------------------------
         if maybe_bind.is_none() && maybe_bind_admin.is_none() {
-            report.push(ingress_issues::missing_bind(&ingress.origin));
+            report
+                .error("ingress config must have a bind or bind_admin declaration")
+                .at(ingress.span)
+                .emit();
         }
 
-        //---------------------------------------------------------------------
-        // Bind uniqueness checks.
-        //---------------------------------------------------------------------
         if let Some(bind) = maybe_bind {
-            // Validate listener uniqueness.
             validate_listener_uniqueness(
-                &bind.interface,
-                bind.port,
-                &bind.origin,
+                &bind.value.interface.value,
+                bind.value.port.value,
+                bind.span,
                 report,
                 &mut seen_listener_keys,
             );
 
-            // Validate redirects' port uniqueness.
-            if let Some(redirect) = &bind.redirect_http_to_https
-                && !seen_redirect_ports.insert(redirect.port)
-            {
-                report.push(bind_issues::duplicate_redirect_http_to_https_port(
-                    redirect.port,
-                    &bind.origin,
-                ));
+            if let Some(redirect) = &bind.value.redirect_http_to_https {
+                let port = redirect.value.port.value;
+                if let Some(first) = seen_redirect_ports.get(&port) {
+                    report
+                        .error(format!("duplicate redirect_http_to_https port: {}", port))
+                        .at(redirect.value.port.span)
+                        .related(*first, "first declared here")
+                        .emit();
+                } else {
+                    seen_redirect_ports.insert(port, redirect.value.port.span);
+                }
             }
         }
 
-        //---------------------------------------------------------------------
-        // Admin bind uniqueness checks.
-        //---------------------------------------------------------------------
         if let Some(bind_admin) = maybe_bind_admin {
             validate_listener_uniqueness(
-                &bind_admin.interface,
-                bind_admin.port,
-                &bind_admin.origin,
+                &bind_admin.value.interface.value,
+                bind_admin.value.port.value,
+                bind_admin.span,
                 report,
                 &mut seen_listener_keys,
             );
         }
 
-        //---------------------------------------------------------------------
-        // Duplicate route paths within the same ingress.
-        // The router uses path as the primary lookup key within a listener,
-        // so two services cannot share the same route path prefix.
-        //---------------------------------------------------------------------
         let mut seen_route_paths = HashSet::new();
-        for service in &ingress.services {
-            for route in &service.routes {
-                if !seen_route_paths.insert(&route.path) {
-                    report.push(service_issues::duplicate_route_path(
-                        &route.path,
-                        &route.origin,
-                    ));
+        for service in &ingress.value.services {
+            for route in &service.value.routes {
+                if !seen_route_paths.insert(route.value.path.value.clone()) {
+                    report
+                        .error(format!(
+                            "duplicate route path within the same listener: {}",
+                            route.value.path.value
+                        ))
+                        .at(route.value.path.span)
+                        .help(
+                            "Each route path must be unique per listener. Use different path \
+                             prefixes or move the route to a separate ingress file.",
+                        )
+                        .emit();
                 }
             }
         }
 
-        //---------------------------------------------------------------------
-        // Bind/Route http2/websocket agreement.
-        // If bind has http2 enabled, websocket routes cannot be used.
-        //---------------------------------------------------------------------
-        let bind_uses_http2 = ingress.bind.as_ref().is_some_and(|b| b.enable_http2);
-        for service in &ingress.services {
-            for route in &service.routes {
-                if bind_uses_http2 && route.enable_websocket {
-                    report.push(service_issues::websocket_route_cannot_be_used_with_http2(
-                        &route.path,
-                        &route.origin,
-                    ));
+        let bind_uses_http2 = ingress
+            .value
+            .bind
+            .as_ref()
+            .is_some_and(|b| b.value.enable_http2.value);
+        for service in &ingress.value.services {
+            for route in &service.value.routes {
+                if bind_uses_http2 && route.value.enable_websocket.value {
+                    report
+                        .error(format!(
+                            "websocket route cannot be used with HTTP2: {}",
+                            route.value.path.value
+                        ))
+                        .at(route.value.enable_websocket.span)
+                        .emit();
                 }
             }
         }
 
-        //---------------------------------------------------------------------
-        // Cross-ingress upstream sock uniqueness
-        //---------------------------------------------------------------------
-        for service in &ingress.services {
-            for upstream in &service.upstreams {
-                if let Some(sock) = &upstream.sock
-                    && !seen_upstream_socks.insert(sock.clone())
-                {
-                    report.push(service_issues::duplicate_upstream_sock(
-                        sock,
-                        &service.origin,
-                    ));
+        for service in &ingress.value.services {
+            for upstream in &service.value.upstreams {
+                if let Some(sock) = &upstream.value.sock {
+                    if let Some(first) = seen_upstream_socks.get(&sock.value) {
+                        report
+                            .error(format!("duplicate upstream sock: {}", sock.value))
+                            .at(sock.span)
+                            .related(*first, "first declared here")
+                            .emit();
+                    } else {
+                        seen_upstream_socks.insert(sock.value.clone(), sock.span);
+                    }
                 }
             }
         }
     }
 }
 
-/// Verify that a socket address (ip:port) is not used more than once.
+fn validate_ingress_entity(ingress: &Located<IngressSpec>, report: &mut Report) {
+    if let Some(bind) = &ingress.value.bind {
+        validate_bind(&bind.value, report);
+    }
+
+    if let Some(bind_admin) = &ingress.value.bind_admin {
+        validate_bind_admin(&bind_admin.value, bind_admin.span, report);
+    }
+
+    for static_files in &ingress.value.static_files {
+        validate_static_files(&static_files.value, report);
+    }
+
+    for service in &ingress.value.services {
+        validate_service(&service.value, service.span, report);
+    }
+}
+
 fn validate_listener_uniqueness(
-    bind_interface_input: &BindInterfaceInput,
+    interface: &str,
     port: i64,
-    origin: &HclOrigin,
-    report: &mut ValidationReport<HclOrigin>,
-    seen_listener_keys: &mut HashSet<String>,
+    span: Span,
+    report: &mut Report,
+    seen_listener_keys: &mut HashMap<String, Span>,
 ) {
-    let maybe_interface: Result<BindInterfaceSpec, _> = bind_interface_input.clone().try_into();
+    let maybe_interface: Result<BindInterfaceSpec, _> = interface.try_into();
     if let Ok(interface) = maybe_interface {
         let key = interface.socket_address_literal(port as u16);
-        if !seen_listener_keys.insert(key.clone()) {
-            report.push(bind_issues::duplicate_bind_addr(&key, origin));
+        if let Some(first) = seen_listener_keys.get(&key) {
+            report
+                .error(format!("duplicate bind address: {}", key))
+                .at(span)
+                .related(*first, "first declared here")
+                .emit();
+        } else {
+            seen_listener_keys.insert(key, span);
         }
     }
 }
@@ -138,51 +156,57 @@ fn validate_listener_uniqueness(
 mod tests {
     use super::validate_ingresses;
     use crate::types::*;
-    use std::net::IpAddr;
-    use std::str::FromStr;
+    use confval::provenance::{Located, Report};
 
-    use confval::ValidationReport;
-
-    fn minimal_service() -> ServiceSpec {
-        ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                path: "/".to_string(),
-                hosts: vec!["example.com".to_string()],
+    fn minimal_service() -> Located<ServiceSpec> {
+        Located::detached(ServiceSpec {
+            routes: vec![Located::detached(ServiceRouteSpec {
+                path: Located::detached("/".to_string()),
+                hosts: vec![Located::detached("example.com".to_string())],
                 ..Default::default()
-            }],
-            upstreams: vec![UpstreamSpec {
-                endpoint: Some(EndpointSpec {
-                    host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
-                    port: 8080,
+            })],
+            upstreams: vec![Located::detached(UpstreamSpec {
+                endpoint: Some(Located::detached(EndpointSpec {
+                    host: Located::detached("127.0.0.1".to_string()),
+                    port: Located::detached(8080),
                     tls: None,
-                }),
-                weight: 1,
-                ..Default::default()
-            }],
+                })),
+                sock: None,
+                weight: Located::detached(1),
+            })],
+            load_balancing_strategy: Located::detached("failover".to_string()),
             ..Default::default()
-        }
+        })
     }
 
     fn minimal_bind() -> BindSpec {
         BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8080),
             ..Default::default()
         }
     }
 
-    fn minimal_ingress() -> IngressSpec {
-        IngressSpec {
-            bind: Some(minimal_bind()),
+    fn minimal_ingress() -> Located<IngressSpec> {
+        Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
             services: vec![minimal_service()],
             ..Default::default()
-        }
+        })
+    }
+
+    fn sock_upstream(sock: &str) -> Located<UpstreamSpec> {
+        Located::detached(UpstreamSpec {
+            endpoint: None,
+            sock: Some(Located::detached(sock.to_string())),
+            weight: Located::detached(1),
+        })
     }
 
     #[test]
     fn duplicate_bind_addr() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = Report::new();
         let ingress1 = minimal_ingress();
         let ingress2 = minimal_ingress();
 
@@ -191,7 +215,7 @@ mod tests {
 
         // Assert
         assert_eq!(
-            report.errors()[0].message,
+            report.issues()[0].message,
             "duplicate bind address: 127.0.0.1:8080"
         );
     }
@@ -199,22 +223,21 @@ mod tests {
     #[test]
     fn duplicate_admin_and_public_bind() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = Report::new();
         let port = 9000;
-        let interface = BindInterfaceInput::Keyword("loopback".to_string());
-        let ingress = IngressSpec {
-            bind: Some(BindSpec {
-                interface: interface.clone(),
-                port,
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(port),
                 ..Default::default()
-            }),
-            bind_admin: Some(BindAdminSpec {
-                interface: interface.clone(),
-                port,
+            })),
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(port),
                 ..Default::default()
-            }),
+            })),
             ..Default::default()
-        };
+        });
 
         // Act
         validate_ingresses(&[ingress], &mut report);
@@ -222,7 +245,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message == format!("duplicate bind address: 127.0.0.1:{}", port))
         );
@@ -231,49 +254,42 @@ mod tests {
     #[test]
     fn sock_file_not_reused_across_services() {
         // Arrange
-        let sock = "/tmp/test.sock".to_string();
-        let expected_error = format!("duplicate upstream sock: {}", sock);
-        let mut report = ValidationReport::default();
-        let ingress = IngressSpec {
-            bind: Some(minimal_bind()),
-            services: vec![
-                ServiceSpec {
-                    upstreams: vec![UpstreamSpec {
-                        sock: Some(sock.clone()),
-                        weight: 1,
-                        ..Default::default()
-                    }],
+        let mut report = Report::new();
+        let expected_error = "duplicate upstream sock: /tmp/shared.sock";
+        let make_service = || {
+            Located::detached(ServiceSpec {
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    path: Located::detached("/".to_string()),
+                    hosts: vec![Located::detached("example.com".to_string())],
                     ..Default::default()
-                },
-                ServiceSpec {
-                    upstreams: vec![UpstreamSpec {
-                        sock: Some(sock.clone()),
-                        weight: 1,
-                        ..Default::default()
-                    }],
-                    ..Default::default()
-                },
-            ],
-            ..Default::default()
+                })],
+                upstreams: vec![sock_upstream("/tmp/shared.sock")],
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                ..Default::default()
+            })
         };
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![make_service(), make_service()],
+            ..Default::default()
+        });
 
         // Act
         validate_ingresses(&[ingress], &mut report);
 
         // Assert
-        assert!(report.errors().iter().any(|e| e.message == expected_error));
+        assert!(report.issues().iter().any(|e| e.message == expected_error));
     }
 
     #[test]
     fn ingress_missing_bind_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let ingress = IngressSpec {
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
             bind: None,
             bind_admin: None,
-            services: vec![minimal_service()],
             ..Default::default()
-        };
+        });
 
         // Act
         validate_ingresses(&[ingress], &mut report);
@@ -281,7 +297,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message == "ingress config must have a bind or bind_admin declaration")
         );
@@ -290,50 +306,29 @@ mod tests {
     #[test]
     fn http2_with_websocket_route_produces_error() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-
-        let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
-            .expect("failed to generate self-signed cert");
-        let cert_pem = cert.cert.pem();
-        let key_pem = cert.signing_key.serialize_pem();
-
-        let cert_path = dir.path().join("cert.pem");
-        let key_path = dir.path().join("key.pem");
-        std::fs::write(&cert_path, cert_pem).unwrap();
-        std::fs::write(&key_path, key_pem).unwrap();
-
-        let ingress = IngressSpec {
-            bind: Some(BindSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: 8443,
-                tls: Some(TlsTerminationSpec::Manual {
-                    cert: cert_path,
-                    key: key_path,
-                }),
-                enable_http2: true,
-                ..Default::default()
-            }),
-            services: vec![ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    path: "/ws".to_string(),
-                    hosts: vec!["example.com".to_string()],
-                    enable_websocket: true,
-                    ..Default::default()
-                }],
-                upstreams: vec![UpstreamSpec {
-                    endpoint: Some(EndpointSpec {
-                        host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
-                        port: 9090,
-                        tls: None,
-                    }),
-                    weight: 1,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
+        let mut report = Report::new();
+        let mut bind = minimal_bind();
+        bind.enable_http2 = Located::detached(true);
+        bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
+            domains: vec![Located::detached("example.com".to_string())],
+            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+        }));
+        let service = Located::detached(ServiceSpec {
+            routes: vec![Located::detached(ServiceRouteSpec {
+                path: Located::detached("/ws".to_string()),
+                hosts: vec![Located::detached("ws.example.com".to_string())],
+                enable_websocket: Located::detached(true),
+                ws_max_connections: None,
+            })],
+            upstreams: vec![sock_upstream("/tmp/ws.sock")],
+            load_balancing_strategy: Located::detached("failover".to_string()),
             ..Default::default()
-        };
+        });
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(bind)),
+            services: vec![service],
+            ..Default::default()
+        });
 
         // Act
         validate_ingresses(&[ingress], &mut report);
@@ -341,7 +336,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message == "websocket route cannot be used with HTTP2: /ws")
         );
@@ -350,47 +345,32 @@ mod tests {
     #[test]
     fn duplicate_redirect_ports_across_ingresses() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-
-        let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
-            .expect("failed to generate self-signed cert");
-        let cert_pem = cert.cert.pem();
-        let key_pem = cert.signing_key.serialize_pem();
-
-        let cert_path = dir.path().join("cert.pem");
-        let key_path = dir.path().join("key.pem");
-        std::fs::write(&cert_path, &cert_pem).unwrap();
-        std::fs::write(&key_path, &key_pem).unwrap();
-
-        let make_ingress = |port: i64| IngressSpec {
-            bind: Some(BindSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port,
-                tls: Some(TlsTerminationSpec::Manual {
-                    cert: cert_path.clone(),
-                    key: key_path.clone(),
-                }),
-                redirect_http_to_https: Some(RedirectSpec {
-                    port: 9090,
-                    status: 308,
-                }),
+        let mut report = Report::new();
+        let make_ingress = |bind_port: i64| {
+            let mut bind = minimal_bind();
+            bind.port = Located::detached(bind_port);
+            bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
+                domains: vec![Located::detached("example.com".to_string())],
+                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            }));
+            bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
+                port: Located::detached(9090),
+                status: Located::detached(308),
+            }));
+            Located::detached(IngressSpec {
+                bind: Some(Located::detached(bind)),
+                services: vec![minimal_service()],
                 ..Default::default()
-            }),
-            services: vec![minimal_service()],
-            ..Default::default()
+            })
         };
 
-        let ingress1 = make_ingress(8443);
-        let ingress2 = make_ingress(8444);
-
         // Act
-        validate_ingresses(&[ingress1, ingress2], &mut report);
+        validate_ingresses(&[make_ingress(8080), make_ingress(8081)], &mut report);
 
         // Assert
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message == "duplicate redirect_http_to_https port: 9090")
         );
@@ -399,22 +379,18 @@ mod tests {
     #[test]
     fn validate_multiple_services_at_once() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let ingress = IngressSpec {
-            bind: Some(minimal_bind()),
-            services: vec![
-                minimal_service(),
-                ServiceSpec {
-                    origin: HclOrigin {
-                        section: "service_2".to_string(),
-                        ..Default::default()
-                    },
-                    upstreams: vec![], // Invalid: no upstreams
-                    ..Default::default()
-                },
-            ],
+        let mut report = Report::new();
+        let empty_service = Located::detached(ServiceSpec {
+            routes: vec![],
+            upstreams: vec![],
+            load_balancing_strategy: Located::detached("failover".to_string()),
             ..Default::default()
-        };
+        });
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![minimal_service(), empty_service],
+            ..Default::default()
+        });
 
         // Act
         validate_ingresses(&[ingress], &mut report);
@@ -422,7 +398,7 @@ mod tests {
         // Assert
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message.contains("service has no upstream backends"))
         );
@@ -431,98 +407,63 @@ mod tests {
     #[test]
     fn duplicate_route_path_within_same_ingress() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let ingress = IngressSpec {
-            bind: Some(minimal_bind()),
-            services: vec![
-                ServiceSpec {
-                    routes: vec![ServiceRouteSpec {
-                        path: "/api".to_string(),
-                        hosts: vec!["a.test".to_string()],
-                        ..Default::default()
-                    }],
-                    upstreams: vec![UpstreamSpec {
-                        endpoint: Some(EndpointSpec {
-                            host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
-                            port: 8080,
-                            tls: None,
-                        }),
-                        weight: 1,
-                        ..Default::default()
-                    }],
-                    ..Default::default()
-                },
-                ServiceSpec {
-                    routes: vec![ServiceRouteSpec {
-                        path: "/api".to_string(),
-                        hosts: vec!["b.test".to_string()],
-                        ..Default::default()
-                    }],
-                    upstreams: vec![UpstreamSpec {
-                        endpoint: Some(EndpointSpec {
-                            host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
-                            port: 9090,
-                            tls: None,
-                        }),
-                        weight: 1,
-                        ..Default::default()
-                    }],
-                    ..Default::default()
-                },
-            ],
-            ..Default::default()
+        let mut report = Report::new();
+        let route = || {
+            Located::detached(ServiceRouteSpec {
+                path: Located::detached("/api".to_string()),
+                hosts: vec![Located::detached("example.com".to_string())],
+                ..Default::default()
+            })
         };
+        let service = Located::detached(ServiceSpec {
+            routes: vec![route(), route()],
+            upstreams: vec![sock_upstream("/tmp/api.sock")],
+            load_balancing_strategy: Located::detached("failover".to_string()),
+            ..Default::default()
+        });
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![service],
+            ..Default::default()
+        });
 
         // Act
         validate_ingresses(&[ingress], &mut report);
 
         // Assert
-        assert!(report.errors().iter().any(|e| {
-            e.message
-                .contains("duplicate route path within the same listener: /api")
-        }));
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate route path"))
+        );
     }
 
     #[test]
     fn same_route_path_on_different_ingresses_is_allowed() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let make_ingress = |port: i64| IngressSpec {
-            bind: Some(BindSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port,
+        let mut report = Report::new();
+        let make_ingress = |port: i64| {
+            let mut bind = minimal_bind();
+            bind.port = Located::detached(port);
+            Located::detached(IngressSpec {
+                bind: Some(Located::detached(bind)),
+                services: vec![minimal_service()],
                 ..Default::default()
-            }),
-            services: vec![ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    path: "/api".to_string(),
-                    hosts: vec!["example.com".to_string()],
-                    ..Default::default()
-                }],
-                upstreams: vec![UpstreamSpec {
-                    endpoint: Some(EndpointSpec {
-                        host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
-                        port: 8080,
-                        tls: None,
-                    }),
-                    weight: 1,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-            ..Default::default()
+            })
         };
 
         // Act
-        validate_ingresses(&[make_ingress(8080), make_ingress(9090)], &mut report);
+        validate_ingresses(&[make_ingress(8080), make_ingress(8081)], &mut report);
 
         // Assert
         assert!(
             !report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message.contains("duplicate route path")),
-            "same path on different listeners should be allowed"
+            "issues: {:?}",
+            report.issues()
         );
     }
 }

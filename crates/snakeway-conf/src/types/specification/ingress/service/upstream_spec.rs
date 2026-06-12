@@ -1,29 +1,56 @@
 use crate::resolution::ResolveError;
-use crate::types::{HclInt, HclOrigin};
-use serde::{Deserialize, Serialize};
+use crate::types::HclInt;
+use crate::types::specification::ingress::bind::report_invalid_port;
+use crate::validation::validator::{is_valid_hostname, is_valid_port, validate_cert_pem};
+use confval::provenance::{Located, Report};
+use serde::Serialize;
 use std::fmt;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct UpstreamSpec {
-    #[serde(skip)]
-    pub origin: HclOrigin,
-    pub endpoint: Option<EndpointSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sock: Option<String>,
-    #[serde(default = "default_weight")]
-    pub weight: HclInt,
-}
-fn default_weight() -> HclInt {
-    1
+    #[confval(nested)]
+    pub endpoint: Option<Located<EndpointSpec>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sock: Option<Located<String>>,
+    #[confval(default = 1)]
+    pub weight: Located<HclInt>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-#[serde(untagged)]
+#[derive(Debug, Serialize, Clone, Default, confval::Spec)]
+pub struct EndpointSpec {
+    pub host: Located<String>,
+    pub port: Located<HclInt>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(nested)]
+    pub tls: Option<Located<EndpointTlsSpec>>,
+}
+
+#[derive(Debug, Serialize, Clone, Default, confval::Spec)]
+pub struct EndpointTlsSpec {
+    pub sni: Located<String>,
+    pub verify: Located<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ca_file: Option<Located<PathBuf>>,
+}
+
+/// Classification of an endpoint host string, used by validation and
+/// lowering. The Spec stores the raw string; this is the parsed view.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostSpec {
-    Ip(std::net::IpAddr),
+    Ip(IpAddr),
     Hostname(String),
+}
+
+impl HostSpec {
+    pub fn parse(host: &str) -> HostSpec {
+        match host.parse::<IpAddr>() {
+            Ok(ip) => HostSpec::Ip(ip),
+            Err(_) => HostSpec::Hostname(host.to_string()),
+        }
+    }
 }
 
 impl fmt::Display for HostSpec {
@@ -35,27 +62,13 @@ impl fmt::Display for HostSpec {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct EndpointSpec {
-    pub host: HostSpec,
-    pub port: HclInt,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tls: Option<EndpointTlsSpec>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct EndpointTlsSpec {
-    pub sni: String,
-    pub verify: bool,
-    pub ca_file: Option<PathBuf>,
-}
-
 impl EndpointSpec {
     pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
-        let ip = match &self.host {
-            HostSpec::Ip(ip) => *ip,
+        let port = self.port.value as u16;
+        let ip = match HostSpec::parse(&self.host.value) {
+            HostSpec::Ip(ip) => ip,
             HostSpec::Hostname(name) => {
-                let mut addrs = (name.as_str(), self.port as u16)
+                let mut addrs = (name.as_str(), port)
                     .to_socket_addrs()
                     .map_err(|_| ResolveError::DnsFailed(name.clone()))?;
 
@@ -66,6 +79,248 @@ impl EndpointSpec {
             }
         };
 
-        Ok(SocketAddr::new(ip, self.port as u16))
+        Ok(SocketAddr::new(ip, port))
+    }
+}
+
+pub(crate) fn validate_upstream(spec: &UpstreamSpec, report: &mut Report) {
+    if spec.weight.value == 0 || spec.weight.value > 1_000 {
+        report
+            .error(format!("invalid upstream weight: {}", spec.weight.value))
+            .at(spec.weight.span)
+            .emit();
+    }
+}
+
+pub(crate) fn validate_endpoint(spec: &EndpointSpec, report: &mut Report) {
+    match HostSpec::parse(&spec.host.value) {
+        HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
+            report
+                .error(format!("invalid upstream ip: {}", ip))
+                .at(spec.host.span)
+                .emit();
+        }
+        HostSpec::Hostname(name) if !is_valid_hostname(&name) => {
+            report
+                .error(format!("invalid upstream hostname: {}", name))
+                .at(spec.host.span)
+                .emit();
+        }
+        _ => {}
+    }
+
+    if !is_valid_port(spec.port.value) {
+        report_invalid_port(&spec.port, report);
+    }
+
+    if let Some(tls) = &spec.tls
+        && tls.value.sni.value.trim().is_empty()
+    {
+        report
+            .error("upstream TLS SNI required")
+            .at(tls.value.sni.span)
+            .emit();
+    }
+}
+
+/// TLS checks that only apply when certificate verification is enabled.
+pub(crate) fn validate_endpoint_tls_verify(spec: &EndpointTlsSpec, report: &mut Report) {
+    if !spec.verify.value {
+        return;
+    }
+
+    if spec.sni.value.parse::<IpAddr>().is_ok() {
+        report
+            .error("upstream TLS SNI must be DNS name")
+            .at(spec.sni.span)
+            .emit();
+    }
+
+    if let Some(ca_file) = &spec.ca_file
+        && let Err(e) = validate_cert_pem(&ca_file.value)
+    {
+        report
+            .error(format!(
+                "upstream TLS has invalid CA file ({}): {}",
+                ca_file.value.to_string_lossy(),
+                e
+            ))
+            .at(ca_file.span)
+            .emit();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    pub(crate) fn minimal_endpoint() -> EndpointSpec {
+        EndpointSpec {
+            host: Located::detached("127.0.0.1".to_string()),
+            port: Located::detached(3000),
+            tls: None,
+        }
+    }
+
+    fn minimal_upstream() -> UpstreamSpec {
+        UpstreamSpec {
+            endpoint: Some(Located::detached(minimal_endpoint())),
+            sock: None,
+            weight: Located::detached(1),
+        }
+    }
+
+    #[test]
+    fn weight_greater_than_zero() {
+        // Arrange
+        let mut report = Report::new();
+        let mut upstream = minimal_upstream();
+        upstream.weight = Located::detached(0);
+
+        // Act
+        validate_upstream(&upstream, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains("invalid upstream weight: 0"));
+    }
+
+    #[test]
+    fn weight_not_greater_than_1000() {
+        // Arrange
+        let mut report = Report::new();
+        let mut upstream = minimal_upstream();
+        upstream.weight = Located::detached(1001);
+
+        // Act
+        validate_upstream(&upstream, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains("invalid upstream weight: 1001"));
+    }
+
+    #[test]
+    fn endpoint_ip_unspecified_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let endpoint = EndpointSpec {
+            host: Located::detached("0.0.0.0".to_string()),
+            ..minimal_endpoint()
+        };
+
+        // Act
+        validate_endpoint(&endpoint, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains("invalid upstream ip: 0.0.0.0"));
+    }
+
+    #[test]
+    fn endpoint_ip_multicast_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let endpoint = EndpointSpec {
+            host: Located::detached("224.0.0.1".to_string()),
+            ..minimal_endpoint()
+        };
+
+        // Act
+        validate_endpoint(&endpoint, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains("invalid upstream ip: 224.0.0.1"));
+    }
+
+    #[test]
+    fn endpoint_invalid_hostname_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let endpoint = EndpointSpec {
+            host: Located::detached("-invalid".to_string()),
+            ..minimal_endpoint()
+        };
+
+        // Act
+        validate_endpoint(&endpoint, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(
+            error
+                .message
+                .contains("invalid upstream hostname: -invalid")
+        );
+    }
+
+    #[test]
+    fn endpoint_invalid_port_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let endpoint = EndpointSpec {
+            port: Located::detached(0),
+            ..minimal_endpoint()
+        };
+
+        // Act
+        validate_endpoint(&endpoint, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains("invalid port: 0"));
+    }
+
+    #[test]
+    fn endpoint_empty_sni_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let endpoint = EndpointSpec {
+            tls: Some(Located::detached(EndpointTlsSpec {
+                sni: Located::detached("  ".to_string()),
+                verify: Located::detached(false),
+                ca_file: None,
+            })),
+            ..minimal_endpoint()
+        };
+
+        // Act
+        validate_endpoint(&endpoint, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert_eq!(error.message, "upstream TLS SNI required");
+    }
+
+    #[test]
+    fn sni_as_ip_rejected_when_verify_true() {
+        // Arrange
+        let mut report = Report::new();
+        let tls = EndpointTlsSpec {
+            sni: Located::detached("127.0.0.1".to_string()),
+            verify: Located::detached(true),
+            ca_file: None,
+        };
+
+        // Act
+        validate_endpoint_tls_verify(&tls, &mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert_eq!(error.message, "upstream TLS SNI must be DNS name");
+    }
+
+    #[test]
+    fn host_classification() {
+        // Arrange / Act / Assert
+        assert_eq!(
+            HostSpec::parse("127.0.0.1"),
+            HostSpec::Ip("127.0.0.1".parse().unwrap())
+        );
+        assert_eq!(
+            HostSpec::parse("my-service"),
+            HostSpec::Hostname("my-service".to_string())
+        );
     }
 }

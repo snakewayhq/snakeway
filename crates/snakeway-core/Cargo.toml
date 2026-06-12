@@ -15,6 +15,7 @@ hotpath-alloc = ["hotpath/hotpath-alloc"]
 
 [dependencies]
 snakeway-conf = { workspace = true }
+confval = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 arc-swap = { workspace = true }

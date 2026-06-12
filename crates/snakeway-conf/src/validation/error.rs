@@ -30,7 +30,7 @@ pub enum ConfigError {
         os_string: OsString,
     },
 
-    #[error("message")]
+    #[error("{message}")]
     Custom { message: String },
 
     //-------------------------------------------------------------------------
@@ -67,24 +67,11 @@ pub enum ConfigError {
     #[error("invalid upstream: {message}")]
     InvalidUpstream { message: String },
 
-    #[error("validation failed: {validation_report:?}")]
+    #[error("validation failed: {validation_report:?} {span_report:?}")]
     SemanticValidationFailed {
         validation_report: ValidationReport<HclOrigin>,
+        span_report: confval::provenance::Report,
+        sources: confval::provenance::SourceMap,
     },
 }
 
-impl ConfigError {
-    pub(crate) fn read_file(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
-        Self::ReadFile {
-            path: path.into(),
-            source,
-        }
-    }
-
-    pub(crate) fn parse(path: impl Into<PathBuf>, source: hcl::Error) -> Self {
-        Self::Parse {
-            path: path.into(),
-            source,
-        }
-    }
-}

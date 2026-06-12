@@ -1,70 +1,191 @@
-use crate::types::{HclInt, HclOrigin};
-use serde::{Deserialize, Serialize};
+use crate::types::HclInt;
+use crate::validation::validate_trusted_proxies;
+use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
+use confval::provenance::{Located, Report};
+use confval::{RangeConstraint, range_constraint};
+use serde::Serialize;
 use std::path::PathBuf;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct IdentityDeviceSpec {
-    #[serde(skip)]
-    pub origin: HclOrigin,
+range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, i64, min: 1, max: 2048);
+range_constraint!(MAX_USER_AGENT_LENGTH, i64, min: 1, max: 4096);
 
-    pub enable: bool,
+pub const UA_ENGINES: [&str; 2] = ["uaparser", "woothee"];
+
+#[derive(Clone, Debug, Serialize, confval::Spec)]
+pub struct IdentityDeviceSpec {
+    pub enable: Located<bool>,
 
     /// CIDR strings
-    pub trusted_proxies: Vec<String>,
-    #[serde(default = "default_max_x_forwarded_for_length")]
-    pub max_x_forwarded_for_length: HclInt,
+    pub trusted_proxies: Vec<Located<String>>,
+    #[confval(default = 1024)]
+    pub max_x_forwarded_for_length: Located<HclInt>,
 
-    pub enable_geoip: bool,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub geoip_city_db: Option<PathBuf>,
+    pub enable_geoip: Located<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub geoip_isp_db: Option<PathBuf>,
+    pub geoip_city_db: Option<Located<PathBuf>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub geoip_connection_type_db: Option<PathBuf>,
+    pub geoip_isp_db: Option<Located<PathBuf>>,
 
-    pub enable_user_agent: bool,
-    pub ua_engine: UaEngineSpec,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ua_parser_regexes: Option<PathBuf>,
-    #[serde(default = "default_max_user_agent_length")]
-    pub max_user_agent_length: HclInt,
-}
+    pub geoip_connection_type_db: Option<Located<PathBuf>>,
 
-fn default_max_x_forwarded_for_length() -> HclInt {
-    1024
-}
-
-fn default_max_user_agent_length() -> HclInt {
-    2048
+    pub enable_user_agent: Located<bool>,
+    pub ua_engine: Located<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ua_parser_regexes: Option<Located<PathBuf>>,
+    #[confval(default = 2048)]
+    pub max_user_agent_length: Located<HclInt>,
 }
 
 impl Default for IdentityDeviceSpec {
     fn default() -> Self {
         Self {
-            origin: Default::default(),
-            enable: false,
+            enable: Located::detached(false),
             trusted_proxies: vec![],
-            max_x_forwarded_for_length: default_max_x_forwarded_for_length(),
-            enable_geoip: false,
+            max_x_forwarded_for_length: Located::detached(1024),
+            enable_geoip: Located::detached(false),
             geoip_city_db: None,
             geoip_isp_db: None,
             geoip_connection_type_db: None,
-            enable_user_agent: false,
-            ua_engine: Default::default(),
+            enable_user_agent: Located::detached(false),
+            ua_engine: Located::detached("woothee".to_string()),
             ua_parser_regexes: None,
-            max_user_agent_length: default_max_user_agent_length(),
+            max_user_agent_length: Located::detached(2048),
         }
     }
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum UaEngineSpec {
-    UaParser,
-    #[default]
-    Woothee,
+pub fn validate_identity_device(spec: &IdentityDeviceSpec, report: &mut Report) {
+    validate_trusted_proxies(&spec.trusted_proxies, report);
+
+    MAX_X_FORWARDED_FOR_LENGTH.check_located(
+        &spec.max_x_forwarded_for_length,
+        "max_x_forwarded_for_length",
+        report,
+    );
+
+    if spec.enable_user_agent.value {
+        MAX_USER_AGENT_LENGTH.check_located(
+            &spec.max_user_agent_length,
+            "max_user_agent_length",
+            report,
+        );
+    }
+
+    if !UA_ENGINES.contains(&spec.ua_engine.value.as_str()) {
+        report
+            .error(format!("unknown ua_engine: {}", spec.ua_engine.value))
+            .at(spec.ua_engine.span)
+            .help(format!("expected one of: {}", UA_ENGINES.join(", ")))
+            .emit();
+    }
+
+    if spec.enable_geoip.value {
+        if let Some(path) = spec.geoip_city_db.as_ref() {
+            validate_geoip_db_file(path, report);
+        }
+
+        if let Some(path) = spec.geoip_isp_db.as_ref() {
+            validate_geoip_db_file(path, report);
+        }
+
+        if let Some(path) = spec.geoip_connection_type_db.as_ref() {
+            validate_geoip_db_file(path, report);
+        }
+    }
+
+    if let Some(path) = spec.ua_parser_regexes.as_ref() {
+        validate_ua_parser_regexes_file(path, report);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn max_xff_length_below_range() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(true),
+            max_x_forwarded_for_length: Located::detached(0),
+            ..Default::default()
+        };
+
+        // Act
+        validate_identity_device(&spec, &mut report);
+
+        // Assert
+        assert!(report.has_issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_x_forwarded_for_length"))
+        );
+    }
+
+    #[test]
+    fn max_xff_length_above_range() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(true),
+            max_x_forwarded_for_length: Located::detached(2049),
+            ..Default::default()
+        };
+
+        // Act
+        validate_identity_device(&spec, &mut report);
+
+        // Assert
+        assert!(report.has_issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_x_forwarded_for_length"))
+        );
+    }
+
+    #[test]
+    fn unknown_ua_engine_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(true),
+            ua_engine: Located::detached("regex9000".to_string()),
+            ..Default::default()
+        };
+
+        // Act
+        validate_identity_device(&spec, &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "unknown ua_engine: regex9000")
+        );
+    }
+
+    #[test]
+    fn valid_identity_device() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(true),
+            ..Default::default()
+        };
+
+        // Act
+        validate_identity_device(&spec, &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
 }

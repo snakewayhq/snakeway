@@ -1,28 +1,22 @@
 use crate::types::{
     DeviceConfig, DeviceSpec, IngressSpec, ListenerConfig, RouteConfig, RuntimeConfig,
-    ServerConfig, ServerSpec, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
-    UpstreamTcpConfig, UpstreamUnixConfig,
+    ServerConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig, UpstreamTcpConfig,
+    UpstreamUnixConfig,
 };
 use crate::validation::ConfigError;
+use confval::provenance::Located;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
 /// Transform spec to the runtime configuration.
 ///
-/// Assumes all specs have already passed validation.
+/// Assumes all specs have already passed validation. The server entity is
+/// lowered by the caller (span-first pipeline) and passed in ready-made.
 pub(crate) fn lower_configs(
-    server_spec: ServerSpec,
-    ingresses: Vec<IngressSpec>,
-    device_specs: Vec<DeviceSpec>,
+    server: ServerConfig,
+    ingresses: Vec<Located<IngressSpec>>,
+    device_specs: Vec<Located<DeviceSpec>>,
 ) -> Result<RuntimeConfig, ConfigError> {
-    // ---------------------------------------------------------------------
-    // Server
-    // ---------------------------------------------------------------------
-    let server =
-        ServerConfig::try_from(server_spec).map_err(|e| ConfigError::InvalidServerConfig {
-            message: e.to_string(),
-        })?;
-
     let mut listeners = Vec::new();
     let mut routes = Vec::new();
     let mut services = HashMap::new();
@@ -30,22 +24,25 @@ pub(crate) fn lower_configs(
     // ---------------------------------------------------------------------
     // Ingresses
     // ---------------------------------------------------------------------
-    for (idx, ingress) in ingresses.into_iter().enumerate() {
+    for (idx, ingress) in ingresses.iter().enumerate() {
+        let ingress = &ingress.value;
         let listener_name = format!("listener-{}", idx);
 
         // -------------------------------------------------------------
         // Admin bind
         // -------------------------------------------------------------
-        if let Some(bind_admin) = ingress.bind_admin {
-            let listener_cfg = ListenerConfig::from_bind_admin(&listener_name, bind_admin)
-                .map_err(|err| ConfigError::InvalidAdminBindConfig { message: err })?;
+        if let Some(bind_admin) = &ingress.bind_admin {
+            let listener_cfg =
+                ListenerConfig::from_bind_admin(&listener_name, &bind_admin.value)
+                    .map_err(|err| ConfigError::InvalidAdminBindConfig { message: err })?;
             listeners.push(listener_cfg);
         }
 
         //--------------------------------------------------------------------
         // Public bind
         //--------------------------------------------------------------------
-        if let Some(bind) = ingress.bind {
+        if let Some(bind) = &ingress.bind {
+            let bind = &bind.value;
             let use_tls = bind.tls.is_some();
             let bind_addr = bind
                 .resolve()
@@ -56,13 +53,18 @@ pub(crate) fn lower_configs(
             //-----------------------------------------------------------------
             // Services
             //-----------------------------------------------------------------
-            for service_spec in ingress.services {
+            for service_spec in &ingress.services {
+                let service_spec = &service_spec.value;
                 let unix_upstreams = service_spec
                     .upstreams
                     .iter()
                     .filter_map(|u| {
-                        u.sock.as_ref().map(|sock| {
-                            UpstreamUnixConfig::new(sock.clone(), use_tls, u.weight as u32)
+                        u.value.sock.as_ref().map(|sock| {
+                            UpstreamUnixConfig::new(
+                                sock.value.clone(),
+                                use_tls,
+                                u.value.weight.value as u32,
+                            )
                         })
                     })
                     .collect::<Vec<_>>();
@@ -71,9 +73,9 @@ pub(crate) fn lower_configs(
                     .upstreams
                     .iter()
                     .filter_map(|u| {
-                        u.endpoint
-                            .as_ref()
-                            .map(|endpoint| UpstreamTcpConfig::new(u.weight as u32, endpoint))
+                        u.value.endpoint.as_ref().map(|endpoint| {
+                            UpstreamTcpConfig::new(u.value.weight.value as u32, &endpoint.value)
+                        })
                     })
                     .collect::<Vec<_>>();
 
@@ -84,16 +86,17 @@ pub(crate) fn lower_configs(
                     &listener_name,
                     tcp_upstreams,
                     unix_upstreams,
-                    &service_spec,
-                );
+                    service_spec,
+                )
+                .map_err(|message| ConfigError::Custom { message })?;
 
                 services.insert(service_name.clone(), service);
 
-                for route in service_spec.routes {
+                for route in &service_spec.routes {
                     routes.push(RouteConfig::Service(ServiceRouteConfig::new(
                         &service_name,
                         &listener_name,
-                        route,
+                        &route.value,
                     )));
                 }
             }
@@ -101,11 +104,11 @@ pub(crate) fn lower_configs(
             //-----------------------------------------------------------------
             // Static files
             //-----------------------------------------------------------------
-            for static_cfg in ingress.static_files {
-                for route in static_cfg.routes {
+            for static_cfg in &ingress.static_files {
+                for route in &static_cfg.value.routes {
                     routes.push(RouteConfig::Static(StaticRouteConfig::new(
                         &listener_name,
-                        route,
+                        &route.value,
                     )));
                 }
             }
@@ -113,23 +116,23 @@ pub(crate) fn lower_configs(
             //-----------------------------------------------------------------
             // Listener
             //-----------------------------------------------------------------
-            let listener_cfg = ListenerConfig::from_bind(&listener_name, bind.clone())
+            let listener_cfg = ListenerConfig::from_bind(&listener_name, bind)
                 .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
             listeners.push(listener_cfg);
 
             //-----------------------------------------------------------------
             // Redirect listener
             //-----------------------------------------------------------------
-            if let Some(ref redirect) = bind.redirect_http_to_https {
+            if let Some(redirect) = &bind.redirect_http_to_https {
                 let redirect_listener_name = format!("redirect-listener-{}", idx);
 
                 let mut socket: SocketAddr = bind_addr;
-                socket.set_port(redirect.port as u16);
+                socket.set_port(redirect.value.port.value as u16);
 
                 let listener_cfg = ListenerConfig::from_redirect(
                     &redirect_listener_name,
                     socket.to_string(),
-                    redirect.status as u16,
+                    redirect.value.status.value as u16,
                     bind,
                 )
                 .map_err(|err| ConfigError::InvalidBindAddress { message: err })?;
@@ -144,14 +147,20 @@ pub(crate) fn lower_configs(
     //-------------------------------------------------------------------------
     let devices = device_specs
         .into_iter()
-        .map(|spec| match spec {
+        .map(|spec| match spec.value {
             DeviceSpec::RequestFilter(d) => d
                 .try_into()
                 .map(|c| DeviceConfig::RequestFilter(Box::new(c))),
-            DeviceSpec::Identity(d) => Ok(DeviceConfig::Identity(d.into())),
+            DeviceSpec::Identity(d) => d
+                .try_into()
+                .map(DeviceConfig::Identity)
+                .map_err(|message| ConfigError::Custom { message }),
             DeviceSpec::NetworkPolicy(d) => d.try_into().map(DeviceConfig::NetworkPolicy),
             DeviceSpec::Wasm(d) => Ok(DeviceConfig::Wasm(d.into())),
-            DeviceSpec::StructuredLogging(d) => Ok(DeviceConfig::StructuredLogging(d.into())),
+            DeviceSpec::StructuredLogging(d) => d
+                .try_into()
+                .map(DeviceConfig::StructuredLogging)
+                .map_err(|message| ConfigError::Custom { message }),
             DeviceSpec::RequestRateLimiting(d) => Ok(DeviceConfig::RequestRateLimiting(d.into())),
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -169,47 +178,49 @@ pub(crate) fn lower_configs(
 mod tests {
     use super::*;
     use crate::types::{
-        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput, BindSpec, EndpointSpec,
-        HostSpec, IngressSpec, ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+        AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindSpec, EndpointSpec, IngressSpec,
+        ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
     };
+    use confval::provenance::{Lower, Report};
+
+    fn lowered_server() -> ServerConfig {
+        ServerConfig::lower(&ServerSpec::default(), &mut Report::new()).unwrap()
+    }
     use std::io::Write;
-    use std::net::Ipv4Addr;
 
     #[test]
     fn lower_minimal_valid_config() {
         // Arrange
-        let server_spec = ServerSpec {
-            version: 1,
-            ..Default::default()
-        };
-        let ingress = IngressSpec {
-            bind: Some(BindSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: 8080,
+        let server = lowered_server();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(8080),
                 ..Default::default()
-            }),
-            services: vec![ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    path: "/".to_string(),
-                    hosts: vec!["example.com".to_string()],
+            })),
+            services: vec![Located::detached(ServiceSpec {
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    path: Located::detached("/".to_string()),
+                    hosts: vec![Located::detached("example.com".to_string())],
                     ..Default::default()
-                }],
-                upstreams: vec![UpstreamSpec {
-                    endpoint: Some(EndpointSpec {
-                        host: HostSpec::Ip(std::net::IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
-                        port: 3000,
+                })],
+                upstreams: vec![Located::detached(UpstreamSpec {
+                    endpoint: Some(Located::detached(EndpointSpec {
+                        host: Located::detached("127.0.0.1".to_string()),
+                        port: Located::detached(3000),
                         tls: None,
-                    }),
-                    weight: 1,
-                    ..Default::default()
-                }],
+                    })),
+                    sock: None,
+                    weight: Located::detached(1),
+                })],
                 ..Default::default()
-            }],
+            })],
             ..Default::default()
-        };
+        });
 
         // Act
-        let result = lower_configs(server_spec, vec![ingress], vec![]);
+        let result = lower_configs(server, vec![ingress], vec![]);
 
         // Assert
         let config = result.expect("lowering should succeed");
@@ -226,28 +237,23 @@ mod tests {
             .write_all(b"a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04\n")
             .unwrap();
 
-        let server_spec = ServerSpec {
-            version: 1,
-            ..Default::default()
-        };
-        let ingress = IngressSpec {
-            bind_admin: Some(BindAdminSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: 9090,
-                auth: AdminAuthSpec {
-                    bearer: Some(BearerAuthSpec {
-                        token_file: token_file.path().to_path_buf(),
-                        origin: Default::default(),
-                    }),
-                    origin: Default::default(),
-                },
+        let server = lowered_server();
+        let ingress = Located::detached(IngressSpec {
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(9090),
+                auth: Some(Located::detached(AdminAuthSpec {
+                    bearer: Some(Located::detached(BearerAuthSpec {
+                        token_file: Located::detached(token_file.path().to_path_buf()),
+                    })),
+                })),
                 ..Default::default()
-            }),
+            })),
             ..Default::default()
-        };
+        });
 
         // Act
-        let result = lower_configs(server_spec, vec![ingress], vec![]);
+        let result = lower_configs(server, vec![ingress], vec![]);
 
         // Assert
         let config = result.expect("lowering should succeed");
@@ -257,13 +263,10 @@ mod tests {
     #[test]
     fn lower_empty_ingresses() {
         // Arrange
-        let server_spec = ServerSpec {
-            version: 1,
-            ..Default::default()
-        };
+        let server = lowered_server();
 
         // Act
-        let result = lower_configs(server_spec, vec![], vec![]);
+        let result = lower_configs(server, vec![], vec![]);
 
         // Assert
         let config = result.expect("lowering should succeed");

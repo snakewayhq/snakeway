@@ -1,13 +1,43 @@
-use crate::cli::config::hcl::to_hcl_string;
+use crate::cli::config::hcl::to_hcl_block_string;
 use crate::cli::config::init::templates;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
+use confval::provenance::Located;
 use snakeway_conf::types::{
     AcmeServerSpec, CertStoreSpec, EntrypointSpec, ServerSpec, TlsAutomationSpec,
 };
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+
+fn entrypoint_spec(template: &ConfigInitTemplate) -> EntrypointSpec {
+    let mut spec = EntrypointSpec {
+        server: ServerSpec {
+            threads: Some(Located::detached(8)),
+            pid_file: Some(Located::detached(PathBuf::from("/var/run/snakeway.pid"))),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    if matches!(template, ConfigInitTemplate::Dev) {
+        spec.server.pid_file = Some(Located::detached(PathBuf::from("/tmp/snakeway.pid")));
+        spec.server.tls_automation = Some(Located::detached(TlsAutomationSpec {
+            acme: Located::detached(AcmeServerSpec {
+                directory_url: Located::detached("https://127.0.0.1:14000/dir".to_string()),
+                data_dir: Located::detached(PathBuf::from("data/acme/orders")),
+                contact_email: vec![Located::detached("admin@snakeway.test".to_string())],
+                ca_file: Some(Located::detached(PathBuf::from(
+                    "crates/snakeway-tests/certs/pebble-ca.pem",
+                ))),
+            }),
+            cert_store: Located::detached(CertStoreSpec::Filesystem {
+                cert_dir: Located::detached(PathBuf::from("data/acme/certs")),
+            }),
+            renew_within_days: Located::detached(30),
+        }));
+    }
+    spec
+}
 
 pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     use anyhow::bail;
@@ -33,31 +63,10 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 
     let mut created_files = Vec::new();
     let mut files_to_create = HashMap::new();
-    let mut entrypoint_spec = EntrypointSpec {
-        server: ServerSpec {
-            threads: Some(8),
-            pid_file: Some(PathBuf::from("/var/run/snakeway.pid")),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    if matches!(template, ConfigInitTemplate::Dev) {
-        entrypoint_spec.server.threads = Some(8);
-        entrypoint_spec.server.pid_file = Some(PathBuf::from("/tmp/snakeway.pid"));
-        entrypoint_spec.server.tls_automation = Some(TlsAutomationSpec {
-            acme: AcmeServerSpec {
-                directory_url: "https://127.0.0.1:14000/dir".to_string(),
-                data_dir: PathBuf::from("data/acme/orders"),
-                contact_email: vec!["admin@snakeway.test".to_string()],
-                ca_file: Some(PathBuf::from("crates/snakeway-tests/certs/pebble-ca.pem")),
-            },
-            cert_store: CertStoreSpec::Filesystem {
-                cert_dir: PathBuf::from("data/acme/certs"),
-            },
-            renew_within_days: 30,
-        });
-    }
-    files_to_create.insert(entrypoint_file_path, to_hcl_string(&entrypoint_spec)?);
+    files_to_create.insert(
+        entrypoint_file_path,
+        to_hcl_block_string(&entrypoint_spec(&template))?,
+    );
 
     match template {
         ConfigInitTemplate::Minimal => {
@@ -120,4 +129,40 @@ pub(crate) enum ConfigInitTemplate {
     Minimal,
     Httpbin,
     Dev,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use confval::hcl::parse_hcl;
+    use confval::provenance::{Report, SourceMap};
+
+    /// The generated entrypoint and the config parser must never drift
+    /// apart: whatever `config init` writes has to parse cleanly.
+    #[test]
+    fn generated_entrypoints_parse_cleanly() {
+        for template in [
+            ConfigInitTemplate::Minimal,
+            ConfigInitTemplate::Httpbin,
+            ConfigInitTemplate::Dev,
+        ] {
+            // Arrange
+            let text = to_hcl_block_string(&entrypoint_spec(&template)).unwrap();
+
+            // Act
+            let mut sources = SourceMap::new();
+            let mut report = Report::new();
+            let id = sources.add("snakeway.hcl", &text);
+            let parsed: Option<EntrypointSpec> = parse_hcl(&sources, id, &mut report);
+
+            // Assert
+            assert!(
+                !report.has_issues(),
+                "template {template:?} produced issues: {:?}\ngenerated:\n{text}",
+                report.issues()
+            );
+            let parsed = parsed.unwrap();
+            assert_eq!(parsed.server.version.value, 1);
+        }
+    }
 }

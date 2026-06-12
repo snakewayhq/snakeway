@@ -1,5 +1,5 @@
-use crate::types::{AcmeChallengeSpec, TlsTerminationSpec};
-use o2o::o2o;
+use crate::types::{ACME_CHALLENGE_HTTP01, TlsTerminationSpec};
+use confval::provenance::{Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -18,34 +18,43 @@ pub enum TlsTerminationConfig {
     },
 }
 
-#[derive(o2o, Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[from_owned(AcmeChallengeSpec)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum AcmeChallengeConfig {
     Http01,
 }
 
-impl TryFrom<TlsTerminationSpec> for TlsTerminationConfig {
-    type Error = String;
-
-    fn try_from(spec: TlsTerminationSpec) -> Result<Self, Self::Error> {
+impl Lower<TlsTerminationSpec> for TlsTerminationConfig {
+    fn lower(spec: &TlsTerminationSpec, report: &mut Report) -> Option<Self> {
         match spec {
-            TlsTerminationSpec::Manual { cert, key } => {
-                Ok(TlsTerminationConfig::Manual { cert, key })
-            }
+            TlsTerminationSpec::Manual { cert, key } => Some(TlsTerminationConfig::Manual {
+                cert: cert.value.clone(),
+                key: key.value.clone(),
+            }),
 
             TlsTerminationSpec::Acme { domains, challenge } => {
+                let challenge = match challenge.value.as_str() {
+                    ACME_CHALLENGE_HTTP01 => AcmeChallengeConfig::Http01,
+                    other => {
+                        report
+                            .error(format!("unknown ACME challenge: {other}"))
+                            .at(challenge.span)
+                            .emit();
+                        return None;
+                    }
+                };
+
                 let mut canonicalize_domains: Vec<String> = domains
                     .iter()
-                    .map(|d| d.trim().to_ascii_lowercase())
+                    .map(|d| d.value.trim().to_ascii_lowercase())
                     .filter(|d| !d.is_empty())
                     .collect();
 
                 canonicalize_domains.sort();
                 canonicalize_domains.dedup();
 
-                Ok(TlsTerminationConfig::Acme {
+                Some(TlsTerminationConfig::Acme {
                     domains: canonicalize_domains,
-                    challenge: challenge.into(),
+                    challenge,
                 })
             }
         }
@@ -55,29 +64,53 @@ impl TryFrom<TlsTerminationSpec> for TlsTerminationConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use confval::provenance::Located;
+
+    fn acme(domains: Vec<&str>) -> TlsTerminationSpec {
+        TlsTerminationSpec::Acme {
+            domains: domains
+                .into_iter()
+                .map(|d| Located::detached(d.to_string()))
+                .collect(),
+            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+        }
+    }
+
+    fn lower(spec: &TlsTerminationSpec) -> TlsTerminationConfig {
+        let mut report = Report::new();
+        let config = TlsTerminationConfig::lower(spec, &mut report);
+        assert!(!report.has_errors(), "issues: {:?}", report.issues());
+        config.unwrap()
+    }
 
     #[test]
     fn acme_challenge_maps_http01() {
         // Arrange
-        let spec = AcmeChallengeSpec::Http01;
+        let spec = acme(vec!["example.com"]);
 
         // Act
-        let config: AcmeChallengeConfig = spec.into();
+        let config = lower(&spec);
 
         // Assert
-        assert!(matches!(config, AcmeChallengeConfig::Http01));
+        assert!(matches!(
+            config,
+            TlsTerminationConfig::Acme {
+                challenge: AcmeChallengeConfig::Http01,
+                ..
+            }
+        ));
     }
 
     #[test]
     fn manual_tls_passes_through() {
         // Arrange
         let spec = TlsTerminationSpec::Manual {
-            cert: PathBuf::from("/etc/ssl/cert.pem"),
-            key: PathBuf::from("/etc/ssl/key.pem"),
+            cert: Located::detached(PathBuf::from("/etc/ssl/cert.pem")),
+            key: Located::detached(PathBuf::from("/etc/ssl/key.pem")),
         };
 
         // Act
-        let config = TlsTerminationConfig::try_from(spec).unwrap();
+        let config = lower(&spec);
 
         // Assert
         match config {
@@ -92,13 +125,10 @@ mod tests {
     #[test]
     fn acme_domains_trimmed_and_lowercased() {
         // Arrange
-        let spec = TlsTerminationSpec::Acme {
-            domains: vec![" Example.COM ".to_string()],
-            challenge: AcmeChallengeSpec::Http01,
-        };
+        let spec = acme(vec![" Example.COM "]);
 
         // Act
-        let config = TlsTerminationConfig::try_from(spec).unwrap();
+        let config = lower(&spec);
 
         // Assert
         match config {
@@ -112,17 +142,10 @@ mod tests {
     #[test]
     fn acme_domains_sorted_and_deduped() {
         // Arrange
-        let spec = TlsTerminationSpec::Acme {
-            domains: vec![
-                "b.com".to_string(),
-                "a.com".to_string(),
-                "b.com".to_string(),
-            ],
-            challenge: AcmeChallengeSpec::Http01,
-        };
+        let spec = acme(vec!["b.com", "a.com", "b.com"]);
 
         // Act
-        let config = TlsTerminationConfig::try_from(spec).unwrap();
+        let config = lower(&spec);
 
         // Assert
         match config {
@@ -136,13 +159,10 @@ mod tests {
     #[test]
     fn acme_empty_domains_filtered() {
         // Arrange
-        let spec = TlsTerminationSpec::Acme {
-            domains: vec!["".to_string(), "  ".to_string(), "valid.com".to_string()],
-            challenge: AcmeChallengeSpec::Http01,
-        };
+        let spec = acme(vec!["", "  ", "valid.com"]);
 
         // Act
-        let config = TlsTerminationConfig::try_from(spec).unwrap();
+        let config = lower(&spec);
 
         // Assert
         match config {
@@ -151,5 +171,27 @@ mod tests {
             }
             _ => panic!("expected Acme variant"),
         }
+    }
+
+    #[test]
+    fn unknown_challenge_is_reported() {
+        // Arrange
+        let spec = TlsTerminationSpec::Acme {
+            domains: vec![Located::detached("example.com".to_string())],
+            challenge: Located::detached("dns01".to_string()),
+        };
+
+        // Act
+        let mut report = Report::new();
+        let config = TlsTerminationConfig::lower(&spec, &mut report);
+
+        // Assert
+        assert!(config.is_none());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message == "unknown ACME challenge: dns01")
+        );
     }
 }

@@ -1,25 +1,21 @@
-use crate::types::HclOrigin;
-use crate::types::device_issues;
-use confval::ValidationReport;
+use confval::provenance::{Located, Report};
 use http::{HeaderName, Method};
 
-pub(crate) fn validate_http_header_name(
-    header: &str,
-    report: &mut ValidationReport<HclOrigin>,
-    origin: &HclOrigin,
-) {
-    if HeaderName::from_bytes(header.as_bytes()).is_err() {
-        report.push(device_issues::invalid_http_header_name(header, origin));
+pub(crate) fn validate_http_header_name(header: &Located<String>, report: &mut Report) {
+    if HeaderName::from_bytes(header.value.as_bytes()).is_err() {
+        report
+            .error(format!("invalid HTTP header name: {}", header.value))
+            .at(header.span)
+            .emit();
     }
 }
 
-pub(crate) fn validate_http_method(
-    method: &str,
-    report: &mut ValidationReport<HclOrigin>,
-    origin: &HclOrigin,
-) {
-    if Method::from_bytes(method.as_bytes()).is_err() {
-        report.push(device_issues::invalid_http_method(method, origin));
+pub(crate) fn validate_http_method(method: &Located<String>, report: &mut Report) {
+    if Method::from_bytes(method.value.as_bytes()).is_err() {
+        report
+            .error(format!("invalid HTTP method: {}", method.value))
+            .at(method.span)
+            .emit();
     }
 }
 
@@ -27,14 +23,17 @@ pub(crate) fn validate_http_method(
 mod tests {
     use super::*;
 
+    fn located(value: &str) -> Located<String> {
+        Located::detached(value.to_string())
+    }
+
     #[test]
     fn valid_header_name() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("test");
+        let mut report = Report::new();
 
         // Act
-        validate_http_header_name("content-type", &mut report, &origin);
+        validate_http_header_name(&located("content-type"), &mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -43,32 +42,30 @@ mod tests {
     #[test]
     fn invalid_header_name() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("test");
+        let mut report = Report::new();
 
         // Act
-        validate_http_header_name("invalid header!", &mut report, &origin);
+        validate_http_header_name(&located("invalid header!"), &mut report);
 
         // Assert
         assert!(report.has_issues());
-        assert_eq!(report.errors().len(), 1);
+        assert_eq!(report.issues().len(), 1);
         assert!(
-            report.errors()[0]
+            report.issues()[0]
                 .message
                 .contains("invalid HTTP header name"),
             "expected error to contain 'invalid HTTP header name', got: {}",
-            report.errors()[0].message
+            report.issues()[0].message
         );
     }
 
     #[test]
     fn valid_http_method() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("test");
+        let mut report = Report::new();
 
         // Act
-        validate_http_method("GET", &mut report, &origin);
+        validate_http_method(&located("GET"), &mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -77,19 +74,18 @@ mod tests {
     #[test]
     fn invalid_http_method() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("test");
+        let mut report = Report::new();
 
         // Act
-        validate_http_method("INVALID METHOD", &mut report, &origin);
+        validate_http_method(&located("INVALID METHOD"), &mut report);
 
         // Assert
         assert!(report.has_issues());
-        assert_eq!(report.errors().len(), 1);
+        assert_eq!(report.issues().len(), 1);
         assert!(
-            report.errors()[0].message.contains("invalid HTTP method"),
+            report.issues()[0].message.contains("invalid HTTP method"),
             "expected error to contain 'invalid HTTP method', got: {}",
-            report.errors()[0].message
+            report.issues()[0].message
         );
     }
 }

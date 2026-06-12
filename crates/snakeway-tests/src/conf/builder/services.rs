@@ -5,44 +5,43 @@ use crate::constants::{
     DEFAULT_ADMIN_LISTENER_PORT, ROUTE_PATH_API, ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST,
     UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
 };
+use confval::provenance::Located;
 use snakeway_core::testing_api::conf::types::{
-    AcmeServerSpec, AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindInterfaceInput,
-    CertStoreSpec, EndpointSpec, EndpointTlsSpec, HostSpec, IngressSpec, RedirectSpec,
-    ServiceRouteSpec, ServiceSpec, TlsTerminationSpec, UpstreamSpec,
+    AcmeServerSpec, AdminAuthSpec, BearerAuthSpec, BindAdminSpec, CertStoreSpec, EndpointSpec,
+    EndpointTlsSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec, TlsTerminationSpec,
+    UpstreamSpec,
 };
 use std::path::PathBuf;
 
-fn test_admin_auth_spec() -> AdminAuthSpec {
-    AdminAuthSpec {
-        bearer: Some(BearerAuthSpec {
-            token_file: PathBuf::from(ADMIN_TOKEN_FILE),
-            origin: Default::default(),
-        }),
-        origin: Default::default(),
-    }
+fn test_admin_auth_spec() -> Option<Located<AdminAuthSpec>> {
+    Some(Located::detached(AdminAuthSpec {
+        bearer: Some(Located::detached(BearerAuthSpec {
+            token_file: Located::detached(PathBuf::from(ADMIN_TOKEN_FILE)),
+        })),
+    }))
 }
 
 impl ConfigBuilder {
     pub fn with_grpc_ingress(mut self) -> Self {
-        self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
+        self.server_spec.ca_file = Some(Located::detached(PathBuf::from(CERT_ORIGIN_CA_PEM)));
 
         let mut bind = Self::make_bind(true);
-        bind.enable_http2 = true;
+        bind.enable_http2 = Located::detached(true);
         let service = ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: ROUTE_PATH_GRPC.to_string(),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached(ROUTE_PATH_GRPC.to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, true),
-                Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, true),
+                Located::detached(Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, true)),
+                Located::detached(Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, true)),
             ],
             ..Default::default()
         };
         let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            services: vec![service],
+            bind: Some(Located::detached(bind)),
+            services: vec![Located::detached(service)],
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
@@ -51,11 +50,11 @@ impl ConfigBuilder {
 
     pub fn with_h2_to_h1_ingress(mut self) -> Self {
         let mut bind = Self::make_bind(true);
-        bind.enable_http2 = true;
+        bind.enable_http2 = Located::detached(true);
         let service = Self::make_service_spec();
         let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            services: vec![service],
+            bind: Some(Located::detached(bind)),
+            services: vec![Located::detached(service)],
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
@@ -65,21 +64,21 @@ impl ConfigBuilder {
     pub fn with_ws_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
         let service = ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: ROUTE_PATH_WS.to_string(),
-                enable_websocket: true,
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached(ROUTE_PATH_WS.to_string()),
+                enable_websocket: Located::detached(true),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false)),
+                Located::detached(Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false)),
             ],
             ..Default::default()
         };
         let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            services: vec![service],
+            bind: Some(Located::detached(bind)),
+            services: vec![Located::detached(service)],
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
@@ -89,8 +88,8 @@ impl ConfigBuilder {
     pub fn with_custom_ingress(mut self, services: Vec<ServiceSpec>) -> Self {
         let bind = Self::make_bind(false);
         let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            services,
+            bind: Some(Located::detached(bind)),
+            services: services.into_iter().map(Located::detached).collect(),
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
@@ -101,8 +100,8 @@ impl ConfigBuilder {
         let bind = Self::make_bind(false);
         let service = Self::make_service_spec();
         let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            services: vec![service],
+            bind: Some(Located::detached(bind)),
+            services: vec![Located::detached(service)],
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
@@ -116,49 +115,49 @@ impl ConfigBuilder {
         std::fs::create_dir_all(ACME_ORDERS_DIR).expect("failed to create ACME orders directory");
         std::fs::create_dir_all(ACME_CERTS_DIR).expect("failed to create ACME certs directory");
 
-        self.server_spec.ca_file = Some(PathBuf::from(CERT_ORIGIN_CA_PEM));
-        self.server_spec.tls_automation =
-            Some(snakeway_core::testing_api::conf::types::TlsAutomationSpec {
-                acme: AcmeServerSpec {
-                    directory_url: ACME_DIRECTORY_URL.to_string(),
-                    data_dir: PathBuf::from(ACME_ORDERS_DIR),
-                    contact_email: vec![ACME_CONTACT_EMAIL.to_string()],
-                    ca_file: Some(PathBuf::from(CERT_PEBBLE_CA_PEM)),
-                },
+        self.server_spec.ca_file = Some(Located::detached(PathBuf::from(CERT_ORIGIN_CA_PEM)));
+        self.server_spec.tls_automation = Some(Located::detached(
+            snakeway_core::testing_api::conf::types::TlsAutomationSpec {
+                acme: Located::detached(AcmeServerSpec {
+                    directory_url: Located::detached(ACME_DIRECTORY_URL.to_string()),
+                    data_dir: Located::detached(PathBuf::from(ACME_ORDERS_DIR)),
+                    contact_email: vec![Located::detached(ACME_CONTACT_EMAIL.to_string())],
+                    ca_file: Some(Located::detached(PathBuf::from(CERT_PEBBLE_CA_PEM))),
+                }),
                 // Memory store avoids filesystem path concerns in tests.
-                cert_store: CertStoreSpec::Filesystem {
-                    cert_dir: PathBuf::from(ACME_CERTS_DIR),
-                },
-                renew_within_days: 30,
-            });
+                cert_store: Located::detached(CertStoreSpec::Filesystem {
+                    cert_dir: Located::detached(PathBuf::from(ACME_CERTS_DIR)),
+                }),
+                renew_within_days: Located::detached(30),
+            },
+        ));
 
         // Public HTTPS listener.  Port 5002 is Pebble's httpPort (see pebble.json):
         // the redirect listener on that port answers HTTP-01 challenges during ACME issuance.
         let mut bind = Self::make_bind_with_acme();
-        bind.redirect_http_to_https = Some(RedirectSpec {
-            port: 5002,
-            status: 301,
-        });
+        bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
+            port: Located::detached(5002),
+            status: Located::detached(301),
+        }));
         let service = Self::make_service_spec();
         let ingress_spec = IngressSpec {
-            bind: Some(bind),
-            services: vec![service],
+            bind: Some(Located::detached(bind)),
+            services: vec![Located::detached(service)],
             ..Default::default()
         };
         self.ingress_specs.push(ingress_spec);
 
         // Admin API listener (manual TLS with the test server cert).
         let admin_ingress = IngressSpec {
-            bind_admin: Some(BindAdminSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: 9443,
-                tls: TlsTerminationSpec::Manual {
-                    cert: PathBuf::from(CERT_SERVER_PEM),
-                    key: PathBuf::from(CERT_SERVER_KEY),
-                },
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(9443),
+                tls: Located::detached(TlsTerminationSpec::Manual {
+                    cert: Located::detached(PathBuf::from(CERT_SERVER_PEM)),
+                    key: Located::detached(PathBuf::from(CERT_SERVER_KEY)),
+                }),
                 auth: test_admin_auth_spec(),
-                ..Default::default()
-            }),
+            })),
             ..Default::default()
         };
         self.ingress_specs.push(admin_ingress);
@@ -178,16 +177,15 @@ impl ConfigBuilder {
     /// admin request.
     pub fn with_admin_ingress(mut self) -> Self {
         let admin_ingress = IngressSpec {
-            bind_admin: Some(BindAdminSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: DEFAULT_ADMIN_LISTENER_PORT,
-                tls: TlsTerminationSpec::Manual {
-                    cert: PathBuf::from(CERT_SERVER_PEM),
-                    key: PathBuf::from(CERT_SERVER_KEY),
-                },
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(DEFAULT_ADMIN_LISTENER_PORT),
+                tls: Located::detached(TlsTerminationSpec::Manual {
+                    cert: Located::detached(PathBuf::from(CERT_SERVER_PEM)),
+                    key: Located::detached(PathBuf::from(CERT_SERVER_KEY)),
+                }),
                 auth: test_admin_auth_spec(),
-                ..Default::default()
-            }),
+            })),
             ..Default::default()
         };
         self.ingress_specs.push(admin_ingress);
@@ -196,34 +194,34 @@ impl ConfigBuilder {
 
     pub fn make_tcp_upstream(port: i64, use_tls: bool) -> UpstreamSpec {
         UpstreamSpec {
-            endpoint: Some(EndpointSpec {
-                host: HostSpec::Hostname(TEST_HOST.to_string()),
-                port,
+            endpoint: Some(Located::detached(EndpointSpec {
+                host: Located::detached(TEST_HOST.to_string()),
+                port: Located::detached(port),
                 tls: if use_tls {
-                    Some(EndpointTlsSpec {
-                        sni: TEST_HOST.to_string(),
-                        verify: false,
+                    Some(Located::detached(EndpointTlsSpec {
+                        sni: Located::detached(TEST_HOST.to_string()),
+                        verify: Located::detached(false),
                         ca_file: Default::default(),
-                    })
+                    }))
                 } else {
                     None
                 },
-            }),
-            weight: 1,
-            ..Default::default()
+            })),
+            sock: None,
+            weight: Located::detached(1),
         }
     }
 
     pub(crate) fn make_service_spec() -> ServiceSpec {
         ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: ROUTE_PATH_API.to_string(),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached(ROUTE_PATH_API.to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(Self::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false)),
+                Located::detached(Self::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false)),
             ],
             ..Default::default()
         }

@@ -82,78 +82,51 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
     type Error = ConfigError;
 
     fn try_from(spec: RequestFilterDeviceSpec) -> Result<Self, Self::Error> {
-        let origin = spec.origin.clone();
-
-        let allow_methods: SmallVec<[Method; 4]> = spec
-            .allow_methods
-            .into_iter()
-            .map(|s| {
-                Method::from_bytes(s.as_bytes()).map_err(|_| ConfigError::InvalidMethod {
-                    value: s,
-                    origin: origin.to_string(),
+        fn methods(
+            values: Vec<confval::provenance::Located<String>>,
+        ) -> Result<SmallVec<[Method; 4]>, ConfigError> {
+            values
+                .into_iter()
+                .map(|s| {
+                    Method::from_bytes(s.value.as_bytes()).map_err(|_| ConfigError::InvalidMethod {
+                        value: s.value.clone(),
+                        origin: "request_filter_device".to_string(),
+                    })
                 })
-            })
-            .collect::<Result<SmallVec<_>, _>>()?;
+                .collect()
+        }
 
-        let deny_methods: SmallVec<[Method; 4]> = spec
-            .deny_methods
-            .into_iter()
-            .map(|s| {
-                Method::from_bytes(s.as_bytes()).map_err(|_| ConfigError::InvalidMethod {
-                    value: s,
-                    origin: origin.to_string(),
+        fn headers(
+            values: Vec<confval::provenance::Located<String>>,
+        ) -> Result<SmallVec<[HeaderName; 8]>, ConfigError> {
+            values
+                .into_iter()
+                .map(|s| {
+                    HeaderName::from_bytes(s.value.as_bytes()).map_err(|_| {
+                        ConfigError::InvalidHeaderName {
+                            value: s.value.clone(),
+                            origin: "request_filter_device".to_string(),
+                        }
+                    })
                 })
-            })
-            .collect::<Result<SmallVec<_>, _>>()?;
-
-        let deny_headers = spec
-            .deny_headers
-            .into_iter()
-            .map(|s| {
-                HeaderName::from_bytes(s.as_bytes()).map_err(|_| ConfigError::InvalidHeaderName {
-                    value: s,
-                    origin: origin.to_string(),
-                })
-            })
-            .collect::<Result<SmallVec<_>, _>>()?;
-
-        let allow_headers: SmallVec<[HeaderName; 8]> = spec
-            .allow_headers
-            .into_iter()
-            .map(|s| {
-                HeaderName::from_bytes(s.as_bytes()).map_err(|_| ConfigError::InvalidHeaderName {
-                    value: s,
-                    origin: origin.to_string(),
-                })
-            })
-            .collect::<Result<SmallVec<_>, _>>()?;
-
-        let required_headers: SmallVec<[HeaderName; 8]> = spec
-            .required_headers
-            .into_iter()
-            .map(|s| {
-                HeaderName::from_bytes(s.as_bytes()).map_err(|_| ConfigError::InvalidHeaderName {
-                    value: s,
-                    origin: origin.to_string(),
-                })
-            })
-            .collect::<Result<SmallVec<_>, _>>()?;
+                .collect()
+        }
 
         Ok(Self {
-            enable: spec.enable,
-            allow_methods,
-            deny_methods,
-            deny_headers,
-            allow_headers,
-            required_headers,
-            max_header_bytes: spec.max_header_bytes as usize,
-            max_body_bytes: spec.max_body_bytes as usize,
-            max_suspicious_body_bytes: spec.max_suspicious_body_bytes as usize,
-            deny_status: spec.deny_status.map(|v| v as u16),
+            enable: spec.enable.value,
+            allow_methods: methods(spec.allow_methods)?,
+            deny_methods: methods(spec.deny_methods)?,
+            deny_headers: headers(spec.deny_headers)?,
+            allow_headers: headers(spec.allow_headers)?,
+            required_headers: headers(spec.required_headers)?,
+            max_header_bytes: spec.max_header_bytes.value as usize,
+            max_body_bytes: spec.max_body_bytes.value as usize,
+            max_suspicious_body_bytes: spec.max_suspicious_body_bytes.value as usize,
+            deny_status: spec.deny_status.map(|v| v.value as u16),
             client_body_timeout: spec
                 .client_body_timeout_seconds
-                .map(|v| Duration::from_secs(v as u64)),
-            paths: spec.paths.into_iter().collect(),
+                .map(|v| Duration::from_secs(v.value as u64)),
+            paths: spec.paths.into_iter().map(|p| p.value).collect(),
         })
     }
 }
@@ -161,40 +134,27 @@ impl TryFrom<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::HclOrigin;
-    use std::path::PathBuf;
-
-    fn test_origin() -> HclOrigin {
-        HclOrigin {
-            file: PathBuf::from("test.hcl"),
-            section: "device.request_filter".to_string(),
-            index: None,
-        }
-    }
+    use confval::provenance::Located;
 
     fn default_spec() -> RequestFilterDeviceSpec {
         RequestFilterDeviceSpec {
-            origin: test_origin(),
-            enable: true,
-            allow_methods: vec![],
-            deny_methods: vec![],
-            deny_headers: vec![],
-            allow_headers: vec![],
-            required_headers: vec![],
-            max_header_bytes: 16 * 1024,
-            max_body_bytes: 1024 * 1024,
-            max_suspicious_body_bytes: 8 * 1024,
-            client_body_timeout_seconds: None,
-            deny_status: None,
-            paths: vec![],
+            enable: Located::detached(true),
+            ..Default::default()
         }
+    }
+
+    fn located_list(values: &[&str]) -> Vec<Located<String>> {
+        values
+            .iter()
+            .map(|v| Located::detached(v.to_string()))
+            .collect()
     }
 
     #[test]
     fn valid_methods_parsed() {
         // Arrange
         let spec = RequestFilterDeviceSpec {
-            allow_methods: vec!["GET".to_string(), "POST".to_string()],
+            allow_methods: located_list(&["GET", "POST"]),
             ..default_spec()
         };
 
@@ -211,7 +171,7 @@ mod tests {
     fn invalid_method_fails() {
         // Arrange
         let spec = RequestFilterDeviceSpec {
-            allow_methods: vec!["INVALID METHOD".to_string()],
+            allow_methods: located_list(&["INVALID METHOD"]),
             ..default_spec()
         };
 
@@ -230,7 +190,7 @@ mod tests {
     fn valid_headers_parsed() {
         // Arrange
         let spec = RequestFilterDeviceSpec {
-            deny_headers: vec!["x-custom".to_string()],
+            deny_headers: located_list(&["x-custom"]),
             ..default_spec()
         };
 
@@ -246,7 +206,7 @@ mod tests {
     fn invalid_header_fails() {
         // Arrange
         let spec = RequestFilterDeviceSpec {
-            deny_headers: vec!["invalid header!".to_string()],
+            deny_headers: located_list(&["invalid header!"]),
             ..default_spec()
         };
 
@@ -265,7 +225,7 @@ mod tests {
     fn client_body_timeout_converted() {
         // Arrange
         let spec = RequestFilterDeviceSpec {
-            client_body_timeout_seconds: Some(30),
+            client_body_timeout_seconds: Some(Located::detached(30)),
             ..default_spec()
         };
 

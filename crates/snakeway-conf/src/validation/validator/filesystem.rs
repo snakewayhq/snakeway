@@ -1,9 +1,6 @@
-use crate::types::HclOrigin;
-use crate::types::device_issues;
-use confval::ValidationReport;
-use nix::NixPath;
+use confval::provenance::{Located, Report};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
     if !path.is_file() {
@@ -19,65 +16,80 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-pub(crate) fn validate_geoip_db_file(
-    geoip_db: &Path,
-    report: &mut ValidationReport<HclOrigin>,
-    origin: &HclOrigin,
-) {
-    if !geoip_db.is_file() {
-        if NixPath::is_empty(geoip_db) {
-            report.push(device_issues::geoip_db_path_is_empty(
-                geoip_db.display(),
-                origin,
-            ));
+pub(crate) fn validate_geoip_db_file(geoip_db: &Located<PathBuf>, report: &mut Report) {
+    let path = geoip_db.value.as_path();
+    if !path.is_file() {
+        if path.as_os_str().is_empty() {
+            report
+                .error(format!("geoip db path is empty: {}", path.display()))
+                .at(geoip_db.span)
+                .emit();
         }
-        if !geoip_db.exists() {
-            report.push(device_issues::geoip_db_path_does_not_exist(
-                geoip_db.display(),
-                origin,
-            ));
+        if !path.exists() {
+            report
+                .error(format!("geoip db path does not exist: {}", path.display()))
+                .at(geoip_db.span)
+                .emit();
         }
-        if !geoip_db.is_file() {
-            report.push(device_issues::geoip_db_is_not_a_file(
-                geoip_db.display(),
-                origin,
-            ));
+        if !path.is_file() {
+            report
+                .error(format!("geoip db path is not a file: {}", path.display()))
+                .at(geoip_db.span)
+                .emit();
         }
     }
 }
 
-pub(crate) fn validate_ua_parser_regexes_file(
-    path: &Path,
-    report: &mut ValidationReport<HclOrigin>,
-    origin: &HclOrigin,
-) {
-    if NixPath::is_empty(path) {
-        report.push(device_issues::ua_parser_regexes_path_is_empty(
-            path.display(),
-            origin,
-        ));
+pub(crate) fn validate_ua_parser_regexes_file(located: &Located<PathBuf>, report: &mut Report) {
+    let path = located.value.as_path();
+    if path.as_os_str().is_empty() {
+        report
+            .error(format!(
+                "ua_parser_regexes path is empty: {}",
+                path.display()
+            ))
+            .at(located.span)
+            .emit();
         return;
     }
     if !path.exists() {
-        report.push(device_issues::ua_parser_regexes_path_does_not_exist(
-            path.display(),
-            origin,
-        ));
+        report
+            .error(format!(
+                "ua_parser_regexes path does not exist: {}",
+                path.display()
+            ))
+            .at(located.span)
+            .help(
+                "Provide a valid path to a ua-parser regexes.yaml file, or remove the setting \
+                 to use the bundled default.",
+            )
+            .emit();
         return;
     }
     if !path.is_file() {
-        report.push(device_issues::ua_parser_regexes_path_is_not_a_file(
-            path.display(),
-            origin,
-        ));
+        report
+            .error(format!(
+                "ua_parser_regexes path is not a file: {}",
+                path.display()
+            ))
+            .at(located.span)
+            .emit();
         return;
     }
     if let Ok(contents) = std::fs::read_to_string(path)
         && !contents.contains("user_agent_parsers")
     {
-        report.push(
-            device_issues::ua_parser_regexes_file_missing_expected_content(path.display(), origin),
-        );
+        report
+            .error(format!(
+                "ua_parser_regexes file does not appear to be a valid ua-parser regexes.yaml: {}",
+                path.display()
+            ))
+            .at(located.span)
+            .help(
+                "Expected the file to contain a 'user_agent_parsers' section. See \
+                 https://github.com/ua-parser/uap-core for the expected format.",
+            )
+            .emit();
     }
 }
 
@@ -149,33 +161,31 @@ mod tests {
     #[test]
     fn validate_ua_parser_empty_path() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("ua_parser");
-        let path = Path::new("");
+        let mut report = Report::new();
+        let path = Located::detached(PathBuf::from(""));
 
         // Act
-        validate_ua_parser_regexes_file(path, &mut report, &origin);
+        validate_ua_parser_regexes_file(&path, &mut report);
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.errors().iter().any(|e| e.message.contains("empty")));
+        assert!(report.issues().iter().any(|e| e.message.contains("empty")));
     }
 
     #[test]
     fn validate_ua_parser_not_found() {
         // Arrange
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("ua_parser");
-        let path = Path::new("/nonexistent/regexes.yaml");
+        let mut report = Report::new();
+        let path = Located::detached(PathBuf::from("/nonexistent/regexes.yaml"));
 
         // Act
-        validate_ua_parser_regexes_file(path, &mut report, &origin);
+        validate_ua_parser_regexes_file(&path, &mut report);
 
         // Assert
         assert!(report.has_issues());
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message.contains("does not exist"))
         );
@@ -184,18 +194,18 @@ mod tests {
     #[test]
     fn validate_ua_parser_is_directory() {
         // Arrange
+        let mut report = Report::new();
         let dir = tempdir().expect("failed to create temp dir");
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("ua_parser");
+        let path = Located::detached(dir.path().to_path_buf());
 
         // Act
-        validate_ua_parser_regexes_file(dir.path(), &mut report, &origin);
+        validate_ua_parser_regexes_file(&path, &mut report);
 
         // Assert
         assert!(report.has_issues());
         assert!(
             report
-                .errors()
+                .issues()
                 .iter()
                 .any(|e| e.message.contains("not a file"))
         );
@@ -204,22 +214,21 @@ mod tests {
     #[test]
     fn validate_ua_parser_missing_content() {
         // Arrange
+        let mut report = Report::new();
         let dir = tempdir().expect("failed to create temp dir");
-        let path = dir.path().join("regexes.yaml");
-        let mut f = File::create(&path).expect("failed to create file");
-        f.write_all(b"some random content")
-            .expect("failed to write");
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("ua_parser");
+        let file_path = dir.path().join("regexes.yaml");
+        let mut file = File::create(&file_path).expect("create file");
+        file.write_all(b"something else entirely").expect("write");
+        let path = Located::detached(file_path);
 
         // Act
-        validate_ua_parser_regexes_file(&path, &mut report, &origin);
+        validate_ua_parser_regexes_file(&path, &mut report);
 
         // Assert
         assert!(report.has_issues());
         assert!(
             report
-                .warnings()
+                .issues()
                 .iter()
                 .any(|w| w.message.contains("does not appear to be a valid"))
         );
@@ -228,18 +237,36 @@ mod tests {
     #[test]
     fn validate_ua_parser_valid() {
         // Arrange
+        let mut report = Report::new();
         let dir = tempdir().expect("failed to create temp dir");
-        let path = dir.path().join("regexes.yaml");
-        let mut f = File::create(&path).expect("failed to create file");
-        f.write_all(b"user_agent_parsers:\n  - regex: '.*'\n")
-            .expect("failed to write");
-        let mut report = ValidationReport::default();
-        let origin = HclOrigin::test("ua_parser");
+        let file_path = dir.path().join("regexes.yaml");
+        let mut file = File::create(&file_path).expect("create file");
+        file.write_all(b"user_agent_parsers:\n  - regex: test")
+            .expect("write");
+        let path = Located::detached(file_path);
 
         // Act
-        validate_ua_parser_regexes_file(&path, &mut report, &origin);
+        validate_ua_parser_regexes_file(&path, &mut report);
 
         // Assert
-        assert!(!report.has_issues());
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn validate_geoip_db_missing_file() {
+        // Arrange
+        let mut report = Report::new();
+        let path = Located::detached(PathBuf::from("/nonexistent/db.mmdb"));
+
+        // Act
+        validate_geoip_db_file(&path, &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("geoip db path does not exist"))
+        );
     }
 }

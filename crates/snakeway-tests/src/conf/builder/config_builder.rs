@@ -1,6 +1,7 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
+use confval::provenance::Located;
 use snakeway_core::testing_api::conf::types::{
-    AcmeChallengeSpec, BindInterfaceInput, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
+    ACME_CHALLENGE_HTTP01, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
     IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,
     RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
     StructuredLoggingDeviceSpec, TlsTerminationSpec,
@@ -22,8 +23,7 @@ impl Default for ConfigBuilder {
     fn default() -> Self {
         Self {
             server_spec: ServerSpec {
-                version: 1,
-                threads: Some(1),
+                threads: Some(Located::detached(1)),
                 ..Default::default()
             },
             ingress_specs: vec![],
@@ -44,24 +44,24 @@ impl ConfigBuilder {
 
     pub(crate) fn make_bind(include_tls: bool) -> BindSpec {
         BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: DEFAULT_LISTENER_PORT,
-            tls: include_tls.then_some(TlsTerminationSpec::Manual {
-                cert: PathBuf::from(CERT_SERVER_PEM),
-                key: PathBuf::from(CERT_SERVER_KEY),
-            }),
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(DEFAULT_LISTENER_PORT),
+            tls: include_tls.then_some(Located::detached(TlsTerminationSpec::Manual {
+                cert: Located::detached(PathBuf::from(CERT_SERVER_PEM)),
+                key: Located::detached(PathBuf::from(CERT_SERVER_KEY)),
+            })),
             ..Default::default()
         }
     }
 
     pub(crate) fn make_bind_with_acme() -> BindSpec {
         BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: DEFAULT_LISTENER_PORT,
-            tls: Some(TlsTerminationSpec::Acme {
-                domains: vec![TEST_HOST.to_string()],
-                challenge: AcmeChallengeSpec::Http01,
-            }),
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(DEFAULT_LISTENER_PORT),
+            tls: Some(Located::detached(TlsTerminationSpec::Acme {
+                domains: vec![Located::detached(TEST_HOST.to_string())],
+                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            })),
             ..Default::default()
         }
     }
@@ -121,7 +121,8 @@ impl ConfigBuilder {
             .bind
             .as_mut()
             .expect("no ingress specs found - cannot set connection filter")
-            .connection_filter = Some(connection_filter.clone());
+            .value
+            .connection_filter = Some(Located::detached(connection_filter.clone()));
         self
     }
 
@@ -142,7 +143,8 @@ impl ConfigBuilder {
             .bind
             .as_mut()
             .expect("no ingress specs found - cannot set connection filter")
-            .connection_rate_limiting_filter = Some(rate_limiter.clone());
+            .value
+            .connection_rate_limiting_filter = Some(Located::detached(rate_limiter.clone()));
         self
     }
 
@@ -152,8 +154,8 @@ impl ConfigBuilder {
         window_seconds: i64,
     ) -> Self {
         let rate_limiter = ConnectionRateLimitingFilterSpec {
-            max_connections_per_second,
-            window_seconds,
+            max_connections_per_second: Located::detached(max_connections_per_second),
+            window_seconds: Located::detached(window_seconds),
         };
         self.set_rate_limiter_on_last_bind(&rate_limiter)
     }
