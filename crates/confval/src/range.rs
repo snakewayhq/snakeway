@@ -1,4 +1,3 @@
-use crate::{Origin, ValidationIssue};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -63,46 +62,6 @@ where
             .help(help)
             .emit();
     }
-
-    /// Returns `Some(issue)` if value is out of range, `None` if valid.
-    pub fn check<O: Origin>(
-        &self,
-        value: T,
-        field: &'static str,
-        origin: &O,
-    ) -> Option<ValidationIssue<O>> {
-        if value < self.min {
-            let help = self.help.map(String::from).unwrap_or_else(|| {
-                format!(
-                    "Set {} to at least {}{}",
-                    field,
-                    self.min,
-                    self.units.unwrap_or("")
-                )
-            });
-            Some(ValidationIssue::error_with_help(
-                format!("{} must be at least {}", field, self.min),
-                origin.clone(),
-                help,
-            ))
-        } else if value > self.max {
-            let help = self.help.map(String::from).unwrap_or_else(|| {
-                format!(
-                    "Set {} to at most {}{}",
-                    field,
-                    self.max,
-                    self.units.unwrap_or("")
-                )
-            });
-            Some(ValidationIssue::error_with_help(
-                format!("{} must be at most {}", field, self.max),
-                origin.clone(),
-                help,
-            ))
-        } else {
-            None
-        }
-    }
 }
 
 /// Define a named range constraint as a const.
@@ -145,105 +104,67 @@ macro_rules! range_constraint {
     (@units) => { None };
 }
 
-/// Validate a field against a range constraint, pushing any issue to the report.
-/// Uses `stringify!` to derive the field name at zero runtime cost.
-///
-/// ```rust,ignore
-/// validate_range_field!(THREADS, self.threads, report, origin);
-/// validate_range_field!(PORT, port, report, origin);
-/// ```
-#[macro_export]
-macro_rules! validate_range_field {
-    ($constraint:expr, $self:ident . $field:ident, $report:expr, $origin:expr) => {
-        if let Some(issue) =
-            $crate::RangeConstraint::check(&$constraint, $self.$field, stringify!($field), $origin)
-        {
-            $report.error(issue);
-        }
-    };
-    ($constraint:expr, $var:ident, $report:expr, $origin:expr) => {
-        if let Some(issue) =
-            $crate::RangeConstraint::check(&$constraint, $var, stringify!($var), $origin)
-        {
-            $report.error(issue);
-        }
-    };
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::SimpleOrigin;
+    use crate::provenance::{Located, Report};
 
-    fn test_origin() -> SimpleOrigin {
-        SimpleOrigin::new("test.toml", "server block")
-    }
+    range_constraint!(PORT, i64, min: 1, max: 65535);
+    range_constraint!(THREADS, i64, min: 1, max: 1024);
+    range_constraint!(INTERVAL, i64, min: 1, max: 3600, units: "s");
+    range_constraint!(WORKERS, i64, min: 1, max: 128, help: "Match this to your CPU core count.");
+    range_constraint!(TIMEOUT, i64, min: 1, max: 300, units: "s", help: "Keep this under 5 minutes for responsive shutdowns.");
 
-    range_constraint!(PORT, u16, min: 1, max: 65535);
-    range_constraint!(THREADS, usize, min: 1, max: 1024);
-    range_constraint!(INTERVAL, u64, min: 1, max: 3600, units: "s");
-    range_constraint!(WORKERS, usize, min: 1, max: 128, help: "Match this to your CPU core count.");
-    range_constraint!(TIMEOUT, u64, min: 1, max: 300, units: "s", help: "Keep this under 5 minutes for responsive shutdowns.");
-
-    #[test]
-    fn in_range_returns_none() {
-        assert!(PORT.check(80, "port", &test_origin()).is_none());
-        assert!(PORT.check(1, "port", &test_origin()).is_none());
-        assert!(PORT.check(65535, "port", &test_origin()).is_none());
+    fn check(constraint: &RangeConstraint<i64>, value: i64, field: &'static str) -> Report {
+        let mut report = Report::new();
+        constraint.check_located(&Located::detached(value), field, &mut report);
+        report
     }
 
     #[test]
-    fn below_min_returns_issue() {
-        let issue = PORT.check(0, "port", &test_origin()).unwrap();
-        assert!(issue.message.contains("port must be at least 1"));
+    fn in_range_reports_nothing() {
+        assert!(!check(&PORT, 80, "port").has_issues());
+        assert!(!check(&PORT, 1, "port").has_issues());
+        assert!(!check(&PORT, 65535, "port").has_issues());
     }
 
     #[test]
-    fn above_max_returns_issue() {
-        let issue = THREADS.check(2000, "threads", &test_origin()).unwrap();
-        assert!(issue.message.contains("threads must be at most 1024"));
+    fn below_min_reports_issue() {
+        let report = check(&PORT, 0, "port");
+        assert!(
+            report.issues()[0]
+                .message
+                .contains("port must be at least 1")
+        );
+    }
+
+    #[test]
+    fn above_max_reports_issue() {
+        let report = check(&THREADS, 2000, "threads");
+        assert!(
+            report.issues()[0]
+                .message
+                .contains("threads must be at most 1024")
+        );
     }
 
     #[test]
     fn help_includes_units_when_present() {
-        let issue = INTERVAL.check(0, "interval", &test_origin()).unwrap();
-        assert!(issue.help.as_ref().unwrap().contains("s"));
+        let report = check(&INTERVAL, 0, "interval");
+        assert!(report.issues()[0].help.as_ref().unwrap().contains("s"));
     }
 
     #[test]
-    fn help_has_no_units_when_absent() {
-        let issue = PORT.check(0, "port", &test_origin()).unwrap();
-        let help = issue.help.as_ref().unwrap();
-        assert!(
-            !help.ends_with("s"),
-            "expected no trailing units, got: {help}"
-        );
-    }
-
-    #[test]
-    fn custom_help_overrides_generated() {
-        let issue = WORKERS.check(0, "workers", &test_origin()).unwrap();
+    fn custom_help_overrides_generated_text() {
+        let report = check(&WORKERS, 0, "workers");
         assert_eq!(
-            issue.help.as_deref(),
+            report.issues()[0].help.as_deref(),
             Some("Match this to your CPU core count.")
         );
-    }
-
-    #[test]
-    fn custom_help_with_units() {
-        let issue = TIMEOUT.check(0, "timeout", &test_origin()).unwrap();
+        let report = check(&TIMEOUT, 0, "timeout");
         assert_eq!(
-            issue.help.as_deref(),
+            report.issues()[0].help.as_deref(),
             Some("Keep this under 5 minutes for responsive shutdowns.")
-        );
-    }
-
-    #[test]
-    fn custom_help_on_above_max() {
-        let issue = WORKERS.check(999, "workers", &test_origin()).unwrap();
-        assert_eq!(
-            issue.help.as_deref(),
-            Some("Match this to your CPU core count.")
         );
     }
 }

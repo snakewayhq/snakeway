@@ -10,7 +10,7 @@ pub(crate) fn dump(
     repr: RepresentationFormat,
 ) -> anyhow::Result<()> {
     if matches!(repr, RepresentationFormat::Spec) {
-        let (_sources, _span_report, server, devices, ingresses) = load_spec_files(&path)?;
+        let (_sources, _report, server, devices, ingresses) = load_spec_files(&path)?;
         let cfg = (server, devices, ingresses);
         match format {
             ConfigDumpOutputFormat::Json => dump_json(&cfg)?,

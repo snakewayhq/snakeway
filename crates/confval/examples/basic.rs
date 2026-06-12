@@ -1,47 +1,79 @@
-use confval::{
-    RangeConstraint, SimpleOrigin, ValidateSpec, ValidationIssue, ValidationReport,
-    range_constraint, validate_range_field,
-};
+//! End-to-end example: parse an HCL config span-first, validate it, lower
+//! it to a runtime type, and render the diagnostics.
+//!
+//! Run with: cargo run --example basic --features derive,color
 
-range_constraint!(PORT, u16, min: 1, max: 65535);
-range_constraint!(WORKERS, usize, min: 1, max: 512);
+use confval::provenance::{Located, Lower, Report, SourceMap};
+use confval::{RangeConstraint, range_constraint};
 
-struct ServerConfig {
-    port: u16,
-    workers: usize,
-    hostname: String,
+range_constraint!(PORT, i64, min: 1, max: 65535);
+range_constraint!(WORKERS, i64, min: 1, max: 512);
+
+#[derive(confval::Spec)]
+struct ServerSpec {
+    hostname: Located<String>,
+    port: Located<i64>,
+    #[confval(default = 4)]
+    workers: Located<i64>,
 }
 
-impl ValidateSpec<SimpleOrigin> for ServerConfig {
-    fn validate(&self, origin: &SimpleOrigin, report: &mut ValidationReport<SimpleOrigin>) {
-        validate_range_field!(PORT, self.port, report, origin);
-        validate_range_field!(WORKERS, self.workers, report, origin);
+fn validate_server(spec: &ServerSpec, report: &mut Report) {
+    PORT.check_located(&spec.port, "port", report);
+    WORKERS.check_located(&spec.workers, "workers", report);
 
-        if self.hostname.is_empty() {
-            report.error(ValidationIssue::error_with_help(
-                "hostname cannot be empty",
-                origin.clone(),
-                "Set hostname to a valid DNS name or IP address.",
-            ));
-        }
+    if spec.hostname.value.is_empty() {
+        report
+            .error("hostname must not be empty")
+            .at(spec.hostname.span)
+            .help("Set hostname to a reachable address, e.g. \"127.0.0.1\".")
+            .emit();
     }
+}
+
+#[derive(confval::Config)]
+#[confval(lower_from = ServerSpec)]
+struct ServerConfig {
+    hostname: String,
+    #[confval(lower(from = port, with = port_to_u16))]
+    port: u16,
+    #[confval(lower(from = workers, with = workers_to_usize))]
+    workers: usize,
+}
+
+fn port_to_u16(value: &Located<i64>, _report: &mut Report) -> Option<u16> {
+    // Safe: the range was validated and lowering only runs on a clean report.
+    Some(value.value as u16)
+}
+
+fn workers_to_usize(value: &Located<i64>, _report: &mut Report) -> Option<usize> {
+    Some(value.value as usize)
 }
 
 fn main() {
-    let config = ServerConfig {
-        port: 0,
-        workers: 2,
-        hostname: String::new(),
-    };
-    let origin = SimpleOrigin::new("server.toml", "server block");
-    let mut report = ValidationReport::default();
+    let input = r#"hostname = ""
+port = 99999
+"#;
 
-    config.validate(&origin, &mut report);
+    let mut sources = SourceMap::new();
+    let mut report = Report::new();
+    let id = sources.add("server.hcl", input);
 
-    if report.has_issues() {
+    let spec: Option<ServerSpec> = confval::hcl::parse_hcl(&sources, id, &mut report);
+    if let Some(spec) = &spec {
+        validate_server(spec, &mut report);
+    }
+
+    if report.has_errors() {
         let mut out = String::new();
-        report.render_plain(&mut out).unwrap();
+        report.render_pretty(&sources, &mut out).unwrap();
         eprint!("{out}");
         std::process::exit(1);
     }
+
+    let spec = spec.expect("parse returned None without reporting an error");
+    let config = ServerConfig::lower(&spec, &mut report).expect("validated config lowers");
+    println!(
+        "listening on {}:{} with {} workers",
+        config.hostname, config.port, config.workers
+    );
 }

@@ -1,5 +1,3 @@
-use crate::types::HclOrigin;
-use confval::ValidationReport;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -34,16 +32,6 @@ pub enum ConfigError {
     Custom { message: String },
 
     //-------------------------------------------------------------------------
-    // Parsing
-    //-------------------------------------------------------------------------
-    #[error("invalid configuration file: {path}\n\n{source}")]
-    Parse {
-        path: PathBuf,
-        #[source]
-        source: hcl::Error,
-    },
-
-    //-------------------------------------------------------------------------
     // Validation during transformation
     //-------------------------------------------------------------------------
     #[error("invalid server configuration: {message}")]
@@ -67,11 +55,9 @@ pub enum ConfigError {
     #[error("invalid upstream: {message}")]
     InvalidUpstream { message: String },
 
-    #[error("validation failed: {validation_report:?} {span_report:?}")]
+    #[error("validation failed: {report:?}")]
     SemanticValidationFailed {
-        validation_report: ValidationReport<HclOrigin>,
-        span_report: confval::provenance::Report,
+        report: confval::provenance::Report,
         sources: confval::provenance::SourceMap,
     },
 }
-

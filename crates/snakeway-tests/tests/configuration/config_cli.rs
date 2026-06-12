@@ -76,8 +76,8 @@ fn semantically_invalid_config_reports_violations() {
     // Assert
     let err = result.expect_err("semantically invalid config should fail");
     match err {
-        ConfigError::SemanticValidationFailed { span_report, .. } => {
-            assert!(span_report.has_errors(), "should report errors");
+        ConfigError::SemanticValidationFailed { report, .. } => {
+            assert!(report.has_errors(), "should report errors");
         }
         other => panic!("expected SemanticValidationFailed, got: {other}"),
     }
@@ -149,14 +149,14 @@ fn nonexistent_ca_file_produces_validation_error() {
     // Assert
     let err = result.expect_err("nonexistent CA file should produce validation error");
     match err {
-        ConfigError::SemanticValidationFailed { span_report, .. } => {
+        ConfigError::SemanticValidationFailed { report, .. } => {
             assert!(
-                span_report
+                report
                     .issues()
                     .iter()
                     .any(|e| e.message.contains("CA file")),
                 "should report CA file error; got: {:?}",
-                span_report.issues()
+                report.issues()
             );
         }
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),

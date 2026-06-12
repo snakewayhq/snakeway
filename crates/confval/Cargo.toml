@@ -1,9 +1,9 @@
 [package]
 name = "confval"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 license = "Apache-2.0"
-description = "Config validation primitives for Rust"
+description = "Span-first configuration parsing, validation, and lowering for Rust"
 repository = "https://github.com/snakewayhq/snakeway"
 readme = "README.md"
 keywords = ["configuration", "validation", "config"]

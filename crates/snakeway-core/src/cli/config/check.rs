@@ -51,33 +51,22 @@ pub(crate) fn check(
             }
 
             match err {
-                ConfigError::SemanticValidationFailed {
-                    validation_report,
-                    span_report,
-                    sources,
-                } => {
+                ConfigError::SemanticValidationFailed { report, sources } => {
                     match format {
                         ConfigCheckOutputFormat::Pretty => {
                             let mut out = String::new();
-                            span_report.render_pretty(&sources, &mut out).ok();
-                            validation_report.render_pretty(&mut out).ok();
+                            report.render_pretty(&sources, &mut out).ok();
                             eprint!("{out}");
                         }
                         ConfigCheckOutputFormat::Plain => {
                             let mut out = String::new();
-                            span_report.render_plain(&sources, &mut out).ok();
-                            validation_report.render_plain(&mut out).ok();
+                            report.render_plain(&sources, &mut out).ok();
                             eprint!("{out}");
                         }
                         ConfigCheckOutputFormat::Json => {
-                            if span_report.has_issues() {
-                                let mut out = String::new();
-                                span_report.render_json(&sources, &mut out).ok();
-                                eprintln!("{out}");
-                            }
-                            if validation_report.has_issues() {
-                                validation_report.render_json(&mut std::io::stderr()).ok();
-                            }
+                            let mut out = String::new();
+                            report.render_json(&sources, &mut out).ok();
+                            eprintln!("{out}");
                         }
                     };
                 }

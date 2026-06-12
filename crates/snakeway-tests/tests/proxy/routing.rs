@@ -411,14 +411,14 @@ fn same_path_different_hosts_is_rejected() {
     let err =
         result.expect_err("duplicate route paths on the same listener should fail validation");
     match err {
-        ConfigError::SemanticValidationFailed { span_report, .. } => {
+        ConfigError::SemanticValidationFailed { report, .. } => {
             assert!(
-                span_report
+                report
                     .issues()
                     .iter()
                     .any(|e| e.message.contains("duplicate route path")),
                 "should report duplicate route path; got: {:?}",
-                span_report.issues()
+                report.issues()
             );
         }
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),

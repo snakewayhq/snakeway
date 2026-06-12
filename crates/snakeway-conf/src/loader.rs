@@ -3,10 +3,9 @@ use crate::lower::lower_configs;
 use crate::parse::flatten_devices;
 use crate::types::RuntimeConfig;
 use crate::types::{
-    DeviceSpec, DevicesFile, EntrypointSpec, HclOrigin, IngressSpec, ServerConfig, ServerSpec,
+    DeviceSpec, DevicesFile, EntrypointSpec, IngressSpec, ServerConfig, ServerSpec,
 };
 use crate::validation::{ConfigError, validate_spec};
-use confval::ValidationReport;
 use confval::hcl::parse_hcl;
 use confval::provenance::{Located, Lower, Report, SourceMap, Span};
 
@@ -16,34 +15,24 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct ValidatedConfig {
     pub config: RuntimeConfig,
-    pub report: ValidationReport<HclOrigin>,
-    pub span_report: Report,
+    pub report: Report,
     pub sources: SourceMap,
 }
 
 impl ValidatedConfig {
     pub fn has_warnings(&self) -> bool {
-        self.report.has_warnings() || self.span_report.has_warnings()
+        self.report.has_warnings()
     }
 
-    /// Renders the issues from both report worlds in the plain format,
-    /// span-first issues before origin-based ones.
     pub fn render_plain(&self, out: &mut String) {
-        self.span_report.render_plain(&self.sources, out).ok();
-        self.report.render_plain(out).ok();
+        self.report.render_plain(&self.sources, out).ok();
     }
 }
 
 #[hotpath::measure]
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let (sources, span_report, server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
-    load_config_from_parts(
-        sources,
-        span_report,
-        server_spec,
-        ingress_specs,
-        device_specs,
-    )
+    let (sources, report, server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
+    load_config_from_parts(sources, report, server_spec, ingress_specs, device_specs)
 }
 
 /// Load configs from spec definitions.
@@ -64,34 +53,21 @@ pub fn load_config_from_specs(
 
 fn load_config_from_parts(
     sources: SourceMap,
-    mut span_report: Report,
+    mut report: Report,
     server_spec: ServerSpec,
     ingress_specs: Vec<Located<IngressSpec>>,
     device_specs: Vec<Located<DeviceSpec>>,
 ) -> Result<ValidatedConfig, ConfigError> {
-    let validation_report = validate_spec(
-        &server_spec,
-        &ingress_specs,
-        &device_specs,
-        &mut span_report,
-    );
+    validate_spec(&server_spec, &ingress_specs, &device_specs, &mut report);
 
     // Lowering must not run on a report that contains errors.
-    if validation_report.has_errors() || span_report.has_errors() {
-        return Err(ConfigError::SemanticValidationFailed {
-            validation_report,
-            span_report,
-            sources,
-        });
+    if report.has_errors() {
+        return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
 
-    let server_config = ServerConfig::lower(&server_spec, &mut span_report);
-    if span_report.has_errors() {
-        return Err(ConfigError::SemanticValidationFailed {
-            validation_report,
-            span_report,
-            sources,
-        });
+    let server_config = ServerConfig::lower(&server_spec, &mut report);
+    if report.has_errors() {
+        return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
     let server_config =
         server_config.expect("server lowering returned None without reporting an error");
@@ -100,8 +76,7 @@ fn load_config_from_parts(
 
     Ok(ValidatedConfig {
         config,
-        report: validation_report,
-        span_report,
+        report,
         sources,
     })
 }
@@ -117,7 +92,7 @@ pub(crate) type Spec = (
 /// Load spec from files
 pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     let mut sources = SourceMap::new();
-    let mut span_report = Report::new();
+    let mut report = Report::new();
 
     //--------------------------------------------------------------------------
     // Entrypoint: span-first parsing
@@ -133,14 +108,10 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     // operator sees parse and validation problems in one pass; the error
     // gate before lowering stops the pipeline either way. Only a tree that
     // could not be built at all stops here.
-    let entry: Option<EntrypointSpec> = parse_hcl(&sources, source_id, &mut span_report);
+    let entry: Option<EntrypointSpec> = parse_hcl(&sources, source_id, &mut report);
     let Some(entry) = entry else {
-        debug_assert!(span_report.has_errors());
-        return Err(ConfigError::SemanticValidationFailed {
-            validation_report: ValidationReport::default(),
-            span_report,
-            sources,
-        });
+        debug_assert!(report.has_errors());
+        return Err(ConfigError::SemanticValidationFailed { report, sources });
     };
 
     //--------------------------------------------------------------------------
@@ -160,7 +131,7 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
             source: e,
         })?;
         let source_id = sources.add(path.display().to_string(), &text);
-        let parsed: Option<DevicesFile> = parse_hcl(&sources, source_id, &mut span_report);
+        let parsed: Option<DevicesFile> = parse_hcl(&sources, source_id, &mut report);
         match parsed {
             Some(file) => parsed_devices.extend(flatten_devices(file)),
             None => any_unparseable = true,
@@ -183,25 +154,15 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
             0,
             text.len() as u32,
         );
-        let parsed: Option<IngressSpec> = parse_hcl(&sources, file_span.source, &mut span_report);
+        let parsed: Option<IngressSpec> = parse_hcl(&sources, file_span.source, &mut report);
         match parsed {
             Some(ingress) => ingresses.push(Located::new(ingress, file_span)),
             None => any_unparseable = true,
         }
     }
     if any_unparseable {
-        return Err(ConfigError::SemanticValidationFailed {
-            validation_report: ValidationReport::default(),
-            span_report,
-            sources,
-        });
+        return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
 
-    Ok((
-        sources,
-        span_report,
-        entry.server,
-        parsed_devices,
-        ingresses,
-    ))
+    Ok((sources, report, entry.server, parsed_devices, ingresses))
 }

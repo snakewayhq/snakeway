@@ -4,7 +4,7 @@ use confval::provenance::{Located, Report};
 pub(crate) fn validate_tls(
     server: &ServerSpec,
     ingresses: &[Located<IngressSpec>],
-    span_report: &mut Report,
+    report: &mut Report,
 ) {
     let mut any_tls_listener = false;
     let mut any_acme_listener = false;
@@ -25,7 +25,7 @@ pub(crate) fn validate_tls(
     // If ACME is configured anywhere, server.tls_automation must exist
     if any_acme_listener {
         let Some(tls_automation_cfg) = &server.tls_automation else {
-            span_report
+            report
                 .error("ACME configured in ingress but server.tls_automation is not configured")
                 .emit();
             return;
@@ -51,7 +51,7 @@ pub(crate) fn validate_tls(
     if let Some(tls_automation) = &server.tls_automation
         && !any_tls_listener
     {
-        span_report
+        report
             .warning("server.tls_automation configured but no TLS listeners defined")
             .at(tls_automation.span)
             .emit();
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn acme_requires_tls_automation() {
         // Arrange
-        let mut span_report = Report::new();
+        let mut report = Report::new();
         let server = ServerSpec {
             tls_automation: None,
             ..Default::default()
@@ -132,18 +132,18 @@ mod tests {
         validate_tls(
             &server,
             &[ingress(minimal_bind_with_acme())],
-            &mut span_report,
+            &mut report,
         );
 
         // Assert
-        assert!(span_report.issues().iter().any(|i| i.message
+        assert!(report.issues().iter().any(|i| i.message
             == "ACME configured in ingress but server.tls_automation is not configured"));
     }
 
     #[test]
     fn tls_automation_without_tls_listeners_produces_warning() {
         // Arrange
-        let mut span_report = Report::new();
+        let mut report = Report::new();
         let server = ServerSpec {
             tls_automation: Some(Located::detached(minimal_tls_automation())),
             ..Default::default()
@@ -156,12 +156,12 @@ mod tests {
         };
 
         // Act
-        validate_tls(&server, &[ingress(plain_bind)], &mut span_report);
+        validate_tls(&server, &[ingress(plain_bind)], &mut report);
 
         // Assert
-        assert!(!span_report.has_errors());
+        assert!(!report.has_errors());
         assert!(
-            span_report
+            report
                 .issues()
                 .iter()
                 .any(|w| w.message
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn valid_acme_with_tls_automation() {
         // Arrange
-        let mut span_report = Report::new();
+        let mut report = Report::new();
         let server = ServerSpec {
             tls_automation: Some(Located::detached(minimal_tls_automation())),
             ..Default::default()
@@ -182,10 +182,10 @@ mod tests {
         validate_tls(
             &server,
             &[ingress(minimal_bind_with_acme())],
-            &mut span_report,
+            &mut report,
         );
 
         // Assert
-        assert!(!span_report.has_issues(), "got: {:?}", span_report.issues());
+        assert!(!report.has_issues(), "got: {:?}", report.issues());
     }
 }
