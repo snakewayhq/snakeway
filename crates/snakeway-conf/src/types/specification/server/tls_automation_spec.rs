@@ -182,6 +182,7 @@ mod tests {
     use super::*;
     use confval::hcl::parse_hcl;
     use confval::provenance::SourceMap;
+    use std::path::Path;
 
     fn parse_tls(input: &str) -> (Report, Option<TlsAutomationSpec>) {
         let mut sources = SourceMap::new();
@@ -230,7 +231,7 @@ cert_store {
         );
         assert!(matches!(
             &spec.cert_store.value,
-            CertStoreSpec::Filesystem { cert_dir } if cert_dir.value == PathBuf::from("/etc/certs")
+            CertStoreSpec::Filesystem { cert_dir } if cert_dir.value == Path::new("/etc/certs")
         ));
     }
 

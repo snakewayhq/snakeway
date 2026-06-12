@@ -137,6 +137,7 @@ mod tests {
     use rcgen::generate_simple_self_signed;
     use std::fs::File;
     use std::io::Write;
+    use std::path::Path;
     use tempfile::tempdir;
 
     fn parse_tls(input: &str) -> (Report, Option<TlsTerminationSpec>) {
@@ -159,7 +160,7 @@ mod tests {
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
         assert!(matches!(
             spec.unwrap(),
-            TlsTerminationSpec::Manual { cert, .. } if cert.value == PathBuf::from("cert.pem")
+            TlsTerminationSpec::Manual { cert, .. } if cert.value == Path::new("cert.pem")
         ));
     }
 

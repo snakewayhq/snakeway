@@ -271,6 +271,7 @@ mod tests {
     use crate::types::CertStoreSpec;
     use confval::hcl::parse_hcl;
     use confval::provenance::SourceMap;
+    use std::path::Path;
 
     fn parse_server(input: &str) -> (Report, Option<ServerSpec>) {
         let mut sources = SourceMap::new();
@@ -399,7 +400,7 @@ observability {
         );
         assert!(matches!(
             &tls.value.cert_store.value,
-            CertStoreSpec::Filesystem { cert_dir } if cert_dir.value == PathBuf::from("data/acme/certs")
+            CertStoreSpec::Filesystem { cert_dir } if cert_dir.value == Path::new("data/acme/certs")
         ));
         let span = tls.value.acme.value.directory_url.span;
         assert_eq!(
