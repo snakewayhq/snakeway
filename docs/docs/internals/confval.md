@@ -274,6 +274,22 @@ The generated impl destructures the spec exhaustively with no rest pattern. Addi
 struct without accounting for it on the other side is a compile error, which keeps spec and config
 in lockstep.
 
+For integer width changes, `confval::provenance::narrow` provides ready-made `with` functions:
+`i64_to_u16`, `i64_to_u32`, `i64_to_u64`, `i64_to_usize`, and `opt_` variants for optional fields.
+They narrow with `try_from` rather than `as`: a value that does not fit is reported at its span and
+lowering fails, so a missing range rule surfaces as a located error instead of a silent truncation.
+
+```rust
+use confval::provenance::narrow;
+
+#[derive(confval::Config)]
+#[confval(lower_from = ServerSpec)]
+struct ServerConfig {
+    #[confval(lower(from = port, with = narrow::i64_to_u16))]
+    port: u16,
+}
+```
+
 ## RangeConstraint
 
 Numeric bounds are declared once and checked against located values:

@@ -1,0 +1,5 @@
+error: `lower` requires `from = <field>` or a tuple
+  --> tests/ui/fail/config_lower_missing_from.rs:18:15
+   |
+18 |     #[confval(lower(with = port_to_u16))]
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^

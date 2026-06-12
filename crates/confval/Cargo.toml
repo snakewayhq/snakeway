@@ -25,3 +25,12 @@ confval-derive = { version = "0.1.0", path = "../confval-derive", optional = tru
 
 [dev-dependencies]
 hcl-edit = "0.9"
+trybuild = "1"
+
+[[example]]
+name = "basic"
+required-features = ["derive", "color"]
+
+[[test]]
+name = "compile_fail"
+required-features = ["derive"]

@@ -1,0 +1,5 @@
+error: expected a Spec field name or a tuple of field names
+  --> tests/ui/fail/config_lower_bad_from.rs:18:28
+   |
+18 |     #[confval(lower(from = 42, with = port_to_u16))]
+   |                            ^^

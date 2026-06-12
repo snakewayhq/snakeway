@@ -4,6 +4,7 @@
 
 mod location;
 mod lower;
+pub mod narrow;
 mod report;
 mod source;
 mod span;

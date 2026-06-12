@@ -2,6 +2,7 @@ use crate::types::{
     AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
     ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSourceAddressesSpec,
 };
+use confval::provenance::narrow;
 use confval::provenance::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -9,12 +10,12 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = ServerSpec)]
 pub struct ServerConfig {
-    #[confval(lower(from = version, with = i64_to_u32))]
+    #[confval(lower(from = version, with = narrow::i64_to_u32))]
     pub version: u32,
 
     /// Optional number of worker threads - default is decided by Pingora.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(lower(from = threads, with = opt_i64_to_usize))]
+    #[confval(lower(from = threads, with = narrow::opt_i64_to_usize))]
     pub threads: Option<usize>,
 
     /// Pid file path.
@@ -31,7 +32,7 @@ pub struct ServerConfig {
     #[confval(nested)]
     pub observability: Option<ObservabilityConfig>,
 
-    #[confval(lower(from = dns_refresh_interval_seconds, with = i64_to_u64))]
+    #[confval(lower(from = dns_refresh_interval_seconds, with = narrow::i64_to_u64))]
     pub dns_refresh_interval_seconds: u64,
 
     #[confval(lower(from = shutdown, with = shutdown_or_default))]
@@ -52,10 +53,10 @@ pub struct ServerConfig {
 #[confval(lower_from = ShutdownSpec)]
 pub struct ShutdownConfig {
     /// How long active connections are allowed to finish after a shutdown signal.
-    #[confval(lower(from = drain_seconds, with = opt_i64_to_u64))]
+    #[confval(lower(from = drain_seconds, with = narrow::opt_i64_to_u64))]
     pub drain_seconds: Option<u64>,
     /// Hard ceiling on total shutdown time.
-    #[confval(lower(from = force_timeout_seconds, with = opt_i64_to_u64))]
+    #[confval(lower(from = force_timeout_seconds, with = narrow::opt_i64_to_u64))]
     pub force_timeout_seconds: Option<u64>,
 }
 
@@ -65,7 +66,7 @@ pub struct UpgradeConfig {
     /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
     pub sock: Option<String>,
     /// Maximum retries when connecting/accepting on the upgrade socket.
-    #[confval(lower(from = max_retries, with = opt_i64_to_usize))]
+    #[confval(lower(from = max_retries, with = narrow::opt_i64_to_usize))]
     pub max_retries: Option<usize>,
 }
 
@@ -75,10 +76,10 @@ pub struct PerformanceConfig {
     /// Enable work stealing between threads.
     pub work_stealing: bool,
     /// Number of idle upstream connections kept warm per worker thread.
-    #[confval(lower(from = upstream_connection_pool_size, with = opt_i64_to_usize))]
+    #[confval(lower(from = upstream_connection_pool_size, with = narrow::opt_i64_to_usize))]
     pub upstream_connection_pool_size: Option<usize>,
     /// Number of parallel accept tasks per listener.
-    #[confval(lower(from = parallel_accepts_per_listener, with = opt_i64_to_usize))]
+    #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
     pub parallel_accepts_per_listener: Option<usize>,
 }
 
@@ -96,7 +97,7 @@ pub struct TlsAutomationConfig {
     pub acme: AcmeServerConfig,
     #[confval(nested)]
     pub cert_store: CertStoreConfig,
-    #[confval(lower(from = renew_within_days, with = i64_to_u64))]
+    #[confval(lower(from = renew_within_days, with = narrow::i64_to_u64))]
     pub renew_within_days: u64,
 }
 
@@ -129,24 +130,6 @@ pub struct OtelConfig {
     pub endpoint: String,
     pub service_name: String,
     pub sampling_ratio: f64,
-}
-
-// Narrowing casts are safe throughout: ranges were validated, and the
-// caller gates lowering on a clean report.
-fn i64_to_u32(value: &Located<i64>, _report: &mut Report) -> Option<u32> {
-    Some(value.value as u32)
-}
-
-fn i64_to_u64(value: &Located<i64>, _report: &mut Report) -> Option<u64> {
-    Some(value.value as u64)
-}
-
-fn opt_i64_to_u64(value: &Option<Located<i64>>, _report: &mut Report) -> Option<Option<u64>> {
-    Some(value.as_ref().map(|v| v.value as u64))
-}
-
-fn opt_i64_to_usize(value: &Option<Located<i64>>, _report: &mut Report) -> Option<Option<usize>> {
-    Some(value.as_ref().map(|v| v.value as usize))
 }
 
 fn pid_file_or_default(value: &Option<Located<PathBuf>>, _report: &mut Report) -> Option<PathBuf> {

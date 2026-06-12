@@ -1,0 +1,5 @@
+error: #[derive(Config)] requires #[confval(lower_from = SpecType)]
+ --> tests/ui/fail/config_missing_lower_from.rs:2:8
+  |
+2 | struct ServerConfig {
+  |        ^^^^^^^^^^^^
