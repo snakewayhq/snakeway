@@ -175,7 +175,14 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                             );
                         }
                     });
-                    constructors.push(quote! { #ident: #slot?, });
+                    // A failed nested child is non-fatal to the parent: it is
+                    // replaced with a detached default so the parent and its
+                    // siblings still validate. The child's structural error is
+                    // already in the report, so the lowering gate still blocks
+                    // and the placeholder never reaches runtime.
+                    constructors.push(quote! {
+                        #ident: #slot.unwrap_or_default(),
+                    });
                 }
             }
             FieldShape::NestedList => {

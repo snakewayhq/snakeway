@@ -278,8 +278,13 @@ cert_store {
         // Act
         let (report, spec) = parse_tls(input);
 
-        // Assert
-        assert!(spec.is_none());
+        // Assert: the failed nested child is reported, and the parent is still
+        // constructed (with a default cert_store) so its siblings can validate.
+        assert!(spec.is_some());
+        assert!(matches!(
+            spec.unwrap().cert_store.value,
+            CertStoreSpec::Memory
+        ));
         assert!(
             report
                 .issues()
@@ -296,11 +301,50 @@ cert_store {
         // Act
         let (report, spec) = parse_tls(input);
 
-        // Assert
-        assert!(spec.is_none());
+        // Assert: both missing children are reported, and the parent still
+        // constructs with defaults so the lowering gate (not a None parse)
+        // is what blocks progress.
+        assert!(spec.is_some());
         let messages: Vec<&str> = report.issues().iter().map(|i| i.message.as_str()).collect();
         assert!(messages.contains(&"missing required field: acme"));
         assert!(messages.contains(&"missing required field: cert_store"));
+    }
+
+    #[test]
+    fn cert_store_failure_does_not_hide_sibling_semantic_error() {
+        // Arrange: a structural failure on cert_store alongside a semantic
+        // error on a sibling (renew_within_days below its minimum). Issue 9:
+        // both must surface in one pass.
+        let input = r#"renew_within_days = 3
+
+acme {
+  directory_url = "https://acme.example.com/dir"
+  data_dir = "/tmp/acme"
+  contact_email = ["admin@example.com"]
+}
+
+cert_store {
+  type = "filesyste"
+}
+"#;
+
+        // Act
+        let (mut report, spec) = parse_tls(input);
+        let spec = spec.expect("parent constructs despite the cert_store failure");
+        spec.validate(&mut report);
+
+        // Assert
+        let messages: Vec<&str> = report.issues().iter().map(|i| i.message.as_str()).collect();
+        assert!(
+            messages
+                .iter()
+                .any(|m| m.contains("unknown cert_store type")),
+            "structural error missing: {messages:?}"
+        );
+        assert!(
+            messages.contains(&"renew_within_days must be at least 7"),
+            "sibling semantic error hidden: {messages:?}"
+        );
     }
 
     #[test]
