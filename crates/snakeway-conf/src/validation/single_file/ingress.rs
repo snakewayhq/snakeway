@@ -1,6 +1,30 @@
 use crate::types::{BindInterfaceSpec, IngressSpec, report_admin_auth_missing};
 use confval::provenance::{Located, Report, Span, Validate};
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+
+/// Record `key` as seen at `span`, or report a duplicate against the first
+/// occurrence. The message is built lazily, only when a duplicate is found.
+fn report_duplicate<K, F>(
+    seen: &mut HashMap<K, Span>,
+    key: K,
+    span: Span,
+    report: &mut Report,
+    message: F,
+) where
+    K: Eq + Hash,
+    F: FnOnce() -> String,
+{
+    if let Some(first) = seen.get(&key) {
+        report
+            .error(message())
+            .at(span)
+            .related(*first, "first declared here")
+            .emit();
+    } else {
+        seen.insert(key, span);
+    }
+}
 
 pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mut Report) {
     let mut seen_listener_keys: HashMap<String, Span> = HashMap::new();
@@ -31,15 +55,13 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 
             if let Some(redirect) = &bind.value.redirect_http_to_https {
                 let port = redirect.value.port.value;
-                if let Some(first) = seen_redirect_ports.get(&port) {
-                    report
-                        .error(format!("duplicate redirect_http_to_https port: {}", port))
-                        .at(redirect.value.port.span)
-                        .related(*first, "first declared here")
-                        .emit();
-                } else {
-                    seen_redirect_ports.insert(port, redirect.value.port.span);
-                }
+                report_duplicate(
+                    &mut seen_redirect_ports,
+                    port,
+                    redirect.value.port.span,
+                    report,
+                    || format!("duplicate redirect_http_to_https port: {}", port),
+                );
             }
         }
 
@@ -84,15 +106,13 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 
             for upstream in &service.value.upstreams {
                 if let Some(sock) = &upstream.value.sock {
-                    if let Some(first) = seen_upstream_socks.get(&sock.value) {
-                        report
-                            .error(format!("duplicate upstream sock: {}", sock.value))
-                            .at(sock.span)
-                            .related(*first, "first declared here")
-                            .emit();
-                    } else {
-                        seen_upstream_socks.insert(sock.value.clone(), sock.span);
-                    }
+                    report_duplicate(
+                        &mut seen_upstream_socks,
+                        sock.value.clone(),
+                        sock.span,
+                        report,
+                        || format!("duplicate upstream sock: {}", sock.value),
+                    );
                 }
             }
         }
@@ -131,15 +151,9 @@ fn validate_listener_uniqueness(
     let maybe_interface: Result<BindInterfaceSpec, _> = interface.try_into();
     if let Ok(interface) = maybe_interface {
         let key = interface.socket_address_literal(port as u16);
-        if let Some(first) = seen_listener_keys.get(&key) {
-            report
-                .error(format!("duplicate bind address: {}", key))
-                .at(span)
-                .related(*first, "first declared here")
-                .emit();
-        } else {
-            seen_listener_keys.insert(key, span);
-        }
+        report_duplicate(seen_listener_keys, key.clone(), span, report, || {
+            format!("duplicate bind address: {}", key)
+        });
     }
 }
 
