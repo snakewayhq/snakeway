@@ -53,6 +53,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
             );
         }
 
+        let bind_uses_http2 = maybe_bind.is_some_and(|b| b.value.enable_http2.value);
         let mut seen_route_paths = HashSet::new();
         for service in &ingress.value.services {
             for route in &service.value.routes {
@@ -69,16 +70,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                         )
                         .emit();
                 }
-            }
-        }
 
-        let bind_uses_http2 = ingress
-            .value
-            .bind
-            .as_ref()
-            .is_some_and(|b| b.value.enable_http2.value);
-        for service in &ingress.value.services {
-            for route in &service.value.routes {
                 if bind_uses_http2 && route.value.enable_websocket.value {
                     report
                         .error(format!(
@@ -89,9 +81,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                         .emit();
                 }
             }
-        }
 
-        for service in &ingress.value.services {
             for upstream in &service.value.upstreams {
                 if let Some(sock) = &upstream.value.sock {
                     if let Some(first) = seen_upstream_socks.get(&sock.value) {
