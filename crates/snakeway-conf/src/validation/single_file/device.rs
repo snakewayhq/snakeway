@@ -113,9 +113,13 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
 
                 cfg.validate(report);
 
+                // These two are no-ops rather than broken config (identity or
+                // headers are requested but nothing is selected, so nothing is
+                // logged), so they warn rather than block loading, matching the
+                // pre-migration severity.
                 if cfg.include_identity.value && cfg.identity_fields.is_empty() {
                     report
-                        .error("structured logging identity fields cannot be empty")
+                        .warning("structured logging identity fields cannot be empty")
                         .at(cfg.include_identity.span)
                         .emit();
                 }
@@ -125,7 +129,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                     && cfg.redacted_headers.is_empty()
                 {
                     report
-                        .error("structured logging includes headers but no headers are set")
+                        .warning("structured logging includes headers but no headers are set")
                         .at(cfg.include_headers.span)
                         .help(
                             "Add headers to allowed_headers or redacted_headers to include \
@@ -362,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn structured_logging_identity_fields_empty_rejected() {
+    fn structured_logging_identity_fields_empty_warns() {
         // Arrange
         let mut report = Report::new();
         let logging = device(DeviceSpec::StructuredLogging(StructuredLoggingDeviceSpec {
@@ -375,7 +379,9 @@ mod tests {
         // Act
         validate_devices(&[logging], &mut report);
 
-        // Assert
+        // Assert: a no-op config warns but does not block loading.
+        assert!(report.has_warnings());
+        assert!(!report.has_errors());
         assert!(
             report
                 .issues()
@@ -385,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn structured_logging_headers_without_lists_rejected() {
+    fn structured_logging_headers_without_lists_warns() {
         // Arrange
         let mut report = Report::new();
         let logging = device(DeviceSpec::StructuredLogging(StructuredLoggingDeviceSpec {
@@ -397,7 +403,9 @@ mod tests {
         // Act
         validate_devices(&[logging], &mut report);
 
-        // Assert
+        // Assert: a no-op config warns but does not block loading.
+        assert!(report.has_warnings());
+        assert!(!report.has_errors());
         assert!(
             report
                 .issues()

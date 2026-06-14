@@ -2,7 +2,7 @@ use crate::validation::validator::validate_cert_pem;
 use confval::hcl::{
     Fields, FromHcl, parse_string_field, report_missing_field, report_unknown_field,
 };
-use confval::provenance::{Located, Report, Span, Validate};
+use confval::provenance::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -95,7 +95,7 @@ impl Validate for TlsAutomationSpec {
 
         RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
 
-        validate_cert_store(&self.cert_store.value, self.cert_store.span, report);
+        validate_cert_store(&self.cert_store.value, report);
     }
 }
 
@@ -155,7 +155,7 @@ fn validate_acme(spec: &AcmeServerSpec, report: &mut Report) {
     }
 }
 
-fn validate_cert_store(spec: &CertStoreSpec, span: Span, report: &mut Report) {
+fn validate_cert_store(spec: &CertStoreSpec, report: &mut Report) {
     match spec {
         CertStoreSpec::Filesystem { cert_dir } => {
             if cert_dir.value.as_os_str().is_empty() {
@@ -173,9 +173,7 @@ fn validate_cert_store(spec: &CertStoreSpec, span: Span, report: &mut Report) {
                     .emit();
             }
         }
-        CertStoreSpec::Memory => {
-            let _ = span;
-        }
+        CertStoreSpec::Memory => {}
     }
 }
 
@@ -414,7 +412,7 @@ cert_store {
         };
 
         // Act
-        validate_cert_store(&spec, Span::detached(), &mut report);
+        validate_cert_store(&spec, &mut report);
 
         // Assert
         assert!(

@@ -1,5 +1,5 @@
 use crate::types::RequestFilterDeviceSpec;
-use confval::provenance::{Located, Lower, Report, Validate};
+use confval::provenance::{Located, Lower, Report, Validate, narrow};
 use http::{HeaderName, Method};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -125,7 +125,29 @@ where
                 .collect()
         }
 
+        // Size and timeout limits narrow through `narrow::` rather than `as`,
+        // so a negative value is reported and rejected instead of wrapping to
+        // a near-unbounded `usize`/`u64` and silently disabling the limit.
+        fn bytes(located: &Located<i64>, report: &mut Report, ok: &mut bool) -> usize {
+            narrow::i64_to_usize(located, report).unwrap_or_else(|| {
+                *ok = false;
+                0
+            })
+        }
+
         let mut ok = true;
+
+        let client_body_timeout = match &spec.client_body_timeout_seconds {
+            Some(v) => match narrow::i64_to_u64(v, report) {
+                Some(secs) => Some(Duration::from_secs(secs)),
+                None => {
+                    ok = false;
+                    None
+                }
+            },
+            None => None,
+        };
+
         let config = Self {
             enable: spec.enable.value,
             allow_methods: methods(&spec.allow_methods, report, &mut ok),
@@ -133,14 +155,11 @@ where
             deny_headers: headers(&spec.deny_headers, report, &mut ok),
             allow_headers: headers(&spec.allow_headers, report, &mut ok),
             required_headers: headers(&spec.required_headers, report, &mut ok),
-            max_header_bytes: spec.max_header_bytes.value as usize,
-            max_body_bytes: spec.max_body_bytes.value as usize,
-            max_suspicious_body_bytes: spec.max_suspicious_body_bytes.value as usize,
+            max_header_bytes: bytes(&spec.max_header_bytes, report, &mut ok),
+            max_body_bytes: bytes(&spec.max_body_bytes, report, &mut ok),
+            max_suspicious_body_bytes: bytes(&spec.max_suspicious_body_bytes, report, &mut ok),
             deny_status: spec.deny_status.as_ref().map(|v| v.value as u16),
-            client_body_timeout: spec
-                .client_body_timeout_seconds
-                .as_ref()
-                .map(|v| Duration::from_secs(v.value as u64)),
+            client_body_timeout,
             paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         };
         ok.then_some(config)
@@ -164,6 +183,41 @@ mod tests {
             .iter()
             .map(|v| Located::detached(v.to_string()))
             .collect()
+    }
+
+    #[test]
+    fn negative_byte_limit_is_rejected_not_wrapped() {
+        // Arrange: a negative max_body_bytes must not lower to usize::MAX and
+        // silently remove the cap.
+        let spec = RequestFilterDeviceSpec {
+            max_body_bytes: Located::detached(-1),
+            ..default_spec()
+        };
+        let mut report = Report::new();
+
+        // Act
+        let result = RequestFilterDeviceConfig::lower(&spec, &mut report);
+
+        // Assert
+        assert!(result.is_none());
+        assert!(report.has_errors());
+    }
+
+    #[test]
+    fn negative_client_body_timeout_is_rejected() {
+        // Arrange
+        let spec = RequestFilterDeviceSpec {
+            client_body_timeout_seconds: Some(Located::detached(-1)),
+            ..default_spec()
+        };
+        let mut report = Report::new();
+
+        // Act
+        let result = RequestFilterDeviceConfig::lower(&spec, &mut report);
+
+        // Assert
+        assert!(result.is_none());
+        assert!(report.has_errors());
     }
 
     #[test]

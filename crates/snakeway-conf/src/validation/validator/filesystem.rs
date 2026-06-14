@@ -18,25 +18,25 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 
 pub(crate) fn validate_geoip_db_file(geoip_db: &Located<PathBuf>, report: &mut Report) {
     let path = geoip_db.value.as_path();
+    if path.as_os_str().is_empty() {
+        report
+            .error(format!("geoip db path is empty: {}", path.display()))
+            .at(geoip_db.span)
+            .emit();
+        return;
+    }
+    if !path.exists() {
+        report
+            .error(format!("geoip db path does not exist: {}", path.display()))
+            .at(geoip_db.span)
+            .emit();
+        return;
+    }
     if !path.is_file() {
-        if path.as_os_str().is_empty() {
-            report
-                .error(format!("geoip db path is empty: {}", path.display()))
-                .at(geoip_db.span)
-                .emit();
-        }
-        if !path.exists() {
-            report
-                .error(format!("geoip db path does not exist: {}", path.display()))
-                .at(geoip_db.span)
-                .emit();
-        }
-        if !path.is_file() {
-            report
-                .error(format!("geoip db path is not a file: {}", path.display()))
-                .at(geoip_db.span)
-                .emit();
-        }
+        report
+            .error(format!("geoip db path is not a file: {}", path.display()))
+            .at(geoip_db.span)
+            .emit();
     }
 }
 
