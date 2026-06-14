@@ -101,11 +101,9 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             FieldShape::Leaf { leaf, optional } => {
                 let parser = leaf_parser(&leaf);
                 slot_decls.push(quote! { let mut #slot = ::core::option::Option::None; });
-                match_arms.push(quote! {
-                    #field_name => #slot = #parser,
-                });
                 match (&options.default, optional) {
                     (Some(default), true) => {
+                        match_arms.push(quote! { #field_name => #slot = #parser, });
                         let expr = default_expr(default);
                         constructors.push(quote! {
                             #ident: #slot.or_else(|| ::core::option::Option::Some(
@@ -114,6 +112,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         });
                     }
                     (Some(default), false) => {
+                        match_arms.push(quote! { #field_name => #slot = #parser, });
                         let expr = default_expr(default);
                         constructors.push(quote! {
                             #ident: #slot.unwrap_or_else(
@@ -122,26 +121,44 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         });
                     }
                     (None, true) => {
+                        match_arms.push(quote! { #field_name => #slot = #parser, });
                         constructors.push(quote! { #ident: #slot, });
                     }
                     (None, false) => {
-                        missing_checks.push(missing_check(&field_name, &slot));
+                        // Required, no default: track presence in the same
+                        // single pass that parses, so a present-but-failed
+                        // field is not also reported as missing, without an
+                        // O(fields) `Fields::has` rescan.
+                        let seen = format_ident!("__{}_seen", ident);
+                        slot_decls.push(quote! { let mut #seen = false; });
+                        match_arms.push(quote! {
+                            #field_name => { #seen = true; #slot = #parser; }
+                        });
+                        missing_checks.push(seen_missing_check(&field_name, &seen));
                         constructors.push(quote! { #ident: #slot?, });
                     }
                 }
             }
             FieldShape::BareStringList => {
                 slot_decls.push(quote! { let mut #slot = ::core::option::Option::None; });
-                match_arms.push(quote! {
-                    #field_name => #slot =
-                        ::confval::hcl::parse_string_list_field(__field, report),
-                });
                 if options.default.is_some() {
+                    match_arms.push(quote! {
+                        #field_name => #slot =
+                            ::confval::hcl::parse_string_list_field(__field, report),
+                    });
                     constructors.push(quote! {
                         #ident: #slot.map(|__list| __list.value).unwrap_or_default(),
                     });
                 } else {
-                    missing_checks.push(missing_check(&field_name, &slot));
+                    let seen = format_ident!("__{}_seen", ident);
+                    slot_decls.push(quote! { let mut #seen = false; });
+                    match_arms.push(quote! {
+                        #field_name => {
+                            #seen = true;
+                            #slot = ::confval::hcl::parse_string_list_field(__field, report);
+                        }
+                    });
+                    missing_checks.push(seen_missing_check(&field_name, &seen));
                     constructors.push(quote! { #ident: #slot?.value, });
                 }
             }
@@ -353,9 +370,9 @@ fn default_expr(default: &Option<Expr>) -> TokenStream2 {
     }
 }
 
-fn missing_check(field_name: &str, slot: &proc_macro2::Ident) -> TokenStream2 {
+fn seen_missing_check(field_name: &str, seen: &proc_macro2::Ident) -> TokenStream2 {
     quote! {
-        if #slot.is_none() && !fields.has(#field_name) {
+        if !#seen {
             ::confval::hcl::report_missing_field(#field_name, fields.enclosing(), report);
         }
     }
