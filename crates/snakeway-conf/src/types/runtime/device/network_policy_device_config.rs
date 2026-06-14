@@ -1,5 +1,5 @@
 use crate::types::{NetworkPolicyDeviceSpec, ON_NO_PEER_ADDR_DENY};
-use confval::provenance::{Lower, Report};
+use confval::provenance::{Lower, Report, Validate};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -26,7 +26,10 @@ pub enum OnInvalidForwardedConfig {
     Ignore,
 }
 
-impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig {
+impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig
+where
+    NetworkPolicyDeviceSpec: Validate,
+{
     fn lower(spec: &NetworkPolicyDeviceSpec, report: &mut Report) -> Option<Self> {
         let mut cidr_allow = Vec::with_capacity(spec.cidr_allow.len());
         let mut ok = true;

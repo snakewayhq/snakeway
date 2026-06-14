@@ -2,7 +2,7 @@ use crate::validation::validator::validate_cert_pem;
 use confval::hcl::{
     Fields, FromHcl, parse_string_field, report_missing_field, report_unknown_field,
 };
-use confval::provenance::{Located, Report, Span};
+use confval::provenance::{Located, Report, Span, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -89,12 +89,14 @@ impl FromHcl for CertStoreSpec {
     }
 }
 
-pub fn validate_tls_automation(spec: &TlsAutomationSpec, report: &mut Report) {
-    validate_acme(&spec.acme.value, report);
+impl Validate for TlsAutomationSpec {
+    fn validate(&self, report: &mut Report) {
+        validate_acme(&self.acme.value, report);
 
-    RENEW_WITHIN_DAYS.check_located(&spec.renew_within_days, "renew_within_days", report);
+        RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
 
-    validate_cert_store(&spec.cert_store.value, spec.cert_store.span, report);
+        validate_cert_store(&self.cert_store.value, self.cert_store.span, report);
+    }
 }
 
 fn validate_acme(spec: &AcmeServerSpec, report: &mut Report) {
@@ -396,7 +398,7 @@ cert_store {
         };
 
         // Act
-        validate_tls_automation(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(

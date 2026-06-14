@@ -1,7 +1,7 @@
 use crate::types::HclInt;
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -57,47 +57,49 @@ impl Default for IdentityDeviceSpec {
     }
 }
 
-pub fn validate_identity_device(spec: &IdentityDeviceSpec, report: &mut Report) {
-    validate_trusted_proxies(&spec.trusted_proxies, report);
+impl Validate for IdentityDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        validate_trusted_proxies(&self.trusted_proxies, report);
 
-    MAX_X_FORWARDED_FOR_LENGTH.check_located(
-        &spec.max_x_forwarded_for_length,
-        "max_x_forwarded_for_length",
-        report,
-    );
-
-    if spec.enable_user_agent.value {
-        MAX_USER_AGENT_LENGTH.check_located(
-            &spec.max_user_agent_length,
-            "max_user_agent_length",
+        MAX_X_FORWARDED_FOR_LENGTH.check_located(
+            &self.max_x_forwarded_for_length,
+            "max_x_forwarded_for_length",
             report,
         );
-    }
 
-    if !UA_ENGINES.contains(&spec.ua_engine.value.as_str()) {
-        report
-            .error(format!("unknown ua_engine: {}", spec.ua_engine.value))
-            .at(spec.ua_engine.span)
-            .help(format!("expected one of: {}", UA_ENGINES.join(", ")))
-            .emit();
-    }
-
-    if spec.enable_geoip.value {
-        if let Some(path) = spec.geoip_city_db.as_ref() {
-            validate_geoip_db_file(path, report);
+        if self.enable_user_agent.value {
+            MAX_USER_AGENT_LENGTH.check_located(
+                &self.max_user_agent_length,
+                "max_user_agent_length",
+                report,
+            );
         }
 
-        if let Some(path) = spec.geoip_isp_db.as_ref() {
-            validate_geoip_db_file(path, report);
+        if !UA_ENGINES.contains(&self.ua_engine.value.as_str()) {
+            report
+                .error(format!("unknown ua_engine: {}", self.ua_engine.value))
+                .at(self.ua_engine.span)
+                .help(format!("expected one of: {}", UA_ENGINES.join(", ")))
+                .emit();
         }
 
-        if let Some(path) = spec.geoip_connection_type_db.as_ref() {
-            validate_geoip_db_file(path, report);
-        }
-    }
+        if self.enable_geoip.value {
+            if let Some(path) = self.geoip_city_db.as_ref() {
+                validate_geoip_db_file(path, report);
+            }
 
-    if let Some(path) = spec.ua_parser_regexes.as_ref() {
-        validate_ua_parser_regexes_file(path, report);
+            if let Some(path) = self.geoip_isp_db.as_ref() {
+                validate_geoip_db_file(path, report);
+            }
+
+            if let Some(path) = self.geoip_connection_type_db.as_ref() {
+                validate_geoip_db_file(path, report);
+            }
+        }
+
+        if let Some(path) = self.ua_parser_regexes.as_ref() {
+            validate_ua_parser_regexes_file(path, report);
+        }
     }
 }
 
@@ -116,7 +118,7 @@ mod tests {
         };
 
         // Act
-        validate_identity_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -139,7 +141,7 @@ mod tests {
         };
 
         // Act
-        validate_identity_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -162,7 +164,7 @@ mod tests {
         };
 
         // Act
-        validate_identity_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -183,7 +185,7 @@ mod tests {
         };
 
         // Act
-        validate_identity_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());

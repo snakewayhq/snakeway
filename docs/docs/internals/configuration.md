@@ -182,35 +182,63 @@ directory), which matters for listener naming.
 
 ## Validation
 
-Validation is split between entity-local functions and centralized relational validators.
+Validation is split between entity-local `Validate` impls and centralized relational validators.
 
-### Entity validate functions
+### Entity Validate impls
 
-Each spec module exports a plain function that checks that entity's own fields:
+Each spec implements `confval::provenance::Validate` to check its own fields:
 
 ```rust
-pub fn validate_server(spec: &ServerSpec, report: &mut Report) {
-    if let Some(threads) = &spec.threads {
-        THREADS.check_located(threads, "threads", report);
+impl Validate for ServerSpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(threads) = &self.threads {
+            THREADS.check_located(threads, "threads", report);
+        }
+        // ...
     }
-    // ...
 }
 ```
 
-These functions live next to the spec struct they validate (for example `validate_bind` in the bind
-module, `validate_service` in the service module). They cover ranges (via
-`RangeConstraint::check_located`), closed keyword sets, format checks, and path existence. Because
-spans live inside the `Located` fields, no origin parameter is threaded through.
+These impls live next to the spec struct they validate (for example `BindSpec` in the bind module,
+`ServiceSpec` in the service module). They cover ranges (via `RangeConstraint::check_located`),
+closed keyword sets, format checks, and path existence. Because spans live inside the `Located`
+fields, the method takes only `&self` and the report; no span or origin parameter is threaded
+through.
+
+The `Validate` trait is not just a convention. It is a compile-time bound on lowering: a spec that
+can be lowered into a runtime config but has no validator fails to compile. The bound lives where
+each family lowers:
+
+- **Server** and the **device** configs carry it on their `Lower` impls
+  (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate`, written as
+  `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on
+  the hand-written device impls).
+- **Ingresses** lower by flattening in `lower_configs` rather than through a per-entity `Lower` impl,
+  so the bound is a `where IngressSpec: Validate` clause on that function. A compositional
+  `impl Validate for IngressSpec` delegates to each child entity, so the bound transitively requires
+  every ingress child to be validatable.
+
+The effect is that you cannot produce a `RuntimeConfig` from a spec family whose entities are not all
+validatable. The guarantee is existence (a validator is defined), not invocation; the orchestrator
+below still calls validation explicitly, before the lowering gate.
+
+What does **not** belong in a `Validate` impl is any check needing more than `&self`: a missing
+required child needs the entity's enclosing span, which lives on the `Located` wrapper the caller
+holds, so those presence checks live in the central validator instead (see below).
 
 ### Centralized validators
 
 Cross-field and cross-file rules live under `crates/snakeway-conf/src/validation/`:
 
 - `single_file/ingress.rs` and `single_file/device.rs` walk every parsed ingress and device,
-  invoke the entity validate functions, and check relational rules within and across files:
-  duplicate bind addresses, duplicate route paths, HTTP/2 and TLS dependency, WebSocket and HTTP/2
-  conflict. Cross-file duplicates are tracked in a map from key to first-seen `Span`, so the second
-  occurrence reports with a related span labelled "first declared here".
+  dispatch each entity's `Validate` impl (`ingress.value.validate(report)`,
+  `device_cfg.validate(report)`), and check relational rules within and across files: duplicate bind
+  addresses, duplicate route paths, HTTP/2 and TLS dependency, WebSocket and HTTP/2 conflict.
+  Cross-file duplicates are tracked in a map from key to first-seen `Span`, so the second occurrence
+  reports with a related span labelled "first declared here". The single-entity presence checks
+  ("ingress must have a bind or bind_admin", "service has no upstream backends", "bind_admin.auth is
+  required") also live here, because each points at an entity's enclosing span that a `Validate` impl
+  cannot reach from `&self`.
 - `multi_file/tls.rs` checks invariants that span the entrypoint and the ingress set: ACME TLS
   requires `server.tls_automation`; a configured `tls_automation` with no TLS listener anywhere
   earns a warning.
@@ -269,14 +297,14 @@ On a successful load, warnings still surface: `ValidatedConfig::has_warnings()` 
 
 | File                           | Responsibility                                                          |
 |--------------------------------|-------------------------------------------------------------------------|
-| `confval/src/provenance/`      | `Located`, `Span`, `SourceMap`, `Report`, `Lower`                       |
+| `confval/src/provenance/`      | `Located`, `Span`, `SourceMap`, `Report`, `Lower`, `Validate`           |
 | `confval/src/hcl.rs`           | `FromHcl`, the `Fields` view, leaf and struct parsers                   |
 | `confval-derive/src/lib.rs`    | `#[derive(Spec)]` and `#[derive(Config)]`                               |
 | `conf/loader.rs`               | `load_config`, `load_spec_files`, `load_config_from_specs`, the gate    |
 | `conf/discover.rs`             | Glob-based file discovery                                               |
 | `conf/parse.rs`                | `flatten_devices`: device file to per-device specs                      |
-| `conf/lower.rs`                | `lower_configs`: assembles the final `RuntimeConfig`                    |
-| `conf/types/specification/`    | All `*Spec` structs with their entity validate functions                |
+| `conf/lower.rs`                | `lower_configs`: assembles the final `RuntimeConfig` (`where IngressSpec: Validate`) |
+| `conf/types/specification/`    | All `*Spec` structs with their `Validate` impls                          |
 | `conf/types/runtime/`          | All `*Config` structs, `Lower` derives, and `with` conversion functions |
 | `conf/validation/validate.rs`  | `validate_spec` orchestrator                                            |
 | `conf/validation/single_file/` | Per-file relational validators (ingress, device)                        |

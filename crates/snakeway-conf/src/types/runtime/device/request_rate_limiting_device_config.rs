@@ -1,4 +1,5 @@
 use crate::types::RequestRateLimitingDeviceSpec;
+use confval::provenance::{Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::time::Duration;
@@ -11,14 +12,17 @@ pub struct RequestRateLimitingDeviceConfig {
     pub paths: SmallVec<[String; 4]>,
 }
 
-impl From<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig {
-    fn from(spec: RequestRateLimitingDeviceSpec) -> Self {
-        Self {
+impl Lower<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig
+where
+    RequestRateLimitingDeviceSpec: Validate,
+{
+    fn lower(spec: &RequestRateLimitingDeviceSpec, _report: &mut Report) -> Option<Self> {
+        Some(Self {
             enable: spec.enable.value,
             reaction_interval: Duration::from_secs(spec.window_seconds.value as u64),
             max_requests_per_second: spec.max_requests_per_second.value as f64,
-            paths: spec.paths.into_iter().map(|p| p.value).collect(),
-        }
+            paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
+        })
     }
 }
 
@@ -38,7 +42,7 @@ mod tests {
         };
 
         // Act
-        let config: RequestRateLimitingDeviceConfig = spec.into();
+        let config = RequestRateLimitingDeviceConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
         assert!(config.enable);

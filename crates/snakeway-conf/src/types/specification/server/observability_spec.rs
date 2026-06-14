@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -20,9 +20,11 @@ pub struct OtelSpec {
     pub sampling_ratio: Located<f64>,
 }
 
-pub fn validate_observability(spec: &ObservabilitySpec, report: &mut Report) {
-    if let Some(otel) = &spec.otel {
-        validate_otel(&otel.value, report);
+impl Validate for ObservabilitySpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(otel) = &self.otel {
+            validate_otel(&otel.value, report);
+        }
     }
 }
 

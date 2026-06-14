@@ -1,6 +1,6 @@
 use crate::types::HclInt;
 use crate::validation::validator::validate_device_paths;
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -18,18 +18,17 @@ pub struct RequestRateLimitingDeviceSpec {
     pub paths: Vec<Located<String>>,
 }
 
-pub fn validate_request_rate_limiting_device(
-    spec: &RequestRateLimitingDeviceSpec,
-    report: &mut Report,
-) {
-    MAX_REQUESTS_PER_SECOND.check_located(
-        &spec.max_requests_per_second,
-        "max_requests_per_second",
-        report,
-    );
-    WINDOW_SECONDS.check_located(&spec.window_seconds, "window_seconds", report);
+impl Validate for RequestRateLimitingDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        MAX_REQUESTS_PER_SECOND.check_located(
+            &self.max_requests_per_second,
+            "max_requests_per_second",
+            report,
+        );
+        WINDOW_SECONDS.check_located(&self.window_seconds, "window_seconds", report);
 
-    validate_device_paths(&spec.paths, report);
+        validate_device_paths(&self.paths, report);
+    }
 }
 
 #[cfg(test)]
@@ -52,7 +51,7 @@ mod tests {
         let spec = minimal();
 
         // Act
-        validate_request_rate_limiting_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -68,7 +67,7 @@ mod tests {
         };
 
         // Act
-        validate_request_rate_limiting_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.issues().iter().any(|e| {
@@ -87,7 +86,7 @@ mod tests {
         };
 
         // Act
-        validate_request_rate_limiting_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(

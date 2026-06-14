@@ -1,5 +1,5 @@
 use crate::types::IdentityDeviceSpec;
-use confval::provenance::{Lower, Report};
+use confval::provenance::{Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -47,7 +47,10 @@ impl TryFrom<&str> for UaEngineKind {
     }
 }
 
-impl Lower<IdentityDeviceSpec> for IdentityDeviceConfig {
+impl Lower<IdentityDeviceSpec> for IdentityDeviceConfig
+where
+    IdentityDeviceSpec: Validate,
+{
     fn lower(spec: &IdentityDeviceSpec, report: &mut Report) -> Option<Self> {
         let ua_engine = match UaEngineKind::try_from(spec.ua_engine.value.as_str()) {
             Ok(engine) => engine,

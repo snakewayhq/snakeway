@@ -1,5 +1,5 @@
 use crate::validation::validator::validate_device_paths;
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use ipnet::IpNet;
 use serde::Serialize;
 
@@ -33,31 +33,33 @@ impl Default for ForwardingSpec {
     }
 }
 
-pub fn validate_network_policy_device(spec: &NetworkPolicyDeviceSpec, report: &mut Report) {
-    for cidr in &spec.cidr_allow {
-        if cidr.value.parse::<IpNet>().is_err() {
+impl Validate for NetworkPolicyDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        for cidr in &self.cidr_allow {
+            if cidr.value.parse::<IpNet>().is_err() {
+                report
+                    .error(format!("invalid network policy CIDR: {}", cidr.value))
+                    .at(cidr.span)
+                    .emit();
+            }
+        }
+
+        if !ON_INVALID_FORWARDED.contains(&self.forwarding.value.on_invalid.value.as_str()) {
             report
-                .error(format!("invalid network policy CIDR: {}", cidr.value))
-                .at(cidr.span)
+                .error(format!(
+                    "unknown on_invalid: {}",
+                    self.forwarding.value.on_invalid.value
+                ))
+                .at(self.forwarding.value.on_invalid.span)
+                .help(format!(
+                    "expected one of: {}",
+                    ON_INVALID_FORWARDED.join(", ")
+                ))
                 .emit();
         }
-    }
 
-    if !ON_INVALID_FORWARDED.contains(&spec.forwarding.value.on_invalid.value.as_str()) {
-        report
-            .error(format!(
-                "unknown on_invalid: {}",
-                spec.forwarding.value.on_invalid.value
-            ))
-            .at(spec.forwarding.value.on_invalid.span)
-            .help(format!(
-                "expected one of: {}",
-                ON_INVALID_FORWARDED.join(", ")
-            ))
-            .emit();
+        validate_device_paths(&self.paths, report);
     }
-
-    validate_device_paths(&spec.paths, report);
 }
 
 #[cfg(test)]
@@ -75,7 +77,7 @@ mod tests {
         };
 
         // Act
-        validate_network_policy_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -98,7 +100,7 @@ mod tests {
         };
 
         // Act
-        validate_network_policy_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -116,7 +118,7 @@ mod tests {
         };
 
         // Act
-        validate_network_policy_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -143,7 +145,7 @@ mod tests {
         };
 
         // Act
-        validate_network_policy_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(

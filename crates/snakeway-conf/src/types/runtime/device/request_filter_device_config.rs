@@ -1,5 +1,5 @@
 use crate::types::RequestFilterDeviceSpec;
-use confval::provenance::{Located, Lower, Report};
+use confval::provenance::{Located, Lower, Report, Validate};
 use http::{HeaderName, Method};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -78,7 +78,10 @@ mod serde_method_vec {
     }
 }
 
-impl Lower<RequestFilterDeviceSpec> for RequestFilterDeviceConfig {
+impl Lower<RequestFilterDeviceSpec> for RequestFilterDeviceConfig
+where
+    RequestFilterDeviceSpec: Validate,
+{
     fn lower(spec: &RequestFilterDeviceSpec, report: &mut Report) -> Option<Self> {
         fn methods(
             values: &[Located<String>],

@@ -1,8 +1,6 @@
-use super::observability_spec::validate_observability;
-use super::tls_automation_spec::validate_tls_automation;
 use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec};
 use crate::validation::validator::validate_cert_pem;
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -145,121 +143,127 @@ impl Default for PerformanceSpec {
 /// Entity-level validation for the server section. Runs after parsing (or
 /// after programmatic construction), so it must not assume a source file
 /// exists; spans come from the `Located` values themselves.
-pub fn validate_server(spec: &ServerSpec, report: &mut Report) {
-    if spec.version.value != 1 {
-        report
-            .error(format!("invalid config version: {}", spec.version.value))
-            .at(spec.version.span)
-            .help(
-                "This version of Snakeway is not compatible with this config file. \
-                 Please upgrade Snakeway.",
-            )
-            .emit();
-        return;
-    }
-
-    if let Some(pid_file) = &spec.pid_file
-        && let Some(parent) = pid_file.value.parent()
-    {
-        if !parent.exists() {
+impl Validate for ServerSpec {
+    fn validate(&self, report: &mut Report) {
+        if self.version.value != 1 {
             report
-                .error(format!(
-                    "pid file parent directory does not exist: {}",
-                    pid_file.value.display()
-                ))
-                .at(pid_file.span)
+                .error(format!("invalid config version: {}", self.version.value))
+                .at(self.version.span)
+                .help(
+                    "This version of Snakeway is not compatible with this config file. \
+                     Please upgrade Snakeway.",
+                )
                 .emit();
-        } else if !parent.is_dir() {
-            report
-                .error(format!(
-                    "pid file parent is not a directory: {}",
-                    pid_file.value.display()
-                ))
-                .at(pid_file.span)
-                .emit();
+            return;
         }
-    }
 
-    if let Some(ca_file) = &spec.ca_file
-        && let Err(e) = validate_cert_pem(&ca_file.value)
-    {
-        report
-            .error(format!("server CA file is invalid: {}", e))
-            .at(ca_file.span)
-            .emit();
-    }
-
-    if let Some(threads) = &spec.threads {
-        THREADS.check_located(threads, "threads", report);
-    }
-
-    DNS_REFRESH_INTERVAL_SECONDS.check_located(
-        &spec.dns_refresh_interval_seconds,
-        "dns_refresh_interval_seconds",
-        report,
-    );
-
-    if let Some(tls_automation) = &spec.tls_automation {
-        validate_tls_automation(&tls_automation.value, report);
-    }
-
-    if let Some(observability) = &spec.observability {
-        validate_observability(&observability.value, report);
-    }
-
-    if let Some(shutdown) = &spec.shutdown {
-        if let Some(drain) = &shutdown.value.drain_seconds {
-            SHUTDOWN_DRAIN_SECONDS.check_located(drain, "drain_seconds", report);
-        }
-        if let Some(timeout) = &shutdown.value.force_timeout_seconds {
-            SHUTDOWN_FORCE_TIMEOUT_SECONDS.check_located(timeout, "force_timeout_seconds", report);
-        }
-    }
-
-    if let Some(upgrade) = &spec.upgrade
-        && let Some(retries) = &upgrade.value.max_retries
-    {
-        UPGRADE_MAX_RETRIES.check_located(retries, "max_retries", report);
-    }
-
-    if let Some(performance) = &spec.performance {
-        if let Some(pool_size) = &performance.value.upstream_connection_pool_size {
-            UPSTREAM_CONNECTION_POOL_SIZE.check_located(
-                pool_size,
-                "upstream_connection_pool_size",
-                report,
-            );
-        }
-        if let Some(accepts) = &performance.value.parallel_accepts_per_listener {
-            PARALLEL_ACCEPTS_PER_LISTENER.check_located(
-                accepts,
-                "parallel_accepts_per_listener",
-                report,
-            );
-        }
-    }
-
-    if let Some(source_addrs) = &spec.upstream_source_addresses {
-        for addr in &source_addrs.value.ipv4 {
-            if addr.value.parse::<Ipv4Addr>().is_err() {
+        if let Some(pid_file) = &self.pid_file
+            && let Some(parent) = pid_file.value.parent()
+        {
+            if !parent.exists() {
                 report
                     .error(format!(
-                        "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
-                        addr.value
+                        "pid file parent directory does not exist: {}",
+                        pid_file.value.display()
                     ))
-                    .at(addr.span)
+                    .at(pid_file.span)
+                    .emit();
+            } else if !parent.is_dir() {
+                report
+                    .error(format!(
+                        "pid file parent is not a directory: {}",
+                        pid_file.value.display()
+                    ))
+                    .at(pid_file.span)
                     .emit();
             }
         }
-        for addr in &source_addrs.value.ipv6 {
-            if addr.value.parse::<Ipv6Addr>().is_err() {
-                report
-                    .error(format!(
-                        "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
-                        addr.value
-                    ))
-                    .at(addr.span)
-                    .emit();
+
+        if let Some(ca_file) = &self.ca_file
+            && let Err(e) = validate_cert_pem(&ca_file.value)
+        {
+            report
+                .error(format!("server CA file is invalid: {}", e))
+                .at(ca_file.span)
+                .emit();
+        }
+
+        if let Some(threads) = &self.threads {
+            THREADS.check_located(threads, "threads", report);
+        }
+
+        DNS_REFRESH_INTERVAL_SECONDS.check_located(
+            &self.dns_refresh_interval_seconds,
+            "dns_refresh_interval_seconds",
+            report,
+        );
+
+        if let Some(tls_automation) = &self.tls_automation {
+            tls_automation.value.validate(report);
+        }
+
+        if let Some(observability) = &self.observability {
+            observability.value.validate(report);
+        }
+
+        if let Some(shutdown) = &self.shutdown {
+            if let Some(drain) = &shutdown.value.drain_seconds {
+                SHUTDOWN_DRAIN_SECONDS.check_located(drain, "drain_seconds", report);
+            }
+            if let Some(timeout) = &shutdown.value.force_timeout_seconds {
+                SHUTDOWN_FORCE_TIMEOUT_SECONDS.check_located(
+                    timeout,
+                    "force_timeout_seconds",
+                    report,
+                );
+            }
+        }
+
+        if let Some(upgrade) = &self.upgrade
+            && let Some(retries) = &upgrade.value.max_retries
+        {
+            UPGRADE_MAX_RETRIES.check_located(retries, "max_retries", report);
+        }
+
+        if let Some(performance) = &self.performance {
+            if let Some(pool_size) = &performance.value.upstream_connection_pool_size {
+                UPSTREAM_CONNECTION_POOL_SIZE.check_located(
+                    pool_size,
+                    "upstream_connection_pool_size",
+                    report,
+                );
+            }
+            if let Some(accepts) = &performance.value.parallel_accepts_per_listener {
+                PARALLEL_ACCEPTS_PER_LISTENER.check_located(
+                    accepts,
+                    "parallel_accepts_per_listener",
+                    report,
+                );
+            }
+        }
+
+        if let Some(source_addrs) = &self.upstream_source_addresses {
+            for addr in &source_addrs.value.ipv4 {
+                if addr.value.parse::<Ipv4Addr>().is_err() {
+                    report
+                        .error(format!(
+                            "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
+                            addr.value
+                        ))
+                        .at(addr.span)
+                        .emit();
+                }
+            }
+            for addr in &source_addrs.value.ipv6 {
+                if addr.value.parse::<Ipv6Addr>().is_err() {
+                    report
+                        .error(format!(
+                            "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
+                            addr.value
+                        ))
+                        .at(addr.span)
+                        .emit();
+                }
             }
         }
     }
@@ -474,7 +478,7 @@ observability {
         let server = ServerSpec::default();
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -490,7 +494,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -511,7 +515,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -529,7 +533,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -553,7 +557,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -580,7 +584,7 @@ observability {
         );
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -597,7 +601,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -618,7 +622,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -639,7 +643,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -655,7 +659,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -682,7 +686,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -701,7 +705,7 @@ observability {
         };
 
         // Act
-        validate_server(&server, &mut report);
+        server.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 2);

@@ -2,7 +2,7 @@ use confval::hcl::{
     Field, FieldKind, Fields, FromHcl, parse_bool_field, parse_string_field, report_missing_field,
     report_unknown_field,
 };
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -65,33 +65,35 @@ impl FromHcl for WasmDeviceSpec {
     }
 }
 
-pub fn validate_wasm_device(spec: &WasmDeviceSpec, report: &mut Report) {
-    if spec.path.value.as_os_str().is_empty() {
-        report
-            .error(format!(
-                "wasm device path is empty: {}",
-                spec.path.value.display()
-            ))
-            .at(spec.path.span)
-            .emit();
-    }
-    if !spec.path.value.exists() {
-        report
-            .error(format!(
-                "wasm device path does not exist: {}",
-                spec.path.value.display()
-            ))
-            .at(spec.path.span)
-            .emit();
-    }
-    if !spec.path.value.is_file() {
-        report
-            .error(format!(
-                "wasm device path is not a file: {}",
-                spec.path.value.display()
-            ))
-            .at(spec.path.span)
-            .emit();
+impl Validate for WasmDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        if self.path.value.as_os_str().is_empty() {
+            report
+                .error(format!(
+                    "wasm device path is empty: {}",
+                    self.path.value.display()
+                ))
+                .at(self.path.span)
+                .emit();
+        }
+        if !self.path.value.exists() {
+            report
+                .error(format!(
+                    "wasm device path does not exist: {}",
+                    self.path.value.display()
+                ))
+                .at(self.path.span)
+                .emit();
+        }
+        if !self.path.value.is_file() {
+            report
+                .error(format!(
+                    "wasm device path is not a file: {}",
+                    self.path.value.display()
+                ))
+                .at(self.path.span)
+                .emit();
+        }
     }
 }
 

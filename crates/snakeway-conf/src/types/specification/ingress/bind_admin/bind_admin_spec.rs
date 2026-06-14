@@ -1,11 +1,11 @@
-use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing, validate_admin_auth};
+use super::admin_auth_spec::{AdminAuthSpec, validate_admin_auth};
 use crate::resolution::ResolveError;
 use crate::types::specification::ingress::bind::report_invalid_port;
 use crate::types::specification::ingress::bind::validate_tls_termination;
 use crate::types::{BindInterfaceSpec, HclInt, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
-use confval::provenance::{Located, Report, Span};
+use confval::provenance::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
 
@@ -33,57 +33,62 @@ impl BindAdminSpec {
     }
 }
 
-pub fn validate_bind_admin(spec: &BindAdminSpec, span: Span, report: &mut Report) {
-    if !is_valid_port(spec.port.value) {
-        report_invalid_port(&spec.port, report);
-    }
-
-    match &spec.tls.value {
-        TlsTerminationSpec::Manual { .. } => {
-            validate_tls_termination(&spec.tls.value, report);
+impl Validate for BindAdminSpec {
+    fn validate(&self, report: &mut Report) {
+        if !is_valid_port(self.port.value) {
+            report_invalid_port(&self.port, report);
         }
-        TlsTerminationSpec::Acme { .. } => {
+
+        match &self.tls.value {
+            TlsTerminationSpec::Manual { .. } => {
+                validate_tls_termination(&self.tls.value, report);
+            }
+            TlsTerminationSpec::Acme { .. } => {
+                report
+                    .error("admin bind does not support ACME TLS")
+                    .at(self.tls.span)
+                    .emit();
+            }
+        }
+
+        // The auth-absent case needs the enclosing bind_admin span and is
+        // reported by the central validator. A present-but-incomplete auth
+        // block is reachable from this field's own span, so it stays here.
+        if let Some(auth) = &self.auth {
+            validate_admin_auth(&auth.value, auth.span, report);
+        }
+
+        let maybe_interface: Result<BindInterfaceSpec, _> =
+            self.interface.value.as_str().try_into();
+
+        match maybe_interface {
+            Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+                report
+                    .error("invalid bind address: 0.0.0.0 or ::")
+                    .at(self.interface.span)
+                    .emit();
+            }
+            Ok(_) => {
+                // All good.
+            }
+            Err(_) => {
+                report
+                    .error(format!("invalid bind address: {}", self.interface.value))
+                    .at(self.interface.span)
+                    .emit();
+                return;
+            }
+        }
+
+        if let Ok(interface) = maybe_interface
+            && matches!(interface, BindInterfaceSpec::All)
+        {
             report
-                .error("admin bind does not support ACME TLS")
-                .at(spec.tls.span)
+                .error("admin API cannot bind to all interfaces")
+                .at(self.interface.span)
+                .help("Use loopback or a specific IP address.")
                 .emit();
         }
-    }
-
-    match &spec.auth {
-        Some(auth) => validate_admin_auth(&auth.value, auth.span, report),
-        None => report_admin_auth_missing(span, report),
-    }
-
-    let maybe_interface: Result<BindInterfaceSpec, _> = spec.interface.value.as_str().try_into();
-
-    match maybe_interface {
-        Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
-            report
-                .error("invalid bind address: 0.0.0.0 or ::")
-                .at(spec.interface.span)
-                .emit();
-        }
-        Ok(_) => {
-            // All good.
-        }
-        Err(_) => {
-            report
-                .error(format!("invalid bind address: {}", spec.interface.value))
-                .at(spec.interface.span)
-                .emit();
-            return;
-        }
-    }
-
-    if let Ok(interface) = maybe_interface
-        && matches!(interface, BindInterfaceSpec::All)
-    {
-        report
-            .error("admin API cannot bind to all interfaces")
-            .at(spec.interface.span)
-            .help("Use loopback or a specific IP address.")
-            .emit();
     }
 }
 
@@ -123,7 +128,7 @@ mod tests {
 
     fn validate(spec: &BindAdminSpec) -> Report {
         let mut report = Report::new();
-        validate_bind_admin(spec, Span::detached(), &mut report);
+        spec.validate(&mut report);
         report
     }
 
@@ -238,23 +243,6 @@ mod tests {
         assert_eq!(
             report.issues()[0].help.as_deref(),
             Some("Use loopback or a specific IP address.")
-        );
-    }
-
-    #[test]
-    fn missing_auth_block_produces_error() {
-        // Arrange
-        let bind_admin = minimal_bind_admin();
-
-        // Act
-        let report = validate(&bind_admin);
-
-        // Assert
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message == "bind_admin.auth is required")
         );
     }
 

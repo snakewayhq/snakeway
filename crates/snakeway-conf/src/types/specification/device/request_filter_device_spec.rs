@@ -2,7 +2,7 @@ use crate::types::HclInt;
 use crate::validation::validator::{
     validate_device_paths, validate_http_header_name, validate_http_method,
 };
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -73,32 +73,34 @@ impl Default for RequestFilterDeviceSpec {
     }
 }
 
-pub fn validate_request_filter_device(spec: &RequestFilterDeviceSpec, report: &mut Report) {
-    if let Some(deny_status) = &spec.deny_status {
-        DENY_STATUS.check_located(deny_status, "deny_status", report);
-    }
+impl Validate for RequestFilterDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(deny_status) = &self.deny_status {
+            DENY_STATUS.check_located(deny_status, "deny_status", report);
+        }
 
-    for method in &spec.allow_methods {
-        validate_http_method(method, report);
-    }
+        for method in &self.allow_methods {
+            validate_http_method(method, report);
+        }
 
-    for method in &spec.deny_methods {
-        validate_http_method(method, report);
-    }
+        for method in &self.deny_methods {
+            validate_http_method(method, report);
+        }
 
-    for header in &spec.deny_headers {
-        validate_http_header_name(header, report);
-    }
+        for header in &self.deny_headers {
+            validate_http_header_name(header, report);
+        }
 
-    for header in &spec.allow_headers {
-        validate_http_header_name(header, report);
-    }
+        for header in &self.allow_headers {
+            validate_http_header_name(header, report);
+        }
 
-    for header in &spec.required_headers {
-        validate_http_header_name(header, report);
-    }
+        for header in &self.required_headers {
+            validate_http_header_name(header, report);
+        }
 
-    validate_device_paths(&spec.paths, report);
+        validate_device_paths(&self.paths, report);
+    }
 }
 
 #[cfg(test)]
@@ -116,7 +118,7 @@ mod tests {
         };
 
         // Act
-        validate_request_filter_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -139,7 +141,7 @@ mod tests {
         };
 
         // Act
-        validate_request_filter_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -162,7 +164,7 @@ mod tests {
         };
 
         // Act
-        validate_request_filter_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -184,7 +186,7 @@ mod tests {
         };
 
         // Act
-        validate_request_filter_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -207,7 +209,7 @@ mod tests {
         };
 
         // Act
-        validate_request_filter_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());

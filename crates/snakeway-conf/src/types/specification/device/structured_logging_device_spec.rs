@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use serde::Serialize;
 
 pub const LOG_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
@@ -73,22 +73,24 @@ fn check_keyword(value: &Located<String>, name: &str, allowed: &[&str], report: 
     }
 }
 
-pub fn validate_structured_logging_device(spec: &StructuredLoggingDeviceSpec, report: &mut Report) {
-    check_keyword(&spec.level, "level", &LOG_LEVELS, report);
+impl Validate for StructuredLoggingDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        check_keyword(&self.level, "level", &LOG_LEVELS, report);
 
-    for field in &spec.identity_fields {
-        check_keyword(field, "identity field", &IDENTITY_FIELDS, report);
-    }
-
-    if let Some(events) = &spec.events {
-        for event in &events.value {
-            check_keyword(event, "event", &LOG_EVENTS, report);
+        for field in &self.identity_fields {
+            check_keyword(field, "identity field", &IDENTITY_FIELDS, report);
         }
-    }
 
-    if let Some(phases) = &spec.phases {
-        for phase in &phases.value {
-            check_keyword(phase, "phase", &LOG_PHASES, report);
+        if let Some(events) = &self.events {
+            for event in &events.value {
+                check_keyword(event, "event", &LOG_EVENTS, report);
+            }
+        }
+
+        if let Some(phases) = &self.phases {
+            for phase in &phases.value {
+                check_keyword(phase, "phase", &LOG_PHASES, report);
+            }
         }
     }
 }
@@ -115,7 +117,7 @@ mod tests {
         };
 
         // Act
-        validate_structured_logging_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -131,7 +133,7 @@ mod tests {
         };
 
         // Act
-        validate_structured_logging_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -152,7 +154,7 @@ mod tests {
         };
 
         // Act
-        validate_structured_logging_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -178,7 +180,7 @@ mod tests {
         };
 
         // Act
-        validate_structured_logging_device(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(

@@ -410,7 +410,7 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
         ));
     };
 
-    let (spec_type, spec_only) = parse_config_struct_options(input)?;
+    let (spec_type, spec_only, validate) = parse_config_struct_options(input)?;
     let name = &input.ident;
 
     let mut consumed: Vec<syn::Ident> = Vec::new();
@@ -472,8 +472,17 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
     let ignored = spec_only.iter().map(|ident| quote! { #ident: _, });
 
+    // The `validate` flag binds the Spec to `Validate`, so a lowerable spec
+    // without a validator fails to compile. The bound is opt-in: configs that
+    // do not request it lower exactly as before.
+    let where_clause = if validate {
+        quote! { where #spec_type: ::confval::provenance::Validate }
+    } else {
+        quote! {}
+    };
+
     Ok(quote! {
-        impl ::confval::provenance::Lower<#spec_type> for #name {
+        impl ::confval::provenance::Lower<#spec_type> for #name #where_clause {
             fn lower(
                 spec: &#spec_type,
                 report: &mut ::confval::provenance::Report,
@@ -495,9 +504,12 @@ fn push_consumed(consumed: &mut Vec<syn::Ident>, ident: syn::Ident) {
     }
 }
 
-fn parse_config_struct_options(input: &DeriveInput) -> syn::Result<(syn::Path, Vec<syn::Ident>)> {
+fn parse_config_struct_options(
+    input: &DeriveInput,
+) -> syn::Result<(syn::Path, Vec<syn::Ident>, bool)> {
     let mut spec_type: Option<syn::Path> = None;
     let mut spec_only = Vec::new();
+    let mut validate = false;
     for attr in &input.attrs {
         if !attr.path().is_ident("confval") {
             continue;
@@ -515,16 +527,19 @@ fn parse_config_struct_options(input: &DeriveInput) -> syn::Result<(syn::Path, V
                     spec_only.push(ident.clone());
                     Ok(())
                 })
+            } else if meta.path.is_ident("validate") {
+                validate = true;
+                Ok(())
             } else {
                 Err(meta.error(
-                    "unknown confval attribute; expected `lower_from = SpecType` \
-                     or `spec_only(...)`",
+                    "unknown confval attribute; expected `lower_from = SpecType`, \
+                     `spec_only(...)`, or `validate`",
                 ))
             }
         })?;
     }
     spec_type
-        .map(|spec_type| (spec_type, spec_only))
+        .map(|spec_type| (spec_type, spec_only, validate))
         .ok_or_else(|| {
             syn::Error::new(
                 input.ident.span(),

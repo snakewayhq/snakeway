@@ -1,10 +1,10 @@
 use crate::types::{
     DeviceConfig, DeviceSpec, IdentityDeviceConfig, IngressSpec, ListenerConfig,
-    NetworkPolicyDeviceConfig, RequestFilterDeviceConfig, RouteConfig, RuntimeConfig, ServerConfig,
-    ServiceConfig, ServiceRouteConfig, StaticRouteConfig, StructuredLoggingDeviceConfig,
-    UpstreamTcpConfig, UpstreamUnixConfig,
+    NetworkPolicyDeviceConfig, RequestFilterDeviceConfig, RequestRateLimitingDeviceConfig,
+    RouteConfig, RuntimeConfig, ServerConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
+    StructuredLoggingDeviceConfig, UpstreamTcpConfig, UpstreamUnixConfig, WasmDeviceConfig,
 };
-use confval::provenance::{Located, Lower, Report};
+use confval::provenance::{Located, Lower, Report, Validate};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -14,12 +14,22 @@ use std::net::SocketAddr;
 /// here indicates a missing validation rule. Lowering continues across
 /// ingresses and devices so every such error is reported in one pass;
 /// `None` is returned when any step failed.
+///
+/// The `where IngressSpec: Validate` bound is the ingress-family equivalent of
+/// the `Lower` bound the server and device configs carry: the ingress lowering
+/// is a flattening rather than a per-entity `Lower` impl, so the bound lives
+/// here, on the function that performs it. Through `IngressSpec`'s
+/// compositional `Validate` impl it transitively requires every ingress child
+/// entity to be validatable, enforced at compile time.
 pub(crate) fn lower_configs(
     server: ServerConfig,
     ingresses: Vec<Located<IngressSpec>>,
     device_specs: Vec<Located<DeviceSpec>>,
     report: &mut Report,
-) -> Option<RuntimeConfig> {
+) -> Option<RuntimeConfig>
+where
+    IngressSpec: Validate,
+{
     let mut listeners = Vec::new();
     let mut routes = Vec::new();
     let mut services = HashMap::new();
@@ -174,10 +184,13 @@ pub(crate) fn lower_configs(
             DeviceSpec::NetworkPolicy(d) => {
                 NetworkPolicyDeviceConfig::lower(&d, report).map(DeviceConfig::NetworkPolicy)
             }
-            DeviceSpec::Wasm(d) => Some(DeviceConfig::Wasm(d.into())),
+            DeviceSpec::Wasm(d) => WasmDeviceConfig::lower(&d, report).map(DeviceConfig::Wasm),
             DeviceSpec::StructuredLogging(d) => StructuredLoggingDeviceConfig::lower(&d, report)
                 .map(DeviceConfig::StructuredLogging),
-            DeviceSpec::RequestRateLimiting(d) => Some(DeviceConfig::RequestRateLimiting(d.into())),
+            DeviceSpec::RequestRateLimiting(d) => {
+                RequestRateLimitingDeviceConfig::lower(&d, report)
+                    .map(DeviceConfig::RequestRateLimiting)
+            }
         };
         match lowered {
             Some(device) => devices.push(device),

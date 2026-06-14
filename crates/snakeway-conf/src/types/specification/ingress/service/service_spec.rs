@@ -2,7 +2,7 @@ use super::circuit_breaker_spec::validate_circuit_breaker;
 use super::service_route_spec::validate_service_route;
 use super::upstream_spec::{validate_endpoint, validate_endpoint_tls_verify, validate_upstream};
 use crate::types::{CircuitBreakerSpec, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec};
-use confval::provenance::{Located, Report, Span};
+use confval::provenance::{Located, Report, Validate};
 use serde::Serialize;
 use std::collections::HashSet;
 
@@ -42,81 +42,76 @@ impl Default for ServiceSpec {
     }
 }
 
-pub fn validate_service(spec: &ServiceSpec, span: Span, report: &mut Report) {
-    if !LOAD_BALANCING_STRATEGIES.contains(&spec.load_balancing_strategy.value.as_str()) {
-        report
-            .error(format!(
-                "unknown load_balancing_strategy: {}",
-                spec.load_balancing_strategy.value
-            ))
-            .at(spec.load_balancing_strategy.span)
-            .help(format!(
-                "expected one of: {}",
-                LOAD_BALANCING_STRATEGIES.join(", ")
-            ))
-            .emit();
-    }
-
-    if let Some(cb) = &spec.circuit_breaker
-        && cb.value.enable_auto_recovery.value
-    {
-        validate_circuit_breaker(&cb.value, report);
-    }
-
-    for route in &spec.routes {
-        validate_service_route(&route.value, route.span, report);
-    }
-
-    if spec.upstreams.is_empty() {
-        report
-            .error("service has no upstream backends")
-            .at(span)
-            .emit();
-    }
-
-    let mut seen_sock_values = HashSet::new();
-
-    for upstream in &spec.upstreams {
-        validate_upstream(&upstream.value, report);
-
-        if let (Some(sock), Some(endpoint)) = (&upstream.value.sock, &upstream.value.endpoint) {
+impl Validate for ServiceSpec {
+    fn validate(&self, report: &mut Report) {
+        if !LOAD_BALANCING_STRATEGIES.contains(&self.load_balancing_strategy.value.as_str()) {
             report
                 .error(format!(
-                    "upstream cannot have both sock {} and endpoint: {}:{}",
-                    sock.value, endpoint.value.host.value, endpoint.value.port.value
+                    "unknown load_balancing_strategy: {}",
+                    self.load_balancing_strategy.value
                 ))
-                .at(upstream.span)
+                .at(self.load_balancing_strategy.span)
+                .help(format!(
+                    "expected one of: {}",
+                    LOAD_BALANCING_STRATEGIES.join(", ")
+                ))
                 .emit();
-            continue;
         }
 
-        if upstream.value.sock.is_none() && upstream.value.endpoint.is_none() {
-            report
-                .error(
-                    "invalid upstream - it must have a sock or an endpoint, \
-                     but neither are defined",
-                )
-                .at(upstream.span)
-                .help("Only one can be set.")
-                .emit();
-            continue;
-        }
-
-        if let Some(endpoint) = &upstream.value.endpoint {
-            validate_endpoint(&endpoint.value, report);
-
-            if let Some(tls) = &endpoint.value.tls {
-                validate_endpoint_tls_verify(&tls.value, report);
-            }
-        }
-
-        if let Some(sock) = &upstream.value.sock
-            && !seen_sock_values.insert(sock.value.clone())
+        if let Some(cb) = &self.circuit_breaker
+            && cb.value.enable_auto_recovery.value
         {
-            report
-                .error(format!("duplicate upstream sock: {}", sock.value))
-                .at(sock.span)
-                .emit();
+            validate_circuit_breaker(&cb.value, report);
+        }
+
+        for route in &self.routes {
+            validate_service_route(&route.value, route.span, report);
+        }
+
+        let mut seen_sock_values = HashSet::new();
+
+        for upstream in &self.upstreams {
+            validate_upstream(&upstream.value, report);
+
+            if let (Some(sock), Some(endpoint)) = (&upstream.value.sock, &upstream.value.endpoint) {
+                report
+                    .error(format!(
+                        "upstream cannot have both sock {} and endpoint: {}:{}",
+                        sock.value, endpoint.value.host.value, endpoint.value.port.value
+                    ))
+                    .at(upstream.span)
+                    .emit();
+                continue;
+            }
+
+            if upstream.value.sock.is_none() && upstream.value.endpoint.is_none() {
+                report
+                    .error(
+                        "invalid upstream - it must have a sock or an endpoint, \
+                         but neither are defined",
+                    )
+                    .at(upstream.span)
+                    .help("Only one can be set.")
+                    .emit();
+                continue;
+            }
+
+            if let Some(endpoint) = &upstream.value.endpoint {
+                validate_endpoint(&endpoint.value, report);
+
+                if let Some(tls) = &endpoint.value.tls {
+                    validate_endpoint_tls_verify(&tls.value, report);
+                }
+            }
+
+            if let Some(sock) = &upstream.value.sock
+                && !seen_sock_values.insert(sock.value.clone())
+            {
+                report
+                    .error(format!("duplicate upstream sock: {}", sock.value))
+                    .at(sock.span)
+                    .emit();
+            }
         }
     }
 }
@@ -147,7 +142,7 @@ mod tests {
 
     fn validate(spec: &ServiceSpec) -> Report {
         let mut report = Report::new();
-        validate_service(spec, Span::detached(), &mut report);
+        spec.validate(&mut report);
         report
     }
 
@@ -162,23 +157,6 @@ mod tests {
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
-    }
-
-    #[test]
-    fn service_must_have_an_upstream() {
-        // Arrange
-        let service = ServiceSpec {
-            load_balancing_strategy: Located::detached("failover".to_string()),
-            upstreams: vec![],
-            ..Default::default()
-        };
-
-        // Act
-        let report = validate(&service);
-
-        // Assert
-        let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("service has no upstream backends"));
     }
 
     #[test]

@@ -1,9 +1,5 @@
-use crate::types::{
-    DeviceSpec, validate_identity_device, validate_network_policy_device,
-    validate_request_filter_device, validate_request_rate_limiting_device,
-    validate_structured_logging_device, validate_wasm_device,
-};
-use confval::provenance::{Located, Report, Span};
+use crate::types::DeviceSpec;
+use confval::provenance::{Located, Report, Span, Validate};
 
 fn report_already_defined(span: Span, report: &mut Report) {
     report.error("device already defined").at(span).emit();
@@ -34,7 +30,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
             identity_seen = true;
             identity_enabled = cfg.enable.value;
 
-            validate_identity_device(cfg, report);
+            cfg.validate(report);
 
             if cfg.enable_geoip.value
                 && cfg.geoip_city_db.is_none()
@@ -59,7 +55,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 }
                 request_filter_seen = true;
 
-                validate_request_filter_device(cfg, report);
+                cfg.validate(report);
 
                 if cfg.max_suspicious_body_bytes.value > cfg.max_body_bytes.value {
                     report
@@ -92,7 +88,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                         .emit();
                 }
 
-                validate_network_policy_device(cfg, report);
+                cfg.validate(report);
             }
             DeviceSpec::RequestRateLimiting(cfg) => {
                 if request_rate_limiting_device_seen {
@@ -104,10 +100,10 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                     report_requires_identity(device.span, report);
                 }
 
-                validate_request_rate_limiting_device(cfg, report);
+                cfg.validate(report);
             }
             DeviceSpec::Wasm(cfg) => {
-                validate_wasm_device(cfg, report);
+                cfg.validate(report);
             }
             DeviceSpec::StructuredLogging(cfg) => {
                 if structured_logging_seen {
@@ -115,7 +111,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 }
                 structured_logging_seen = true;
 
-                validate_structured_logging_device(cfg, report);
+                cfg.validate(report);
 
                 if cfg.include_identity.value && cfg.identity_fields.is_empty() {
                     report

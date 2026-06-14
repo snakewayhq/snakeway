@@ -1,8 +1,5 @@
-use crate::types::{
-    BindInterfaceSpec, IngressSpec, validate_bind, validate_bind_admin, validate_service,
-    validate_static_files,
-};
-use confval::provenance::{Located, Report, Span};
+use crate::types::{BindInterfaceSpec, IngressSpec, report_admin_auth_missing};
+use confval::provenance::{Located, Report, Span, Validate};
 use std::collections::{HashMap, HashSet};
 
 pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mut Report) {
@@ -113,20 +110,24 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 }
 
 fn validate_ingress_entity(ingress: &Located<IngressSpec>, report: &mut Report) {
-    if let Some(bind) = &ingress.value.bind {
-        validate_bind(&bind.value, report);
-    }
+    // Field-local validation for every child entity, dispatched compositionally.
+    ingress.value.validate(report);
 
-    if let Some(bind_admin) = &ingress.value.bind_admin {
-        validate_bind_admin(&bind_admin.value, bind_admin.span, report);
-    }
-
-    for static_files in &ingress.value.static_files {
-        validate_static_files(&static_files.value, report);
+    // Presence checks that need an enclosing span the child cannot reach from
+    // `&self` stay here, where the `Located` wrappers are in hand.
+    if let Some(bind_admin) = &ingress.value.bind_admin
+        && bind_admin.value.auth.is_none()
+    {
+        report_admin_auth_missing(bind_admin.span, report);
     }
 
     for service in &ingress.value.services {
-        validate_service(&service.value, service.span, report);
+        if service.value.upstreams.is_empty() {
+            report
+                .error("service has no upstream backends")
+                .at(service.span)
+                .emit();
+        }
     }
 }
 
@@ -201,6 +202,61 @@ mod tests {
             sock: Some(Located::detached(sock.to_string())),
             weight: Located::detached(1),
         })
+    }
+
+    // The "no upstream backends" check needs the enclosing service span, so it
+    // lives here rather than in ServiceSpec::validate.
+    #[test]
+    fn service_must_have_an_upstream() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![Located::detached(ServiceSpec {
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                upstreams: vec![],
+                ..Default::default()
+            })],
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "service has no upstream backends")
+        );
+    }
+
+    // The auth-absent check needs the enclosing bind_admin span, so it lives
+    // here rather than in BindAdminSpec::validate.
+    #[test]
+    fn missing_auth_block_produces_error() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(9000),
+                ..Default::default()
+            })),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "bind_admin.auth is required")
+        );
     }
 
     #[test]

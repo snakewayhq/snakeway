@@ -1,4 +1,5 @@
 use crate::types::WasmDeviceSpec;
+use confval::provenance::{Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -13,13 +14,16 @@ pub struct WasmDeviceConfig {
     pub config: Option<hcl::Value>,
 }
 
-impl From<WasmDeviceSpec> for WasmDeviceConfig {
-    fn from(spec: WasmDeviceSpec) -> Self {
-        Self {
+impl Lower<WasmDeviceSpec> for WasmDeviceConfig
+where
+    WasmDeviceSpec: Validate,
+{
+    fn lower(spec: &WasmDeviceSpec, _report: &mut Report) -> Option<Self> {
+        Some(Self {
             enable: spec.enable.value,
-            path: spec.path.value,
-            config: spec.config,
-        }
+            path: spec.path.value.clone(),
+            config: spec.config.clone(),
+        })
     }
 }
 
@@ -38,7 +42,7 @@ mod tests {
         };
 
         // Act
-        let config: WasmDeviceConfig = spec.into();
+        let config = WasmDeviceConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
         assert!(config.enable);

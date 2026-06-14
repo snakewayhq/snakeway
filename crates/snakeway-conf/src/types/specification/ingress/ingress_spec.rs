@@ -1,5 +1,5 @@
 use crate::types::{BindAdminSpec, BindSpec, ServiceSpec, StaticFilesSpec};
-use confval::provenance::Located;
+use confval::provenance::{Located, Report, Validate};
 use serde::Serialize;
 
 /// The operator DSL for the config subsystem.
@@ -17,6 +17,30 @@ pub struct IngressSpec {
     pub services: Vec<Located<ServiceSpec>>,
     #[confval(nested)]
     pub static_files: Vec<Located<StaticFilesSpec>>,
+}
+
+/// Compositional field-local validation: an ingress validates itself by
+/// delegating to each child entity. Delegating (rather than inlining) is what
+/// makes the child validators reachable from the lowering bound on
+/// `lower_configs` (`where IngressSpec: Validate`): removing any child's
+/// `Validate` impl breaks this method, and the bound then fails to compile.
+/// Checks needing an enclosing span (a missing child) stay in the central
+/// validator, which holds the `Located` wrappers.
+impl Validate for IngressSpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(bind) = &self.bind {
+            bind.value.validate(report);
+        }
+        if let Some(bind_admin) = &self.bind_admin {
+            bind_admin.value.validate(report);
+        }
+        for static_files in &self.static_files {
+            static_files.value.validate(report);
+        }
+        for service in &self.services {
+            service.value.validate(report);
+        }
+    }
 }
 
 #[cfg(test)]

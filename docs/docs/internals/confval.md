@@ -306,6 +306,41 @@ PORT.check_located( & spec.port, "port", report);
 overrides the auto-generated suggestion; otherwise confval generates one like "Set port to at
 least 1".
 
+## Validate
+
+`Validate` is field-local semantic validation for a spec type:
+
+```rust
+pub trait Validate {
+    fn validate(&self, report: &mut Report);
+}
+```
+
+A `Validate` impl checks what a value can prove about itself from its own fields, reporting at the
+span each field already carries. It takes only `&self` and the report: no span and no origin
+parameter, because anything needing more context (a missing required child, a cross-field rule, a
+relational check across the whole config) belongs in the consumer's central validators, not here.
+
+The trait's reason to exist is to be nameable in a bound. The `Config` derive, given the `validate`
+flag, emits it on the generated `Lower` impl:
+
+```rust
+#[derive(confval::Config)]
+#[confval(lower_from = ServerSpec, validate)]
+struct ServerConfig { /* ... */ }
+// generates: impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate { ... }
+```
+
+A flagged config whose spec has no `Validate` impl then fails to compile, so a spec that can be
+lowered into a runtime config but carries no validator is unrepresentable. The flag is opt-in:
+configs that do not request it lower exactly as before. Hand-written `Lower` impls add the same
+`where S: Validate` clause directly, and a flattening lowering (one that has no per-entity `Lower`
+impl) can put the bound on the function that performs it.
+
+The bound guarantees the validator exists, not that lowering calls it. Validation is still invoked
+explicitly before the gate; the trait closes the "forgot to write a validator" gap, the call site
+remains the consumer's responsibility.
+
 ## Feature flags
 
 | Flag     | Default | Brings in        | Enables                                                  |
@@ -322,8 +357,9 @@ Snakeway enables all four in its workspace dependency.
 confval assumes a fixed phase ordering, and the derives are designed around it:
 
 1. **Parse** (structural): `parse_hcl` builds specs and reports shape problems.
-2. **Validate** (semantic): plain functions take `&Spec` and `&mut Report` and check ranges, closed
-   sets, and cross-field rules against the spans stored in `Located` fields.
+2. **Validate** (semantic): `Validate` impls take `&self` and `&mut Report` and check ranges, closed
+   sets, and cross-field rules against the spans stored in `Located` fields. The trait doubles as a
+   compile-time bound on step 4, so a lowerable spec without a validator does not compile.
 3. **Gate**: lowering must not run on a report that contains errors.
 4. **Lower**: `Lower::lower` converts specs to runtime types. Because the gate ran, narrowing
    conversions in `with` functions are safe.

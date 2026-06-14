@@ -1,6 +1,6 @@
-use crate::types::{DeviceSpec, IngressSpec, ServerSpec, validate_server};
+use crate::types::{DeviceSpec, IngressSpec, ServerSpec};
 use crate::validation::{multi_file, single_file};
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 
 /// Validate everything that exists in a fully parsed config.
 pub(crate) fn validate_spec(
@@ -9,7 +9,7 @@ pub(crate) fn validate_spec(
     devices: &[Located<DeviceSpec>],
     report: &mut Report,
 ) {
-    validate_server(server, report);
+    server.validate(report);
 
     if server.version.value == 1 {
         // Single file validation.

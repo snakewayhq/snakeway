@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = ServerSpec)]
+#[confval(lower_from = ServerSpec, validate)]
 pub struct ServerConfig {
     #[confval(lower(from = version, with = narrow::i64_to_u32))]
     pub version: u32,
@@ -91,7 +91,7 @@ pub struct UpstreamSourceAddressesConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = TlsAutomationSpec)]
+#[confval(lower_from = TlsAutomationSpec, validate)]
 pub struct TlsAutomationConfig {
     #[confval(nested)]
     pub acme: AcmeServerConfig,
@@ -117,7 +117,7 @@ pub struct AcmeServerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
-#[confval(lower_from = ObservabilitySpec)]
+#[confval(lower_from = ObservabilitySpec, validate)]
 pub struct ObservabilityConfig {
     #[confval(nested)]
     pub otel: Option<OtelConfig>,

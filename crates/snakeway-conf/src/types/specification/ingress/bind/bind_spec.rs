@@ -7,7 +7,7 @@ use crate::types::{
 };
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
-use confval::provenance::{Located, Report};
+use confval::provenance::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
 
@@ -47,71 +47,76 @@ impl BindSpec {
     }
 }
 
-pub fn validate_bind(spec: &BindSpec, report: &mut Report) {
-    // Port validation.
-    if !is_valid_port(spec.port.value) {
-        report_invalid_port(&spec.port, report);
-    }
+impl Validate for BindSpec {
+    fn validate(&self, report: &mut Report) {
+        // Port validation.
+        if !is_valid_port(self.port.value) {
+            report_invalid_port(&self.port, report);
+        }
 
-    // Connection filters.
-    if let Some(connection_filter) = &spec.connection_filter {
-        validate_network_connection_filter(&connection_filter.value, report);
-    }
+        // Connection filters.
+        if let Some(connection_filter) = &self.connection_filter {
+            validate_network_connection_filter(&connection_filter.value, report);
+        }
 
-    if let Some(connection_rate_limiting_filter) = &spec.connection_rate_limiting_filter {
-        validate_connection_rate_limiting_filter(&connection_rate_limiting_filter.value, report);
-    }
+        if let Some(connection_rate_limiting_filter) = &self.connection_rate_limiting_filter {
+            validate_connection_rate_limiting_filter(
+                &connection_rate_limiting_filter.value,
+                report,
+            );
+        }
 
-    // TLS cert/key/acme validation.
-    if let Some(tls) = &spec.tls {
-        validate_tls_termination(&tls.value, report);
-    }
+        // TLS cert/key/acme validation.
+        if let Some(tls) = &self.tls {
+            validate_tls_termination(&tls.value, report);
+        }
 
-    // HTTP/2 requires TLS.
-    if spec.enable_http2.value && spec.tls.is_none() {
-        report
-            .error(format!("HTTP/2 requires TLS: {}", spec.interface.value))
-            .at(spec.enable_http2.span)
-            .help("Enable TLS on the bind or disable HTTP/2.")
-            .emit();
-    }
-
-    // Redirect HTTP to HTTPS validation.
-    if let Some(redirect) = &spec.redirect_http_to_https {
-        validate_redirect(&redirect.value, report);
-    }
-
-    // Redirect HTTP to HTTPS requires TLS.
-    if let Some(redirect) = &spec.redirect_http_to_https
-        && spec.tls.is_none()
-    {
-        report
-            .error(format!(
-                "redirect_http_to_https requires TLS: {}",
-                spec.interface.value
-            ))
-            .at(redirect.span)
-            .help("Enable TLS on the bind or remove redirect_http_to_https.")
-            .emit();
-    }
-
-    // Interface validation.
-    let interface: Result<BindInterfaceSpec, _> = spec.interface.value.as_str().try_into();
-    match interface {
-        Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+        // HTTP/2 requires TLS.
+        if self.enable_http2.value && self.tls.is_none() {
             report
-                .error("invalid bind address: 0.0.0.0")
-                .at(spec.interface.span)
+                .error(format!("HTTP/2 requires TLS: {}", self.interface.value))
+                .at(self.enable_http2.span)
+                .help("Enable TLS on the bind or disable HTTP/2.")
                 .emit();
         }
-        Ok(_) => {
-            // All good.
+
+        // Redirect HTTP to HTTPS validation.
+        if let Some(redirect) = &self.redirect_http_to_https {
+            validate_redirect(&redirect.value, report);
         }
-        Err(_) => {
+
+        // Redirect HTTP to HTTPS requires TLS.
+        if let Some(redirect) = &self.redirect_http_to_https
+            && self.tls.is_none()
+        {
             report
-                .error(format!("invalid bind address: {}", spec.interface.value))
-                .at(spec.interface.span)
+                .error(format!(
+                    "redirect_http_to_https requires TLS: {}",
+                    self.interface.value
+                ))
+                .at(redirect.span)
+                .help("Enable TLS on the bind or remove redirect_http_to_https.")
                 .emit();
+        }
+
+        // Interface validation.
+        let interface: Result<BindInterfaceSpec, _> = self.interface.value.as_str().try_into();
+        match interface {
+            Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+                report
+                    .error("invalid bind address: 0.0.0.0")
+                    .at(self.interface.span)
+                    .emit();
+            }
+            Ok(_) => {
+                // All good.
+            }
+            Err(_) => {
+                report
+                    .error(format!("invalid bind address: {}", self.interface.value))
+                    .at(self.interface.span)
+                    .emit();
+            }
         }
     }
 }
@@ -138,7 +143,7 @@ mod tests {
         };
 
         // Act
-        validate_bind(&bind, &mut report);
+        bind.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -160,7 +165,7 @@ mod tests {
         };
 
         // Act
-        validate_bind(&bind, &mut report);
+        bind.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -182,7 +187,7 @@ mod tests {
         };
 
         // Act
-        validate_bind(&bind, &mut report);
+        bind.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -201,7 +206,7 @@ mod tests {
         let bind = minimal_bind();
 
         // Act
-        validate_bind(&bind, &mut report);
+        bind.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -215,7 +220,7 @@ mod tests {
         bind.enable_http2 = Located::detached(true);
 
         // Act
-        validate_bind(&bind, &mut report);
+        bind.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues()[0].message, "HTTP/2 requires TLS: loopback");
@@ -236,7 +241,7 @@ mod tests {
         }));
 
         // Act
-        validate_bind(&bind, &mut report);
+        bind.validate(&mut report);
 
         // Assert
         assert_eq!(
