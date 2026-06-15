@@ -1,7 +1,15 @@
-//! End-to-end example: parse an HCL config span-first, validate it, lower
-//! it to a runtime type, and render the diagnostics.
+//! End-to-end example: parse a TOML config span-first, validate it, lower it
+//! to a runtime type, and render the diagnostics.
 //!
-//! Run with: cargo run --example basic --features derive,color
+//! This is the companion to the `hcl` example. The `ServerSpec`,
+//! `ServerConfig`, validation, and lowering are identical; only the source
+//! text and the single `parse_toml` call differ. Everything after parsing —
+//! the derive-generated walk, the validators, the lowering functions — is
+//! format-neutral and shared verbatim. Where the `hcl` example feeds an
+//! invalid config to show the diagnostics, this one feeds a valid config to
+//! show the lowered output.
+//!
+//! Run with: cargo run -p confval --example toml --features derive,color,toml
 
 use confval::{
     RangeConstraint,
@@ -55,15 +63,17 @@ fn workers_to_usize(value: &Located<i64>, _report: &mut Report) -> Option<usize>
 }
 
 fn main() {
-    let input = r#"hostname = ""
-port = 99999
+    let input = r#"hostname = "127.0.0.1"
+port = 8080
+workers = 8
 "#;
 
     let mut sources = SourceMap::new();
     let mut report = Report::new();
-    let id = sources.add("server.hcl", input);
+    let id = sources.add("server.toml", input);
 
-    let spec: Option<ServerSpec> = confval::format::hcl::parse_hcl(&sources, id, &mut report);
+    // The only format-specific line in the whole program.
+    let spec: Option<ServerSpec> = confval::format::toml::parse_toml(&sources, id, &mut report);
     if let Some(spec) = &spec {
         validate_server(spec, &mut report);
     }

@@ -324,7 +324,7 @@ tls {
 #[test]
 fn duplicate_attribute_is_a_parser_level_syntax_error() {
     // HCL's grammar requires unique attribute keys, so hcl-edit rejects a
-    // redefined attribute during parsing and from_hcl never sees it. Only
+    // redefined attribute during parsing and from_fields never sees it. Only
     // blocks, which may legally repeat, get the collected duplicate-field
     // treatment.
     let input = r#"hostname = "127.0.0.1"

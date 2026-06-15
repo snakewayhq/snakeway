@@ -1,6 +1,6 @@
 use crate::validation::validator::{require_existing_dir, validate_cert_pem};
-use confval::format::hcl::{
-    Fields, FromHcl, parse_string_field, report_missing_field, report_unknown_field,
+use confval::format::{
+    Fields, FromFields, parse_string_field, report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -41,8 +41,8 @@ pub struct AcmeServerSpec {
 
 /// The cert_store block carries a `type` attribute selecting the variant,
 /// mirroring the serialized form (`type = "filesystem"` or `type = "memory"`).
-impl FromHcl for CertStoreSpec {
-    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
+impl FromFields for CertStoreSpec {
+    fn from_fields(fields: &Fields, report: &mut Report) -> Option<Self> {
         let Some(type_field) = fields.get("type") else {
             report_missing_field("type", fields.enclosing(), report);
             return None;
@@ -61,7 +61,7 @@ impl FromHcl for CertStoreSpec {
             "filesystem" => {
                 let mut cert_dir = None;
                 for field in fields.iter() {
-                    match field.name {
+                    match field.name.as_str() {
                         "type" => {}
                         "cert_dir" => {
                             cert_dir = parse_string_field(field, report)

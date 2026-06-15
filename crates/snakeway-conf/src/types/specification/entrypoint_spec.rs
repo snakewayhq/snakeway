@@ -2,8 +2,8 @@ use crate::types::{
     IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
-use confval::format::hcl::{
-    Fields, FromHcl, parse_single_struct, report_missing_field, report_unknown_field,
+use confval::format::{
+    Fields, FromFields, parse_single_struct, report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Span};
 use serde::Serialize;
@@ -32,15 +32,15 @@ impl Default for IncludeSpec {
     }
 }
 
-impl FromHcl for EntrypointSpec {
-    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
+impl FromFields for EntrypointSpec {
+    fn from_fields(fields: &Fields, report: &mut Report) -> Option<Self> {
         let mut server: Option<Located<ServerSpec>> = None;
         let mut server_seen: Option<Span> = None;
         let mut include: Option<Located<IncludeSpec>> = None;
         let mut include_seen = None;
 
         for field in fields.iter() {
-            match field.name {
+            match field.name.as_str() {
                 "server" => {
                     parse_single_struct(&mut server, &mut server_seen, "server", field, report)
                 }

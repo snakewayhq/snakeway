@@ -1,6 +1,6 @@
 //! Derive macros for confval.
 //!
-//! `#[derive(Spec)]` generates an `impl confval::format::hcl::FromHcl` that performs
+//! `#[derive(Spec)]` generates an `impl confval::format::FromFields` that performs
 //! structural parsing only: it walks the `Fields` view, matches fields by
 //! name, reports unknown and missing fields, and builds the struct. It
 //! performs no validation; entity validation lives in named functions that
@@ -55,9 +55,9 @@ enum FieldShape {
     /// `Option<Located<Vec<Located<String>>>>`: optional string list that
     /// keeps the outer `Located`.
     OptionalWrappedStringList,
-    /// `Located<S>` / `Option<Located<S>>` where `S: FromHcl`.
+    /// `Located<S>` / `Option<Located<S>>` where `S: FromFields`.
     Nested { optional: bool },
-    /// `Vec<Located<S>>` where `S: FromHcl`.
+    /// `Vec<Located<S>>` where `S: FromFields`.
     NestedList,
 }
 
@@ -74,7 +74,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         return Err(syn::Error::new(
             input.ident.span(),
             "#[derive(Spec)] supports structs with named fields; \
-             write FromHcl by hand for enums",
+             write FromFields by hand for enums",
         ));
     };
     let Fields::Named(fields) = &data.fields else {
@@ -144,7 +144,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 if options.default.is_some() {
                     match_arms.push(quote! {
                         #field_name => #slot =
-                            ::confval::format::hcl::parse_string_list_field(__field, report),
+                            ::confval::format::parse_string_list_field(__field, report),
                     });
                     constructors.push(quote! {
                         #ident: #slot.map(|__list| __list.value).unwrap_or_default(),
@@ -155,7 +155,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     match_arms.push(quote! {
                         #field_name => {
                             #seen = true;
-                            #slot = ::confval::format::hcl::parse_string_list_field(__field, report);
+                            #slot = ::confval::format::parse_string_list_field(__field, report);
                         }
                     });
                     missing_checks.push(seen_missing_check(&field_name, &seen));
@@ -166,7 +166,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 slot_decls.push(quote! { let mut #slot = ::core::option::Option::None; });
                 match_arms.push(quote! {
                     #field_name => #slot =
-                        ::confval::format::hcl::parse_string_list_field(__field, report),
+                        ::confval::format::parse_string_list_field(__field, report),
                 });
                 constructors.push(quote! { #ident: #slot, });
             }
@@ -178,7 +178,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         ::core::option::Option::None;
                 });
                 match_arms.push(quote! {
-                    #field_name => ::confval::format::hcl::parse_single_struct(
+                    #field_name => ::confval::format::parse_single_struct(
                         &mut #slot, &mut #seen, #field_name, __field, report,
                     ),
                 });
@@ -187,7 +187,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 } else {
                     missing_checks.push(quote! {
                         if #seen.is_none() {
-                            ::confval::format::hcl::report_missing_field(
+                            ::confval::format::report_missing_field(
                                 #field_name, fields.enclosing(), report,
                             );
                         }
@@ -205,7 +205,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             FieldShape::NestedList => {
                 slot_decls.push(quote! { let mut #slot = ::std::vec::Vec::new(); });
                 match_arms.push(quote! {
-                    #field_name => ::confval::format::hcl::parse_struct_list_field(
+                    #field_name => ::confval::format::parse_struct_list_field(
                         &mut #slot, __field, report,
                     ),
                 });
@@ -215,17 +215,17 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     }
 
     Ok(quote! {
-        impl ::confval::format::hcl::FromHcl for #name {
-            fn from_hcl(
-                fields: &::confval::format::hcl::Fields<'_>,
+        impl ::confval::format::FromFields for #name {
+            fn from_fields(
+                fields: &::confval::format::Fields,
                 report: &mut ::confval::diagnostic::Report,
             ) -> ::core::option::Option<Self> {
                 #(#slot_decls)*
 
                 for __field in fields.iter() {
-                    match __field.name {
+                    match __field.name.as_str() {
                         #(#match_arms)*
-                        _ => ::confval::format::hcl::report_unknown_field(__field, report),
+                        _ => ::confval::format::report_unknown_field(__field, report),
                     }
                 }
 
@@ -352,12 +352,12 @@ fn classify(field: &Field, options: &FieldOptions) -> syn::Result<FieldShape> {
 
 fn leaf_parser(leaf: &Leaf) -> TokenStream2 {
     match leaf {
-        Leaf::String => quote! { ::confval::format::hcl::parse_string_field(__field, report) },
-        Leaf::Int => quote! { ::confval::format::hcl::parse_int_field(__field, report) },
-        Leaf::Float => quote! { ::confval::format::hcl::parse_float_field(__field, report) },
-        Leaf::Bool => quote! { ::confval::format::hcl::parse_bool_field(__field, report) },
+        Leaf::String => quote! { ::confval::format::parse_string_field(__field, report) },
+        Leaf::Int => quote! { ::confval::format::parse_int_field(__field, report) },
+        Leaf::Float => quote! { ::confval::format::parse_float_field(__field, report) },
+        Leaf::Bool => quote! { ::confval::format::parse_bool_field(__field, report) },
         Leaf::PathBuf => quote! {
-            ::confval::format::hcl::parse_string_field(__field, report)
+            ::confval::format::parse_string_field(__field, report)
                 .map(|__value| __value.map(::std::path::PathBuf::from))
         },
     }
@@ -373,7 +373,7 @@ fn default_expr(default: &Option<Expr>) -> TokenStream2 {
 fn seen_missing_check(field_name: &str, seen: &proc_macro2::Ident) -> TokenStream2 {
     quote! {
         if !#seen {
-            ::confval::format::hcl::report_missing_field(#field_name, fields.enclosing(), report);
+            ::confval::format::report_missing_field(#field_name, fields.enclosing(), report);
         }
     }
 }

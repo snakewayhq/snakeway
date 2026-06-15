@@ -1,6 +1,6 @@
 use crate::validation::validator::validate_cert_key_pair;
-use confval::format::hcl::{
-    Fields, FromHcl, parse_string_field, parse_string_list_field, report_missing_field,
+use confval::format::{
+    Fields, FromFields, parse_string_field, parse_string_list_field, report_missing_field,
     report_unknown_field,
 };
 use confval::prelude::{Located, Report};
@@ -33,8 +33,8 @@ pub const ACME_CHALLENGE_HTTP01: &str = "http01";
 
 /// The tls block carries a `mode` attribute selecting the variant,
 /// mirroring the serialized form (`mode = "manual"` or `mode = "acme"`).
-impl FromHcl for TlsTerminationSpec {
-    fn from_hcl(fields: &Fields<'_>, report: &mut Report) -> Option<Self> {
+impl FromFields for TlsTerminationSpec {
+    fn from_fields(fields: &Fields, report: &mut Report) -> Option<Self> {
         let Some(mode_field) = fields.get("mode") else {
             report_missing_field("mode", fields.enclosing(), report);
             return None;
@@ -46,7 +46,7 @@ impl FromHcl for TlsTerminationSpec {
                 let mut cert = None;
                 let mut key = None;
                 for field in fields.iter() {
-                    match field.name {
+                    match field.name.as_str() {
                         "mode" => {}
                         "cert" => {
                             cert = parse_string_field(field, report)
@@ -74,7 +74,7 @@ impl FromHcl for TlsTerminationSpec {
                 let mut domains = None;
                 let mut challenge = None;
                 for field in fields.iter() {
-                    match field.name {
+                    match field.name.as_str() {
                         "mode" => {}
                         "domains" => domains = parse_string_list_field(field, report),
                         "challenge" => challenge = parse_string_field(field, report),
