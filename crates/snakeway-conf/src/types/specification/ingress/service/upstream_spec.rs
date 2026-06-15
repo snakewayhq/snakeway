@@ -2,7 +2,7 @@ use crate::resolution::ResolveError;
 use crate::types::HclInt;
 use crate::types::specification::ingress::bind::report_invalid_port;
 use crate::validation::validator::{is_valid_hostname, is_valid_port, validate_cert_pem};
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};

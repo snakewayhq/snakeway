@@ -1,6 +1,6 @@
 use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec};
 use crate::validation::validator::validate_cert_pem;
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -273,8 +273,8 @@ impl Validate for ServerSpec {
 mod tests {
     use super::*;
     use crate::types::CertStoreSpec;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::SourceMap;
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::SourceMap;
     use std::path::Path;
 
     fn parse_server(input: &str) -> (Report, Option<ServerSpec>) {

@@ -1,6 +1,6 @@
 use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
 use crate::types::{CircuitBreakerConfig, HealthCheckConfig, ServiceSpec, UpstreamUnixConfig};
-use confval::provenance::{Lower, Report};
+use confval::prelude::{Lower, Report};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -91,9 +91,7 @@ mod tests {
     fn service_config_new_sets_fields() {
         // Arrange
         let spec = ServiceSpec {
-            load_balancing_strategy: confval::provenance::Located::detached(
-                "round_robin".to_string(),
-            ),
+            load_balancing_strategy: confval::source::Located::detached("round_robin".to_string()),
             routes: vec![],
             upstreams: vec![],
             health_check: None,

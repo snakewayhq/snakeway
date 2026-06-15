@@ -1,5 +1,5 @@
 use crate::types::StructuredLoggingDeviceSpec;
-use confval::provenance::{Located, Lower, Report, Validate};
+use confval::prelude::{Located, Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 

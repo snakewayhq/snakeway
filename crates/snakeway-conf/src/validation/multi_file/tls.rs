@@ -1,5 +1,5 @@
 use crate::types::{CertStoreSpec, IngressSpec, ServerSpec, TlsTerminationSpec};
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 
 pub(crate) fn validate_tls(
     server: &ServerSpec,
@@ -62,7 +62,7 @@ pub(crate) fn validate_tls(
 mod tests {
     use super::validate_tls;
     use crate::types::*;
-    use confval::provenance::{Located, Report};
+    use confval::prelude::{Located, Report};
     use std::path::PathBuf;
 
     fn minimal_bind_with_acme() -> BindSpec {

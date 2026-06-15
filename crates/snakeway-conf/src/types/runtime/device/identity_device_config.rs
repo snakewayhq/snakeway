@@ -1,5 +1,5 @@
 use crate::types::IdentityDeviceSpec;
-use confval::provenance::{Lower, Report, Validate};
+use confval::prelude::{Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -86,7 +86,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     #[test]
     fn from_spec_maps_fields() {

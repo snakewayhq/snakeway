@@ -1,5 +1,5 @@
 use crate::types::WasmDeviceSpec;
-use confval::provenance::{Lower, Report, Validate};
+use confval::prelude::{Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -34,7 +34,7 @@ mod tests {
     #[test]
     fn from_spec_maps_fields() {
         // Arrange
-        use confval::provenance::Located;
+        use confval::prelude::Located;
         let spec = WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(PathBuf::from("/opt/modules/filter.wasm")),

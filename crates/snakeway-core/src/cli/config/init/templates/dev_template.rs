@@ -1,5 +1,5 @@
 use crate::cli::config::hcl::{to_hcl_block_string, to_hcl_string};
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_conf::types::{
     ACME_CHALLENGE_HTTP01, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
     NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,

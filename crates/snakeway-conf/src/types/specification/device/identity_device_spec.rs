@@ -1,7 +1,7 @@
 use crate::types::HclInt;
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;

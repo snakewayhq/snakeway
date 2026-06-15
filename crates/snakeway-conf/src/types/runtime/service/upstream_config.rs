@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn tls_config_from_spec() {
         // Arrange
-        use confval::provenance::Located;
+        use confval::prelude::Located;
         let spec = EndpointTlsSpec {
             sni: Located::detached("backend.internal".to_string()),
             verify: Located::detached(true),
@@ -105,8 +105,8 @@ mod tests {
     fn tcp_upstream_http_url() {
         // Arrange
         let spec = EndpointSpec {
-            host: confval::provenance::Located::detached("127.0.0.1".to_string()),
-            port: confval::provenance::Located::detached(3000),
+            host: confval::source::Located::detached("127.0.0.1".to_string()),
+            port: confval::source::Located::detached(3000),
             tls: None,
         };
 
@@ -122,11 +122,11 @@ mod tests {
     fn tcp_upstream_https_url() {
         // Arrange
         let spec = EndpointSpec {
-            host: confval::provenance::Located::detached("127.0.0.1".to_string()),
-            port: confval::provenance::Located::detached(3000),
-            tls: Some(confval::provenance::Located::detached(EndpointTlsSpec {
-                sni: confval::provenance::Located::detached("example.com".to_string()),
-                verify: confval::provenance::Located::detached(true),
+            host: confval::source::Located::detached("127.0.0.1".to_string()),
+            port: confval::source::Located::detached(3000),
+            tls: Some(confval::source::Located::detached(EndpointTlsSpec {
+                sni: confval::source::Located::detached("example.com".to_string()),
+                verify: confval::source::Located::detached(true),
                 ca_file: None,
             })),
         };
@@ -143,8 +143,8 @@ mod tests {
     fn tcp_upstream_ipv6_bracketed() {
         // Arrange
         let spec = EndpointSpec {
-            host: confval::provenance::Located::detached("::1".to_string()),
-            port: confval::provenance::Located::detached(3000),
+            host: confval::source::Located::detached("::1".to_string()),
+            port: confval::source::Located::detached(3000),
             tls: None,
         };
 
@@ -159,8 +159,8 @@ mod tests {
     fn tcp_upstream_hostname_preserved() {
         // Arrange
         let spec = EndpointSpec {
-            host: confval::provenance::Located::detached("my-service".to_string()),
-            port: confval::provenance::Located::detached(3000),
+            host: confval::source::Located::detached("my-service".to_string()),
+            port: confval::source::Located::detached(3000),
             tls: None,
         };
 

@@ -3,7 +3,7 @@ use crate::types::{
     AdminAuthConfig, BearerAuthConfig, BindAdminSpec, BindSpec, ConnectionRateLimitingFilterConfig,
     NetworkConnectionFilterConfig, TlsTerminationConfig,
 };
-use confval::provenance::{Located, Lower, Report};
+use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -182,7 +182,7 @@ impl RedirectConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     fn minimal_bind() -> BindSpec {
         BindSpec {

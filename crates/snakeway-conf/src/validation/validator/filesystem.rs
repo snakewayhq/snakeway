@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use std::fs;
 use std::path::{Path, PathBuf};
 

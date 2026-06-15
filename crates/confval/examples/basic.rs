@@ -63,7 +63,7 @@ port = 99999
     let mut report = Report::new();
     let id = sources.add("server.hcl", input);
 
-    let spec: Option<ServerSpec> = confval::hcl::parse_hcl(&sources, id, &mut report);
+    let spec: Option<ServerSpec> = confval::format::hcl::parse_hcl(&sources, id, &mut report);
     if let Some(spec) = &spec {
         validate_server(spec, &mut report);
     }

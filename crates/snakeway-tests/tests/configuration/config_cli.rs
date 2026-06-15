@@ -130,7 +130,7 @@ fn empty_config_directory_returns_error() {
 #[test]
 fn nonexistent_ca_file_produces_validation_error() {
     // Arrange
-    use confval::provenance::Located;
+    use confval::source::Located;
     use snakeway_core::testing_api::conf::types::ServerSpec;
     use snakeway_tests::conf::ConfigBuilder;
     use std::path::PathBuf;

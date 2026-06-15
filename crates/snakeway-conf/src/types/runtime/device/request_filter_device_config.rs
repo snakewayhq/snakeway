@@ -1,5 +1,5 @@
 use crate::types::RequestFilterDeviceSpec;
-use confval::provenance::{Located, Lower, Report, Validate, narrow};
+use confval::prelude::{Located, Lower, Report, Validate, narrow};
 use http::{HeaderName, Method};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -169,7 +169,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     fn default_spec() -> RequestFilterDeviceSpec {
         RequestFilterDeviceSpec {

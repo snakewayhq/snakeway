@@ -1,5 +1,5 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_core::testing_api::conf::types::{
     ACME_CHALLENGE_HTTP01, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
     IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,

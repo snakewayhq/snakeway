@@ -5,8 +5,8 @@
 
 #![cfg(feature = "derive")]
 
-use confval::hcl::parse_hcl;
-use confval::provenance::{Located, Lower, Report, SourceMap, Span};
+use confval::format::hcl::parse_hcl;
+use confval::prelude::{Located, Lower, Report, SourceMap, Span};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;

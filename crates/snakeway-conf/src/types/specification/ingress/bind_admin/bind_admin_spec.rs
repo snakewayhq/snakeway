@@ -5,7 +5,7 @@ use crate::types::specification::ingress::bind::validate_tls_termination;
 use crate::types::{BindInterfaceSpec, HclInt, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
 
@@ -366,7 +366,7 @@ mod tests {
             !report
                 .issues()
                 .iter()
-                .any(|i| i.severity == confval::Severity::Error
+                .any(|i| i.severity == confval::diagnostic::Severity::Error
                     && i.message.contains("token_file")),
             "issues: {:?}",
             report.issues()

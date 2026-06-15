@@ -1,5 +1,5 @@
 use crate::cli::config::hcl::{to_hcl_block_string, to_hcl_string};
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_conf::types::{BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec};
 use std::collections::HashMap;
 use std::path::PathBuf;

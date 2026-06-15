@@ -1,5 +1,5 @@
 use crate::types::{ACME_CHALLENGE_HTTP01, TlsTerminationSpec};
-use confval::provenance::{Lower, Report};
+use confval::prelude::{Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -64,7 +64,7 @@ impl Lower<TlsTerminationSpec> for TlsTerminationConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     fn acme(domains: Vec<&str>) -> TlsTerminationSpec {
         TlsTerminationSpec::Acme {

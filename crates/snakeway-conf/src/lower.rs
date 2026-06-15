@@ -4,7 +4,7 @@ use crate::types::{
     RouteConfig, RuntimeConfig, ServerConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
     StructuredLoggingDeviceConfig, UpstreamTcpConfig, UpstreamUnixConfig, WasmDeviceConfig,
 };
-use confval::provenance::{Located, Lower, Report, Validate, narrow};
+use confval::prelude::{Located, Lower, Report, Validate, narrow};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -216,7 +216,7 @@ mod tests {
         AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindSpec, EndpointSpec, IngressSpec,
         ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
     };
-    use confval::provenance::{Lower, Report};
+    use confval::prelude::{Lower, Report};
 
     fn lowered_server() -> ServerConfig {
         ServerConfig::lower(&ServerSpec::default(), &mut Report::new()).unwrap()

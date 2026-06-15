@@ -1,9 +1,9 @@
 use crate::validation::validator::validate_cert_key_pair;
-use confval::hcl::{
+use confval::format::hcl::{
     Fields, FromHcl, parse_string_field, parse_string_list_field, report_missing_field,
     report_unknown_field,
 };
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -131,8 +131,8 @@ pub fn validate_tls_termination(spec: &TlsTerminationSpec, report: &mut Report) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::SourceMap;
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::SourceMap;
 
     use rcgen::generate_simple_self_signed;
     use std::fs::File;

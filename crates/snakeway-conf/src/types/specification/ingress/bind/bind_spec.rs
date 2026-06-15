@@ -7,7 +7,7 @@ use crate::types::{
 };
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
 

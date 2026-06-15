@@ -1,5 +1,5 @@
 use super::replay_fixture;
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 use snakeway_tests::harness::TestServer;

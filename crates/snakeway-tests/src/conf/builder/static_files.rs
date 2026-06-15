@@ -1,6 +1,6 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::TEST_HOST;
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_core::testing_api::conf::types::{
     CachePolicySpec, CompressionOptsSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec,
 };

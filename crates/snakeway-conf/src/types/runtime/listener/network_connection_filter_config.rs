@@ -1,5 +1,5 @@
 use crate::types::{NetworkConnectionFilterSpec, ON_NO_PEER_ADDR_DENY};
-use confval::provenance::{Located, Lower, Report};
+use confval::prelude::{Located, Lower, Report};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
@@ -67,7 +67,7 @@ pub enum OnNoPeerAddr {
 mod tests {
     use super::*;
     use crate::types::{CidrSpec, IpFamilySpec, ON_NO_PEER_ADDR_ALLOW};
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     fn filter(
         allow: Vec<&str>,

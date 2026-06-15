@@ -36,7 +36,7 @@ pub enum ConfigError {
 
     #[error("validation failed: {report:?}")]
     SemanticValidationFailed {
-        report: confval::provenance::Report,
-        sources: confval::provenance::SourceMap,
+        report: confval::diagnostic::Report,
+        sources: confval::source::SourceMap,
     },
 }

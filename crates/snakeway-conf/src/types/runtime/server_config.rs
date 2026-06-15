@@ -2,8 +2,8 @@ use crate::types::{
     AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
     ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSourceAddressesSpec,
 };
-use confval::provenance::narrow;
-use confval::provenance::{Located, Lower, Report};
+use confval::prelude::narrow;
+use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -202,7 +202,7 @@ impl Lower<CertStoreSpec> for CertStoreConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
     use std::path::PathBuf;
 
     fn lower_server(spec: &ServerSpec) -> ServerConfig {

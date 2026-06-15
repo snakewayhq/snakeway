@@ -1,5 +1,5 @@
 use crate::types::RequestRateLimitingDeviceSpec;
-use confval::provenance::{Lower, Report, Validate};
+use confval::prelude::{Lower, Report, Validate};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::time::Duration;
@@ -33,7 +33,7 @@ mod tests {
     #[test]
     fn from_spec_converts_duration_and_rate() {
         // Arrange
-        use confval::provenance::Located;
+        use confval::prelude::Located;
         let spec = RequestRateLimitingDeviceSpec {
             enable: Located::detached(true),
             max_requests_per_second: Located::detached(100),

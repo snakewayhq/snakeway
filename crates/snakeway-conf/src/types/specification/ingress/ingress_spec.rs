@@ -1,5 +1,5 @@
 use crate::types::{BindAdminSpec, BindSpec, ServiceSpec, StaticFilesSpec};
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 /// The operator DSL for the config subsystem.
@@ -47,8 +47,8 @@ impl Validate for IngressSpec {
 mod tests {
     use super::*;
     use crate::types::TlsTerminationSpec;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::{Report, SourceMap};
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::{Report, SourceMap};
 
     fn parse(input: &str) -> (Report, Option<IngressSpec>) {
         let mut sources = SourceMap::new();

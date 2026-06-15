@@ -1,5 +1,5 @@
 use crate::validation::{MIN_TOKEN_LENGTH, TokenFileIssue, parse_token_file};
-use confval::provenance::{Located, Report, Span};
+use confval::prelude::{Located, Report, Span};
 use serde::Serialize;
 use std::path::PathBuf;
 

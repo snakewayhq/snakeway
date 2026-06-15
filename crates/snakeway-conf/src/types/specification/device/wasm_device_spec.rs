@@ -1,9 +1,9 @@
 use crate::validation::validator::require_existing_file;
-use confval::hcl::{
+use confval::format::hcl::{
     Field, FieldKind, Fields, FromHcl, parse_bool_field, parse_string_field, report_missing_field,
     report_unknown_field,
 };
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -75,8 +75,8 @@ impl Validate for WasmDeviceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::SourceMap;
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::SourceMap;
 
     #[test]
     fn parse_wasm_device_with_config_blob() {

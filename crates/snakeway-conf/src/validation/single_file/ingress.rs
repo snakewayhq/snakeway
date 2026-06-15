@@ -1,5 +1,5 @@
 use crate::types::{BindInterfaceSpec, IngressSpec, report_admin_auth_missing};
-use confval::provenance::{Located, Report, Span, Validate};
+use confval::prelude::{Located, Report, Span, Validate};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -161,7 +161,7 @@ fn validate_listener_uniqueness(
 mod tests {
     use super::validate_ingresses;
     use crate::types::*;
-    use confval::provenance::{Located, Report};
+    use confval::prelude::{Located, Report};
 
     fn minimal_service() -> Located<ServiceSpec> {
         Located::detached(ServiceSpec {

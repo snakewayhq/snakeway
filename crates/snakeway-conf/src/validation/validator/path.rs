@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 
 pub(crate) fn validate_device_paths(paths: &[Located<String>], report: &mut Report) {
     for path in paths {

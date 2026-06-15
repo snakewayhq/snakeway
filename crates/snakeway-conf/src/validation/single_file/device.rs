@@ -1,5 +1,5 @@
 use crate::types::DeviceSpec;
-use confval::provenance::{Located, Report, Span, Validate};
+use confval::prelude::{Located, Report, Span, Validate};
 
 fn report_already_defined(span: Span, report: &mut Report) {
     report.error("device already defined").at(span).emit();
@@ -152,7 +152,7 @@ mod tests {
         StructuredLoggingDeviceSpec, WasmDeviceSpec,
     };
     use crate::validation::validate_devices;
-    use confval::provenance::{Located, Report};
+    use confval::prelude::{Located, Report};
     use std::path::PathBuf;
 
     fn device(spec: DeviceSpec) -> Located<DeviceSpec> {

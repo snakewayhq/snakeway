@@ -5,7 +5,7 @@ use crate::constants::{
     DEFAULT_ADMIN_LISTENER_PORT, ROUTE_PATH_API, ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST,
     UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
 };
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_core::testing_api::conf::types::{
     AcmeServerSpec, AdminAuthSpec, BearerAuthSpec, BindAdminSpec, CertStoreSpec, EndpointSpec,
     EndpointTlsSpec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec, TlsTerminationSpec,

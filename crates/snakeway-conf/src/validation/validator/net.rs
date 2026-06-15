@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use ipnet::IpNet;
 use std::net::IpAddr;
 

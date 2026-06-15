@@ -1,8 +1,8 @@
 use crate::validation::validator::{require_existing_dir, validate_cert_pem};
-use confval::hcl::{
+use confval::format::hcl::{
     Fields, FromHcl, parse_string_field, report_missing_field, report_unknown_field,
 };
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -154,8 +154,8 @@ fn validate_cert_store(spec: &CertStoreSpec, report: &mut Report) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::SourceMap;
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::SourceMap;
     use std::path::Path;
 
     fn parse_tls(input: &str) -> (Report, Option<TlsAutomationSpec>) {

@@ -1,5 +1,5 @@
 use crate::types::{DeviceSpec, DevicesFile};
-use confval::provenance::Located;
+use confval::prelude::Located;
 
 /// Flattens a parsed devices file into the device list, each wrapped with
 /// its own structure span.
@@ -51,8 +51,8 @@ pub(crate) fn flatten_devices(file: DevicesFile) -> Vec<Located<DeviceSpec>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::{Report, SourceMap};
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::{Report, SourceMap};
 
     fn parse(input: &str) -> (Report, Option<DevicesFile>) {
         let mut sources = SourceMap::new();

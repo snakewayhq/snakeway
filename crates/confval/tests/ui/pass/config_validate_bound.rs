@@ -22,5 +22,5 @@ fn main() {
         port: Located::detached(8080),
     };
     let mut report = Report::new();
-    let _ = <ServerConfig as confval::provenance::Lower<ServerSpec>>::lower(&spec, &mut report);
+    let _ = <ServerConfig as confval::pipeline::Lower<ServerSpec>>::lower(&spec, &mut report);
 }

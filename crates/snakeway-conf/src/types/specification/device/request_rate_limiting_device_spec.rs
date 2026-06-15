@@ -1,6 +1,6 @@
 use crate::types::HclInt;
 use crate::validation::validator::validate_device_paths;
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 

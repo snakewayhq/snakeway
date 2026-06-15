@@ -33,7 +33,7 @@ impl ServiceRouteConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     #[test]
     fn new_maps_fields_correctly() {

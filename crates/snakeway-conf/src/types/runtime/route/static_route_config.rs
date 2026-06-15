@@ -1,5 +1,5 @@
 use crate::types::{CachePolicySpec, CompressionOptsSpec, StaticRouteSpec};
-use confval::provenance::{Lower, Report, narrow};
+use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn new_maps_fields_correctly() {
         // Arrange
-        use confval::provenance::Located;
+        use confval::prelude::Located;
         let spec = StaticRouteSpec {
             hosts: vec![Located::detached("static.example.com".to_string())],
             path: Located::detached("/assets".to_string()),

@@ -2,7 +2,7 @@ use super::circuit_breaker_spec::validate_circuit_breaker;
 use super::service_route_spec::validate_service_route;
 use super::upstream_spec::{validate_endpoint, validate_endpoint_tls_verify, validate_upstream};
 use crate::types::{CircuitBreakerSpec, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec};
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::collections::HashSet;
 

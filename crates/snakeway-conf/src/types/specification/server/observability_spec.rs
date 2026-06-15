@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -62,8 +62,8 @@ fn validate_otel(spec: &OtelSpec, report: &mut Report) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::SourceMap;
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::SourceMap;
 
     fn default_otel() -> OtelSpec {
         OtelSpec {

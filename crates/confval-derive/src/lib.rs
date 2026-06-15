@@ -1,6 +1,6 @@
 //! Derive macros for confval.
 //!
-//! `#[derive(Spec)]` generates an `impl confval::hcl::FromHcl` that performs
+//! `#[derive(Spec)]` generates an `impl confval::format::hcl::FromHcl` that performs
 //! structural parsing only: it walks the `Fields` view, matches fields by
 //! name, reports unknown and missing fields, and builds the struct. It
 //! performs no validation; entity validation lives in named functions that
@@ -20,7 +20,7 @@ pub fn derive_spec(input: TokenStream) -> TokenStream {
     }
 }
 
-/// `#[derive(Config)]` generates an `impl confval::provenance::Lower<Spec>`
+/// `#[derive(Config)]` generates an `impl confval::pipeline::Lower<Spec>`
 /// per spec section 9.2: same-named fields auto-map through `LowerAuto`
 /// (unwrapping `Located` layers, never narrowing), `#[confval(nested)]`
 /// fields lower through the inner type's own `Lower` impl, and everything
@@ -107,7 +107,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         let expr = default_expr(default);
                         constructors.push(quote! {
                             #ident: #slot.or_else(|| ::core::option::Option::Some(
-                                ::confval::provenance::Located::detached(#expr),
+                                ::confval::source::Located::detached(#expr),
                             )),
                         });
                     }
@@ -116,7 +116,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         let expr = default_expr(default);
                         constructors.push(quote! {
                             #ident: #slot.unwrap_or_else(
-                                || ::confval::provenance::Located::detached(#expr),
+                                || ::confval::source::Located::detached(#expr),
                             ),
                         });
                     }
@@ -144,7 +144,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 if options.default.is_some() {
                     match_arms.push(quote! {
                         #field_name => #slot =
-                            ::confval::hcl::parse_string_list_field(__field, report),
+                            ::confval::format::hcl::parse_string_list_field(__field, report),
                     });
                     constructors.push(quote! {
                         #ident: #slot.map(|__list| __list.value).unwrap_or_default(),
@@ -155,7 +155,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     match_arms.push(quote! {
                         #field_name => {
                             #seen = true;
-                            #slot = ::confval::hcl::parse_string_list_field(__field, report);
+                            #slot = ::confval::format::hcl::parse_string_list_field(__field, report);
                         }
                     });
                     missing_checks.push(seen_missing_check(&field_name, &seen));
@@ -166,7 +166,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 slot_decls.push(quote! { let mut #slot = ::core::option::Option::None; });
                 match_arms.push(quote! {
                     #field_name => #slot =
-                        ::confval::hcl::parse_string_list_field(__field, report),
+                        ::confval::format::hcl::parse_string_list_field(__field, report),
                 });
                 constructors.push(quote! { #ident: #slot, });
             }
@@ -174,11 +174,11 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 let seen = format_ident!("__{}_seen", ident);
                 slot_decls.push(quote! {
                     let mut #slot = ::core::option::Option::None;
-                    let mut #seen: ::core::option::Option<::confval::provenance::Span> =
+                    let mut #seen: ::core::option::Option<::confval::source::Span> =
                         ::core::option::Option::None;
                 });
                 match_arms.push(quote! {
-                    #field_name => ::confval::hcl::parse_single_struct(
+                    #field_name => ::confval::format::hcl::parse_single_struct(
                         &mut #slot, &mut #seen, #field_name, __field, report,
                     ),
                 });
@@ -187,7 +187,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 } else {
                     missing_checks.push(quote! {
                         if #seen.is_none() {
-                            ::confval::hcl::report_missing_field(
+                            ::confval::format::hcl::report_missing_field(
                                 #field_name, fields.enclosing(), report,
                             );
                         }
@@ -205,7 +205,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             FieldShape::NestedList => {
                 slot_decls.push(quote! { let mut #slot = ::std::vec::Vec::new(); });
                 match_arms.push(quote! {
-                    #field_name => ::confval::hcl::parse_struct_list_field(
+                    #field_name => ::confval::format::hcl::parse_struct_list_field(
                         &mut #slot, __field, report,
                     ),
                 });
@@ -215,17 +215,17 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     }
 
     Ok(quote! {
-        impl ::confval::hcl::FromHcl for #name {
+        impl ::confval::format::hcl::FromHcl for #name {
             fn from_hcl(
-                fields: &::confval::hcl::Fields<'_>,
-                report: &mut ::confval::provenance::Report,
+                fields: &::confval::format::hcl::Fields<'_>,
+                report: &mut ::confval::diagnostic::Report,
             ) -> ::core::option::Option<Self> {
                 #(#slot_decls)*
 
                 for __field in fields.iter() {
                     match __field.name {
                         #(#match_arms)*
-                        _ => ::confval::hcl::report_unknown_field(__field, report),
+                        _ => ::confval::format::hcl::report_unknown_field(__field, report),
                     }
                 }
 
@@ -352,12 +352,12 @@ fn classify(field: &Field, options: &FieldOptions) -> syn::Result<FieldShape> {
 
 fn leaf_parser(leaf: &Leaf) -> TokenStream2 {
     match leaf {
-        Leaf::String => quote! { ::confval::hcl::parse_string_field(__field, report) },
-        Leaf::Int => quote! { ::confval::hcl::parse_int_field(__field, report) },
-        Leaf::Float => quote! { ::confval::hcl::parse_float_field(__field, report) },
-        Leaf::Bool => quote! { ::confval::hcl::parse_bool_field(__field, report) },
+        Leaf::String => quote! { ::confval::format::hcl::parse_string_field(__field, report) },
+        Leaf::Int => quote! { ::confval::format::hcl::parse_int_field(__field, report) },
+        Leaf::Float => quote! { ::confval::format::hcl::parse_float_field(__field, report) },
+        Leaf::Bool => quote! { ::confval::format::hcl::parse_bool_field(__field, report) },
         Leaf::PathBuf => quote! {
-            ::confval::hcl::parse_string_field(__field, report)
+            ::confval::format::hcl::parse_string_field(__field, report)
                 .map(|__value| __value.map(::std::path::PathBuf::from))
         },
     }
@@ -373,7 +373,7 @@ fn default_expr(default: &Option<Expr>) -> TokenStream2 {
 fn seen_missing_check(field_name: &str, seen: &proc_macro2::Ident) -> TokenStream2 {
     quote! {
         if !#seen {
-            ::confval::hcl::report_missing_field(#field_name, fields.enclosing(), report);
+            ::confval::format::hcl::report_missing_field(#field_name, fields.enclosing(), report);
         }
     }
 }
@@ -448,7 +448,7 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
             ConfigFieldSource::Auto => {
                 push_consumed(&mut consumed, ident.clone());
                 constructors.push(quote! {
-                    #ident: ::confval::provenance::LowerAuto::lower_auto(#ident),
+                    #ident: ::confval::pipeline::LowerAuto::lower_auto(#ident),
                 });
             }
             ConfigFieldSource::Nested => {
@@ -459,7 +459,7 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         #ident: match #ident {
                             ::core::option::Option::Some(__value) =>
                                 ::core::option::Option::Some(
-                                    ::confval::provenance::Lower::lower(&__value.value, report)?,
+                                    ::confval::pipeline::Lower::lower(&__value.value, report)?,
                                 ),
                             ::core::option::Option::None => ::core::option::Option::None,
                         },
@@ -469,7 +469,7 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         #ident: {
                             let mut __out = ::std::vec::Vec::new();
                             for __value in #ident {
-                                __out.push(::confval::provenance::Lower::lower(
+                                __out.push(::confval::pipeline::Lower::lower(
                                     &__value.value,
                                     report,
                                 )?);
@@ -479,7 +479,7 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     });
                 } else {
                     constructors.push(quote! {
-                        #ident: ::confval::provenance::Lower::lower(&#ident.value, report)?,
+                        #ident: ::confval::pipeline::Lower::lower(&#ident.value, report)?,
                     });
                 }
             }
@@ -500,16 +500,16 @@ fn expand_config(input: &DeriveInput) -> syn::Result<TokenStream2> {
     // without a validator fails to compile. The bound is opt-in: configs that
     // do not request it lower exactly as before.
     let where_clause = if validate {
-        quote! { where #spec_type: ::confval::provenance::Validate }
+        quote! { where #spec_type: ::confval::pipeline::Validate }
     } else {
         quote! {}
     };
 
     Ok(quote! {
-        impl ::confval::provenance::Lower<#spec_type> for #name #where_clause {
+        impl ::confval::pipeline::Lower<#spec_type> for #name #where_clause {
             fn lower(
                 spec: &#spec_type,
-                report: &mut ::confval::provenance::Report,
+                report: &mut ::confval::diagnostic::Report,
             ) -> ::core::option::Option<Self> {
                 // Exhaustive destructure, no rest pattern: a Spec field
                 // consumed by nothing fails compilation here.

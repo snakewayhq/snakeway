@@ -113,7 +113,7 @@ mod tests {
         // Arrange
         let file = write_tokens(&format!("{}\n", valid_token()));
         let spec = BearerAuthSpec {
-            token_file: confval::provenance::Located::detached(file.path().to_path_buf()),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
         let cfg = BearerAuthConfig::try_from(&spec).expect("lower");
 
@@ -129,7 +129,7 @@ mod tests {
         // Arrange
         let file = write_tokens(&format!("{}\n", valid_token()));
         let spec = BearerAuthSpec {
-            token_file: confval::provenance::Located::detached(file.path().to_path_buf()),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
         let cfg = BearerAuthConfig::try_from(&spec).expect("lower");
 
@@ -147,7 +147,7 @@ mod tests {
         let t2 = "7b4e19a2c5f8d3046e9b71c8a52f9e1d4c07bfa6e93d1c24b87a90fed362014c";
         let file = write_tokens(&format!("{t1}\n{t2}\n"));
         let spec = BearerAuthSpec {
-            token_file: confval::provenance::Located::detached(file.path().to_path_buf()),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
         let cfg = BearerAuthConfig::try_from(&spec).expect("lower");
 
@@ -165,7 +165,7 @@ mod tests {
         // Arrange
         let file = write_tokens("too-short\n");
         let spec = BearerAuthSpec {
-            token_file: confval::provenance::Located::detached(file.path().to_path_buf()),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
 
         // Act

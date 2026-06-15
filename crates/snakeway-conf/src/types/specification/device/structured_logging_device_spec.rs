@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 pub const LOG_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];

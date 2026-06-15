@@ -1,5 +1,5 @@
 use super::static_route_spec::{StaticRouteSpec, validate_static_route};
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default, confval::Spec)]

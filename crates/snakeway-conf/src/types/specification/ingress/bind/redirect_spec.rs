@@ -1,6 +1,6 @@
 use crate::types::HclInt;
 use crate::validation::validator::is_valid_port;
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 

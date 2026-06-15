@@ -2,7 +2,7 @@ use crate::cli::config::hcl::to_hcl_block_string;
 use crate::cli::config::init::templates;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_conf::types::{
     AcmeServerSpec, CertStoreSpec, EntrypointSpec, ServerSpec, TlsAutomationSpec,
 };
@@ -134,8 +134,8 @@ pub(crate) enum ConfigInitTemplate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::hcl::parse_hcl;
-    use confval::provenance::{Report, SourceMap};
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::{Report, SourceMap};
 
     /// The generated entrypoint and the config parser must never drift
     /// apart: whatever `config init` writes has to parse cleanly.

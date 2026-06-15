@@ -1,4 +1,4 @@
-use confval::provenance::Located;
+use confval::source::Located;
 use futures_util::{SinkExt, StreamExt};
 use pretty_assertions::assert_eq;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};

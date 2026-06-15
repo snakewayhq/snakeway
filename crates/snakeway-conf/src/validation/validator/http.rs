@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use http::{HeaderName, Method};
 
 pub(crate) fn validate_http_header_name(header: &Located<String>, report: &mut Report) {

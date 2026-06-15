@@ -1,5 +1,5 @@
 use crate::types::HclInt;
-use confval::provenance::{Located, Report, Span};
+use confval::prelude::{Located, Report, Span};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default, confval::Spec)]

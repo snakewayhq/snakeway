@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use serde::Serialize;
 
 pub const ON_NO_PEER_ADDR_ALLOW: &str = "allow";

@@ -1,5 +1,5 @@
 use crate::types::{NetworkPolicyDeviceSpec, ON_NO_PEER_ADDR_DENY};
-use confval::provenance::{Lower, Report, Validate};
+use confval::prelude::{Lower, Report, Validate};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -68,7 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     fn spec(cidrs: Vec<&str>) -> NetworkPolicyDeviceSpec {
         NetworkPolicyDeviceSpec {

@@ -1,5 +1,5 @@
 use crate::types::ConnectionRateLimitingFilterSpec;
-use confval::provenance::{Located, Report, narrow};
+use confval::prelude::{Located, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -23,7 +23,7 @@ fn secs_to_duration(value: &Located<i64>, report: &mut Report) -> Option<Duratio
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::Lower;
+    use confval::prelude::Lower;
 
     #[test]
     fn lower_converts_duration() {

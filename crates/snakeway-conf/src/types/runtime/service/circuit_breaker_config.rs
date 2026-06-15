@@ -1,5 +1,5 @@
 use crate::types::CircuitBreakerSpec;
-use confval::provenance::narrow;
+use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default, confval::Config)]
@@ -20,7 +20,7 @@ pub struct CircuitBreakerConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::provenance::{Located, Lower, Report};
+    use confval::prelude::{Located, Lower, Report};
 
     #[test]
     fn lower_maps_all_fields() {

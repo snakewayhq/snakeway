@@ -7,7 +7,7 @@ use crate::types::{
 };
 use crate::validation::{ConfigError, validate_spec};
 use confval::format::hcl::parse_hcl;
-use confval::provenance::{Located, Lower, Report, SourceMap, Span};
+use confval::prelude::{Located, Lower, Report, SourceMap, Span};
 
 use std::fs;
 use std::path::Path;

@@ -1,5 +1,5 @@
 use crate::types::HclInt;
-use confval::provenance::{Located, Report};
+use confval::prelude::{Located, Report};
 use serde::Serialize;
 use std::path::PathBuf;
 

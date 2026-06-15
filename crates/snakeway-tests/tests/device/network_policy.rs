@@ -1,4 +1,4 @@
-use confval::provenance::Located;
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};

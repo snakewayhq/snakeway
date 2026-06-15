@@ -2,10 +2,10 @@ use crate::types::{
     IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
-use confval::hcl::{
+use confval::format::hcl::{
     Fields, FromHcl, parse_single_struct, report_missing_field, report_unknown_field,
 };
-use confval::provenance::{Located, Report, Span};
+use confval::prelude::{Located, Report, Span};
 use serde::Serialize;
 
 /// Represents the top-level configuration file.

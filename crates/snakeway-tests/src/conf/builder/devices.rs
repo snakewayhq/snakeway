@@ -1,5 +1,5 @@
 use crate::conf::ConfigBuilder;
-use confval::provenance::Located;
+use confval::source::Located;
 use snakeway_core::testing_api::conf::types::{
     ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,

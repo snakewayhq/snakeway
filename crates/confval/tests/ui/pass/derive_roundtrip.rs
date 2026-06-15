@@ -1,4 +1,4 @@
-use confval::provenance::{Located, Lower, Report};
+use confval::prelude::{Located, Lower, Report};
 
 #[derive(confval::Spec)]
 struct InnerSpec {
@@ -23,7 +23,7 @@ struct InnerConfig {
 #[derive(confval::Config)]
 #[confval(lower_from = ServerSpec)]
 struct ServerConfig {
-    #[confval(lower(from = port, with = confval::provenance::narrow::i64_to_u16))]
+    #[confval(lower(from = port, with = confval::pipeline::narrow::i64_to_u16))]
     port: u16,
     workers: i64,
     #[confval(nested)]

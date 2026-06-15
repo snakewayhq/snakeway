@@ -1,6 +1,6 @@
 use crate::types::{DeviceSpec, IngressSpec, ServerSpec};
 use crate::validation::{multi_file, single_file};
-use confval::provenance::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 
 /// Validate everything that exists in a fully parsed config.
 pub(crate) fn validate_spec(
@@ -25,7 +25,7 @@ pub(crate) fn validate_spec(
 mod tests {
     use super::*;
     use crate::types::{BindSpec, IngressSpec, ServerSpec};
-    use confval::provenance::Located;
+    use confval::prelude::Located;
 
     #[test]
     fn valid_version_runs_all_validation() {
