@@ -1,5 +1,5 @@
-use crate::provenance::location::Located;
 use crate::provenance::report::Report;
+use crate::source::Located;
 
 /// Conversion from a Spec type to its runtime Config type.
 ///

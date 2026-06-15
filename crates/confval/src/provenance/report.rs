@@ -1,6 +1,5 @@
-use crate::provenance::source::{Source, SourceMap};
-use crate::provenance::span::Span;
 use crate::severity::Severity;
+use crate::source::{Source, SourceMap, Span};
 use std::fmt;
 
 /// A single finding: severity, message, optional primary span, optional
