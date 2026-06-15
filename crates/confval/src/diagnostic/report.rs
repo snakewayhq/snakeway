@@ -1,4 +1,4 @@
-use crate::severity::Severity;
+use crate::diagnostic::Severity;
 use crate::source::{Source, SourceMap, Span};
 use std::fmt;
 

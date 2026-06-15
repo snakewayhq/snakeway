@@ -4,13 +4,9 @@
 
 mod lower;
 pub mod narrow;
-mod report;
 
 mod validate;
 
 pub use lower::{Lower, LowerAuto};
-pub use report::{Issue, IssueBuilder, Report};
 
 pub use validate::Validate;
-
-pub use crate::severity::Severity;

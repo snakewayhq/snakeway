@@ -1,3 +1,5 @@
+use crate::diagnostic::Report;
+use crate::source::Located;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -34,12 +36,7 @@ where
     /// if it is out of range. Message and help text are identical to
     /// [`check`](Self::check), so both report worlds describe violations the
     /// same way.
-    pub fn check_located(
-        &self,
-        value: &crate::provenance::Located<T>,
-        field: &'static str,
-        report: &mut crate::provenance::Report,
-    ) {
+    pub fn check_located(&self, value: &Located<T>, field: &'static str, report: &mut Report) {
         let (limit, kind) = if value.value < self.min {
             (self.min, "at least")
         } else if value.value > self.max {

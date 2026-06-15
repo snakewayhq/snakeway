@@ -1,4 +1,4 @@
-use crate::provenance::span::Span;
+use crate::source::Span;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};

@@ -10,7 +10,8 @@
 //! Rather than truncating silently, the helpers report the failure at the
 //! value's span and return `None`.
 
-use crate::provenance::{Located, Report};
+use crate::diagnostic::Report;
+use crate::source::Located;
 
 macro_rules! narrow_fns {
     ($plain:ident, $opt:ident, $target:ty) => {

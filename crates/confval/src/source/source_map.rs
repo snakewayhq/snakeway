@@ -1,4 +1,4 @@
-use crate::provenance::span::SourceId;
+use crate::source::SourceId;
 
 /// One unit of configuration input: a file, or a synthetic source such as an
 /// environment variable.

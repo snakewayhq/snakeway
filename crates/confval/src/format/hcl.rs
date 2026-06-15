@@ -22,7 +22,8 @@
 //! The field parsers are public so that hand-written and generated
 //! [`FromHcl`] impls go through the same functions and report identically.
 
-use crate::provenance::{Located, Report, SourceId, SourceMap, Span};
+use crate::diagnostic::Report;
+use crate::source::{Located, SourceId, SourceMap, Span};
 use hcl_edit::expr::{Expression, Object, ObjectKey};
 use hcl_edit::structure::{Block, Body, Structure};
 

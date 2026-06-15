@@ -1,4 +1,4 @@
-use crate::provenance::report::Report;
+use crate::diagnostic::Report;
 
 /// Field-local semantic validation for a Spec type.
 ///
