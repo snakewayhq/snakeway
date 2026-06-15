@@ -4,7 +4,7 @@ use crate::types::{
     RouteConfig, RuntimeConfig, ServerConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
     StructuredLoggingDeviceConfig, UpstreamTcpConfig, UpstreamUnixConfig, WasmDeviceConfig,
 };
-use confval::provenance::{Located, Lower, Report, Validate};
+use confval::provenance::{Located, Lower, Report, Validate, narrow};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -77,29 +77,26 @@ where
             //-----------------------------------------------------------------
             for service_spec in &ingress.services {
                 let service_spec = &service_spec.value;
-                let unix_upstreams = service_spec
-                    .upstreams
-                    .iter()
-                    .filter_map(|u| {
-                        u.value.sock.as_ref().map(|sock| {
-                            UpstreamUnixConfig::new(
-                                sock.value.clone(),
-                                use_tls,
-                                u.value.weight.value as u32,
-                            )
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                let tcp_upstreams = service_spec
-                    .upstreams
-                    .iter()
-                    .filter_map(|u| {
-                        u.value.endpoint.as_ref().map(|endpoint| {
-                            UpstreamTcpConfig::new(u.value.weight.value as u32, &endpoint.value)
-                        })
-                    })
-                    .collect::<Vec<_>>();
+                // Weight narrows through `narrow::` so a negative or oversized
+                // value is reported and rejected rather than wrapping to u32.
+                let mut unix_upstreams = Vec::new();
+                let mut tcp_upstreams = Vec::new();
+                for u in &service_spec.upstreams {
+                    let Some(weight) = narrow::i64_to_u32(&u.value.weight, report) else {
+                        failed = true;
+                        continue;
+                    };
+                    if let Some(sock) = &u.value.sock {
+                        unix_upstreams.push(UpstreamUnixConfig::new(
+                            sock.value.clone(),
+                            use_tls,
+                            weight,
+                        ));
+                    }
+                    if let Some(endpoint) = &u.value.endpoint {
+                        tcp_upstreams.push(UpstreamTcpConfig::new(weight, &endpoint.value));
+                    }
+                }
 
                 let service_name = format!("{}-service", bind_addr);
 
@@ -265,6 +262,41 @@ mod tests {
         assert_eq!(config.listeners.len(), 1);
         assert_eq!(config.services.len(), 1);
         assert!(!config.routes.is_empty());
+    }
+
+    #[test]
+    fn negative_upstream_weight_is_rejected_not_wrapped() {
+        // Arrange: a negative weight must not lower to a wrapped u32.
+        let server = lowered_server();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(8080),
+                ..Default::default()
+            })),
+            services: vec![Located::detached(ServiceSpec {
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                upstreams: vec![Located::detached(UpstreamSpec {
+                    endpoint: Some(Located::detached(EndpointSpec {
+                        host: Located::detached("127.0.0.1".to_string()),
+                        port: Located::detached(3000),
+                        tls: None,
+                    })),
+                    sock: None,
+                    weight: Located::detached(-1),
+                })],
+                ..Default::default()
+            })],
+            ..Default::default()
+        });
+        let mut report = Report::new();
+
+        // Act
+        let result = lower_configs(server, vec![ingress], vec![], &mut report);
+
+        // Assert
+        assert!(result.is_none());
+        assert!(report.has_errors());
     }
 
     #[test]
