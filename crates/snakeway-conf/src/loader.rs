@@ -6,7 +6,7 @@ use crate::types::{
     DeviceSpec, DevicesFile, EntrypointSpec, IngressSpec, ServerConfig, ServerSpec,
 };
 use crate::validation::{ConfigError, validate_spec};
-use confval::hcl::parse_hcl;
+use confval::format::hcl::parse_hcl;
 use confval::provenance::{Located, Lower, Report, SourceMap, Span};
 
 use std::fs;

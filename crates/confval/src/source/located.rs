@@ -105,7 +105,7 @@ impl<'de, T: serde::Deserialize<'de>> serde::Deserialize<'de> for Located<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::provenance::span::SourceId;
+    use crate::source::SourceId;
 
     fn span_at(start: u32, end: u32) -> Span {
         Span::new(SourceId(0), start, end)
