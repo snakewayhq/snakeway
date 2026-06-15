@@ -1,4 +1,4 @@
-use crate::validation::validator::validate_cert_pem;
+use crate::validation::validator::{require_existing_dir, validate_cert_pem};
 use confval::hcl::{
     Fields, FromHcl, parse_string_field, report_missing_field, report_unknown_field,
 };
@@ -139,39 +139,13 @@ fn validate_acme(spec: &AcmeServerSpec, report: &mut Report) {
             .emit();
     }
 
-    if spec.data_dir.value.as_os_str().is_empty() {
-        report
-            .error("server TLS ACME data_dir path is required")
-            .at(spec.data_dir.span)
-            .emit();
-    } else if !spec.data_dir.value.is_dir() {
-        report
-            .error(format!(
-                "server TLS ACME data_dir does not exist or is not a directory: {}",
-                spec.data_dir.value.to_string_lossy()
-            ))
-            .at(spec.data_dir.span)
-            .emit();
-    }
+    require_existing_dir(&spec.data_dir, "server TLS ACME data_dir", report);
 }
 
 fn validate_cert_store(spec: &CertStoreSpec, report: &mut Report) {
     match spec {
         CertStoreSpec::Filesystem { cert_dir } => {
-            if cert_dir.value.as_os_str().is_empty() {
-                report
-                    .error("server TLS filesystem cert_dir path is required")
-                    .at(cert_dir.span)
-                    .emit();
-            } else if !cert_dir.value.is_dir() {
-                report
-                    .error(format!(
-                        "server TLS cert_dir does not exist or is not a directory: {}",
-                        cert_dir.value.to_string_lossy()
-                    ))
-                    .at(cert_dir.span)
-                    .emit();
-            }
+            require_existing_dir(cert_dir, "server TLS filesystem cert_dir", report);
         }
         CertStoreSpec::Memory => {}
     }

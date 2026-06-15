@@ -209,7 +209,8 @@ mod tests {
         // Act
         validate_devices(&[wasm], &mut report);
 
-        // Assert
+        // Assert: an empty path cascades to a single diagnostic rather than
+        // also reporting "does not exist"/"is not a file".
         assert!(report.has_issues());
         let messages: Vec<String> = report.issues().iter().map(|e| e.message.clone()).collect();
         assert!(
@@ -218,7 +219,7 @@ mod tests {
                 .any(|m| m.contains("wasm device path is empty"))
         );
         assert!(
-            messages
+            !messages
                 .iter()
                 .any(|m| m.contains("wasm device path does not exist"))
         );

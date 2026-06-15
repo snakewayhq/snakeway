@@ -16,28 +16,68 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-pub(crate) fn validate_geoip_db_file(geoip_db: &Located<PathBuf>, report: &mut Report) {
-    let path = geoip_db.value.as_path();
+/// Report an error unless `located` points at an existing regular file.
+/// Cascades to a single diagnostic; returns whether the path is usable so a
+/// caller doing further checks (e.g., reading the file) can bail.
+pub(crate) fn require_existing_file(
+    located: &Located<PathBuf>,
+    label: &str,
+    report: &mut Report,
+) -> bool {
+    let path = located.value.as_path();
     if path.as_os_str().is_empty() {
         report
-            .error(format!("geoip db path is empty: {}", path.display()))
-            .at(geoip_db.span)
+            .error(format!("{label} path is empty: {}", path.display()))
+            .at(located.span)
             .emit();
-        return;
+        return false;
     }
     if !path.exists() {
         report
-            .error(format!("geoip db path does not exist: {}", path.display()))
-            .at(geoip_db.span)
+            .error(format!("{label} path does not exist: {}", path.display()))
+            .at(located.span)
             .emit();
-        return;
+        return false;
     }
     if !path.is_file() {
         report
-            .error(format!("geoip db path is not a file: {}", path.display()))
-            .at(geoip_db.span)
+            .error(format!("{label} path is not a file: {}", path.display()))
+            .at(located.span)
             .emit();
+        return false;
     }
+    true
+}
+
+/// Report an error unless `located` points at an existing directory.
+pub(crate) fn require_existing_dir(
+    located: &Located<PathBuf>,
+    label: &str,
+    report: &mut Report,
+) -> bool {
+    let path = located.value.as_path();
+    if path.as_os_str().is_empty() {
+        report
+            .error(format!("{label} path is required"))
+            .at(located.span)
+            .emit();
+        return false;
+    }
+    if !path.is_dir() {
+        report
+            .error(format!(
+                "{label} does not exist or is not a directory: {}",
+                path.display()
+            ))
+            .at(located.span)
+            .emit();
+        return false;
+    }
+    true
+}
+
+pub(crate) fn validate_geoip_db_file(geoip_db: &Located<PathBuf>, report: &mut Report) {
+    require_existing_file(geoip_db, "geoip db", report);
 }
 
 pub(crate) fn validate_ua_parser_regexes_file(located: &Located<PathBuf>, report: &mut Report) {

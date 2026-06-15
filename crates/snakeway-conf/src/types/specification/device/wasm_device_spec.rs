@@ -1,3 +1,4 @@
+use crate::validation::validator::require_existing_file;
 use confval::hcl::{
     Field, FieldKind, Fields, FromHcl, parse_bool_field, parse_string_field, report_missing_field,
     report_unknown_field,
@@ -67,33 +68,7 @@ impl FromHcl for WasmDeviceSpec {
 
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if self.path.value.as_os_str().is_empty() {
-            report
-                .error(format!(
-                    "wasm device path is empty: {}",
-                    self.path.value.display()
-                ))
-                .at(self.path.span)
-                .emit();
-        }
-        if !self.path.value.exists() {
-            report
-                .error(format!(
-                    "wasm device path does not exist: {}",
-                    self.path.value.display()
-                ))
-                .at(self.path.span)
-                .emit();
-        }
-        if !self.path.value.is_file() {
-            report
-                .error(format!(
-                    "wasm device path is not a file: {}",
-                    self.path.value.display()
-                ))
-                .at(self.path.span)
-                .emit();
-        }
+        require_existing_file(&self.path, "wasm device", report);
     }
 }
 
