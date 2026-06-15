@@ -80,10 +80,13 @@ impl ListenerConfig {
                 redirect_response_code,
             )),
             connection_filter: connection_filter?,
-            connection_rate_limiting_filter: spec
-                .connection_rate_limiting_filter
-                .as_ref()
-                .map(|filter| (&filter.value).into()),
+            connection_rate_limiting_filter: match &spec.connection_rate_limiting_filter {
+                Some(filter) => Some(ConnectionRateLimitingFilterConfig::lower(
+                    &filter.value,
+                    report,
+                )?),
+                None => None,
+            },
         })
     }
 
@@ -107,10 +110,13 @@ impl ListenerConfig {
             admin_auth: None,
             redirect: None,
             connection_filter: connection_filter?,
-            connection_rate_limiting_filter: spec
-                .connection_rate_limiting_filter
-                .as_ref()
-                .map(|filter| (&filter.value).into()),
+            connection_rate_limiting_filter: match &spec.connection_rate_limiting_filter {
+                Some(filter) => Some(ConnectionRateLimitingFilterConfig::lower(
+                    &filter.value,
+                    report,
+                )?),
+                None => None,
+            },
         })
     }
 
