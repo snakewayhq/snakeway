@@ -13,9 +13,12 @@ categories = ["config", "development-tools"]
 default = []
 serde = ["dep:serde", "dep:serde_json"]
 color = ["dep:owo-colors"]
+# Format frontends are independent opt-ins.
+# The derive emits the format-neutral `FromFields`, so `derive` needs no frontend.
+# tldr; pick `hcl` and/or `toml` for the format(s) you actually parse.
 hcl = ["dep:hcl-edit"]
 toml = ["dep:toml_edit"]
-derive = ["hcl", "dep:confval-derive"]
+derive = ["dep:confval-derive"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
@@ -31,7 +34,7 @@ trybuild = "1"
 
 [[example]]
 name = "hcl"
-required-features = ["derive", "color"]
+required-features = ["derive", "color", "hcl"]
 
 [[example]]
 name = "toml"
@@ -40,3 +43,7 @@ required-features = ["derive", "color", "toml"]
 [[test]]
 name = "compile_fail"
 required-features = ["derive"]
+
+[[test]]
+name = "hcl_end_to_end"
+required-features = ["derive", "hcl"]
