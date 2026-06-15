@@ -1,4 +1,5 @@
 use crate::types::{CachePolicySpec, CompressionOptsSpec, StaticRouteSpec};
+use confval::provenance::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -25,57 +26,41 @@ pub struct StaticRouteConfig {
     pub cache_policy: CachePolicy,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = CompressionOptsSpec)]
 pub struct CompressionOptions {
+    #[confval(lower(from = small_file_threshold, with = narrow::i64_to_u64))]
     pub small_file_threshold: u64,
+    #[confval(lower(from = min_gzip_size, with = narrow::i64_to_u64))]
     pub min_gzip_size: u64,
+    #[confval(lower(from = min_brotli_size, with = narrow::i64_to_u64))]
     pub min_brotli_size: u64,
     pub enable_gzip: bool,
     pub enable_brotli: bool,
 }
 
-impl From<&CompressionOptsSpec> for CompressionOptions {
-    fn from(spec: &CompressionOptsSpec) -> Self {
-        Self {
-            small_file_threshold: spec.small_file_threshold.value as u64,
-            min_gzip_size: spec.min_gzip_size.value as u64,
-            min_brotli_size: spec.min_brotli_size.value as u64,
-            enable_gzip: spec.enable_gzip.value,
-            enable_brotli: spec.enable_brotli.value,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = CachePolicySpec)]
 pub struct CachePolicy {
+    #[confval(lower(from = max_age_seconds, with = narrow::i64_to_u32))]
     pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
 }
 
-impl From<&CachePolicySpec> for CachePolicy {
-    fn from(spec: &CachePolicySpec) -> Self {
-        Self {
-            max_age_seconds: spec.max_age_seconds.value as u32,
-            public: spec.public.value,
-            immutable: spec.immutable.value,
-        }
-    }
-}
-
 impl StaticRouteConfig {
-    pub fn new(listener: &str, spec: &StaticRouteSpec) -> Self {
-        Self {
+    pub fn new(listener: &str, spec: &StaticRouteSpec, report: &mut Report) -> Option<Self> {
+        Some(Self {
             listener: listener.to_string(),
             hosts: spec.hosts.iter().map(|h| h.value.clone()).collect(),
             path: spec.path.value.clone(),
             file_dir: spec.file_dir.value.clone(),
             index: spec.index.as_ref().map(|i| i.value.clone()),
             directory_listing: spec.directory_listing.value,
-            max_file_size: spec.max_file_size.value as u64,
-            static_config: (&spec.compression.value).into(),
-            cache_policy: (&spec.cache_policy.value).into(),
-        }
+            max_file_size: narrow::i64_to_u64(&spec.max_file_size, report)?,
+            static_config: CompressionOptions::lower(&spec.compression.value, report)?,
+            cache_policy: CachePolicy::lower(&spec.cache_policy.value, report)?,
+        })
     }
 }
 
@@ -99,7 +84,7 @@ mod tests {
         };
 
         // Act
-        let config = StaticRouteConfig::new("my-listener", &spec);
+        let config = StaticRouteConfig::new("my-listener", &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.listener, "my-listener");

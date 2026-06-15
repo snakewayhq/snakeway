@@ -129,10 +129,10 @@ where
             //-----------------------------------------------------------------
             for static_cfg in &ingress.static_files {
                 for route in &static_cfg.value.routes {
-                    routes.push(RouteConfig::Static(StaticRouteConfig::new(
-                        &listener_name,
-                        &route.value,
-                    )));
+                    match StaticRouteConfig::new(&listener_name, &route.value, report) {
+                        Some(cfg) => routes.push(RouteConfig::Static(cfg)),
+                        None => failed = true,
+                    }
                 }
             }
 
