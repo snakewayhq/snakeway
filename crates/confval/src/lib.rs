@@ -1,7 +1,6 @@
 #[cfg(feature = "derive")]
 pub use confval_derive::{Config, Spec};
-#[cfg(feature = "hcl")]
-pub mod hcl;
+mod format;
 pub mod provenance;
 pub mod range;
 mod severity;
