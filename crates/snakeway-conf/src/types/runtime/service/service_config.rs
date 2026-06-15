@@ -1,6 +1,6 @@
 use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
 use crate::types::{CircuitBreakerConfig, HealthCheckConfig, ServiceSpec, UpstreamUnixConfig};
-use confval::provenance::Report;
+use confval::provenance::{Lower, Report};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -62,22 +62,23 @@ impl ServiceConfig {
             }
         };
 
+        let circuit_breaker = match &spec.circuit_breaker {
+            Some(cb) => CircuitBreakerConfig::lower(&cb.value, report)?,
+            None => CircuitBreakerConfig::default(),
+        };
+        let health_check = match &spec.health_check {
+            Some(hc) => HealthCheckConfig::lower(&hc.value, report)?,
+            None => HealthCheckConfig::default(),
+        };
+
         Some(Self {
             name: name.to_string(),
             listener: listener.to_string(),
             load_balancing_strategy: strategy,
             tcp_upstreams,
             unix_upstreams,
-            circuit_breaker: spec
-                .circuit_breaker
-                .as_ref()
-                .map(|cb| (&cb.value).into())
-                .unwrap_or_default(),
-            health_check: spec
-                .health_check
-                .as_ref()
-                .map(|hc| (&hc.value).into())
-                .unwrap_or_default(),
+            circuit_breaker,
+            health_check,
         })
     }
 }

@@ -1,31 +1,25 @@
 use crate::types::HealthCheckSpec;
+use confval::provenance::narrow;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, confval::Config)]
+#[confval(lower_from = HealthCheckSpec)]
 pub struct HealthCheckConfig {
     pub enable: bool,
+    #[confval(lower(from = failure_threshold, with = narrow::i64_to_u64))]
     pub failure_threshold: u64,
+    #[confval(lower(from = unhealthy_cooldown_seconds, with = narrow::i64_to_u64))]
     pub unhealthy_cooldown_seconds: u64,
-}
-
-impl From<&HealthCheckSpec> for HealthCheckConfig {
-    fn from(spec: &HealthCheckSpec) -> Self {
-        Self {
-            enable: spec.enable.value,
-            failure_threshold: spec.failure_threshold.value as u64,
-            unhealthy_cooldown_seconds: spec.unhealthy_cooldown_seconds.value as u64,
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use confval::provenance::{Located, Lower, Report};
 
     #[test]
-    fn from_spec_maps_all_fields() {
+    fn lower_maps_all_fields() {
         // Arrange
-        use confval::provenance::Located;
         let spec = HealthCheckSpec {
             enable: Located::detached(true),
             failure_threshold: Located::detached(7),
@@ -33,7 +27,7 @@ mod tests {
         };
 
         // Act
-        let config: HealthCheckConfig = (&spec).into();
+        let config = HealthCheckConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
         assert!(config.enable);
