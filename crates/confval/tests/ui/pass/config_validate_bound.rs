@@ -1,4 +1,6 @@
-use confval::provenance::{Located, Report, Validate};
+use confval::diagnostic::Report;
+use confval::pipeline::Validate;
+use confval::source::Located;
 
 #[derive(confval::Spec)]
 struct ServerSpec {

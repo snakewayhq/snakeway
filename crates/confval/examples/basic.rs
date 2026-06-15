@@ -3,8 +3,13 @@
 //!
 //! Run with: cargo run --example basic --features derive,color
 
-use confval::provenance::{Located, Lower, Report, SourceMap};
-use confval::{RangeConstraint, range_constraint};
+use confval::{
+    RangeConstraint,
+    diagnostic::Report,
+    pipeline::Lower,
+    range_constraint,
+    source::{Located, SourceMap},
+};
 
 range_constraint!(PORT, i64, min: 1, max: 65535);
 range_constraint!(WORKERS, i64, min: 1, max: 512);

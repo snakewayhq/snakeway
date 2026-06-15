@@ -1,14 +1,11 @@
-use confval::provenance::Located;
+use confval::source::Located;
 
 #[derive(confval::Spec)]
 struct ServerSpec {
     port: Located<i64>,
 }
 
-fn port_to_u16(
-    _value: &Located<i64>,
-    _report: &mut confval::provenance::Report,
-) -> Option<u16> {
+fn port_to_u16(_value: &Located<i64>, _report: &mut confval::provenance::Report) -> Option<u16> {
     None
 }
 

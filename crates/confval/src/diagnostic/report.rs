@@ -16,7 +16,7 @@ pub struct Issue {
 
 /// Accumulates issues across parse, validation, and lowering.
 ///
-/// The report is source-free: spans carry their [`SourceId`](crate::provenance::SourceId),
+/// The report is source-free: spans carry their [`SourceId`](crate::source::SourceId),
 /// so reports from different files merge trivially and the
 /// [`SourceMap`] is only needed at render time.
 #[derive(Debug, Default)]
@@ -405,7 +405,7 @@ impl Report {
 mod tests {
     use super::*;
 
-    fn one_source() -> (SourceMap, crate::provenance::SourceId) {
+    fn one_source() -> (SourceMap, crate::source::SourceId) {
         let mut sources = SourceMap::new();
         let id = sources.add("test.hcl", "port = 99999\nname = \"api\"\n");
         (sources, id)

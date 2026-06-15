@@ -87,9 +87,9 @@ mod tests {
 
     #[test]
     fn out_of_range_error_carries_the_span() {
-        let mut sources = crate::provenance::SourceMap::new();
+        let mut sources = crate::source::SourceMap::new();
         let id = sources.add("test.hcl", "port = 99999");
-        let span = crate::provenance::Span {
+        let span = crate::source::Span {
             source: id,
             start: 7,
             end: 12,

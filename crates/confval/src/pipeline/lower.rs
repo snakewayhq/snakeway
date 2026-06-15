@@ -7,7 +7,7 @@ use crate::source::Located;
 /// diffing. Failure returns `None` with the explanation already pushed to
 /// the report.
 ///
-/// Callers must gate on [`Report::has_errors`](crate::provenance::Report::has_errors)
+/// Callers must gate on [`Report::has_errors`](crate::diagnostic::Report::has_errors)
 /// before lowering: lowering functions may assume field-level validation
 /// passed, which is what makes narrowing conversions safe to write.
 pub trait Lower<S>: Sized {

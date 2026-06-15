@@ -1,4 +1,4 @@
-use confval::provenance::Located;
+use confval::source::Located;
 
 #[derive(confval::Spec)]
 struct ServerSpec {

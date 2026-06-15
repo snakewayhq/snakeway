@@ -104,7 +104,8 @@ macro_rules! range_constraint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::provenance::{Located, Report};
+    use crate::diagnostic::Report;
+    use crate::source::Located;
 
     range_constraint!(PORT, i64, min: 1, max: 65535);
     range_constraint!(THREADS, i64, min: 1, max: 1024);
