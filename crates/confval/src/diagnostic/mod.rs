@@ -1,3 +1,4 @@
+mod render;
 mod report;
 mod severity;
 
