@@ -5,6 +5,7 @@
 mod lower;
 pub mod narrow;
 
+pub mod range;
 mod validate;
 
 pub use lower::{Lower, LowerAuto};
