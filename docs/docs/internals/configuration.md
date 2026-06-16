@@ -10,22 +10,31 @@ rest of the proxy reads. It is built on the primitives provided by [confval](/in
 
 Every startup (and every config-check run) passes through four ordered phases:
 
-```
-HCL files on disk
-      |
-      |  parse_hcl()          span-first structural parsing
-      v
-  Spec types                  (the operator's intent, with spans)
-      |
-      |  validate_spec()      semantic checks appended to the Report
-      v
-  Report                      (errors and warnings, aggregated)
-      |
-      |  error gate           lowering never runs on a report with errors
-      v
-      |  Lower::lower()
-      v
-  Config types                (the executable runtime representation)
+```mermaid
+%%{ init: { "flowchart": { "curve": "basis" } } }%%
+flowchart TD
+    files(["HCL files on disk"])
+    spec["<b>Spec types</b><br/>operator intent, with spans"]
+    report[("<b>Report</b><br/>errors and warnings, aggregated")]
+    gate{"Report has<br/>errors?"}
+    fail(["SemanticValidationFailed"])
+    config["<b>Config types</b><br/>executable runtime form"]
+
+    files -- "parse_hcl()" --> spec
+    spec -- "validate_spec()" --> report
+    report --> gate
+    gate -- "yes" --> fail
+    gate -- "no · Lower::lower()" --> config
+
+    classDef io fill:#f1f5f9,stroke:#64748b,stroke-width:1px,color:#0f172a;
+    classDef data fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#1e1b4b;
+    classDef diag fill:#fffbeb,stroke:#f59e0b,stroke-width:1.5px,color:#78350f;
+    classDef bad fill:#fef2f2,stroke:#ef4444,stroke-width:1.5px,color:#7f1d1d;
+
+    class files io;
+    class spec,config data;
+    class report,gate diag;
+    class fail bad;
 ```
 
 **Parse** is structural and strict. Each file is registered in a `SourceMap` and parsed with
@@ -279,7 +288,7 @@ sources: confval::source::SourceMap,
 `snakeway config check` renders this in one of three formats (`--format pretty|plain|json`), all
 provided by confval. Pretty output is rustc-style with source excerpts and carets:
 
-```
+```shell
 error: unknown cert_store type: filesyste
   --> config/snakeway.hcl:14:12
    |
