@@ -29,7 +29,7 @@ HCL files on disk
 ```
 
 **Parse** is structural and strict. Each file is registered in a `SourceMap` and parsed with
-`confval::hcl::parse_hcl`. Unknown fields, wrong types, missing required fields, and duplicate
+`confval::format::hcl::parse_hcl`. Unknown fields, wrong types, missing required fields, and duplicate
 blocks are reported with spans. Parsing continues across files: a file whose tree was built keeps
 flowing into validation even if some of its fields failed, so the operator sees parse and validation
 problems in one pass. Only a file that produced no tree at all (a syntax error) stops the load, and
@@ -138,10 +138,11 @@ joining the report.
 **Config types use the fully parsed, typed form.** `IpNet`, `Method`, `HeaderName`, `SocketAddr`,
 runtime enums. Downstream code never re-parses a string it received from config.
 
-**Hand-written `FromHcl` impls cover the shapes the derive does not.** Tagged unions parse their
+**Hand-written `FromFields` impls cover the shapes the derive does not.** Tagged unions parse their
 discriminator first and dispatch: `tls` blocks on **mode** (`manual` or `acme`), `cert_store`
-blocks on **type**. The WASM device's free-form `config` block is captured as an arbitrary HCL
-value rather than a struct.
+blocks on **type**. The WASM device's free-form `config` block is captured as an arbitrary value
+rather than a struct: its `FromFields` impl reads the neutral field model and reconstructs an
+`hcl::Value` to hand the module untouched.
 
 ## Both HCL spellings
 
@@ -186,7 +187,7 @@ Validation is split between entity-local `Validate` impls and centralized relati
 
 ### Entity Validate impls
 
-Each spec implements `confval::provenance::Validate` to check its own fields:
+Each spec implements `confval::pipeline::Validate` to check its own fields:
 
 ```rust
 impl Validate for ServerSpec {
@@ -270,8 +271,8 @@ When the gate trips, `load_config` returns:
 
 ```rust
 ConfigError::SemanticValidationFailed {
-report: confval::provenance::Report,
-sources: confval::provenance::SourceMap,
+report: confval::diagnostic::Report,
+sources: confval::source::SourceMap,
 }
 ```
 
@@ -297,8 +298,11 @@ On a successful load, warnings still surface: `ValidatedConfig::has_warnings()` 
 
 | File                           | Responsibility                                                          |
 |--------------------------------|-------------------------------------------------------------------------|
-| `confval/src/provenance/`      | `Located`, `Span`, `SourceMap`, `Report`, `Lower`, `Validate`           |
-| `confval/src/hcl.rs`           | `FromHcl`, the `Fields` view, leaf and struct parsers                   |
+| `confval/src/source/`          | `Located`, `Span`, `SourceId`, `SourceMap`                              |
+| `confval/src/diagnostic/`      | `Report`, `Issue`, `Severity`, the renderers                            |
+| `confval/src/pipeline/`        | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint`           |
+| `confval/src/format/field.rs`  | the neutral field model and `FromFields`, leaf and struct parsers      |
+| `confval/src/format/hcl.rs`    | `parse_hcl`: the HCL frontend (`format/toml.rs` is the TOML one)        |
 | `confval-derive/src/lib.rs`    | `#[derive(Spec)]` and `#[derive(Config)]`                               |
 | `conf/loader.rs`               | `load_config`, `load_spec_files`, `load_config_from_specs`, the gate    |
 | `conf/discover.rs`             | Glob-based file discovery                                               |
