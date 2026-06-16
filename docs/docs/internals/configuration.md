@@ -296,21 +296,21 @@ On a successful load, warnings still surface: `ValidatedConfig::has_warnings()` 
 
 ## Key files at a glance
 
-| File                           | Responsibility                                                          |
-|--------------------------------|-------------------------------------------------------------------------|
-| `confval/src/source/`          | `Located`, `Span`, `SourceId`, `SourceMap`                              |
-| `confval/src/diagnostic/`      | `Report`, `Issue`, `Severity`, the renderers                            |
-| `confval/src/pipeline/`        | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint`           |
-| `confval/src/format/field.rs`  | the neutral field model and `FromFields`, leaf and struct parsers      |
-| `confval/src/format/hcl.rs`    | `parse_hcl`: the HCL frontend (`format/toml.rs` is the TOML one)        |
-| `confval-derive/src/lib.rs`    | `#[derive(Spec)]` and `#[derive(Config)]`                               |
-| `conf/loader.rs`               | `load_config`, `load_spec_files`, `load_config_from_specs`, the gate    |
-| `conf/discover.rs`             | Glob-based file discovery                                               |
-| `conf/parse.rs`                | `flatten_devices`: device file to per-device specs                      |
+| File                           | Responsibility                                                                       |
+|--------------------------------|--------------------------------------------------------------------------------------|
+| `confval/src/source/`          | `Located`, `Span`, `SourceId`, `SourceMap`                                           |
+| `confval/src/diagnostic/`      | `Report`, `Issue`, `Severity`, the renderers                                         |
+| `confval/src/pipeline/`        | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint`                        |
+| `confval/src/format/field.rs`  | the neutral field model and `FromFields`, leaf and struct parsers                    |
+| `confval/src/format/hcl.rs`    | `parse_hcl`: the HCL frontend (`format/toml.rs` is the TOML one)                     |
+| `confval-derive/src/lib.rs`    | `#[derive(Spec)]` and `#[derive(Config)]`                                            |
+| `conf/loader.rs`               | `load_config`, `load_spec_files`, `load_config_from_specs`, the gate                 |
+| `conf/discover.rs`             | Glob-based file discovery                                                            |
+| `conf/parse.rs`                | `flatten_devices`: device file to per-device specs                                   |
 | `conf/lower.rs`                | `lower_configs`: assembles the final `RuntimeConfig` (`where IngressSpec: Validate`) |
-| `conf/types/specification/`    | All `*Spec` structs with their `Validate` impls                          |
-| `conf/types/runtime/`          | All `*Config` structs, `Lower` derives, and `with` conversion functions |
-| `conf/validation/validate.rs`  | `validate_spec` orchestrator                                            |
-| `conf/validation/single_file/` | Per-file relational validators (ingress, device)                        |
-| `conf/validation/multi_file/`  | Cross-file validators (TLS)                                             |
-| `conf/validation/error.rs`     | `ConfigError` enum                                                      |
+| `conf/types/specification/`    | All `*Spec` structs with their `Validate` impls                                      |
+| `conf/types/runtime/`          | All `*Config` structs, `Lower` derives, and `with` conversion functions              |
+| `conf/validation/validate.rs`  | `validate_spec` orchestrator                                                         |
+| `conf/validation/single_file/` | Per-file relational validators (ingress, device)                                     |
+| `conf/validation/multi_file/`  | Cross-file validators (TLS)                                                          |
+| `conf/validation/error.rs`     | `ConfigError` enum                                                                   |

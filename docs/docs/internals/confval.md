@@ -26,13 +26,13 @@ confval is organized into four layers, each a module, plus a prelude. The depend
 strictly downward: `format` builds on `pipeline`, which builds on `diagnostic`, which builds on
 `source`.
 
-| Module               | Holds                                                                      |
-|----------------------|----------------------------------------------------------------------------|
-| `confval::source`    | `Located`, `Span`, `SourceId`, `Source`, `SourceMap` (the "where")          |
-| `confval::diagnostic`| `Report`, `Issue`, `IssueBuilder`, `Severity`, the renderers (the "what")    |
-| `confval::pipeline`  | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint` (the transform)|
-| `confval::format`    | the neutral field model (`field`) and the frontends (`hcl`, `toml`)         |
-| `confval::prelude`   | a glob re-export of the common imports across those layers                   |
+| Module                | Holds                                                                         |
+|-----------------------|-------------------------------------------------------------------------------|
+| `confval::source`     | `Located`, `Span`, `SourceId`, `Source`, `SourceMap` (the "where")            |
+| `confval::diagnostic` | `Report`, `Issue`, `IssueBuilder`, `Severity`, the renderers (the "what")     |
+| `confval::pipeline`   | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint` (the transform) |
+| `confval::format`     | the neutral field model (`field`) and the frontends (`hcl`, `toml`)           |
+| `confval::prelude`    | a glob re-export of the common imports across those layers                    |
 
 `use confval::prelude::*;` pulls the everyday names (`Located`, `Span`, `Report`, `Lower`, `Validate`,
 `narrow`, and the derives) in one line; the explicit module paths remain available when you want them.
@@ -206,10 +206,10 @@ format-neutral and shared by every frontend.
 
 A frontend's only job is text-to-`Fields`. Each is a thin module behind its own feature:
 
-| Entry point                         | Feature | Parser     |
-|-------------------------------------|---------|------------|
-| `confval::format::hcl::parse_hcl`   | `hcl`   | `hcl-edit` |
-| `confval::format::toml::parse_toml` | `toml`  | `toml_edit`|
+| Entry point                         | Feature | Parser      |
+|-------------------------------------|---------|-------------|
+| `confval::format::hcl::parse_hcl`   | `hcl`   | `hcl-edit`  |
+| `confval::format::toml::parse_toml` | `toml`  | `toml_edit` |
 
 Both have the signature `fn(&SourceMap, SourceId, &mut Report) -> Option<T> where T: FromFields`, and
 both produce the same neutral `Fields`, so the leaf parsers, the derive output, and every hand-written
@@ -365,7 +365,9 @@ flag, emits it on the generated `Lower` impl:
 ```rust
 #[derive(confval::Config)]
 #[confval(lower_from = ServerSpec, validate)]
-struct ServerConfig { /* ... */ }
+struct ServerConfig {
+    /* ... */
+}
 // generates: impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate { ... }
 ```
 
@@ -381,13 +383,13 @@ remains the consumer's responsibility.
 
 ## Feature flags
 
-| Flag     | Default | Brings in        | Enables                                                       |
-|----------|---------|------------------|---------------------------------------------------------------|
-| `serde`  | off     | `serde`          | `Located` serde impls, `render_json`                          |
-| `color`  | off     | `owo-colors`     | `render_pretty` with ANSI color                               |
-| `hcl`    | off     | `hcl-edit`       | The `confval::format::hcl` frontend                           |
-| `toml`   | off     | `toml_edit`      | The `confval::format::toml` frontend                          |
-| `derive` | off     | `confval-derive` | `#[derive(Spec)]` and `#[derive(Config)]` (format-neutral)    |
+| Flag     | Default | Brings in        | Enables                                                    |
+|----------|---------|------------------|------------------------------------------------------------|
+| `serde`  | off     | `serde`          | `Located` serde impls, `render_json`                       |
+| `color`  | off     | `owo-colors`     | `render_pretty` with ANSI color                            |
+| `hcl`    | off     | `hcl-edit`       | The `confval::format::hcl` frontend                        |
+| `toml`   | off     | `toml_edit`      | The `confval::format::toml` frontend                       |
+| `derive` | off     | `confval-derive` | `#[derive(Spec)]` and `#[derive(Config)]` (format-neutral) |
 
 Frontends are independent opt-ins. The derive emits the format-neutral `FromFields`, so `derive`
 brings in no parser on its own; pick `hcl` and/or `toml` for the format you actually read. Snakeway
