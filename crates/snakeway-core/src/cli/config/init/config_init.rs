@@ -3,14 +3,16 @@ use crate::cli::config::init::templates;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
 use confval::source::Located;
-use snakeway_conf::types::{
-    AcmeServerSpec, CertStoreSpec, EntrypointSpec, ServerSpec, TlsAutomationSpec,
-};
+#[cfg(feature = "dev-templates")]
+use snakeway_conf::types::{AcmeServerSpec, CertStoreSpec, TlsAutomationSpec};
+use snakeway_conf::types::{EntrypointSpec, ServerSpec};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
 fn entrypoint_spec(template: &ConfigInitTemplate) -> EntrypointSpec {
+    // `spec` is only mutated by the dev-template branch below.
+    #[cfg_attr(not(feature = "dev-templates"), allow(unused_mut))]
     let mut spec = EntrypointSpec {
         server: ServerSpec {
             threads: Some(Located::detached(8)),
@@ -19,6 +21,9 @@ fn entrypoint_spec(template: &ConfigInitTemplate) -> EntrypointSpec {
         },
         ..Default::default()
     };
+    #[cfg(not(feature = "dev-templates"))]
+    let _ = template;
+    #[cfg(feature = "dev-templates")]
     if matches!(template, ConfigInitTemplate::Dev) {
         spec.server.pid_file = Some(Located::detached(PathBuf::from("/tmp/snakeway.pid")));
         spec.server.tls_automation = Some(Located::detached(TlsAutomationSpec {
@@ -83,6 +88,7 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
                 &mut files_to_create,
             )?;
         }
+        #[cfg(feature = "dev-templates")]
         ConfigInitTemplate::Dev => {
             templates::dev_template::generate(
                 device_dir_path.clone(),
@@ -128,6 +134,7 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
 pub(crate) enum ConfigInitTemplate {
     Minimal,
     Httpbin,
+    #[cfg(feature = "dev-templates")]
     Dev,
 }
 
@@ -144,6 +151,7 @@ mod tests {
         for template in [
             ConfigInitTemplate::Minimal,
             ConfigInitTemplate::Httpbin,
+            #[cfg(feature = "dev-templates")]
             ConfigInitTemplate::Dev,
         ] {
             // Arrange
