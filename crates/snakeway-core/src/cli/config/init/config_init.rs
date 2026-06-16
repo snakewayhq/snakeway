@@ -13,10 +13,14 @@ use std::path::PathBuf;
 fn entrypoint_spec(template: &ConfigInitTemplate) -> EntrypointSpec {
     // `spec` is only mutated by the dev-template branch below.
     #[cfg_attr(not(feature = "dev-templates"), allow(unused_mut))]
+    // No pid_file by default: a starter config must not assume a host-specific
+    // directory exists (validation requires the pid file's parent to be
+    // present, which breaks on minimal hosts that lack /var/run).
+    // An operator opts into a pid file by setting one explicitly.
+    // The dev template sets a portable /tmp path below.
     let mut spec = EntrypointSpec {
         server: ServerSpec {
             threads: Some(Located::detached(8)),
-            pid_file: Some(Located::detached(PathBuf::from("/var/run/snakeway.pid"))),
             ..Default::default()
         },
         ..Default::default()
@@ -171,6 +175,40 @@ mod tests {
             );
             let parsed = parsed.unwrap();
             assert_eq!(parsed.server.version.value, 1);
+        }
+    }
+
+    /// Stronger than parsing alone: the portable templates must survive the
+    /// full parse -> validate -> lower pipeline on any host, against the actual
+    /// files `init` writes. This is what catches a template baking in a path
+    /// that validation rejects (for example a pid file under a directory the
+    /// host may not have). The dev template is excluded on purpose: it targets
+    /// a local pebble/ACME setup and is gated behind `dev-templates`.
+    #[test]
+    fn generated_configs_load_cleanly() {
+        use snakeway_conf::load_config;
+
+        for template in [ConfigInitTemplate::Minimal, ConfigInitTemplate::Httpbin] {
+            // Arrange
+            let dir = tempfile::tempdir().expect("tempdir");
+            let root = dir.path().join("config");
+
+            // Act
+            init(root.clone(), template.clone()).expect("init writes a config");
+            let loaded = load_config(&root);
+
+            // Assert
+            let validated = loaded.unwrap_or_else(|error| {
+                panic!("template {template:?} generated a config that does not load: {error:?}")
+            });
+            // A starter config bakes in no pid file: the operator opts into one
+            // with a path they know exists, rather than inheriting a host
+            // assumption from the template.
+            assert!(
+                validated.config.server.pid_file.as_os_str().is_empty(),
+                "template {template:?} should not bake in a pid_file, got {:?}",
+                validated.config.server.pid_file
+            );
         }
     }
 }
