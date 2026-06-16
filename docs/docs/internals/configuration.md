@@ -26,10 +26,10 @@ flowchart TD
     gate -- "yes" --> fail
     gate -- "no · Lower::lower()" --> config
 
-    classDef io fill:#f1f5f9,stroke:#64748b,stroke-width:1px,color:#0f172a;
-    classDef data fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#1e1b4b;
-    classDef diag fill:#fffbeb,stroke:#f59e0b,stroke-width:1.5px,color:#78350f;
-    classDef bad fill:#fef2f2,stroke:#ef4444,stroke-width:1.5px,color:#7f1d1d;
+    classDef io stroke:#64748b,stroke-width:1.5px;
+    classDef data stroke:#6366f1,stroke-width:1.5px;
+    classDef diag stroke:#f59e0b,stroke-width:1.5px;
+    classDef bad stroke:#ef4444,stroke-width:1.5px;
 
     class files io;
     class spec,config data;
