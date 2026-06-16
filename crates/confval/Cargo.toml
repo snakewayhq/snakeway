@@ -1,6 +1,6 @@
 [package]
 name = "confval"
-version = "0.3.0"
+version = "0.2.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "Span-first configuration parsing, validation, and lowering for Rust"
@@ -14,7 +14,7 @@ default = []
 serde = ["dep:serde", "dep:serde_json"]
 color = ["dep:owo-colors"]
 # Format frontends are independent opt-ins.
-# The derive emits the format-neutral `FromFields`, so `derive` needs no frontend.
+# The derive macro emits the format-neutral `FromFields`, so `derive` needs no frontend.
 # tldr; pick `hcl` and/or `toml` for the format(s) you actually parse.
 hcl = ["dep:hcl-edit"]
 toml = ["dep:toml_edit"]
