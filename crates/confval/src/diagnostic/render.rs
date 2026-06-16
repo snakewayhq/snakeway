@@ -209,9 +209,12 @@ fn write_excerpt(
     )?;
 
     // Clamp the underline to the excerpt's line; multi-line spans underline
-    // their first line only.
-    let underline_start = (span.start as usize).clamp(line_start, line_end);
-    let underline_end = (span.end as usize).clamp(underline_start, line_end);
+    // their first line only. Snap to char boundaries so a span offset that
+    // landed inside a multi-byte character cannot panic the slice below.
+    let underline_start =
+        source.floor_char_boundary((span.start as usize).clamp(line_start, line_end));
+    let underline_end =
+        source.ceil_char_boundary((span.end as usize).clamp(underline_start, line_end));
     let length = source.text[underline_start..underline_end]
         .chars()
         .count()
@@ -381,6 +384,32 @@ mod tests {
         assert!(out.contains("test.hcl:1:8"), "got: {out}");
         assert!(out.contains("port = 99999"), "got: {out}");
         assert!(out.contains("^^^^^"), "got: {out}");
+    }
+
+    #[cfg(feature = "color")]
+    #[test]
+    fn render_pretty_span_inside_multibyte_char_does_not_panic() {
+        // "é" is two bytes; an offset..offset+1 span ending mid-character must
+        // not panic the underline slice.
+        let mut sources = SourceMap::new();
+        let id = sources.add("test.hcl", "x = é\n");
+        let bad_end = "x = é".find('é').unwrap() as u32 + 1;
+        assert!(
+            !sources
+                .get(id)
+                .unwrap()
+                .text
+                .is_char_boundary(bad_end as usize)
+        );
+        let mut report = Report::new();
+        report
+            .error("syntax error")
+            .at(Span::new(id, bad_end - 1, bad_end))
+            .emit();
+
+        let mut out = String::new();
+        report.render_pretty(&sources, &mut out).unwrap();
+        assert!(out.contains("syntax error"), "got: {out}");
     }
 
     #[cfg(feature = "color")]

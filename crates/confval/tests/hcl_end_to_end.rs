@@ -408,3 +408,33 @@ fn syntax_error_reports_location_and_stops() {
     assert!(config.is_none());
     assert!(report.issues()[0].message.starts_with("syntax error:"));
 }
+
+#[test]
+fn syntax_error_at_multibyte_char_renders_without_panicking() {
+    // `€` is the unexpected token at byte offset 7 and occupies bytes 7..10,
+    // so parse_hcl's `offset..offset+1` error span ends at byte 8, inside the
+    // character. Rendering must snap to a char boundary rather than panic on
+    // the string slice. Exercises every render path because line_column (used
+    // by all three) is the slice that previously panicked.
+    let (sources, report, config) = load("port = €\n");
+    assert!(config.is_none());
+    assert!(report.issues()[0].message.starts_with("syntax error:"));
+
+    let mut plain = String::new();
+    report.render_plain(&sources, &mut plain).unwrap();
+    assert!(plain.contains("syntax error:"), "got: {plain}");
+
+    #[cfg(feature = "color")]
+    {
+        let mut pretty = String::new();
+        report.render_pretty(&sources, &mut pretty).unwrap();
+        assert!(pretty.contains("syntax error:"), "got: {pretty}");
+    }
+
+    #[cfg(feature = "serde")]
+    {
+        let mut json = String::new();
+        report.render_json(&sources, &mut json).unwrap();
+        assert!(json.contains("syntax error:"), "got: {json}");
+    }
+}

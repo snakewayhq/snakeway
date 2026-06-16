@@ -31,11 +31,34 @@ impl Source {
     /// the presence of multi-byte characters. Offsets past the end of the
     /// text are clamped.
     pub fn line_column(&self, byte_offset: u32) -> (usize, usize) {
-        let offset = (byte_offset as usize).min(self.text.len());
+        let offset = self.floor_char_boundary(byte_offset as usize);
         let line = self.line_index.line_at(offset as u32);
         let line_start = self.line_index.line_starts[line] as usize;
         let column = self.text[line_start..offset].chars().count() + 1;
         (line + 1, column)
+    }
+
+    /// Largest char boundary at or before `offset`, clamped to the text length.
+    ///
+    /// Span offsets are raw bytes and a frontend may point one just inside a
+    /// multi-byte character (an HCL syntax error reported as `offset..offset+1`,
+    /// for example). Snapping before slicing keeps rendering from panicking on
+    /// such a span; an already-aligned offset is returned unchanged.
+    pub(crate) fn floor_char_boundary(&self, offset: usize) -> usize {
+        let mut offset = offset.min(self.text.len());
+        while offset > 0 && !self.text.is_char_boundary(offset) {
+            offset -= 1;
+        }
+        offset
+    }
+
+    /// Smallest char boundary at or after `offset`, clamped to the text length.
+    pub(crate) fn ceil_char_boundary(&self, offset: usize) -> usize {
+        let mut offset = offset.min(self.text.len());
+        while offset < self.text.len() && !self.text.is_char_boundary(offset) {
+            offset += 1;
+        }
+        offset
     }
 
     /// The text of a one-based line, without its trailing newline.
@@ -148,6 +171,30 @@ mod tests {
     fn line_column_past_end_is_clamped() {
         let source = Source::new("test.hcl", "abc");
         assert_eq!(source.line_column(999), (1, 4));
+    }
+
+    #[test]
+    fn line_column_on_non_char_boundary_does_not_panic() {
+        // "é" occupies bytes 4..6. Byte offset 5 is inside it, the kind of
+        // offset an HCL syntax-error span (offset..offset+1) can produce.
+        let source = Source::new("test.hcl", "x = é\n");
+        assert!(!source.text.is_char_boundary(5));
+        // Snaps down to the start of "é" (column 5) instead of panicking.
+        assert_eq!(source.line_column(5), (1, 5));
+    }
+
+    #[test]
+    fn char_boundary_helpers_snap_and_clamp() {
+        let source = Source::new("test.hcl", "x = é");
+        // "é" is bytes 4..6; 5 is interior.
+        assert_eq!(source.floor_char_boundary(5), 4);
+        assert_eq!(source.ceil_char_boundary(5), 6);
+        // Already-aligned offsets are returned unchanged.
+        assert_eq!(source.floor_char_boundary(4), 4);
+        assert_eq!(source.ceil_char_boundary(4), 4);
+        // Out-of-range offsets clamp to the text length.
+        assert_eq!(source.floor_char_boundary(999), source.text.len());
+        assert_eq!(source.ceil_char_boundary(999), source.text.len());
     }
 
     #[test]
