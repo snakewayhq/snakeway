@@ -3,7 +3,7 @@
 //! Like [`hcl`](crate::format::hcl), this module's only job is the conversion
 //! from a concrete syntax tree — here `toml_edit`'s — to the owned model in
 //! [`field`](crate::format::field). It parses through
-//! [`ImDocument`](toml_edit::ImDocument), the immutable document type that
+//! [`Document`](toml_edit::Document), the immutable document type that
 //! retains source spans, and emits the same neutral `Fields` every other
 //! frontend does, so the leaf parsers, the derive-generated walks, and the
 //! hand-written [`FromFields`] impls work against it unchanged.
@@ -24,7 +24,7 @@ use crate::diagnostic::Report;
 use crate::format::field::{Field, FieldKind, Fields, FromFields, Scalar, Value, ValueKind};
 use crate::source::{SourceId, SourceMap, Span};
 use std::ops::Range;
-use toml_edit::{ImDocument, InlineTable, Item, Table, Value as TomlValue};
+use toml_edit::{Document, InlineTable, Item, Table, Value as TomlValue};
 
 /// Parses one registered source into a `T`, pushing syntax errors and
 /// structural problems into the report.
@@ -39,7 +39,7 @@ pub fn parse_toml<T: FromFields>(
             .emit();
         return None;
     };
-    match ImDocument::parse(&source.text) {
+    match Document::parse(&source.text) {
         Ok(document) => {
             let enclosing = Span::new(id, 0, source.text.len() as u32);
             let fields = fields_of_table(document.as_table(), enclosing, id, report);
@@ -213,7 +213,7 @@ mod tests {
     fn parse(input: &str) -> (SourceMap, SourceId, Fields) {
         let mut sources = SourceMap::new();
         let id = sources.add("test.toml", input);
-        let document = ImDocument::parse(sources.get(id).unwrap().text.clone()).unwrap();
+        let document = Document::parse(sources.get(id).unwrap().text.clone()).unwrap();
         let mut report = Report::new();
         let fields = fields_of_table(document.as_table(), Span::new(id, 0, 0), id, &mut report);
         assert!(
