@@ -93,29 +93,38 @@ html:not([data-theme='dark']) .docusaurus-mermaid-container .node :is(rect, poly
 }
 ```
 
-### Padding inside edge-label pills (mind the measurement timing)
+### Padding and rounding edge-label pills (target the inner `<p>`)
 
-An edge label is `<foreignObject><div class="labelBkg"><span class="edgeLabel">text</span></div>`.
-The background lives on `.labelBkg` (a real element with `background-color`), so horizontal padding
-widens the pill. **But the selector must be unscoped** — do not put it under
-`.docusaurus-mermaid-container`:
+With `markdownAutoWrap` on (the default), an edge label is
+`<foreignObject><div class="labelBkg"><span class="edgeLabel"><p>text</p></span></div>`. Mermaid's own
+theme CSS sets `background-color` on `.edgeLabel`, on that inner `<p>`, **and** (faded) on `.labelBkg`
+— so the `<p>` carries a visible background. Style **that inner `<p>`**, and leave the selector
+unscoped:
 
 ```css
-.labelBkg {
-  padding-inline: 6px;
+.labelBkg > span > p {
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 ```
 
-Why: Mermaid measures the label width *off-DOM*, before the SVG is inserted into
-`.docusaurus-mermaid-container`, and centers the label on the edge using that measured width. A rule
-scoped to the container is absent during that measurement, so the padding renders but is not measured
-— the pill ends up wider than the centering assumed, and the text is pushed right and out of its
-background (the classic "offset and obscured" symptom). An unscoped `.labelBkg` rule is present at
-measurement time, so measured and rendered widths agree.
+Two reasons this is the right element, both learned the hard way:
 
-This is the general lesson for any CSS that changes a label's size: it must be active during Mermaid's
-off-DOM measurement, which means an unscoped selector, not a `.docusaurus-mermaid-container`-prefixed
-one. (Color-only overrides that do not change size are safe to scope.)
+1. **It is the measured content.** Mermaid measures the label width *off-DOM*, before the SVG is
+   inserted into `.docusaurus-mermaid-container`, and centers the label on the edge from that width.
+   Padding an outer wrapper (`.labelBkg`) via a container-scoped rule is absent during that
+   measurement, so the padding renders but is not measured — the pill ends up wider than the centering
+   assumed and the text is pushed sideways and out of its background (the "offset and obscured"
+   symptom). The inner `<p>` is intrinsic measured content, and an unscoped rule is present at
+   measurement time, so measured and rendered widths agree.
+2. **It owns a background.** Because the `<p>` itself has `background-color`, padding extends the
+   visible pill and `border-radius` rounds it. (`border-radius` on `.labelBkg` would not round the
+   `<p>`'s own background.)
+
+General lesson: any CSS that changes a label's *size* must be active during Mermaid's off-DOM
+measurement — use an unscoped selector and prefer the innermost measured element, not a
+`.docusaurus-mermaid-container`-prefixed wrapper. Color-only overrides that do not change size are safe
+to scope to the container.
 
 ---
 
@@ -126,7 +135,9 @@ one. (Color-only overrides that do not change size are safe to scope.)
   lands on the node `<g>`.
 - Edge line: under `.edgePaths` / `.flowchart-link` (not `.node`), so a `.node` selector never hits
   arrows.
-- Edge label: `.labelBkg` (background) wrapping `.edgeLabel` (text).
+- Edge label: `.labelBkg` (div) > `.edgeLabel` (span) > `<p>` (text). With `markdownAutoWrap` (on by
+  default) the text is wrapped in a `<p>`, and `background-color` is set on `.edgeLabel`, on that `<p>`,
+  and (faded) on `.labelBkg` — so the `<p>` is the element to pad/round.
 
 ---
 
