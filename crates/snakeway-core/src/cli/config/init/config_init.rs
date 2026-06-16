@@ -145,13 +145,15 @@ pub(crate) enum ConfigInitTemplate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::format::hcl::parse_hcl;
-    use confval::prelude::{Report, SourceMap};
+    use snakeway_conf::{load_config, load_spec_files};
 
-    /// The generated entrypoint and the config parser must never drift
-    /// apart: whatever `config init` writes has to parse cleanly.
+    /// Every file `config init` writes must parse: the entrypoint plus the
+    /// generated `device.d/` and `ingress.d/` files, for every template. This
+    /// runs the parse phase over the actual files on disk, not just the
+    /// entrypoint string. Parsing is structural only, so it covers the dev
+    /// template too (its ACME config parses without any live service).
     #[test]
-    fn generated_entrypoints_parse_cleanly() {
+    fn generated_files_parse_cleanly() {
         for template in [
             ConfigInitTemplate::Minimal,
             ConfigInitTemplate::Httpbin,
@@ -159,22 +161,20 @@ mod tests {
             ConfigInitTemplate::Dev,
         ] {
             // Arrange
-            let text = to_hcl_block_string(&entrypoint_spec(&template)).unwrap();
+            let dir = tempfile::tempdir().expect("tempdir");
+            let root = dir.path().join("config");
+            init(root.clone(), template.clone()).expect("init writes a config");
 
-            // Act
-            let mut sources = SourceMap::new();
-            let mut report = Report::new();
-            let id = sources.add("snakeway.hcl", &text);
-            let parsed: Option<EntrypointSpec> = parse_hcl(&sources, id, &mut report);
+            // Act: load_spec_files runs only the parse phase across the tree.
+            let (_, report, ..) = load_spec_files(&root)
+                .unwrap_or_else(|error| panic!("template {template:?} failed to parse: {error:?}"));
 
             // Assert
             assert!(
-                !report.has_issues(),
-                "template {template:?} produced issues: {:?}\ngenerated:\n{text}",
+                !report.has_errors(),
+                "template {template:?} produced parse errors: {:?}",
                 report.issues()
             );
-            let parsed = parsed.unwrap();
-            assert_eq!(parsed.server.version.value, 1);
         }
     }
 
@@ -186,8 +186,6 @@ mod tests {
     /// a local pebble/ACME setup and is gated behind `dev-templates`.
     #[test]
     fn generated_configs_load_cleanly() {
-        use snakeway_conf::load_config;
-
         for template in [ConfigInitTemplate::Minimal, ConfigInitTemplate::Httpbin] {
             // Arrange
             let dir = tempfile::tempdir().expect("tempdir");
