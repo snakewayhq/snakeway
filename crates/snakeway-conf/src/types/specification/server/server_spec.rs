@@ -145,6 +145,12 @@ impl Default for PerformanceSpec {
 /// exists; spans come from the `Located` values themselves.
 impl Validate for ServerSpec {
     fn validate(&self, report: &mut Report) {
+        // Version gate...
+        // An unrecognized version means this config targets a different
+        // schema, so the v1-specific field checks below would be validating
+        // against the wrong rules.
+        // Emit only the version error and stop.
+        // This is intentional: it does not make sense to validate a config of the wrong version.
         if self.version.value != 1 {
             report
                 .error(format!("invalid config version: {}", self.version.value))
@@ -498,6 +504,35 @@ observability {
 
         // Assert
         assert!(report.has_issues());
+        assert!(
+            report.issues()[0]
+                .message
+                .contains("invalid config version: 2")
+        );
+    }
+
+    #[test]
+    fn validate_server_bad_version_suppresses_other_errors() {
+        // The version gate is intentional: a bad version reports only the
+        // version error and skips the v1-specific field checks, even when a
+        // field is otherwise invalid (here, threads far out of range). If this
+        // ever reports two errors, the early return in ServerSpec::validate was
+        // removed; that is a deliberate design choice, not a bug to "fix".
+        let mut report = Report::new();
+        let server = ServerSpec {
+            version: Located::detached(2),
+            threads: Some(Located::detached(99_999)),
+            ..Default::default()
+        };
+
+        server.validate(&mut report);
+
+        assert_eq!(
+            report.issues().len(),
+            1,
+            "expected only the version error, got: {:?}",
+            report.issues()
+        );
         assert!(
             report.issues()[0]
                 .message
