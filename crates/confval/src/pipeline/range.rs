@@ -37,6 +37,21 @@ where
     /// [`check`](Self::check), so both report worlds describe violations the
     /// same way.
     pub fn check_located(&self, value: &Located<T>, field: &'static str, report: &mut Report) {
+        // NaN is unordered: it compares `false` against both bounds, so the
+        // range checks below would silently accept it.
+        // Reject it up front.
+        // The self-comparison is the only generic NaN test available here,
+        // for integer `T` it is always `false` and compiles away.
+        // Infinities need no special case: they fall outside any finite min/max.
+        #[allow(clippy::eq_op)]
+        let is_nan = value.value != value.value;
+        if is_nan {
+            report
+                .error(format!("{field} must be a number"))
+                .at(value.span)
+                .emit();
+            return;
+        }
         let (limit, kind) = if value.value < self.min {
             (self.min, "at least")
         } else if value.value > self.max {
@@ -164,5 +179,34 @@ mod tests {
             report.issues()[0].help.as_deref(),
             Some("Keep this under 5 minutes for responsive shutdowns.")
         );
+    }
+
+    fn check_f64(min: f64, max: f64, value: f64) -> Report {
+        let mut report = Report::new();
+        RangeConstraint::new(min, max).check_located(
+            &Located::detached(value),
+            "ratio",
+            &mut report,
+        );
+        report
+    }
+
+    #[test]
+    fn nan_is_rejected() {
+        // NaN passes neither `< min` nor `> max`; it must still be rejected.
+        let report = check_f64(0.0, 1.0, f64::NAN);
+        assert!(report.has_errors());
+        assert_eq!(report.issues()[0].message, "ratio must be a number");
+    }
+
+    #[test]
+    fn infinities_are_out_of_range() {
+        assert!(check_f64(0.0, 1.0, f64::INFINITY).has_errors());
+        assert!(check_f64(0.0, 1.0, f64::NEG_INFINITY).has_errors());
+    }
+
+    #[test]
+    fn finite_float_in_range_is_accepted() {
+        assert!(!check_f64(0.0, 1.0, 0.5).has_issues());
     }
 }
