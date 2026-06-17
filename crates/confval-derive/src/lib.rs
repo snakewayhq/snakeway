@@ -95,6 +95,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let field_name = ident.to_string();
         let options = parse_options(field)?;
         let shape = classify(field, &options)?;
+        reject_unsupported_default(field, &shape, &options)?;
         let slot = format_ident!("__{}", ident);
 
         match shape {
@@ -368,6 +369,44 @@ fn default_expr(default: &Option<Expr>) -> TokenStream2 {
         Some(expr) => quote! { #expr },
         None => quote! { ::core::default::Default::default() },
     }
+}
+
+/// Rejects `#[confval(default ...)]` on field shapes that would silently ignore
+/// it. Only leaf fields honor a default value; a string list accepts a bare
+/// `#[confval(default)]` (meaning "empty") but not `default = <expr>`. Every
+/// other shape would drop the default on the floor, so flag it at compile time
+/// rather than surprise the author at runtime.
+fn reject_unsupported_default(
+    field: &Field,
+    shape: &FieldShape,
+    options: &FieldOptions,
+) -> syn::Result<()> {
+    let Some(default) = &options.default else {
+        return Ok(());
+    };
+    let supported = match shape {
+        FieldShape::Leaf { .. } => true,
+        // A string list's only meaningful default is the empty list, written as
+        // a bare `#[confval(default)]`.
+        // An explicit value cannot be honored.
+        FieldShape::BareStringList => default.is_none(),
+        FieldShape::Nested { .. }
+        | FieldShape::NestedList
+        | FieldShape::OptionalWrappedStringList => false,
+    };
+    if supported {
+        return Ok(());
+    }
+    let span = default
+        .as_ref()
+        .map(Spanned::span)
+        .unwrap_or_else(|| field.span());
+    Err(syn::Error::new(
+        span,
+        "#[confval(default)] is not supported on this field; only leaf fields \
+         take a default value (a string list may use a bare #[confval(default)] \
+         for an empty list)",
+    ))
 }
 
 fn seen_missing_check(field_name: &str, seen: &proc_macro2::Ident) -> TokenStream2 {
