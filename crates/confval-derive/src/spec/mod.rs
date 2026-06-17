@@ -16,7 +16,28 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Expr, Field, Fields, spanned::Spanned};
 
+/// Builds the `FromFields` parser for one `#[derive(Spec)]` struct.
+///
+/// The strategy is to walk the struct's fields once and, for each field, decide
+/// how it should be parsed and emit the matching code fragments. Those fragments
+/// collect into four buckets that are stitched together at the end into a single
+/// generated `from_fields` function:
+///
+/// - `slot_decls`: a local variable per field that holds the value once parsed.
+/// - `match_arms`: one arm per field name; when that name is seen in the source,
+///   the field is parsed into its slot.
+/// - `missing_checks`: run after the walk to report any required field that
+///   never appeared.
+/// - `constructors`: build the final struct from the filled-in slots.
+///
+/// At the caller's runtime the generated `from_fields` then iterates the fields
+/// actually present in the config source, routes each by name into its match
+/// arm (reporting any unrecognized name), runs the missing-field checks, and
+/// constructs `Self`. It checks only shape and presence, never values; semantic
+/// validation happens later, elsewhere.
 pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    // The derive only handles structs with named fields. Enums and tuple
+    // structs are rejected with a message pointing at the type.
     let Data::Struct(data) = &input.data else {
         return Err(syn::Error::new(
             input.ident.span(),
@@ -32,6 +53,8 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     };
 
     let name = &input.ident;
+    // The four buckets of generated code fragments, filled in below and spliced
+    // into the final `impl` at the end.
     let mut slot_decls = Vec::new();
     let mut match_arms = Vec::new();
     let mut missing_checks = Vec::new();
@@ -40,11 +63,16 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     for field in &fields.named {
         let ident = field.ident.as_ref().expect("named field");
         let field_name = ident.to_string();
+        // Read the field's attributes, work out its parsing shape, and reject
+        // a `default` on a shape that cannot honor it (see below).
         let options = parse_options(field)?;
         let shape = classify(field, options.nested)?;
         reject_unsupported_default(field, &shape, &options)?;
+        // `slot` is the generated local variable's name, e.g. `__port`. The
+        // leading underscores keep it from clashing with the user's own names.
         let slot = format_ident!("__{}", ident);
 
+        // Emit the parsing fragments for this field, tailored to its shape.
         match shape {
             FieldShape::Leaf { leaf, optional } => {
                 let parser = leaf_parser(&leaf);
@@ -162,6 +190,8 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         }
     }
 
+    // Splice the four buckets into the generated parser. This is the code that
+    // runs at the caller's runtime, once per parsed struct.
     Ok(quote! {
         impl ::confval::format::FromFields for #name {
             fn from_fields(
@@ -187,6 +217,11 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     })
 }
 
+/// Picks the confval parse function for a leaf type.
+///
+/// Returns a generated expression that parses the current field into an
+/// `Option<Located<T>>`. `PathBuf` has no parser of its own: it is read as a
+/// string and converted, so its arm wraps the string parser with a `map`.
 fn leaf_parser(leaf: &Leaf) -> TokenStream2 {
     match leaf {
         Leaf::String => quote! { ::confval::format::parse_string_field(__field, report) },
@@ -200,6 +235,9 @@ fn leaf_parser(leaf: &Leaf) -> TokenStream2 {
     }
 }
 
+/// The generated expression for a leaf field's default value, used when the
+/// field is absent from the source. `#[confval(default = expr)]` uses `expr`;
+/// a bare `#[confval(default)]` falls back to the type's `Default`.
 fn default_expr(default: &Option<Expr>) -> TokenStream2 {
     match default {
         Some(expr) => quote! { #expr },
@@ -244,6 +282,11 @@ fn reject_unsupported_default(
     ))
 }
 
+/// The generated after-the-walk check that reports a required field as missing.
+///
+/// `seen` is the boolean local the match arm flips to `true` when it parses the
+/// field. If the walk finished without ever setting it, the field was absent
+/// and an error is reported against the enclosing block.
 fn seen_missing_check(field_name: &str, seen: &proc_macro2::Ident) -> TokenStream2 {
     quote! {
         if !#seen {

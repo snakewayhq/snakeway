@@ -1,32 +1,54 @@
-//! `#[derive(Config)]`: generates an `impl confval::pipeline::Lower<Spec>`.
+//! `#[derive(Config)]`: generating the step that turns a parsed spec into the
+//! runtime form the proxy uses.
 //!
-//! Same-named fields auto-map through `LowerAuto` (unwrapping `Located` layers,
-//! never narrowing), `#[confval(nested)]` fields lower through the inner type's
-//! own `Lower` impl, and everything else takes an explicit
-//! `#[confval(lower(from = ..., with = ...))]`. The generated impl destructures
-//! the Spec exhaustively, so a Spec field consumed by nothing, or a `from`
-//! target that does not exist, is a compile error.
+//! "Lowering" is that conversion. A spec is the freshly parsed config (every
+//! value still wrapped in `Located`, integers still wide, strings still
+//! strings); a config is the resolved, typed value the rest of the program
+//! runs on. This derive writes an `impl confval::pipeline::Lower<Spec>` that
+//! does the conversion field by field:
+//!
+//! - A field with no attribute auto-maps from the same-named spec field through
+//!   `LowerAuto`, which just unwraps the `Located` layers (no narrowing).
+//! - A `#[confval(nested)]` field lowers through the inner type's own `Lower`.
+//! - Anything else takes an explicit `#[confval(lower(from = ..., with = ...))]`
+//!   naming the spec field(s) to read and the function that converts them.
+//!
+//! The generated code destructures the spec with no `..` rest pattern, which
+//! turns two whole classes of mistake into compile errors: a spec field that
+//! nothing consumes, and a `from` that names a field which does not exist.
 
 use crate::common::unwrap_generic;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Data, DeriveInput, Expr, Field, Fields, spanned::Spanned};
 
-/// How one Config field obtains its value.
+/// Where one config field gets its value from.
 enum ConfigFieldSource {
-    /// Same-named Spec field through `LowerAuto`.
+    /// No attribute: copy from the same-named spec field, unwrapping `Located`.
     Auto,
-    /// Same-named Spec field through the inner type's `Lower` impl.
-    /// The occurrence shape is read off the Config field's type.
+    /// `#[confval(nested)]`: lower the same-named spec field through its own
+    /// `Lower` impl. Whether it is a single value, an `Option`, or a `Vec` is
+    /// read off this config field's type.
     Nested,
-    /// Explicit lowering function over one or more Spec fields.
+    /// `#[confval(lower(from = ..., with = ...))]`: call `with` on the named
+    /// spec field(s) `from` to produce this field.
     With {
         from: Vec<syn::Ident>,
         with: syn::Path,
     },
 }
 
+/// Builds the `Lower` impl for one `#[derive(Config)]` struct.
+///
+/// Reads the struct-level options (which spec to lower from, and so on), then
+/// walks the config fields. For each it works out where the value comes from
+/// and emits the line that produces it, recording which spec fields were used.
+/// Those lines, plus the list of used spec fields, are assembled into a `lower`
+/// function: it destructures the spec by the used field names (the exhaustive
+/// destructure that makes an unconsumed field a compile error) and builds the
+/// config from the per-field expressions.
 pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    // Like the Spec derive, only structs with named fields are supported.
     let Data::Struct(data) = &input.data else {
         return Err(syn::Error::new(
             input.ident.span(),
@@ -44,6 +66,9 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let (spec_type, spec_only, validate) = parse_config_struct_options(input)?;
     let name = &input.ident;
 
+    // `consumed` records every spec field a config field reads from, so the
+    // generated destructure can name them all. `constructors` is one
+    // `field: <expression>` line per config field.
     let mut consumed: Vec<syn::Ident> = Vec::new();
     let mut constructors = Vec::new();
 
@@ -129,12 +154,21 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     })
 }
 
+/// Records a spec field as consumed, skipping duplicates. A single spec field
+/// can feed several config fields, but the generated destructure must name it
+/// only once.
 fn push_consumed(consumed: &mut Vec<syn::Ident>, ident: syn::Ident) {
     if !consumed.contains(&ident) {
         consumed.push(ident);
     }
 }
 
+/// Reads the struct-level `#[confval(...)]` options.
+///
+/// Returns the spec type to lower from (`lower_from`, required), the spec-only
+/// fields that have no config counterpart (`spec_only`, deliberately ignored
+/// during the destructure), and whether the `validate` bound was requested.
+/// A missing `lower_from` or an unknown key is a compile error.
 fn parse_config_struct_options(
     input: &DeriveInput,
 ) -> syn::Result<(syn::Path, Vec<syn::Ident>, bool)> {
@@ -179,6 +213,14 @@ fn parse_config_struct_options(
         })
 }
 
+/// Reads a config field's `#[confval(...)]` attribute into a
+/// [`ConfigFieldSource`].
+///
+/// A field with no attribute defaults to [`ConfigFieldSource::Auto`].
+/// `#[confval(nested)]` selects [`Nested`](ConfigFieldSource::Nested), and
+/// `#[confval(lower(from = ..., with = ...))]` selects
+/// [`With`](ConfigFieldSource::With) after checking both `from` and `with` were
+/// given.
 fn parse_config_field_options(field: &Field) -> syn::Result<ConfigFieldSource> {
     let mut source = ConfigFieldSource::Auto;
     for attr in &field.attrs {
@@ -220,6 +262,13 @@ fn parse_config_field_options(field: &Field) -> syn::Result<ConfigFieldSource> {
     Ok(source)
 }
 
+/// Reads the `from = ...` part of `#[confval(lower(...))]` into a list of spec
+/// field names.
+///
+/// Accepts either a single name (`from = port`) or a tuple of names
+/// (`from = (host, port)`) for the case where one config field is built from
+/// several spec fields. Anything that is not a bare field name is a compile
+/// error.
 fn from_idents(expr: &Expr) -> syn::Result<Vec<syn::Ident>> {
     fn path_ident(expr: &Expr) -> syn::Result<syn::Ident> {
         if let Expr::Path(path) = expr
