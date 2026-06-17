@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core", "crates/confval"]
+members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core", "crates/confval", "crates/confval-derive"]
 default-members = ["crates/snakeway"]
 exclude = [
     "crates/snakeway-wit",
@@ -31,7 +31,7 @@ strip = "symbols"           # Strip symbols to minimize binary size
 
 
 [workspace.dependencies]
-confval = { path = "crates/confval", features = ["serde", "color"] }
+confval = { path = "crates/confval", features = ["serde", "color", "hcl", "derive"] }
 snakeway-conf = { path = "crates/snakeway-conf" }
 snakeway-core = { path = "crates/snakeway-core" }
 
@@ -104,4 +104,3 @@ hex = "0.4"
 hotpath = "0.15.0"
 secrecy = "0.10"
 subtle = "2.6"
-o2o = "0.5"

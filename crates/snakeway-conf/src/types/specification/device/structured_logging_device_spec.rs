@@ -1,80 +1,199 @@
-use crate::types::HclOrigin;
-use serde::{Deserialize, Serialize};
+use confval::prelude::{Located, Report, Validate};
+use serde::Serialize;
 
-#[derive(Default, Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+pub const LOG_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
+pub const LOG_EVENTS: [&str; 4] = ["request", "before_proxy", "after_proxy", "response"];
+pub const LOG_PHASES: [&str; 2] = ["request", "response"];
+pub const IDENTITY_FIELDS: [&str; 11] = [
+    "client_ip",
+    "proxy_chain",
+    "forwarded",
+    "trusted",
+    "asn",
+    "aso",
+    "country",
+    "region",
+    "connection_type",
+    "bot",
+    "device",
+];
+
+#[derive(Clone, Debug, Serialize, confval::Spec)]
 pub struct StructuredLoggingDeviceSpec {
-    #[serde(skip)]
-    pub origin: HclOrigin,
+    pub enable: Located<bool>,
 
-    pub enable: bool,
-
-    pub level: LogLevelSpec,
+    pub level: Located<String>,
 
     /// Headers are excluded by default.
-    pub include_headers: bool,
+    pub include_headers: Located<bool>,
 
     /// Allowlist of headers to include.
     /// If empty, all headers are eligible (subject to redaction).
-    pub allowed_headers: Vec<String>,
+    pub allowed_headers: Vec<Located<String>>,
 
     /// Headers to redact (case-insensitive).
-    pub redacted_headers: Vec<String>,
+    pub redacted_headers: Vec<Located<String>>,
 
     /// Identity logging.
-    pub include_identity: bool,
+    pub include_identity: Located<bool>,
 
     /// Identity fields to include in the request context (and possibly log).
-    pub identity_fields: Vec<IdentityFieldSpec>,
+    pub identity_fields: Vec<Located<String>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub events: Option<Vec<LogEventSpec>>,
+    pub events: Option<Located<Vec<Located<String>>>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub phases: Option<Vec<LogPhaseSpec>>,
+    pub phases: Option<Located<Vec<Located<String>>>>,
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum LogLevelSpec {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    #[default]
-    Error,
+impl Default for StructuredLoggingDeviceSpec {
+    fn default() -> Self {
+        Self {
+            enable: Located::detached(false),
+            level: Located::detached("error".to_string()),
+            include_headers: Located::detached(false),
+            allowed_headers: vec![],
+            redacted_headers: vec![],
+            include_identity: Located::detached(false),
+            identity_fields: vec![],
+            events: None,
+            phases: None,
+        }
+    }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum LogEventSpec {
-    Request,
-    BeforeProxy,
-    AfterProxy,
-    Response,
+fn check_keyword(value: &Located<String>, name: &str, allowed: &[&str], report: &mut Report) {
+    if !allowed.contains(&value.value.as_str()) {
+        report
+            .error(format!("unknown {name}: {}", value.value))
+            .at(value.span)
+            .help(format!("expected one of: {}", allowed.join(", ")))
+            .emit();
+    }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LogPhaseSpec {
-    Request,
-    Response,
+impl Validate for StructuredLoggingDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        check_keyword(&self.level, "level", &LOG_LEVELS, report);
+
+        for field in &self.identity_fields {
+            check_keyword(field, "identity field", &IDENTITY_FIELDS, report);
+        }
+
+        if let Some(events) = &self.events {
+            for event in &events.value {
+                check_keyword(event, "event", &LOG_EVENTS, report);
+            }
+        }
+
+        if let Some(phases) = &self.phases {
+            for phase in &phases.value {
+                check_keyword(phase, "phase", &LOG_PHASES, report);
+            }
+        }
+    }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum IdentityFieldSpec {
-    ClientIp,
-    ProxyChain,
-    Forwarded,
-    Trusted,
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    Asn,
-    Aso,
-    Country,
-    Region,
-    ConnectionType,
+    #[test]
+    fn valid_structured_logging_device() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec {
+            enable: Located::detached(true),
+            level: Located::detached("info".to_string()),
+            identity_fields: vec![Located::detached("client_ip".to_string())],
+            events: Some(Located::detached(vec![Located::detached(
+                "before_proxy".to_string(),
+            )])),
+            phases: Some(Located::detached(vec![Located::detached(
+                "request".to_string(),
+            )])),
+            ..Default::default()
+        };
 
-    Bot,
-    Device,
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn unknown_level_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec {
+            level: Located::detached("loud".to_string()),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "unknown level: loud")
+        );
+    }
+
+    #[test]
+    fn unknown_identity_field_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec {
+            identity_fields: vec![Located::detached("shoe_size".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "unknown identity field: shoe_size")
+        );
+    }
+
+    #[test]
+    fn unknown_event_and_phase_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec {
+            events: Some(Located::detached(vec![Located::detached(
+                "during_proxy".to_string(),
+            )])),
+            phases: Some(Located::detached(vec![Located::detached(
+                "midnight".to_string(),
+            )])),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "unknown event: during_proxy")
+        );
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "unknown phase: midnight")
+        );
+    }
 }

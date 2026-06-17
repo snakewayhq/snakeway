@@ -1,9 +1,8 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
-use snakeway_core::testing_api::conf::types::{
-    LoadBalancingStrategySpec, ServiceRouteSpec, ServiceSpec,
-};
+use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{
     TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY, UPSTREAM_PORT_TERTIARY,
@@ -30,20 +29,24 @@ fn parse_upstream_request_counts(json: &serde_json::Value) -> Vec<(String, u64)>
     result
 }
 
-fn build_lb_config(
-    strategy: LoadBalancingStrategySpec,
-) -> snakeway_core::testing_api::conf::types::RuntimeConfig {
+fn build_lb_config(strategy: &str) -> snakeway_core::testing_api::conf::types::RuntimeConfig {
     ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            load_balancing_strategy: strategy,
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            load_balancing_strategy: Located::detached(strategy.to_string()),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -55,7 +58,7 @@ fn build_lb_config(
 #[test]
 fn failover_sends_all_to_first_upstream() {
     // Arrange
-    let mut cfg = build_lb_config(LoadBalancingStrategySpec::Failover);
+    let mut cfg = build_lb_config("failover");
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
     let admin = admin_client();
 
@@ -92,7 +95,7 @@ fn failover_sends_all_to_first_upstream() {
 #[test]
 fn round_robin_distributes_across_upstreams() {
     // Arrange
-    let mut cfg = build_lb_config(LoadBalancingStrategySpec::RoundRobin);
+    let mut cfg = build_lb_config("round_robin");
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
     let admin = admin_client();
 
@@ -126,7 +129,7 @@ fn round_robin_distributes_across_upstreams() {
 #[test]
 fn request_pressure_distributes_under_concurrent_load() {
     // Arrange
-    let mut cfg = build_lb_config(LoadBalancingStrategySpec::RequestPressure);
+    let mut cfg = build_lb_config("request_pressure");
     let srv = TestServer::start_with_config(
         &mut cfg,
         snakeway_tests::harness::upstream::start_slow_http_upstream,
@@ -178,7 +181,7 @@ fn request_pressure_distributes_under_concurrent_load() {
 #[test]
 fn sticky_hash_routes_same_client_consistently() {
     // Arrange
-    let mut cfg = build_lb_config(LoadBalancingStrategySpec::StickyHash);
+    let mut cfg = build_lb_config("sticky_hash");
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
     let admin = admin_client();
 
@@ -215,7 +218,7 @@ fn sticky_hash_routes_same_client_consistently() {
 #[test]
 fn random_distributes_across_upstreams() {
     // Arrange
-    let mut cfg = build_lb_config(LoadBalancingStrategySpec::Random);
+    let mut cfg = build_lb_config("random");
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
     let admin = admin_client();
 
@@ -249,16 +252,25 @@ fn round_robin_distributes_across_3_upstreams() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            load_balancing_strategy: LoadBalancingStrategySpec::RoundRobin,
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            load_balancing_strategy: Located::detached("round_robin".to_string()),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_TERTIARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_TERTIARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -297,7 +309,7 @@ fn round_robin_distributes_across_3_upstreams() {
 #[test]
 fn sticky_hash_is_deterministic_across_batches() {
     // Arrange
-    let mut cfg = build_lb_config(LoadBalancingStrategySpec::StickyHash);
+    let mut cfg = build_lb_config("sticky_hash");
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
     let admin = admin_client();
 

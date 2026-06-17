@@ -1,49 +1,40 @@
-use crate::types::{HclInt, HclOrigin};
-use serde::{Deserialize, Serialize};
+use crate::types::HclInt;
+use crate::validation::validator::{
+    validate_device_paths, validate_http_header_name, validate_http_method,
+};
+use confval::prelude::{Located, Report, Validate};
+use confval::{RangeConstraint, range_constraint};
+use serde::Serialize;
 
-#[derive(Default, Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+range_constraint!(DENY_STATUS, i64, min: 400, max: 599);
+
+#[derive(Clone, Debug, Serialize, confval::Spec)]
 pub struct RequestFilterDeviceSpec {
-    #[serde(skip)]
-    pub origin: HclOrigin,
-
     /// Whether this request filter device is enabled.
-    pub enable: bool,
+    pub enable: Located<bool>,
 
-    //-------------------------------------------------------------------------
-    // Method policy
-    //-------------------------------------------------------------------------
-    #[serde(default)]
-    pub allow_methods: Vec<String>,
+    #[confval(default)]
+    pub allow_methods: Vec<Located<String>>,
 
-    #[serde(default)]
-    pub deny_methods: Vec<String>,
+    #[confval(default)]
+    pub deny_methods: Vec<Located<String>>,
 
-    //-------------------------------------------------------------------------
-    // Header policy
-    //-------------------------------------------------------------------------
-    #[serde(default)]
-    pub deny_headers: Vec<String>,
+    #[confval(default)]
+    pub deny_headers: Vec<Located<String>>,
 
-    #[serde(default)]
-    pub allow_headers: Vec<String>,
+    #[confval(default)]
+    pub allow_headers: Vec<Located<String>>,
 
-    #[serde(default)]
-    pub required_headers: Vec<String>,
+    #[confval(default)]
+    pub required_headers: Vec<Located<String>>,
 
-    //-------------------------------------------------------------------------
-    // Size limits
-    //-------------------------------------------------------------------------
-    #[serde(default = "default_max_header_bytes")]
-    pub max_header_bytes: HclInt,
-    #[serde(default = "default_max_body_bytes")]
-    pub max_body_bytes: HclInt,
-    #[serde(default = "default_max_suspicious_body_bytes")]
-    pub max_suspicious_body_bytes: HclInt,
+    #[confval(default = 16 * 1024)]
+    pub max_header_bytes: Located<HclInt>,
+    #[confval(default = 1024 * 1024)]
+    pub max_body_bytes: Located<HclInt>,
+    #[confval(default = 8 * 1024)]
+    pub max_suspicious_body_bytes: Located<HclInt>,
 
-    //-------------------------------------------------------------------------
-    // Timeouts
-    //-------------------------------------------------------------------------
     /// Maximum time (in seconds) to wait for each chunk of request body data
     /// from the client.  If the client stalls mid-body for longer than this
     /// duration, the connection is terminated.  This prevents slowloris-style
@@ -51,29 +42,176 @@ pub struct RequestFilterDeviceSpec {
     ///
     /// Applied to the downstream read timeout via Pingora's session API.
     /// `None` keeps Pingora's default (60 s).
-    #[serde(default)]
-    pub client_body_timeout_seconds: Option<HclInt>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_body_timeout_seconds: Option<Located<HclInt>>,
 
-    //-------------------------------------------------------------------------
-    // Override the default granular deny status with a device-scoped value.
-    //-------------------------------------------------------------------------
-    pub deny_status: Option<HclInt>,
+    /// Override the default granular deny status with a device-scoped value.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deny_status: Option<Located<HclInt>>,
 
-    //-------------------------------------------------------------------------
-    // Path scoping
-    //-------------------------------------------------------------------------
     /// Optional path prefixes this device applies to. Empty means all paths.
-    #[serde(default)]
-    pub paths: Vec<String>,
+    #[confval(default)]
+    pub paths: Vec<Located<String>>,
 }
 
-fn default_max_header_bytes() -> HclInt {
-    16 * 1024 // 16 KB
+impl Default for RequestFilterDeviceSpec {
+    fn default() -> Self {
+        Self {
+            enable: Located::detached(false),
+            allow_methods: vec![],
+            deny_methods: vec![],
+            deny_headers: vec![],
+            allow_headers: vec![],
+            required_headers: vec![],
+            max_header_bytes: Located::detached(16 * 1024),
+            max_body_bytes: Located::detached(1024 * 1024),
+            max_suspicious_body_bytes: Located::detached(8 * 1024),
+            client_body_timeout_seconds: None,
+            deny_status: None,
+            paths: vec![],
+        }
+    }
 }
 
-fn default_max_body_bytes() -> HclInt {
-    1024 * 1024 // 1 MB
+impl Validate for RequestFilterDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(deny_status) = &self.deny_status {
+            DENY_STATUS.check_located(deny_status, "deny_status", report);
+        }
+
+        for method in &self.allow_methods {
+            validate_http_method(method, report);
+        }
+
+        for method in &self.deny_methods {
+            validate_http_method(method, report);
+        }
+
+        for header in &self.deny_headers {
+            validate_http_header_name(header, report);
+        }
+
+        for header in &self.allow_headers {
+            validate_http_header_name(header, report);
+        }
+
+        for header in &self.required_headers {
+            validate_http_header_name(header, report);
+        }
+
+        validate_device_paths(&self.paths, report);
+    }
 }
-fn default_max_suspicious_body_bytes() -> HclInt {
-    8 * 1024 // 8 KB
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deny_status_below_range() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestFilterDeviceSpec {
+            enable: Located::detached(true),
+            deny_status: Some(Located::detached(399)),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(report.has_issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("deny_status"))
+        );
+    }
+
+    #[test]
+    fn deny_status_above_range() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestFilterDeviceSpec {
+            enable: Located::detached(true),
+            deny_status: Some(Located::detached(600)),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(report.has_issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("deny_status"))
+        );
+    }
+
+    #[test]
+    fn invalid_method_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestFilterDeviceSpec {
+            enable: Located::detached(true),
+            allow_methods: vec![Located::detached("G E T".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("invalid HTTP method"))
+        );
+    }
+
+    #[test]
+    fn invalid_header_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestFilterDeviceSpec {
+            enable: Located::detached(true),
+            deny_headers: vec![Located::detached("bad header".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("invalid HTTP header name"))
+        );
+    }
+
+    #[test]
+    fn valid_request_filter_device() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestFilterDeviceSpec {
+            enable: Located::detached(true),
+            allow_methods: vec![Located::detached("GET".to_string())],
+            paths: vec![Located::detached("/api".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
 }

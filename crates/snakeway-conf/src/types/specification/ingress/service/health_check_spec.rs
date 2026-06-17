@@ -1,19 +1,22 @@
 use crate::types::HclInt;
-use serde::{Deserialize, Serialize};
+use confval::prelude::Located;
+use serde::Serialize;
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct HealthCheckSpec {
-    pub enable: bool,
-    #[serde(default = "hc_default_threshold")]
-    pub failure_threshold: HclInt,
-    #[serde(default = "hc_default_unhealthy_cooldown_seconds")]
-    pub unhealthy_cooldown_seconds: HclInt,
+    pub enable: Located<bool>,
+    #[confval(default = 3)]
+    pub failure_threshold: Located<HclInt>,
+    #[confval(default = 10)]
+    pub unhealthy_cooldown_seconds: Located<HclInt>,
 }
 
-fn hc_default_threshold() -> HclInt {
-    3
-}
-
-fn hc_default_unhealthy_cooldown_seconds() -> HclInt {
-    10
+impl Default for HealthCheckSpec {
+    fn default() -> Self {
+        Self {
+            enable: Located::detached(false),
+            failure_threshold: Located::detached(3),
+            unhealthy_cooldown_seconds: Located::detached(10),
+        }
+    }
 }

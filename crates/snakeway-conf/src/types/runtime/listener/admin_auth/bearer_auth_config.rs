@@ -66,14 +66,14 @@ impl fmt::Display for BearerAuthLowerError {
 
 impl std::error::Error for BearerAuthLowerError {}
 
-impl TryFrom<BearerAuthSpec> for BearerAuthConfig {
+impl TryFrom<&BearerAuthSpec> for BearerAuthConfig {
     type Error = BearerAuthLowerError;
 
-    fn try_from(spec: BearerAuthSpec) -> Result<Self, Self::Error> {
-        let outcome = parse_token_file(&spec.token_file);
+    fn try_from(spec: &BearerAuthSpec) -> Result<Self, Self::Error> {
+        let outcome = parse_token_file(&spec.token_file.value);
         if !outcome.is_ok() {
             return Err(BearerAuthLowerError {
-                token_file: spec.token_file,
+                token_file: spec.token_file.value.clone(),
                 issues: outcome.errors,
             });
         }
@@ -85,7 +85,7 @@ impl TryFrom<BearerAuthSpec> for BearerAuthConfig {
             .collect();
 
         Ok(BearerAuthConfig {
-            token_file: spec.token_file,
+            token_file: spec.token_file.value.clone(),
             tokens,
         })
     }
@@ -113,10 +113,9 @@ mod tests {
         // Arrange
         let file = write_tokens(&format!("{}\n", valid_token()));
         let spec = BearerAuthSpec {
-            token_file: file.path().to_path_buf(),
-            origin: Default::default(),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
-        let cfg = BearerAuthConfig::try_from(spec).expect("lower");
+        let cfg = BearerAuthConfig::try_from(&spec).expect("lower");
 
         // Act
         let ok = cfg.verify(valid_token().as_bytes());
@@ -130,10 +129,9 @@ mod tests {
         // Arrange
         let file = write_tokens(&format!("{}\n", valid_token()));
         let spec = BearerAuthSpec {
-            token_file: file.path().to_path_buf(),
-            origin: Default::default(),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
-        let cfg = BearerAuthConfig::try_from(spec).expect("lower");
+        let cfg = BearerAuthConfig::try_from(&spec).expect("lower");
 
         // Act
         let ok = cfg.verify(b"nope-not-the-real-token");
@@ -149,10 +147,9 @@ mod tests {
         let t2 = "7b4e19a2c5f8d3046e9b71c8a52f9e1d4c07bfa6e93d1c24b87a90fed362014c";
         let file = write_tokens(&format!("{t1}\n{t2}\n"));
         let spec = BearerAuthSpec {
-            token_file: file.path().to_path_buf(),
-            origin: Default::default(),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
-        let cfg = BearerAuthConfig::try_from(spec).expect("lower");
+        let cfg = BearerAuthConfig::try_from(&spec).expect("lower");
 
         // Act
         let first_ok = cfg.verify(t1.as_bytes());
@@ -168,12 +165,11 @@ mod tests {
         // Arrange
         let file = write_tokens("too-short\n");
         let spec = BearerAuthSpec {
-            token_file: file.path().to_path_buf(),
-            origin: Default::default(),
+            token_file: confval::source::Located::detached(file.path().to_path_buf()),
         };
 
         // Act
-        let result = BearerAuthConfig::try_from(spec);
+        let result = BearerAuthConfig::try_from(&spec);
 
         // Assert
         assert!(result.is_err());

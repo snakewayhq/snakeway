@@ -1,17 +1,12 @@
-use crate::types::HclOrigin;
-use crate::types::device_issues;
-use confval::ValidationReport;
+use confval::prelude::{Located, Report};
 
-pub(crate) fn validate_device_paths(
-    paths: &[String],
-    report: &mut ValidationReport<HclOrigin>,
-    origin: &HclOrigin,
-) {
+pub(crate) fn validate_device_paths(paths: &[Located<String>], report: &mut Report) {
     for path in paths {
-        if !path.starts_with('/') {
-            report.push(device_issues::device_path_must_start_with_slash(
-                path, origin,
-            ));
+        if !path.value.starts_with('/') {
+            report
+                .error(format!("device path must start with '/': {}", path.value))
+                .at(path.span)
+                .emit();
         }
     }
 }

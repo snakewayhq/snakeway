@@ -1,0 +1,5 @@
+error: unknown confval attribute; expected `lower_from = SpecType`, `spec_only(...)`, or `validate`
+ --> tests/ui/fail/config_unknown_struct_attribute.rs:2:11
+  |
+2 | #[confval(lowered_from = ServerSpec)]
+  |           ^^^^^^^^^^^^

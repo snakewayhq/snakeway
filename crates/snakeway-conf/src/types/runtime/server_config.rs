@@ -2,121 +2,113 @@ use crate::types::{
     AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
     ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSourceAddressesSpec,
 };
-use o2o::o2o;
+use confval::prelude::narrow;
+use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = ServerSpec, validate)]
 pub struct ServerConfig {
+    #[confval(lower(from = version, with = narrow::i64_to_u32))]
     pub version: u32,
 
     /// Optional number of worker threads - default is decided by Pingora.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(lower(from = threads, with = narrow::opt_i64_to_usize))]
     pub threads: Option<usize>,
 
     /// Pid file path.
     /// If empty, Snakeway will not write a pid file.
+    #[confval(lower(from = pid_file, with = pid_file_or_default))]
     pub pid_file: PathBuf,
 
+    #[confval(lower(from = ca_file, with = ca_file_to_string))]
     pub ca_file: Option<String>,
 
+    #[confval(nested)]
     pub tls_automation: Option<TlsAutomationConfig>,
 
+    #[confval(nested)]
     pub observability: Option<ObservabilityConfig>,
 
+    #[confval(lower(from = dns_refresh_interval_seconds, with = narrow::i64_to_u64))]
     pub dns_refresh_interval_seconds: u64,
 
+    #[confval(lower(from = shutdown, with = shutdown_or_default))]
     pub shutdown: ShutdownConfig,
 
+    #[confval(lower(from = upgrade, with = upgrade_or_default))]
     pub upgrade: UpgradeConfig,
 
+    #[confval(lower(from = performance, with = performance_or_default))]
     pub performance: PerformanceConfig,
 
     /// Local IP addresses used as the source for outbound upstream connections.
+    #[confval(nested)]
     pub upstream_source_addresses: Option<UpstreamSourceAddressesConfig>,
 }
 
-//-----------------------------------------------------------------------------
-// Shutdown
-//-----------------------------------------------------------------------------
-
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(ShutdownSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = ShutdownSpec)]
 pub struct ShutdownConfig {
     /// How long active connections are allowed to finish after a shutdown signal.
-    #[map(~.map(|v| v as u64))]
+    #[confval(lower(from = drain_seconds, with = narrow::opt_i64_to_u64))]
     pub drain_seconds: Option<u64>,
     /// Hard ceiling on total shutdown time.
-    #[map(~.map(|v| v as u64))]
+    #[confval(lower(from = force_timeout_seconds, with = narrow::opt_i64_to_u64))]
     pub force_timeout_seconds: Option<u64>,
 }
 
-//-----------------------------------------------------------------------------
-// Upgrade
-//-----------------------------------------------------------------------------
-
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(UpgradeSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = UpgradeSpec)]
 pub struct UpgradeConfig {
     /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
     pub sock: Option<String>,
     /// Maximum retries when connecting/accepting on the upgrade socket.
-    #[map(~.map(|v| v as usize))]
+    #[confval(lower(from = max_retries, with = narrow::opt_i64_to_usize))]
     pub max_retries: Option<usize>,
 }
 
-//-----------------------------------------------------------------------------
-// Performance
-//-----------------------------------------------------------------------------
-
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(PerformanceSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = PerformanceSpec)]
 pub struct PerformanceConfig {
     /// Enable work stealing between threads.
     pub work_stealing: bool,
     /// Number of idle upstream connections kept warm per worker thread.
-    #[map(~.map(|v| v as usize))]
+    #[confval(lower(from = upstream_connection_pool_size, with = narrow::opt_i64_to_usize))]
     pub upstream_connection_pool_size: Option<usize>,
     /// Number of parallel accept tasks per listener.
-    #[map(~.map(|v| v as usize))]
+    #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
     pub parallel_accepts_per_listener: Option<usize>,
 }
 
-//-----------------------------------------------------------------------------
-// Upstream Source Addresses
-//-----------------------------------------------------------------------------
-
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(UpstreamSourceAddressesSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = UpstreamSourceAddressesSpec)]
 pub struct UpstreamSourceAddressesConfig {
     pub ipv4: Vec<String>,
     pub ipv6: Vec<String>,
 }
 
-//-----------------------------------------------------------------------------
-// TLS Automation
-//-----------------------------------------------------------------------------
-
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(TlsAutomationSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = TlsAutomationSpec, validate)]
 pub struct TlsAutomationConfig {
-    #[map(~.into())]
+    #[confval(nested)]
     pub acme: AcmeServerConfig,
-    #[map(~.into())]
+    #[confval(nested)]
     pub cert_store: CertStoreConfig,
-    #[map(~ as u64)]
+    #[confval(lower(from = renew_within_days, with = narrow::i64_to_u64))]
     pub renew_within_days: u64,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(CertStoreSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum CertStoreConfig {
     Filesystem { cert_dir: PathBuf },
     Memory,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(AcmeServerSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = AcmeServerSpec)]
 pub struct AcmeServerConfig {
     pub directory_url: String,
     pub data_dir: PathBuf,
@@ -124,19 +116,15 @@ pub struct AcmeServerConfig {
     pub ca_file: Option<PathBuf>,
 }
 
-//-----------------------------------------------------------------------------
-// Observability
-//-----------------------------------------------------------------------------
-
-#[derive(o2o, Debug, Clone, Deserialize, Default, Serialize)]
-#[from_owned(ObservabilitySpec)]
+#[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
+#[confval(lower_from = ObservabilitySpec, validate)]
 pub struct ObservabilityConfig {
-    #[map(~.map(Into::into))]
+    #[confval(nested)]
     pub otel: Option<OtelConfig>,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Default, Serialize)]
-#[from_owned(OtelSpec)]
+#[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
+#[confval(lower_from = OtelSpec)]
 pub struct OtelConfig {
     pub enable: bool,
     pub endpoint: String,
@@ -144,27 +132,69 @@ pub struct OtelConfig {
     pub sampling_ratio: f64,
 }
 
-impl TryFrom<ServerSpec> for ServerConfig {
-    type Error = String;
-    fn try_from(spec: ServerSpec) -> Result<Self, Self::Error> {
-        Ok(Self {
-            version: spec.version as u32,
-            threads: spec.threads.map(|v| v as usize),
-            pid_file: spec.pid_file.unwrap_or_default(),
-            ca_file: spec
-                .ca_file
-                .map(|p| p.into_os_string().into_string())
-                .transpose()
-                .map_err(|_| {
-                    "invalid ca_file path. this likely a bug as it should have been caught by validation".to_string()
-                })?,
-            tls_automation: spec.tls_automation.map(Into::into),
-            observability: spec.observability.map(Into::into),
-            dns_refresh_interval_seconds: spec.dns_refresh_interval_seconds as u64,
-            shutdown: ShutdownConfig::from(spec.shutdown.unwrap_or_default()),
-            upgrade: UpgradeConfig::from(spec.upgrade.unwrap_or_default()),
-            performance: PerformanceConfig::from(spec.performance.unwrap_or_default()),
-            upstream_source_addresses: spec.upstream_source_addresses.map(Into::into),
+fn pid_file_or_default(value: &Option<Located<PathBuf>>, _report: &mut Report) -> Option<PathBuf> {
+    Some(value.as_ref().map(|p| p.value.clone()).unwrap_or_default())
+}
+
+fn ca_file_to_string(
+    value: &Option<Located<PathBuf>>,
+    report: &mut Report,
+) -> Option<Option<String>> {
+    match value {
+        Some(path) => match path.value.clone().into_os_string().into_string() {
+            Ok(path) => Some(Some(path)),
+            Err(_) => {
+                report
+                    .error(
+                        "invalid ca_file path. this likely a bug as it should have been \
+                         caught by validation",
+                    )
+                    .at(path.span)
+                    .emit();
+                None
+            }
+        },
+        None => Some(None),
+    }
+}
+
+fn shutdown_or_default(
+    value: &Option<Located<ShutdownSpec>>,
+    report: &mut Report,
+) -> Option<ShutdownConfig> {
+    match value {
+        Some(spec) => ShutdownConfig::lower(&spec.value, report),
+        None => ShutdownConfig::lower(&ShutdownSpec::default(), report),
+    }
+}
+
+fn upgrade_or_default(
+    value: &Option<Located<UpgradeSpec>>,
+    report: &mut Report,
+) -> Option<UpgradeConfig> {
+    match value {
+        Some(spec) => UpgradeConfig::lower(&spec.value, report),
+        None => UpgradeConfig::lower(&UpgradeSpec::default(), report),
+    }
+}
+
+fn performance_or_default(
+    value: &Option<Located<PerformanceSpec>>,
+    report: &mut Report,
+) -> Option<PerformanceConfig> {
+    match value {
+        Some(spec) => PerformanceConfig::lower(&spec.value, report),
+        None => PerformanceConfig::lower(&PerformanceSpec::default(), report),
+    }
+}
+
+impl Lower<CertStoreSpec> for CertStoreConfig {
+    fn lower(spec: &CertStoreSpec, _report: &mut Report) -> Option<Self> {
+        Some(match spec {
+            CertStoreSpec::Filesystem { cert_dir } => CertStoreConfig::Filesystem {
+                cert_dir: cert_dir.value.clone(),
+            },
+            CertStoreSpec::Memory => CertStoreConfig::Memory,
         })
     }
 }
@@ -172,7 +202,15 @@ impl TryFrom<ServerSpec> for ServerConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use confval::prelude::Located;
     use std::path::PathBuf;
+
+    fn lower_server(spec: &ServerSpec) -> ServerConfig {
+        let mut report = Report::new();
+        let config = ServerConfig::lower(spec, &mut report);
+        assert!(!report.has_errors(), "issues: {:?}", report.issues());
+        config.unwrap()
+    }
 
     #[test]
     fn server_config_from_valid_spec() {
@@ -180,7 +218,7 @@ mod tests {
         let spec = ServerSpec::default();
 
         // Act
-        let config = ServerConfig::try_from(spec).unwrap();
+        let config = lower_server(&spec);
 
         // Assert
         assert_eq!(config.version, 1);
@@ -202,12 +240,12 @@ mod tests {
     fn dns_refresh_interval_explicit_value() {
         // Arrange
         let spec = ServerSpec {
-            dns_refresh_interval_seconds: 60,
+            dns_refresh_interval_seconds: Located::detached(60),
             ..Default::default()
         };
 
         // Act
-        let config = ServerConfig::try_from(spec).unwrap();
+        let config = lower_server(&spec);
 
         // Assert
         assert_eq!(config.dns_refresh_interval_seconds, 60);
@@ -219,7 +257,7 @@ mod tests {
         let spec = ServerSpec::default();
 
         // Act
-        let config = ServerConfig::try_from(spec).unwrap();
+        let config = lower_server(&spec);
 
         // Assert
         assert_eq!(config.shutdown.drain_seconds, Some(10));
@@ -230,15 +268,15 @@ mod tests {
     fn shutdown_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            shutdown: Some(ShutdownSpec {
-                drain_seconds: Some(30),
-                force_timeout_seconds: Some(60),
-            }),
+            shutdown: Some(Located::detached(ShutdownSpec {
+                drain_seconds: Some(Located::detached(30)),
+                force_timeout_seconds: Some(Located::detached(60)),
+            })),
             ..Default::default()
         };
 
         // Act
-        let config = ServerConfig::try_from(spec).unwrap();
+        let config = lower_server(&spec);
 
         // Assert
         assert_eq!(config.shutdown.drain_seconds, Some(30));
@@ -251,7 +289,7 @@ mod tests {
         let spec = ServerSpec::default();
 
         // Act
-        let config = ServerConfig::try_from(spec).unwrap();
+        let config = lower_server(&spec);
 
         // Assert
         assert!(config.performance.work_stealing);
@@ -263,16 +301,16 @@ mod tests {
     fn performance_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            performance: Some(PerformanceSpec {
-                work_stealing: false,
-                upstream_connection_pool_size: Some(256),
-                parallel_accepts_per_listener: Some(4),
-            }),
+            performance: Some(Located::detached(PerformanceSpec {
+                work_stealing: Located::detached(false),
+                upstream_connection_pool_size: Some(Located::detached(256)),
+                parallel_accepts_per_listener: Some(Located::detached(4)),
+            })),
             ..Default::default()
         };
 
         // Act
-        let config = ServerConfig::try_from(spec).unwrap();
+        let config = lower_server(&spec);
 
         // Assert
         assert!(!config.performance.work_stealing);
@@ -284,18 +322,19 @@ mod tests {
     fn tls_automation_from_spec() {
         // Arrange
         let spec = TlsAutomationSpec {
-            acme: AcmeServerSpec {
-                directory_url: "https://acme.example.com/dir".to_string(),
-                data_dir: PathBuf::from("/tmp/acme"),
-                contact_email: vec!["admin@example.com".to_string()],
+            acme: Located::detached(AcmeServerSpec {
+                directory_url: Located::detached("https://acme.example.com/dir".to_string()),
+                data_dir: Located::detached(PathBuf::from("/tmp/acme")),
+                contact_email: vec![Located::detached("admin@example.com".to_string())],
                 ca_file: None,
-            },
-            cert_store: CertStoreSpec::Memory,
-            renew_within_days: 30,
+            }),
+            cert_store: Located::detached(CertStoreSpec::Memory),
+            renew_within_days: Located::detached(30),
         };
 
         // Act
-        let config: TlsAutomationConfig = spec.into();
+        let mut report = Report::new();
+        let config = TlsAutomationConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert_eq!(config.renew_within_days, 30);
@@ -307,11 +346,12 @@ mod tests {
     fn cert_store_filesystem_from_spec() {
         // Arrange
         let spec = CertStoreSpec::Filesystem {
-            cert_dir: PathBuf::from("/etc/certs"),
+            cert_dir: Located::detached(PathBuf::from("/etc/certs")),
         };
 
         // Act
-        let config: CertStoreConfig = spec.into();
+        let mut report = Report::new();
+        let config = CertStoreConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert!(matches!(
@@ -326,7 +366,8 @@ mod tests {
         let spec = CertStoreSpec::Memory;
 
         // Act
-        let config: CertStoreConfig = spec.into();
+        let mut report = Report::new();
+        let config = CertStoreConfig::lower(&spec, &mut report).unwrap();
 
         // Assert
         assert!(matches!(config, CertStoreConfig::Memory));

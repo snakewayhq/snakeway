@@ -1,6 +1,6 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_core::testing_api::conf::types::OnInvalidForwardedSpec;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::harness::TestServer;
 
@@ -26,7 +26,7 @@ use snakeway_tests::harness::TestServer;
 fn network_policy_denies_invalid_xff_by_default() {
     // Arrange
     let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-    np.forwarding.allow = true;
+    np.forwarding.value.allow = Located::detached(true);
     // on_invalid = Deny is the default
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
@@ -68,8 +68,8 @@ fn network_policy_denies_invalid_xff_by_default() {
 fn network_policy_ignores_invalid_xff_when_configured() {
     // Arrange
     let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-    np.forwarding.allow = true;
-    np.forwarding.on_invalid = OnInvalidForwardedSpec::Ignore;
+    np.forwarding.value.allow = Located::detached(true);
+    np.forwarding.value.on_invalid = Located::detached("ignore".to_string());
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())

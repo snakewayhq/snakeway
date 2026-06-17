@@ -76,11 +76,8 @@ fn semantically_invalid_config_reports_violations() {
     // Assert
     let err = result.expect_err("semantically invalid config should fail");
     match err {
-        ConfigError::SemanticValidationFailed { validation_report } => {
-            assert!(
-                !validation_report.errors().is_empty(),
-                "should report errors"
-            );
+        ConfigError::SemanticValidationFailed { report, .. } => {
+            assert!(report.has_errors(), "should report errors");
         }
         other => panic!("expected SemanticValidationFailed, got: {other}"),
     }
@@ -133,15 +130,17 @@ fn empty_config_directory_returns_error() {
 #[test]
 fn nonexistent_ca_file_produces_validation_error() {
     // Arrange
+    use confval::source::Located;
     use snakeway_core::testing_api::conf::types::ServerSpec;
     use snakeway_tests::conf::ConfigBuilder;
     use std::path::PathBuf;
 
     let result = ConfigBuilder::default()
         .with_server_spec(ServerSpec {
-            version: 1,
-            threads: Some(1),
-            ca_file: Some(PathBuf::from("/nonexistent/path/to/ca-cert.pem")),
+            threads: Some(Located::detached(1)),
+            ca_file: Some(Located::detached(PathBuf::from(
+                "/nonexistent/path/to/ca-cert.pem",
+            ))),
             ..Default::default()
         })
         .with_http_ingress()
@@ -150,14 +149,14 @@ fn nonexistent_ca_file_produces_validation_error() {
     // Assert
     let err = result.expect_err("nonexistent CA file should produce validation error");
     match err {
-        ConfigError::SemanticValidationFailed { validation_report } => {
+        ConfigError::SemanticValidationFailed { report, .. } => {
             assert!(
-                validation_report
-                    .errors()
+                report
+                    .issues()
                     .iter()
                     .any(|e| e.message.contains("CA file")),
                 "should report CA file error; got: {:?}",
-                validation_report.errors()
+                report.issues()
             );
         }
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),

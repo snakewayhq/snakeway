@@ -1,7 +1,6 @@
-use crate::cli::config::hcl::to_hcl_string;
-use snakeway_conf::types::{
-    BindInterfaceInput, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
-};
+use crate::cli::config::hcl::{to_hcl_block_string, to_hcl_string};
+use confval::source::Located;
+use snakeway_conf::types::{BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -11,7 +10,7 @@ pub(crate) fn generate(
     files_to_create: &mut HashMap<PathBuf, String>,
 ) -> Result<(), anyhow::Error> {
     let identity_device_file = DevicesFile {
-        identity_device: Some(IdentityDeviceSpec::default()),
+        identity_device: Some(Located::detached(IdentityDeviceSpec::default())),
         ..Default::default()
     };
     files_to_create.insert(
@@ -20,17 +19,17 @@ pub(crate) fn generate(
     );
 
     let httpbin_ingress_spec = IngressSpec {
-        bind: Some(BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
+        bind: Some(Located::detached(BindSpec {
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8080),
             ..Default::default()
-        }),
+        })),
         ..Default::default()
     };
 
     files_to_create.insert(
         ingress_dir_path.join("minimal.hcl"),
-        to_hcl_string(&httpbin_ingress_spec)?,
+        to_hcl_block_string(&httpbin_ingress_spec)?,
     );
 
     Ok(())

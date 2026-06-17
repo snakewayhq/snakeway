@@ -12,9 +12,13 @@ wasm = [
 ]
 hotpath = ["hotpath/hotpath"]
 hotpath-alloc = ["hotpath/hotpath-alloc"]
+# Development-only config templates (`config init --template dev`).
+# Off by default so production builds do not expose the pebble/repo-coupled template.
+dev-templates = []
 
 [dependencies]
 snakeway-conf = { workspace = true }
+confval = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 arc-swap = { workspace = true }
@@ -79,6 +83,7 @@ hotpath = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+tempfile = { workspace = true }
 
 [[bench]]
 name = "router"

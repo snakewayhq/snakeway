@@ -1,3 +1,4 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
@@ -158,15 +159,15 @@ fn large_response_body_is_streamed_without_truncation() {
     let expected_size: usize = 2_097_152; // 2 MB
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .build();
@@ -206,15 +207,15 @@ fn upstream_that_hangs_does_not_block_client_forever() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .build();

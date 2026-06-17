@@ -27,9 +27,9 @@ pub(crate) async fn reload_runtime_state(
 ) -> Result<RuntimeConfig, ReloadError> {
     let validated = load_config(config_path)?;
 
-    if validated.report.has_warnings() {
+    if validated.has_warnings() {
         let mut out = String::new();
-        validated.report.render_plain(&mut out).ok();
+        validated.render_plain(&mut out);
         tracing::warn!("{out}");
     }
 

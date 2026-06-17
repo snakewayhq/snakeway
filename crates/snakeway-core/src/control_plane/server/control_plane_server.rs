@@ -244,9 +244,9 @@ impl ControlPlaneServer {
                             }
                         };
 
-                        if validated.report.has_warnings() {
+                        if validated.has_warnings() {
                             let mut out = String::new();
-                            validated.report.render_plain(&mut out).ok();
+                            validated.render_plain(&mut out);
                             warn!("{out}");
                         }
 

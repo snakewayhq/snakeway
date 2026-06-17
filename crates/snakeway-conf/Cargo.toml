@@ -12,7 +12,6 @@ hotpath-alloc = ["hotpath/hotpath-alloc"]
 confval = { workspace = true }
 glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
-nix = { workspace = true, features = ["signal"] }
 openssl = { workspace = true }
 http = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
@@ -26,7 +25,6 @@ hotpath = { workspace = true }
 secrecy = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }
-o2o = { workspace = true }
 
 [dev-dependencies]
 rcgen = { workspace = true }

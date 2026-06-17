@@ -18,9 +18,9 @@ pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
         }
     };
 
-    if validated.report.has_warnings() {
+    if validated.has_warnings() {
         let mut out = String::new();
-        validated.report.render_plain(&mut out).ok();
+        validated.render_plain(&mut out);
         eprint!("{out}");
     }
 

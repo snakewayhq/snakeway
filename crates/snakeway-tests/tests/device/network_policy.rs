@@ -1,3 +1,4 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
@@ -80,7 +81,7 @@ fn network_policy_requires_identity_device() {
 fn network_policy_denies_forwarded_request_when_forwarding_not_allowed() {
     // Arrange
     let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-    np.forwarding.allow = false;
+    np.forwarding.value.allow = Located::detached(false);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
@@ -104,7 +105,7 @@ fn network_policy_denies_forwarded_request_when_forwarding_not_allowed() {
 fn network_policy_allows_forwarded_request_when_allowed() {
     // Arrange
     let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);
-    np.forwarding.allow = true;
+    np.forwarding.value.allow = Located::detached(true);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
