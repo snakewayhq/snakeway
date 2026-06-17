@@ -1,0 +1,5 @@
+error: #[confval(default)] is not supported on this field; only leaf fields take a default value (a string list may use a bare #[confval(default)] for an empty list)
+  --> tests/ui/fail/spec_default_on_nested.rs:12:5
+   |
+12 |     #[confval(nested, default)]
+   |     ^
