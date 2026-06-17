@@ -7,13 +7,13 @@ use snakeway_core::testing_api::conf::types::{
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::harness::TestServer;
 
-/// The `NetworkConnectionFilterSpec.cidr.allow` field specifies a set of
-/// CIDR ranges whose connections are permitted at the TCP layer - before
-/// any HTTP parsing occurs.  All other connections are dropped.
-///
-/// This is distinct from the device-level `NetworkPolicyDevice` CIDR
-/// allow-list, which runs after HTTP parsing.  The connection filter
-/// operates on the raw TCP connection and requires no identity device.
+// The `NetworkConnectionFilterSpec.cidr.allow` field specifies a set of
+// CIDR ranges whose connections are permitted at the TCP layer - before
+// any HTTP parsing occurs.  All other connections are dropped.
+//
+// This is distinct from the device-level `NetworkPolicyDevice` CIDR
+// allow-list, which runs after HTTP parsing.  The connection filter
+// operates on the raw TCP connection and requires no identity device.
 
 //-----------------------------------------------------------------------------
 // CIDR allow-list: matching IP

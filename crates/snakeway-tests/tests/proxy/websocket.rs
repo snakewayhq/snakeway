@@ -46,7 +46,6 @@ fn websocket_max_connections_rejects_excess() {
             path: Located::detached(ROUTE_PATH_WS.to_string()),
             enable_websocket: Located::detached(true),
             ws_max_connections: Some(Located::detached(1)),
-            ..Default::default()
         })],
         upstreams: vec![
             Located::detached(ConfigBuilder::make_tcp_upstream(
