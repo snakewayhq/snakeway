@@ -1,4 +1,5 @@
 use super::replay_fixture;
+use confval::source::Located;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 use snakeway_tests::harness::TestServer;
@@ -114,7 +115,7 @@ fn request_line_without_version_should_be_rejected() {
 fn content_length_body_underflow_should_not_proxy_successfully() {
     // Arrange: 2-second client body timeout so the test doesn't take 60s.
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
-    rf.client_body_timeout_seconds = Some(2);
+    rf.client_body_timeout_seconds = Some(Located::detached(2));
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_request_filter(rf)

@@ -1,0 +1,5 @@
+error: #[derive(Spec)] supports structs with named fields; write FromFields by hand for enums
+ --> tests/ui/fail/spec_on_enum.rs:2:6
+  |
+2 | enum Mode {
+  |      ^^^^

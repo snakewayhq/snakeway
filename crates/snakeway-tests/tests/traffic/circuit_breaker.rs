@@ -1,3 +1,4 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
@@ -48,22 +49,28 @@ fn circuit_breaker_starts_closed() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            circuit_breaker: Some(CircuitBreakerSpec {
-                enable_auto_recovery: true,
-                failure_threshold: 3,
-                open_duration_milliseconds: 5000,
-                half_open_max_requests: 1,
-                success_threshold: 2,
-                count_http_5xx_as_failure: true,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
+                enable_auto_recovery: Located::detached(true),
+                failure_threshold: Located::detached(3),
+                open_duration_milliseconds: Located::detached(5000),
+                half_open_max_requests: Located::detached(1),
+                success_threshold: Located::detached(2),
+                count_http_5xx_as_failure: Located::detached(true),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -104,23 +111,23 @@ fn circuit_breaker_trips_open_after_connection_failures() {
     // nothing listening on it. The proxy will get connection refused.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            circuit_breaker: Some(CircuitBreakerSpec {
-                enable_auto_recovery: true,
-                failure_threshold: 2,
-                open_duration_milliseconds: 30000,
-                half_open_max_requests: 1,
-                success_threshold: 1,
-                count_http_5xx_as_failure: true,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
+                enable_auto_recovery: Located::detached(true),
+                failure_threshold: Located::detached(2),
+                open_duration_milliseconds: Located::detached(30000),
+                half_open_max_requests: Located::detached(1),
+                success_threshold: Located::detached(1),
+                count_http_5xx_as_failure: Located::detached(true),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .with_admin_ingress()
@@ -169,23 +176,23 @@ fn circuit_breaker_recovers_through_half_open_to_closed() {
     // Arrange: short cooldown so the test completes quickly.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            circuit_breaker: Some(CircuitBreakerSpec {
-                enable_auto_recovery: true,
-                failure_threshold: 2,
-                open_duration_milliseconds: 500,
-                half_open_max_requests: 2,
-                success_threshold: 2,
-                count_http_5xx_as_failure: true,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
+                enable_auto_recovery: Located::detached(true),
+                failure_threshold: Located::detached(2),
+                open_duration_milliseconds: Located::detached(500),
+                half_open_max_requests: Located::detached(2),
+                success_threshold: Located::detached(2),
+                count_http_5xx_as_failure: Located::detached(true),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .with_admin_ingress()
@@ -259,23 +266,23 @@ fn circuit_breaker_stays_closed_under_concurrent_successful_load() {
     // Arrange: high failure threshold so successful requests never trip it.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            circuit_breaker: Some(CircuitBreakerSpec {
-                enable_auto_recovery: true,
-                failure_threshold: 10,
-                open_duration_milliseconds: 5000,
-                half_open_max_requests: 1,
-                success_threshold: 1,
-                count_http_5xx_as_failure: true,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
+                enable_auto_recovery: Located::detached(true),
+                failure_threshold: Located::detached(10),
+                open_duration_milliseconds: Located::detached(5000),
+                half_open_max_requests: Located::detached(1),
+                success_threshold: Located::detached(1),
+                count_http_5xx_as_failure: Located::detached(true),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .with_admin_ingress()
@@ -325,23 +332,23 @@ fn circuit_breaker_trips_open_on_5xx_responses() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            circuit_breaker: Some(CircuitBreakerSpec {
-                enable_auto_recovery: true,
-                failure_threshold: 2,
-                open_duration_milliseconds: 30000,
-                half_open_max_requests: 1,
-                success_threshold: 1,
-                count_http_5xx_as_failure: true,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
+                enable_auto_recovery: Located::detached(true),
+                failure_threshold: Located::detached(2),
+                open_duration_milliseconds: Located::detached(30000),
+                half_open_max_requests: Located::detached(1),
+                success_threshold: Located::detached(1),
+                count_http_5xx_as_failure: Located::detached(true),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .with_admin_ingress()

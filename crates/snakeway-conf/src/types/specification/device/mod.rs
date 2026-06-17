@@ -1,16 +1,10 @@
-pub(crate) mod device_issues;
 mod device_spec;
 mod identity_device_spec;
-mod identity_device_validation;
 mod network_policy_device_spec;
-mod network_policy_device_validation;
 mod request_filter_device_spec;
-mod request_filter_device_validation;
 mod request_rate_limiting_device_spec;
-mod request_rate_limiting_device_validation;
 mod structured_logging_device_spec;
 mod wasm_device_spec;
-mod wasm_device_validation;
 
 pub use device_spec::*;
 pub use identity_device_spec::*;

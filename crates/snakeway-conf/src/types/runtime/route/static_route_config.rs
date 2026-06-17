@@ -1,5 +1,5 @@
 use crate::types::{CachePolicySpec, CompressionOptsSpec, StaticRouteSpec};
-use o2o::o2o;
+use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -26,66 +26,65 @@ pub struct StaticRouteConfig {
     pub cache_policy: CachePolicy,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(CompressionOptsSpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = CompressionOptsSpec)]
 pub struct CompressionOptions {
-    #[map(~ as u64)]
+    #[confval(lower(from = small_file_threshold, with = narrow::i64_to_u64))]
     pub small_file_threshold: u64,
-    #[map(~ as u64)]
+    #[confval(lower(from = min_gzip_size, with = narrow::i64_to_u64))]
     pub min_gzip_size: u64,
-    #[map(~ as u64)]
+    #[confval(lower(from = min_brotli_size, with = narrow::i64_to_u64))]
     pub min_brotli_size: u64,
     pub enable_gzip: bool,
     pub enable_brotli: bool,
 }
 
-#[derive(o2o, Debug, Clone, Deserialize, Serialize)]
-#[from_owned(CachePolicySpec)]
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = CachePolicySpec)]
 pub struct CachePolicy {
-    #[map(~ as u32)]
+    #[confval(lower(from = max_age_seconds, with = narrow::i64_to_u32))]
     pub max_age_seconds: u32,
     pub public: bool,
     pub immutable: bool,
 }
 
 impl StaticRouteConfig {
-    pub fn new(listener: &str, spec: StaticRouteSpec) -> Self {
-        Self {
+    pub fn new(listener: &str, spec: &StaticRouteSpec, report: &mut Report) -> Option<Self> {
+        Some(Self {
             listener: listener.to_string(),
-            hosts: spec.hosts,
-            path: spec.path,
-            file_dir: spec.file_dir,
-            index: spec.index,
-            directory_listing: spec.directory_listing,
-            max_file_size: spec.max_file_size as u64,
-            static_config: spec.compression.into(),
-            cache_policy: spec.cache_policy.into(),
-        }
+            hosts: spec.hosts.iter().map(|h| h.value.clone()).collect(),
+            path: spec.path.value.clone(),
+            file_dir: spec.file_dir.value.clone(),
+            index: spec.index.as_ref().map(|i| i.value.clone()),
+            directory_listing: spec.directory_listing.value,
+            max_file_size: narrow::i64_to_u64(&spec.max_file_size, report)?,
+            static_config: CompressionOptions::lower(&spec.compression.value, report)?,
+            cache_policy: CachePolicy::lower(&spec.cache_policy.value, report)?,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::HclOrigin;
 
     #[test]
     fn new_maps_fields_correctly() {
         // Arrange
+        use confval::prelude::Located;
         let spec = StaticRouteSpec {
-            origin: HclOrigin::default(),
-            hosts: vec!["static.example.com".to_string()],
-            path: "/assets".to_string(),
-            file_dir: PathBuf::from("/var/www/static"),
-            index: Some("index.html".to_string()),
-            directory_listing: true,
-            max_file_size: 10_000_000,
-            compression: CompressionOptsSpec::default(),
-            cache_policy: CachePolicySpec::default(),
+            hosts: vec![Located::detached("static.example.com".to_string())],
+            path: Located::detached("/assets".to_string()),
+            file_dir: Located::detached(PathBuf::from("/var/www/static")),
+            index: Some(Located::detached("index.html".to_string())),
+            directory_listing: Located::detached(true),
+            max_file_size: Located::detached(10_000_000),
+            compression: Located::detached(CompressionOptsSpec::default()),
+            cache_policy: Located::detached(CachePolicySpec::default()),
         };
 
         // Act
-        let config = StaticRouteConfig::new("my-listener", spec);
+        let config = StaticRouteConfig::new("my-listener", &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.listener, "my-listener");

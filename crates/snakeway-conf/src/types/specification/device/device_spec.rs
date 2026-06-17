@@ -1,5 +1,5 @@
 use crate::types::{
-    HclOrigin, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
+    IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use serde::Serialize;
@@ -16,24 +16,14 @@ pub enum DeviceSpec {
 }
 
 impl DeviceSpec {
-    pub fn origin(&self) -> &HclOrigin {
-        match self {
-            DeviceSpec::RequestFilter(s) => &s.origin,
-            DeviceSpec::Identity(s) => &s.origin,
-            DeviceSpec::NetworkPolicy(s) => &s.origin,
-            DeviceSpec::Wasm(s) => &s.origin,
-            DeviceSpec::StructuredLogging(s) => &s.origin,
-            DeviceSpec::RequestRateLimiting(s) => &s.origin,
-        }
-    }
     pub fn is_enabled(&self) -> bool {
         match self {
-            DeviceSpec::RequestFilter(s) => s.enable,
-            DeviceSpec::Identity(s) => s.enable,
-            DeviceSpec::NetworkPolicy(s) => s.enable,
-            DeviceSpec::Wasm(s) => s.enable,
-            DeviceSpec::StructuredLogging(s) => s.enable,
-            DeviceSpec::RequestRateLimiting(s) => s.enable,
+            DeviceSpec::RequestFilter(s) => s.enable.value,
+            DeviceSpec::Identity(s) => s.enable.value,
+            DeviceSpec::NetworkPolicy(s) => s.enable.value,
+            DeviceSpec::Wasm(s) => s.enable.value,
+            DeviceSpec::StructuredLogging(s) => s.enable.value,
+            DeviceSpec::RequestRateLimiting(s) => s.enable.value,
         }
     }
 }

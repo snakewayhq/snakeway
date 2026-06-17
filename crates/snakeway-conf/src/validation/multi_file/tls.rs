@@ -1,34 +1,23 @@
-use crate::types::bind_issues;
-use crate::types::server_issues;
-use crate::types::{CertStoreSpec, HclOrigin, IngressSpec, ServerSpec, TlsTerminationSpec};
-use confval::ValidationReport;
+use crate::types::{CertStoreSpec, IngressSpec, ServerSpec, TlsTerminationSpec};
+use confval::prelude::{Located, Report};
 
 pub(crate) fn validate_tls(
     server: &ServerSpec,
-    ingresses: &[IngressSpec],
-    report: &mut ValidationReport<HclOrigin>,
+    ingresses: &[Located<IngressSpec>],
+    report: &mut Report,
 ) {
     let mut any_tls_listener = false;
     let mut any_acme_listener = false;
 
     for ingress in ingresses {
-        if let Some(bind) = &ingress.bind
-            && let Some(certificate_spec) = &bind.tls
+        if let Some(bind) = &ingress.value.bind
+            && let Some(certificate_spec) = &bind.value.tls
         {
             any_tls_listener = true;
 
-            match certificate_spec {
-                TlsTerminationSpec::Manual { .. } => {
-                    // no-op: already validated in single_file.
-                }
-                TlsTerminationSpec::Acme { domains, .. } => {
-                    any_acme_listener = true;
-
-                    // ACME requires domains
-                    if domains.is_empty() {
-                        report.push(bind_issues::acme_tls_requires_domains(&bind.origin));
-                    }
-                }
+            // Empty ACME domain lists are reported by the single-file pass.
+            if matches!(certificate_spec.value, TlsTerminationSpec::Acme { .. }) {
+                any_acme_listener = true;
             }
         }
     }
@@ -36,15 +25,13 @@ pub(crate) fn validate_tls(
     // If ACME is configured anywhere, server.tls_automation must exist
     if any_acme_listener {
         let Some(tls_automation_cfg) = &server.tls_automation else {
-            report.push(
-                server_issues::acme_configured_in_ingress_but_server_tls_not_configured(
-                    &server.origin,
-                ),
-            );
+            report
+                .error("ACME configured in ingress but server.tls_automation is not configured")
+                .emit();
             return;
         };
 
-        match &tls_automation_cfg.cert_store {
+        match &tls_automation_cfg.value.cert_store.value {
             CertStoreSpec::Memory => {
                 // Nothing to validate, but should drop a warning directly here.
                 // Adding a warning to the report will fail validation.
@@ -55,15 +42,19 @@ pub(crate) fn validate_tls(
             }
             CertStoreSpec::Filesystem { .. } => {
                 // cert_dir validation (empty check, create-or-verify) is handled
-                // by CertStoreSpec::validate in the single-file validation pass.
+                // by the server entity validation pass.
             }
         }
     }
 
     // Optional: warn if server.tls_automation exists but no TLS listeners
-    if server.tls_automation.is_some() && !any_tls_listener {
+    if let Some(tls_automation) = &server.tls_automation
+        && !any_tls_listener
+    {
         report
-            .push(server_issues::warn_server_tls_configured_with_no_tls_listeners(&server.origin));
+            .warning("server.tls_automation configured but no TLS listeners defined")
+            .at(tls_automation.span)
+            .emit();
     }
 }
 
@@ -71,105 +62,103 @@ pub(crate) fn validate_tls(
 mod tests {
     use super::validate_tls;
     use crate::types::*;
-    use confval::ValidationReport;
-    use std::net::IpAddr;
+    use confval::prelude::{Located, Report};
     use std::path::PathBuf;
-    use std::str::FromStr;
 
     fn minimal_bind_with_acme() -> BindSpec {
         BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8443,
-            tls: Some(TlsTerminationSpec::Acme {
-                domains: vec!["example.com".to_string()],
-                challenge: AcmeChallengeSpec::default(),
-            }),
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8443),
+            tls: Some(Located::detached(TlsTerminationSpec::Acme {
+                domains: vec![Located::detached("example.com".to_string())],
+                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            })),
             ..Default::default()
         }
     }
 
     fn minimal_tls_automation() -> TlsAutomationSpec {
         TlsAutomationSpec {
-            acme: AcmeServerSpec {
-                directory_url: "https://acme.example.com/directory".to_string(),
-                data_dir: PathBuf::from("/tmp/acme"),
-                contact_email: vec!["admin@example.com".to_string()],
+            acme: Located::detached(AcmeServerSpec {
+                directory_url: Located::detached("https://acme.example.com/directory".to_string()),
+                data_dir: Located::detached(PathBuf::from("/tmp/acme")),
+                contact_email: vec![Located::detached("admin@example.com".to_string())],
                 ca_file: None,
-            },
-            cert_store: CertStoreSpec::Memory,
-            renew_within_days: 30,
+            }),
+            cert_store: Located::detached(CertStoreSpec::Memory),
+            renew_within_days: Located::detached(30),
         }
     }
 
-    fn minimal_service() -> ServiceSpec {
-        ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                path: "/".to_string(),
-                hosts: vec!["example.com".to_string()],
+    fn minimal_service() -> Located<ServiceSpec> {
+        Located::detached(ServiceSpec {
+            load_balancing_strategy: Located::detached("failover".to_string()),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                path: Located::detached("/".to_string()),
+                hosts: vec![Located::detached("example.com".to_string())],
                 ..Default::default()
-            }],
-            upstreams: vec![UpstreamSpec {
-                endpoint: Some(EndpointSpec {
-                    host: HostSpec::Ip(IpAddr::from_str("127.0.0.1").unwrap()),
-                    port: 8080,
+            })],
+            upstreams: vec![Located::detached(UpstreamSpec {
+                endpoint: Some(Located::detached(EndpointSpec {
+                    host: Located::detached("127.0.0.1".to_string()),
+                    port: Located::detached(8080),
                     tls: None,
-                }),
-                weight: 1,
-                ..Default::default()
-            }],
+                })),
+                sock: None,
+                weight: Located::detached(1),
+            })],
             ..Default::default()
-        }
+        })
+    }
+
+    fn ingress(bind: BindSpec) -> Located<IngressSpec> {
+        Located::detached(IngressSpec {
+            bind: Some(Located::detached(bind)),
+            services: vec![minimal_service()],
+            ..Default::default()
+        })
     }
 
     #[test]
     fn acme_requires_tls_automation() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = Report::new();
         let server = ServerSpec {
             tls_automation: None,
             ..Default::default()
         };
-        let ingress = IngressSpec {
-            bind: Some(minimal_bind_with_acme()),
-            services: vec![minimal_service()],
-            ..Default::default()
-        };
 
         // Act
-        validate_tls(&server, &[ingress], &mut report);
+        validate_tls(&server, &[ingress(minimal_bind_with_acme())], &mut report);
 
         // Assert
-        assert!(report.errors().iter().any(|e| e.message
+        assert!(report.issues().iter().any(|i| i.message
             == "ACME configured in ingress but server.tls_automation is not configured"));
     }
 
     #[test]
     fn tls_automation_without_tls_listeners_produces_warning() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = Report::new();
         let server = ServerSpec {
-            tls_automation: Some(minimal_tls_automation()),
+            tls_automation: Some(Located::detached(minimal_tls_automation())),
             ..Default::default()
         };
-        let ingress = IngressSpec {
-            bind: Some(BindSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: 8080,
-                tls: None,
-                ..Default::default()
-            }),
-            services: vec![minimal_service()],
+        let plain_bind = BindSpec {
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8080),
+            tls: None,
             ..Default::default()
         };
 
         // Act
-        validate_tls(&server, &[ingress], &mut report);
+        validate_tls(&server, &[ingress(plain_bind)], &mut report);
 
         // Assert
-        assert!(report.errors().is_empty());
+        assert!(!report.has_errors());
         assert!(
             report
-                .warnings()
+                .issues()
                 .iter()
                 .any(|w| w.message
                     == "server.tls_automation configured but no TLS listeners defined")
@@ -179,22 +168,16 @@ mod tests {
     #[test]
     fn valid_acme_with_tls_automation() {
         // Arrange
-        let mut report = ValidationReport::default();
+        let mut report = Report::new();
         let server = ServerSpec {
-            tls_automation: Some(minimal_tls_automation()),
-            ..Default::default()
-        };
-        let ingress = IngressSpec {
-            bind: Some(minimal_bind_with_acme()),
-            services: vec![minimal_service()],
+            tls_automation: Some(Located::detached(minimal_tls_automation())),
             ..Default::default()
         };
 
         // Act
-        validate_tls(&server, &[ingress], &mut report);
+        validate_tls(&server, &[ingress(minimal_bind_with_acme())], &mut report);
 
         // Assert
-        assert!(report.errors().is_empty());
-        assert!(report.warnings().is_empty());
+        assert!(!report.has_issues(), "got: {:?}", report.issues());
     }
 }

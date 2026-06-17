@@ -1,0 +1,5 @@
+error: #[derive(Config)] requires named fields
+ --> tests/ui/fail/config_tuple_struct.rs:2:8
+  |
+2 | struct ServerConfig(u16);
+  |        ^^^^^^^^^^^^

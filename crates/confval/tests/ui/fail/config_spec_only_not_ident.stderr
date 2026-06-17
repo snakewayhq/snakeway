@@ -1,0 +1,5 @@
+error: expected a field name
+ --> tests/ui/fail/config_spec_only_not_ident.rs:9:46
+  |
+9 | #[confval(lower_from = ServerSpec, spec_only(some::path))]
+  |                                              ^^^^^^^^^^

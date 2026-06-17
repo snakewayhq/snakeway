@@ -1,3 +1,4 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
@@ -117,14 +118,20 @@ fn trailing_slash_on_path_prefix_is_matched() {
 fn host_routing_status(host_pattern: &str, request_host: &str) -> StatusCode {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![host_pattern.to_string()],
-                path: "/api".to_string(),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(host_pattern.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -164,14 +171,20 @@ fn wildcard_host_does_not_match_bare_domain() {
 fn catch_all_host_matches_any_host() {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            routes: vec![ServiceRouteSpec {
-                hosts: vec!["*".to_string()],
-                path: "/api".to_string(),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached("*".to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -196,26 +209,38 @@ fn multiple_services_on_same_listener_with_different_hosts() {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    hosts: vec!["a.test".to_string()],
-                    path: "/svc-a".to_string(),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    hosts: vec![Located::detached("a.test".to_string())],
+                    path: Located::detached("/svc-a".to_string()),
                     ..Default::default()
-                }],
+                })],
                 upstreams: vec![
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_PRIMARY,
+                        false,
+                    )),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_SECONDARY,
+                        false,
+                    )),
                 ],
                 ..Default::default()
             },
             ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    hosts: vec!["b.test".to_string()],
-                    path: "/svc-b".to_string(),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    hosts: vec![Located::detached("b.test".to_string())],
+                    path: Located::detached("/svc-b".to_string()),
                     ..Default::default()
-                }],
+                })],
                 upstreams: vec![
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_PRIMARY,
+                        false,
+                    )),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_SECONDARY,
+                        false,
+                    )),
                 ],
                 ..Default::default()
             },
@@ -282,26 +307,38 @@ fn longer_path_prefix_wins_over_shorter() {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    hosts: vec![TEST_HOST.to_string()],
-                    path: "/api".to_string(),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    hosts: vec![Located::detached(TEST_HOST.to_string())],
+                    path: Located::detached("/api".to_string()),
                     ..Default::default()
-                }],
+                })],
                 upstreams: vec![
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_PRIMARY,
+                        false,
+                    )),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_SECONDARY,
+                        false,
+                    )),
                 ],
                 ..Default::default()
             },
             ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    hosts: vec![TEST_HOST.to_string()],
-                    path: "/api/v2".to_string(),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    hosts: vec![Located::detached(TEST_HOST.to_string())],
+                    path: Located::detached("/api/v2".to_string()),
                     ..Default::default()
-                }],
+                })],
                 upstreams: vec![
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_PRIMARY,
+                        false,
+                    )),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_SECONDARY,
+                        false,
+                    )),
                 ],
                 ..Default::default()
             },
@@ -332,26 +369,38 @@ fn same_path_different_hosts_is_rejected() {
     let result = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    hosts: vec!["a.test".to_string()],
-                    path: "/api".to_string(),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    hosts: vec![Located::detached("a.test".to_string())],
+                    path: Located::detached("/api".to_string()),
                     ..Default::default()
-                }],
+                })],
                 upstreams: vec![
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_PRIMARY,
+                        false,
+                    )),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_SECONDARY,
+                        false,
+                    )),
                 ],
                 ..Default::default()
             },
             ServiceSpec {
-                routes: vec![ServiceRouteSpec {
-                    hosts: vec!["b.test".to_string()],
-                    path: "/api".to_string(),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    hosts: vec![Located::detached("b.test".to_string())],
+                    path: Located::detached("/api".to_string()),
                     ..Default::default()
-                }],
+                })],
                 upstreams: vec![
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                    ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_PRIMARY,
+                        false,
+                    )),
+                    Located::detached(ConfigBuilder::make_tcp_upstream(
+                        UPSTREAM_PORT_SECONDARY,
+                        false,
+                    )),
                 ],
                 ..Default::default()
             },
@@ -362,14 +411,14 @@ fn same_path_different_hosts_is_rejected() {
     let err =
         result.expect_err("duplicate route paths on the same listener should fail validation");
     match err {
-        ConfigError::SemanticValidationFailed { validation_report } => {
+        ConfigError::SemanticValidationFailed { report, .. } => {
             assert!(
-                validation_report
-                    .errors()
+                report
+                    .issues()
                     .iter()
                     .any(|e| e.message.contains("duplicate route path")),
                 "should report duplicate route path; got: {:?}",
-                validation_report.errors()
+                report.issues()
             );
         }
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),

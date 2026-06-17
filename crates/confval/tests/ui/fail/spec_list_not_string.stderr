@@ -1,0 +1,5 @@
+error: list fields must be Vec<Located<String>>
+ --> tests/ui/fail/spec_list_not_string.rs:5:12
+  |
+5 |     ports: Located<Vec<Located<i64>>>,
+  |            ^^^^^^^

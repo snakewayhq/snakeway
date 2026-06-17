@@ -1,0 +1,5 @@
+error: expected `from = ...` and `with = ...`
+  --> tests/ui/fail/config_lower_unknown_key.rs:11:21
+   |
+11 |     #[confval(lower(via = port))]
+   |                     ^^^

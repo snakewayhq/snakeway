@@ -1,0 +1,5 @@
+error: use Vec<Located<String>> for a required string list
+ --> tests/ui/fail/spec_required_wrapped_string_list.rs:5:12
+  |
+5 |     hosts: Located<Vec<Located<String>>>,
+  |            ^^^^^^^

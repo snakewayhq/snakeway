@@ -1,7 +1,8 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
-    CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec, OnNoPeerAddrSpec,
+    CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec,
 };
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::harness::TestServer;
@@ -29,15 +30,15 @@ fn cidr_allow_list_permits_matching_ip() {
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_connection_filter(NetworkConnectionFilterSpec {
-            cidr: CidrSpec {
-                allow: vec!["127.0.0.1/32".to_string()],
+            cidr: Located::detached(CidrSpec {
+                allow: vec![Located::detached("127.0.0.1/32".to_string())],
                 deny: vec![],
-            },
-            ip_family: IpFamilySpec {
-                ipv4: true,
-                ipv6: true,
-            },
-            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+            }),
+            ip_family: Located::detached(IpFamilySpec {
+                ipv4: Located::detached(true),
+                ipv6: Located::detached(true),
+            }),
+            on_no_peer_addr: Located::detached("deny".to_string()),
         })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -65,15 +66,15 @@ fn cidr_allow_list_blocks_non_matching_ip() {
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_connection_filter(NetworkConnectionFilterSpec {
-            cidr: CidrSpec {
-                allow: vec!["10.0.0.0/8".to_string()],
+            cidr: Located::detached(CidrSpec {
+                allow: vec![Located::detached("10.0.0.0/8".to_string())],
                 deny: vec![],
-            },
-            ip_family: IpFamilySpec {
-                ipv4: true,
-                ipv6: true,
-            },
-            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+            }),
+            ip_family: Located::detached(IpFamilySpec {
+                ipv4: Located::detached(true),
+                ipv6: Located::detached(true),
+            }),
+            on_no_peer_addr: Located::detached("deny".to_string()),
         })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);
@@ -104,15 +105,15 @@ fn cidr_allow_and_deny_deny_takes_precedence() {
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_connection_filter(NetworkConnectionFilterSpec {
-            cidr: CidrSpec {
-                allow: vec!["127.0.0.1/32".to_string()],
-                deny: vec!["127.0.0.1/32".to_string()],
-            },
-            ip_family: IpFamilySpec {
-                ipv4: true,
-                ipv6: true,
-            },
-            on_no_peer_addr: OnNoPeerAddrSpec::Deny,
+            cidr: Located::detached(CidrSpec {
+                allow: vec![Located::detached("127.0.0.1/32".to_string())],
+                deny: vec![Located::detached("127.0.0.1/32".to_string())],
+            }),
+            ip_family: Located::detached(IpFamilySpec {
+                ipv4: Located::detached(true),
+                ipv6: Located::detached(true),
+            }),
+            on_no_peer_addr: Located::detached("deny".to_string()),
         })
         .build();
     let srv = TestServer::start_http_upstream_with_config(&mut cfg);

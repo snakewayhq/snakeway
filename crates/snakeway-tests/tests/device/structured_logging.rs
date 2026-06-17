@@ -1,3 +1,4 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_tests::conf::ConfigBuilder;
@@ -43,7 +44,7 @@ fn structured_logging_does_not_prevent_proxying() {
 fn structured_logging_with_identity_device_does_not_prevent_proxying() {
     // Arrange
     let mut id = ConfigBuilder::make_identity_device();
-    id.enable_geoip = false;
+    id.enable_geoip = Located::detached(false);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(id)
@@ -79,7 +80,7 @@ fn structured_logging_with_identity_device_does_not_prevent_proxying() {
 fn structured_logging_combined_with_request_filter_does_not_prevent_proxying() {
     // Arrange
     let mut id = ConfigBuilder::make_identity_device();
-    id.enable_geoip = false;
+    id.enable_geoip = Located::detached(false);
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(id)
@@ -105,9 +106,9 @@ fn structured_logging_combined_with_request_filter_does_not_prevent_proxying() {
 fn structured_logging_on_rejected_request_does_not_crash() {
     // Arrange
     let mut id = ConfigBuilder::make_identity_device();
-    id.enable_geoip = false;
+    id.enable_geoip = Located::detached(false);
     let mut rf = ConfigBuilder::make_request_filter_device_spec();
-    rf.deny_methods = vec!["GET".to_string()];
+    rf.deny_methods = vec![Located::detached("GET".to_string())];
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(id)

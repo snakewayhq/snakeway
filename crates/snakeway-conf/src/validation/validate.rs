@@ -1,65 +1,54 @@
-use crate::types::{DeviceSpec, HclOrigin, IngressSpec, ServerSpec};
+use crate::types::{DeviceSpec, IngressSpec, ServerSpec};
 use crate::validation::{multi_file, single_file};
-use confval::{ValidateSpec, ValidationIssue, ValidationReport};
+use confval::prelude::{Located, Report, Validate};
 
 /// Validate everything that exists in a fully parsed config.
 pub(crate) fn validate_spec(
     server: &ServerSpec,
-    ingresses: &[IngressSpec],
-    devices: &[DeviceSpec],
-) -> ValidationReport<HclOrigin> {
-    let mut report = ValidationReport::default();
+    ingresses: &[Located<IngressSpec>],
+    devices: &[Located<DeviceSpec>],
+    report: &mut Report,
+) {
+    server.validate(report);
 
-    if server.version == 1 {
+    if server.version.value == 1 {
         // Single file validation.
-        server.validate(&server.origin, &mut report);
-        single_file::validate_ingresses(ingresses, &mut report);
-        single_file::validate_devices(devices, &mut report);
+        single_file::validate_ingresses(ingresses, report);
+        single_file::validate_devices(devices, report);
 
         // Multi-file validation.
-        multi_file::validate_tls(server, ingresses, &mut report);
-    } else {
-        report.error(
-            ValidationIssue::error_with_help(
-                format!("invalid config version: {}", &server.version),
-                server.origin.clone(),
-                "This version of Snakeway is not compatible with this config file. Please upgrade Snakeway."
-            )
-        );
+        multi_file::validate_tls(server, ingresses, report);
     }
-
-    report
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{BindInterfaceInput, BindSpec, IngressSpec, ServerSpec};
+    use crate::types::{BindSpec, IngressSpec, ServerSpec};
+    use confval::prelude::Located;
 
     #[test]
     fn valid_version_runs_all_validation() {
         // Arrange
-        let server = ServerSpec {
-            version: 1,
-            ..Default::default()
-        };
-        let ingress = IngressSpec {
-            bind: Some(BindSpec {
-                interface: BindInterfaceInput::Keyword("loopback".to_string()),
-                port: 8080,
+        let server = ServerSpec::default();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(8080),
                 ..Default::default()
-            }),
+            })),
             ..Default::default()
-        };
+        });
+        let mut report = Report::new();
 
         // Act
-        let report = validate_spec(&server, &[ingress], &[]);
+        validate_spec(&server, &[ingress], &[], &mut report);
 
         // Assert
         assert!(
-            report.errors().is_empty(),
+            !report.has_errors(),
             "expected no errors, got: {:?}",
-            report.errors()
+            report.issues()
         );
     }
 
@@ -67,26 +56,23 @@ mod tests {
     fn invalid_version_produces_error() {
         // Arrange
         let server = ServerSpec {
-            version: 99,
+            version: Located::detached(99),
             ..Default::default()
         };
+        let mut report = Report::new();
 
         // Act
-        let report = validate_spec(&server, &[], &[]);
+        validate_spec(&server, &[], &[], &mut report);
 
         // Assert
-        assert!(
-            !report.errors().is_empty(),
-            "expected at least one error for invalid version"
-        );
         let has_version_error = report
-            .errors()
+            .issues()
             .iter()
-            .any(|e| e.message.contains("invalid config version"));
+            .any(|i| i.message.contains("invalid config version"));
         assert!(
             has_version_error,
             "expected error about invalid config version, got: {:?}",
-            report.errors()
+            report.issues()
         );
     }
 }

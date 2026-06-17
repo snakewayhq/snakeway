@@ -1,3 +1,4 @@
+use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::{
@@ -46,19 +47,25 @@ fn health_check_enabled_reports_healthy_for_working_upstreams() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            health_check: Some(HealthCheckSpec {
-                enable: true,
-                failure_threshold: 3,
-                unhealthy_cooldown_seconds: 5,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            health_check: Some(Located::detached(HealthCheckSpec {
+                enable: Located::detached(true),
+                failure_threshold: Located::detached(3),
+                unhealthy_cooldown_seconds: Located::detached(5),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -97,18 +104,24 @@ fn health_check_disabled_reports_healthy_by_default() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            health_check: Some(HealthCheckSpec {
-                enable: false,
+            health_check: Some(Located::detached(HealthCheckSpec {
+                enable: Located::detached(false),
                 ..Default::default()
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])
@@ -145,20 +158,20 @@ fn unhealthy_upstream_recovers_after_cooldown_and_success() {
     // Arrange: single upstream, low thresholds, short cooldown.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            health_check: Some(HealthCheckSpec {
-                enable: true,
-                failure_threshold: 2,
-                unhealthy_cooldown_seconds: 1,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            health_check: Some(Located::detached(HealthCheckSpec {
+                enable: Located::detached(true),
+                failure_threshold: Located::detached(2),
+                unhealthy_cooldown_seconds: Located::detached(1),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
-            upstreams: vec![ConfigBuilder::make_tcp_upstream(
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
                 UPSTREAM_PORT_PRIMARY,
                 false,
-            )],
+            ))],
             ..Default::default()
         }])
         .with_admin_ingress()
@@ -250,19 +263,25 @@ fn unhealthy_upstream_is_skipped_during_routing() {
     // Arrange: two upstreams, only the second has a real listener.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
-            health_check: Some(HealthCheckSpec {
-                enable: true,
-                failure_threshold: 2,
-                unhealthy_cooldown_seconds: 30,
-            }),
-            routes: vec![ServiceRouteSpec {
-                hosts: vec![TEST_HOST.to_string()],
-                path: "/api".to_string(),
+            health_check: Some(Located::detached(HealthCheckSpec {
+                enable: Located::detached(true),
+                failure_threshold: Located::detached(2),
+                unhealthy_cooldown_seconds: Located::detached(30),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
                 ..Default::default()
-            }],
+            })],
             upstreams: vec![
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_PRIMARY, false),
-                ConfigBuilder::make_tcp_upstream(UPSTREAM_PORT_SECONDARY, false),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_PRIMARY,
+                    false,
+                )),
+                Located::detached(ConfigBuilder::make_tcp_upstream(
+                    UPSTREAM_PORT_SECONDARY,
+                    false,
+                )),
             ],
             ..Default::default()
         }])

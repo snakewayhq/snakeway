@@ -1,0 +1,5 @@
+error: nested list fields must be Vec<Located<S>>
+  --> tests/ui/fail/spec_nested_list_not_located.rs:11:12
+   |
+11 |     inner: Vec<InnerSpec>,
+   |            ^^^

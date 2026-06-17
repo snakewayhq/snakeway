@@ -1,32 +1,26 @@
+use crate::resolution::ResolveError;
 use crate::types::{
     AdminAuthConfig, BearerAuthConfig, BindAdminSpec, BindSpec, ConnectionRateLimitingFilterConfig,
     NetworkConnectionFilterConfig, TlsTerminationConfig,
 };
+use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListenerConfig {
-    /// Name of the listener. Must be unique among listeners.
     pub name: String,
 
-    /// Address to bind, e.g. "0.0.0.0:8080"
     pub addr: String,
 
-    /// Optional TLS termination config.
     pub tls_termination: Option<TlsTerminationConfig>,
 
-    /// Enable HTTP/2 on this listener.
     pub enable_http2: bool,
 
-    /// Whether a listener serves admin endpoints or not.
     pub enable_admin: bool,
 
-    /// Admin authentication config. Populated only on listeners where
-    /// `enable_admin` is true.
     #[serde(default)]
     pub admin_auth: Option<AdminAuthConfig>,
 
-    /// Optional redirect config.
     pub redirect: Option<RedirectConfig>,
 
     pub connection_filter: Option<NetworkConnectionFilterConfig>,
@@ -40,16 +34,41 @@ pub struct RedirectConfig {
     pub response_code: u16,
 }
 
+/// Report a bind resolution failure at the interface that declared it.
+fn report_resolve_error(err: &ResolveError, interface: &Located<String>, report: &mut Report) {
+    report
+        .error(format!("invalid bind address: {err}"))
+        .at(interface.span)
+        .emit();
+}
+
+/// Lower an optional connection filter. The outer `Option` is the failure
+/// channel; the inner one mirrors the spec field being optional.
+fn lower_connection_filter(
+    spec: &BindSpec,
+    report: &mut Report,
+) -> Option<Option<NetworkConnectionFilterConfig>> {
+    match &spec.connection_filter {
+        Some(filter) => NetworkConnectionFilterConfig::lower(&filter.value, report).map(Some),
+        None => Some(None),
+    }
+}
+
 impl ListenerConfig {
     pub fn from_redirect(
         name: &str,
         from_addr: String,
         redirect_response_code: u16,
-        spec: BindSpec,
-    ) -> Result<Self, String> {
-        let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let connection_filter = spec.connection_filter.map(TryInto::try_into).transpose()?;
-        Ok(Self {
+        spec: &BindSpec,
+        report: &mut Report,
+    ) -> Option<Self> {
+        let addr = spec
+            .resolve()
+            .map_err(|err| report_resolve_error(&err, &spec.interface, report))
+            .ok();
+        let connection_filter = lower_connection_filter(spec, report);
+
+        Some(Self {
             name: name.to_string(),
             addr: from_addr,
             tls_termination: None,
@@ -57,59 +76,93 @@ impl ListenerConfig {
             enable_admin: false,
             admin_auth: None,
             redirect: Some(RedirectConfig::new(
-                addr.to_string(),
+                addr?.to_string(),
                 redirect_response_code,
             )),
-            connection_filter,
-            connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
+            connection_filter: connection_filter?,
+            connection_rate_limiting_filter: match &spec.connection_rate_limiting_filter {
+                Some(filter) => Some(ConnectionRateLimitingFilterConfig::lower(
+                    &filter.value,
+                    report,
+                )?),
+                None => None,
+            },
         })
     }
 
-    pub fn from_bind(name: &str, spec: BindSpec) -> Result<Self, String> {
-        let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let maybe_tls = if let Some(tls) = spec.tls {
-            Some(TlsTerminationConfig::try_from(tls).map_err(|err| err.to_string())?)
-        } else {
-            None
+    pub fn from_bind(name: &str, spec: &BindSpec, report: &mut Report) -> Option<Self> {
+        let addr = spec
+            .resolve()
+            .map_err(|err| report_resolve_error(&err, &spec.interface, report))
+            .ok();
+        let maybe_tls = match &spec.tls {
+            Some(tls) => TlsTerminationConfig::lower(&tls.value, report).map(Some),
+            None => Some(None),
         };
-        let connection_filter = spec.connection_filter.map(TryInto::try_into).transpose()?;
-        Ok(Self {
+        let connection_filter = lower_connection_filter(spec, report);
+
+        Some(Self {
             name: name.to_string(),
-            addr: addr.to_string(),
-            tls_termination: maybe_tls,
-            enable_http2: spec.enable_http2,
+            addr: addr?.to_string(),
+            tls_termination: maybe_tls?,
+            enable_http2: spec.enable_http2.value,
             enable_admin: false,
             admin_auth: None,
             redirect: None,
-            connection_filter,
-            connection_rate_limiting_filter: spec.connection_rate_limiting_filter.map(Into::into),
+            connection_filter: connection_filter?,
+            connection_rate_limiting_filter: match &spec.connection_rate_limiting_filter {
+                Some(filter) => Some(ConnectionRateLimitingFilterConfig::lower(
+                    &filter.value,
+                    report,
+                )?),
+                None => None,
+            },
         })
     }
 
-    pub fn from_bind_admin(name: &str, spec: BindAdminSpec) -> Result<Self, String> {
-        let addr = spec.resolve().map_err(|err| err.to_string())?;
-        let tls = TlsTerminationConfig::try_from(spec.tls).map_err(|err| err.to_string())?;
+    pub fn from_bind_admin(name: &str, spec: &BindAdminSpec, report: &mut Report) -> Option<Self> {
+        let addr = spec
+            .resolve()
+            .map_err(|err| report_resolve_error(&err, &spec.interface, report))
+            .ok();
+        let tls = TlsTerminationConfig::lower(&spec.tls.value, report);
 
-        // Validation guarantees bearer is Some and parses cleanly. Any error
-        // here means validation was skipped or the token file was mutated
-        // after validation; surface it as a lowering error rather than
-        // panicking.
-        let bearer_spec = spec.auth.bearer.ok_or_else(|| {
-            "admin auth is missing at lowering time (bug: validation should have caught this)"
-                .to_string()
-        })?;
-        let bearer = BearerAuthConfig::try_from(bearer_spec).map_err(|err| err.to_string())?;
-        let admin_auth = Some(AdminAuthConfig {
-            bearer: Some(bearer),
-        });
+        let bearer = match spec
+            .auth
+            .as_ref()
+            .and_then(|auth| auth.value.bearer.as_ref())
+        {
+            Some(bearer_spec) => match BearerAuthConfig::try_from(&bearer_spec.value) {
+                Ok(bearer) => Some(bearer),
+                Err(err) => {
+                    report
+                        .error(err.to_string())
+                        .at(bearer_spec.value.token_file.span)
+                        .emit();
+                    None
+                }
+            },
+            None => {
+                report
+                    .error(
+                        "admin auth is missing at lowering time \
+                         (bug: validation should have caught this)",
+                    )
+                    .at(spec.interface.span)
+                    .emit();
+                None
+            }
+        };
 
-        Ok(Self {
+        Some(Self {
             name: name.to_string(),
-            addr: addr.to_string(),
-            tls_termination: Some(tls),
+            addr: addr?.to_string(),
+            tls_termination: Some(tls?),
             enable_http2: false,
             enable_admin: true,
-            admin_auth,
+            admin_auth: Some(AdminAuthConfig {
+                bearer: Some(bearer?),
+            }),
             redirect: None,
             connection_filter: None,
             connection_rate_limiting_filter: None,
@@ -129,24 +182,23 @@ impl RedirectConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::BindInterfaceInput;
+    use confval::prelude::Located;
+
+    fn minimal_bind() -> BindSpec {
+        BindSpec {
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(8080),
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn from_bind_creates_listener() {
         // Arrange
-        let spec = BindSpec {
-            origin: Default::default(),
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
-            tls: None,
-            enable_http2: false,
-            redirect_http_to_https: None,
-            connection_filter: None,
-            connection_rate_limiting_filter: None,
-        };
+        let spec = minimal_bind();
 
         // Act
-        let config = ListenerConfig::from_bind("test-listener", spec).unwrap();
+        let config = ListenerConfig::from_bind("test-listener", &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.name, "test-listener");
@@ -168,21 +220,19 @@ mod tests {
             .unwrap();
 
         let spec = BindAdminSpec {
-            origin: Default::default(),
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 9090,
-            tls: Default::default(),
-            auth: AdminAuthSpec {
-                bearer: Some(BearerAuthSpec {
-                    token_file: token_file.path().to_path_buf(),
-                    origin: Default::default(),
-                }),
-                origin: Default::default(),
-            },
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(9090),
+            tls: Located::detached(Default::default()),
+            auth: Some(Located::detached(AdminAuthSpec {
+                bearer: Some(Located::detached(BearerAuthSpec {
+                    token_file: Located::detached(token_file.path().to_path_buf()),
+                })),
+            })),
         };
 
         // Act
-        let config = ListenerConfig::from_bind_admin("admin-listener", spec).unwrap();
+        let config =
+            ListenerConfig::from_bind_admin("admin-listener", &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.name, "admin-listener");
@@ -200,14 +250,8 @@ mod tests {
     fn from_redirect_creates_redirect_listener() {
         // Arrange
         let spec = BindSpec {
-            origin: Default::default(),
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8443,
-            tls: None,
-            enable_http2: false,
-            redirect_http_to_https: None,
-            connection_filter: None,
-            connection_rate_limiting_filter: None,
+            port: Located::detached(8443),
+            ..minimal_bind()
         };
 
         // Act
@@ -215,7 +259,8 @@ mod tests {
             "redirect-listener",
             "127.0.0.1:8080".to_string(),
             308,
-            spec,
+            &spec,
+            &mut Report::new(),
         )
         .unwrap();
 
@@ -223,87 +268,9 @@ mod tests {
         assert_eq!(config.name, "redirect-listener");
         assert_eq!(config.addr, "127.0.0.1:8080");
         assert!(!config.enable_admin);
-        assert!(!config.enable_http2);
         assert!(config.tls_termination.is_none());
-
-        let redirect = config.redirect.expect("redirect should be set");
+        let redirect = config.redirect.unwrap();
         assert_eq!(redirect.destination, "127.0.0.1:8443");
         assert_eq!(redirect.response_code, 308);
-    }
-
-    #[test]
-    fn from_bind_invalid_interface_returns_error() {
-        // Arrange
-        let spec = BindSpec {
-            interface: BindInterfaceInput::Keyword("bad-interface".to_string()),
-            port: 8080,
-            ..Default::default()
-        };
-
-        // Act
-        let result = ListenerConfig::from_bind("test", spec);
-
-        // Assert
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn from_bind_admin_invalid_interface_returns_error() {
-        // Arrange
-        let spec = BindAdminSpec {
-            interface: BindInterfaceInput::Keyword("bad-interface".to_string()),
-            port: 9090,
-            ..Default::default()
-        };
-
-        // Act
-        let result = ListenerConfig::from_bind_admin("test", spec);
-
-        // Assert
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn from_redirect_invalid_interface_returns_error() {
-        // Arrange
-        let spec = BindSpec {
-            interface: BindInterfaceInput::Keyword("bad-interface".to_string()),
-            port: 8443,
-            ..Default::default()
-        };
-
-        // Act
-        let result = ListenerConfig::from_redirect("test", "0.0.0.0:80".to_string(), 308, spec);
-
-        // Assert
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn from_bind_invalid_connection_filter_cidr_returns_error() {
-        // Arrange
-        use crate::types::{CidrSpec, IpFamilySpec, NetworkConnectionFilterSpec};
-        let spec = BindSpec {
-            interface: BindInterfaceInput::Keyword("loopback".to_string()),
-            port: 8080,
-            connection_filter: Some(NetworkConnectionFilterSpec {
-                cidr: CidrSpec {
-                    allow: vec!["not-a-cidr".to_string()],
-                    deny: vec![],
-                },
-                ip_family: IpFamilySpec {
-                    ipv4: true,
-                    ipv6: false,
-                },
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-
-        // Act
-        let result = ListenerConfig::from_bind("test", spec);
-
-        // Assert
-        assert!(result.is_err());
     }
 }

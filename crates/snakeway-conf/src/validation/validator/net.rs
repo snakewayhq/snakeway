@@ -1,6 +1,4 @@
-use crate::types::HclOrigin;
-use crate::types::device_issues;
-use confval::ValidationReport;
+use confval::prelude::{Located, Report};
 use ipnet::IpNet;
 use std::net::IpAddr;
 
@@ -38,31 +36,34 @@ fn is_non_public_infra_network(net: &IpNet) -> bool {
     }
 }
 
-pub(crate) fn validate_trusted_proxies(
-    proxies: &[String],
-    report: &mut ValidationReport<HclOrigin>,
-    origin: &HclOrigin,
-) {
+pub(crate) fn validate_trusted_proxies(proxies: &[Located<String>], report: &mut Report) {
     let mut networks = Vec::new();
     for proxy in proxies {
-        if let Ok(net) = proxy.parse::<IpNet>() {
-            networks.push(net);
+        if let Ok(net) = proxy.value.parse::<IpNet>() {
+            networks.push((net, proxy.span));
         } else {
-            report.push(device_issues::invalid_trusted_proxy(proxy, origin));
+            report
+                .error(format!("invalid trusted proxy: {}", proxy.value))
+                .at(proxy.span)
+                .emit();
         }
     }
 
-    for network in networks {
+    for (network, span) in networks {
         if network.prefix_len() == 0 {
-            report.push(device_issues::trusted_proxies_cannot_trust_all_networks(
-                origin,
-            ));
+            report
+                .error("trusted_proxies must not contain a catch-all network (0.0.0.0/0 or ::/0)")
+                .at(span)
+                .emit();
         }
 
         if !is_non_public_infra_network(&network) {
-            report.push(
-                device_issues::trusted_proxies_contains_a_public_ip_range_warning(network, origin),
-            );
+            report
+                .warning(format!(
+                    "trusted_proxies should NOT contain a public IP range: {network}"
+                ))
+                .at(span)
+                .emit();
         }
     }
 }
