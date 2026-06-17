@@ -4503,14 +4503,14 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "snakeway-core",
 ]
 
 [[package]]
 name = "snakeway-conf"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "confval",
  "glob",
@@ -4533,7 +4533,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-core"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -4597,7 +4597,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "confval",
  "futures-util",
