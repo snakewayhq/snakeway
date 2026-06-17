@@ -6,6 +6,7 @@ use snakeway_core::testing_api::Metrics;
 use snakeway_tests::conf::minimal_http_runtime_config;
 use snakeway_tests::harness::TestServer;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 fn setup_metrics() -> (Arc<Metrics>, InMemoryMetricExporter, SdkMeterProvider) {
     let exporter = InMemoryMetricExporter::default();
@@ -18,6 +19,9 @@ fn setup_metrics() -> (Arc<Metrics>, InMemoryMetricExporter, SdkMeterProvider) {
 
 /// Flush and collect all finished metrics, then find the named metric
 /// and apply the assertion function to it.
+///
+/// Single-shot: this is for assertions about a metric's *absence*, where
+/// waiting cannot change the answer.
 fn assert_metric(
     exporter: &InMemoryMetricExporter,
     provider: &SdkMeterProvider,
@@ -32,6 +36,48 @@ fn assert_metric(
         .flat_map(|sm| sm.metrics())
         .find(|m| m.name() == name);
     assertion(found);
+}
+
+/// Poll until the named metric appears, then apply the assertion to it.
+///
+/// Request metrics are recorded in Pingora's `logging` hook, which runs
+/// *after* the response has been flushed to the downstream client. The client
+/// receiving its response is therefore not a synchronization point for the
+/// server-side recording: by the time `srv.get(...).send()` returns, the hook
+/// may not have run yet. A single `force_flush` races that hook and flakes
+/// under load (notably in CI). Retrying the flush over a short window absorbs
+/// the gap; once the hook records the metric, the next cumulative flush sees
+/// it.
+fn assert_metric_present(
+    exporter: &InMemoryMetricExporter,
+    provider: &SdkMeterProvider,
+    name: &str,
+    assertion: impl FnOnce(&Metric),
+) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut assertion = Some(assertion);
+    loop {
+        // Reset first so each poll reads only the latest cumulative export.
+        // The exporter accumulates every batch, so without this the search
+        // would keep returning the earliest (partial) one.
+        exporter.reset();
+        provider.force_flush().unwrap();
+        let finished = exporter.get_finished_metrics().unwrap();
+        if let Some(metric) = finished
+            .iter()
+            .flat_map(|rm| rm.scope_metrics())
+            .flat_map(|sm| sm.metrics())
+            .find(|m| m.name() == name)
+        {
+            (assertion.take().expect("assertion runs once"))(metric);
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{name} metric not found within timeout"
+        );
+        std::thread::sleep(Duration::from_millis(25));
+    }
 }
 
 /// After proxying a request, the `snakeway.http.requests` counter must
@@ -52,9 +98,11 @@ fn request_counter_increments_after_proxied_request() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // Assert
-    assert_metric(&exporter, &provider, "snakeway.http.requests", |metric| {
-        let metric = metric.expect("snakeway.http.requests metric not found");
-        match metric.data() {
+    assert_metric_present(
+        &exporter,
+        &provider,
+        "snakeway.http.requests",
+        |metric| match metric.data() {
             AggregatedMetrics::U64(MetricData::Sum(sum)) => {
                 let total: u64 = sum.data_points().map(|dp| dp.value()).sum();
                 assert!(
@@ -63,8 +111,8 @@ fn request_counter_increments_after_proxied_request() {
                 );
             }
             other => panic!("expected U64 Sum for snakeway.http.requests, got: {other:?}"),
-        }
-    });
+        },
+    );
 }
 
 /// After proxying a request, the `snakeway.http.request.duration`
@@ -85,25 +133,20 @@ fn request_duration_histogram_records_after_proxied_request() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // Assert
-    assert_metric(
+    assert_metric_present(
         &exporter,
         &provider,
         "snakeway.http.request.duration",
-        |metric| {
-            let metric = metric.expect("snakeway.http.request.duration metric not found");
-            match metric.data() {
-                AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
-                    let total_count: u64 = hist.data_points().map(|dp| dp.count()).sum();
-                    assert!(
-                        total_count >= 1,
-                        "expected snakeway.http.request.duration histogram count >= 1, got {total_count}"
-                    );
-                }
-                other => {
-                    panic!(
-                        "expected F64 Histogram for snakeway.http.request.duration, got: {other:?}"
-                    )
-                }
+        |metric| match metric.data() {
+            AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
+                let total_count: u64 = hist.data_points().map(|dp| dp.count()).sum();
+                assert!(
+                    total_count >= 1,
+                    "expected snakeway.http.request.duration histogram count >= 1, got {total_count}"
+                );
+            }
+            other => {
+                panic!("expected F64 Histogram for snakeway.http.request.duration, got: {other:?}")
             }
         },
     );
@@ -153,9 +196,11 @@ fn request_counter_records_method_and_status_attributes() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // Assert
-    assert_metric(&exporter, &provider, "snakeway.http.requests", |metric| {
-        let metric = metric.expect("snakeway.http.requests metric not found");
-        match metric.data() {
+    assert_metric_present(
+        &exporter,
+        &provider,
+        "snakeway.http.requests",
+        |metric| match metric.data() {
             AggregatedMetrics::U64(MetricData::Sum(sum)) => {
                 let dp = sum
                     .data_points()
@@ -187,8 +232,8 @@ fn request_counter_records_method_and_status_attributes() {
                 );
             }
             other => panic!("expected U64 Sum for snakeway.http.requests, got: {other:?}"),
-        }
-    });
+        },
+    );
 }
 
 /// When N concurrent requests are sent, the request counter must record
@@ -225,18 +270,46 @@ fn concurrent_requests_counted_accurately() {
         }
     });
 
-    // Assert
-    assert_metric(&exporter, &provider, "snakeway.http.requests", |metric| {
-        let metric = metric.expect("snakeway.http.requests metric not found");
-        match metric.data() {
-            AggregatedMetrics::U64(MetricData::Sum(sum)) => {
-                let total: u64 = sum.data_points().map(|dp| dp.value()).sum();
-                assert_eq!(
-                    total, n,
-                    "expected exactly {n} requests counted, got {total}"
-                );
-            }
-            other => panic!("expected U64 Sum, got: {other:?}"),
+    // Assert: poll until all N logging hooks have recorded. `logging` runs
+    // after each response is flushed downstream, so a single flush can catch a
+    // partial count; wait for the total to reach N, then assert it is exactly
+    // N (which also catches over-counting).
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let total = loop {
+        let total = request_counter_total(&exporter, &provider);
+        if total >= n {
+            break total;
         }
-    });
+        assert!(
+            Instant::now() < deadline,
+            "expected {n} requests counted, last saw {total}"
+        );
+        std::thread::sleep(Duration::from_millis(25));
+    };
+    assert_eq!(
+        total, n,
+        "expected exactly {n} requests counted, got {total}"
+    );
+}
+
+/// Flush and return the summed value of the `snakeway.http.requests` U64 Sum
+/// counter across all data points, or 0 if it has not been recorded yet.
+fn request_counter_total(exporter: &InMemoryMetricExporter, provider: &SdkMeterProvider) -> u64 {
+    // Reset first so we read only the latest cumulative export; the exporter
+    // otherwise accumulates every prior (partial-count) batch.
+    exporter.reset();
+    provider.force_flush().unwrap();
+    let finished = exporter.get_finished_metrics().unwrap();
+    finished
+        .iter()
+        .flat_map(|rm| rm.scope_metrics())
+        .flat_map(|sm| sm.metrics())
+        .find(|m| m.name() == "snakeway.http.requests")
+        .map(|m| match m.data() {
+            AggregatedMetrics::U64(MetricData::Sum(sum)) => {
+                sum.data_points().map(|dp| dp.value()).sum()
+            }
+            _ => 0,
+        })
+        .unwrap_or(0)
 }
