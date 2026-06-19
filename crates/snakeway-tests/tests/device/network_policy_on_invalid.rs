@@ -4,13 +4,13 @@ use reqwest::StatusCode;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::harness::TestServer;
 
-/// The `ForwardingSpec.on_invalid` field controls what happens when a
-/// request arrives with an X-Forwarded-For header whose value cannot be
-/// parsed as a valid IP address (e.g. `not-a-valid-ip`).
-///
-/// Two behaviors are possible:
-/// - `Deny`   - return 403 Forbidden (the default)
-/// - `Ignore` - discard the invalid header and use the real connection IP
+// The `ForwardingSpec.on_invalid` field controls what happens when a
+// request arrives with an X-Forwarded-For header whose value cannot be
+// parsed as a valid IP address (e.g. `not-a-valid-ip`).
+//
+// Two behaviors are possible:
+// - `Deny`   - return 403 Forbidden (the default)
+// - `Ignore` - discard the invalid header and use the real connection IP
 
 //-----------------------------------------------------------------------------
 // on_invalid: Deny (default)

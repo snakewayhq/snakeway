@@ -112,8 +112,8 @@ impl TestServer {
         // Allocate free port(s) for the upstreams(s).
         let upstream_ports = cfg
             .services
-            .iter()
-            .flat_map(|(_, c)| c.tcp_upstreams.iter())
+            .values()
+            .flat_map(|c| c.tcp_upstreams.iter())
             .map(|_| free_port())
             .collect::<Vec<_>>();
 
