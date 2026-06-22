@@ -1,3 +1,4 @@
+use confval::prelude::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use snakeway_core::testing_api::conf::types::Http2Spec;
@@ -38,7 +39,7 @@ fn h2_max_header_list_size_is_enforced_on_the_wire() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_h2_to_h1_ingress_with_http2_options(Http2Spec {
-            max_header_list_size: Some(512),
+            max_header_list_size: Some(Located::detached(512)),
             ..Default::default()
         })
         .build();
@@ -83,7 +84,7 @@ fn h2_max_header_list_size_is_enforced_on_the_wire() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_h2_to_h1_ingress_with_http2_options(Http2Spec {
-            max_header_list_size: Some(512),
+            max_header_list_size: Some(Located::detached(512)),
             ..Default::default()
         })
         .build();
