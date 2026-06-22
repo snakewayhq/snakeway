@@ -107,52 +107,48 @@ const icons = {
 
 const features = [
     {
-        title: 'Device Pipeline',
+        title: 'Proxying and Routing',
         icon: icons.pipeline,
         description:
-            'Requests pass through a composable pipeline of devices. ' +
-            'Each device inspects or transforms the request at a well-defined point in the lifecycle. ' +
-            'Builtin devices handle identity resolution, network policy, rate limiting, and request filtering.',
+            'Route HTTP, HTTPS, WebSocket, and gRPC traffic to upstream services. ' +
+            'Longest-path matching maps requests to backends. ' +
+            'Serve static files directly without an upstream.',
     },
     {
-        title: 'TLS Automation',
+        title: 'Load Balancing and Health',
+        icon: icons.activity,
+        description:
+            'Distribute traffic across backends with round-robin, weighted, or failover strategies. ' +
+            'Circuit breakers and health checks remove unhealthy upstreams automatically.',
+    },
+    {
+        title: 'Automatic TLS',
         icon: icons.lock,
         description:
-            'ACME certificate issuance and renewal via HTTP-01 challenges. ' +
-            'Supports Let\'s Encrypt and compatible CAs. ' +
-            'Manual TLS configuration is also available for environments that manage certificates externally.',
+            'Certificates are issued and renewed automatically through Let\'s Encrypt or any compatible ACME CA. ' +
+            'Manual certificate configuration is also supported.',
     },
     {
-        title: 'WebAssembly Extensibility',
+        title: 'Traffic Policy',
+        icon: icons.shield,
+        description:
+            'Rate limiting, network policy enforcement, identity resolution, and request filtering ' +
+            'run as composable middleware in the request pipeline. ' +
+            'Request smuggling protection is applied automatically.',
+    },
+    {
+        title: 'Extensibility',
         icon: icons.cube,
         description:
-            'Write custom devices in any language that compiles to WASM. ' +
-            'Devices run in a sandboxed environment with access to request context. ' +
-            'The WIT interface defines the contract between the proxy and user code.',
+            'Write custom middleware in any language that compiles to WebAssembly. ' +
+            'Extensions run in a sandboxed environment with access to request and response context.',
     },
     {
         title: 'Observability',
-        icon: icons.activity,
-        description:
-            'Structured logging with field-selectable identity signals, ' +
-            'OpenTelemetry tracing, and an admin API for health checks, ' +
-            'upstream status, traffic statistics, and configuration reload.',
-    },
-    {
-        title: 'Protocol Safety',
-        icon: icons.shield,
-        description:
-            'Request smuggling detection (CL.TE, TE.CL, duplicate Content-Length), ' +
-            'header normalization, body size enforcement, and Content-Length validation ' +
-            'run automatically on every request.',
-    },
-    {
-        title: 'HCL Configuration',
         icon: icons.fileText,
         description:
-            'Configuration is split across focused files: server settings, ' +
-            'ingress definitions, and device pipelines. ' +
-            'Validation runs at load time with clear error messages and source locations.',
+            'Structured logging, OpenTelemetry tracing, and an admin API ' +
+            'for health checks, upstream status, traffic statistics, and live configuration reload.',
     },
 ];
 
