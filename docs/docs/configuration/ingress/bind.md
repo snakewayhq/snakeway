@@ -58,7 +58,7 @@ bind = {
 
 For details on TLS configuration, see the TLS section of the documentation.
 
-## HTTP/2 settings {#http2-settings}
+### HTTP/2 settings
 
 The optional `http2` block tunes the HTTP/2 server parameters advertised to clients.
 It is only valid when `enable_http2 = true`. Every field is optional: when the block
