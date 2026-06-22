@@ -86,22 +86,34 @@ fn handle_action(action: Action, request_id: Option<String>) -> anyhow::Result<D
     }
 }
 
+fn parse_header(h: &Header) -> Option<(HeaderName, HeaderValue)> {
+    let name = match h.name.parse::<HeaderName>() {
+        Ok(n) => n,
+        Err(_) => {
+            tracing::warn!(header_name = %h.name, "wasm device emitted invalid header name, skipping");
+            return None;
+        }
+    };
+    let value = match HeaderValue::from_str(&h.value) {
+        Ok(v) => v,
+        Err(_) => {
+            tracing::warn!(header_name = %h.name, "wasm device emitted invalid header value, skipping");
+            return None;
+        }
+    };
+    Some((name, value))
+}
+
 fn apply_request_header_ops(ctx: &mut RequestCtx, ops: Vec<HeaderOp>) {
     for op in ops {
         match op {
             HeaderOp::Set(h) => {
-                if let (Ok(name), Ok(value)) = (
-                    h.name.parse::<HeaderName>(),
-                    HeaderValue::from_str(&h.value),
-                ) {
+                if let Some((name, value)) = parse_header(&h) {
                     ctx.insert_header(name, value);
                 }
             }
             HeaderOp::Append(h) => {
-                if let (Ok(name), Ok(value)) = (
-                    h.name.parse::<HeaderName>(),
-                    HeaderValue::from_str(&h.value),
-                ) {
+                if let Some((name, value)) = parse_header(&h) {
                     ctx.append_header(name, value);
                 }
             }
@@ -116,26 +128,23 @@ fn apply_header_ops(headers: &mut HeaderMap, ops: Vec<HeaderOp>) {
     for op in ops {
         match op {
             HeaderOp::Set(h) => {
-                if let (Ok(name), Ok(value)) = (
-                    h.name.parse::<HeaderName>(),
-                    HeaderValue::from_str(&h.value),
-                ) {
+                if let Some((name, value)) = parse_header(&h) {
                     headers.insert(name, value);
                 }
             }
             HeaderOp::Append(h) => {
-                if let (Ok(name), Ok(value)) = (
-                    h.name.parse::<HeaderName>(),
-                    HeaderValue::from_str(&h.value),
-                ) {
+                if let Some((name, value)) = parse_header(&h) {
                     headers.append(name, value);
                 }
             }
-            HeaderOp::Remove(name) => {
-                if let Ok(name) = name.parse::<HeaderName>() {
+            HeaderOp::Remove(name) => match name.parse::<HeaderName>() {
+                Ok(name) => {
                     headers.remove(name);
                 }
-            }
+                Err(_) => {
+                    tracing::warn!(header_name = %name, "wasm device emitted invalid header name for removal, skipping");
+                }
+            },
         }
     }
 }
