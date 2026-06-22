@@ -1,4 +1,4 @@
-//! # JWT Auth Gateway — Snakeway WASM Device
+//! # JWT Auth Gateway (Snakeway WASM Device)
 //!
 //! Validates JWT bearer tokens on incoming requests, extracts claims into
 //! upstream headers, and returns synthetic responses on auth failure.
@@ -52,23 +52,30 @@
 //!
 //! **All other hooks:** Passthrough (no-op).
 
+#[cfg(target_arch = "wasm32")]
 mod config;
+#[cfg(target_arch = "wasm32")]
 mod jwt_auth_device;
-mod token_validation;
-mod types;
 
+pub(crate) mod token_validation;
+pub(crate) mod types;
+
+#[cfg(target_arch = "wasm32")]
 use wit_bindgen::generate;
 
+#[cfg(target_arch = "wasm32")]
 generate!({
     path: "../snakeway-wit/wit/",
     world: "device",
 });
 
-/// Gathers deeply nested bindings from the Snakeway WASM runtime.
+#[cfg(target_arch = "wasm32")]
 pub(crate) mod bindings {
     pub(crate) use crate::exports::snakeway::device::policy::Guest;
     pub(crate) use crate::snakeway::device::{host, types};
 }
 
+#[cfg(target_arch = "wasm32")]
 use jwt_auth_device::JwtAuthDevice;
+#[cfg(target_arch = "wasm32")]
 export!(JwtAuthDevice);

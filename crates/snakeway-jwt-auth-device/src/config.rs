@@ -1,16 +1,8 @@
 use crate::bindings::host;
 use crate::token_validation::AuthError;
+use crate::types::AuthConfig;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-
-pub(crate) struct AuthConfig {
-    pub(crate) secret: Vec<u8>,
-    pub(crate) issuer: String,
-    pub(crate) audience: String,
-    pub(crate) user_id_claim: String,
-    pub(crate) tenant_id_claim: Option<String>,
-    pub(crate) public_paths: Vec<String>,
-}
 
 impl AuthConfig {
     pub(crate) fn from_host() -> Result<Self, AuthError> {
