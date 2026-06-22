@@ -13,6 +13,7 @@ use arc_swap::ArcSwap;
 use openssl::ssl::SslFiletype;
 use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
+use pingora::protocols::http::v2::server::default_h2_options;
 use pingora::server::Server;
 use pingora::server::configuration::{Opt, ServerConf};
 use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
@@ -155,6 +156,27 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             },
             None => {
                 public_svc.add_tcp(&listener_cfg.addr.to_string());
+            }
+        }
+
+        if listener_cfg.enable_http2
+            && let Some(h2_cfg) = &listener_cfg.http2
+        {
+            let mut options = default_h2_options();
+            if let Some(v) = h2_cfg.max_concurrent_streams {
+                options.max_concurrent_streams(v);
+            }
+            if let Some(v) = h2_cfg.max_header_list_size {
+                options.max_header_list_size(v);
+            }
+            if let Some(v) = h2_cfg.initial_window_size {
+                options.initial_window_size(v);
+            }
+            if let Some(v) = h2_cfg.initial_connection_window_size {
+                options.initial_connection_window_size(v);
+            }
+            if let Some(app) = public_svc.app_logic_mut() {
+                app.h2_options = Some(options);
             }
         }
 

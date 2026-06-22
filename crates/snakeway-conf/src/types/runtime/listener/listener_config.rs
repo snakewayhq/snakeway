@@ -1,7 +1,7 @@
 use crate::resolution::ResolveError;
 use crate::types::{
     AdminAuthConfig, BearerAuthConfig, BindAdminSpec, BindSpec, ConnectionRateLimitingFilterConfig,
-    NetworkConnectionFilterConfig, TlsTerminationConfig,
+    Http2Config, NetworkConnectionFilterConfig, TlsTerminationConfig,
 };
 use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,8 @@ pub struct ListenerConfig {
     pub tls_termination: Option<TlsTerminationConfig>,
 
     pub enable_http2: bool,
+    #[serde(default)]
+    pub http2: Option<Http2Config>,
 
     pub enable_admin: bool,
 
@@ -73,6 +75,7 @@ impl ListenerConfig {
             addr: from_addr,
             tls_termination: None,
             enable_http2: false,
+            http2: None,
             enable_admin: false,
             admin_auth: None,
             redirect: Some(RedirectConfig::new(
@@ -100,12 +103,16 @@ impl ListenerConfig {
             None => Some(None),
         };
         let connection_filter = lower_connection_filter(spec, report);
-
+        let http2 = match &spec.http2 {
+            Some(h2) => Http2Config::lower(&h2.value, report).map(Some),
+            None => Some(None),
+        };
         Some(Self {
             name: name.to_string(),
             addr: addr?.to_string(),
             tls_termination: maybe_tls?,
             enable_http2: spec.enable_http2.value,
+            http2: http2?,
             enable_admin: false,
             admin_auth: None,
             redirect: None,
@@ -159,6 +166,7 @@ impl ListenerConfig {
             addr: addr?.to_string(),
             tls_termination: Some(tls?),
             enable_http2: false,
+            http2: None,
             enable_admin: true,
             admin_auth: Some(AdminAuthConfig {
                 bearer: Some(bearer?),

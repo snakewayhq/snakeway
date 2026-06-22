@@ -1,9 +1,10 @@
+use super::http2_spec::validate_http2;
 use super::redirect_spec::{report_invalid_port, validate_redirect};
 use super::tls_termination_spec::validate_tls_termination;
 use crate::resolution::ResolveError;
 use crate::types::{
-    BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclInt, NetworkConnectionFilterSpec,
-    RedirectSpec, TlsTerminationSpec,
+    BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclInt, Http2Spec,
+    NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
@@ -23,6 +24,9 @@ pub struct BindSpec {
     pub tls: Option<Located<TlsTerminationSpec>>,
     #[confval(default)]
     pub enable_http2: Located<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(nested)]
+    pub http2: Option<Located<Http2Spec>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub redirect_http_to_https: Option<Located<RedirectSpec>>,
@@ -78,6 +82,11 @@ impl Validate for BindSpec {
                 .at(self.enable_http2.span)
                 .help("Enable TLS on the bind or disable HTTP/2.")
                 .emit();
+        }
+
+        // HTTP/2 tuning.
+        if let Some(http2) = &self.http2 {
+            validate_http2(&http2.value, report);
         }
 
         // Redirect HTTP to HTTPS validation.
