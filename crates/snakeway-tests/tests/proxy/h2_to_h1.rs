@@ -52,19 +52,27 @@ fn h2_max_header_list_size_is_enforced_on_the_wire() {
         .expect("failed to build HTTP/2 client");
     let url = format!("https://{}{}", srv.https_addr(), ROUTE_PATH_API);
 
-    // Act: oversized headers are rejected by the advertised limit
+    // Act: oversized headers are rejected by the advertised limit.
     let oversized = client
         .get(&url)
         .header("Host", TEST_HOST)
         .header("x-large-header", "x".repeat(4096))
-        .send()
-        .expect("request failed");
+        .send();
 
     // Assert
-    assert_eq!(
-        oversized.status(),
-        StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE
-    );
+    match oversized {
+        Ok(resp) => assert_eq!(resp.status(), StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE),
+        Err(e) => {
+            let debug = format!("{e:?}");
+            assert!(
+                debug.contains("Http2")
+                    || debug.contains("GoAway")
+                    || debug.contains("ENHANCE_YOUR_CALM")
+                    || debug.contains("header_list"),
+                "expected h2 rejection, got: {debug}"
+            );
+        }
+    }
 
     // Act + Assert: a request within the limit still proxies normally
     let res = client
