@@ -15,7 +15,7 @@ pub const FAIL_POLICIES: [&str; 2] = ["open", "closed"];
 range_constraint!(TIMEOUT_MS, i64, min: 1, max: 60000);
 range_constraint!(BODY_BUFFER_MAX, i64, min: 0, max: 104857600);
 
-#[derive(Default, Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct WasmDeviceSpec {
     pub name: Located<String>,
 
@@ -34,6 +34,20 @@ pub struct WasmDeviceSpec {
 
     /// Arbitrary key-value config passed to the guest via host.config-get.
     pub config: HashMap<String, String>,
+}
+
+impl Default for WasmDeviceSpec {
+    fn default() -> Self {
+        Self {
+            name: Located::detached(String::new()),
+            enable: Located::detached(false),
+            path: Located::detached(PathBuf::new()),
+            fail_policy: Located::detached("open".to_string()),
+            timeout_ms: Located::detached(5),
+            body_buffer_max: Located::detached(0),
+            config: HashMap::new(),
+        }
+    }
 }
 
 /// Parses the `config` attribute as a flat string-to-string map.

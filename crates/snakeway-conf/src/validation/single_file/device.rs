@@ -160,7 +160,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
 mod tests {
     use crate::types::{
         DeviceSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestRateLimitingDeviceSpec,
-        StructuredLoggingDeviceSpec, WasmDeviceFailPolicy, WasmDeviceSpec,
+        StructuredLoggingDeviceSpec, WasmDeviceSpec,
     };
     use crate::validation::validate_devices;
     use confval::prelude::{Located, Report};
@@ -168,6 +168,13 @@ mod tests {
 
     fn device(spec: DeviceSpec) -> Located<DeviceSpec> {
         Located::detached(spec)
+    }
+
+    fn wasm_defaults() -> WasmDeviceSpec {
+        WasmDeviceSpec {
+            name: Located::detached("test-plugin".to_string()),
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -180,7 +187,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(wasm_file),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
@@ -197,7 +204,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(false),
             path: Located::detached(PathBuf::from("/non/existent/path")),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
@@ -214,7 +221,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(PathBuf::from("")),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
@@ -243,7 +250,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(PathBuf::from("/non/existent/path/to/wasm")),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
