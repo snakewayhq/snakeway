@@ -2,6 +2,8 @@
 title: Getting Started
 ---
 
+## What is Snakeway?
+
 Snakeway is a **programmable traffic control engine** that sits in front of your services and executes a configurable
 pipeline of logic on every request and response.
 
@@ -51,7 +53,8 @@ that forwards traffic to a public API.
 
 The `snakeway` binary is a self-contained executable. However, it expects a configuration directory to define its
 behavior. By default, it looks for a directory named `config` in the current working directory. This can also be set
-via the `SNAKEWAY_CONFIG` environment variable (see [CLI reference](/docs/guide/cli#snakeway_config-environment-variable)).
+via the `SNAKEWAY_CONFIG` environment variable (
+see [CLI reference](/docs/guide/cli#snakeway_config-environment-variable)).
 
 Generate a Snakeway configuration directory called "my-first-proxy" using the `httpbin` template:
 
