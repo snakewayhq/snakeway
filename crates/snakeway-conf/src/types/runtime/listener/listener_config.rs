@@ -166,6 +166,7 @@ impl ListenerConfig {
             addr: addr?.to_string(),
             tls_termination: Some(tls?),
             enable_http2: false,
+            http2: None,
             enable_admin: true,
             admin_auth: Some(AdminAuthConfig {
                 bearer: Some(bearer?),
