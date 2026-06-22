@@ -37,7 +37,7 @@ pub(crate) struct WasmDevice {
     config: Arc<HashMap<String, String>>,
     device_name: Arc<str>,
     fail_policy: WasmDeviceFailPolicy,
-    timeout_epochs: u64,
+    timeout_ms: u64,
     body_buffer_max: u64,
     engine: Arc<Engine>,
     hook_duration: Histogram<f64>,
@@ -86,7 +86,7 @@ impl WasmDevice {
             config: Arc::new(config),
             device_name: Arc::from(device_name),
             fail_policy,
-            timeout_epochs: timeout_ms,
+            timeout_ms,
             body_buffer_max,
             engine,
             hook_duration,
@@ -119,7 +119,8 @@ impl WasmDevice {
 
         let mut store = Store::new(&self.engine, host_state);
         store.limiter(|state| &mut state.limits);
-        store.set_epoch_deadline(self.timeout_epochs);
+        let deadline_ticks = self.timeout_ms / super::engine::EPOCH_TICK_MS;
+        store.set_epoch_deadline(deadline_ticks.max(1));
         store.epoch_deadline_trap();
 
         let instance = match self.instance_pre.instantiate(&mut store) {
