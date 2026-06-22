@@ -220,7 +220,7 @@ Standard installation layout:
 
 ---
 
-## Milestone 8: Alpha Hardening and Refinements (v0.13.0)
+## Milestone 8: Alpha Hardening/Refinements (v0.13.0)
 
 **Goals**
 
@@ -231,7 +231,7 @@ Standard installation layout:
 
 ---
 
-## Milestone 9: Rework configuration subsystem (v0.14.0)
+## Milestone 9: Rework conf subsystem (v0.14.0)
 
 **Goals**
 
@@ -239,16 +239,16 @@ Standard installation layout:
   messages.
 - [x] Create a `confval-derive` companion crate for confval that replaces o2o.
 
-## Milestone 10: Rework configuration subsystem (v0.15.0)
+## Milestone 10: Full Programmability (v0.15.0)
 
 **Goals**
 
 - [x] Expose some HTTP/2 fine-tuning options
 - [ ] Full WASM Device support
 
-### What Full WASM Device Support looks like
+**What Full WASM Device Support looks like...**
 
-This is bumped up ahead of the c1.0 release because it does not make sense to release a stable version of a
+This is bumped up ahead of the v1.0 release because it does not make sense to release a stable version of a
 programmable proxy if the programmability features are still experimental.
 
 - Pre-instantiated components (no per-request instantiation)
