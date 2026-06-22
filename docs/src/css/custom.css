@@ -80,6 +80,14 @@
     margin-bottom: 0;
 }
 
+/* Wider per-page TOC on large screens */
+@media (min-width: 1440px) {
+    .col:has(> .theme-doc-toc-desktop) {
+        flex: 0 0 450px !important;
+        max-width: 450px !important;
+    }
+}
+
 /* Code blocks */
 .prism-code {
     font-size: 0.9rem;
