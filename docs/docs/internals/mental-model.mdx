@@ -2,8 +2,6 @@
 title: Mental Model
 ---
 
-import ThemedSvg from '@site/src/components/ThemedSvg';
-
 This page explains **how Snakeway thinks about traffic**.
 
 If you understand this page, you understand Snakeway.
@@ -21,7 +19,25 @@ What you configure is exactly what happens.
 
 #### For Every Request
 
-<ThemedSvg src="/img/diagrams/mental-model/core-loop.svg" alt="Mental Model Core Loop" />
+```mermaid
+%%{ init: { "flowchart": { "curve": "basis" } } }%%
+flowchart TD
+    req(["Request arrives"])
+    dev_req["<b>Devices run</b><br/>request phase"]
+    proxy["<b>Proxy to upstream</b>"]
+    dev_resp["<b>Devices run</b><br/>response phase"]
+    resp(["Response returned"])
+
+    req --> dev_req --> proxy --> dev_resp --> resp
+
+    classDef io stroke:#64748b,stroke-width:1.5px;
+    classDef device stroke:#6366f1,stroke-width:1.5px;
+    classDef upstream stroke:#0d9488,stroke-width:1.5px;
+
+    class req,resp io;
+    class dev_req,dev_resp device;
+    class proxy upstream;
+```
 
 
 ## Requests Are Context (Not Handlers)
