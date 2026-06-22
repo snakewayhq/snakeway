@@ -19,6 +19,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
     let mut request_rate_limiting_device_seen = false;
     let mut request_filter_seen = false;
     let mut structured_logging_seen = false;
+    let mut wasm_names_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     // Identity first: other devices depend on it being enabled.
     let enabled_devices = devices.iter().filter(|device| device.value.is_enabled());
@@ -103,6 +104,16 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 cfg.validate(report);
             }
             DeviceSpec::Wasm(cfg) => {
+                if !wasm_names_seen.insert(cfg.name.value.clone()) {
+                    report
+                        .error(format!(
+                            "duplicate wasm device name: \"{}\"",
+                            cfg.name.value
+                        ))
+                        .at(device.span)
+                        .emit();
+                }
+
                 cfg.validate(report);
             }
             DeviceSpec::StructuredLogging(cfg) => {
@@ -149,7 +160,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
 mod tests {
     use crate::types::{
         DeviceSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestRateLimitingDeviceSpec,
-        StructuredLoggingDeviceSpec, WasmDeviceSpec,
+        StructuredLoggingDeviceSpec, WasmDeviceFailPolicy, WasmDeviceSpec,
     };
     use crate::validation::validate_devices;
     use confval::prelude::{Located, Report};

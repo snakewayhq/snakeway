@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core", "crates/confval", "crates/confval-derive"]
+members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core", "crates/confval", "crates/confval-derive", "crates/snakeway-jwt-auth-device"]
 default-members = ["crates/snakeway"]
 exclude = [
     "crates/snakeway-wit",
@@ -62,9 +62,9 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-appender = "0.2"
 uaparser = "0.6"
-wasmtime = "43"
-wasmtime-wasi = "43"
-wit-bindgen = "0.56"
+wasmtime = "45"
+wasmtime-wasi = "45"
+wit-bindgen = "0.57"
 woothee = "0.13"
 ipnet = "2.11"
 ipnet-trie = "0.3"

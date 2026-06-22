@@ -87,6 +87,14 @@ impl NormalizedRequest {
         self.headers.header_map.insert(name, value);
     }
 
+    pub(crate) fn append_header(
+        &mut self,
+        name: http::header::HeaderName,
+        value: http::header::HeaderValue,
+    ) {
+        self.headers.header_map.append(name, value);
+    }
+
     pub(crate) fn remove_header(&mut self, name: &str) {
         self.headers.header_map.remove(name);
     }
