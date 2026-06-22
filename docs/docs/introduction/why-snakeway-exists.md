@@ -22,6 +22,9 @@ Snakeway was built on a different set of priorities.
 
 #### Programmability
 
+Many problems can be solved more efficiently at the edge.
+Programmability is the key that unlocks that door.
+
 By using Rust and WASM, Snakeway allows developers to write, test, and deploy complex traffic logic using modern tools
 and workflows.
 

@@ -13,19 +13,29 @@ Understanding this lifecycle is critical when writing devices or reasoning about
 
 ## Request / Response Phases
 
-For **proxied requests**, the full lifecycle is:
+```mermaid
+%%{ init: { "flowchart": { "curve": "basis" } } }%%
+flowchart LR
+    on_req(["on_request"])
+    stream_req["on_stream_request_body<br/><i>0 or more times</i>"]
+    before["before_proxy"]
+    after["after_proxy"]
+    stream_resp["on_stream_response_body<br/><i>0 or more times</i>"]
+    on_resp(["on_response"])
 
-```
-on_request → on_stream_request_body (0 or more times) → before_proxy → after_proxy → on_stream_response_body (0 or more times) → on_response
+    on_req -- "proxy route" --> stream_req --> before --> after --> stream_resp --> on_resp
+    on_req -. "static route" .-> on_resp
+
+    classDef io stroke:#64748b,stroke-width:1.5px;
+    classDef proxy stroke:#6366f1,stroke-width:1.5px;
+
+    class on_req,on_resp io;
+    class stream_req,before,after,stream_resp proxy;
 ```
 
-For **static file requests**, the lifecycle is intentionally shorter:
+For **proxied requests**, the full lifecycle flows left to right through all six phases.
 
-```
-on_request → on_response
-```
-
-Static routes never create an upstream connection and therefore skip all proxy-specific phases.
+For **static file requests**, the lifecycle short-circuits from `on_request` directly to `on_response` (the dashed path). Static routes never create an upstream connection and therefore skip all proxy-specific phases.
 
 ## Phase Overview
 
