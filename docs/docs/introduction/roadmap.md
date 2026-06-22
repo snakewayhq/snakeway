@@ -220,7 +220,7 @@ Standard installation layout:
 
 ---
 
-## Milestone 8: Alpha Hardening and Refinements (v0.13.x)
+## Milestone 8: Alpha Hardening and Refinements (v0.13.0)
 
 **Goals**
 
@@ -231,7 +231,36 @@ Standard installation layout:
 
 ---
 
-## Milestone 9: Snakeway 1.0
+## Milestone 9: Rework configuration subsystem (v0.14.0)
+
+**Goals**
+
+- [x] Rework the `convfal` crate to replace the `Origin` mechanism with true per-line config validation issue provenance
+  messages.
+- [x] Create a `confval-derive` companion crate for confval that replaces o2o.
+
+## Milestone 10: Rework configuration subsystem (v0.15.0)
+
+**Goals**
+
+- [x] Expose some HTTP/2 fine-tuning options
+- [ ] Full WASM Device support
+
+### What Full WASM Device Support looks like
+
+This is bumped up ahead of the c1.0 release because it does not make sense to release a stable version of a
+programmable proxy if the programmability features are still experimental.
+
+- Pre-instantiated components (no per-request instantiation)
+- Bounded store pool with memory and execution limits
+- Wasmtime caching and pooling allocator
+- Per-hook timeouts and fail-open/fail-closed configuration
+- Header and path mutation guardrails
+- Plugin versioning and reload validation
+
+---
+
+## Milestone N: Snakeway 1.0
 
 **Goals**
 
@@ -273,15 +302,6 @@ Pluggable storage (supported by Pingora):
 2. memory + disk
 3. Redis
 4. custom storage
-
-### Full WASM Device Support
-
-- Pre-instantiated components (no per-request instantiation)
-- Bounded store pool with memory and execution limits
-- Wasmtime caching and pooling allocator
-- Per-hook timeouts and fail-open/fail-closed configuration
-- Header and path mutation guardrails
-- Plugin versioning and reload validation
 
 ### Active Health Checks
 
