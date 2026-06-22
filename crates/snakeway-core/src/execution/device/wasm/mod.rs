@@ -4,5 +4,5 @@ mod lifecycle;
 mod state;
 mod wasm_device;
 
-pub(crate) use engine::create_wasm_engine;
+pub(crate) use engine::WasmEngine;
 pub(crate) use wasm_device::*;
