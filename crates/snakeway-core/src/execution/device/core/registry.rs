@@ -5,7 +5,7 @@ use crate::execution::device::builtin::request_rate_limiting::RequestRateLimitin
 use crate::execution::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::execution::device::core::Device;
 #[cfg(feature = "wasm")]
-use crate::execution::device::wasm::{WasmDevice, create_wasm_engine};
+use crate::execution::device::wasm::{WasmDevice, WasmEngine};
 use anyhow::Result;
 use snakeway_conf::types::{DeviceConfig, RuntimeConfig};
 use std::sync::Arc;
@@ -13,6 +13,8 @@ use tracing::info;
 
 pub(crate) struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
+    #[cfg(feature = "wasm")]
+    _wasm_engine: Option<WasmEngine>,
 }
 
 impl Default for DeviceRegistry {
@@ -25,6 +27,8 @@ impl DeviceRegistry {
     pub(crate) fn new() -> Self {
         Self {
             devices: Vec::new(),
+            #[cfg(feature = "wasm")]
+            _wasm_engine: None,
         }
     }
 
@@ -108,11 +112,11 @@ impl DeviceRegistry {
             return Ok(());
         }
 
-        let engine = create_wasm_engine()?;
+        let wasm_engine = WasmEngine::new()?;
 
         for cfg in wasm_configs {
             let device = WasmDevice::load(
-                Arc::clone(&engine),
+                Arc::clone(&wasm_engine.engine),
                 &cfg.path,
                 cfg.name.clone(),
                 cfg.fail_policy.clone(),
@@ -124,6 +128,7 @@ impl DeviceRegistry {
             self.devices.push(Arc::new(device));
         }
 
+        self._wasm_engine = Some(wasm_engine);
         Ok(())
     }
 
