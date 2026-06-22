@@ -67,9 +67,11 @@ mod tests {
 
         // Assert
         assert!(report.has_errors());
-        assert!(report.issues()[0]
-            .message
-            .contains("max_concurrent_streams must be at least 1"));
+        assert!(
+            report.issues()[0]
+                .message
+                .contains("max_concurrent_streams must be at least 1")
+        );
     }
 
     #[test]
