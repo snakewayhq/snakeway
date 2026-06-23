@@ -48,12 +48,12 @@ impl ResponseCtx {
         for (name, value) in &self.headers {
             response.append_header(name.clone(), value)?;
         }
-        if !self.body.is_empty() {
+        let end_of_body = self.body.is_empty();
+        if !end_of_body {
             response.insert_header(header::CONTENT_LENGTH, self.body.len().to_string())?;
         }
-        let end_of_body = self.body.is_empty();
         session.write_response_header(Box::new(response)).await?;
-        if !self.body.is_empty() {
+        if !end_of_body {
             session.write_response_body(self.body.into(), true).await?;
         }
         Ok(())
