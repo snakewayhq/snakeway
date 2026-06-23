@@ -1,0 +1,12 @@
+[package]
+name = "snakeway-wasm-test-device"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WASM device fixture for integration tests"
+
+[dependencies]
+wit-bindgen = "0.57"
+
+[lib]
+crate-type = ["cdylib"]

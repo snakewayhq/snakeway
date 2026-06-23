@@ -4425,6 +4425,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "snakeway-wasm-test-device"
+version = "0.14.0"
+dependencies = [
+ "wit-bindgen",
+]
+
+[[package]]
 name = "socket2"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
