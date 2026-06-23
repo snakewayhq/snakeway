@@ -1,26 +1,114 @@
 ---
-title: WASM Devices
+title: WASM Device Internals
 ---
 
-:::note
-This is a draft doc on how to evolve the experimental WASM feature.  
-:::
+This page describes the internal architecture of the WASM device subsystem. For the
+operator-facing guide, see [Authoring WASM Devices](/docs/guide/authoring-wasm-devices).
 
-Pre v1, WASM devices are an experimental prototype. They need to be evolved beyond this.
+## Runtime Stack
 
-What needs to be done (in no exact order):
+WASM devices run on [Wasmtime](https://wasmtime.dev/) using the **component model**. The
+host-guest contract is defined in WIT (`crates/snakeway-wit/wit/`) at version
+`snakeway:device@0.4.0`.
 
-1. Per-request performance needs to be acceptable, right now it is not suitable for any production use case.
-2. A complex WASM device needs to be authored to proof out the concept and catch design flaws/limitations.
-   JWT auth is a good candidate.
-3. Plugin lifecycle needs to be proofed out as well, especially with regard to hot reload.
+| Layer | Role |
+|-------|------|
+| `snakeway-wit` | WIT interface definition (types, host, policy) |
+| `wasmtime` | Compilation, instantiation, execution |
+| `wasm_device.rs` | `Device` trait implementation, per-hook dispatch |
+| `engine.rs` | Shared `Engine` with pooling allocator and epoch ticker |
+| `state.rs` | `HostState` implementing the host interface |
+| `lifecycle.rs` | Request/response snapshot building and result application |
 
-Some notes on how to approach this (from the roadmap):
+## Engine and Pooling
 
-- Pre-instantiated components (no per-request instantiation)
-- Bounded store pool with memory and execution limits
-- Wasmtime caching and pooling allocator
-- Per-hook timeouts and fail-open/fail-closed configuration
-- Header and path mutation guardrails
-- Plugin versioning and reload validation
+All WASM devices share a single `wasmtime::Engine` created by `WasmEngine::new()`. The
+engine is configured with:
 
+- **Component model** enabled
+- **Epoch interruption** for timeout enforcement
+- **Pooling allocator** (`PoolingAllocationConfig`) with pre-allocated slots for instances,
+  memories, and tables
+
+The pooling allocator avoids per-instantiation memory allocation. Instance slots are reused
+across hook calls, making instantiation O(1) after the initial pool setup.
+
+An epoch ticker thread increments the engine epoch every 10ms. Hook deadlines are expressed
+as epoch tick counts derived from `timeout_ms / EPOCH_TICK_MS`.
+
+The `WasmEngine` struct owns the shutdown flag for the ticker thread. When the
+`DeviceRegistry` is dropped (on shutdown or hot reload), the ticker thread exits.
+
+## Device Loading
+
+At startup, the `DeviceRegistry` collects all enabled WASM device configs and loads them
+together:
+
+1. Create a shared `WasmEngine`.
+2. For each device config, compile the `.wasm` file into a `Component`.
+3. Build a `Linker` and pre-instantiate via `DevicePre`. This amortizes type-checking and
+   linking so only instantiation remains per-hook.
+4. Store each `WasmDevice` (which holds an `Arc<Engine>` and the `DevicePre`) in the
+   device pipeline.
+
+## Per-Hook Execution
+
+Each lifecycle hook call follows this sequence in `WasmDevice::with_instance`:
+
+1. Create a `StoreLimitsBuilder` with memory and table caps.
+2. Build `HostState` with the device's config map, name, and metrics handles.
+3. Create a `Store` on the shared engine with the host state and resource limits.
+4. Set the epoch deadline: `timeout_ms / EPOCH_TICK_MS` ticks.
+5. Instantiate via `DevicePre::instantiate` (uses a pooled memory slot).
+6. Call the exported hook function.
+7. Record hook duration in the `hook_duration_ms` histogram.
+8. On error, route through `handle_failure` which respects the configured fail policy.
+
+Instances are not reused across hooks. Each hook gets a clean sandbox with no residual
+state from prior calls.
+
+## Fail Policy
+
+Every failure path (instantiation error, execution trap, timeout, body buffer overflow)
+routes through `handle_failure`:
+
+- **Open:** log at warn level, increment the failure counter, return `DeviceResult::Continue`.
+- **Closed:** log at error level, increment the failure counter, return
+  `DeviceResult::Respond` with `503 Service Unavailable`.
+
+## Host State
+
+The `HostState` struct implements the `host` interface:
+
+- **`config-get`** reads from an `Arc<HashMap<String, String>>` populated from the HCL
+  `config` block.
+- **`log`** emits a `tracing` event at the mapped level, tagged with the device name.
+- **`metric-increment`** adds to an OTel counter with `device` and `metric` labels.
+- **`epoch-secs`** returns the current Unix timestamp.
+
+## Response Application
+
+Hook results are applied in `lifecycle.rs`:
+
+- `apply_request_result` handles `Action::Continue` (with optional patch), `Action::Block`
+  (403), and `Action::Respond` (synthetic response with custom status, headers, and body).
+- `apply_response_result` handles the same actions for response-phase hooks, including
+  status code overrides and header mutations.
+- `apply_body_result` handles `BodyAction::Passthrough`, `Replace`, `Drop`, and `Block`.
+
+Header operations (`HeaderOp::Set`, `Append`, `Remove`) are validated before application.
+Invalid header names or values are logged at warn level and skipped.
+
+## Key Files
+
+| File | Role |
+|------|------|
+| `crates/snakeway-wit/wit/` | WIT interface definition |
+| `crates/snakeway-core/src/execution/device/wasm/engine.rs` | `WasmEngine`, pooling allocator, epoch ticker |
+| `crates/snakeway-core/src/execution/device/wasm/wasm_device.rs` | `WasmDevice` struct and `Device` trait impl |
+| `crates/snakeway-core/src/execution/device/wasm/state.rs` | `HostState` (host interface impl) |
+| `crates/snakeway-core/src/execution/device/wasm/lifecycle.rs` | Snapshot building, result/patch application |
+| `crates/snakeway-core/src/execution/device/wasm/bindings.rs` | `wasmtime::component::bindgen!` invocation |
+| `crates/snakeway-core/src/execution/device/core/registry.rs` | Device loading and engine lifecycle |
+| `crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs` | Config spec (parsing, validation) |
+| `crates/snakeway-conf/src/types/runtime/device/wasm_device_config.rs` | Config runtime type (lowering) |
