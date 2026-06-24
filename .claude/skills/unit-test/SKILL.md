@@ -163,12 +163,12 @@ Helper functions must not contain assertions — they are pure setup utilities.
 just test
 
 # Run snakeway-core tests
-cargo nextest run -p snakeway-core --features static_files,wasm
+cargo nextest run -p snakeway-core --all-features
 
 # Run snakeway-conf tests
 cargo test -p snakeway-conf
 
 # Run a specific test by name
-cargo nextest run -p snakeway-core --features static_files,wasm -E 'test(denies_request_when_ip_not_in_allowlist)'
+cargo nextest run -p snakeway-core --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
 cargo test -p snakeway-conf -- upstream_validation::tests::weight_greater_than_zero
 ```
