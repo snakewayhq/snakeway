@@ -110,12 +110,12 @@ impl Guest for TestDevice {
     fn on_stream_request_body(_req: Request, chunk: Option<BodyChunk>) -> BodyResult {
         let mode = host::config_get("mode").unwrap_or_default();
 
-        if let Some(ref c) = chunk {
-            if c.data.windows(10).any(|w| w == b"BLOCK_BODY") {
-                return BodyResult {
-                    action: BodyAction::Block,
-                };
-            }
+        if let Some(ref c) = chunk
+            && c.data.windows(10).any(|w| w == b"BLOCK_BODY")
+        {
+            return BodyResult {
+                action: BodyAction::Block,
+            };
         }
 
         match mode.as_str() {
