@@ -7,7 +7,6 @@ license.workspace = true
 
 [features]
 default = []
-wasm = ["snakeway-core/wasm"]
 hotpath = ["snakeway-core/hotpath"]
 hotpath-alloc = ["snakeway-core/hotpath-alloc"]
 dev-templates = ["snakeway-core/dev-templates"]

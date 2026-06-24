@@ -74,7 +74,6 @@ impl NormalizedRequest {
 }
 
 /// WASM Device API
-#[cfg(feature = "wasm")]
 impl NormalizedRequest {
     pub(crate) fn set_path(&mut self, path: String) {
         self.path.0 = path;

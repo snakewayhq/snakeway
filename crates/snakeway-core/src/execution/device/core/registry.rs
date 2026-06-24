@@ -4,7 +4,6 @@ use crate::execution::device::builtin::request_filter::RequestFilterDevice;
 use crate::execution::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
 use crate::execution::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::execution::device::core::Device;
-#[cfg(feature = "wasm")]
 use crate::execution::device::wasm::{WasmDevice, WasmEngine};
 use anyhow::Result;
 use snakeway_conf::types::{DeviceConfig, RuntimeConfig};
@@ -13,7 +12,6 @@ use tracing::info;
 
 pub(crate) struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
-    #[cfg(feature = "wasm")]
     _wasm_engine: Option<WasmEngine>,
 }
 
@@ -27,7 +25,6 @@ impl DeviceRegistry {
     pub(crate) fn new() -> Self {
         Self {
             devices: Vec::new(),
-            #[cfg(feature = "wasm")]
             _wasm_engine: None,
         }
     }
@@ -103,7 +100,6 @@ impl DeviceRegistry {
 }
 
 impl DeviceRegistry {
-    #[cfg(feature = "wasm")]
     fn load_wasm_devices(
         &mut self,
         wasm_configs: Vec<&snakeway_conf::types::WasmDeviceConfig>,
@@ -129,20 +125,6 @@ impl DeviceRegistry {
         }
 
         self._wasm_engine = Some(wasm_engine);
-        Ok(())
-    }
-
-    #[cfg(not(feature = "wasm"))]
-    fn load_wasm_devices(
-        &mut self,
-        wasm_configs: Vec<&snakeway_conf::types::WasmDeviceConfig>,
-    ) -> Result<()> {
-        if let Some(cfg) = wasm_configs.first() {
-            return Err(anyhow::anyhow!(
-                "WASM device '{}' requested, but Snakeway was built without the `wasm` feature",
-                cfg.name
-            ));
-        }
         Ok(())
     }
 }

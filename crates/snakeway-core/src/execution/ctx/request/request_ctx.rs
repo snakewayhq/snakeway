@@ -325,10 +325,8 @@ impl RequestCtx {
 use crate::data_plane::tls_handshake::DownstreamSni;
 /// WASM Device API
 ///
-#[cfg(feature = "wasm")]
 use http::{HeaderName, HeaderValue};
 
-#[cfg(feature = "wasm")]
 impl RequestCtx {
     pub(crate) fn set_canonical_path(&mut self, path: String) {
         debug_assert!(self.hydrated);
@@ -370,9 +368,7 @@ impl RequestCtx {
 
     /// Will return the original URI path.
     /// This is the path as it was received by the proxy.
-    /// This may include the path with an optional query string.
-    /// e.g., /foo/bar or /foo/bar?a=b
-    #[cfg(any(feature = "wasm", test))]
+    /// This may include the path with an optional query string, e.g., /foo/bar or /foo/bar?a=b
     pub(crate) fn original_uri_path(&self) -> &str {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().path()

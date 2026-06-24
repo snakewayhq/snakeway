@@ -6,9 +6,6 @@ license.workspace = true
 
 [features]
 default = []
-wasm = [
-    "wasmtime",
-]
 hotpath = ["hotpath/hotpath"]
 hotpath-alloc = ["hotpath/hotpath-alloc"]
 # Development-only config templates (`config init --template dev`).
@@ -51,7 +48,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
 tracing-appender = { workspace = true }
 uaparser = { workspace = true }
-wasmtime = { workspace = true, optional = true }
+wasmtime = { workspace = true }
 woothee = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
 ipnet-trie = { workspace = true }
