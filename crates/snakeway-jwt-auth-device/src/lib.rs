@@ -1,3 +1,4 @@
+#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 //! # JWT Auth Gateway (Snakeway WASM Device)
 //!
 //! Validates JWT bearer tokens on incoming requests, extracts claims into
@@ -57,8 +58,8 @@ mod config;
 #[cfg(target_arch = "wasm32")]
 mod jwt_auth_device;
 
-pub(crate) mod token_validation;
-pub(crate) mod types;
+mod token_validation;
+mod types;
 
 #[cfg(target_arch = "wasm32")]
 use wit_bindgen::generate;
