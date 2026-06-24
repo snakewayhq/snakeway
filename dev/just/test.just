@@ -33,6 +33,16 @@ generate-dev-certs:
     @just fetch-pebble-ca
     ./dev/gen-test-certs.sh
 
+# Install mkcert and nss, then create dev certs.
+setup-tls-dev-cert:
+    just brew-install "mkcert nss"
+    mkdir -p ./data/certs/
+    mkcert -install
+    mkcert \
+      -cert-file ./data/certs/snakeway.pem \
+      -key-file ./data/certs/snakeway.key \
+      localhost 127.0.0.1 ::1
+
 generate-all-templates:
     @mkdir -p data/templates data/acme/orders
     @rm -fr data/templates/*
