@@ -150,7 +150,7 @@ mod tests {
         let mut mac = <Hmac<Sha256>>::new_from_slice(secret).unwrap();
         mac.update(signing_input.as_bytes());
         let signature = mac.finalize().into_bytes();
-        let sig_b64 = BASE64_URL_SAFE_NO_PAD.encode(&signature);
+        let sig_b64 = BASE64_URL_SAFE_NO_PAD.encode(signature);
 
         format!("{header_b64}.{payload_b64}.{sig_b64}")
     }
