@@ -24,7 +24,7 @@ use wasmtime::{
     component::{Component, Linker},
 };
 
-const MAX_MEMORY_SIZE: usize = 10 * 1024 * 1024;
+const MAX_MEMORY_SIZE: usize = 64 * 1024 * 1024;
 const MAX_TABLE_ELEMENTS: usize = 10_000;
 
 #[derive(Default, Clone)]
@@ -119,7 +119,8 @@ impl WasmDevice {
 
         let mut store = Store::new(&self.engine, host_state);
         store.limiter(|state| &mut state.limits);
-        let deadline_ticks = self.timeout_ms / super::engine::EPOCH_TICK_MS;
+        let tick_ms = super::engine::EPOCH_TICK_MS;
+        let deadline_ticks = (self.timeout_ms + tick_ms - 1) / tick_ms;
         store.set_epoch_deadline(deadline_ticks.max(1));
         store.epoch_deadline_trap();
 
