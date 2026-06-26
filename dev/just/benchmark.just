@@ -105,13 +105,17 @@ profile-wasm-run features="hotpath" duration="60s" vus="200": build-jwt-auth-dev
     # k6 installed, and the JWT device enabled in config/device.d/wasm.hcl.
     set -euo pipefail
     features="{{ features }}"
-    log="$(mktemp "${TMPDIR:-/tmp}/hotpath-XXXXXX")"
+    mkdir -p target/profiling
+    log="target/profiling/hotpath-${features//,/-}.log"
 
     echo ">>> Building snakeway (release, --features ${features})"
     cargo build --release -p snakeway --features "${features}"
 
+    # RUST_LOG=off stops per-request error logs (e.g. pingora connection-pool errors)
+    # from flooding the capture file. The hotpath report is not a tracing log, so it
+    # still prints. Set RUST_LOG yourself if you need server diagnostics.
     echo ">>> Starting snakeway (config ./config; logs -> ${log})"
-    RUST_LOG=error ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
+    RUST_LOG=off ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
     server_pid=$!
 
     cleanup() {
@@ -136,7 +140,7 @@ profile-wasm-run features="hotpath" duration="60s" vus="200": build-jwt-auth-dev
       sleep 0.5
     done
     if [ "${ready}" -ne 1 ]; then
-      echo "!!! snakeway did not become ready; server log follows:" >&2
+      echo "!!! snakeway did not become ready (re-run with RUST_LOG=info for details):" >&2
       cat "${log}" >&2
       exit 1
     fi
@@ -165,8 +169,55 @@ profile-wasm-alloc duration="60s" vus="200":
 profile-wasm-serve features="hotpath": build-jwt-auth-device
     cargo build --release -p snakeway --features {{ features }}
     @echo "snakeway up (--features {{ features }}). Run 'just profile-wasm-load' elsewhere; Ctrl-C here for the report."
-    RUST_LOG=error ./target/release/snakeway run --config ./config
+    RUST_LOG=off ./target/release/snakeway run --config ./config
 
 # k6 JWT load against an already-running server (pairs with profile-wasm-serve).
 profile-wasm-load duration="60s" vus="200" url="http://snakeway.test:8080/api/users/1":
     k6 run --vus {{ vus }} --duration {{ duration }} -e TARGET_URL={{ url }} dev/k6/jwt-load.js
+
+# Uninstrumented throughput baseline: plain release build (no hotpath), JWT load, k6
+# summary only. Use this for true req/sec and thread-scaling numbers, since the hotpath
+# builds distort throughput. Set threads in config/snakeway.hcl to compare 1 vs 20.
+profile-wasm-baseline duration="60s" vus="200": build-jwt-auth-device
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p target/profiling
+    log="target/profiling/baseline.log"
+
+    echo ">>> Building snakeway (release, no hotpath features)"
+    cargo build --release -p snakeway
+
+    # RUST_LOG=off keeps per-request error logs from flooding the capture file.
+    echo ">>> Starting snakeway (config ./config; logs -> ${log})"
+    RUST_LOG=off ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
+    server_pid=$!
+
+    cleanup() {
+      if kill -0 "${server_pid}" 2>/dev/null; then
+        kill -INT "${server_pid}" 2>/dev/null || true
+        wait "${server_pid}" 2>/dev/null || true
+      fi
+    }
+    trap cleanup EXIT INT TERM
+
+    echo ">>> Waiting for snakeway to accept requests"
+    ready=0
+    for _ in $(seq 1 40); do
+      code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 \
+        -H 'Authorization: Bearer probe' \
+        http://snakeway.test:8080/api/users/1 || true)"
+      if [ -n "${code}" ] && [ "${code}" != "000" ]; then
+        echo "    ready (HTTP ${code})"
+        ready=1
+        break
+      fi
+      sleep 0.5
+    done
+    if [ "${ready}" -ne 1 ]; then
+      echo "!!! snakeway did not become ready (re-run with RUST_LOG=info for details):" >&2
+      cat "${log}" >&2
+      exit 1
+    fi
+
+    echo ">>> Running k6 (vus={{ vus }}, duration={{ duration }}); k6 summary is the result"
+    k6 run --vus {{ vus }} --duration {{ duration }} dev/k6/jwt-load.js
