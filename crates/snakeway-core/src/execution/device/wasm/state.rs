@@ -15,6 +15,7 @@ pub(crate) struct HostState {
 
 impl super::bindings::snakeway::device::types::Host for HostState {}
 
+#[hotpath::measure_all]
 impl host::Host for HostState {
     fn config_get(&mut self, key: String) -> Option<String> {
         self.config.get(&key).cloned()

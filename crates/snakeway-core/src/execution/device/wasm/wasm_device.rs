@@ -105,26 +105,32 @@ impl WasmDevice {
             KeyValue::new("hook", hook_name.to_string()),
         ];
 
-        let limits = StoreLimitsBuilder::new()
-            .memory_size(MAX_MEMORY_SIZE)
-            .table_elements(MAX_TABLE_ELEMENTS)
-            .build();
+        let mut store = hotpath::measure_block!("wasm.store_setup", {
+            let limits = StoreLimitsBuilder::new()
+                .memory_size(MAX_MEMORY_SIZE)
+                .table_elements(MAX_TABLE_ELEMENTS)
+                .build();
 
-        let host_state = HostState {
-            config: Arc::clone(&self.config),
-            device_name: Arc::clone(&self.device_name),
-            limits,
-            custom_metrics: self.custom_metrics.clone(),
-        };
+            let host_state = HostState {
+                config: Arc::clone(&self.config),
+                device_name: Arc::clone(&self.device_name),
+                limits,
+                custom_metrics: self.custom_metrics.clone(),
+            };
 
-        let mut store = Store::new(&self.engine, host_state);
-        store.limiter(|state| &mut state.limits);
-        let tick_ms = super::engine::EPOCH_TICK_MS;
-        let deadline_ticks = (self.timeout_ms + tick_ms - 1) / tick_ms;
-        store.set_epoch_deadline(deadline_ticks.max(1));
-        store.epoch_deadline_trap();
+            let mut store = Store::new(&self.engine, host_state);
+            store.limiter(|state| &mut state.limits);
+            let tick_ms = super::engine::EPOCH_TICK_MS;
+            let deadline_ticks = self.timeout_ms.div_ceil(tick_ms);
+            store.set_epoch_deadline(deadline_ticks.max(1));
+            store.epoch_deadline_trap();
+            store
+        });
 
-        let instance = match self.instance_pre.instantiate(&mut store) {
+        let instance = match hotpath::measure_block!(
+            "wasm.instantiate",
+            self.instance_pre.instantiate(&mut store)
+        ) {
             Ok(inst) => inst,
             Err(e) => {
                 return self.handle_failure(hook_name, "instantiation", &anyhow::anyhow!("{e}"));
@@ -219,6 +225,7 @@ impl WasmDevice {
     }
 }
 
+#[hotpath::measure_all]
 impl Device for WasmDevice {
     fn name(&self) -> &str {
         &self.device_name
@@ -227,9 +234,12 @@ impl Device for WasmDevice {
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
         self.with_instance("on_request", |store, instance| {
             let req = build_request_snapshot(ctx);
-            let result = instance
-                .snakeway_device_policy()
-                .call_on_request(store, &req)?;
+            let result = hotpath::measure_block!(
+                "wasm.guest.on_request",
+                instance
+                    .snakeway_device_policy()
+                    .call_on_request(store, &req)
+            )?;
             apply_request_result(ctx, result)
         })
     }
@@ -276,9 +286,12 @@ impl Device for WasmDevice {
 
             return self.with_instance("on_stream_request_body", |store, instance| {
                 let req = build_request_snapshot(ctx);
-                let result = instance
-                    .snakeway_device_policy()
-                    .call_on_stream_request_body(store, &req, Some(&assembled))?;
+                let result = hotpath::measure_block!(
+                    "wasm.guest.on_stream_request_body",
+                    instance
+                        .snakeway_device_policy()
+                        .call_on_stream_request_body(store, &req, Some(&assembled))
+                )?;
 
                 let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
                 apply_body_result(request_id, maybe_chunk, result)
@@ -292,9 +305,12 @@ impl Device for WasmDevice {
 
         self.with_instance("on_stream_request_body", |store, instance| {
             let req = build_request_snapshot(ctx);
-            let result = instance
-                .snakeway_device_policy()
-                .call_on_stream_request_body(store, &req, chunk.as_ref())?;
+            let result = hotpath::measure_block!(
+                "wasm.guest.on_stream_request_body",
+                instance
+                    .snakeway_device_policy()
+                    .call_on_stream_request_body(store, &req, chunk.as_ref())
+            )?;
 
             let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
             apply_body_result(request_id, maybe_chunk, result)
@@ -304,9 +320,12 @@ impl Device for WasmDevice {
     fn before_proxy(&self, ctx: &mut RequestCtx) -> DeviceResult {
         self.with_instance("before_proxy", |store, instance| {
             let req = build_request_snapshot(ctx);
-            let result = instance
-                .snakeway_device_policy()
-                .call_before_proxy(store, &req)?;
+            let result = hotpath::measure_block!(
+                "wasm.guest.before_proxy",
+                instance
+                    .snakeway_device_policy()
+                    .call_before_proxy(store, &req)
+            )?;
             apply_request_result(ctx, result)
         })
     }
@@ -314,9 +333,12 @@ impl Device for WasmDevice {
     fn after_proxy(&self, ctx: &mut ResponseCtx) -> DeviceResult {
         self.with_instance("after_proxy", |store, instance| {
             let resp = build_response_snapshot(ctx);
-            let result = instance
-                .snakeway_device_policy()
-                .call_after_proxy(store, &resp)?;
+            let result = hotpath::measure_block!(
+                "wasm.guest.after_proxy",
+                instance
+                    .snakeway_device_policy()
+                    .call_after_proxy(store, &resp)
+            )?;
             apply_response_result(ctx, result)
         })
     }
@@ -334,9 +356,12 @@ impl Device for WasmDevice {
 
         self.with_instance("on_stream_response_body", |store, instance| {
             let resp = build_response_snapshot(ctx);
-            let result = instance
-                .snakeway_device_policy()
-                .call_on_stream_response_body(store, &resp, chunk.as_ref())?;
+            let result = hotpath::measure_block!(
+                "wasm.guest.on_stream_response_body",
+                instance
+                    .snakeway_device_policy()
+                    .call_on_stream_response_body(store, &resp, chunk.as_ref())
+            )?;
 
             let request_id = ctx.request_id.clone();
             apply_body_result(request_id, maybe_chunk, result)
@@ -346,9 +371,12 @@ impl Device for WasmDevice {
     fn on_response(&self, ctx: &mut ResponseCtx) -> DeviceResult {
         self.with_instance("on_response", |store, instance| {
             let resp = build_response_snapshot(ctx);
-            let result = instance
-                .snakeway_device_policy()
-                .call_on_response(store, &resp)?;
+            let result = hotpath::measure_block!(
+                "wasm.guest.on_response",
+                instance
+                    .snakeway_device_policy()
+                    .call_on_response(store, &resp)
+            )?;
             apply_response_result(ctx, result)
         })
     }

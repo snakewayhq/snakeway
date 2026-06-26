@@ -7,6 +7,7 @@ use crate::execution::device::wasm::bindings::snakeway::device::types::{
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 
+#[hotpath::measure]
 pub(crate) fn apply_body_result(
     request_id: Option<String>,
     maybe_chunk: &mut Option<Bytes>,
@@ -26,6 +27,7 @@ pub(crate) fn apply_body_result(
     }
 }
 
+#[hotpath::measure]
 pub(crate) fn build_request_snapshot(ctx: &RequestCtx) -> Request {
     Request {
         method: ctx.method_str().to_string(),
@@ -46,6 +48,7 @@ pub(crate) fn build_request_snapshot(ctx: &RequestCtx) -> Request {
     }
 }
 
+#[hotpath::measure]
 pub(crate) fn build_response_snapshot(ctx: &ResponseCtx) -> Response {
     Response {
         status: ctx.status.as_u16(),
@@ -149,6 +152,7 @@ fn apply_header_ops(headers: &mut HeaderMap, ops: Vec<HeaderOp>) {
     }
 }
 
+#[hotpath::measure]
 pub(crate) fn apply_request_result(
     ctx: &mut RequestCtx,
     result: policy::RequestResult,
@@ -177,6 +181,7 @@ pub(crate) fn apply_request_result(
     Ok(DeviceResult::Continue)
 }
 
+#[hotpath::measure]
 pub(crate) fn apply_response_result(
     ctx: &mut ResponseCtx,
     result: policy::ResponseResult,
