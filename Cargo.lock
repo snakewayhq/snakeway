@@ -4263,6 +4263,7 @@ dependencies = [
 name = "snakeway"
 version = "0.14.0"
 dependencies = [
+ "hotpath",
  "snakeway-core",
 ]
 
