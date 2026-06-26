@@ -1,6 +1,6 @@
 use crate::bindings::{Guest, host, types};
-use crate::token_validation::{AuthError, ValidatedToken, validate_token};
-use crate::types::AuthConfig;
+use crate::token_validation::{AuthError, validate_token};
+use crate::types::{AuthConfig, ValidatedToken};
 use types::{
     Action, BodyAction, BodyChunk, BodyResult, Header, HeaderOp, Request, RequestPatch,
     RequestResult, Response, ResponseResult, SyntheticResponse,
