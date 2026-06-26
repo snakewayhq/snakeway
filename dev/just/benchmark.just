@@ -111,11 +111,16 @@ profile-wasm-run features="hotpath" duration="60s" vus="200": build-jwt-auth-dev
     echo ">>> Building snakeway (release, --features ${features})"
     cargo build --release -p snakeway --features "${features}"
 
-    # RUST_LOG=off stops per-request error logs (e.g. pingora connection-pool errors)
-    # from flooding the capture file. The hotpath report is not a tracing log, so it
-    # still prints. Set RUST_LOG yourself if you need server diagnostics.
+    echo ">>> Checking the origin is reachable"
+    if ! curl -s -o /dev/null --max-time 2 http://snakeway.test:4000/; then
+      echo "!!! origin http://snakeway.test:4000 is unreachable; start the docker compose origin first." >&2
+      exit 1
+    fi
+
+    # RUST_LOG keeps startup diagnostics while silencing the per-request connection-reuse flood
     echo ">>> Starting snakeway (config ./config; logs -> ${log})"
-    RUST_LOG=off ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
+    RUST_LOG="warn,pingora_core::connectors=off" \
+      ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
     server_pid=$!
 
     cleanup() {
@@ -168,8 +173,9 @@ profile-wasm-alloc duration="60s" vus="200":
 # Foreground hotpath server (manual). Ctrl-C prints the report. Run `just profile-wasm-load` from another shell while this is up. `features` is "hotpath" or "hotpath,hotpath-alloc".
 profile-wasm-serve features="hotpath": build-jwt-auth-device
     cargo build --release -p snakeway --features {{ features }}
+    @curl -s -o /dev/null --max-time 2 http://snakeway.test:4000/ || { echo "origin http://snakeway.test:4000 unreachable; start the docker compose origin." >&2; exit 1; }
     @echo "snakeway up (--features {{ features }}). Run 'just profile-wasm-load' elsewhere; Ctrl-C here for the report."
-    RUST_LOG=off ./target/release/snakeway run --config ./config
+    RUST_LOG="warn,pingora_core::connectors=off" ./target/release/snakeway run --config ./config
 
 # k6 JWT load against an already-running server (pairs with profile-wasm-serve).
 profile-wasm-load duration="60s" vus="200" url="http://snakeway.test:8080/api/users/1":
@@ -187,9 +193,16 @@ profile-wasm-baseline duration="60s" vus="200": build-jwt-auth-device
     echo ">>> Building snakeway (release, no hotpath features)"
     cargo build --release -p snakeway
 
-    # RUST_LOG=off keeps per-request error logs from flooding the capture file.
+    echo ">>> Checking the origin is reachable"
+    if ! curl -s -o /dev/null --max-time 2 http://snakeway.test:4000/; then
+      echo "!!! origin http://snakeway.test:4000 is unreachable; start the docker compose origin first." >&2
+      exit 1
+    fi
+
+    # RUST_LOG keeps startup diagnostics while silencing the per-request connection-reuse
     echo ">>> Starting snakeway (config ./config; logs -> ${log})"
-    RUST_LOG=off ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
+    RUST_LOG="warn,pingora_core::connectors=off" \
+      ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
     server_pid=$!
 
     cleanup() {
