@@ -49,10 +49,10 @@ run-load-against-static:
 
 # Generate some spoofed traffic for the identity device
 run-spoofed-traffic:
-    k6 run --vus 10 --duration 30s ./k6/spoof-traffic.js
+    k6 run --vus 10 --duration 30s ./dev/k6/spoof-traffic.js
 
 run-load-test:
-    k6 run --vus 10 --duration 30s ./k6/load-test.js
+    k6 run --vus 10 --duration 30s ./dev/k6/load-test.js
 
 # Check all origin protocols (TCP + UDS)
 sanity-check-origin:
@@ -95,3 +95,78 @@ sanity-check-snakeway:
     curl -s --cacert crates/snakeway-tests/certs/origin-ca.pem https://127.0.0.1:8443/api/users/1
     @echo "\n\nAdmin stats ================"
     curl -s --cacert crates/snakeway-tests/certs/origin-ca.pem https://127.0.0.1:8440/admin/stats
+
+# Profile WASM with hotpath
+profile-wasm-run features="hotpath" duration="60s" vus="200": build-jwt-auth-device
+    #!/usr/bin/env bash
+    # Hotpath profiling core: build snakeway with the given feature(s), run the JWT load
+    # test, then SIGINT the server so its hotpath report prints. Used by profile-wasm-timing
+    # and profile-wasm-alloc. Prerequisites: docker origin up, snakeway.test -> 127.0.0.1,
+    # k6 installed, and the JWT device enabled in config/device.d/wasm.hcl.
+    set -euo pipefail
+    features="{{ features }}"
+    log="$(mktemp "${TMPDIR:-/tmp}/hotpath-XXXXXX")"
+
+    echo ">>> Building snakeway (release, --features ${features})"
+    cargo build --release -p snakeway --features "${features}"
+
+    echo ">>> Starting snakeway (config ./config; logs -> ${log})"
+    RUST_LOG=error ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
+    server_pid=$!
+
+    cleanup() {
+      if kill -0 "${server_pid}" 2>/dev/null; then
+        kill -INT "${server_pid}" 2>/dev/null || true
+        wait "${server_pid}" 2>/dev/null || true
+      fi
+    }
+    trap cleanup EXIT INT TERM
+
+    echo ">>> Waiting for snakeway to accept requests"
+    ready=0
+    for _ in $(seq 1 40); do
+      code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 \
+        -H 'Authorization: Bearer probe' \
+        http://snakeway.test:8080/api/users/1 || true)"
+      if [ -n "${code}" ] && [ "${code}" != "000" ]; then
+        echo "    ready (HTTP ${code})"
+        ready=1
+        break
+      fi
+      sleep 0.5
+    done
+    if [ "${ready}" -ne 1 ]; then
+      echo "!!! snakeway did not become ready; server log follows:" >&2
+      cat "${log}" >&2
+      exit 1
+    fi
+
+    echo ">>> Running k6 (vus={{ vus }}, duration={{ duration }})"
+    k6 run --vus {{ vus }} --duration {{ duration }} dev/k6/jwt-load.js || true
+
+    echo ">>> Stopping snakeway (SIGINT) to flush the hotpath report"
+    kill -INT "${server_pid}"
+    wait "${server_pid}" 2>/dev/null || true
+    trap - EXIT INT TERM
+
+    echo ""
+    echo "hotpath report (--features ${features}):"
+    cat "${log}"
+
+# Hotpath TIMING run: produces a timeing table
+profile-wasm-timing duration="60s" vus="200":
+    @just profile-wasm-run hotpath {{ duration }} {{ vus }}
+
+# Hotpath ALLOCATION run: produces alloc table (its timings are inflated by the allocator wrapper and should be ignored)
+profile-wasm-alloc duration="60s" vus="200":
+    @just profile-wasm-run hotpath,hotpath-alloc {{ duration }} {{ vus }}
+
+# Foreground hotpath server (manual). Ctrl-C prints the report. Run `just profile-wasm-load` from another shell while this is up. `features` is "hotpath" or "hotpath,hotpath-alloc".
+profile-wasm-serve features="hotpath": build-jwt-auth-device
+    cargo build --release -p snakeway --features {{ features }}
+    @echo "snakeway up (--features {{ features }}). Run 'just profile-wasm-load' elsewhere; Ctrl-C here for the report."
+    RUST_LOG=error ./target/release/snakeway run --config ./config
+
+# k6 JWT load against an already-running server (pairs with profile-wasm-serve).
+profile-wasm-load duration="60s" vus="200" url="http://snakeway.test:8080/api/users/1":
+    k6 run --vus {{ vus }} --duration {{ duration }} -e TARGET_URL={{ url }} dev/k6/jwt-load.js
