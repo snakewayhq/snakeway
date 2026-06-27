@@ -19,6 +19,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
     let mut request_rate_limiting_device_seen = false;
     let mut request_filter_seen = false;
     let mut structured_logging_seen = false;
+    let mut wasm_names_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     // Identity first: other devices depend on it being enabled.
     let enabled_devices = devices.iter().filter(|device| device.value.is_enabled());
@@ -103,6 +104,16 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 cfg.validate(report);
             }
             DeviceSpec::Wasm(cfg) => {
+                if !wasm_names_seen.insert(cfg.name.value.clone()) {
+                    report
+                        .error(format!(
+                            "duplicate wasm device name: \"{}\"",
+                            cfg.name.value
+                        ))
+                        .at(device.span)
+                        .emit();
+                }
+
                 cfg.validate(report);
             }
             DeviceSpec::StructuredLogging(cfg) => {
@@ -159,6 +170,13 @@ mod tests {
         Located::detached(spec)
     }
 
+    fn wasm_defaults() -> WasmDeviceSpec {
+        WasmDeviceSpec {
+            name: Located::detached("test-plugin".to_string()),
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn validate_wasm_device_valid() {
         // Arrange
@@ -169,7 +187,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(wasm_file),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
@@ -186,7 +204,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(false),
             path: Located::detached(PathBuf::from("/non/existent/path")),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
@@ -203,7 +221,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(PathBuf::from("")),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act
@@ -232,7 +250,7 @@ mod tests {
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
             enable: Located::detached(true),
             path: Located::detached(PathBuf::from("/non/existent/path/to/wasm")),
-            ..Default::default()
+            ..wasm_defaults()
         }));
 
         // Act

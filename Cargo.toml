@@ -1,5 +1,14 @@
 [workspace]
-members = ["crates/snakeway-tests", "crates/snakeway", "crates/snakeway-conf", "crates/snakeway-core", "crates/confval", "crates/confval-derive"]
+members = [
+    "crates/snakeway-tests",
+    "crates/snakeway",
+    "crates/snakeway-conf",
+    "crates/snakeway-core",
+    "crates/confval",
+    "crates/confval-derive",
+    "crates/snakeway-jwt-auth-device",
+    "crates/snakeway-wasm-test-device",
+]
 default-members = ["crates/snakeway"]
 exclude = [
     "crates/snakeway-wit",
@@ -62,9 +71,9 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 tracing-appender = "0.2"
 uaparser = "0.6"
-wasmtime = "43"
-wasmtime-wasi = "43"
-wit-bindgen = "0.56"
+wasmtime = "46"
+wasmtime-wasi = "46"
+wit-bindgen = "0.58"
 woothee = "0.13"
 ipnet = "2.11"
 ipnet-trie = "0.3"
@@ -87,11 +96,11 @@ instant-acme = "0.8"
 rcgen = "0.14"
 sha2 = "0.11"
 x509-parser = "0.18.1"
-opentelemetry_sdk = "0.31"
-opentelemetry-otlp = "0.31"
-opentelemetry = "0.31"
-tracing-opentelemetry = "0.32"
-opentelemetry-appender-tracing = "0.31.1"
+opentelemetry_sdk = "0.32"
+opentelemetry-otlp = "0.32"
+opentelemetry = "0.32"
+tracing-opentelemetry = "0.33"
+opentelemetry-appender-tracing = "0.32"
 criterion = { version = "0.8", features = ["html_reports"] }
 hostname = "0.4.2"
 reqwest = { version = "0.13" }
@@ -101,6 +110,6 @@ futures-util = "0.3.31"
 prost = "0.14"
 tonic-prost = "0.14"
 hex = "0.4"
-hotpath = "0.15.0"
+hotpath = "0.18.0"
 secrecy = "0.10"
 subtle = "2.6"

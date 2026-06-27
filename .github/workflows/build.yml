@@ -216,8 +216,6 @@ jobs:
         variant:
           - name: default
             features: ""
-          - name: wasm
-            features: "--features wasm"
 
     steps:
       - name: Checkout
@@ -336,9 +334,7 @@ jobs:
           set -e
           ls -lh dist
           ls -lh dist/snakeway-x86_64-unknown-linux-musl-default/snakeway
-          ls -lh dist/snakeway-x86_64-unknown-linux-musl-wasm/snakeway
           ls -lh dist/snakeway-aarch64-unknown-linux-musl-default/snakeway
-          ls -lh dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway
 
       # Stage binaries where cargo-deb and cargo-generate-rpm expect them.
       - name: Stage binaries for packaging
@@ -374,12 +370,8 @@ jobs:
           TAG="${{ github.ref_name }}"
           mv dist/snakeway-x86_64-unknown-linux-musl-default/snakeway \
              dist/snakeway-${TAG}-x86_64-linux-musl
-          mv dist/snakeway-x86_64-unknown-linux-musl-wasm/snakeway \
-             dist/snakeway-${TAG}-x86_64-linux-musl-wasm
           mv dist/snakeway-aarch64-unknown-linux-musl-default/snakeway \
              dist/snakeway-${TAG}-aarch64-linux-musl
-          mv dist/snakeway-aarch64-unknown-linux-musl-wasm/snakeway \
-             dist/snakeway-${TAG}-aarch64-linux-musl-wasm
 
       # Collect .deb and .rpm packages into dist/ for release.
       - name: Collect packages
@@ -415,9 +407,7 @@ jobs:
         with:
           files: |
             dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl
-            dist/snakeway-${{ github.ref_name }}-x86_64-linux-musl-wasm
             dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl
-            dist/snakeway-${{ github.ref_name }}-aarch64-linux-musl-wasm
             dist/*.deb
             dist/*.rpm
             dist/SHA256SUMS

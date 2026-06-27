@@ -21,6 +21,7 @@ dist/
 /config/
 /crates/snakeway-tests/certs/
 /crates/snakeway-tests/acme/
+/crates/snakeway-tests/fixtures/wasm/
 /plugins/
 profile.json.gz
 /.snapshots/

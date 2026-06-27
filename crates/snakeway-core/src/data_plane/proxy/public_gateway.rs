@@ -321,7 +321,8 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(resp) => {
-                session.respond_error(resp.status.as_u16()).await?;
+                resp.write_to_session(&mut session.downstream_session)
+                    .await?;
                 return Ok(true);
             }
 
@@ -495,7 +496,9 @@ impl ProxyHttp for PublicGateway {
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
             DeviceResult::Continue => Ok(()),
-            DeviceResult::Respond(resp) => session.respond_error(resp.status.as_u16()).await,
+            DeviceResult::Respond(resp) => {
+                resp.write_to_session(&mut session.downstream_session).await
+            }
             DeviceResult::Error(err) => {
                 tracing::error!("device error on_stream_request_body: {err}");
                 Err(Error::new(Custom("device error on_stream_request_body")))
@@ -591,12 +594,15 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
             DeviceResult::Error(err) => {
-                // Response is already committed; we only record and observe.
                 tracing::warn!("device error after_proxy: {err}");
             }
         }
 
         upstream.set_status(resp_ctx.status)?;
+
+        for (name, value) in &resp_ctx.headers {
+            upstream.insert_header(name.clone(), value)?;
+        }
 
         ctx.extensions.insert(UpstreamResponseSnapshot {
             status: upstream.status,
@@ -645,12 +651,15 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
             DeviceResult::Error(err) => {
-                // Too late to change anything; logs and metrics only allowed here.
                 tracing::warn!("device error on_response: {err}");
             }
         }
 
         upstream.set_status(resp_ctx.status)?;
+
+        for (name, value) in &resp_ctx.headers {
+            upstream.insert_header(name.clone(), value)?;
+        }
 
         let status = upstream.status.as_u16();
         ctx.upstream_outcome = Some(if status >= 500 {

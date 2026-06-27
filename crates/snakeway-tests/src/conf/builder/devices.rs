@@ -2,7 +2,7 @@ use crate::conf::ConfigBuilder;
 use confval::source::Located;
 use snakeway_core::testing_api::conf::types::{
     ForwardingSpec, IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
-    RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec,
+    RequestRateLimitingDeviceSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 
 use std::path::PathBuf;
@@ -136,6 +136,13 @@ impl ConfigBuilder {
 
             ..Default::default()
         });
+        self
+    }
+}
+
+impl ConfigBuilder {
+    pub fn with_wasm_device(mut self, spec: WasmDeviceSpec) -> Self {
+        self.wasm_device_specs.push(spec);
         self
     }
 }

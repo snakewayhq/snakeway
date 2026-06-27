@@ -4,8 +4,7 @@ use crate::execution::device::builtin::request_filter::RequestFilterDevice;
 use crate::execution::device::builtin::request_rate_limiting::RequestRateLimitingDevice;
 use crate::execution::device::builtin::structured_logging::StructuredLoggingDevice;
 use crate::execution::device::core::Device;
-#[cfg(feature = "wasm")]
-use crate::execution::device::wasm::WasmDevice;
+use crate::execution::device::wasm::{WasmDevice, WasmEngine};
 use anyhow::Result;
 use snakeway_conf::types::{DeviceConfig, RuntimeConfig};
 use std::sync::Arc;
@@ -13,6 +12,7 @@ use tracing::info;
 
 pub(crate) struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
+    _wasm_engine: Option<WasmEngine>,
 }
 
 impl Default for DeviceRegistry {
@@ -25,10 +25,13 @@ impl DeviceRegistry {
     pub(crate) fn new() -> Self {
         Self {
             devices: Vec::new(),
+            _wasm_engine: None,
         }
     }
 
     pub(crate) fn load_from_config(&mut self, cfg: &RuntimeConfig) -> Result<()> {
+        let mut wasm_configs: Vec<&snakeway_conf::types::WasmDeviceConfig> = Vec::new();
+
         for device_cfg in &cfg.devices {
             if !device_cfg.is_enabled() {
                 continue;
@@ -70,11 +73,9 @@ impl DeviceRegistry {
                     self.devices.push(device);
                 }
 
-                // Wasm devices are loaded dynamically at runtime.
-                // They should be run AFTER all builtin devices, except the logging device.
+                // WASM devices are collected and loaded together so they share a single Engine.
                 DeviceConfig::Wasm(cfg) => {
-                    info!("loaded device: {}", cfg.path.display());
-                    self.load_wasm_device(cfg)?;
+                    wasm_configs.push(cfg);
                 }
 
                 // Important: The logging device must always be last, so that it can observe all
@@ -88,6 +89,8 @@ impl DeviceRegistry {
             }
         }
 
+        self.load_wasm_devices(wasm_configs)?;
+
         Ok(())
     }
 
@@ -97,19 +100,23 @@ impl DeviceRegistry {
 }
 
 impl DeviceRegistry {
-    #[cfg(feature = "wasm")]
-    fn load_wasm_device(&mut self, cfg: &snakeway_conf::types::WasmDeviceConfig) -> Result<()> {
-        let device = WasmDevice::load(&cfg.path)?;
+    fn load_wasm_devices(
+        &mut self,
+        wasm_configs: Vec<&snakeway_conf::types::WasmDeviceConfig>,
+    ) -> Result<()> {
+        if wasm_configs.is_empty() {
+            return Ok(());
+        }
 
-        self.devices.push(Arc::new(device));
+        let wasm_engine = WasmEngine::new()?;
+
+        for cfg in wasm_configs {
+            let device = WasmDevice::load(Arc::clone(&wasm_engine.engine), cfg)?;
+            info!("loaded wasm device: {}", device.name());
+            self.devices.push(Arc::new(device));
+        }
+
+        self._wasm_engine = Some(wasm_engine);
         Ok(())
-    }
-
-    #[cfg(not(feature = "wasm"))]
-    fn load_wasm_device(&mut self, cfg: &snakeway_conf::types::WasmDeviceConfig) -> Result<()> {
-        Err(anyhow::anyhow!(
-            "WASM device '{}' requested, but Snakeway was built without the `wasm` feature",
-            cfg.path.display()
-        ))
     }
 }

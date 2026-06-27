@@ -1,99 +1,87 @@
-interface policy {
-  /// HTTP header
+interface types {
   record header {
     name: string,
     value: string,
   }
 
-  /// Request snapshot passed to devices (read-only)
+  variant header-op {
+    set(header),
+    append(header),
+    remove(string),
+  }
+
   record request {
-    /// Original request path as received
+    method: string,
+    scheme: string,
+    authority: string,
     original-path: string,
-
-    /// Canonical path currently used for routing
     route-path: string,
-
-    /// Headers at this stage of the pipeline
+    query: string,
+    client-ip: string,
     headers: list<header>,
   }
 
-  /// Request body chunk of bytes with a flag indicating the stream has ended.
-  record body-chunk {
-    data: list<u8>,
-    end-of-stream: bool,
-  }
-
-  /// For every chunk of the request body processed, a decision is returned.
-  record body-result {
-    decision: decision,
-  }
-
-  /// Response snapshot passed to devices (read-only)
   record response {
     status: u16,
     headers: list<header>,
   }
 
-  /// Explicit request mutation intent
-  record request-patch {
-    /// Change the path used for routing (forces re-routing)
-    set-route-path: option<string>,
-
-    /// Override the path sent to the upstream (does not affect routing)
-    set-upstream-path: option<string>,
-
-    /// Headers to add or overwrite
-    set-headers: list<header>,
-
-    /// Headers to remove
-    remove-headers: list<string>,
+  record body-chunk {
+    data: list<u8>,
+    end-of-stream: bool,
   }
 
-  /// Explicit response mutation intent
-  record response-patch {
-    /// Override response status
-    set-status: option<u16>,
-
-    /// Headers to add or overwrite
-    set-headers: list<header>,
-
-    /// Headers to remove
-    remove-headers: list<string>,
+  record synthetic-response {
+    status: u16,
+    headers: list<header>,
+    body: list<u8>,
   }
 
-  /// Device decision
-  enum decision {
-    continue,
+  variant action {
+    %continue,
     block,
+    respond(synthetic-response),
   }
 
-  /// Result of a request-phase hook
+  record request-patch {
+    set-route-path: option<string>,
+    set-upstream-path: option<string>,
+    ops: list<header-op>,
+  }
+
+  record response-patch {
+    set-status: option<u16>,
+    ops: list<header-op>,
+  }
+
   record request-result {
-    decision: decision,
+    action: action,
     patch: option<request-patch>,
   }
 
-  /// Result of a response-phase hook
   record response-result {
-    decision: decision,
+    action: action,
     patch: option<response-patch>,
   }
 
-  /// Called immediately after request acceptance, before routing
-  on-request: func(req: request) -> request-result;
+  variant body-action {
+    passthrough,
+    replace(list<u8>),
+    %drop,
+    block,
+  }
 
-  /// Called (potentially multiple times) as the request body is read
-  on-stream-request-body: func(req: request, chunk: option<body-chunk>) -> body-result;
+  record body-result {
+    action: body-action,
+  }
+}
 
-  /// Called after routing but before proxying upstream
-  before-proxy: func(req: request) -> request-result;
+interface host {
+  config-get: func(key: string) -> option<string>;
 
-  /// Called after receiving the upstream response
-  after-proxy: func(resp: response) -> response-result;
+  log: func(level: u8, message: string);
 
-  /// Called (potentially multiple times) as the response body is streamed to the client
-  on-stream-response-body: func(resp: response, chunk: option<body-chunk>) -> body-result;
+  metric-increment: func(name: string, delta: u64);
 
-  /// Called just before sending the response to the client
-  on-response: func(resp: response) -> response-result;
+  epoch-secs: func() -> u64;
 }

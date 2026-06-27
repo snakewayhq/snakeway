@@ -4,7 +4,7 @@ use snakeway_core::testing_api::conf::types::{
     ACME_CHALLENGE_HTTP01, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
     IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,
     RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
-    StructuredLoggingDeviceSpec, TlsTerminationSpec,
+    StructuredLoggingDeviceSpec, TlsTerminationSpec, WasmDeviceSpec,
 };
 use snakeway_core::testing_api::conf::{load_config_from_specs, types::RuntimeConfig};
 use std::path::PathBuf;
@@ -17,6 +17,7 @@ pub struct ConfigBuilder {
     pub request_filter_device_spec: Option<RequestFilterDeviceSpec>,
     pub network_policy_device_spec: Option<NetworkPolicyDeviceSpec>,
     pub request_rate_limiting_device_spec: Option<RequestRateLimitingDeviceSpec>,
+    pub wasm_device_specs: Vec<WasmDeviceSpec>,
 }
 
 impl Default for ConfigBuilder {
@@ -32,6 +33,7 @@ impl Default for ConfigBuilder {
             request_filter_device_spec: None,
             network_policy_device_spec: None,
             request_rate_limiting_device_spec: None,
+            wasm_device_specs: vec![],
         }
     }
 }
@@ -103,6 +105,10 @@ impl ConfigBuilder {
             device_specs.push(DeviceSpec::RequestRateLimiting(
                 request_rate_limiting_device_spec,
             ));
+        }
+
+        for wasm_spec in self.wasm_device_specs {
+            device_specs.push(DeviceSpec::Wasm(wasm_spec));
         }
 
         load_config_from_specs(self.server_spec, self.ingress_specs, device_specs).map(|v| v.config)

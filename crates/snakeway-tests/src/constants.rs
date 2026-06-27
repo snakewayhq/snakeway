@@ -123,3 +123,8 @@ pub const HTTP_RESPONSE_BODY: &str = "hello world";
 /// this constant and the `Content-Length` digit accordingly.
 pub const HTTP_UPSTREAM_RESPONSE: &[u8] =
     b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nhello world";
+
+// ---------------------------------------------------------------------------
+// WASM
+// ---------------------------------------------------------------------------
+pub const TEST_DEVICE_PATH: &str = "fixtures/wasm/test_device.wasm";
