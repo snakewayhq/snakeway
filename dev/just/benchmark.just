@@ -119,13 +119,14 @@ profile-wasm-run features="hotpath" duration="60s" vus="200": build-jwt-auth-dev
 
     # RUST_LOG keeps startup diagnostics while silencing the per-request connection-reuse flood
     echo ">>> Starting snakeway (config ./config; logs -> ${log})"
-    RUST_LOG="warn,pingora_core::connectors=off" \
+    RUST_LOG="warn,pingora_core=off" \
       ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
     server_pid=$!
 
     cleanup() {
       if kill -0 "${server_pid}" 2>/dev/null; then
-        kill -INT "${server_pid}" 2>/dev/null || true
+        # Force-kill on abort: pingora can busy-loop on shutdown, so do not wait gracefully here.
+        kill -KILL "${server_pid}" 2>/dev/null || true
         wait "${server_pid}" 2>/dev/null || true
       fi
     }
@@ -154,7 +155,14 @@ profile-wasm-run features="hotpath" duration="60s" vus="200": build-jwt-auth-dev
     k6 run --vus {{ vus }} --duration {{ duration }} dev/k6/jwt-load.js || true
 
     echo ">>> Stopping snakeway (SIGINT) to flush the hotpath report"
-    kill -INT "${server_pid}"
+    kill -INT "${server_pid}" 2>/dev/null || true
+    # Wait up to 20s for a clean exit (report flushes on shutdown), then force-kill so a
+    # pingora shutdown accept-spin cannot hang the recipe forever.
+    for _ in $(seq 1 40); do kill -0 "${server_pid}" 2>/dev/null || break; sleep 0.5; done
+    if kill -0 "${server_pid}" 2>/dev/null; then
+      echo ">>> server still up after 20s (pingora shutdown spin); forcing kill, report may be incomplete" >&2
+      kill -KILL "${server_pid}" 2>/dev/null || true
+    fi
     wait "${server_pid}" 2>/dev/null || true
     trap - EXIT INT TERM
 
@@ -175,7 +183,7 @@ profile-wasm-serve features="hotpath": build-jwt-auth-device
     cargo build --release -p snakeway --features {{ features }}
     @curl -s -o /dev/null --max-time 2 http://snakeway.test:4000/ || { echo "origin http://snakeway.test:4000 unreachable; start the docker compose origin." >&2; exit 1; }
     @echo "snakeway up (--features {{ features }}). Run 'just profile-wasm-load' elsewhere; Ctrl-C here for the report."
-    RUST_LOG="warn,pingora_core::connectors=off" ./target/release/snakeway run --config ./config
+    RUST_LOG="warn,pingora_core=off" ./target/release/snakeway run --config ./config
 
 # k6 JWT load against an already-running server (pairs with profile-wasm-serve).
 profile-wasm-load duration="60s" vus="200" url="http://snakeway.test:8080/api/users/1":
@@ -201,13 +209,14 @@ profile-wasm-baseline duration="60s" vus="200": build-jwt-auth-device
 
     # RUST_LOG keeps startup diagnostics while silencing the per-request connection-reuse
     echo ">>> Starting snakeway (config ./config; logs -> ${log})"
-    RUST_LOG="warn,pingora_core::connectors=off" \
+    RUST_LOG="warn,pingora_core=off" \
       ./target/release/snakeway run --config ./config >"${log}" 2>&1 &
     server_pid=$!
 
     cleanup() {
       if kill -0 "${server_pid}" 2>/dev/null; then
-        kill -INT "${server_pid}" 2>/dev/null || true
+        # Force-kill on abort: pingora can busy-loop on shutdown, so do not wait gracefully here.
+        kill -KILL "${server_pid}" 2>/dev/null || true
         wait "${server_pid}" 2>/dev/null || true
       fi
     }
