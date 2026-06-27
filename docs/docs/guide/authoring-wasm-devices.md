@@ -33,6 +33,7 @@ wasm_devices = [
     fail_policy     = "open"
     timeout_ms      = 5
     body_buffer_max = 0
+    hooks = ["on_request"]
 
     config = {
       api_key = "secret-value"
@@ -44,15 +45,16 @@ wasm_devices = [
 
 ### Fields
 
-| Field             | Type                   | Required | Default | Description                                                                         |
-|-------------------|------------------------|----------|---------|-------------------------------------------------------------------------------------|
-| `name`            | string                 | yes      |         | Unique identifier for this device instance                                          |
-| `enable`          | bool                   | yes      |         | Whether the device is active                                                        |
-| `path`            | string                 | yes      |         | Path to the compiled `.wasm` component                                              |
-| `fail_policy`     | `"open"` or `"closed"` | yes      |         | Behavior on device error (see below)                                                |
-| `timeout_ms`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 -- 60000)                            |
-| `body_buffer_max` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode |
-| `config`          | map of strings         | no       | `{}`    | Key-value pairs accessible to the device via `host.config-get`                      |
+| Field             | Type                   | Required | Default | Description                                                                                                                    |
+|-------------------|------------------------|----------|---------|--------------------------------------------------------------------------------------------------------------------------------|
+| `name`            | string                 | yes      |         | Unique identifier for this device instance                                                                                     |
+| `enable`          | bool                   | yes      |         | Whether the device is active                                                                                                   |
+| `path`            | string                 | yes      |         | Path to the compiled `.wasm` component                                                                                         |
+| `fail_policy`     | `"open"` or `"closed"` | yes      |         | Behavior on device error (see below)                                                                                           |
+| `timeout_ms`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 -- 60000)                                                                       |
+| `body_buffer_max` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode                                            |
+| `config`          | map of strings         | no       | `{}`    | Key-value pairs accessible to the device via `host.config-get`                                                                 |
+| `hooks`           | list of strings        | no       | all     | Lifecycle hooks this device implements. When set, the host skips every hook not listed. See [Hook Selection](#hook-selection). |
 
 ### Fail Policy
 
@@ -69,6 +71,25 @@ once per chunk as the body streams through. The device sees one chunk at a time.
 When `body_buffer_max` is set to a positive value, Snakeway buffers the request body up to
 that limit and calls `on-stream-request-body` once with the complete body when the stream
 ends. If the body exceeds the limit, the fail policy determines the outcome.
+
+### Hook Selection
+
+By default, the host calls all six lifecycle hooks on every request.
+Each call creates a fresh WASM instance, so a device that only implements one hook still pays for five no-op
+instantiations per request.
+
+The optional `hooks` field declares which hooks the device actually implements.
+The host skips any hook not listed, creating no instance for it, which removes that overhead:
+
+```hcl
+hooks = ["on_request"]
+```
+
+Valid values are `on_request`, `on_stream_request_body`, `before_proxy`, `after_proxy`,
+`on_stream_response_body`, and `on_response`.
+
+Omitting `hooks` runs all six (the previous behavior).
+An empty list is rejected; to disable a device set `enable = false`.
 
 ## The WIT Interface
 
@@ -87,7 +108,8 @@ world device {
 ### Policy (exported by the device)
 
 The device must export all six lifecycle hooks. Hooks that have no work to do should return
-`continue` with no patch.
+`continue` with no patch, and may be omitted from the device's `hooks` config so the host
+skips calling them entirely (see [Hook Selection](#hook-selection)).
 
 ```wit
 interface policy {

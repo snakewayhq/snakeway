@@ -11,14 +11,14 @@ WASM devices run on [Wasmtime](https://wasmtime.dev/) using the **component mode
 host-guest contract is defined in WIT (`crates/snakeway-wit/wit/`) at version
 `snakeway:device@0.4.0`.
 
-| Layer | Role |
-|-------|------|
-| `snakeway-wit` | WIT interface definition (types, host, policy) |
-| `wasmtime` | Compilation, instantiation, execution |
-| `wasm_device.rs` | `Device` trait implementation, per-hook dispatch |
-| `engine.rs` | Shared `Engine` with pooling allocator and epoch ticker |
-| `state.rs` | `HostState` implementing the host interface |
-| `lifecycle.rs` | Request/response snapshot building and result application |
+| Layer            | Role                                                      |
+|------------------|-----------------------------------------------------------|
+| `snakeway-wit`   | WIT interface definition (types, host, policy)            |
+| `wasmtime`       | Compilation, instantiation, execution                     |
+| `wasm_device.rs` | `Device` trait implementation, per-hook dispatch          |
+| `engine.rs`      | Shared `Engine` with pooling allocator and epoch ticker   |
+| `state.rs`       | `HostState` implementing the host interface               |
+| `lifecycle.rs`   | Request/response snapshot building and result application |
 
 ## Engine and Pooling
 
@@ -53,7 +53,15 @@ together:
 
 ## Per-Hook Execution
 
-Each lifecycle hook call follows this sequence in `WasmDevice::with_instance`:
+Before any of this, each `Device` hook method checks the device's hook mask
+(`WasmHookMask`, lowered from the `hooks` config allowlist). If the hook is not enabled,
+the method returns `DeviceResult::Continue` immediately, so no `Store` is created and no
+instance is instantiated. This is the cheapest path: a device that declares only
+`on_request` skips the store-setup, instantiate, snapshot, and apply cost for the other
+five hooks. When `hooks` is absent, the mask enables all six (the original behavior).
+
+For an enabled hook, each lifecycle call follows this sequence in
+`WasmDevice::with_instance`:
 
 1. Create a `StoreLimitsBuilder` with memory and table caps.
 2. Build `HostState` with the device's config map, name, and metrics handles.
@@ -101,14 +109,14 @@ Invalid header names or values are logged at warn level and skipped.
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `crates/snakeway-wit/wit/` | WIT interface definition |
-| `crates/snakeway-core/src/execution/device/wasm/engine.rs` | `WasmEngine`, pooling allocator, epoch ticker |
-| `crates/snakeway-core/src/execution/device/wasm/wasm_device.rs` | `WasmDevice` struct and `Device` trait impl |
-| `crates/snakeway-core/src/execution/device/wasm/state.rs` | `HostState` (host interface impl) |
-| `crates/snakeway-core/src/execution/device/wasm/lifecycle.rs` | Snapshot building, result/patch application |
-| `crates/snakeway-core/src/execution/device/wasm/bindings.rs` | `wasmtime::component::bindgen!` invocation |
-| `crates/snakeway-core/src/execution/device/core/registry.rs` | Device loading and engine lifecycle |
-| `crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs` | Config spec (parsing, validation) |
-| `crates/snakeway-conf/src/types/runtime/device/wasm_device_config.rs` | Config runtime type (lowering) |
+| File                                                                      | Role                                          |
+|---------------------------------------------------------------------------|-----------------------------------------------|
+| `crates/snakeway-wit/wit/`                                                | WIT interface definition                      |
+| `crates/snakeway-core/src/execution/device/wasm/engine.rs`                | `WasmEngine`, pooling allocator, epoch ticker |
+| `crates/snakeway-core/src/execution/device/wasm/wasm_device.rs`           | `WasmDevice` struct and `Device` trait impl   |
+| `crates/snakeway-core/src/execution/device/wasm/state.rs`                 | `HostState` (host interface impl)             |
+| `crates/snakeway-core/src/execution/device/wasm/lifecycle.rs`             | Snapshot building, result/patch application   |
+| `crates/snakeway-core/src/execution/device/wasm/bindings.rs`              | `wasmtime::component::bindgen!` invocation    |
+| `crates/snakeway-core/src/execution/device/core/registry.rs`              | Device loading and engine lifecycle           |
+| `crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs` | Config spec (parsing, validation)             |
+| `crates/snakeway-conf/src/types/runtime/device/wasm_device_config.rs`     | Config runtime type (lowering)                |
