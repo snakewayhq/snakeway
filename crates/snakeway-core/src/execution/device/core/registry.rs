@@ -111,15 +111,7 @@ impl DeviceRegistry {
         let wasm_engine = WasmEngine::new()?;
 
         for cfg in wasm_configs {
-            let device = WasmDevice::load(
-                Arc::clone(&wasm_engine.engine),
-                &cfg.path,
-                cfg.name.clone(),
-                cfg.fail_policy.clone(),
-                cfg.timeout_ms,
-                cfg.body_buffer_max,
-                cfg.config.clone(),
-            )?;
+            let device = WasmDevice::load(Arc::clone(&wasm_engine.engine), cfg)?;
             info!("loaded wasm device: {}", device.name());
             self.devices.push(Arc::new(device));
         }

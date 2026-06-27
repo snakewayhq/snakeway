@@ -2,7 +2,7 @@ use crate::types::HclInt;
 use crate::validation::validator::require_existing_file;
 use confval::format::{
     Field, FieldKind, Fields, FromFields, Scalar, ValueKind, parse_bool_field, parse_int_field,
-    parse_string_field, report_missing_field, report_unknown_field,
+    parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -11,6 +11,16 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub const FAIL_POLICIES: [&str; 2] = ["open", "closed"];
+
+/// Lifecycle hooks a WASM device may declare via the `hooks` allowlist.
+pub const HOOK_NAMES: [&str; 6] = [
+    "on_request",
+    "on_stream_request_body",
+    "before_proxy",
+    "after_proxy",
+    "on_stream_response_body",
+    "on_response",
+];
 
 range_constraint!(TIMEOUT_MS, i64, min: 1, max: 60000);
 range_constraint!(BODY_BUFFER_MAX, i64, min: 0, max: 104857600);
@@ -34,6 +44,10 @@ pub struct WasmDeviceSpec {
 
     /// Arbitrary key-value config passed to the guest via host.config-get.
     pub config: HashMap<String, String>,
+
+    /// Lifecycle hooks this device implements.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hooks: Option<Located<Vec<Located<String>>>>,
 }
 
 impl Default for WasmDeviceSpec {
@@ -46,6 +60,7 @@ impl Default for WasmDeviceSpec {
             timeout_ms: Located::detached(5),
             body_buffer_max: Located::detached(0),
             config: HashMap::new(),
+            hooks: None,
         }
     }
 }
@@ -110,6 +125,7 @@ impl FromFields for WasmDeviceSpec {
         let mut timeout_ms = None;
         let mut body_buffer_max = None;
         let mut config = HashMap::new();
+        let mut hooks = None;
 
         for field in fields.iter() {
             match field.name.as_str() {
@@ -126,6 +142,7 @@ impl FromFields for WasmDeviceSpec {
                         config = parsed;
                     }
                 }
+                "hooks" => hooks = parse_string_list_field(field, report),
                 _ => report_unknown_field(field, report),
             }
         }
@@ -151,6 +168,7 @@ impl FromFields for WasmDeviceSpec {
             timeout_ms: timeout_ms.unwrap_or(Located::detached(5)),
             body_buffer_max: body_buffer_max.unwrap_or(Located::detached(0)),
             config,
+            hooks,
         })
     }
 }
@@ -176,6 +194,25 @@ impl Validate for WasmDeviceSpec {
 
         TIMEOUT_MS.check_located(&self.timeout_ms, "timeout_ms", report);
         BODY_BUFFER_MAX.check_located(&self.body_buffer_max, "body_buffer_max", report);
+
+        if let Some(hooks) = &self.hooks {
+            if hooks.value.is_empty() {
+                report
+                    .error("hooks must not be empty")
+                    .at(hooks.span)
+                    .help("omit `hooks` to run all hooks, or set enable = false to disable the device")
+                    .emit();
+            }
+            for hook in &hooks.value {
+                if !HOOK_NAMES.contains(&hook.value.as_str()) {
+                    report
+                        .error(format!("unknown hook: {}", hook.value))
+                        .at(hook.span)
+                        .help(format!("expected one of: {}", HOOK_NAMES.join(", ")))
+                        .emit();
+                }
+            }
+        }
     }
 }
 
@@ -322,6 +359,85 @@ config = { mode = "strict", retries = "3" }
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("timeout_ms"))
+        );
+    }
+
+    // -- Hooks allowlist --
+
+    #[test]
+    fn parse_wasm_device_with_hooks() {
+        // Arrange
+        let input = r#"
+name = "auth"
+enable = true
+path = "./a.wasm"
+fail_policy = "closed"
+hooks = ["on_request", "on_response"]
+"#;
+        let mut sources = SourceMap::new();
+        let mut report = Report::new();
+        let id = sources.add("device.hcl", input);
+
+        // Act
+        let spec = parse_hcl::<WasmDeviceSpec>(&sources, id, &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let spec = spec.unwrap();
+        let hooks = spec.hooks.expect("hooks present");
+        let names: Vec<&str> = hooks.value.iter().map(|h| h.value.as_str()).collect();
+        assert_eq!(names, vec!["on_request", "on_response"]);
+    }
+
+    #[test]
+    fn unknown_hook_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = WasmDeviceSpec {
+            name: Located::detached("test".to_string()),
+            enable: Located::detached(true),
+            path: Located::detached(PathBuf::from("/tmp/test.wasm")),
+            fail_policy: Located::detached("open".to_string()),
+            hooks: Some(Located::detached(vec![Located::detached(
+                "on_bogus".to_string(),
+            )])),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("unknown hook: on_bogus"))
+        );
+    }
+
+    #[test]
+    fn empty_hooks_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = WasmDeviceSpec {
+            name: Located::detached("test".to_string()),
+            enable: Located::detached(true),
+            path: Located::detached(PathBuf::from("/tmp/test.wasm")),
+            fail_policy: Located::detached("open".to_string()),
+            hooks: Some(Located::detached(vec![])),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("hooks must not be empty"))
         );
     }
 }

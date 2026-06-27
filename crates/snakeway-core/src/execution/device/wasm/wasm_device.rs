@@ -15,9 +15,8 @@ use opentelemetry::{
     KeyValue,
     metrics::{Counter, Histogram},
 };
-use snakeway_conf::types::WasmDeviceFailPolicy;
+use snakeway_conf::types::{WasmDeviceConfig, WasmDeviceFailPolicy, WasmHookMask};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use wasmtime::{
     Engine, Store, StoreLimitsBuilder,
@@ -39,6 +38,7 @@ pub(crate) struct WasmDevice {
     fail_policy: WasmDeviceFailPolicy,
     timeout_ms: u64,
     body_buffer_max: u64,
+    hooks: WasmHookMask,
     engine: Arc<Engine>,
     hook_duration: Histogram<f64>,
     failures: Counter<u64>,
@@ -46,16 +46,8 @@ pub(crate) struct WasmDevice {
 }
 
 impl WasmDevice {
-    pub(crate) fn load(
-        engine: Arc<Engine>,
-        path: &PathBuf,
-        device_name: String,
-        fail_policy: WasmDeviceFailPolicy,
-        timeout_ms: u64,
-        body_buffer_max: u64,
-        config: HashMap<String, String>,
-    ) -> Result<Self> {
-        let component = Component::from_file(&engine, path)?;
+    pub(crate) fn load(engine: Arc<Engine>, cfg: &WasmDeviceConfig) -> Result<Self> {
+        let component = Component::from_file(&engine, &cfg.path)?;
 
         let mut linker: Linker<HostState> = Linker::new(&engine);
         DeviceBindings::add_to_linker::<_, wasmtime::component::HasSelf<HostState>>(
@@ -83,11 +75,12 @@ impl WasmDevice {
 
         Ok(Self {
             instance_pre,
-            config: Arc::new(config),
-            device_name: Arc::from(device_name),
-            fail_policy,
-            timeout_ms,
-            body_buffer_max,
+            config: Arc::new(cfg.config.clone()),
+            device_name: Arc::from(cfg.name.clone()),
+            fail_policy: cfg.fail_policy.clone(),
+            timeout_ms: cfg.timeout_ms,
+            body_buffer_max: cfg.body_buffer_max,
+            hooks: cfg.hooks,
             engine,
             hook_duration,
             failures,
@@ -232,6 +225,9 @@ impl Device for WasmDevice {
     }
 
     fn on_request(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        if !self.hooks.on_request {
+            return DeviceResult::Continue;
+        }
         self.with_instance("on_request", |store, instance| {
             let req = build_request_snapshot(ctx);
             let result = hotpath::measure_block!(
@@ -250,6 +246,9 @@ impl Device for WasmDevice {
         maybe_chunk: &mut Option<Bytes>,
         end_of_stream: bool,
     ) -> DeviceResult {
+        if !self.hooks.on_stream_request_body {
+            return DeviceResult::Continue;
+        }
         if self.body_buffer_max > 0 {
             let buffers = ctx.extensions.get_or_insert_default::<WasmBodyBuffers>();
             let buffer = buffers
@@ -318,6 +317,9 @@ impl Device for WasmDevice {
     }
 
     fn before_proxy(&self, ctx: &mut RequestCtx) -> DeviceResult {
+        if !self.hooks.before_proxy {
+            return DeviceResult::Continue;
+        }
         self.with_instance("before_proxy", |store, instance| {
             let req = build_request_snapshot(ctx);
             let result = hotpath::measure_block!(
@@ -331,6 +333,9 @@ impl Device for WasmDevice {
     }
 
     fn after_proxy(&self, ctx: &mut ResponseCtx) -> DeviceResult {
+        if !self.hooks.after_proxy {
+            return DeviceResult::Continue;
+        }
         self.with_instance("after_proxy", |store, instance| {
             let resp = build_response_snapshot(ctx);
             let result = hotpath::measure_block!(
@@ -349,6 +354,9 @@ impl Device for WasmDevice {
         maybe_chunk: &mut Option<Bytes>,
         end_of_stream: bool,
     ) -> DeviceResult {
+        if !self.hooks.on_stream_response_body {
+            return DeviceResult::Continue;
+        }
         let chunk = maybe_chunk.as_ref().map(|bytes| BodyChunk {
             data: bytes.to_vec(),
             end_of_stream,
@@ -369,6 +377,9 @@ impl Device for WasmDevice {
     }
 
     fn on_response(&self, ctx: &mut ResponseCtx) -> DeviceResult {
+        if !self.hooks.on_response {
+            return DeviceResult::Continue;
+        }
         self.with_instance("on_response", |store, instance| {
             let resp = build_response_snapshot(ctx);
             let result = hotpath::measure_block!(
