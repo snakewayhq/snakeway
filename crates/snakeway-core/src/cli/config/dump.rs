@@ -9,24 +9,31 @@ pub(crate) fn dump(
     format: ConfigDumpOutputFormat,
     repr: RepresentationFormat,
 ) -> anyhow::Result<()> {
-    if matches!(repr, RepresentationFormat::Spec) {
-        let (_sources, _report, server, devices, ingresses) = load_spec_files(&path)?;
-        let cfg = (server, devices, ingresses);
-        match format {
-            ConfigDumpOutputFormat::Json => dump_json(&cfg)?,
-            ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg)?,
-            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg)?,
+    match repr {
+        // The spec as written: nested blocks the source omitted stay omitted.
+        RepresentationFormat::Spec => {
+            let (_sources, _report, server, devices, ingresses) = load_spec_files(&path)?;
+            dump_value(&(server, devices, ingresses), format)
         }
-    } else if matches!(repr, RepresentationFormat::Runtime) {
-        let cfg = load_config(&path)?.config;
-        match format {
-            ConfigDumpOutputFormat::Json => dump_json(&cfg)?,
-            ConfigDumpOutputFormat::Yaml => dump_yaml(&cfg)?,
-            ConfigDumpOutputFormat::Hcl => dump_hcl(&cfg)?,
+        // The spec with defaulted nested blocks filled in, so an operator can
+        // see the values the runtime will apply for blocks they did not write.
+        RepresentationFormat::PopulatedSpec => {
+            let (_sources, _report, server, devices, ingresses) = load_spec_files(&path)?;
+            dump_value(&(server.populated(), devices, ingresses), format)
+        }
+        RepresentationFormat::Runtime => {
+            let cfg = load_config(&path)?.config;
+            dump_value(&cfg, format)
         }
     }
+}
 
-    Ok(())
+fn dump_value<T: Serialize>(value: &T, format: ConfigDumpOutputFormat) -> anyhow::Result<()> {
+    match format {
+        ConfigDumpOutputFormat::Json => dump_json(value),
+        ConfigDumpOutputFormat::Yaml => dump_yaml(value),
+        ConfigDumpOutputFormat::Hcl => dump_hcl(value),
+    }
 }
 
 fn dump_json<T: Serialize>(value: &T) -> anyhow::Result<()> {
@@ -49,7 +56,10 @@ fn dump_hcl<T: Serialize>(value: &T) -> anyhow::Result<()> {
 
 #[derive(Clone, Debug, ValueEnum)]
 pub(crate) enum RepresentationFormat {
+    /// The parsed spec exactly as written, omitting blocks the source did not set.
     Spec,
+    /// The parsed spec with defaulted nested blocks filled in.
+    PopulatedSpec,
     Runtime,
 }
 

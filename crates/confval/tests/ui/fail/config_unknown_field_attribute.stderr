@@ -1,4 +1,4 @@
-error: unknown confval attribute; expected `nested` or `lower(...)`
+error: unknown confval attribute; expected `nested`, `default`, or `lower(...)`
   --> tests/ui/fail/config_unknown_field_attribute.rs:11:15
    |
 11 |     #[confval(skip)]

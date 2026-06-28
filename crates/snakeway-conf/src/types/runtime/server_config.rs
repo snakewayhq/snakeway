@@ -37,16 +37,16 @@ pub struct ServerConfig {
     #[confval(lower(from = dns_refresh_interval_seconds, with = narrow::i64_to_u64))]
     pub dns_refresh_interval_seconds: u64,
 
-    #[confval(nested)]
+    #[confval(nested, default)]
     pub shutdown: ShutdownConfig,
 
-    #[confval(nested)]
+    #[confval(nested, default)]
     pub upgrade: UpgradeConfig,
 
-    #[confval(nested)]
+    #[confval(nested, default)]
     pub performance: PerformanceConfig,
 
-    #[confval(nested)]
+    #[confval(nested, default)]
     pub upstream: UpstreamSettingsConfig,
 }
 
@@ -253,10 +253,10 @@ mod tests {
     fn shutdown_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            shutdown: Located::detached(ShutdownSpec {
+            shutdown: Some(Located::detached(ShutdownSpec {
                 drain_seconds: Some(Located::detached(30)),
                 force_timeout_seconds: Some(Located::detached(60)),
-            }),
+            })),
             ..Default::default()
         };
 
@@ -285,10 +285,10 @@ mod tests {
     fn performance_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            performance: Located::detached(PerformanceSpec {
+            performance: Some(Located::detached(PerformanceSpec {
                 work_stealing: Located::detached(false),
                 parallel_accepts_per_listener: Some(Located::detached(4)),
-            }),
+            })),
             ..Default::default()
         };
 
@@ -318,12 +318,12 @@ mod tests {
     fn upstream_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            upstream: Located::detached(UpstreamSettingsSpec {
+            upstream: Some(Located::detached(UpstreamSettingsSpec {
                 connection_pool_size: Some(Located::detached(256)),
                 connection_timeout_seconds: Some(Located::detached(5)),
                 read_timeout_seconds: Some(Located::detached(120)),
                 source_addresses: None,
-            }),
+            })),
             ..Default::default()
         };
 

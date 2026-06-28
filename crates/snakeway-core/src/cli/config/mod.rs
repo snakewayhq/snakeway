@@ -37,7 +37,8 @@ pub enum ConfigCmd {
         #[arg(default_value = "config", env = "SNAKEWAY_CONFIG")]
         path: PathBuf,
 
-        /// Specify the output representation: spec -> config files and runtime -> internal state
+        /// Output representation: spec -> config as written, populated-spec ->
+        /// spec with defaulted blocks filled in, runtime -> internal state
         #[arg(short, long, value_enum, default_value = "spec")]
         repr: RepresentationFormat,
 
