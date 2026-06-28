@@ -8,15 +8,16 @@ debug-file-descriptors:
 dump-config:
     cargo run -q --all-features -- config dump|jq
 
-# Diagnose upstream connection reuse. Runs a low-volume load with pingora connector debug
-# logging and reports, from the logs, how often a pooled connection is reused vs the
-# try_unwrap race fires ("failed to acquire reusable stream") vs a cold miss (pool empty,
-# "No reusable connection found"). Also probes whether the origin honors keepalive and
-# samples the live upstream connection count. Run at a few concurrency levels (1, 16, 128)
-# to see whether the race scales with concurrency. Keep `requests` modest: connector debug
-# logging is verbose. Prerequisites: docker origin up, snakeway.test -> 127.0.0.1, hey.
+# Report how how often a pooled connection is reused.
 diagnose-upstream-reuse requests="5000" concurrency="16": build-jwt-auth-device
     #!/usr/bin/env bash
+    # Diagnose upstream connection reuse. Runs a low-volume load with pingora connector debug
+    # logging and reports, from the logs, how often a pooled connection is reused vs the
+    # try_unwrap race fires ("failed to acquire reusable stream") vs a cold miss (pool empty,
+    # "No reusable connection found"). Also probes whether the origin honors keepalive and
+    # samples the live upstream connection count. Run at a few concurrency levels (1, 16, 128)
+    # to see whether the race scales with concurrency. Keep `requests` modest: connector debug
+    # logging is verbose. Prerequisites: docker origin up, snakeway.test -> 127.0.0.1, hey.
     set -euo pipefail
     mkdir -p target/profiling
     log="target/profiling/reuse-c{{ concurrency }}.log"
