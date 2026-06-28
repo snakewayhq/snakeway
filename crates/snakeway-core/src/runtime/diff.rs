@@ -92,6 +92,8 @@ mod tests {
                 work_stealing: true,
                 upstream_connection_pool_size: None,
                 parallel_accepts_per_listener: None,
+                upstream_connection_timeout: None,
+                upstream_read_timeout: None,
             },
             upstream_source_addresses: None,
         }
