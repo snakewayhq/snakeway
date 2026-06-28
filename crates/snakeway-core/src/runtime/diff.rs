@@ -66,7 +66,7 @@ mod tests {
     use super::*;
     use snakeway_conf::types::{
         ListenerConfig, PerformanceConfig, RuntimeConfig, ServerConfig, ShutdownConfig,
-        UpgradeConfig,
+        UpgradeConfig, UpstreamSettingsConfig,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -90,10 +90,14 @@ mod tests {
             },
             performance: PerformanceConfig {
                 work_stealing: true,
-                upstream_connection_pool_size: None,
                 parallel_accepts_per_listener: None,
             },
-            upstream_source_addresses: None,
+            upstream: UpstreamSettingsConfig {
+                connection_pool_size: None,
+                connection_timeout: None,
+                read_timeout: None,
+                source_addresses: None,
+            },
         }
     }
 

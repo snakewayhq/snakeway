@@ -1,11 +1,13 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
-    ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSourceAddressesSpec,
+    AcmeServerSpec, CertStoreSpec, HclInt, ObservabilitySpec, OtelSpec, PerformanceSpec,
+    ServerSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
+    UpstreamSourceAddressesSpec,
 };
 use confval::prelude::narrow;
 use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = ServerSpec, validate)]
@@ -44,9 +46,8 @@ pub struct ServerConfig {
     #[confval(lower(from = performance, with = performance_or_default))]
     pub performance: PerformanceConfig,
 
-    /// Local IP addresses used as the source for outbound upstream connections.
-    #[confval(nested)]
-    pub upstream_source_addresses: Option<UpstreamSourceAddressesConfig>,
+    #[confval(lower(from = upstream, with = upstream_or_default))]
+    pub upstream: UpstreamSettingsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
@@ -75,12 +76,26 @@ pub struct UpgradeConfig {
 pub struct PerformanceConfig {
     /// Enable work stealing between threads.
     pub work_stealing: bool,
-    /// Number of idle upstream connections kept warm per worker thread.
-    #[confval(lower(from = upstream_connection_pool_size, with = narrow::opt_i64_to_usize))]
-    pub upstream_connection_pool_size: Option<usize>,
     /// Number of parallel accept tasks per listener.
     #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
     pub parallel_accepts_per_listener: Option<usize>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[confval(lower_from = UpstreamSettingsSpec)]
+pub struct UpstreamSettingsConfig {
+    /// Idle upstream keepalive connections kept per worker thread.
+    #[confval(lower(from = connection_pool_size, with = narrow::opt_i64_to_usize))]
+    pub connection_pool_size: Option<usize>,
+    /// Connect timeout (TCP plus TLS). `None` disables it.
+    #[confval(lower(from = connection_timeout_seconds, with = opt_seconds_to_duration))]
+    pub connection_timeout: Option<Duration>,
+    /// Per-read (idle) timeout. `None` disables it.
+    #[confval(lower(from = read_timeout_seconds, with = opt_seconds_to_duration))]
+    pub read_timeout: Option<Duration>,
+    /// Local source addresses for outbound upstream connections.
+    #[confval(nested)]
+    pub source_addresses: Option<UpstreamSourceAddressesConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
@@ -188,6 +203,28 @@ fn performance_or_default(
     }
 }
 
+fn upstream_or_default(
+    value: &Option<Located<UpstreamSettingsSpec>>,
+    report: &mut Report,
+) -> Option<UpstreamSettingsConfig> {
+    match value {
+        Some(spec) => UpstreamSettingsConfig::lower(&spec.value, report),
+        None => UpstreamSettingsConfig::lower(&UpstreamSettingsSpec::default(), report),
+    }
+}
+
+/// Lowers an optional timeout-in-seconds spec field to an optional `Duration`. An omitted
+/// value (`None`) disables the timeout; a present value is validated to be >= 1 in the spec.
+fn opt_seconds_to_duration(
+    value: &Option<Located<HclInt>>,
+    report: &mut Report,
+) -> Option<Option<Duration>> {
+    match value {
+        None => Some(None),
+        Some(seconds) => narrow::i64_to_u64(seconds, report).map(|s| Some(Duration::from_secs(s))),
+    }
+}
+
 impl Lower<CertStoreSpec> for CertStoreConfig {
     fn lower(spec: &CertStoreSpec, _report: &mut Report) -> Option<Self> {
         Some(match spec {
@@ -232,7 +269,7 @@ mod tests {
         assert!(config.shutdown.force_timeout_seconds.is_none());
         assert!(config.upgrade.sock.is_none());
         assert!(config.upgrade.max_retries.is_none());
-        assert!(config.performance.upstream_connection_pool_size.is_none());
+        assert!(config.upstream.connection_pool_size.is_none());
         assert!(config.performance.parallel_accepts_per_listener.is_none());
     }
 
@@ -293,7 +330,6 @@ mod tests {
 
         // Assert
         assert!(config.performance.work_stealing);
-        assert!(config.performance.upstream_connection_pool_size.is_none());
         assert!(config.performance.parallel_accepts_per_listener.is_none());
     }
 
@@ -303,7 +339,6 @@ mod tests {
         let spec = ServerSpec {
             performance: Some(Located::detached(PerformanceSpec {
                 work_stealing: Located::detached(false),
-                upstream_connection_pool_size: Some(Located::detached(256)),
                 parallel_accepts_per_listener: Some(Located::detached(4)),
             })),
             ..Default::default()
@@ -314,8 +349,46 @@ mod tests {
 
         // Assert
         assert!(!config.performance.work_stealing);
-        assert_eq!(config.performance.upstream_connection_pool_size, Some(256));
         assert_eq!(config.performance.parallel_accepts_per_listener, Some(4));
+    }
+
+    #[test]
+    fn upstream_defaults_when_absent() {
+        // Arrange
+        let spec = ServerSpec::default();
+
+        // Act
+        let config = lower_server(&spec);
+
+        // Assert: omitted = disabled.
+        assert!(config.upstream.connection_pool_size.is_none());
+        assert!(config.upstream.connection_timeout.is_none());
+        assert!(config.upstream.read_timeout.is_none());
+    }
+
+    #[test]
+    fn upstream_from_explicit_spec() {
+        // Arrange
+        let spec = ServerSpec {
+            upstream: Some(Located::detached(UpstreamSettingsSpec {
+                connection_pool_size: Some(Located::detached(256)),
+                connection_timeout_seconds: Some(Located::detached(5)),
+                read_timeout_seconds: Some(Located::detached(120)),
+                source_addresses: None,
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        let config = lower_server(&spec);
+
+        // Assert
+        assert_eq!(config.upstream.connection_pool_size, Some(256));
+        assert_eq!(
+            config.upstream.connection_timeout,
+            Some(Duration::from_secs(5))
+        );
+        assert_eq!(config.upstream.read_timeout, Some(Duration::from_secs(120)));
     }
 
     #[test]

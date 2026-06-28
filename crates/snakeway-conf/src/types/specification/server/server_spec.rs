@@ -13,6 +13,7 @@ range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, i64, min: 1, max: 300, units: 
 range_constraint!(UPGRADE_MAX_RETRIES, i64, min: 1, max: 60);
 range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, i64, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, i64, min: 1, max: 64);
+range_constraint!(UPSTREAM_TIMEOUT_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
@@ -53,10 +54,9 @@ pub struct ServerSpec {
     #[confval(nested)]
     pub performance: Option<Located<PerformanceSpec>>,
 
-    /// Local IP addresses used as the source for outbound upstream connections.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
-    pub upstream_source_addresses: Option<Located<UpstreamSourceAddressesSpec>>,
+    pub upstream: Option<Located<UpstreamSettingsSpec>>,
 }
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -86,13 +86,30 @@ pub struct PerformanceSpec {
     #[confval(default = true)]
     pub work_stealing: Located<bool>,
 
-    /// Number of idle upstream connections kept warm per worker thread.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub upstream_connection_pool_size: Option<Located<HclInt>>,
-
     /// Number of parallel accept tasks per listener.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parallel_accepts_per_listener: Option<Located<HclInt>>,
+}
+
+#[derive(Debug, Serialize, Default, confval::Spec)]
+pub struct UpstreamSettingsSpec {
+    /// Idle upstream connections kept warm per worker thread.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connection_pool_size: Option<Located<HclInt>>,
+
+    /// Connect timeout (seconds) for TCP plus TLS. Omit to disable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connection_timeout_seconds: Option<Located<HclInt>>,
+
+    /// Per-read (idle) timeout (seconds) for upstream responses. Omit to disable.
+    /// Not applied to websocket upgrades.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub read_timeout_seconds: Option<Located<HclInt>>,
+
+    /// Local source addresses for outbound upstream connections.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(nested)]
+    pub source_addresses: Option<Located<UpstreamSourceAddressesSpec>>,
 }
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
@@ -116,7 +133,7 @@ impl Default for ServerSpec {
             shutdown: None,
             upgrade: None,
             performance: None,
-            upstream_source_addresses: None,
+            upstream: None,
         }
     }
 }
@@ -134,7 +151,6 @@ impl Default for PerformanceSpec {
     fn default() -> Self {
         Self {
             work_stealing: Located::detached(true),
-            upstream_connection_pool_size: None,
             parallel_accepts_per_listener: None,
         }
     }
@@ -231,29 +247,44 @@ impl Validate for ServerSpec {
             UPGRADE_MAX_RETRIES.check_located(retries, "max_retries", report);
         }
 
-        if let Some(performance) = &self.performance {
-            if let Some(pool_size) = &performance.value.upstream_connection_pool_size {
+        if let Some(performance) = &self.performance
+            && let Some(accepts) = &performance.value.parallel_accepts_per_listener
+        {
+            PARALLEL_ACCEPTS_PER_LISTENER.check_located(
+                accepts,
+                "parallel_accepts_per_listener",
+                report,
+            );
+        }
+
+        if let Some(upstream) = &self.upstream {
+            if let Some(pool_size) = &upstream.value.connection_pool_size {
                 UPSTREAM_CONNECTION_POOL_SIZE.check_located(
                     pool_size,
-                    "upstream_connection_pool_size",
+                    "connection_pool_size",
                     report,
                 );
             }
-            if let Some(accepts) = &performance.value.parallel_accepts_per_listener {
-                PARALLEL_ACCEPTS_PER_LISTENER.check_located(
-                    accepts,
-                    "parallel_accepts_per_listener",
+            if let Some(timeout) = &upstream.value.connection_timeout_seconds {
+                UPSTREAM_TIMEOUT_SECONDS.check_located(
+                    timeout,
+                    "connection_timeout_seconds",
                     report,
                 );
+            }
+            if let Some(timeout) = &upstream.value.read_timeout_seconds {
+                UPSTREAM_TIMEOUT_SECONDS.check_located(timeout, "read_timeout_seconds", report);
             }
         }
 
-        if let Some(source_addrs) = &self.upstream_source_addresses {
+        if let Some(upstream) = &self.upstream
+            && let Some(source_addrs) = &upstream.value.source_addresses
+        {
             for addr in &source_addrs.value.ipv4 {
                 if addr.value.parse::<Ipv4Addr>().is_err() {
                     report
                         .error(format!(
-                            "invalid upstream_source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
+                            "invalid upstream.source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
                             addr.value
                         ))
                         .at(addr.span)
@@ -264,7 +295,7 @@ impl Validate for ServerSpec {
                 if addr.value.parse::<Ipv6Addr>().is_err() {
                     report
                         .error(format!(
-                            "invalid upstream_source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
+                            "invalid upstream.source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
                             addr.value
                         ))
                         .at(addr.span)
@@ -326,11 +357,14 @@ upgrade {
 
 performance {
   work_stealing = false
-  upstream_connection_pool_size = 128
 }
 
-upstream_source_addresses {
-  ipv4 = ["10.0.0.1"]
+upstream {
+  connection_pool_size = 128
+
+  source_addresses {
+    ipv4 = ["10.0.0.1"]
+  }
 }
 "#;
 
@@ -355,7 +389,12 @@ upstream_source_addresses {
         );
         let performance = spec.performance.as_ref().unwrap();
         assert!(!performance.value.work_stealing.value);
-        let sources = spec.upstream_source_addresses.as_ref().unwrap();
+        let upstream = spec.upstream.as_ref().unwrap();
+        assert_eq!(
+            upstream.value.connection_pool_size.as_ref().unwrap().value,
+            128
+        );
+        let sources = upstream.value.source_addresses.as_ref().unwrap();
         assert_eq!(sources.value.ipv4[0].value, "10.0.0.1");
     }
 
@@ -508,6 +547,54 @@ observability {
             report.issues()[0]
                 .message
                 .contains("invalid config version: 2")
+        );
+    }
+
+    #[test]
+    fn validate_upstream_timeout_out_of_range() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            upstream: Some(Located::detached(UpstreamSettingsSpec {
+                read_timeout_seconds: Some(Located::detached(99_999)),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("read_timeout_seconds"))
+        );
+    }
+
+    #[test]
+    fn validate_upstream_timeout_zero_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            upstream: Some(Located::detached(UpstreamSettingsSpec {
+                connection_timeout_seconds: Some(Located::detached(0)),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("connection_timeout_seconds"))
         );
     }
 
@@ -732,9 +819,12 @@ observability {
         // Arrange
         let mut report = Report::new();
         let server = ServerSpec {
-            upstream_source_addresses: Some(Located::detached(UpstreamSourceAddressesSpec {
-                ipv4: vec![Located::detached("not an ip".to_string())],
-                ipv6: vec![Located::detached("also wrong".to_string())],
+            upstream: Some(Located::detached(UpstreamSettingsSpec {
+                source_addresses: Some(Located::detached(UpstreamSourceAddressesSpec {
+                    ipv4: vec![Located::detached("not an ip".to_string())],
+                    ipv6: vec![Located::detached("also wrong".to_string())],
+                })),
+                ..Default::default()
             })),
             ..Default::default()
         };
