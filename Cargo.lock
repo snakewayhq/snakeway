@@ -660,7 +660,7 @@ dependencies = [
 
 [[package]]
 name = "confval"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "confval-derive",
  "hcl-edit",
@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "confval-derive"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2",
  "quote",
