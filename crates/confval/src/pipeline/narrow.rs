@@ -51,6 +51,15 @@ narrow_fns!(i64_to_u32, opt_i64_to_u32, u32);
 narrow_fns!(i64_to_u64, opt_i64_to_u64, u64);
 narrow_fns!(i64_to_usize, opt_i64_to_usize, usize);
 
+/// Widen a located `i64` to `f64`. This is infallible (the `report` argument is
+/// unused), but it lives here so a `#[confval(lower(with = ...))]` attribute,
+/// which cannot hold a bare `as` cast, has a function to name. Values above
+/// 2^53 lose integer precision, which is harmless for the ratios and rates this
+/// is used for.
+pub fn i64_to_f64(value: &Located<i64>, _report: &mut Report) -> Option<f64> {
+    Some(value.value as f64)
+}
+
 /// Convert a located `i64` count of seconds to a `Duration`, reporting at the
 /// value's span if it is negative (out of range for `u64`). This routes the
 /// conversion through the same checked narrow as the integer helpers, so a
@@ -197,5 +206,14 @@ mod tests {
 
         assert_eq!(opt_i64_secs_to_duration(&value, &mut report), None);
         assert!(report.has_errors());
+    }
+
+    #[test]
+    fn i64_widens_to_f64() {
+        let mut report = Report::new();
+        let value = Located::detached(-42_i64);
+
+        assert_eq!(i64_to_f64(&value, &mut report), Some(-42.0));
+        assert!(!report.has_errors());
     }
 }

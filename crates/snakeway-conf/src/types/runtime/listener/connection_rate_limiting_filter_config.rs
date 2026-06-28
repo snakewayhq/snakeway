@@ -1,25 +1,21 @@
 use crate::types::ConnectionRateLimitingFilterSpec;
-use confval::prelude::{Located, Report, narrow};
+use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Debug, Deserialize, Default, Serialize, Clone, PartialEq, confval::Config)]
 #[confval(lower_from = ConnectionRateLimitingFilterSpec)]
 pub struct ConnectionRateLimitingFilterConfig {
-    #[confval(lower(from = max_connections_per_second, with = i64_to_f64))]
+    #[confval(lower(from = max_connections_per_second, with = narrow::i64_to_f64))]
     pub max_connections_per_second: f64,
     #[confval(lower(from = window_seconds, with = narrow::i64_secs_to_duration))]
     pub reaction_interval: Duration,
 }
 
-fn i64_to_f64(value: &Located<i64>, _report: &mut Report) -> Option<f64> {
-    Some(value.value as f64)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::prelude::Lower;
+    use confval::prelude::{Located, Lower, Report};
 
     #[test]
     fn lower_converts_duration() {
