@@ -20,7 +20,7 @@ where
         Some(Self {
             enable: spec.enable.value,
             reaction_interval: narrow::i64_secs_to_duration(&spec.window_seconds, report)?,
-            max_requests_per_second: spec.max_requests_per_second.value as f64,
+            max_requests_per_second: narrow::i64_to_f64(&spec.max_requests_per_second, report)?,
             paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         })
     }
