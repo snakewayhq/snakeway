@@ -8,14 +8,14 @@ The `server` block in `snakeway.hcl` controls process-level settings.
 
 ```hcl
 server {
-  version  = 1                            # Config format version (always 1 for now)
+  version = 1                            # Config format version (always 1 for now)
   pid_file = "/var/run/snakeway.pid"      # Optional; enables signal-based reload
-  threads  = 8                            # Worker threads for the proxy runtime
-  ca_file  = "/path/to/certs/ca.pem"     # Global CA for verifying upstream TLS
+  threads = 8                            # Worker threads for the proxy runtime
+  ca_file = "/path/to/certs/ca.pem"     # Global CA for verifying upstream TLS
   dns_refresh_interval_seconds = 30       # How often to re-resolve upstream hostnames
 
   shutdown {
-    drain_seconds         = 10            # Time for active connections to finish
+    drain_seconds = 10            # Time for active connections to finish
     force_timeout_seconds = 30            # Hard ceiling on total shutdown time
   }
 
@@ -25,14 +25,14 @@ server {
   }
 
   performance {
-    work_stealing                 = true  # Allow work stealing between threads
+    work_stealing = true  # Allow work stealing between threads
     parallel_accepts_per_listener = 1     # Parallel accept tasks per listener
   }
 
   upstream {
-    connection_pool_size       = 128      # Idle upstream connections per worker
-    connection_timeout_seconds = 10       # Connect timeout (TCP + TLS); omit to disable
-    read_timeout_seconds       = 60       # Per-read idle timeout; omit to disable
+    connection_pool_size = 128      # Idle upstream connections per worker
+    connection_timeout_seconds = 10       # Connect timeout (TCP/TLS) - omit to disable
+    read_timeout_seconds = 60       # Per-read idle timeout; omit to disable
 
     source_addresses {
       ipv4 = ["10.0.1.5"]
