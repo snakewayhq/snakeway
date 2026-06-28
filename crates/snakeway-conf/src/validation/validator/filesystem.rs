@@ -81,41 +81,10 @@ pub(crate) fn validate_geoip_db_file(geoip_db: &Located<PathBuf>, report: &mut R
 }
 
 pub(crate) fn validate_ua_parser_regexes_file(located: &Located<PathBuf>, report: &mut Report) {
+    if !require_existing_file(located, "ua_parser_regexes", report) {
+        return;
+    }
     let path = located.value.as_path();
-    if path.as_os_str().is_empty() {
-        report
-            .error(format!(
-                "ua_parser_regexes path is empty: {}",
-                path.display()
-            ))
-            .at(located.span)
-            .emit();
-        return;
-    }
-    if !path.exists() {
-        report
-            .error(format!(
-                "ua_parser_regexes path does not exist: {}",
-                path.display()
-            ))
-            .at(located.span)
-            .help(
-                "Provide a valid path to a ua-parser regexes.yaml file, or remove the setting \
-                 to use the bundled default.",
-            )
-            .emit();
-        return;
-    }
-    if !path.is_file() {
-        report
-            .error(format!(
-                "ua_parser_regexes path is not a file: {}",
-                path.display()
-            ))
-            .at(located.span)
-            .emit();
-        return;
-    }
     if let Ok(contents) = std::fs::read_to_string(path)
         && !contents.contains("user_agent_parsers")
     {
