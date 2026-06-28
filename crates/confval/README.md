@@ -8,3 +8,7 @@ after reusable patterns emerged during development.
 The [basic example](./examples/basic.rs) demonstrates how this crate is meant to be used.
 
 See the [confval documentation](https://snakeway.dev/docs/internals/confval) for the full API overview.
+
+## License
+
+Apache-2.0
