@@ -1,4 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate};
 use serde::Serialize;
 
 pub const LOG_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
@@ -63,33 +63,23 @@ impl Default for StructuredLoggingDeviceSpec {
     }
 }
 
-fn check_keyword(value: &Located<String>, name: &str, allowed: &[&str], report: &mut Report) {
-    if !allowed.contains(&value.value.as_str()) {
-        report
-            .error(format!("unknown {name}: {}", value.value))
-            .at(value.span)
-            .help(format!("expected one of: {}", allowed.join(", ")))
-            .emit();
-    }
-}
-
 impl Validate for StructuredLoggingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        check_keyword(&self.level, "level", &LOG_LEVELS, report);
+        KeywordSet::new(&LOG_LEVELS).check_located(&self.level, "level", report);
 
         for field in &self.identity_fields {
-            check_keyword(field, "identity field", &IDENTITY_FIELDS, report);
+            KeywordSet::new(&IDENTITY_FIELDS).check_located(field, "identity field", report);
         }
 
         if let Some(events) = &self.events {
             for event in &events.value {
-                check_keyword(event, "event", &LOG_EVENTS, report);
+                KeywordSet::new(&LOG_EVENTS).check_located(event, "event", report);
             }
         }
 
         if let Some(phases) = &self.phases {
             for phase in &phases.value {
-                check_keyword(phase, "phase", &LOG_PHASES, report);
+                KeywordSet::new(&LOG_PHASES).check_located(phase, "phase", report);
             }
         }
     }

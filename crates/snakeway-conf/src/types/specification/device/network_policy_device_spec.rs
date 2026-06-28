@@ -1,5 +1,5 @@
 use crate::validation::validator::validate_device_paths;
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate};
 use ipnet::IpNet;
 use serde::Serialize;
 
@@ -44,19 +44,11 @@ impl Validate for NetworkPolicyDeviceSpec {
             }
         }
 
-        if !ON_INVALID_FORWARDED.contains(&self.forwarding.value.on_invalid.value.as_str()) {
-            report
-                .error(format!(
-                    "unknown on_invalid: {}",
-                    self.forwarding.value.on_invalid.value
-                ))
-                .at(self.forwarding.value.on_invalid.span)
-                .help(format!(
-                    "expected one of: {}",
-                    ON_INVALID_FORWARDED.join(", ")
-                ))
-                .emit();
-        }
+        KeywordSet::new(&ON_INVALID_FORWARDED).check_located(
+            &self.forwarding.value.on_invalid,
+            "on_invalid",
+            report,
+        );
 
         validate_device_paths(&self.paths, report);
     }
