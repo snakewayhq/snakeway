@@ -9,18 +9,25 @@
 //! invalid config to show the diagnostics, this one feeds a valid config to
 //! show the lowered output.
 //!
+//! The `limits` block is omitted here, so the output shows the config-side
+//! `#[confval(nested, default)]` materializing `LimitsSpec::default()` at
+//! runtime while the spec stays source-faithful.
+//!
 //! Run with: cargo run -p confval --example toml --features derive,color,toml
 
 use confval::{
-    RangeConstraint,
+    KeywordSet, RangeConstraint,
     diagnostic::Report,
-    pipeline::Lower,
+    pipeline::{Lower, narrow},
     range_constraint,
     source::{Located, SourceMap},
 };
 
 range_constraint!(PORT, i64, min: 1, max: 65535);
 range_constraint!(WORKERS, i64, min: 1, max: 512);
+range_constraint!(MAX_BODY_MB, i64, min: 1, max: 1024);
+
+const LIMIT_MODES: [&str; 3] = ["enforce", "log", "off"];
 
 #[derive(confval::Spec)]
 struct ServerSpec {
@@ -28,11 +35,38 @@ struct ServerSpec {
     port: Located<i64>,
     #[confval(default = 4)]
     workers: Located<i64>,
+    // Optional in the source: when the block is omitted, the spec keeps it
+    // `None`, so a spec dump stays source-faithful. The config side fills the
+    // default at lowering time.
+    #[confval(nested)]
+    limits: Option<Located<LimitsSpec>>,
+}
+
+#[derive(confval::Spec)]
+struct LimitsSpec {
+    #[confval(default = 16)]
+    max_body_mb: Located<i64>,
+    #[confval(default = "enforce".to_string())]
+    mode: Located<String>,
+}
+
+impl Default for LimitsSpec {
+    fn default() -> Self {
+        Self {
+            max_body_mb: Located::detached(16),
+            mode: Located::detached("enforce".to_string()),
+        }
+    }
 }
 
 fn validate_server(spec: &ServerSpec, report: &mut Report) {
     PORT.check_located(&spec.port, "port", report);
     WORKERS.check_located(&spec.workers, "workers", report);
+
+    if let Some(limits) = &spec.limits {
+        MAX_BODY_MB.check_located(&limits.value.max_body_mb, "max_body_mb", report);
+        KeywordSet::new(&LIMIT_MODES).check_located(&limits.value.mode, "mode", report);
+    }
 
     if spec.hostname.value.is_empty() {
         report
@@ -47,18 +81,27 @@ fn validate_server(spec: &ServerSpec, report: &mut Report) {
 #[confval(lower_from = ServerSpec)]
 struct ServerConfig {
     hostname: String,
-    #[confval(lower(from = port, with = port_to_u16))]
+    #[confval(lower(from = port, with = narrow::i64_to_u16))]
     port: u16,
     #[confval(lower(from = workers, with = workers_to_usize))]
     workers: usize,
+    // The spec field is `Option<Located<LimitsSpec>>`; with `default` an absent
+    // block lowers `LimitsSpec::default()` instead of producing a missing-field
+    // error, and the runtime field stays non-optional.
+    #[confval(nested, default)]
+    limits: LimitsConfig,
 }
 
-fn port_to_u16(value: &Located<i64>, _report: &mut Report) -> Option<u16> {
-    // Safe: the range was validated and lowering only runs on a clean report.
-    Some(value.value as u16)
+#[derive(confval::Config)]
+#[confval(lower_from = LimitsSpec)]
+struct LimitsConfig {
+    #[confval(lower(from = max_body_mb, with = narrow::i64_to_u16))]
+    max_body_mb: u16,
+    mode: String,
 }
 
 fn workers_to_usize(value: &Located<i64>, _report: &mut Report) -> Option<usize> {
+    // Safe: the range was validated and lowering only runs on a clean report.
     Some(value.value as usize)
 }
 
@@ -90,5 +133,9 @@ workers = 8
     println!(
         "listening on {}:{} with {} workers",
         config.hostname, config.port, config.workers
+    );
+    println!(
+        "limits: max_body_mb={} mode={}",
+        config.limits.max_body_mb, config.limits.mode
     );
 }
