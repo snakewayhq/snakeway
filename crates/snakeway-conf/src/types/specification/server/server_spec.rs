@@ -13,7 +13,6 @@ range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, i64, min: 1, max: 300, units: 
 range_constraint!(UPGRADE_MAX_RETRIES, i64, min: 1, max: 60);
 range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, i64, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, i64, min: 1, max: 64);
-/// 0 disables the timeout (unbounded). The upper bound is a sanity cap.
 range_constraint!(UPSTREAM_TIMEOUT_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -96,14 +95,13 @@ pub struct PerformanceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parallel_accepts_per_listener: Option<Located<HclInt>>,
 
-    /// Upstream TCP (and TLS) connect timeout in seconds.
+    /// The maximum time (seconds) allowed to establish the TCP (and TLS) handshake.
     /// Omitting this value disables the timeout.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upstream_connect_timeout_seconds: Option<Located<HclInt>>,
 
-    /// Upstream per-read (idle) timeout in seconds.
+    /// The maximum time (seconds) allowed between bytes when reading the response body.
     /// Omitting this value disables the timeout.
-    /// Bounds a stalled origin without breaking slow-but-progressing or streaming responses.
     /// Not applied to websocket upgrades.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upstream_read_timeout_seconds: Option<Located<HclInt>>,
@@ -563,6 +561,30 @@ observability {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("upstream_read_timeout_seconds"))
+        );
+    }
+
+    #[test]
+    fn validate_upstream_timeout_zero_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            performance: Some(Located::detached(PerformanceSpec {
+                upstream_connect_timeout_seconds: Some(Located::detached(0)),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("upstream_connect_timeout_seconds"))
         );
     }
 

@@ -1,11 +1,12 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
-    ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSourceAddressesSpec,
+    AcmeServerSpec, CertStoreSpec, HclInt, ObservabilitySpec, OtelSpec, PerformanceSpec,
+    ServerSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSourceAddressesSpec,
 };
 use confval::prelude::narrow;
 use confval::prelude::{Located, Lower, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = ServerSpec, validate)]
@@ -81,12 +82,12 @@ pub struct PerformanceConfig {
     /// Number of parallel accept tasks per listener.
     #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
     pub parallel_accepts_per_listener: Option<usize>,
-    /// Upstream connect timeout in seconds (0 = disabled).
-    #[confval(lower(from = upstream_connect_timeout_seconds, with = narrow::i64_to_u64))]
-    pub upstream_connect_timeout_seconds: Option<u64>,
-    /// Upstream per-read (idle) timeout in seconds (0 = disabled).
-    #[confval(lower(from = upstream_read_timeout_seconds, with = narrow::i64_to_u64))]
-    pub upstream_read_timeout_seconds: Option<u64>,
+    /// Upstream connect timeout. `None` (config key omitted) disables it.
+    #[confval(lower(from = upstream_connect_timeout_seconds, with = opt_seconds_to_duration))]
+    pub upstream_connect_timeout: Option<Duration>,
+    /// Upstream per-read (idle) timeout. `None` (config key omitted) disables it.
+    #[confval(lower(from = upstream_read_timeout_seconds, with = opt_seconds_to_duration))]
+    pub upstream_read_timeout: Option<Duration>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
@@ -191,6 +192,18 @@ fn performance_or_default(
     match value {
         Some(spec) => PerformanceConfig::lower(&spec.value, report),
         None => PerformanceConfig::lower(&PerformanceSpec::default(), report),
+    }
+}
+
+/// Lowers an optional timeout-in-seconds spec field to an optional `Duration`. An omitted
+/// value (`None`) disables the timeout; a present value is validated to be >= 1 in the spec.
+fn opt_seconds_to_duration(
+    value: &Option<Located<HclInt>>,
+    report: &mut Report,
+) -> Option<Option<Duration>> {
+    match value {
+        None => Some(None),
+        Some(seconds) => narrow::i64_to_u64(seconds, report).map(|s| Some(Duration::from_secs(s))),
     }
 }
 
@@ -301,11 +314,9 @@ mod tests {
         assert!(config.performance.work_stealing);
         assert!(config.performance.upstream_connection_pool_size.is_none());
         assert!(config.performance.parallel_accepts_per_listener.is_none());
-        assert_eq!(
-            config.performance.upstream_connect_timeout_seconds,
-            Some(10)
-        );
-        assert_eq!(config.performance.upstream_read_timeout_seconds, Some(60));
+        // Omitted = disabled.
+        assert!(config.performance.upstream_connect_timeout.is_none());
+        assert!(config.performance.upstream_read_timeout.is_none());
     }
 
     #[test]
@@ -329,8 +340,14 @@ mod tests {
         assert!(!config.performance.work_stealing);
         assert_eq!(config.performance.upstream_connection_pool_size, Some(256));
         assert_eq!(config.performance.parallel_accepts_per_listener, Some(4));
-        assert_eq!(config.performance.upstream_connect_timeout_seconds, Some(5));
-        assert_eq!(config.performance.upstream_read_timeout_seconds, Some(120));
+        assert_eq!(
+            config.performance.upstream_connect_timeout,
+            Some(Duration::from_secs(5))
+        );
+        assert_eq!(
+            config.performance.upstream_read_timeout,
+            Some(Duration::from_secs(120))
+        );
     }
 
     #[test]
