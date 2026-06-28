@@ -138,6 +138,30 @@ impl Default for ServerSpec {
     }
 }
 
+impl ServerSpec {
+    /// Returns the spec with every defaultable nested block the source omitted
+    /// filled in with its `Default`. `shutdown`, `upgrade`, `performance`, and
+    /// `upstream` are exactly the blocks the runtime always materializes (see
+    /// the `#[confval(nested, default)]` fields on `ServerConfig`), so this is
+    /// the effective spec the proxy lowers from. Blocks the source wrote are
+    /// left untouched.
+    ///
+    /// `config dump --repr=spec` serializes the spec as written, so an absent
+    /// block stays absent; `--repr=populated_spec` serializes `populated()` so
+    /// an operator can see the defaults the runtime will apply.
+    pub fn populated(mut self) -> Self {
+        self.shutdown
+            .get_or_insert_with(|| Located::detached(ShutdownSpec::default()));
+        self.upgrade
+            .get_or_insert_with(|| Located::detached(UpgradeSpec::default()));
+        self.performance
+            .get_or_insert_with(|| Located::detached(PerformanceSpec::default()));
+        self.upstream
+            .get_or_insert_with(|| Located::detached(UpstreamSettingsSpec::default()));
+        self
+    }
+}
+
 impl Default for ShutdownSpec {
     fn default() -> Self {
         Self {

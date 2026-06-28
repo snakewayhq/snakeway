@@ -68,6 +68,43 @@ pub(crate) fn validate_trusted_proxies(proxies: &[Located<String>], report: &mut
     }
 }
 
+/// Remediation shown for any malformed CIDR. The guidance is identical
+/// everywhere a CIDR is parsed, so it lives here rather than at each call site.
+const CIDR_HELP: &str =
+    "CIDR must be a valid IPv4 or IPv6 network (e.g., 10.0.0.0/8 or 2001:db8::/32).";
+
+/// Parses a list of located CIDR strings into [`IpNet`] values for lowering.
+/// Each entry that fails to parse is reported at its own span, with a help line
+/// of [`CIDR_HELP`]; the whole list fails (`None`) if any entry is invalid.
+/// `context` names the list in the error message, e.g. "connection filter allow
+/// list" or "network policy allow list". This is the single authority for CIDR
+/// parsing and reporting, used by both the validation and lowering phases.
+pub(crate) fn parse_cidr_list(
+    list: &[Located<String>],
+    context: &str,
+    report: &mut Report,
+) -> Option<Vec<IpNet>> {
+    let mut out = Vec::with_capacity(list.len());
+    let mut ok = true;
+    for entry in list {
+        match entry.value.parse::<IpNet>() {
+            Ok(net) => out.push(net),
+            Err(e) => {
+                report
+                    .error(format!(
+                        "invalid CIDR in {context} '{}': {}",
+                        entry.value, e
+                    ))
+                    .at(entry.span)
+                    .help(CIDR_HELP)
+                    .emit();
+                ok = false;
+            }
+        }
+    }
+    ok.then_some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

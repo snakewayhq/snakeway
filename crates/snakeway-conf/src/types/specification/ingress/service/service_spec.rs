@@ -2,7 +2,7 @@ use super::circuit_breaker_spec::validate_circuit_breaker;
 use super::service_route_spec::validate_service_route;
 use super::upstream_spec::{validate_endpoint, validate_endpoint_tls_verify, validate_upstream};
 use crate::types::{CircuitBreakerSpec, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec};
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate};
 use serde::Serialize;
 use std::collections::HashSet;
 
@@ -44,19 +44,11 @@ impl Default for ServiceSpec {
 
 impl Validate for ServiceSpec {
     fn validate(&self, report: &mut Report) {
-        if !LOAD_BALANCING_STRATEGIES.contains(&self.load_balancing_strategy.value.as_str()) {
-            report
-                .error(format!(
-                    "unknown load_balancing_strategy: {}",
-                    self.load_balancing_strategy.value
-                ))
-                .at(self.load_balancing_strategy.span)
-                .help(format!(
-                    "expected one of: {}",
-                    LOAD_BALANCING_STRATEGIES.join(", ")
-                ))
-                .emit();
-        }
+        KeywordSet::new(&LOAD_BALANCING_STRATEGIES).check_located(
+            &self.load_balancing_strategy,
+            "load_balancing_strategy",
+            report,
+        );
 
         if let Some(cb) = &self.circuit_breaker
             && cb.value.enable_auto_recovery.value

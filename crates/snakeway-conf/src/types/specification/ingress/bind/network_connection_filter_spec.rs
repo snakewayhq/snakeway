@@ -1,3 +1,4 @@
+use crate::validation::validator::parse_cidr_list;
 use confval::prelude::{Located, Report};
 use serde::Serialize;
 
@@ -49,31 +50,12 @@ pub(crate) fn validate_network_connection_filter(
             .emit();
     }
 
-    for cidr in &spec.cidr.value.allow {
-        if cidr.value.parse::<ipnet::IpNet>().is_err() {
-            report
-                .error(format!(
-                    "invalid CIDR in connection_filter.cidr.allow: {}",
-                    cidr.value
-                ))
-                .at(cidr.span)
-                .help("CIDR must be a valid IPv4 or IPv6 network (e.g. 10.0.0.0/8).")
-                .emit();
-        }
-    }
-
-    for cidr in &spec.cidr.value.deny {
-        if cidr.value.parse::<ipnet::IpNet>().is_err() {
-            report
-                .error(format!(
-                    "invalid CIDR in connection_filter.cidr.deny: {}",
-                    cidr.value
-                ))
-                .at(cidr.span)
-                .help("CIDR must be a valid IPv4 or IPv6 network (e.g. 192.168.0.0/16).")
-                .emit();
-        }
-    }
+    let _ = parse_cidr_list(
+        &spec.cidr.value.allow,
+        "connection filter allow list",
+        report,
+    );
+    let _ = parse_cidr_list(&spec.cidr.value.deny, "connection filter deny list", report);
 
     if spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_ALLOW
         && spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_DENY
@@ -159,12 +141,10 @@ mod tests {
         validate_network_connection_filter(&spec, &mut report);
 
         // Assert
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message == "invalid CIDR in connection_filter.cidr.allow: not a cidr")
-        );
+        assert!(report.issues().iter().any(|e| {
+            e.message
+                .contains("invalid CIDR in connection filter allow list 'not a cidr'")
+        }));
     }
 
     #[test]
@@ -177,12 +157,10 @@ mod tests {
         validate_network_connection_filter(&spec, &mut report);
 
         // Assert
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message == "invalid CIDR in connection_filter.cidr.deny: bad/99")
-        );
+        assert!(report.issues().iter().any(|e| {
+            e.message
+                .contains("invalid CIDR in connection filter deny list 'bad/99'")
+        }));
     }
 
     #[test]

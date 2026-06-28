@@ -116,11 +116,15 @@ where
                 services.insert(service_name.clone(), service);
 
                 for route in &service_spec.routes {
-                    routes.push(RouteConfig::Service(ServiceRouteConfig::new(
+                    match ServiceRouteConfig::new(
                         &service_name,
                         &listener_name,
                         &route.value,
-                    )));
+                        report,
+                    ) {
+                        Some(cfg) => routes.push(RouteConfig::Service(cfg)),
+                        None => failed = true,
+                    }
                 }
             }
 

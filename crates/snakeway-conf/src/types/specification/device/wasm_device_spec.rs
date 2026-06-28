@@ -4,7 +4,7 @@ use confval::format::{
     Field, FieldKind, Fields, FromFields, Scalar, ValueKind, parse_bool_field, parse_int_field,
     parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
 };
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -182,15 +182,14 @@ impl Validate for WasmDeviceSpec {
                 .emit();
         }
 
-        require_existing_file(&self.path, "wasm device", report);
+        require_existing_file(
+            &self.path,
+            "wasm device",
+            Some("Provide a path to a compiled .wasm module."),
+            report,
+        );
 
-        if !FAIL_POLICIES.contains(&self.fail_policy.value.as_str()) {
-            report
-                .error(format!("unknown fail_policy: {}", self.fail_policy.value))
-                .at(self.fail_policy.span)
-                .help(format!("expected one of: {}", FAIL_POLICIES.join(", ")))
-                .emit();
-        }
+        KeywordSet::new(&FAIL_POLICIES).check_located(&self.fail_policy, "fail_policy", report);
 
         TIMEOUT_MS.check_located(&self.timeout_ms, "timeout_ms", report);
         BODY_BUFFER_MAX.check_located(&self.body_buffer_max, "body_buffer_max", report);
@@ -204,13 +203,7 @@ impl Validate for WasmDeviceSpec {
                     .emit();
             }
             for hook in &hooks.value {
-                if !HOOK_NAMES.contains(&hook.value.as_str()) {
-                    report
-                        .error(format!("unknown hook: {}", hook.value))
-                        .at(hook.span)
-                        .help(format!("expected one of: {}", HOOK_NAMES.join(", ")))
-                        .emit();
-                }
+                KeywordSet::new(&HOOK_NAMES).check_located(hook, "hook", report);
             }
         }
     }

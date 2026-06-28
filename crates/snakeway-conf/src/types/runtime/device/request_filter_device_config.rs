@@ -137,16 +137,14 @@ where
 
         let mut ok = true;
 
-        let client_body_timeout = match &spec.client_body_timeout_seconds {
-            Some(v) => match narrow::i64_to_u64(v, report) {
-                Some(secs) => Some(Duration::from_secs(secs)),
+        let client_body_timeout =
+            match narrow::opt_i64_secs_to_duration(&spec.client_body_timeout_seconds, report) {
+                Some(timeout) => timeout,
                 None => {
                     ok = false;
                     None
                 }
-            },
-            None => None,
-        };
+            };
 
         let config = Self {
             enable: spec.enable.value,

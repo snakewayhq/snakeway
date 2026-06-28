@@ -2,6 +2,7 @@
 //! the source text, so diagnostics can point at the offending value rather
 //! than the enclosing section.
 
+pub mod keyword;
 mod lower;
 pub mod narrow;
 

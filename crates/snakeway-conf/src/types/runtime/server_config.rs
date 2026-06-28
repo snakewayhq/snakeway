@@ -1,6 +1,6 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, HclInt, ObservabilitySpec, OtelSpec, PerformanceSpec,
-    ServerSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
+    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
+    ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
     UpstreamSourceAddressesSpec,
 };
 use confval::prelude::narrow;
@@ -37,16 +37,16 @@ pub struct ServerConfig {
     #[confval(lower(from = dns_refresh_interval_seconds, with = narrow::i64_to_u64))]
     pub dns_refresh_interval_seconds: u64,
 
-    #[confval(lower(from = shutdown, with = shutdown_or_default))]
+    #[confval(nested, default)]
     pub shutdown: ShutdownConfig,
 
-    #[confval(lower(from = upgrade, with = upgrade_or_default))]
+    #[confval(nested, default)]
     pub upgrade: UpgradeConfig,
 
-    #[confval(lower(from = performance, with = performance_or_default))]
+    #[confval(nested, default)]
     pub performance: PerformanceConfig,
 
-    #[confval(lower(from = upstream, with = upstream_or_default))]
+    #[confval(nested, default)]
     pub upstream: UpstreamSettingsConfig,
 }
 
@@ -88,10 +88,10 @@ pub struct UpstreamSettingsConfig {
     #[confval(lower(from = connection_pool_size, with = narrow::opt_i64_to_usize))]
     pub connection_pool_size: Option<usize>,
     /// Connect timeout (TCP plus TLS). `None` disables it.
-    #[confval(lower(from = connection_timeout_seconds, with = opt_seconds_to_duration))]
+    #[confval(lower(from = connection_timeout_seconds, with = narrow::opt_i64_secs_to_duration))]
     pub connection_timeout: Option<Duration>,
     /// Per-read (idle) timeout. `None` disables it.
-    #[confval(lower(from = read_timeout_seconds, with = opt_seconds_to_duration))]
+    #[confval(lower(from = read_timeout_seconds, with = narrow::opt_i64_secs_to_duration))]
     pub read_timeout: Option<Duration>,
     /// Local source addresses for outbound upstream connections.
     #[confval(nested)]
@@ -170,58 +170,6 @@ fn ca_file_to_string(
             }
         },
         None => Some(None),
-    }
-}
-
-fn shutdown_or_default(
-    value: &Option<Located<ShutdownSpec>>,
-    report: &mut Report,
-) -> Option<ShutdownConfig> {
-    match value {
-        Some(spec) => ShutdownConfig::lower(&spec.value, report),
-        None => ShutdownConfig::lower(&ShutdownSpec::default(), report),
-    }
-}
-
-fn upgrade_or_default(
-    value: &Option<Located<UpgradeSpec>>,
-    report: &mut Report,
-) -> Option<UpgradeConfig> {
-    match value {
-        Some(spec) => UpgradeConfig::lower(&spec.value, report),
-        None => UpgradeConfig::lower(&UpgradeSpec::default(), report),
-    }
-}
-
-fn performance_or_default(
-    value: &Option<Located<PerformanceSpec>>,
-    report: &mut Report,
-) -> Option<PerformanceConfig> {
-    match value {
-        Some(spec) => PerformanceConfig::lower(&spec.value, report),
-        None => PerformanceConfig::lower(&PerformanceSpec::default(), report),
-    }
-}
-
-fn upstream_or_default(
-    value: &Option<Located<UpstreamSettingsSpec>>,
-    report: &mut Report,
-) -> Option<UpstreamSettingsConfig> {
-    match value {
-        Some(spec) => UpstreamSettingsConfig::lower(&spec.value, report),
-        None => UpstreamSettingsConfig::lower(&UpstreamSettingsSpec::default(), report),
-    }
-}
-
-/// Lowers an optional timeout-in-seconds spec field to an optional `Duration`. An omitted
-/// value (`None`) disables the timeout; a present value is validated to be >= 1 in the spec.
-fn opt_seconds_to_duration(
-    value: &Option<Located<HclInt>>,
-    report: &mut Report,
-) -> Option<Option<Duration>> {
-    match value {
-        None => Some(None),
-        Some(seconds) => narrow::i64_to_u64(seconds, report).map(|s| Some(Duration::from_secs(s))),
     }
 }
 

@@ -1,6 +1,5 @@
-use crate::validation::validator::validate_device_paths;
-use confval::prelude::{Located, Report, Validate};
-use ipnet::IpNet;
+use crate::validation::validator::{parse_cidr_list, validate_device_paths};
+use confval::prelude::{KeywordSet, Located, Report, Validate};
 use serde::Serialize;
 
 pub const ON_INVALID_FORWARDED: [&str; 2] = ["deny", "ignore"];
@@ -35,28 +34,13 @@ impl Default for ForwardingSpec {
 
 impl Validate for NetworkPolicyDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        for cidr in &self.cidr_allow {
-            if cidr.value.parse::<IpNet>().is_err() {
-                report
-                    .error(format!("invalid network policy CIDR: {}", cidr.value))
-                    .at(cidr.span)
-                    .emit();
-            }
-        }
+        let _ = parse_cidr_list(&self.cidr_allow, "network policy allow list", report);
 
-        if !ON_INVALID_FORWARDED.contains(&self.forwarding.value.on_invalid.value.as_str()) {
-            report
-                .error(format!(
-                    "unknown on_invalid: {}",
-                    self.forwarding.value.on_invalid.value
-                ))
-                .at(self.forwarding.value.on_invalid.span)
-                .help(format!(
-                    "expected one of: {}",
-                    ON_INVALID_FORWARDED.join(", ")
-                ))
-                .emit();
-        }
+        KeywordSet::new(&ON_INVALID_FORWARDED).check_located(
+            &self.forwarding.value.on_invalid,
+            "on_invalid",
+            report,
+        );
 
         validate_device_paths(&self.paths, report);
     }
@@ -81,12 +65,10 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message.contains("invalid network policy CIDR"))
-        );
+        assert!(report.issues().iter().any(|e| {
+            e.message
+                .contains("invalid CIDR in network policy allow list")
+        }));
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use crate::types::HclInt;
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -75,13 +75,7 @@ impl Validate for IdentityDeviceSpec {
             );
         }
 
-        if !UA_ENGINES.contains(&self.ua_engine.value.as_str()) {
-            report
-                .error(format!("unknown ua_engine: {}", self.ua_engine.value))
-                .at(self.ua_engine.span)
-                .help(format!("expected one of: {}", UA_ENGINES.join(", ")))
-                .emit();
-        }
+        KeywordSet::new(&UA_ENGINES).check_located(&self.ua_engine, "ua_engine", report);
 
         if self.enable_geoip.value {
             if let Some(path) = self.geoip_city_db.as_ref() {

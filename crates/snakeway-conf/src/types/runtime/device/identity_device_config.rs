@@ -1,5 +1,5 @@
 use crate::types::IdentityDeviceSpec;
-use confval::prelude::{Lower, Report, Validate};
+use confval::prelude::{Lower, Report, Validate, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -67,7 +67,10 @@ where
                 .iter()
                 .map(|p| p.value.clone())
                 .collect(),
-            max_x_forwarded_for_length: spec.max_x_forwarded_for_length.value as usize,
+            max_x_forwarded_for_length: narrow::i64_to_usize(
+                &spec.max_x_forwarded_for_length,
+                report,
+            )?,
             enable_geoip: spec.enable_geoip.value,
             geoip_city_db: spec.geoip_city_db.as_ref().map(|p| p.value.clone()),
             geoip_isp_db: spec.geoip_isp_db.as_ref().map(|p| p.value.clone()),
@@ -78,7 +81,7 @@ where
             enable_user_agent: spec.enable_user_agent.value,
             ua_engine,
             ua_parser_regexes: spec.ua_parser_regexes.as_ref().map(|p| p.value.clone()),
-            max_user_agent_length: spec.max_user_agent_length.value as usize,
+            max_user_agent_length: narrow::i64_to_usize(&spec.max_user_agent_length, report)?,
         })
     }
 }

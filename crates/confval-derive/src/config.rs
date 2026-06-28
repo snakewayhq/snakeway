@@ -29,7 +29,12 @@ enum ConfigFieldSource {
     /// `#[confval(nested)]`: lower the same-named spec field through its own
     /// `Lower` impl. Whether it is a single value, an `Option`, or a `Vec` is
     /// read off this config field's type.
-    Nested,
+    ///
+    /// `default` is set by `#[confval(nested, default)]` on a non-optional
+    /// config field whose spec field is `Option<Located<S>>`: an absent block
+    /// lowers `S::default()` instead of producing a missing-field error, so the
+    /// runtime field is always populated while the spec stays source-faithful.
+    Nested { default: bool },
     /// `#[confval(lower(from = ..., with = ...))]`: call `with` on the named
     /// spec field(s) `from` to produce this field.
     With {
@@ -83,10 +88,17 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     #ident: ::confval::pipeline::LowerAuto::lower_auto(#ident),
                 });
             }
-            ConfigFieldSource::Nested => {
+            ConfigFieldSource::Nested { default } => {
                 push_consumed(&mut consumed, ident.clone());
                 let ty = &field.ty;
                 if unwrap_generic(ty, "Option").is_some() {
+                    if default {
+                        return Err(syn::Error::new_spanned(
+                            field,
+                            "#[confval(nested, default)] is not supported on an optional config \
+                             field; an absent block already lowers to `None`",
+                        ));
+                    }
                     constructors.push(quote! {
                         #ident: match #ident {
                             ::core::option::Option::Some(__value) =>
@@ -97,6 +109,12 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                         },
                     });
                 } else if unwrap_generic(ty, "Vec").is_some() {
+                    if default {
+                        return Err(syn::Error::new_spanned(
+                            field,
+                            "#[confval(nested, default)] is not supported on a list config field",
+                        ));
+                    }
                     constructors.push(quote! {
                         #ident: {
                             let mut __out = ::std::vec::Vec::new();
@@ -107,6 +125,22 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                                 )?);
                             }
                             __out
+                        },
+                    });
+                } else if default {
+                    // The spec field is `Option<Located<S>>`: an absent block
+                    // lowers `S::default()` (inferred from the single `Lower`
+                    // impl), so a non-optional runtime field is always filled
+                    // while the spec keeps recording what the source wrote.
+                    constructors.push(quote! {
+                        #ident: match #ident {
+                            ::core::option::Option::Some(__value) =>
+                                ::confval::pipeline::Lower::lower(&__value.value, report)?,
+                            ::core::option::Option::None =>
+                                ::confval::pipeline::Lower::lower(
+                                    &::core::default::Default::default(),
+                                    report,
+                                )?,
                         },
                     });
                 } else {
@@ -222,14 +256,19 @@ fn parse_config_struct_options(
 /// [`With`](ConfigFieldSource::With) after checking both `from` and `with` were
 /// given.
 fn parse_config_field_options(field: &Field) -> syn::Result<ConfigFieldSource> {
-    let mut source = ConfigFieldSource::Auto;
+    let mut nested = false;
+    let mut nested_default = false;
+    let mut lower: Option<ConfigFieldSource> = None;
     for attr in &field.attrs {
         if !attr.path().is_ident("confval") {
             continue;
         }
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("nested") {
-                source = ConfigFieldSource::Nested;
+                nested = true;
+                Ok(())
+            } else if meta.path.is_ident("default") {
+                nested_default = true;
                 Ok(())
             } else if meta.path.is_ident("lower") {
                 let mut from = Vec::new();
@@ -252,14 +291,39 @@ fn parse_config_field_options(field: &Field) -> syn::Result<ConfigFieldSource> {
                 let Some(with) = with else {
                     return Err(meta.error("`lower` requires `with = <function>`"));
                 };
-                source = ConfigFieldSource::With { from, with };
+                lower = Some(ConfigFieldSource::With { from, with });
                 Ok(())
             } else {
-                Err(meta.error("unknown confval attribute; expected `nested` or `lower(...)`"))
+                Err(meta.error(
+                    "unknown confval attribute; expected `nested`, `default`, or `lower(...)`",
+                ))
             }
         })?;
     }
-    Ok(source)
+
+    // `lower(...)` is exclusive with `nested`/`default`: a field either lowers
+    // through its own `Lower` impl or through an explicit converter, not both.
+    if let Some(with) = lower {
+        if nested || nested_default {
+            return Err(syn::Error::new_spanned(
+                field,
+                "#[confval(lower(...))] cannot be combined with `nested` or `default`",
+            ));
+        }
+        return Ok(with);
+    }
+    if nested {
+        return Ok(ConfigFieldSource::Nested {
+            default: nested_default,
+        });
+    }
+    if nested_default {
+        return Err(syn::Error::new_spanned(
+            field,
+            "#[confval(default)] requires `nested` on a config field",
+        ));
+    }
+    Ok(ConfigFieldSource::Auto)
 }
 
 /// Reads the `from = ...` part of `#[confval(lower(...))]` into a list of spec
