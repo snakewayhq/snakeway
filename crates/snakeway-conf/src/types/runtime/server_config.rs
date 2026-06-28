@@ -1,6 +1,6 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, HclInt, ObservabilitySpec, OtelSpec, PerformanceSpec,
-    ServerSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
+    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
+    ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
     UpstreamSourceAddressesSpec,
 };
 use confval::prelude::narrow;
@@ -88,10 +88,10 @@ pub struct UpstreamSettingsConfig {
     #[confval(lower(from = connection_pool_size, with = narrow::opt_i64_to_usize))]
     pub connection_pool_size: Option<usize>,
     /// Connect timeout (TCP plus TLS). `None` disables it.
-    #[confval(lower(from = connection_timeout_seconds, with = opt_seconds_to_duration))]
+    #[confval(lower(from = connection_timeout_seconds, with = narrow::opt_i64_secs_to_duration))]
     pub connection_timeout: Option<Duration>,
     /// Per-read (idle) timeout. `None` disables it.
-    #[confval(lower(from = read_timeout_seconds, with = opt_seconds_to_duration))]
+    #[confval(lower(from = read_timeout_seconds, with = narrow::opt_i64_secs_to_duration))]
     pub read_timeout: Option<Duration>,
     /// Local source addresses for outbound upstream connections.
     #[confval(nested)]
@@ -210,18 +210,6 @@ fn upstream_or_default(
     match value {
         Some(spec) => UpstreamSettingsConfig::lower(&spec.value, report),
         None => UpstreamSettingsConfig::lower(&UpstreamSettingsSpec::default(), report),
-    }
-}
-
-/// Lowers an optional timeout-in-seconds spec field to an optional `Duration`. An omitted
-/// value (`None`) disables the timeout; a present value is validated to be >= 1 in the spec.
-fn opt_seconds_to_duration(
-    value: &Option<Located<HclInt>>,
-    report: &mut Report,
-) -> Option<Option<Duration>> {
-    match value {
-        None => Some(None),
-        Some(seconds) => narrow::i64_to_u64(seconds, report).map(|s| Some(Duration::from_secs(s))),
     }
 }
 

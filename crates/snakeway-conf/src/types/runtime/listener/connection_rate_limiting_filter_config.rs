@@ -8,16 +8,12 @@ use std::time::Duration;
 pub struct ConnectionRateLimitingFilterConfig {
     #[confval(lower(from = max_connections_per_second, with = i64_to_f64))]
     pub max_connections_per_second: f64,
-    #[confval(lower(from = window_seconds, with = secs_to_duration))]
+    #[confval(lower(from = window_seconds, with = narrow::i64_secs_to_duration))]
     pub reaction_interval: Duration,
 }
 
 fn i64_to_f64(value: &Located<i64>, _report: &mut Report) -> Option<f64> {
     Some(value.value as f64)
-}
-
-fn secs_to_duration(value: &Located<i64>, report: &mut Report) -> Option<Duration> {
-    narrow::i64_to_u64(value, report).map(Duration::from_secs)
 }
 
 #[cfg(test)]

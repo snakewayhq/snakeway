@@ -12,6 +12,7 @@
 
 use crate::diagnostic::Report;
 use crate::source::Located;
+use std::time::Duration;
 
 macro_rules! narrow_fns {
     ($plain:ident, $opt:ident, $target:ty) => {
@@ -49,6 +50,26 @@ narrow_fns!(i64_to_u16, opt_i64_to_u16, u16);
 narrow_fns!(i64_to_u32, opt_i64_to_u32, u32);
 narrow_fns!(i64_to_u64, opt_i64_to_u64, u64);
 narrow_fns!(i64_to_usize, opt_i64_to_usize, usize);
+
+/// Convert a located `i64` count of seconds to a `Duration`, reporting at the
+/// value's span if it is negative (out of range for `u64`). This routes the
+/// conversion through the same checked narrow as the integer helpers, so a
+/// negative duration is rejected rather than wrapping into a near-unbounded one.
+pub fn i64_secs_to_duration(value: &Located<i64>, report: &mut Report) -> Option<Duration> {
+    i64_to_u64(value, report).map(Duration::from_secs)
+}
+
+/// Optional-field variant of [`i64_secs_to_duration`]: `None` in, `Some(None)`
+/// out. The outer `Option` is the failure channel.
+pub fn opt_i64_secs_to_duration(
+    value: &Option<Located<i64>>,
+    report: &mut Report,
+) -> Option<Option<Duration>> {
+    match value {
+        Some(value) => i64_secs_to_duration(value, report).map(Some),
+        None => Some(None),
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -126,6 +147,55 @@ mod tests {
         let value = Some(Located::detached(-5_i64));
 
         assert_eq!(opt_i64_to_u32(&value, &mut report), None);
+        assert!(report.has_errors());
+    }
+
+    #[test]
+    fn seconds_convert_to_duration() {
+        let mut report = Report::new();
+        let value = Located::detached(60_i64);
+
+        assert_eq!(
+            i64_secs_to_duration(&value, &mut report),
+            Some(Duration::from_secs(60))
+        );
+        assert!(!report.has_errors());
+    }
+
+    #[test]
+    fn negative_seconds_report_rather_than_wrap() {
+        let mut report = Report::new();
+        let value = Located::detached(-1_i64);
+
+        assert_eq!(i64_secs_to_duration(&value, &mut report), None);
+        assert!(report.has_errors());
+    }
+
+    #[test]
+    fn optional_absent_seconds_is_not_a_failure() {
+        let mut report = Report::new();
+
+        assert_eq!(opt_i64_secs_to_duration(&None, &mut report), Some(None));
+        assert!(!report.has_errors());
+    }
+
+    #[test]
+    fn optional_present_seconds_convert() {
+        let mut report = Report::new();
+        let value = Some(Located::detached(30_i64));
+
+        assert_eq!(
+            opt_i64_secs_to_duration(&value, &mut report),
+            Some(Some(Duration::from_secs(30)))
+        );
+    }
+
+    #[test]
+    fn optional_negative_seconds_fail() {
+        let mut report = Report::new();
+        let value = Some(Located::detached(-5_i64));
+
+        assert_eq!(opt_i64_secs_to_duration(&value, &mut report), None);
         assert!(report.has_errors());
     }
 }

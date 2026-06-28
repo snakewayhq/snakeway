@@ -1,5 +1,5 @@
 use crate::types::RequestRateLimitingDeviceSpec;
-use confval::prelude::{Lower, Report, Validate};
+use confval::prelude::{Lower, Report, Validate, narrow};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::time::Duration;
@@ -16,10 +16,10 @@ impl Lower<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig
 where
     RequestRateLimitingDeviceSpec: Validate,
 {
-    fn lower(spec: &RequestRateLimitingDeviceSpec, _report: &mut Report) -> Option<Self> {
+    fn lower(spec: &RequestRateLimitingDeviceSpec, report: &mut Report) -> Option<Self> {
         Some(Self {
             enable: spec.enable.value,
-            reaction_interval: Duration::from_secs(spec.window_seconds.value as u64),
+            reaction_interval: narrow::i64_secs_to_duration(&spec.window_seconds, report)?,
             max_requests_per_second: spec.max_requests_per_second.value as f64,
             paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         })
