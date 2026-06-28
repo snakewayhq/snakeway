@@ -31,6 +31,8 @@ pub(crate) struct PublicGateway {
     gw_ctx: GatewayCtx,
     traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
+    upstream_connect_timeout: Option<Duration>,
+    upstream_read_timeout: Option<Duration>,
 }
 
 impl PublicGateway {
@@ -40,6 +42,8 @@ impl PublicGateway {
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
         metrics: Option<Arc<Metrics>>,
+        upstream_connect_timeout: Option<Duration>,
+        upstream_read_timeout: Option<Duration>,
     ) -> Self {
         let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
@@ -47,6 +51,8 @@ impl PublicGateway {
             gw_ctx,
             traffic_director: TrafficDirector,
             static_file_handler: StaticFileHandler,
+            upstream_connect_timeout,
+            upstream_read_timeout,
         }
     }
 }
@@ -246,6 +252,24 @@ impl ProxyHttp for PublicGateway {
             }
         }
         .map_err(|_| Error::new(Custom("http peer creation failed")))?;
+
+        // Apply upstream timeouts.
+        // The read timeout is per-read (idle), so it bounds a stalled origin
+        // without breaking slow-but-progressing responses.
+        // It is skipped for websocket upgrades so idle long-lived connections
+        // are not torn down.
+        if let Some(t) = self.upstream_connect_timeout {
+            // The total_connection_timeout setting bounds the whole connection
+            // establishment (TCP connect + TLS handshake).
+            // The inner connection_timeout (TCP connect only) is left unset
+            // because it would be redundant since the total bound already caps it.
+            peer.options.total_connection_timeout = Some(t);
+        }
+        if let Some(t) = self.upstream_read_timeout
+            && !ctx.is_upgrade_req()
+        {
+            peer.options.read_timeout = Some(t);
+        }
 
         // Enforce protocol rules for this upstream and request.
         self.enforce_protocol(&mut peer, ctx, upstream)?;

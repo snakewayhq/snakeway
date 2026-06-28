@@ -82,10 +82,10 @@ pub struct PerformanceConfig {
     /// Number of parallel accept tasks per listener.
     #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
     pub parallel_accepts_per_listener: Option<usize>,
-    /// Upstream connect timeout. `None` (config key omitted) disables it.
-    #[confval(lower(from = upstream_connect_timeout_seconds, with = opt_seconds_to_duration))]
-    pub upstream_connect_timeout: Option<Duration>,
-    /// Upstream per-read (idle) timeout. `None` (config key omitted) disables it.
+    /// Sets a bound on how long an upstream connection can be idle before it is closed.
+    #[confval(lower(from = upstream_connection_timeout_seconds, with = opt_seconds_to_duration))]
+    pub upstream_connection_timeout: Option<Duration>,
+    /// Sets a bound on how long an upstream read operation can take between bytes before it is closed.
     #[confval(lower(from = upstream_read_timeout_seconds, with = opt_seconds_to_duration))]
     pub upstream_read_timeout: Option<Duration>,
 }
@@ -315,7 +315,7 @@ mod tests {
         assert!(config.performance.upstream_connection_pool_size.is_none());
         assert!(config.performance.parallel_accepts_per_listener.is_none());
         // Omitted = disabled.
-        assert!(config.performance.upstream_connect_timeout.is_none());
+        assert!(config.performance.upstream_connection_timeout.is_none());
         assert!(config.performance.upstream_read_timeout.is_none());
     }
 
@@ -327,7 +327,7 @@ mod tests {
                 work_stealing: Located::detached(false),
                 upstream_connection_pool_size: Some(Located::detached(256)),
                 parallel_accepts_per_listener: Some(Located::detached(4)),
-                upstream_connect_timeout_seconds: Some(Located::detached(5)),
+                upstream_connection_timeout_seconds: Some(Located::detached(5)),
                 upstream_read_timeout_seconds: Some(Located::detached(120)),
             })),
             ..Default::default()
@@ -341,7 +341,7 @@ mod tests {
         assert_eq!(config.performance.upstream_connection_pool_size, Some(256));
         assert_eq!(config.performance.parallel_accepts_per_listener, Some(4));
         assert_eq!(
-            config.performance.upstream_connect_timeout,
+            config.performance.upstream_connection_timeout,
             Some(Duration::from_secs(5))
         );
         assert_eq!(

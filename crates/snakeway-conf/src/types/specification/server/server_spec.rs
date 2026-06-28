@@ -98,7 +98,7 @@ pub struct PerformanceSpec {
     /// The maximum time (seconds) allowed to establish the TCP (and TLS) handshake.
     /// Omitting this value disables the timeout.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub upstream_connect_timeout_seconds: Option<Located<HclInt>>,
+    pub upstream_connection_timeout_seconds: Option<Located<HclInt>>,
 
     /// The maximum time (seconds) allowed between bytes when reading the response body.
     /// Omitting this value disables the timeout.
@@ -148,7 +148,7 @@ impl Default for PerformanceSpec {
             work_stealing: Located::detached(true),
             upstream_connection_pool_size: None,
             parallel_accepts_per_listener: None,
-            upstream_connect_timeout_seconds: None,
+            upstream_connection_timeout_seconds: None,
             upstream_read_timeout_seconds: None,
         }
     }
@@ -260,10 +260,10 @@ impl Validate for ServerSpec {
                     report,
                 );
             }
-            if let Some(timeout) = &performance.value.upstream_connect_timeout_seconds {
+            if let Some(timeout) = &performance.value.upstream_connection_timeout_seconds {
                 UPSTREAM_TIMEOUT_SECONDS.check_located(
                     timeout,
-                    "upstream_connect_timeout_seconds",
+                    "upstream_connection_timeout_seconds",
                     report,
                 )
             }
@@ -570,7 +570,7 @@ observability {
         let mut report = Report::new();
         let server = ServerSpec {
             performance: Some(Located::detached(PerformanceSpec {
-                upstream_connect_timeout_seconds: Some(Located::detached(0)),
+                upstream_connection_timeout_seconds: Some(Located::detached(0)),
                 ..Default::default()
             })),
             ..Default::default()
@@ -584,7 +584,7 @@ observability {
             report
                 .issues()
                 .iter()
-                .any(|e| e.message.contains("upstream_connect_timeout_seconds"))
+                .any(|e| e.message.contains("upstream_connection_timeout_seconds"))
         );
     }
 

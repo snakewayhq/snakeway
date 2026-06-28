@@ -110,6 +110,10 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     //-------------------------------------------------------------------------
     // Public Proxy: Create public listener(s).
     //-------------------------------------------------------------------------
+    // Global upstream timeouts.
+    let upstream_connect_timeout = config.server.performance.upstream_connection_timeout;
+    let upstream_read_timeout = config.server.performance.upstream_read_timeout;
+
     for listener_cfg in config
         .listeners
         .iter()
@@ -122,6 +126,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             traffic_manager.clone(),
             connection_manager.clone(),
             metrics.clone(),
+            upstream_connect_timeout,
+            upstream_read_timeout,
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
 
