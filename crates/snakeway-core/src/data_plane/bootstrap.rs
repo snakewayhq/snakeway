@@ -74,7 +74,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         pingora_server_conf.threads = threads;
     }
 
-    if let Some(pool_size) = config.server.performance.upstream_connection_pool_size {
+    if let Some(pool_size) = config.server.upstream.connection_pool_size {
         pingora_server_conf.upstream_keepalive_pool_size = pool_size;
     }
 
@@ -82,7 +82,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         pingora_server_conf.listener_tasks_per_fd = accepts;
     }
 
-    if let Some(source_addrs) = &config.server.upstream_source_addresses {
+    if let Some(source_addrs) = &config.server.upstream.source_addresses {
         pingora_server_conf.client_bind_to_ipv4 = source_addrs.ipv4.clone();
         pingora_server_conf.client_bind_to_ipv6 = source_addrs.ipv6.clone();
     }
@@ -111,8 +111,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     // Public Proxy: Create public listener(s).
     //-------------------------------------------------------------------------
     // Global upstream timeouts.
-    let upstream_connect_timeout = config.server.performance.upstream_connection_timeout;
-    let upstream_read_timeout = config.server.performance.upstream_read_timeout;
+    let upstream_connect_timeout = config.server.upstream.connection_timeout;
+    let upstream_read_timeout = config.server.upstream.read_timeout;
 
     for listener_cfg in config
         .listeners
