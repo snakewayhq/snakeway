@@ -5,8 +5,10 @@ struct InnerSpec {
     name: Located<String>,
 }
 
-// `#[confval(default)]` is only honored on leaf fields. On a nested field it
-// would be silently ignored, so the derive rejects it at compile time.
+// A bare `#[confval(default)]` is honored on a non-optional nested field
+// (`Located<InnerSpec>`), where it fills an absent block with `InnerSpec::default()`.
+// On an *optional* nested field it is meaningless, since an absent block is
+// already `None`, so the derive rejects it at compile time.
 #[derive(confval::Spec)]
 struct ServerSpec {
     #[confval(nested, default)]

@@ -37,16 +37,16 @@ pub struct ServerConfig {
     #[confval(lower(from = dns_refresh_interval_seconds, with = narrow::i64_to_u64))]
     pub dns_refresh_interval_seconds: u64,
 
-    #[confval(lower(from = shutdown, with = shutdown_or_default))]
+    #[confval(nested)]
     pub shutdown: ShutdownConfig,
 
-    #[confval(lower(from = upgrade, with = upgrade_or_default))]
+    #[confval(nested)]
     pub upgrade: UpgradeConfig,
 
-    #[confval(lower(from = performance, with = performance_or_default))]
+    #[confval(nested)]
     pub performance: PerformanceConfig,
 
-    #[confval(lower(from = upstream, with = upstream_or_default))]
+    #[confval(nested)]
     pub upstream: UpstreamSettingsConfig,
 }
 
@@ -173,46 +173,6 @@ fn ca_file_to_string(
     }
 }
 
-fn shutdown_or_default(
-    value: &Option<Located<ShutdownSpec>>,
-    report: &mut Report,
-) -> Option<ShutdownConfig> {
-    match value {
-        Some(spec) => ShutdownConfig::lower(&spec.value, report),
-        None => ShutdownConfig::lower(&ShutdownSpec::default(), report),
-    }
-}
-
-fn upgrade_or_default(
-    value: &Option<Located<UpgradeSpec>>,
-    report: &mut Report,
-) -> Option<UpgradeConfig> {
-    match value {
-        Some(spec) => UpgradeConfig::lower(&spec.value, report),
-        None => UpgradeConfig::lower(&UpgradeSpec::default(), report),
-    }
-}
-
-fn performance_or_default(
-    value: &Option<Located<PerformanceSpec>>,
-    report: &mut Report,
-) -> Option<PerformanceConfig> {
-    match value {
-        Some(spec) => PerformanceConfig::lower(&spec.value, report),
-        None => PerformanceConfig::lower(&PerformanceSpec::default(), report),
-    }
-}
-
-fn upstream_or_default(
-    value: &Option<Located<UpstreamSettingsSpec>>,
-    report: &mut Report,
-) -> Option<UpstreamSettingsConfig> {
-    match value {
-        Some(spec) => UpstreamSettingsConfig::lower(&spec.value, report),
-        None => UpstreamSettingsConfig::lower(&UpstreamSettingsSpec::default(), report),
-    }
-}
-
 impl Lower<CertStoreSpec> for CertStoreConfig {
     fn lower(spec: &CertStoreSpec, _report: &mut Report) -> Option<Self> {
         Some(match spec {
@@ -293,10 +253,10 @@ mod tests {
     fn shutdown_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            shutdown: Some(Located::detached(ShutdownSpec {
+            shutdown: Located::detached(ShutdownSpec {
                 drain_seconds: Some(Located::detached(30)),
                 force_timeout_seconds: Some(Located::detached(60)),
-            })),
+            }),
             ..Default::default()
         };
 
@@ -325,10 +285,10 @@ mod tests {
     fn performance_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            performance: Some(Located::detached(PerformanceSpec {
+            performance: Located::detached(PerformanceSpec {
                 work_stealing: Located::detached(false),
                 parallel_accepts_per_listener: Some(Located::detached(4)),
-            })),
+            }),
             ..Default::default()
         };
 
@@ -358,12 +318,12 @@ mod tests {
     fn upstream_from_explicit_spec() {
         // Arrange
         let spec = ServerSpec {
-            upstream: Some(Located::detached(UpstreamSettingsSpec {
+            upstream: Located::detached(UpstreamSettingsSpec {
                 connection_pool_size: Some(Located::detached(256)),
                 connection_timeout_seconds: Some(Located::detached(5)),
                 read_timeout_seconds: Some(Located::detached(120)),
                 source_addresses: None,
-            })),
+            }),
             ..Default::default()
         };
 

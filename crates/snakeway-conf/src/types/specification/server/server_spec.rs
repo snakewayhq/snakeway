@@ -42,21 +42,17 @@ pub struct ServerSpec {
     #[confval(default = 30)]
     pub dns_refresh_interval_seconds: Located<HclInt>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(nested)]
-    pub shutdown: Option<Located<ShutdownSpec>>,
+    #[confval(nested, default)]
+    pub shutdown: Located<ShutdownSpec>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(nested)]
-    pub upgrade: Option<Located<UpgradeSpec>>,
+    #[confval(nested, default)]
+    pub upgrade: Located<UpgradeSpec>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(nested)]
-    pub performance: Option<Located<PerformanceSpec>>,
+    #[confval(nested, default)]
+    pub performance: Located<PerformanceSpec>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(nested)]
-    pub upstream: Option<Located<UpstreamSettingsSpec>>,
+    #[confval(nested, default)]
+    pub upstream: Located<UpstreamSettingsSpec>,
 }
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -130,10 +126,10 @@ impl Default for ServerSpec {
             tls_automation: None,
             observability: None,
             dns_refresh_interval_seconds: Located::detached(30),
-            shutdown: None,
-            upgrade: None,
-            performance: None,
-            upstream: None,
+            shutdown: Located::detached(ShutdownSpec::default()),
+            upgrade: Located::detached(UpgradeSpec::default()),
+            performance: Located::detached(PerformanceSpec::default()),
+            upstream: Located::detached(UpstreamSettingsSpec::default()),
         }
     }
 }
@@ -228,28 +224,19 @@ impl Validate for ServerSpec {
             observability.value.validate(report);
         }
 
-        if let Some(shutdown) = &self.shutdown {
-            if let Some(drain) = &shutdown.value.drain_seconds {
-                SHUTDOWN_DRAIN_SECONDS.check_located(drain, "drain_seconds", report);
-            }
-            if let Some(timeout) = &shutdown.value.force_timeout_seconds {
-                SHUTDOWN_FORCE_TIMEOUT_SECONDS.check_located(
-                    timeout,
-                    "force_timeout_seconds",
-                    report,
-                );
-            }
+        let shutdown = &self.shutdown.value;
+        if let Some(drain) = &shutdown.drain_seconds {
+            SHUTDOWN_DRAIN_SECONDS.check_located(drain, "drain_seconds", report);
+        }
+        if let Some(timeout) = &shutdown.force_timeout_seconds {
+            SHUTDOWN_FORCE_TIMEOUT_SECONDS.check_located(timeout, "force_timeout_seconds", report);
         }
 
-        if let Some(upgrade) = &self.upgrade
-            && let Some(retries) = &upgrade.value.max_retries
-        {
+        if let Some(retries) = &self.upgrade.value.max_retries {
             UPGRADE_MAX_RETRIES.check_located(retries, "max_retries", report);
         }
 
-        if let Some(performance) = &self.performance
-            && let Some(accepts) = &performance.value.parallel_accepts_per_listener
-        {
+        if let Some(accepts) = &self.performance.value.parallel_accepts_per_listener {
             PARALLEL_ACCEPTS_PER_LISTENER.check_located(
                 accepts,
                 "parallel_accepts_per_listener",
@@ -257,29 +244,18 @@ impl Validate for ServerSpec {
             );
         }
 
-        if let Some(upstream) = &self.upstream {
-            if let Some(pool_size) = &upstream.value.connection_pool_size {
-                UPSTREAM_CONNECTION_POOL_SIZE.check_located(
-                    pool_size,
-                    "connection_pool_size",
-                    report,
-                );
-            }
-            if let Some(timeout) = &upstream.value.connection_timeout_seconds {
-                UPSTREAM_TIMEOUT_SECONDS.check_located(
-                    timeout,
-                    "connection_timeout_seconds",
-                    report,
-                );
-            }
-            if let Some(timeout) = &upstream.value.read_timeout_seconds {
-                UPSTREAM_TIMEOUT_SECONDS.check_located(timeout, "read_timeout_seconds", report);
-            }
+        let upstream = &self.upstream.value;
+        if let Some(pool_size) = &upstream.connection_pool_size {
+            UPSTREAM_CONNECTION_POOL_SIZE.check_located(pool_size, "connection_pool_size", report);
+        }
+        if let Some(timeout) = &upstream.connection_timeout_seconds {
+            UPSTREAM_TIMEOUT_SECONDS.check_located(timeout, "connection_timeout_seconds", report);
+        }
+        if let Some(timeout) = &upstream.read_timeout_seconds {
+            UPSTREAM_TIMEOUT_SECONDS.check_located(timeout, "read_timeout_seconds", report);
         }
 
-        if let Some(upstream) = &self.upstream
-            && let Some(source_addrs) = &upstream.value.source_addresses
-        {
+        if let Some(source_addrs) = &upstream.source_addresses {
             for addr in &source_addrs.value.ipv4 {
                 if addr.value.parse::<Ipv4Addr>().is_err() {
                     report
@@ -380,16 +356,16 @@ upstream {
             PathBuf::from("/tmp/snakeway.pid")
         );
         assert_eq!(spec.dns_refresh_interval_seconds.value, 60);
-        let shutdown = spec.shutdown.as_ref().unwrap();
+        let shutdown = &spec.shutdown;
         assert_eq!(shutdown.value.drain_seconds.as_ref().unwrap().value, 20);
-        let upgrade = spec.upgrade.as_ref().unwrap();
+        let upgrade = &spec.upgrade;
         assert_eq!(
             upgrade.value.sock.as_ref().unwrap().value,
             "/tmp/upgrade.sock"
         );
-        let performance = spec.performance.as_ref().unwrap();
+        let performance = &spec.performance;
         assert!(!performance.value.work_stealing.value);
-        let upstream = spec.upstream.as_ref().unwrap();
+        let upstream = &spec.upstream;
         assert_eq!(
             upstream.value.connection_pool_size.as_ref().unwrap().value,
             128
@@ -477,7 +453,7 @@ observability {
 
         // Assert
         assert!(!report.has_issues());
-        let shutdown = spec.unwrap().shutdown.unwrap();
+        let shutdown = spec.unwrap().shutdown;
         assert_eq!(shutdown.value.drain_seconds.unwrap().value, 10);
     }
 
@@ -555,10 +531,10 @@ observability {
         // Arrange
         let mut report = Report::new();
         let server = ServerSpec {
-            upstream: Some(Located::detached(UpstreamSettingsSpec {
+            upstream: Located::detached(UpstreamSettingsSpec {
                 read_timeout_seconds: Some(Located::detached(99_999)),
                 ..Default::default()
-            })),
+            }),
             ..Default::default()
         };
 
@@ -579,10 +555,10 @@ observability {
         // Arrange
         let mut report = Report::new();
         let server = ServerSpec {
-            upstream: Some(Located::detached(UpstreamSettingsSpec {
+            upstream: Located::detached(UpstreamSettingsSpec {
                 connection_timeout_seconds: Some(Located::detached(0)),
                 ..Default::default()
-            })),
+            }),
             ..Default::default()
         };
 
@@ -819,13 +795,13 @@ observability {
         // Arrange
         let mut report = Report::new();
         let server = ServerSpec {
-            upstream: Some(Located::detached(UpstreamSettingsSpec {
+            upstream: Located::detached(UpstreamSettingsSpec {
                 source_addresses: Some(Located::detached(UpstreamSourceAddressesSpec {
                     ipv4: vec![Located::detached("not an ip".to_string())],
                     ipv6: vec![Located::detached("also wrong".to_string())],
                 })),
                 ..Default::default()
-            })),
+            }),
             ..Default::default()
         };
 

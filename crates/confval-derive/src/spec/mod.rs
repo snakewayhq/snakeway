@@ -161,18 +161,23 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 if optional {
                     constructors.push(quote! { #ident: #slot, });
                 } else {
-                    missing_checks.push(quote! {
-                        if #seen.is_none() {
-                            ::confval::format::report_missing_field(
-                                #field_name, fields.enclosing(), report,
-                            );
-                        }
-                    });
-                    // A failed nested child is non-fatal to the parent: it is
-                    // replaced with a detached default so the parent and its
-                    // siblings still validate. The child's structural error is
-                    // already in the report, so the lowering gate still blocks
-                    // and the placeholder never reaches runtime.
+                    // A non-optional nested field is a `Located<S>`. With
+                    // `#[confval(default)]` an absent block is filled with
+                    // `S::default()` and is not reported as missing; without it,
+                    // absence is a missing-field error. Either way a
+                    // present-but-failed child is replaced with a detached
+                    // default so the parent and its siblings still validate: the
+                    // child's structural error is already in the report, so the
+                    // lowering gate blocks before the placeholder reaches runtime.
+                    if options.default.is_none() {
+                        missing_checks.push(quote! {
+                            if #seen.is_none() {
+                                ::confval::format::report_missing_field(
+                                    #field_name, fields.enclosing(), report,
+                                );
+                            }
+                        });
+                    }
                     constructors.push(quote! {
                         #ident: #slot.unwrap_or_default(),
                     });
@@ -263,7 +268,12 @@ fn reject_unsupported_default(
         // A string list's only meaningful default is the empty list, written as
         // a bare `#[confval(default)]`. An explicit value cannot be honored.
         FieldShape::BareStringList => default.is_none(),
-        FieldShape::Nested { .. }
+        // A non-optional nested block may default to its type's `Default` via a
+        // bare `#[confval(default)]`; there is no sensible `default = expr` for a
+        // whole sub-struct. An optional nested field is already "absent = None",
+        // so a default would be meaningless there.
+        FieldShape::Nested { optional: false } => default.is_none(),
+        FieldShape::Nested { optional: true }
         | FieldShape::NestedList
         | FieldShape::OptionalWrappedStringList => false,
     };
@@ -276,9 +286,9 @@ fn reject_unsupported_default(
         .unwrap_or_else(|| field.span());
     Err(syn::Error::new(
         span,
-        "#[confval(default)] is not supported on this field; only leaf fields \
-         take a default value (a string list may use a bare #[confval(default)] \
-         for an empty list)",
+        "#[confval(default)] is not supported here; a leaf field takes \
+         #[confval(default)] or #[confval(default = expr)], while a string list \
+         or a non-optional nested block accepts only a bare #[confval(default)]",
     ))
 }
 
