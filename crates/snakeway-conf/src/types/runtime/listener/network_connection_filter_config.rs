@@ -1,5 +1,6 @@
 use crate::types::{NetworkConnectionFilterSpec, ON_NO_PEER_ADDR_DENY};
-use confval::prelude::{Located, Lower, Report};
+use crate::validation::validator::parse_cidr_list;
+use confval::prelude::{Lower, Report};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
@@ -12,35 +13,10 @@ pub struct NetworkConnectionFilterConfig {
     pub ip_family_ipv6: bool,
 }
 
-fn parse_cidrs(
-    list: &[Located<String>],
-    list_name: &str,
-    report: &mut Report,
-) -> Option<Vec<IpNet>> {
-    let mut out = Vec::with_capacity(list.len());
-    let mut ok = true;
-    for c in list {
-        match c.value.parse::<IpNet>() {
-            Ok(net) => out.push(net),
-            Err(e) => {
-                report
-                    .error(format!(
-                        "invalid CIDR in {list_name} list '{}': {}",
-                        c.value, e
-                    ))
-                    .at(c.span)
-                    .emit();
-                ok = false;
-            }
-        }
-    }
-    ok.then_some(out)
-}
-
 impl Lower<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
     fn lower(spec: &NetworkConnectionFilterSpec, report: &mut Report) -> Option<Self> {
-        let cidr_allow = parse_cidrs(&spec.cidr.value.allow, "allow", report);
-        let cidr_deny = parse_cidrs(&spec.cidr.value.deny, "deny", report);
+        let cidr_allow = parse_cidr_list(&spec.cidr.value.allow, "allow list", report);
+        let cidr_deny = parse_cidr_list(&spec.cidr.value.deny, "deny list", report);
 
         Some(Self {
             cidr_allow: cidr_allow?,

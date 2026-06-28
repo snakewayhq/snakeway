@@ -1,4 +1,5 @@
 use crate::types::{NetworkPolicyDeviceSpec, ON_NO_PEER_ADDR_DENY};
+use crate::validation::validator::parse_cidr_list;
 use confval::prelude::{Lower, Report, Validate};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
@@ -31,23 +32,7 @@ where
     NetworkPolicyDeviceSpec: Validate,
 {
     fn lower(spec: &NetworkPolicyDeviceSpec, report: &mut Report) -> Option<Self> {
-        let mut cidr_allow = Vec::with_capacity(spec.cidr_allow.len());
-        let mut ok = true;
-        for c in &spec.cidr_allow {
-            match c.value.parse::<IpNet>() {
-                Ok(net) => cidr_allow.push(net),
-                Err(e) => {
-                    report
-                        .error(format!("invalid network policy CIDR '{}': {}", c.value, e))
-                        .at(c.span)
-                        .emit();
-                    ok = false;
-                }
-            }
-        }
-        if !ok {
-            return None;
-        }
+        let cidr_allow = parse_cidr_list(&spec.cidr_allow, "network policy allow list", report)?;
 
         Some(Self {
             enable: spec.enable.value,
@@ -105,7 +90,7 @@ mod tests {
         assert!(result.is_none());
         assert!(report.issues().iter().any(|i| {
             i.message
-                .contains("invalid network policy CIDR 'not-a-cidr'")
+                .contains("invalid CIDR in network policy allow list 'not-a-cidr'")
         }));
     }
 
