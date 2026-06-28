@@ -15,8 +15,13 @@ pub struct NetworkConnectionFilterConfig {
 
 impl Lower<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
     fn lower(spec: &NetworkConnectionFilterSpec, report: &mut Report) -> Option<Self> {
-        let cidr_allow = parse_cidr_list(&spec.cidr.value.allow, "allow list", report);
-        let cidr_deny = parse_cidr_list(&spec.cidr.value.deny, "deny list", report);
+        let cidr_allow = parse_cidr_list(
+            &spec.cidr.value.allow,
+            "connection filter allow list",
+            report,
+        );
+        let cidr_deny =
+            parse_cidr_list(&spec.cidr.value.deny, "connection filter deny list", report);
 
         Some(Self {
             cidr_allow: cidr_allow?,
@@ -106,7 +111,7 @@ mod tests {
         assert!(report.has_errors());
         assert!(report.issues().iter().any(|i| {
             i.message
-                .contains("invalid CIDR in allow list 'not-a-cidr'")
+                .contains("invalid CIDR in connection filter allow list 'not-a-cidr'")
         }));
     }
 
@@ -125,13 +130,13 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|i| i.message.contains("allow list 'bad-one'"))
+                .any(|i| { i.message.contains("connection filter allow list 'bad-one'") })
         );
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|i| i.message.contains("deny list 'bad-two'"))
+                .any(|i| { i.message.contains("connection filter deny list 'bad-two'") })
         );
     }
 
