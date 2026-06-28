@@ -13,6 +13,8 @@ range_constraint!(SHUTDOWN_FORCE_TIMEOUT_SECONDS, i64, min: 1, max: 300, units: 
 range_constraint!(UPGRADE_MAX_RETRIES, i64, min: 1, max: 60);
 range_constraint!(UPSTREAM_CONNECTION_POOL_SIZE, i64, min: 1, max: 65535);
 range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, i64, min: 1, max: 64);
+/// 0 disables the timeout (unbounded). The upper bound is a sanity cap.
+range_constraint!(UPSTREAM_TIMEOUT_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
@@ -93,6 +95,18 @@ pub struct PerformanceSpec {
     /// Number of parallel accept tasks per listener.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parallel_accepts_per_listener: Option<Located<HclInt>>,
+
+    /// Upstream TCP (and TLS) connect timeout in seconds.
+    /// Omitting this value disables the timeout.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream_connect_timeout_seconds: Option<Located<HclInt>>,
+
+    /// Upstream per-read (idle) timeout in seconds.
+    /// Omitting this value disables the timeout.
+    /// Bounds a stalled origin without breaking slow-but-progressing or streaming responses.
+    /// Not applied to websocket upgrades.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream_read_timeout_seconds: Option<Located<HclInt>>,
 }
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
@@ -136,6 +150,8 @@ impl Default for PerformanceSpec {
             work_stealing: Located::detached(true),
             upstream_connection_pool_size: None,
             parallel_accepts_per_listener: None,
+            upstream_connect_timeout_seconds: None,
+            upstream_read_timeout_seconds: None,
         }
     }
 }
@@ -245,6 +261,21 @@ impl Validate for ServerSpec {
                     "parallel_accepts_per_listener",
                     report,
                 );
+            }
+            if let Some(timeout) = &performance.value.upstream_connect_timeout_seconds {
+                UPSTREAM_TIMEOUT_SECONDS.check_located(
+                    timeout,
+                    "upstream_connect_timeout_seconds",
+                    report,
+                )
+            }
+
+            if let Some(timeout) = &performance.value.upstream_read_timeout_seconds {
+                UPSTREAM_TIMEOUT_SECONDS.check_located(
+                    timeout,
+                    "upstream_read_timeout_seconds",
+                    report,
+                )
             }
         }
 
@@ -508,6 +539,30 @@ observability {
             report.issues()[0]
                 .message
                 .contains("invalid config version: 2")
+        );
+    }
+
+    #[test]
+    fn validate_upstream_timeout_out_of_range() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            performance: Some(Located::detached(PerformanceSpec {
+                upstream_read_timeout_seconds: Some(Located::detached(99_999)),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("upstream_read_timeout_seconds"))
         );
     }
 

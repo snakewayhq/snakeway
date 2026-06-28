@@ -81,6 +81,12 @@ pub struct PerformanceConfig {
     /// Number of parallel accept tasks per listener.
     #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
     pub parallel_accepts_per_listener: Option<usize>,
+    /// Upstream connect timeout in seconds (0 = disabled).
+    #[confval(lower(from = upstream_connect_timeout_seconds, with = narrow::i64_to_u64))]
+    pub upstream_connect_timeout_seconds: Option<u64>,
+    /// Upstream per-read (idle) timeout in seconds (0 = disabled).
+    #[confval(lower(from = upstream_read_timeout_seconds, with = narrow::i64_to_u64))]
+    pub upstream_read_timeout_seconds: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
@@ -295,6 +301,11 @@ mod tests {
         assert!(config.performance.work_stealing);
         assert!(config.performance.upstream_connection_pool_size.is_none());
         assert!(config.performance.parallel_accepts_per_listener.is_none());
+        assert_eq!(
+            config.performance.upstream_connect_timeout_seconds,
+            Some(10)
+        );
+        assert_eq!(config.performance.upstream_read_timeout_seconds, Some(60));
     }
 
     #[test]
@@ -305,6 +316,8 @@ mod tests {
                 work_stealing: Located::detached(false),
                 upstream_connection_pool_size: Some(Located::detached(256)),
                 parallel_accepts_per_listener: Some(Located::detached(4)),
+                upstream_connect_timeout_seconds: Some(Located::detached(5)),
+                upstream_read_timeout_seconds: Some(Located::detached(120)),
             })),
             ..Default::default()
         };
@@ -316,6 +329,8 @@ mod tests {
         assert!(!config.performance.work_stealing);
         assert_eq!(config.performance.upstream_connection_pool_size, Some(256));
         assert_eq!(config.performance.parallel_accepts_per_listener, Some(4));
+        assert_eq!(config.performance.upstream_connect_timeout_seconds, Some(5));
+        assert_eq!(config.performance.upstream_read_timeout_seconds, Some(120));
     }
 
     #[test]
