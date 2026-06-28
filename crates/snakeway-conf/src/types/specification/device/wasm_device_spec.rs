@@ -182,7 +182,12 @@ impl Validate for WasmDeviceSpec {
                 .emit();
         }
 
-        require_existing_file(&self.path, "wasm device", report);
+        require_existing_file(
+            &self.path,
+            "wasm device",
+            Some("Provide a path to a compiled .wasm module."),
+            report,
+        );
 
         KeywordSet::new(&FAIL_POLICIES).check_located(&self.fail_policy, "fail_policy", report);
 
