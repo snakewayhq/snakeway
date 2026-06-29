@@ -20,6 +20,34 @@ It lives in `crates/confval/` and provides the generic primitives that `snakeway
 - **Minimal dependencies.** The core has none. `serde`, `owo-colors`, `hcl-edit`, `toml_edit`, and the
   derive macros are all behind feature flags.
 
+## Usage Examples
+
+Snakeway has a very complex configuration surface.
+It may be overwhelming.
+This documentation page is also very dense.
+
+### Crate Examples
+
+The confval crate has a few examples that are easier to understand.
+
+Run the TOML example:
+
+```shell
+cargo run -p confval --example toml --features="derive color toml"
+```
+
+Run the HCL example:
+
+```shell
+cargo run -p confval --example hcl --features="derive color hcl"
+```
+
+### Mini-Redis Example
+
+This [demo PR for the mini-redis](https://github.com/ethanhann/mini-redis/pull/1) Tokio example server is a bit more
+complex than the crate examples, but not nearly as complex as Snakeway.
+It is meant as a stepping stone.
+
 ## Crate layout
 
 confval is organized into four layers, each a module, plus a prelude. The dependency direction is

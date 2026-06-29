@@ -12,13 +12,7 @@
 //!
 //! Run with: cargo run -p confval --example hcl --features derive,color,hcl
 
-use confval::{
-    KeywordSet, RangeConstraint,
-    diagnostic::Report,
-    pipeline::{Lower, narrow},
-    range_constraint,
-    source::{Located, SourceMap},
-};
+use confval::prelude::*;
 
 range_constraint!(PORT, i64, min: 1, max: 65535);
 range_constraint!(WORKERS, i64, min: 1, max: 512);

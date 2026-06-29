@@ -1,6 +1,6 @@
 [package]
 name = "confval"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "Span-first configuration parsing, validation, and lowering for Rust"
