@@ -25,8 +25,8 @@
 //! Most of the work is therefore "looking at a field and deciding which snippet
 //! of code to emit for it."
 //!
-//! The two derives are independent. Each lives in its own module ([`spec`],
-//! [`config`]); [`common`] holds the small `syn` type-inspection helpers they
+//! The two derives are independent. Each lives in its own module (`spec`,
+//! `config`); `common` holds the small `syn` type-inspection helpers they
 //! both use.
 
 mod common;
@@ -38,7 +38,7 @@ use syn::{DeriveInput, parse_macro_input};
 
 /// Entry point for `#[derive(Spec)]`.
 ///
-/// Parses the annotated struct into a syntax tree, hands it to [`spec::expand`]
+/// Parses the annotated struct into a syntax tree, hands it to `spec::expand`
 /// to build the parsing `impl`, and returns the result. If anything about the
 /// struct is unsupported, the error is turned into a normal compile error that
 /// points at the offending code.
@@ -54,8 +54,8 @@ pub fn derive_spec(input: TokenStream) -> TokenStream {
 /// Entry point for `#[derive(Config)]`.
 ///
 /// Same shape as [`derive_spec`]: parse the struct, hand it to
-/// [`config::expand`] to build the lowering `impl`, and surface any problem as
-/// a compile error. See [`config`] for what the generated lowering does.
+/// `config::expand` to build the lowering `impl`, and surface any problem as
+/// a compile error. See the `config` module for what the generated lowering does.
 #[proc_macro_derive(Config, attributes(confval))]
 pub fn derive_config(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
