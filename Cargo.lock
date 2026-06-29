@@ -4224,7 +4224,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "hotpath",
  "snakeway-core",
@@ -4232,7 +4232,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-conf"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "confval",
  "glob",
@@ -4255,7 +4255,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4318,7 +4318,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-jwt-auth-device"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "base64 0.22.1",
  "hmac",
@@ -4330,7 +4330,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "confval",
  "futures-util",
@@ -4355,7 +4355,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-wasm-test-device"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "wit-bindgen",
 ]
