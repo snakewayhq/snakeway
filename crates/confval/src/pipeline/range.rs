@@ -33,9 +33,9 @@ where
     }
 
     /// Checks a located value, pushing a span-carrying issue to the report
-    /// if it is out of range. Message and help text are identical to
-    /// [`check`](Self::check), so both report worlds describe violations the
-    /// same way.
+    /// if it is out of range. The error names the field and the bound it
+    /// violated; the help line restates that bound, using the configured
+    /// `units` and `help` text when present.
     pub fn check_located(&self, value: &Located<T>, field: &'static str, report: &mut Report) {
         // NaN is unordered: it compares `false` against both bounds, so the
         // range checks below would silently accept it.
