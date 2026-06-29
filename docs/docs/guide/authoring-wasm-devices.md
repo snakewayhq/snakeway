@@ -3,8 +3,7 @@ title: Authoring WASM Devices
 ---
 
 :::caution
-WASM device support is experimental. The WIT interface (`snakeway:device@0.4.0`) may change
-in future releases.
+The WIT interface (`snakeway:device@0.4.0`) may change in future releases.
 :::
 
 **WASM devices** let you extend Snakeway with custom traffic logic written in any language
