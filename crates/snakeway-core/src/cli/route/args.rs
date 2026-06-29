@@ -8,7 +8,7 @@ pub enum RouteCmd {
 
 #[derive(clap::Args, Debug)]
 pub(crate) struct RouteSolveArgs {
-    /// Full URL to resolve (must include scheme + host, e.g. http://example.com/api/v1)
+    /// Full URL to resolve (must include scheme and host, e.g. <http://example.com/api/v1>)
     pub(crate) url: String,
 
     /// Path to config directory
