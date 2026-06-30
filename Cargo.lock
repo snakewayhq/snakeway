@@ -4332,8 +4332,10 @@ dependencies = [
 name = "snakeway-tests"
 version = "0.15.0"
 dependencies = [
+ "base64 0.22.1",
  "confval",
  "futures-util",
+ "hmac",
  "http",
  "opentelemetry",
  "opentelemetry_sdk",
@@ -4341,6 +4343,7 @@ dependencies = [
  "prost",
  "reqwest",
  "serde_json",
+ "sha2 0.11.0",
  "snakeway-core",
  "tempfile",
  "tokio",
