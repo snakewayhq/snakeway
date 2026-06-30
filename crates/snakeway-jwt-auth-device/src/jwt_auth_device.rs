@@ -24,9 +24,19 @@ impl Guest for JwtAuthDevice {
 
         if config.public_paths.iter().any(|p| p == &req.route_path) {
             host::log(0, &format!("public path bypass: {}", req.route_path));
+            // Even on a bypass, strip client-supplied identity headers so a
+            // request to a public path cannot spoof X-User-Id / X-Tenant-Id to
+            // an upstream that trusts them.
             return RequestResult {
                 action: Action::Continue,
-                patch: None,
+                patch: Some(RequestPatch {
+                    set_route_path: None,
+                    set_upstream_path: None,
+                    ops: vec![
+                        HeaderOp::Remove("x-user-id".to_string()),
+                        HeaderOp::Remove("x-tenant-id".to_string()),
+                    ],
+                }),
             };
         }
 
@@ -132,7 +142,10 @@ impl Guest for JwtAuthDevice {
 
 fn extract_bearer_token(auth_value: &str) -> Option<&str> {
     let trimmed = auth_value.trim();
-    if trimmed.len() > 7 && trimmed[..7].eq_ignore_ascii_case("bearer ") {
+    // Compare on bytes, not a str range index: a `str` byte-range slice panics if
+    // it splits a multi-byte UTF-8 character. Once the ASCII "bearer " prefix
+    // matches, byte index 7 is a valid char boundary, so `trimmed[7..]` is safe.
+    if trimmed.len() > 7 && trimmed.as_bytes()[..7].eq_ignore_ascii_case(b"bearer ") {
         Some(trimmed[7..].trim())
     } else {
         None
@@ -162,7 +175,15 @@ fn error_response(err: &AuthError) -> Action {
 }
 
 fn success_patch(token: &ValidatedToken, config: &AuthConfig) -> Option<RequestPatch> {
-    let mut ops = Vec::new();
+    // Always neutralize client-supplied identity headers and the bearer token
+    // before asserting our own. The removes run unconditionally so a client can
+    // never spoof identity by sending these headers (e.g. when a configured
+    // claim like tenant is absent and no Set is emitted below).
+    let mut ops = vec![
+        HeaderOp::Remove("x-user-id".to_string()),
+        HeaderOp::Remove("x-tenant-id".to_string()),
+        HeaderOp::Remove("authorization".to_string()),
+    ];
 
     if let Some(user_id) = token.claims.get_claim(&config.user_id_claim) {
         ops.push(HeaderOp::Set(Header {
@@ -179,8 +200,6 @@ fn success_patch(token: &ValidatedToken, config: &AuthConfig) -> Option<RequestP
             value: tenant_id,
         }));
     }
-
-    ops.push(HeaderOp::Remove("authorization".to_string()));
 
     Some(RequestPatch {
         set_route_path: None,
