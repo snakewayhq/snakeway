@@ -16,7 +16,9 @@ pub(crate) enum AuthError {
     IssuerMismatch,
     AudienceMismatch,
     TokenExpired,
+    MissingExpiry,
     TokenNotYetValid,
+    MissingUserId,
     Config(&'static str),
 }
 
@@ -39,7 +41,9 @@ impl AuthError {
             AuthError::IssuerMismatch => "token issuer not accepted",
             AuthError::AudienceMismatch => "token audience not accepted",
             AuthError::TokenExpired => "token has expired",
+            AuthError::MissingExpiry => "token has no expiry",
             AuthError::TokenNotYetValid => "token is not yet valid",
+            AuthError::MissingUserId => "token missing required identity claim",
             AuthError::Config(_) => "authentication service misconfigured",
         }
     }
@@ -59,6 +63,21 @@ fn base64url_decode(input: &str) -> Result<Vec<u8>, &'static str> {
     BASE64_URL_SAFE_NO_PAD
         .decode(input.as_bytes())
         .map_err(|_| "base64url decode failed")
+}
+
+/// Minimum HS256 secret length. RFC 8725 §3.5 / RFC 7518 §3.2 require a key at
+/// least as long as the HMAC-SHA256 output (256 bits = 32 bytes).
+pub(crate) const MIN_SECRET_BYTES: usize = 32;
+
+/// Reject secrets shorter than [`MIN_SECRET_BYTES`]. The `hmac` crate accepts a
+/// key of any length (including zero), so without this guard an empty or short,
+/// brute-forceable secret would be used silently. Enforced at config load so the
+/// device fails closed rather than running with a forgeable key.
+pub(crate) fn validate_secret(secret: &[u8]) -> Result<(), AuthError> {
+    if secret.len() < MIN_SECRET_BYTES {
+        return Err(AuthError::Config("secret must be at least 32 bytes"));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_token(
@@ -105,9 +124,10 @@ pub(crate) fn validate_token(
         _ => return Err(AuthError::AudienceMismatch),
     }
 
-    if let Some(exp) = claims.exp
-        && now >= exp
-    {
+    // Expiry is mandatory. A token with no `exp` would otherwise be accepted
+    // forever, so reject when it is absent (RFC 8725 §3.7).
+    let exp = claims.exp.ok_or(AuthError::MissingExpiry)?;
+    if now >= exp {
         return Err(AuthError::TokenExpired);
     }
 
@@ -115,6 +135,13 @@ pub(crate) fn validate_token(
         && now < nbf
     {
         return Err(AuthError::TokenNotYetValid);
+    }
+
+    // Identity must be resolvable from the configured claim; the device asserts
+    // it to the upstream as X-User-Id. Reject when it is missing or non-scalar so
+    // a request is never admitted without an established identity.
+    if claims.get_claim(&config.user_id_claim).is_none() {
+        return Err(AuthError::MissingUserId);
     }
 
     Ok(ValidatedToken { claims })
@@ -127,7 +154,7 @@ mod tests {
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
 
-    const SECRET: &[u8] = b"test-secret-key-for-hmac-256!!!";
+    const SECRET: &[u8] = b"test-secret-key-for-hmac-sha256!";
     const ISSUER: &str = "https://auth.example.com";
     const AUDIENCE: &str = "https://api.example.com";
 
@@ -185,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn valid_token_without_exp() {
+    fn token_without_exp_is_rejected() {
         // Arrange
         let payload = format!(r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}"}}"#);
         let token = encode_jwt(&valid_header(), &payload, SECRET);
@@ -195,7 +222,7 @@ mod tests {
         let result = validate_token(&token, &config, 999_999_999);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(AuthError::MissingExpiry)));
     }
 
     // -- Expired token --
@@ -258,6 +285,41 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+    }
+
+    // -- Missing identity claim --
+
+    #[test]
+    fn token_missing_user_id_claim_is_rejected() {
+        // Arrange
+        let payload = format!(r#"{{"iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#);
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::MissingUserId)));
+    }
+
+    #[test]
+    fn token_with_non_scalar_user_id_claim_is_rejected() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"u","groups":["a","b"],"iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            user_id_claim: "groups".to_string(),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::MissingUserId)));
     }
 
     // -- Bad signature --
@@ -454,6 +516,8 @@ mod tests {
             AuthError::MalformedToken,
             AuthError::BadSignature,
             AuthError::TokenExpired,
+            AuthError::MissingExpiry,
+            AuthError::MissingUserId,
             AuthError::IssuerMismatch,
             AuthError::AudienceMismatch,
         ];
@@ -475,5 +539,43 @@ mod tests {
 
         // Assert
         assert_eq!(status, 500);
+    }
+
+    // -- Secret length --
+
+    #[test]
+    fn secret_below_minimum_length_is_rejected() {
+        // Arrange
+        let secret = vec![0u8; MIN_SECRET_BYTES - 1];
+
+        // Act
+        let result = validate_secret(&secret);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    #[test]
+    fn empty_secret_is_rejected() {
+        // Arrange
+        let secret: Vec<u8> = Vec::new();
+
+        // Act
+        let result = validate_secret(&secret);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    #[test]
+    fn secret_at_minimum_length_is_accepted() {
+        // Arrange
+        let secret = vec![0u8; MIN_SECRET_BYTES];
+
+        // Act
+        let result = validate_secret(&secret);
+
+        // Assert
+        assert!(result.is_ok());
     }
 }

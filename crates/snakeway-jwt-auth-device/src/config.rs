@@ -12,6 +12,7 @@ impl AuthConfig {
         let secret = BASE64_STANDARD
             .decode(secret_b64.as_bytes())
             .map_err(|_| AuthError::Config("secret is not valid base64"))?;
+        crate::token_validation::validate_secret(&secret)?;
 
         let issuer = host::config_get("issuer")
             .ok_or(AuthError::Config("missing required config key: issuer"))?;
