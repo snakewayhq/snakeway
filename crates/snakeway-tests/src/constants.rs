@@ -128,3 +128,4 @@ pub const HTTP_UPSTREAM_RESPONSE: &[u8] =
 // WASM
 // ---------------------------------------------------------------------------
 pub const TEST_DEVICE_PATH: &str = "fixtures/wasm/test_device.wasm";
+pub const TEST_JWT_DEVICE_PATH: &str = "fixtures/wasm/jwt_auth_device.wasm";
