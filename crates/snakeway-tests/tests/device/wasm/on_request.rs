@@ -1,12 +1,9 @@
-use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_core::testing_api::conf::types::WasmDeviceSpec;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::device::{default_device, make_wasm_device};
 use snakeway_tests::harness::TestServer;
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 /// A normal request passes through the WASM device unmodified.
 #[test]
