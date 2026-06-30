@@ -168,6 +168,19 @@ impl Guest for TestDevice {
             };
         }
 
+        if mode == "strip-response-header" {
+            return ResponseResult {
+                action: Action::Continue,
+                patch: Some(ResponsePatch {
+                    set_status: None,
+                    ops: vec![HeaderOp::Set(Header {
+                        name: "x-remove-me".to_string(),
+                        value: "leaked".to_string(),
+                    })],
+                }),
+            };
+        }
+
         let _ = resp;
         ResponseResult {
             action: Action::Continue,
@@ -193,6 +206,16 @@ impl Guest for TestDevice {
                         name: "x-wasm-response".to_string(),
                         value: "tagged".to_string(),
                     })],
+                }),
+            };
+        }
+
+        if mode == "strip-response-header" {
+            return ResponseResult {
+                action: Action::Continue,
+                patch: Some(ResponsePatch {
+                    set_status: None,
+                    ops: vec![HeaderOp::Remove("x-remove-me".to_string())],
                 }),
             };
         }

@@ -634,8 +634,15 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
+        // Clear and repopulate so device Remove ops propagate to the response,
+        // mirroring the request-side writeback in upstream_request_filter. An
+        // insert-only loop would drop removals and collapse appended multi-values.
+        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+        for name in existing {
+            upstream.remove_header(&name);
+        }
         for (name, value) in &resp_ctx.headers {
-            upstream.insert_header(name.clone(), value)?;
+            upstream.append_header(name.clone(), value)?;
         }
 
         ctx.extensions.insert(UpstreamResponseSnapshot {
@@ -691,8 +698,15 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
+        // Clear and repopulate so device Remove ops propagate to the response,
+        // mirroring the request-side writeback in upstream_request_filter. An
+        // insert-only loop would drop removals and collapse appended multi-values.
+        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+        for name in existing {
+            upstream.remove_header(&name);
+        }
         for (name, value) in &resp_ctx.headers {
-            upstream.insert_header(name.clone(), value)?;
+            upstream.append_header(name.clone(), value)?;
         }
 
         let status = upstream.status.as_u16();
