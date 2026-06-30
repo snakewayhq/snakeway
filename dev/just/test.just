@@ -75,5 +75,5 @@ test-with-coverage-summary:
     cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # Run integration tests
-integration-test *ARGS: fetch-pebble-ca generate-dev-certs
+integration-test *ARGS: fetch-pebble-ca generate-dev-certs build-wasm-test-device
     cargo nextest run -p snakeway-tests {{ ARGS }}

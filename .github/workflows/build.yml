@@ -31,6 +31,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
 
       - name: Install system dependencies
         run: sudo apt-get update -y && sudo apt-get install -y mold protobuf-compiler
@@ -107,6 +109,18 @@ jobs:
             crates/snakeway-tests/certs/pebble-ca.pem
           openssl x509 -noout -subject \
             -in crates/snakeway-tests/certs/pebble-ca.pem
+
+      - name: Install cargo-component
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-component
+
+      - name: Build WASM test device fixture
+        run: |
+          cargo component build --release --target wasm32-unknown-unknown -p snakeway-wasm-test-device
+          mkdir -p crates/snakeway-tests/fixtures/wasm
+          cp target/wasm32-unknown-unknown/release/snakeway_wasm_test_device.wasm \
+             crates/snakeway-tests/fixtures/wasm/test_device.wasm
 
       - name: Run integration tests
         run: cargo nextest run -p snakeway-tests --profile ci
