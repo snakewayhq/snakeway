@@ -4,7 +4,7 @@ title: TLS Automation
 
 The `tls_automation` block configures automatic certificate issuance and renewal via the ACME protocol (for example, Let's Encrypt). When present, Snakeway will automatically obtain and renew certificates for any `bind` blocks configured with `mode = "acme"`.
 
-See the [TLS Cert Management](/docs/guide/tls-cert-management) guide for a full walkthrough.
+See the [TLS Cert Management](../../../administration/tls-cert-management.md) guide for a full walkthrough.
 
 ## Configuration Example
 

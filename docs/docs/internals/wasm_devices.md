@@ -3,7 +3,7 @@ title: WASM Device Internals
 ---
 
 This page describes the internal architecture of the WASM device subsystem. For the
-operator-facing guide, see [Authoring WASM Devices](/docs/guide/authoring-wasm-devices).
+operator-facing guide, see [Authoring WASM Devices](../extension/authoring-wasm-devices.md).
 
 ## Runtime Stack
 

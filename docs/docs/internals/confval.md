@@ -469,4 +469,4 @@ confval assumes a fixed phase ordering, and the derives are designed around it:
 Two runnable end-to-end examples live in `crates/confval/examples/`: `hcl.rs` and `toml.rs` define the
 same `ServerSpec`/`ServerConfig` and differ only in the source text and the single `parse_hcl` vs
 `parse_toml` call, demonstrating that everything after parsing is format-neutral. See
-[Configuration Internals](/internals/configuration) for how Snakeway applies this pipeline.
+[Configuration Internals](./configuration.md) for how Snakeway applies this pipeline.
