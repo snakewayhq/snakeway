@@ -25,7 +25,12 @@ impl AuthConfig {
         let tenant_id_claim = host::config_get("tenant_id_claim");
 
         let public_paths = host::config_get("public_paths")
-            .map(|s| s.split(',').map(|p| p.trim().to_string()).collect())
+            .map(|s| {
+                s.split(',')
+                    .map(|p| p.trim().to_string())
+                    .filter(|p| !p.is_empty())
+                    .collect()
+            })
             .unwrap_or_default();
 
         Ok(Self {
