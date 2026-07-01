@@ -25,9 +25,9 @@ const AUDIENCE: &str = "https://api.example.com";
 /// Far-future expiry so the token stays valid against real wall-clock time.
 const FUTURE_EXP: u64 = 4_102_444_800; // 2100-01-01
 
-/// Sign an HS256 JWT with the given payload JSON.
-fn mint(payload_json: &str) -> String {
-    let header_b64 = BASE64_URL_SAFE_NO_PAD.encode(br#"{"alg":"HS256","typ":"JWT"}"#);
+/// Sign an HS256 JWT with the given header and payload JSON.
+fn mint_with_header(header_json: &str, payload_json: &str) -> String {
+    let header_b64 = BASE64_URL_SAFE_NO_PAD.encode(header_json.as_bytes());
     let payload_b64 = BASE64_URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
     let signing_input = format!("{header_b64}.{payload_b64}");
     let mut mac = <Hmac<Sha256>>::new_from_slice(SECRET).unwrap();
@@ -36,10 +36,27 @@ fn mint(payload_json: &str) -> String {
     format!("{signing_input}.{sig_b64}")
 }
 
-fn valid_token() -> String {
-    mint(&format!(
+/// Sign an HS256 JWT with the default `{"alg":"HS256","typ":"JWT"}` header.
+fn mint(payload_json: &str) -> String {
+    mint_with_header(r#"{"alg":"HS256","typ":"JWT"}"#, payload_json)
+}
+
+fn valid_payload() -> String {
+    format!(
         r#"{{"sub":"user-42","tenant_id":"acme","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":{FUTURE_EXP}}}"#
-    ))
+    )
+}
+
+fn valid_token() -> String {
+    mint(&valid_payload())
+}
+
+/// Current wall-clock time in whole seconds, matching the device's `now`.
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }
 
 /// Device config with the matching secret. `public_paths` is opt-in per test.
@@ -185,4 +202,62 @@ fn jwt_public_path_strips_client_identity_header() {
     let body = res.text().unwrap();
     assert_eq!(echoed_header(&body, "x-user-id"), None);
     assert_eq!(echoed_header(&body, "x-tenant-id"), None);
+}
+
+/// With `token_type` configured, a token whose `typ` does not match is rejected.
+/// This also proves the config key is read end-to-end.
+#[test]
+fn jwt_rejects_mismatched_token_type() {
+    // Arrange
+    let mut config = jwt_config();
+    config.insert("token_type".to_string(), "at+jwt".to_string());
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_wasm_device(make_jwt_device(config))
+        .build();
+    let srv = TestServer::start_http_upstream_that_echoes_headers_with_config(&mut cfg);
+    let token = mint_with_header(r#"{"alg":"HS256","typ":"JWT"}"#, &valid_payload());
+
+    // Act
+    let res = srv
+        .get("/api")
+        .header("authorization", format!("Bearer {token}"))
+        .send()
+        .expect("request failed");
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+/// With a large `clock_skew_leeway_seconds`, a token that expired slightly in the
+/// past is still accepted. This proves the leeway config key is read end-to-end.
+#[test]
+fn jwt_leeway_accepts_recently_expired_token() {
+    // Arrange
+    let mut config = jwt_config();
+    config.insert("clock_skew_leeway_seconds".to_string(), "3600".to_string());
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_wasm_device(make_jwt_device(config))
+        .build();
+    let srv = TestServer::start_http_upstream_that_echoes_headers_with_config(&mut cfg);
+    let exp = now_secs().saturating_sub(30);
+    let token = mint(&format!(
+        r#"{{"sub":"user-42","tenant_id":"acme","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":{exp}}}"#
+    ));
+
+    // Act
+    let res = srv
+        .get("/api")
+        .header("authorization", format!("Bearer {token}"))
+        .send()
+        .expect("request failed");
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().unwrap();
+    assert_eq!(
+        echoed_header(&body, "x-user-id").as_deref(),
+        Some("user-42")
+    );
 }

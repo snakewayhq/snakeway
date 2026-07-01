@@ -33,6 +33,12 @@ impl AuthConfig {
             })
             .unwrap_or_default();
 
+        let token_type = host::config_get("token_type");
+
+        let clock_skew_leeway_seconds = crate::token_validation::parse_leeway_seconds(
+            host::config_get("clock_skew_leeway_seconds").as_deref(),
+        )?;
+
         Ok(Self {
             secret,
             issuer,
@@ -40,6 +46,8 @@ impl AuthConfig {
             user_id_claim,
             tenant_id_claim,
             public_paths,
+            token_type,
+            clock_skew_leeway_seconds,
         })
     }
 }

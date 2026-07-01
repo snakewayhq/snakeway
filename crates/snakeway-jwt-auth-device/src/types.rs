@@ -7,8 +7,8 @@ pub(crate) struct ValidatedToken {
 #[derive(Deserialize)]
 pub(crate) struct JwtHeader {
     pub(crate) alg: String,
-    #[allow(dead_code)]
-    typ: Option<String>,
+    #[serde(default)]
+    pub(crate) typ: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -70,6 +70,10 @@ pub(crate) struct AuthConfig {
     pub(crate) user_id_claim: String,
     pub(crate) tenant_id_claim: Option<String>,
     pub(crate) public_paths: Vec<String>,
+    /// Expected JWT `typ` header. When `None`, the type is not checked.
+    pub(crate) token_type: Option<String>,
+    /// Allowed clock skew, in seconds, applied to `exp` and `nbf`.
+    pub(crate) clock_skew_leeway_seconds: u64,
 }
 
 #[cfg(test)]

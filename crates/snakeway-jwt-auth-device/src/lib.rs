@@ -35,6 +35,14 @@
 //!       # Comma-separated paths that bypass authentication entirely.
 //!       # Supports exact matches only.
 //!       public_paths = "/health,/ready,/.well-known/openid-configuration"
+//!
+//!       # Expected JWT `typ` header. Optional. When set, tokens whose type does
+//!       # not match (case-insensitive, `application/` prefix ignored) are
+//!       # rejected. Omit to skip type checking.
+//!       token_type = "at+jwt"
+//!
+//!       # Allowed clock skew in seconds, applied to `exp` and `nbf`. Default: 0.
+//!       clock_skew_leeway_seconds = "60"
 //!     }
 //!   }
 //! ]

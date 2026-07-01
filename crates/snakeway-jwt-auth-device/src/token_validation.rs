@@ -19,6 +19,7 @@ pub(crate) enum AuthError {
     MissingExpiry,
     TokenNotYetValid,
     MissingUserId,
+    TypeMismatch,
     Config(&'static str),
 }
 
@@ -44,6 +45,7 @@ impl AuthError {
             AuthError::MissingExpiry => "token has no expiry",
             AuthError::TokenNotYetValid => "token is not yet valid",
             AuthError::MissingUserId => "token missing required identity claim",
+            AuthError::TypeMismatch => "token type not accepted",
             AuthError::Config(_) => "authentication service misconfigured",
         }
     }
@@ -80,6 +82,28 @@ pub(crate) fn validate_secret(secret: &[u8]) -> Result<(), AuthError> {
     Ok(())
 }
 
+/// Normalize a JWT `typ` value for comparison: `typ` is case-insensitive and the
+/// `application/` media-type prefix may be omitted (RFC 7519 §5.1).
+fn normalize_typ(value: &str) -> String {
+    let without_prefix =
+        if value.len() >= 12 && value.as_bytes()[..12].eq_ignore_ascii_case(b"application/") {
+            &value[12..]
+        } else {
+            value
+        };
+    without_prefix.to_ascii_lowercase()
+}
+
+/// Parse the optional `clock_skew_leeway_seconds` config value. Absent means 0.
+pub(crate) fn parse_leeway_seconds(raw: Option<&str>) -> Result<u64, AuthError> {
+    match raw {
+        Some(s) => s.trim().parse::<u64>().map_err(|_| {
+            AuthError::Config("clock_skew_leeway_seconds must be a non-negative integer")
+        }),
+        None => Ok(0),
+    }
+}
+
 pub(crate) fn validate_token(
     raw_token: &str,
     config: &AuthConfig,
@@ -104,6 +128,16 @@ pub(crate) fn validate_token(
 
     if header.alg != "HS256" {
         return Err(AuthError::UnsupportedAlgorithm(header.alg));
+    }
+
+    // Explicit typing (RFC 8725 §3.11): when an expected type is configured,
+    // reject tokens of a different (or absent) `typ` to prevent cross-JWT
+    // substitution when the issuer signs multiple token kinds with one secret.
+    if let Some(expected) = &config.token_type {
+        match &header.typ {
+            Some(typ) if normalize_typ(typ) == normalize_typ(expected) => {}
+            _ => return Err(AuthError::TypeMismatch),
+        }
     }
 
     let signing_input = format!("{header_b64}.{payload_b64}");
@@ -131,14 +165,16 @@ pub(crate) fn validate_token(
     }
 
     // Expiry is mandatory. A token with no `exp` would otherwise be accepted
-    // forever, so reject when it is absent (RFC 8725 §3.7).
+    // forever, so reject when it is absent (RFC 8725 §3.7). The configured clock
+    // skew leeway widens both bounds to absorb drift between issuer and proxy.
+    let leeway = config.clock_skew_leeway_seconds;
     let exp = claims.exp.ok_or(AuthError::MissingExpiry)?;
-    if now >= exp {
+    if now >= exp.saturating_add(leeway) {
         return Err(AuthError::TokenExpired);
     }
 
     if let Some(nbf) = claims.nbf
-        && now < nbf
+        && now.saturating_add(leeway) < nbf
     {
         return Err(AuthError::TokenNotYetValid);
     }
@@ -172,6 +208,8 @@ mod tests {
             user_id_claim: "sub".to_string(),
             tenant_id_claim: None,
             public_paths: vec![],
+            token_type: None,
+            clock_skew_leeway_seconds: 0,
         }
     }
 
@@ -613,5 +651,180 @@ mod tests {
         // Assert
         assert!(!msg.contains('\n'));
         assert!(msg.contains("\\n"));
+    }
+
+    // -- Token type (typ) --
+
+    #[test]
+    fn typ_not_checked_when_token_type_unset() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"unexpected-type"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn matching_token_type_is_accepted() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"at+jwt"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("at+jwt".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn token_type_match_is_case_insensitive_and_ignores_media_prefix() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"application/AT+JWT"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("at+jwt".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn mismatched_token_type_is_rejected() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"JWT"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("at+jwt".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TypeMismatch)));
+    }
+
+    #[test]
+    fn missing_typ_is_rejected_when_token_type_configured() {
+        // Arrange
+        let header = r#"{"alg":"HS256"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("JWT".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TypeMismatch)));
+    }
+
+    // -- Clock skew leeway --
+
+    #[test]
+    fn leeway_accepts_recently_expired_token() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(1000), SECRET);
+        let config = AuthConfig {
+            clock_skew_leeway_seconds: 60,
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1030);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn leeway_rejects_token_expired_beyond_window() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(1000), SECRET);
+        let config = AuthConfig {
+            clock_skew_leeway_seconds: 60,
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1061);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TokenExpired)));
+    }
+
+    #[test]
+    fn leeway_accepts_not_yet_valid_token_within_window() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":3000,"nbf":2000}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            clock_skew_leeway_seconds: 60,
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1950);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    // -- Leeway parsing --
+
+    #[test]
+    fn parse_leeway_absent_defaults_to_zero() {
+        // Arrange
+        let raw = None;
+
+        // Act
+        let result = parse_leeway_seconds(raw);
+
+        // Assert
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn parse_leeway_valid_number_is_parsed() {
+        // Arrange
+        let raw = Some("60");
+
+        // Act
+        let result = parse_leeway_seconds(raw);
+
+        // Assert
+        assert_eq!(result.unwrap(), 60);
+    }
+
+    #[test]
+    fn parse_leeway_non_numeric_is_rejected() {
+        // Arrange
+        let raw = Some("soon");
+
+        // Act
+        let result = parse_leeway_seconds(raw);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
     }
 }
