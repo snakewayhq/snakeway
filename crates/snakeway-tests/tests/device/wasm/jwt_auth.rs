@@ -134,6 +134,7 @@ fn jwt_rejects_request_without_token() {
 
     // Assert
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(res.text().unwrap(), r#"{"error":"unauthorized"}"#);
 }
 
 /// A token whose signature does not match the configured secret is rejected.
