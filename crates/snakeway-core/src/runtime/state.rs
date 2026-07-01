@@ -61,6 +61,14 @@ pub(crate) async fn reload_runtime_state(
     Ok(config)
 }
 
+/// Constructs the complete runtime state from configuration.
+///
+/// It takes the validated configuration and builds all the runtime components
+/// needed to run the proxy: TLS certificate mappings, HTTP routers for request matching,
+/// device registry, and service definitions with their upstream backends.
+///
+/// The resulting RuntimeState is immutable and thread-safe, designed to be swapped atomically
+/// during configuration reloads without disrupting active connections.
 pub fn build_runtime_state(
     cfg: &RuntimeConfig,
     cert_manager: &Option<Arc<CertManager>>,
