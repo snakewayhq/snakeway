@@ -132,7 +132,7 @@ For headers and status this uses a clear-and-repopulate strategy.
   apply their patch to `ResponseCtx`. The host then sets the upstream status and clears and repopulates the upstream
   response headers from the context.
 
-:::caution
+:::note
 The writeback clears the headers first and then repopulates them, rather than inserting over the originals.
 An insert-only writeback would not carry a `HeaderOp::Remove` through to the wire, and would collapse an appended
 multi-value header down to a single value.

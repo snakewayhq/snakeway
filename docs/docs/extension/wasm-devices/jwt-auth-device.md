@@ -5,7 +5,7 @@ title: JWT Auth WASM Device
 The **JWT Auth device** validates an HMAC-SHA256 (HS256) bearer token on each request, injects the caller identity into
 upstream headers, and rejects unauthenticated requests with a generic 401.
 
-:::caution
+:::note
 This is an example device shipped in the Snakeway repository (`crates/snakeway-jwt-auth-device`), not a supported
 product surface.
 Use it as a reference and a starting point for your own auth device.
@@ -58,10 +58,12 @@ wasm_devices = [
 ]
 ```
 
-:::tip
+:::caution
 Set `fail_policy = "closed"` for an auth device.
-If the device fails to load or traps, a closed policy rejects the request with `503` rather than letting it through
-unauthenticated.
+Under `"open"`, a device that fails to load or traps lets the request through unauthenticated instead of rejecting it.
+:::
+
+:::tip
 Declaring `hooks = ["on_request"]` avoids paying for the five unused hook instantiations per request.
 :::
 
