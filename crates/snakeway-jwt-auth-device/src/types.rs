@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashSet;
 
 pub(crate) struct ValidatedToken {
     pub(crate) claims: JwtClaims,
@@ -46,6 +47,9 @@ pub(crate) struct JwtClaims {
     #[serde(default, deserialize_with = "deserialize_numeric_date")]
     pub(crate) nbf: Option<u64>,
 
+    #[serde(default)]
+    pub(crate) jti: Option<String>,
+
     #[serde(flatten)]
     extra: serde_json::Map<String, serde_json::Value>,
 }
@@ -92,6 +96,9 @@ pub(crate) struct AuthConfig {
     pub(crate) token_type: Option<String>,
     /// Allowed clock skew, in seconds, applied to `exp` and `nbf`.
     pub(crate) clock_skew_leeway_seconds: u64,
+    /// Revoked `jti` values. When non-empty, revocation is enforced and a token
+    /// must carry a `jti` that is not in this set.
+    pub(crate) revoked_jti: HashSet<String>,
 }
 
 #[cfg(test)]

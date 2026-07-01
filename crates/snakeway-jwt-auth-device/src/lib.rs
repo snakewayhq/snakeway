@@ -45,6 +45,10 @@
 //!
 //!       # Allowed clock skew in seconds, applied to `exp` and `nbf`. Default: 0.
 //!       clock_skew_leeway_seconds = "60"
+//!
+//!       # Comma-separated revoked `jti` values. When set, revocation is enforced
+//!       # and every token must carry a `jti` that is not in this list.
+//!       revoked_jti = "id-1,id-2"
 //!     }
 //!   }
 //! ]

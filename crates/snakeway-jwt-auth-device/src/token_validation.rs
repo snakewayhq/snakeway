@@ -20,6 +20,8 @@ pub(crate) enum AuthError {
     TokenNotYetValid,
     MissingUserId,
     TypeMismatch,
+    TokenRevoked,
+    MissingJti,
     Config(&'static str),
 }
 
@@ -46,6 +48,8 @@ impl AuthError {
             AuthError::TokenNotYetValid => "token is not yet valid",
             AuthError::MissingUserId => "token missing required identity claim",
             AuthError::TypeMismatch => "token type not accepted",
+            AuthError::TokenRevoked => "token has been revoked",
+            AuthError::MissingJti => "token missing required id claim",
             AuthError::Config(_) => "authentication service misconfigured",
         }
     }
@@ -186,6 +190,17 @@ pub(crate) fn validate_token(
         return Err(AuthError::MissingUserId);
     }
 
+    // Revocation: when a denylist is configured, the token must carry a `jti`
+    // that is not on it. An enabled denylist makes `jti` mandatory so that every
+    // accepted token is revocable.
+    if !config.revoked_jti.is_empty() {
+        match &claims.jti {
+            Some(jti) if config.revoked_jti.contains(jti) => return Err(AuthError::TokenRevoked),
+            Some(_) => {}
+            None => return Err(AuthError::MissingJti),
+        }
+    }
+
     Ok(ValidatedToken { claims })
 }
 
@@ -195,6 +210,7 @@ mod tests {
     use base64::prelude::BASE64_URL_SAFE_NO_PAD;
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
+    use std::collections::HashSet;
 
     const SECRET: &[u8] = b"test-secret-key-for-hmac-sha256!";
     const ISSUER: &str = "https://auth.example.com";
@@ -210,6 +226,7 @@ mod tests {
             public_paths: vec![],
             token_type: None,
             clock_skew_leeway_seconds: 0,
+            revoked_jti: HashSet::new(),
         }
     }
 
@@ -826,5 +843,74 @@ mod tests {
 
         // Assert
         assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    // -- Revocation (jti) --
+
+    #[test]
+    fn revoked_token_is_rejected() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000,"jti":"revoked-1"}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            revoked_jti: HashSet::from(["revoked-1".to_string()]),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TokenRevoked)));
+    }
+
+    #[test]
+    fn non_revoked_token_is_accepted() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000,"jti":"allowed-1"}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            revoked_jti: HashSet::from(["revoked-1".to_string()]),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn missing_jti_rejected_when_revocation_enabled() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            revoked_jti: HashSet::from(["revoked-1".to_string()]),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::MissingJti)));
+    }
+
+    #[test]
+    fn jti_not_required_when_revocation_disabled() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(2000), SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
     }
 }

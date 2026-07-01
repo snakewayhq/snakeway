@@ -261,3 +261,30 @@ fn jwt_leeway_accepts_recently_expired_token() {
         Some("user-42")
     );
 }
+
+/// A token whose `jti` is on the configured denylist is rejected. This also
+/// proves the `revoked_jti` config key is read end-to-end.
+#[test]
+fn jwt_rejects_revoked_token() {
+    // Arrange
+    let mut config = jwt_config();
+    config.insert("revoked_jti".to_string(), "revoked-1".to_string());
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_wasm_device(make_jwt_device(config))
+        .build();
+    let srv = TestServer::start_http_upstream_that_echoes_headers_with_config(&mut cfg);
+    let token = mint(&format!(
+        r#"{{"sub":"user-42","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":{FUTURE_EXP},"jti":"revoked-1"}}"#
+    ));
+
+    // Act
+    let res = srv
+        .get("/api")
+        .header("authorization", format!("Bearer {token}"))
+        .send()
+        .expect("request failed");
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}

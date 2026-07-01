@@ -39,6 +39,15 @@ impl AuthConfig {
             host::config_get("clock_skew_leeway_seconds").as_deref(),
         )?;
 
+        let revoked_jti = host::config_get("revoked_jti")
+            .map(|s| {
+                s.split(',')
+                    .map(|p| p.trim().to_string())
+                    .filter(|p| !p.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
+
         Ok(Self {
             secret,
             issuer,
@@ -48,6 +57,7 @@ impl AuthConfig {
             public_paths,
             token_type,
             clock_skew_leeway_seconds,
+            revoked_jti,
         })
     }
 }

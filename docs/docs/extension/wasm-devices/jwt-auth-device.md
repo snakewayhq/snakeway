@@ -53,6 +53,7 @@ wasm_devices = [
       public_paths              = "/health,/ready"
       token_type                = "at+jwt"
       clock_skew_leeway_seconds = "60"
+      revoked_jti               = "id-1,id-2"
     }
   }
 ]
@@ -79,6 +80,7 @@ Declaring `hooks = ["on_request"]` avoids paying for the five unused hook instan
 | `public_paths`              | no       |         | Comma-separated exact paths that bypass authentication.                                                                                                                      |
 | `token_type`                | no       |         | Expected `typ` header. When set, a token whose type differs is rejected. The match is case-insensitive and the `application/` prefix is ignored. Omit to skip type checking. |
 | `clock_skew_leeway_seconds` | no       | `0`     | Allowed clock skew in seconds, applied to both `exp` and `nbf`.                                                                                                              |
+| `revoked_jti`               | no       |         | Comma-separated revoked token ids. When set, revocation is enforced and every token must carry a `jti` that is not in this list.                                            |
 
 Generate a secret with:
 
@@ -98,6 +100,7 @@ A request is rejected with `401` when any of the following holds:
 - `nbf` is present and the token is not yet valid.
 - The configured `user_id_claim` is missing or is not a scalar value.
 - `token_type` is configured and the token `typ` does not match.
+- `revoked_jti` is configured and the token has no `jti`, or its `jti` is on the denylist.
 
 The clock skew leeway widens both the `exp` and `nbf` bounds by the configured number of seconds.
 
@@ -117,6 +120,20 @@ The match is exact, so `/health` matches only `/health`.
 
 Even on a bypass the device removes any client-supplied `X-User-Id` and `X-Tenant-Id`, so a request to a public path
 cannot spoof identity to an upstream that trusts those headers.
+
+## Revocation
+
+Set `revoked_jti` to a comma-separated list of token ids to reject specific tokens without rotating the secret.
+When the list is non-empty, revocation is enforced: the device rejects a token whose `jti` is on the list, and also rejects any token that has no `jti`, so that every accepted token is revocable.
+When `revoked_jti` is unset, `jti` is ignored.
+
+Updating the list takes effect on the next configuration reload.
+Because `exp` is mandatory and lifetimes should be short, an id can be dropped from the list once its token would have expired, which keeps the list bounded.
+
+:::note
+This is a small denylist delivered through config, suited to a modest number of revoked ids.
+It is not a scalable revocation service, and updates are not real time.
+:::
 
 ## Error Responses
 
