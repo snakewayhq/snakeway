@@ -94,18 +94,59 @@ The `HostState` struct implements the `host` interface:
 - **`metric-increment`** adds to an OTel counter with `device` and `metric` labels.
 - **`epoch-secs`** returns the current Unix timestamp.
 
-## Response Application
+## Patch Application
 
-Hook results are applied in `lifecycle.rs`:
+WASM devices never mutate the request or response directly.
+Each hook receives a read-only snapshot and returns a **result** that carries an **action** and an optional **patch**.
+The host interface exposes no function that mutates in-flight traffic, so the only way a device changes a request or
+response is by returning a patch for the host to apply.
 
-- `apply_request_result` handles `Action::Continue` (with optional patch), `Action::Block`
-  (403), and `Action::Respond` (synthetic response with custom status, headers, and body).
-- `apply_response_result` handles the same actions for response-phase hooks, including
-  status code overrides and header mutations.
-- `apply_body_result` handles `BodyAction::Passthrough`, `Replace`, `Drop`, and `Block`.
+### Staging context, not the live message
+
+The host applies each patch to a staging context, `RequestCtx` or `ResponseCtx`, which is Snakeway's own normalized copy
+of the request or response.
+This staging context is a separate object from the Pingora `RequestHeader` and `ResponseHeader` that actually travel to
+the upstream and back to the client.
+
+Two functions in `lifecycle.rs` apply patches to the staging context:
+
+- `apply_request_result` handles `Action::Continue` (with an optional `RequestPatch`), `Action::Block` (403), and
+  `Action::Respond` (a synthetic response with custom status, headers, and body). A `RequestPatch` can rewrite the route
+  path, override the upstream path, and mutate headers.
+- `apply_response_result` handles the same actions for response hooks, including status overrides and header mutations.
 
 Header operations (`HeaderOp::Set`, `Append`, `Remove`) are validated before application.
-Invalid header names or values are logged at warn level and skipped.
+An invalid header name or value is logged at warn level and skipped.
+
+### Writeback to the Pingora message
+
+Because the staging context is separate from the message on the wire, the host reconciles it back into the Pingora
+`RequestHeader` or `ResponseHeader` at the correct Pingora hook.
+For headers and status this uses a clear-and-repopulate strategy.
+
+- **Request path.** `on_request` runs in Pingora's `request_filter` and `before_proxy` runs in
+  `upstream_request_filter`. Both apply their patch to `RequestCtx`. In `upstream_request_filter` the host sets the
+  upstream method and path from the context, then clears the upstream request headers and repopulates them from
+  `ctx.headers()`.
+- **Response path.** `after_proxy` runs in `upstream_response_filter` and `on_response` runs in `response_filter`. Both
+  apply their patch to `ResponseCtx`. The host then sets the upstream status and clears and repopulates the upstream
+  response headers from the context.
+
+:::caution
+The writeback clears the headers first and then repopulates them, rather than inserting over the originals.
+An insert-only writeback would not carry a `HeaderOp::Remove` through to the wire, and would collapse an appended
+multi-value header down to a single value.
+Clearing first makes the forwarded headers exactly match the staging context, so `Set`, `Append`, and `Remove` all take
+effect.
+:::
+
+### Bodies apply to the live buffer
+
+Body patches follow a different strategy.
+`apply_body_result` handles `BodyAction::Passthrough`, `Replace`, `Drop`, and `Block` by mutating the live Pingora body
+chunk (`&mut Option<Bytes>`) in place.
+There is no separate writeback step for bodies, so a `Replace` or a `Drop` takes effect immediately on the streaming
+chunk.
 
 ## Key Files
 
