@@ -115,12 +115,20 @@ jobs:
         with:
           tool: cargo-component
 
-      - name: Build WASM test device fixture
+      - name: Build WASM device fixtures
+        env:
+          # The wasm target links with rust-lld, which does not understand the
+          # host mold flag in the job-level RUSTFLAGS.
+          # Override it to empty so the wasm build uses its default linker (not mold).
+          RUSTFLAGS: ""
         run: |
           cargo component build --release --target wasm32-unknown-unknown -p snakeway-wasm-test-device
+          cargo component build --release --target wasm32-unknown-unknown -p snakeway-jwt-auth-device
           mkdir -p crates/snakeway-tests/fixtures/wasm
           cp target/wasm32-unknown-unknown/release/snakeway_wasm_test_device.wasm \
              crates/snakeway-tests/fixtures/wasm/test_device.wasm
+          cp target/wasm32-unknown-unknown/release/snakeway_jwt_auth_device.wasm \
+             crates/snakeway-tests/fixtures/wasm/jwt_auth_device.wasm
 
       - name: Run integration tests
         run: cargo nextest run -p snakeway-tests --profile ci
