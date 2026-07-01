@@ -19,6 +19,7 @@ pub(crate) enum AuthError {
     MissingExpiry,
     TokenNotYetValid,
     MissingUserId,
+    InvalidClaimValue,
     TypeMismatch,
     TokenRevoked,
     MissingJti,
@@ -47,6 +48,7 @@ impl AuthError {
             AuthError::MissingExpiry => "token has no expiry",
             AuthError::TokenNotYetValid => "token is not yet valid",
             AuthError::MissingUserId => "token missing required identity claim",
+            AuthError::InvalidClaimValue => "token identity claim is not usable",
             AuthError::TypeMismatch => "token type not accepted",
             AuthError::TokenRevoked => "token has been revoked",
             AuthError::MissingJti => "token missing required id claim",
@@ -106,6 +108,13 @@ pub(crate) fn parse_leeway_seconds(raw: Option<&str>) -> Result<u64, AuthError> 
         }),
         None => Ok(0),
     }
+}
+
+/// Identity claim values are placed into upstream headers. Reject empty values
+/// and values that contain control characters, which are not valid in a header
+/// value and could enable header injection if the host did not also reject them.
+fn is_safe_header_value(value: &str) -> bool {
+    !value.is_empty() && !value.chars().any(char::is_control)
 }
 
 pub(crate) fn validate_token(
@@ -183,11 +192,22 @@ pub(crate) fn validate_token(
         return Err(AuthError::TokenNotYetValid);
     }
 
-    // Identity must be resolvable from the configured claim; the device asserts
-    // it to the upstream as X-User-Id. Reject when it is missing or non-scalar so
-    // a request is never admitted without an established identity.
-    if claims.get_claim(&config.user_id_claim).is_none() {
-        return Err(AuthError::MissingUserId);
+    // Identity must be resolvable from the configured claim and usable as a header
+    // value; the device asserts it to the upstream as X-User-Id. Reject when it is
+    // missing or non-scalar, and when it is empty or contains control characters.
+    match claims.get_claim(&config.user_id_claim) {
+        Some(user_id) if is_safe_header_value(&user_id) => {}
+        Some(_) => return Err(AuthError::InvalidClaimValue),
+        None => return Err(AuthError::MissingUserId),
+    }
+
+    // The tenant claim, when configured and present, is also asserted as a header,
+    // so it must be a usable value too.
+    if let Some(tenant_claim) = &config.tenant_id_claim
+        && let Some(tenant_id) = claims.get_claim(tenant_claim)
+        && !is_safe_header_value(&tenant_id)
+    {
+        return Err(AuthError::InvalidClaimValue);
     }
 
     // Revocation: when a denylist is configured, the token must carry a `jti`
@@ -912,5 +932,68 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+    }
+
+    // -- Claim value validation --
+
+    #[test]
+    fn user_id_with_control_char_is_rejected() {
+        // Arrange
+        let payload =
+            format!(r#"{{"sub":"user\n42","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#);
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::InvalidClaimValue)));
+    }
+
+    #[test]
+    fn empty_user_id_is_rejected() {
+        // Arrange
+        let payload = format!(r#"{{"sub":"","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#);
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::InvalidClaimValue)));
+    }
+
+    #[test]
+    fn tenant_id_with_control_char_is_rejected() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","tenant_id":"acme\r\nx","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            tenant_id_claim: Some("tenant_id".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::InvalidClaimValue)));
+    }
+
+    #[test]
+    fn is_safe_header_value_accepts_normal_and_rejects_control_and_empty() {
+        // Arrange & Act
+        let normal = is_safe_header_value("user-42");
+        let empty = is_safe_header_value("");
+        let newline = is_safe_header_value("a\nb");
+
+        // Assert
+        assert!(normal);
+        assert!(!empty);
+        assert!(!newline);
     }
 }
