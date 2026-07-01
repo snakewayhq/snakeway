@@ -23,6 +23,21 @@ license = "Apache-2.0"
 [profile.dev]
 opt-level = 0
 
+# Cranelift compiles WASM device modules at proxy startup.
+# Unoptimized, that compilation takes ~50s per test process for a real
+# device fixture, so keep the compilation-path crates optimized even in
+# dev/test builds.
+[profile.dev.package.cranelift-codegen]
+opt-level = 3
+[profile.dev.package.regalloc2]
+opt-level = 3
+[profile.dev.package.wasmtime-internal-cranelift]
+opt-level = 3
+[profile.dev.package.wasmtime-environ]
+opt-level = 3
+[profile.dev.package.wasmparser]
+opt-level = 3
+
 [profile.release]
 opt-level = 3               # Maximize performance
 debug = true                # Keep debug symbols for profiling
