@@ -16,8 +16,10 @@
 //!     timeout_ms  = 5
 //!
 //!     config = {
-//!       # HMAC-SHA256 shared secret (base64-encoded).
-//!       secret   = "c2VjcmV0"
+//!       # HMAC-SHA256 shared secret, standard base64 (alphabet "+/", padded),
+//!       # decoding to at least 32 random bytes. Shorter secrets are rejected.
+//!       # Generate with: openssl rand -base64 32
+//!       secret   = "<base64 of at least 32 random bytes>"
 //!
 //!       # Expected issuer claim. Tokens with a different `iss` are rejected.
 //!       issuer   = "https://auth.example.com"
