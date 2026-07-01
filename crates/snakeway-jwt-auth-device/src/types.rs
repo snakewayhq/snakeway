@@ -11,6 +11,24 @@ pub(crate) struct JwtHeader {
     pub(crate) typ: Option<String>,
 }
 
+/// Deserialize an RFC 7519 NumericDate (`exp`, `nbf`) that may be an integer or a
+/// fractional number. Fractional seconds are floored to whole seconds. Negative,
+/// non-finite, out-of-range, and non-numeric values are rejected.
+fn deserialize_numeric_date<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<f64>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(seconds) if seconds.is_finite() && seconds >= 0.0 && seconds <= u64::MAX as f64 => {
+            Ok(Some(seconds.floor() as u64))
+        }
+        Some(_) => Err(serde::de::Error::custom(
+            "exp and nbf must be a non-negative NumericDate",
+        )),
+    }
+}
+
 #[derive(Deserialize)]
 pub(crate) struct JwtClaims {
     #[serde(default)]
@@ -22,10 +40,10 @@ pub(crate) struct JwtClaims {
     #[serde(default)]
     sub: Option<String>,
 
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_numeric_date")]
     pub(crate) exp: Option<u64>,
 
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_numeric_date")]
     pub(crate) nbf: Option<u64>,
 
     #[serde(flatten)]
@@ -202,5 +220,91 @@ mod tests {
 
         // Assert
         assert_eq!(result, None);
+    }
+
+    // -- exp / nbf NumericDate --
+
+    #[test]
+    fn exp_accepts_integer() {
+        // Arrange
+        let json = r#"{"exp": 2000}"#;
+
+        // Act
+        let claims: JwtClaims = serde_json::from_str(json).unwrap();
+
+        // Assert
+        assert_eq!(claims.exp, Some(2000));
+    }
+
+    #[test]
+    fn exp_accepts_fractional_numeric_date() {
+        // Arrange
+        let json = r#"{"exp": 2000.9}"#;
+
+        // Act
+        let claims: JwtClaims = serde_json::from_str(json).unwrap();
+
+        // Assert
+        assert_eq!(claims.exp, Some(2000));
+    }
+
+    #[test]
+    fn exp_accepts_exponent_notation() {
+        // Arrange
+        let json = r#"{"exp": 2e3}"#;
+
+        // Act
+        let claims: JwtClaims = serde_json::from_str(json).unwrap();
+
+        // Assert
+        assert_eq!(claims.exp, Some(2000));
+    }
+
+    #[test]
+    fn nbf_accepts_fractional_numeric_date() {
+        // Arrange
+        let json = r#"{"nbf": 1000.1}"#;
+
+        // Act
+        let claims: JwtClaims = serde_json::from_str(json).unwrap();
+
+        // Assert
+        assert_eq!(claims.nbf, Some(1000));
+    }
+
+    #[test]
+    fn exp_absent_is_none() {
+        // Arrange
+        let json = r#"{}"#;
+
+        // Act
+        let claims: JwtClaims = serde_json::from_str(json).unwrap();
+
+        // Assert
+        assert_eq!(claims.exp, None);
+    }
+
+    #[test]
+    fn exp_rejects_negative() {
+        // Arrange
+        let json = r#"{"exp": -5}"#;
+
+        // Act
+        let result = serde_json::from_str::<JwtClaims>(json);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn exp_rejects_string() {
+        // Arrange
+        let json = r#"{"exp": "2000"}"#;
+
+        // Act
+        let result = serde_json::from_str::<JwtClaims>(json);
+
+        // Assert
+        assert!(result.is_err());
     }
 }
