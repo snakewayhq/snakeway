@@ -13,19 +13,6 @@ const sidebars: SidebarsConfig = {
         },
         {
             type: 'category',
-            label: 'Guide',
-            items: [
-                'guide/cli',
-                'guide/tls-cert-management',
-                'guide/understanding-devices',
-                'guide/authoring-wasm-devices',
-                'guide/admin-api',
-                'guide/logging',
-                'guide/static-files',
-            ],
-        },
-        {
-            type: 'category',
             label: 'Configuration Reference',
             items: [
                 'configuration/overview',
@@ -98,6 +85,33 @@ const sidebars: SidebarsConfig = {
                         'configuration/devices/request-filter',
                         'configuration/devices/request-rate-limiting',
                         'configuration/devices/structured-logging',
+                    ],
+                },
+            ],
+        },
+        {
+            type: 'category',
+            label: 'Administration',
+            items: [
+                'administration/cli',
+                'administration/tls-cert-management',
+                'administration/admin-api',
+                'administration/logging',
+                'administration/static-files',
+            ],
+        },
+        {
+            type: 'category',
+            label: 'Extension',
+            items: [
+                'extension/understanding-devices',
+                'extension/authoring-wasm-devices',
+                {
+                    type: 'category',
+                    label: 'Devices',
+                    items: [
+                        'extension/wasm-devices/integration-test-example-device',
+                        'extension/wasm-devices/jwt-auth-device'
                     ],
                 },
             ],
