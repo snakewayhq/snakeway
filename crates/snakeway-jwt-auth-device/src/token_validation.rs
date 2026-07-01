@@ -51,7 +51,7 @@ impl AuthError {
     pub(crate) fn log_message(&self) -> String {
         match self {
             AuthError::Config(detail) => format!("config error: {detail}"),
-            AuthError::UnsupportedAlgorithm(alg) => format!("unsupported algorithm: {alg}"),
+            AuthError::UnsupportedAlgorithm(alg) => format!("unsupported algorithm: {alg:?}"),
             AuthError::Decode(part) => format!("base64 decode failed: {part}"),
             AuthError::Parse(part) => format!("json parse failed: {part}"),
             other => other.message().to_string(),
@@ -85,6 +85,12 @@ pub(crate) fn validate_token(
     config: &AuthConfig,
     now: u64,
 ) -> Result<ValidatedToken, AuthError> {
+    // A zero clock means the host could not read time (`epoch_secs` returns 0 on
+    // error). Fail closed rather than treating every token as not-yet-expired.
+    if now == 0 {
+        return Err(AuthError::Config("host clock unavailable"));
+    }
+
     let parts: Vec<&str> = raw_token.splitn(3, '.').collect();
     if parts.len() != 3 {
         return Err(AuthError::MalformedToken);
@@ -577,5 +583,35 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+    }
+
+    // -- Host clock --
+
+    #[test]
+    fn zero_clock_is_rejected() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(2000), SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 0);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    // -- Log message escaping --
+
+    #[test]
+    fn unsupported_algorithm_log_message_escapes_control_chars() {
+        // Arrange
+        let err = AuthError::UnsupportedAlgorithm("HS256\ninjected log line".to_string());
+
+        // Act
+        let msg = err.log_message();
+
+        // Assert
+        assert!(!msg.contains('\n'));
+        assert!(msg.contains("\\n"));
     }
 }
