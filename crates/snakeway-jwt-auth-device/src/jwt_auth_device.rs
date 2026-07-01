@@ -152,14 +152,19 @@ fn extract_bearer_token(auth_value: &str) -> Option<&str> {
     }
 }
 
-fn error_body(error: &str) -> Vec<u8> {
-    let escaped = error.replace('\\', "\\\\").replace('"', "\\\"");
-    format!(r#"{{"error":"{escaped}"}}"#).into_bytes()
-}
-
+/// Return a generic body so the client cannot use the specific failure reason
+/// as an oracle (which of iss/aud/exp failed) or learn that the auth service is
+/// misconfigured.
+/// The specific reason is recorded server-side via log_message.
 fn error_response(err: &AuthError) -> Action {
+    let status = err.status();
+    let body = if status == 500 {
+        br#"{"error":"internal error"}"#.to_vec()
+    } else {
+        br#"{"error":"unauthorized"}"#.to_vec()
+    };
     Action::Respond(SyntheticResponse {
-        status: err.status(),
+        status,
         headers: vec![
             Header {
                 name: "content-type".to_string(),
@@ -170,7 +175,7 @@ fn error_response(err: &AuthError) -> Action {
                 value: "no-store".to_string(),
             },
         ],
-        body: error_body(err.message()),
+        body,
     })
 }
 
