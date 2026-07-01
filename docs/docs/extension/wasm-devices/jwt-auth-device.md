@@ -99,6 +99,7 @@ A request is rejected with `401` when any of the following holds:
 - `exp` is absent, or the token has expired. Expiry is mandatory.
 - `nbf` is present and the token is not yet valid.
 - The configured `user_id_claim` is missing or is not a scalar value.
+- The resolved identity value is empty or contains control characters.
 - `token_type` is configured and the token `typ` does not match.
 - `revoked_jti` is configured and the token has no `jti`, or its `jti` is on the denylist.
 
