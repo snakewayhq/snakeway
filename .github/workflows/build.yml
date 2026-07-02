@@ -52,9 +52,9 @@ jobs:
       # Lint check.
       - name: cargo clippy
         run: |
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --locked --all-targets --all-features -- -D warnings
           # Second pass without benchmarks to catch dead code only kept alive by bench targets.
-          cargo clippy --workspace --exclude snakeway-tests --lib --tests --all-features -- -D warnings
+          cargo clippy --locked --workspace --exclude snakeway-tests --lib --tests --all-features -- -D warnings
 
       # Unit test check.
       - name: Install cargo-nextest
@@ -63,6 +63,7 @@ jobs:
       - name: Run unit tests (snakeway-core / snakeway-conf)
         run: |
           cargo nextest run \
+            --locked \
             -p confval \
             -p confval-derive \
             -p snakeway-conf \
@@ -131,7 +132,7 @@ jobs:
              crates/snakeway-tests/fixtures/wasm/jwt_auth_device.wasm
 
       - name: Run integration tests
-        run: cargo nextest run -p snakeway-tests --profile ci
+        run: cargo nextest run --locked -p snakeway-tests --profile ci
 
       - name: Publish integration test results
         uses: mikepenz/action-junit-report@v5
