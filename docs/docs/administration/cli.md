@@ -344,7 +344,7 @@ Sent SIGHUP to Snakeway (pid 77120)
 ```
 
 :::note
-It is also possible to reload with the [admin API](/docs/guide/admin-api/#post-adminreload).
+It is also possible to reload with the [admin API](./admin-api.md#post-adminreload).
 :::
 
 ## upgrade

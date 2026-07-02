@@ -1,4 +1,4 @@
-use crate::constants::TEST_DEVICE_PATH;
+use crate::constants::{TEST_DEVICE_PATH, TEST_JWT_DEVICE_PATH};
 use confval::prelude::Located;
 use snakeway_core::testing_api::conf::types::WasmDeviceSpec;
 use std::collections::HashMap;
@@ -10,6 +10,21 @@ pub fn make_wasm_device(config: HashMap<String, String>) -> WasmDeviceSpec {
         enable: Located::detached(true),
         path: Located::detached(PathBuf::from(TEST_DEVICE_PATH)),
         fail_policy: Located::detached("open".to_string()),
+        timeout_ms: Located::detached(100),
+        config,
+        ..Default::default()
+    }
+}
+
+/// The real JWT auth device (`snakeway-jwt-auth-device`) built as a fixture.
+/// Uses fail_policy "closed" so an auth device that traps rejects rather than
+/// passing the request through.
+pub fn make_jwt_device(config: HashMap<String, String>) -> WasmDeviceSpec {
+    WasmDeviceSpec {
+        name: Located::detached("jwt-auth".to_string()),
+        enable: Located::detached(true),
+        path: Located::detached(PathBuf::from(TEST_JWT_DEVICE_PATH)),
+        fail_policy: Located::detached("closed".to_string()),
         timeout_ms: Located::detached(100),
         config,
         ..Default::default()

@@ -24,6 +24,11 @@ tempfile = { workspace = true }
 opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "testing"] }
 
+[dev-dependencies]
+hmac = "0.13"
+sha2 = "0.11"
+base64 = "0.22"
+
 [build-dependencies]
 tonic-prost-build = "0.14"
 

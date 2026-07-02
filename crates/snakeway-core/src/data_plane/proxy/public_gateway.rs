@@ -545,15 +545,6 @@ impl ProxyHttp for PublicGateway {
         let _req_span = tracing::info_span!("upstream_request");
         let _req_enter = _req_span.enter();
 
-        if upstream.version == Version::HTTP_2 {
-            let authority = ctx
-                .upstream_authority()
-                .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
-
-            // Set Host - Pingora will map it to :authority
-            upstream.insert_header(header::HOST, authority)?;
-        }
-
         let state = self.gw_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
@@ -561,6 +552,25 @@ impl ProxyHttp for PublicGateway {
                 // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method().to_owned());
                 upstream.set_uri(ctx.upstream_path().parse().unwrap());
+
+                // Device header ops live on `ctx`, so the upstream request headers
+                // are rebuilt from it. Clearing first lets device removals take effect.
+                let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+                for name in existing {
+                    upstream.remove_header(&name);
+                }
+                for (name, value) in ctx.headers() {
+                    upstream.append_header(name.clone(), value)?;
+                }
+
+                // Host for HTTP/2 is derived from the upstream authority (Pingora
+                // maps it to :authority) and must override any client-supplied Host.
+                if upstream.version == Version::HTTP_2 {
+                    let authority = ctx
+                        .upstream_authority()
+                        .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
+                    upstream.insert_header(header::HOST, authority)?;
+                }
 
                 if ctx.is_upgrade_req() {
                     // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
@@ -624,8 +634,15 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
+        // Clear and repopulate so device Remove ops propagate to the response,
+        // mirroring the request-side writeback in upstream_request_filter. An
+        // insert-only loop would drop removals and collapse appended multi-values.
+        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+        for name in existing {
+            upstream.remove_header(&name);
+        }
         for (name, value) in &resp_ctx.headers {
-            upstream.insert_header(name.clone(), value)?;
+            upstream.append_header(name.clone(), value)?;
         }
 
         ctx.extensions.insert(UpstreamResponseSnapshot {
@@ -681,8 +698,15 @@ impl ProxyHttp for PublicGateway {
 
         upstream.set_status(resp_ctx.status)?;
 
+        // Clear and repopulate so device Remove ops propagate to the response,
+        // mirroring the request-side writeback in upstream_request_filter. An
+        // insert-only loop would drop removals and collapse appended multi-values.
+        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+        for name in existing {
+            upstream.remove_header(&name);
+        }
         for (name, value) in &resp_ctx.headers {
-            upstream.insert_header(name.clone(), value)?;
+            upstream.append_header(name.clone(), value)?;
         }
 
         let status = upstream.status.as_u16();

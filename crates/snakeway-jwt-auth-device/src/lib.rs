@@ -16,8 +16,10 @@
 //!     timeout_ms  = 5
 //!
 //!     config = {
-//!       # HMAC-SHA256 shared secret (base64-encoded).
-//!       secret   = "c2VjcmV0"
+//!       # HMAC-SHA256 shared secret, standard base64 (alphabet "+/", padded),
+//!       # decoding to at least 32 random bytes. Shorter secrets are rejected.
+//!       # Generate with: openssl rand -base64 32
+//!       secret   = "<base64 of at least 32 random bytes>"
 //!
 //!       # Expected issuer claim. Tokens with a different `iss` are rejected.
 //!       issuer   = "https://auth.example.com"
@@ -35,6 +37,18 @@
 //!       # Comma-separated paths that bypass authentication entirely.
 //!       # Supports exact matches only.
 //!       public_paths = "/health,/ready,/.well-known/openid-configuration"
+//!
+//!       # Expected JWT `typ` header. Optional. When set, tokens whose type does
+//!       # not match (case-insensitive, `application/` prefix ignored) are
+//!       # rejected. Omit to skip type checking.
+//!       token_type = "at+jwt"
+//!
+//!       # Allowed clock skew in seconds, applied to `exp` and `nbf`. Default: 0.
+//!       clock_skew_leeway_seconds = "60"
+//!
+//!       # Comma-separated revoked `jti` values. When set, revocation is enforced
+//!       # and every token must carry a `jti` that is not in this list.
+//!       revoked_jti = "id-1,id-2"
 //!     }
 //!   }
 //! ]

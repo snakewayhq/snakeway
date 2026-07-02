@@ -37,7 +37,7 @@ bind_admin = {
 | `tls.mode` | `string` | (required) | TLS mode. Must be `"manual"`; ACME is not supported on `bind_admin`. |
 | `tls.cert` | `string` | (required) | Path to the TLS certificate file. |
 | `tls.key` | `string` | (required) | Path to the TLS private key file. |
-| `auth.bearer.token_file` | `string` | (required) | Path to a file containing one or more bearer tokens, one per line. See the [Admin API authentication](../../guide/admin-api.md#authentication) guide. |
+| `auth.bearer.token_file` | `string` | (required) | Path to a file containing one or more bearer tokens, one per line. See the [Admin API authentication](../../administration/admin-api.md#authentication) guide. |
 
 ## Defense in depth
 
@@ -45,7 +45,7 @@ The Admin API provides significant control over the proxy. Snakeway enforces thr
 
 1. **Reachability.** `bind_admin` rejects wildcard interfaces (`0.0.0.0`, `::`, `"all"`). Operators must bind to loopback or a specific non-public IP.
 2. **Transport.** TLS is required. ACME is not permitted on `bind_admin` because admin certificates should not depend on a public CA.
-3. **Authentication.** Every request must carry a valid bearer token in the `Authorization` header. See [Authentication](../../guide/admin-api.md#authentication) for details on the token file format and the rotation workflow.
+3. **Authentication.** Every request must carry a valid bearer token in the `Authorization` header. See [Authentication](../../administration/admin-api.md#authentication) for details on the token file format and the rotation workflow.
 
 :::caution
 Authentication is the innermost layer, not a replacement for the other two. Continue to bind the admin listener to a trusted interface and restrict access at the network level.

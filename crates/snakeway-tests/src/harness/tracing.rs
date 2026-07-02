@@ -25,7 +25,13 @@ pub fn init_test_tracing(events: Arc<Mutex<Vec<CapturedEvent>>>) {
         let capture_layer = TestEventLayer { events };
 
         tracing_subscriber::registry()
-            .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("trace")))
+            // Keep full trace logging for the snakeway crates, but cap dependencies at info.
+            // Set RUST_LOG to override this default when debugging.
+            .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                EnvFilter::new(
+                    "info,snakeway=trace,snakeway_core=trace,snakeway_conf=trace,snakeway_tests=trace",
+                )
+            }))
             .with(capture_layer)
             .with(fmt::layer().with_test_writer().with_ansi(false))
             .init();

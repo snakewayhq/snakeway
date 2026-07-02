@@ -29,7 +29,7 @@ include {
 The `include` section allows you to split your configuration into logical parts using glob patterns.
 
 - **`ingress.d/`**: Define your [Ingress](/docs/configuration/ingress) files.
-- **`device.d/`**: Define the [Devices](/docs/guide/understanding-devices) that should be active in the request pipeline.
+- **`device.d/`**: Define the [Devices](../extension/understanding-devices.md) that should be active in the request pipeline.
 
 When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a
 single unified runtime configuration. This is discussed in more detail

@@ -16,7 +16,13 @@ pub(crate) enum AuthError {
     IssuerMismatch,
     AudienceMismatch,
     TokenExpired,
+    MissingExpiry,
     TokenNotYetValid,
+    MissingUserId,
+    InvalidClaimValue,
+    TypeMismatch,
+    TokenRevoked,
+    MissingJti,
     Config(&'static str),
 }
 
@@ -39,7 +45,13 @@ impl AuthError {
             AuthError::IssuerMismatch => "token issuer not accepted",
             AuthError::AudienceMismatch => "token audience not accepted",
             AuthError::TokenExpired => "token has expired",
+            AuthError::MissingExpiry => "token has no expiry",
             AuthError::TokenNotYetValid => "token is not yet valid",
+            AuthError::MissingUserId => "token missing required identity claim",
+            AuthError::InvalidClaimValue => "token identity claim is not usable",
+            AuthError::TypeMismatch => "token type not accepted",
+            AuthError::TokenRevoked => "token has been revoked",
+            AuthError::MissingJti => "token missing required id claim",
             AuthError::Config(_) => "authentication service misconfigured",
         }
     }
@@ -47,7 +59,7 @@ impl AuthError {
     pub(crate) fn log_message(&self) -> String {
         match self {
             AuthError::Config(detail) => format!("config error: {detail}"),
-            AuthError::UnsupportedAlgorithm(alg) => format!("unsupported algorithm: {alg}"),
+            AuthError::UnsupportedAlgorithm(alg) => format!("unsupported algorithm: {alg:?}"),
             AuthError::Decode(part) => format!("base64 decode failed: {part}"),
             AuthError::Parse(part) => format!("json parse failed: {part}"),
             other => other.message().to_string(),
@@ -61,11 +73,61 @@ fn base64url_decode(input: &str) -> Result<Vec<u8>, &'static str> {
         .map_err(|_| "base64url decode failed")
 }
 
+/// Minimum HS256 secret length. RFC 8725 §3.5 / RFC 7518 §3.2 require a key at
+/// least as long as the HMAC-SHA256 output (256 bits = 32 bytes).
+pub(crate) const MIN_SECRET_BYTES: usize = 32;
+
+/// Reject secrets shorter than [`MIN_SECRET_BYTES`]. The `hmac` crate accepts a
+/// key of any length (including zero), so without this guard an empty or short,
+/// brute-forceable secret would be used silently. Enforced at config load so the
+/// device fails closed rather than running with a forgeable key.
+pub(crate) fn validate_secret(secret: &[u8]) -> Result<(), AuthError> {
+    if secret.len() < MIN_SECRET_BYTES {
+        return Err(AuthError::Config("secret must be at least 32 bytes"));
+    }
+    Ok(())
+}
+
+/// Normalize a JWT `typ` value for comparison: `typ` is case-insensitive and the
+/// `application/` media-type prefix may be omitted (RFC 7519 §5.1).
+fn normalize_typ(value: &str) -> String {
+    let without_prefix =
+        if value.len() >= 12 && value.as_bytes()[..12].eq_ignore_ascii_case(b"application/") {
+            &value[12..]
+        } else {
+            value
+        };
+    without_prefix.to_ascii_lowercase()
+}
+
+/// Parse the optional `clock_skew_leeway_seconds` config value. Absent means 0.
+pub(crate) fn parse_leeway_seconds(raw: Option<&str>) -> Result<u64, AuthError> {
+    match raw {
+        Some(s) => s.trim().parse::<u64>().map_err(|_| {
+            AuthError::Config("clock_skew_leeway_seconds must be a non-negative integer")
+        }),
+        None => Ok(0),
+    }
+}
+
+/// Identity claim values are placed into upstream headers. Reject empty values
+/// and values that contain control characters, which are not valid in a header
+/// value and could enable header injection if the host did not also reject them.
+fn is_safe_header_value(value: &str) -> bool {
+    !value.is_empty() && !value.chars().any(char::is_control)
+}
+
 pub(crate) fn validate_token(
     raw_token: &str,
     config: &AuthConfig,
     now: u64,
 ) -> Result<ValidatedToken, AuthError> {
+    // A zero clock means the host could not read time (`epoch_secs` returns 0 on
+    // error). Fail closed rather than treating every token as not-yet-expired.
+    if now == 0 {
+        return Err(AuthError::Config("host clock unavailable"));
+    }
+
     let parts: Vec<&str> = raw_token.splitn(3, '.').collect();
     if parts.len() != 3 {
         return Err(AuthError::MalformedToken);
@@ -79,6 +141,16 @@ pub(crate) fn validate_token(
 
     if header.alg != "HS256" {
         return Err(AuthError::UnsupportedAlgorithm(header.alg));
+    }
+
+    // Explicit typing (RFC 8725 §3.11): when an expected type is configured,
+    // reject tokens of a different (or absent) `typ` to prevent cross-JWT
+    // substitution when the issuer signs multiple token kinds with one secret.
+    if let Some(expected) = &config.token_type {
+        match &header.typ {
+            Some(typ) if normalize_typ(typ) == normalize_typ(expected) => {}
+            _ => return Err(AuthError::TypeMismatch),
+        }
     }
 
     let signing_input = format!("{header_b64}.{payload_b64}");
@@ -105,16 +177,48 @@ pub(crate) fn validate_token(
         _ => return Err(AuthError::AudienceMismatch),
     }
 
-    if let Some(exp) = claims.exp
-        && now >= exp
-    {
+    // Expiry is mandatory. A token with no `exp` would otherwise be accepted
+    // forever, so reject when it is absent (RFC 8725 §3.7). The configured clock
+    // skew leeway widens both bounds to absorb drift between issuer and proxy.
+    let leeway = config.clock_skew_leeway_seconds;
+    let exp = claims.exp.ok_or(AuthError::MissingExpiry)?;
+    if now >= exp.saturating_add(leeway) {
         return Err(AuthError::TokenExpired);
     }
 
     if let Some(nbf) = claims.nbf
-        && now < nbf
+        && now.saturating_add(leeway) < nbf
     {
         return Err(AuthError::TokenNotYetValid);
+    }
+
+    // Identity must be resolvable from the configured claim and usable as a header
+    // value; the device asserts it to the upstream as X-User-Id. Reject when it is
+    // missing or non-scalar, and when it is empty or contains control characters.
+    match claims.get_claim(&config.user_id_claim) {
+        Some(user_id) if is_safe_header_value(&user_id) => {}
+        Some(_) => return Err(AuthError::InvalidClaimValue),
+        None => return Err(AuthError::MissingUserId),
+    }
+
+    // The tenant claim, when configured and present, is also asserted as a header,
+    // so it must be a usable value too.
+    if let Some(tenant_claim) = &config.tenant_id_claim
+        && let Some(tenant_id) = claims.get_claim(tenant_claim)
+        && !is_safe_header_value(&tenant_id)
+    {
+        return Err(AuthError::InvalidClaimValue);
+    }
+
+    // Revocation: when a denylist is configured, the token must carry a `jti`
+    // that is not on it. An enabled denylist makes `jti` mandatory so that every
+    // accepted token is revocable.
+    if !config.revoked_jti.is_empty() {
+        match &claims.jti {
+            Some(jti) if config.revoked_jti.contains(jti) => return Err(AuthError::TokenRevoked),
+            Some(_) => {}
+            None => return Err(AuthError::MissingJti),
+        }
     }
 
     Ok(ValidatedToken { claims })
@@ -126,8 +230,9 @@ mod tests {
     use base64::prelude::BASE64_URL_SAFE_NO_PAD;
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
+    use std::collections::HashSet;
 
-    const SECRET: &[u8] = b"test-secret-key-for-hmac-256!!!";
+    const SECRET: &[u8] = b"test-secret-key-for-hmac-sha256!";
     const ISSUER: &str = "https://auth.example.com";
     const AUDIENCE: &str = "https://api.example.com";
 
@@ -139,6 +244,9 @@ mod tests {
             user_id_claim: "sub".to_string(),
             tenant_id_claim: None,
             public_paths: vec![],
+            token_type: None,
+            clock_skew_leeway_seconds: 0,
+            revoked_jti: HashSet::new(),
         }
     }
 
@@ -185,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn valid_token_without_exp() {
+    fn token_without_exp_is_rejected() {
         // Arrange
         let payload = format!(r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}"}}"#);
         let token = encode_jwt(&valid_header(), &payload, SECRET);
@@ -195,7 +303,7 @@ mod tests {
         let result = validate_token(&token, &config, 999_999_999);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(AuthError::MissingExpiry)));
     }
 
     // -- Expired token --
@@ -258,6 +366,41 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+    }
+
+    // -- Missing identity claim --
+
+    #[test]
+    fn token_missing_user_id_claim_is_rejected() {
+        // Arrange
+        let payload = format!(r#"{{"iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#);
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::MissingUserId)));
+    }
+
+    #[test]
+    fn token_with_non_scalar_user_id_claim_is_rejected() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"u","groups":["a","b"],"iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            user_id_claim: "groups".to_string(),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::MissingUserId)));
     }
 
     // -- Bad signature --
@@ -454,6 +597,8 @@ mod tests {
             AuthError::MalformedToken,
             AuthError::BadSignature,
             AuthError::TokenExpired,
+            AuthError::MissingExpiry,
+            AuthError::MissingUserId,
             AuthError::IssuerMismatch,
             AuthError::AudienceMismatch,
         ];
@@ -475,5 +620,380 @@ mod tests {
 
         // Assert
         assert_eq!(status, 500);
+    }
+
+    // -- Secret length --
+
+    #[test]
+    fn secret_below_minimum_length_is_rejected() {
+        // Arrange
+        let secret = vec![0u8; MIN_SECRET_BYTES - 1];
+
+        // Act
+        let result = validate_secret(&secret);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    #[test]
+    fn empty_secret_is_rejected() {
+        // Arrange
+        let secret: Vec<u8> = Vec::new();
+
+        // Act
+        let result = validate_secret(&secret);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    #[test]
+    fn secret_at_minimum_length_is_accepted() {
+        // Arrange
+        let secret = vec![0u8; MIN_SECRET_BYTES];
+
+        // Act
+        let result = validate_secret(&secret);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    // -- Host clock --
+
+    #[test]
+    fn zero_clock_is_rejected() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(2000), SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 0);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    // -- Log message escaping --
+
+    #[test]
+    fn unsupported_algorithm_log_message_escapes_control_chars() {
+        // Arrange
+        let err = AuthError::UnsupportedAlgorithm("HS256\ninjected log line".to_string());
+
+        // Act
+        let msg = err.log_message();
+
+        // Assert
+        assert!(!msg.contains('\n'));
+        assert!(msg.contains("\\n"));
+    }
+
+    // -- Token type (typ) --
+
+    #[test]
+    fn typ_not_checked_when_token_type_unset() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"unexpected-type"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn matching_token_type_is_accepted() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"at+jwt"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("at+jwt".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn token_type_match_is_case_insensitive_and_ignores_media_prefix() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"application/AT+JWT"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("at+jwt".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn mismatched_token_type_is_rejected() {
+        // Arrange
+        let header = r#"{"alg":"HS256","typ":"JWT"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("at+jwt".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TypeMismatch)));
+    }
+
+    #[test]
+    fn missing_typ_is_rejected_when_token_type_configured() {
+        // Arrange
+        let header = r#"{"alg":"HS256"}"#;
+        let token = encode_jwt(header, &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            token_type: Some("JWT".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TypeMismatch)));
+    }
+
+    // -- Clock skew leeway --
+
+    #[test]
+    fn leeway_accepts_recently_expired_token() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(1000), SECRET);
+        let config = AuthConfig {
+            clock_skew_leeway_seconds: 60,
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1030);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn leeway_rejects_token_expired_beyond_window() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(1000), SECRET);
+        let config = AuthConfig {
+            clock_skew_leeway_seconds: 60,
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1061);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TokenExpired)));
+    }
+
+    #[test]
+    fn leeway_accepts_not_yet_valid_token_within_window() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":3000,"nbf":2000}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            clock_skew_leeway_seconds: 60,
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1950);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    // -- Leeway parsing --
+
+    #[test]
+    fn parse_leeway_absent_defaults_to_zero() {
+        // Arrange
+        let raw = None;
+
+        // Act
+        let result = parse_leeway_seconds(raw);
+
+        // Assert
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn parse_leeway_valid_number_is_parsed() {
+        // Arrange
+        let raw = Some("60");
+
+        // Act
+        let result = parse_leeway_seconds(raw);
+
+        // Assert
+        assert_eq!(result.unwrap(), 60);
+    }
+
+    #[test]
+    fn parse_leeway_non_numeric_is_rejected() {
+        // Arrange
+        let raw = Some("soon");
+
+        // Act
+        let result = parse_leeway_seconds(raw);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::Config(_))));
+    }
+
+    // -- Revocation (jti) --
+
+    #[test]
+    fn revoked_token_is_rejected() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000,"jti":"revoked-1"}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            revoked_jti: HashSet::from(["revoked-1".to_string()]),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::TokenRevoked)));
+    }
+
+    #[test]
+    fn non_revoked_token_is_accepted() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000,"jti":"allowed-1"}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            revoked_jti: HashSet::from(["revoked-1".to_string()]),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn missing_jti_rejected_when_revocation_enabled() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(2000), SECRET);
+        let config = AuthConfig {
+            revoked_jti: HashSet::from(["revoked-1".to_string()]),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::MissingJti)));
+    }
+
+    #[test]
+    fn jti_not_required_when_revocation_disabled() {
+        // Arrange
+        let token = encode_jwt(&valid_header(), &valid_payload(2000), SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    // -- Claim value validation --
+
+    #[test]
+    fn user_id_with_control_char_is_rejected() {
+        // Arrange
+        let payload =
+            format!(r#"{{"sub":"user\n42","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#);
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::InvalidClaimValue)));
+    }
+
+    #[test]
+    fn empty_user_id_is_rejected() {
+        // Arrange
+        let payload = format!(r#"{{"sub":"","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#);
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = test_config();
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::InvalidClaimValue)));
+    }
+
+    #[test]
+    fn tenant_id_with_control_char_is_rejected() {
+        // Arrange
+        let payload = format!(
+            r#"{{"sub":"user-1","tenant_id":"acme\r\nx","iss":"{ISSUER}","aud":"{AUDIENCE}","exp":2000}}"#
+        );
+        let token = encode_jwt(&valid_header(), &payload, SECRET);
+        let config = AuthConfig {
+            tenant_id_claim: Some("tenant_id".to_string()),
+            ..test_config()
+        };
+
+        // Act
+        let result = validate_token(&token, &config, 1000);
+
+        // Assert
+        assert!(matches!(result, Err(AuthError::InvalidClaimValue)));
+    }
+
+    #[test]
+    fn is_safe_header_value_accepts_normal_and_rejects_control_and_empty() {
+        // Arrange & Act
+        let normal = is_safe_header_value("user-42");
+        let empty = is_safe_header_value("");
+        let newline = is_safe_header_value("a\nb");
+
+        // Assert
+        assert!(normal);
+        assert!(!empty);
+        assert!(!newline);
     }
 }

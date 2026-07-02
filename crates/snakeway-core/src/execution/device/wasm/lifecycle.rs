@@ -71,11 +71,8 @@ fn handle_action(action: Action, request_id: Option<String>) -> anyhow::Result<D
             let status =
                 StatusCode::from_u16(synthetic.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
             let mut headers = HeaderMap::new();
-            for h in synthetic.headers {
-                if let (Ok(name), Ok(value)) = (
-                    h.name.parse::<HeaderName>(),
-                    HeaderValue::from_str(&h.value),
-                ) {
+            for h in &synthetic.headers {
+                if let Some((name, value)) = parse_header(h) {
                     headers.insert(name, value);
                 }
             }
