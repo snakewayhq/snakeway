@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-snakeway-core = { workspace = true, features = ["wasm"] }
+snakeway-core = { workspace = true }
 confval = { workspace = true }
 http = { workspace = true }
 serde_json = { workspace = true }
@@ -23,6 +23,11 @@ pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
 opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "testing"] }
+
+[dev-dependencies]
+hmac = "0.13"
+sha2 = "0.11"
+base64 = "0.22"
 
 [build-dependencies]
 tonic-prost-build = "0.14"

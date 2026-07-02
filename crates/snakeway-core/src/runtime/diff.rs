@@ -38,6 +38,7 @@ fn listener_equivalent(a: &ListenerConfig, b: &ListenerConfig) -> bool {
         && a.addr == b.addr
         && a.tls_termination == b.tls_termination
         && a.enable_http2 == b.enable_http2
+        && a.http2 == b.http2
         && a.enable_admin == b.enable_admin
         && a.redirect == b.redirect
         && a.connection_filter == b.connection_filter
@@ -65,7 +66,7 @@ mod tests {
     use super::*;
     use snakeway_conf::types::{
         ListenerConfig, PerformanceConfig, RuntimeConfig, ServerConfig, ShutdownConfig,
-        UpgradeConfig,
+        UpgradeConfig, UpstreamSettingsConfig,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -89,10 +90,14 @@ mod tests {
             },
             performance: PerformanceConfig {
                 work_stealing: true,
-                upstream_connection_pool_size: None,
                 parallel_accepts_per_listener: None,
             },
-            upstream_source_addresses: None,
+            upstream: UpstreamSettingsConfig {
+                connection_pool_size: None,
+                connection_timeout: None,
+                read_timeout: None,
+                source_addresses: None,
+            },
         }
     }
 
@@ -102,6 +107,7 @@ mod tests {
             addr: addr.to_string(),
             tls_termination: None,
             enable_http2: false,
+            http2: None,
             enable_admin: false,
             admin_auth: None,
             redirect: None,
@@ -185,6 +191,30 @@ mod tests {
         let mut new_listener = minimal_listener("l0", "0.0.0.0:8080");
         new_listener.enable_http2 = true;
         let new = minimal_config(vec![new_listener]);
+
+        // Act
+        let kind = classify_config_change(&old, &new);
+
+        // Assert
+        assert_eq!(kind, ConfigChangeKind::ListenersChanged);
+    }
+
+    #[test]
+    fn listener_http2_options_changed() {
+        // Arrange
+        let make_tuned_listener = |max_concurrent_streams| {
+            let mut listener = minimal_listener("l0", "0.0.0.0:8080");
+            listener.enable_http2 = true;
+            listener.http2 = Some(snakeway_conf::types::Http2Config {
+                max_concurrent_streams: Some(max_concurrent_streams),
+                max_header_list_size: None,
+                initial_window_size: None,
+                initial_connection_window_size: None,
+            });
+            listener
+        };
+        let old = minimal_config(vec![make_tuned_listener(100)]);
+        let new = minimal_config(vec![make_tuned_listener(200)]);
 
         // Act
         let kind = classify_config_change(&old, &new);

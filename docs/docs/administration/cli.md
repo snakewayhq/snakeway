@@ -136,9 +136,21 @@ To dump as `YAML`:
 snakeway config dump /etc/snakeway --format=yaml
 ```
 
-By default, the output should match the configuration files.
-However, the internal runtime representation can also be examined, i.e., the lower level internal primitives used
-by Snakeway. This is useful for debugging.
+By default (`--repr=spec`), the output matches the configuration files: blocks you did not write are omitted, so the
+dump round-trips back to your source.
+
+Three representations are available through `--repr`:
+
+- `spec` (default): the configuration exactly as written.
+- `populated-spec`: the spec with defaulted blocks filled in. Blocks such as `shutdown`, `upgrade`, `performance`, and
+  `upstream` that you omit are shown with the values Snakeway applies at runtime, so you can see the effective defaults.
+- `runtime`: the lower level internal primitives Snakeway runs on, after lowering. This is useful for debugging.
+
+Show the effective defaults Snakeway will apply:
+
+```shell
+snakeway config dump /etc/snakeway --format=hcl --repr=populated-spec
+```
 
 Print the internal representation out as JSON:
 
@@ -332,7 +344,7 @@ Sent SIGHUP to Snakeway (pid 77120)
 ```
 
 :::note
-It is also possible to reload with the [admin API](/docs/guide/admin-api/#post-adminreload).
+It is also possible to reload with the [admin API](./admin-api.md#post-adminreload).
 :::
 
 ## upgrade

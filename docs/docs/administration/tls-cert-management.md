@@ -112,7 +112,7 @@ bind = {
 ```
 
 Snakeway reads the certificate and key files at startup. To rotate a manual certificate, replace the files on disk and
-trigger a configuration reload via the [Admin API](/docs/guide/admin-api) or by sending SIGHUP.
+trigger a configuration reload via the [Admin API](./admin-api.md) or by sending SIGHUP.
 
 ## Monitoring and Failure Recovery
 

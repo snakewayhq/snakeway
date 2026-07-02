@@ -19,31 +19,41 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 /// Report an error unless `located` points at an existing regular file.
 /// Cascades to a single diagnostic; returns whether the path is usable so a
 /// caller doing further checks (e.g., reading the file) can bail.
+/// `help`, when given, is attached to whichever error fires
+/// (empty / missing / not-a-file), so a caller can offer remediation specific
+/// to its setting.
 pub(crate) fn require_existing_file(
     located: &Located<PathBuf>,
     label: &str,
+    help: Option<&str>,
     report: &mut Report,
 ) -> bool {
+    let span = located.span;
+    let emit = |report: &mut Report, message: String| {
+        let issue = report.error(message).at(span);
+        match help {
+            Some(help) => issue.help(help).emit(),
+            None => issue.emit(),
+        }
+    };
+
     let path = located.value.as_path();
     if path.as_os_str().is_empty() {
-        report
-            .error(format!("{label} path is empty: {}", path.display()))
-            .at(located.span)
-            .emit();
+        emit(report, format!("{label} path is empty: {}", path.display()));
         return false;
     }
     if !path.exists() {
-        report
-            .error(format!("{label} path does not exist: {}", path.display()))
-            .at(located.span)
-            .emit();
+        emit(
+            report,
+            format!("{label} path does not exist: {}", path.display()),
+        );
         return false;
     }
     if !path.is_file() {
-        report
-            .error(format!("{label} path is not a file: {}", path.display()))
-            .at(located.span)
-            .emit();
+        emit(
+            report,
+            format!("{label} path is not a file: {}", path.display()),
+        );
         return false;
     }
     true
@@ -77,45 +87,27 @@ pub(crate) fn require_existing_dir(
 }
 
 pub(crate) fn validate_geoip_db_file(geoip_db: &Located<PathBuf>, report: &mut Report) {
-    require_existing_file(geoip_db, "geoip db", report);
+    require_existing_file(
+        geoip_db,
+        "geoip db",
+        Some("Provide a path to a MaxMind .mmdb database file (for example, GeoLite2-City.mmdb)."),
+        report,
+    );
 }
 
 pub(crate) fn validate_ua_parser_regexes_file(located: &Located<PathBuf>, report: &mut Report) {
+    if !require_existing_file(
+        located,
+        "ua_parser_regexes",
+        Some(
+            "Provide a valid path to a ua-parser regexes.yaml file, or remove the setting \
+             to use the bundled default.",
+        ),
+        report,
+    ) {
+        return;
+    }
     let path = located.value.as_path();
-    if path.as_os_str().is_empty() {
-        report
-            .error(format!(
-                "ua_parser_regexes path is empty: {}",
-                path.display()
-            ))
-            .at(located.span)
-            .emit();
-        return;
-    }
-    if !path.exists() {
-        report
-            .error(format!(
-                "ua_parser_regexes path does not exist: {}",
-                path.display()
-            ))
-            .at(located.span)
-            .help(
-                "Provide a valid path to a ua-parser regexes.yaml file, or remove the setting \
-                 to use the bundled default.",
-            )
-            .emit();
-        return;
-    }
-    if !path.is_file() {
-        report
-            .error(format!(
-                "ua_parser_regexes path is not a file: {}",
-                path.display()
-            ))
-            .at(located.span)
-            .emit();
-        return;
-    }
     if let Ok(contents) = std::fs::read_to_string(path)
         && !contents.contains("user_agent_parsers")
     {
@@ -209,7 +201,14 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(report.issues().iter().any(|e| e.message.contains("empty")));
+        // The empty-path case also carries the remediation help (dev only
+        // attached it to the does-not-exist case).
+        assert!(report.issues().iter().any(|e| {
+            e.message.contains("empty")
+                && e.help
+                    .as_deref()
+                    .is_some_and(|h| h.contains("bundled default"))
+        }));
     }
 
     #[test]
@@ -223,12 +222,12 @@ mod tests {
 
         // Assert
         assert!(report.has_issues());
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message.contains("does not exist"))
-        );
+        assert!(report.issues().iter().any(|e| {
+            e.message.contains("does not exist")
+                && e.help
+                    .as_deref()
+                    .is_some_and(|h| h.contains("bundled default"))
+        }));
     }
 
     #[test]

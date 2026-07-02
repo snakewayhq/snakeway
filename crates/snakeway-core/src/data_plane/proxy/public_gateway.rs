@@ -31,6 +31,8 @@ pub(crate) struct PublicGateway {
     gw_ctx: GatewayCtx,
     traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
+    upstream_connect_timeout: Option<Duration>,
+    upstream_read_timeout: Option<Duration>,
 }
 
 impl PublicGateway {
@@ -40,6 +42,8 @@ impl PublicGateway {
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
         metrics: Option<Arc<Metrics>>,
+        upstream_connect_timeout: Option<Duration>,
+        upstream_read_timeout: Option<Duration>,
     ) -> Self {
         let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
@@ -47,6 +51,8 @@ impl PublicGateway {
             gw_ctx,
             traffic_director: TrafficDirector,
             static_file_handler: StaticFileHandler,
+            upstream_connect_timeout,
+            upstream_read_timeout,
         }
     }
 }
@@ -247,6 +253,24 @@ impl ProxyHttp for PublicGateway {
         }
         .map_err(|_| Error::new(Custom("http peer creation failed")))?;
 
+        // Apply upstream timeouts.
+        // The read timeout is per-read (idle), so it bounds a stalled origin
+        // without breaking slow-but-progressing responses.
+        // It is skipped for websocket upgrades so idle long-lived connections
+        // are not torn down.
+        if let Some(t) = self.upstream_connect_timeout {
+            // The total_connection_timeout setting bounds the whole connection
+            // establishment (TCP connect + TLS handshake).
+            // The inner connection_timeout (TCP connect only) is left unset
+            // because it would be redundant since the total bound already caps it.
+            peer.options.total_connection_timeout = Some(t);
+        }
+        if let Some(t) = self.upstream_read_timeout
+            && !ctx.is_upgrade_req()
+        {
+            peer.options.read_timeout = Some(t);
+        }
+
         // Enforce protocol rules for this upstream and request.
         self.enforce_protocol(&mut peer, ctx, upstream)?;
 
@@ -321,7 +345,8 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(resp) => {
-                session.respond_error(resp.status.as_u16()).await?;
+                resp.write_to_session(&mut session.downstream_session)
+                    .await?;
                 return Ok(true);
             }
 
@@ -495,7 +520,9 @@ impl ProxyHttp for PublicGateway {
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
             DeviceResult::Continue => Ok(()),
-            DeviceResult::Respond(resp) => session.respond_error(resp.status.as_u16()).await,
+            DeviceResult::Respond(resp) => {
+                resp.write_to_session(&mut session.downstream_session).await
+            }
             DeviceResult::Error(err) => {
                 tracing::error!("device error on_stream_request_body: {err}");
                 Err(Error::new(Custom("device error on_stream_request_body")))
@@ -518,15 +545,6 @@ impl ProxyHttp for PublicGateway {
         let _req_span = tracing::info_span!("upstream_request");
         let _req_enter = _req_span.enter();
 
-        if upstream.version == Version::HTTP_2 {
-            let authority = ctx
-                .upstream_authority()
-                .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
-
-            // Set Host - Pingora will map it to :authority
-            upstream.insert_header(header::HOST, authority)?;
-        }
-
         let state = self.gw_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
@@ -534,6 +552,25 @@ impl ProxyHttp for PublicGateway {
                 // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method().to_owned());
                 upstream.set_uri(ctx.upstream_path().parse().unwrap());
+
+                // Device header ops live on `ctx`, so the upstream request headers
+                // are rebuilt from it. Clearing first lets device removals take effect.
+                let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+                for name in existing {
+                    upstream.remove_header(&name);
+                }
+                for (name, value) in ctx.headers() {
+                    upstream.append_header(name.clone(), value)?;
+                }
+
+                // Host for HTTP/2 is derived from the upstream authority (Pingora
+                // maps it to :authority) and must override any client-supplied Host.
+                if upstream.version == Version::HTTP_2 {
+                    let authority = ctx
+                        .upstream_authority()
+                        .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
+                    upstream.insert_header(header::HOST, authority)?;
+                }
 
                 if ctx.is_upgrade_req() {
                     // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
@@ -591,12 +628,22 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
             DeviceResult::Error(err) => {
-                // Response is already committed; we only record and observe.
                 tracing::warn!("device error after_proxy: {err}");
             }
         }
 
         upstream.set_status(resp_ctx.status)?;
+
+        // Clear and repopulate so device Remove ops propagate to the response,
+        // mirroring the request-side writeback in upstream_request_filter. An
+        // insert-only loop would drop removals and collapse appended multi-values.
+        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+        for name in existing {
+            upstream.remove_header(&name);
+        }
+        for (name, value) in &resp_ctx.headers {
+            upstream.append_header(name.clone(), value)?;
+        }
 
         ctx.extensions.insert(UpstreamResponseSnapshot {
             status: upstream.status,
@@ -645,12 +692,22 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
             DeviceResult::Error(err) => {
-                // Too late to change anything; logs and metrics only allowed here.
                 tracing::warn!("device error on_response: {err}");
             }
         }
 
         upstream.set_status(resp_ctx.status)?;
+
+        // Clear and repopulate so device Remove ops propagate to the response,
+        // mirroring the request-side writeback in upstream_request_filter. An
+        // insert-only loop would drop removals and collapse appended multi-values.
+        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
+        for name in existing {
+            upstream.remove_header(&name);
+        }
+        for (name, value) in &resp_ctx.headers {
+            upstream.append_header(name.clone(), value)?;
+        }
 
         let status = upstream.status.as_u16();
         ctx.upstream_outcome = Some(if status >= 500 {

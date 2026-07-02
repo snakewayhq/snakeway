@@ -6,14 +6,6 @@ title: Static Files
 Snakeway can serve static files directly from the filesystem, making it easy to host frontend assets, images, and other
 static content without needing a separate web server.
 
-## Enabling Static Files
-
-Static file serving is an optional feature. To enable it, compile Snakeway with the `static_files` feature:
-
-```shell
-cargo build --release --features static_files
-```
-
 ## Configuration
 
 To serve static files, add a route to the `static_files` block:
@@ -116,7 +108,7 @@ static_files = [
         path     = "/downloads"
         file_dir = "/var/www/large-files"
         compression = {
-          max_file_size        = 104857600  # 100 MiB
+          max_file_size = 104857600  # 100 MiB
           small_file_threshold = 1048576    # 1 MiB - stream files larger than this
         }
       }

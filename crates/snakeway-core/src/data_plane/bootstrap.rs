@@ -4,7 +4,6 @@ use crate::control_plane::observability::Metrics;
 use crate::data_plane::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::data_plane::tls_handshake::{CertMode, build_tls_callbacks};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
-use crate::execution::device::core::DeviceRegistry;
 use crate::execution::traffic::TrafficManager;
 use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use crate::runtime::RuntimeState;
@@ -13,6 +12,7 @@ use arc_swap::ArcSwap;
 use openssl::ssl::SslFiletype;
 use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
+use pingora::protocols::http::v2::server::default_h2_options;
 use pingora::server::Server;
 use pingora::server::configuration::{Opt, ServerConf};
 use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
@@ -73,7 +73,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         pingora_server_conf.threads = threads;
     }
 
-    if let Some(pool_size) = config.server.performance.upstream_connection_pool_size {
+    if let Some(pool_size) = config.server.upstream.connection_pool_size {
         pingora_server_conf.upstream_keepalive_pool_size = pool_size;
     }
 
@@ -81,7 +81,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         pingora_server_conf.listener_tasks_per_fd = accepts;
     }
 
-    if let Some(source_addrs) = &config.server.upstream_source_addresses {
+    if let Some(source_addrs) = &config.server.upstream.source_addresses {
         pingora_server_conf.client_bind_to_ipv4 = source_addrs.ipv4.clone();
         pingora_server_conf.client_bind_to_ipv6 = source_addrs.ipv6.clone();
     }
@@ -101,14 +101,13 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
 
     server.bootstrap();
 
-    // Load devices
-    let mut registry = DeviceRegistry::new();
-    registry.load_from_config(&config)?;
-    debug!("Loaded device count = {}", registry.all().len());
-
     //-------------------------------------------------------------------------
     // Public Proxy: Create public listener(s).
     //-------------------------------------------------------------------------
+    // Global upstream timeouts.
+    let upstream_connect_timeout = config.server.upstream.connection_timeout;
+    let upstream_read_timeout = config.server.upstream.read_timeout;
+
     for listener_cfg in config
         .listeners
         .iter()
@@ -121,6 +120,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             traffic_manager.clone(),
             connection_manager.clone(),
             metrics.clone(),
+            upstream_connect_timeout,
+            upstream_read_timeout,
         );
         let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
 
@@ -155,6 +156,27 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             },
             None => {
                 public_svc.add_tcp(&listener_cfg.addr.to_string());
+            }
+        }
+
+        if listener_cfg.enable_http2
+            && let Some(h2_cfg) = &listener_cfg.http2
+        {
+            let mut options = default_h2_options();
+            if let Some(v) = h2_cfg.max_concurrent_streams {
+                options.max_concurrent_streams(v);
+            }
+            if let Some(v) = h2_cfg.max_header_list_size {
+                options.max_header_list_size(v);
+            }
+            if let Some(v) = h2_cfg.initial_window_size {
+                options.initial_window_size(v);
+            }
+            if let Some(v) = h2_cfg.initial_connection_window_size {
+                options.initial_connection_window_size(v);
+            }
+            if let Some(app) = public_svc.app_logic_mut() {
+                app.h2_options = Some(options);
             }
         }
 

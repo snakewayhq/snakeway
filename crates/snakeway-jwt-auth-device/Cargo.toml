@@ -1,0 +1,17 @@
+[package]
+name = "snakeway-jwt-auth-device"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "JWT authentication gateway device for Snakeway"
+
+[dependencies]
+wit-bindgen = "0.57"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
+base64 = { version = "0.22", default-features = false, features = ["alloc"] }
+hmac = { version = "0.13", default-features = false }
+sha2 = { version = "0.11", default-features = false }
+
+[lib]
+crate-type = ["cdylib", "lib"]

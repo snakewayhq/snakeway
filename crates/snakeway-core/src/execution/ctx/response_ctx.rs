@@ -1,12 +1,12 @@
-use http::{HeaderMap, StatusCode};
+use http::{HeaderMap, StatusCode, header};
+use pingora::http::ResponseHeader;
+use pingora::protocols::http::ServerSession;
 
 #[derive(Debug)]
 pub struct ResponseCtx {
     pub(crate) request_id: Option<String>,
     pub(crate) status: StatusCode,
-    #[allow(dead_code)] // useful for debugger inspection
     pub(crate) headers: HeaderMap,
-    #[allow(dead_code)] // useful for debugger inspection
     pub(crate) body: Vec<u8>,
 }
 
@@ -41,5 +41,21 @@ impl ResponseCtx {
             HeaderMap::new(),
             b"Too many requests".to_vec(),
         )
+    }
+
+    pub(crate) async fn write_to_session(self, session: &mut ServerSession) -> pingora::Result<()> {
+        let mut response = ResponseHeader::build(self.status, None)?;
+        for (name, value) in &self.headers {
+            response.append_header(name.clone(), value)?;
+        }
+        let end_of_body = self.body.is_empty();
+        if !end_of_body {
+            response.insert_header(header::CONTENT_LENGTH, self.body.len().to_string())?;
+        }
+        session.write_response_header(Box::new(response)).await?;
+        if !end_of_body {
+            session.write_response_body(self.body.into(), true).await?;
+        }
+        Ok(())
     }
 }

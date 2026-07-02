@@ -7,7 +7,7 @@ phase has a defined set of goals and deliverables. Completed items are marked wi
 
 ---
 
-## Phase 0: Foundation (v0.1.0)
+## Milestone 0: Foundation (v0.1.0)
 
 **Goals**
 
@@ -28,7 +28,7 @@ phase has a defined set of goals and deliverables. Completed items are marked wi
 
 ---
 
-## Phase 1: Foundations and Extensibility (v0.2.x)
+## Milestone 1: Foundations and Extensibility (v0.2.x)
 
 **Goals**
 
@@ -46,7 +46,7 @@ phase has a defined set of goals and deliverables. Completed items are marked wi
 
 ---
 
-## Phase 1.5: Benchmark and Architecture Review
+## Milestone 1.5: Benchmark and Architecture Review
 
 Confirm that the architecture is sound before building on top of it.
 
@@ -56,7 +56,7 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 2: Load Balancing and Observability (v0.3.x, v0.4.x)
+## Milestone 2: Load Balancing and Observability (v0.3.x, v0.4.x)
 
 **Goals**
 
@@ -75,7 +75,7 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 2.5: Outstanding Tasks (v0.5.x)
+## Milestone 2.5: Outstanding Tasks (v0.5.x)
 
 **Traffic Management**
 
@@ -101,7 +101,7 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 3: Security and Path Control (v0.6.x)
+## Milestone 3: Security and Path Control (v0.6.x)
 
 **Goals**
 
@@ -120,7 +120,7 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 3.1: Refinements (v0.7.x)
+## Milestone 3.1: Refinements (v0.7.x)
 
 - [x] Standardize CLI format options between `config dump` and `config check`
 - [x] Add `config init` command for first-proxy configuration generation
@@ -130,13 +130,13 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 3.2: Refinements (v0.8.x)
+## Milestone 3.2: Refinements (v0.8.x)
 
 - [x] Add `work_stealing` toggle to server configuration
 
 ---
 
-## Phase 4: ACME TLS Automation (v0.9.0)
+## Milestone 4: ACME TLS Automation (v0.9.0)
 
 **Goals**
 
@@ -149,7 +149,7 @@ Confirm that the architecture is sound before building on top of it.
 
 ---
 
-## Phase 5: Hardening (v0.10.0)
+## Milestone 5: Hardening (v0.10.0)
 
 All core features are implemented at this stage. The focus shifts to architecture review, test coverage, and operational
 polish.
@@ -188,7 +188,7 @@ polish.
 
 ---
 
-## Phase 6: Packaging and Distribution (v0.11.0)
+## Milestone 6: Packaging and Distribution (v0.11.0)
 
 **Goals**
 
@@ -208,7 +208,7 @@ Standard installation layout:
 
 ---
 
-## Phase 7: Reconsidered Late Additions (v0.12.0)
+## Milestone 7: Reconsidered Late Additions (v0.12.0)
 
 **Goals**
 
@@ -220,7 +220,7 @@ Standard installation layout:
 
 ---
 
-## Phase 8: Alpha Hardening and Refinements (v0.13.x)
+## Milestone 8: Alpha Hardening/Refinements (v0.13.0)
 
 **Goals**
 
@@ -231,7 +231,36 @@ Standard installation layout:
 
 ---
 
-## Phase 9: Snakeway 1.0
+## Milestone 9: Rework conf subsystem (v0.14.0)
+
+**Goals**
+
+- [x] Rework the `convfal` crate to replace the `Origin` mechanism with true per-line config validation issue provenance
+  messages.
+- [x] Create a `confval-derive` companion crate for confval that replaces o2o.
+
+## Milestone 10: Full Programmability (v0.15.0)
+
+**Goals**
+
+- [x] Expose some HTTP/2 fine-tuning options
+- [ ] Full WASM Device support
+
+**What Full WASM Device Support looks like...**
+
+This is bumped up ahead of the v1.0 release because it does not make sense to release a stable version of a
+programmable proxy if the programmability features are still experimental.
+
+- Pre-instantiated components (no per-request instantiation)
+- Bounded store pool with memory and execution limits
+- Wasmtime caching and pooling allocator
+- Per-hook timeouts and fail-open/fail-closed configuration
+- Header and path mutation guardrails
+- Plugin versioning and reload validation
+
+---
+
+## Milestone N: Snakeway 1.0
 
 **Goals**
 
@@ -273,15 +302,6 @@ Pluggable storage (supported by Pingora):
 2. memory + disk
 3. Redis
 4. custom storage
-
-### Full WASM Device Support
-
-- Pre-instantiated components (no per-request instantiation)
-- Bounded store pool with memory and execution limits
-- Wasmtime caching and pooling allocator
-- Per-hook timeouts and fail-open/fail-closed configuration
-- Header and path mutation guardrails
-- Plugin versioning and reload validation
 
 ### Active Health Checks
 

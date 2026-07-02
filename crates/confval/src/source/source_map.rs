@@ -53,6 +53,7 @@ impl Source {
     }
 
     /// Smallest char boundary at or after `offset`, clamped to the text length.
+    #[cfg(any(test, feature = "color"))]
     pub(crate) fn ceil_char_boundary(&self, offset: usize) -> usize {
         let mut offset = offset.min(self.text.len());
         while offset < self.text.len() && !self.text.is_char_boundary(offset) {

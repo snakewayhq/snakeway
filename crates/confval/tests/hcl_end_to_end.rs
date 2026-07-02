@@ -22,12 +22,42 @@ struct ServerSpec {
     allow: Option<Located<Vec<Located<String>>>>,
     #[confval(nested)]
     tls: Option<Located<TlsSpec>>,
+    #[confval(nested, default)]
+    limits: Located<LimitsSpec>,
+    #[confval(nested)]
+    retry: Option<Located<RetrySpec>>,
 }
 
 #[derive(Debug, confval::Spec)]
 struct TlsSpec {
     cert: Located<String>,
     key: Located<String>,
+}
+
+#[derive(Debug, confval::Spec)]
+struct LimitsSpec {
+    max_body_mb: Located<i64>,
+}
+
+impl Default for LimitsSpec {
+    fn default() -> Self {
+        Self {
+            max_body_mb: Located::detached(10),
+        }
+    }
+}
+
+#[derive(Debug, confval::Spec)]
+struct RetrySpec {
+    max_attempts: Located<i64>,
+}
+
+impl Default for RetrySpec {
+    fn default() -> Self {
+        Self {
+            max_attempts: Located::detached(3),
+        }
+    }
 }
 
 fn check_range(value: &Located<i64>, min: i64, max: i64, name: &str, report: &mut Report) {
@@ -70,6 +100,12 @@ struct ServerConfig {
     allow: Vec<String>,
     #[confval(nested)]
     tls: Option<TlsConfig>,
+    #[confval(nested)]
+    limits: LimitsConfig,
+    // Lowers from the optional `retry` spec field; an absent block becomes
+    // `RetrySpec::default()` rather than a missing-field error.
+    #[confval(nested, default)]
+    retry: RetryConfig,
 }
 
 #[derive(Debug, confval::Config)]
@@ -79,6 +115,18 @@ struct TlsConfig {
     cert: PathBuf,
     #[confval(lower(from = key, with = string_to_path))]
     key: PathBuf,
+}
+
+#[derive(Debug, confval::Config)]
+#[confval(lower_from = LimitsSpec)]
+struct LimitsConfig {
+    max_body_mb: i64,
+}
+
+#[derive(Debug, confval::Config)]
+#[confval(lower_from = RetrySpec)]
+struct RetryConfig {
+    max_attempts: i64,
 }
 
 fn max_connections_to_usize(value: &Located<i64>, _report: &mut Report) -> Option<usize> {
@@ -183,6 +231,53 @@ fn valid_config_parses_and_lowers() {
     let tls = config.tls.unwrap();
     assert_eq!(tls.cert, PathBuf::from("cert.pem"));
     assert_eq!(tls.key, PathBuf::from("key.pem"));
+    // `limits` is omitted from VALID, so it lowers to LimitsSpec::default().
+    assert_eq!(config.limits.max_body_mb, 10);
+    // `retry` is likewise omitted, so the config-side default fills it.
+    assert_eq!(config.retry.max_attempts, 3);
+}
+
+#[test]
+fn config_side_default_nested_defaults_when_absent_and_takes_value_when_present() {
+    // Absent: VALID has no `retry` block. The spec keeps it as `None` (so a
+    // spec dump stays source-faithful), and the config-side
+    // `#[confval(nested, default)]` lowers `RetrySpec::default()`.
+    let (_, report, config) = load(VALID);
+    assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    assert_eq!(config.unwrap().retry.max_attempts, 3);
+
+    // Present: an explicit block overrides the default.
+    let with_retry = format!("{VALID}\nretry {{\n  max_attempts = 7\n}}\n");
+    let (_, report, config) = load(&with_retry);
+    assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    assert_eq!(config.unwrap().retry.max_attempts, 7);
+}
+
+/// The spec keeps an omitted nested block absent (source-faithful), while the
+/// config materializes it. This is the contract the `config dump --repr=spec`
+/// vs `--repr=populated_spec` split relies on.
+#[test]
+fn optional_spec_nested_field_stays_absent_when_omitted() {
+    let mut sources = SourceMap::new();
+    let mut report = Report::new();
+    let id = sources.add("server.hcl", VALID);
+
+    let spec: ServerSpec = parse_hcl(&sources, id, &mut report).unwrap();
+    assert!(spec.retry.is_none());
+}
+
+#[test]
+fn defaulted_nested_block_defaults_when_absent_and_takes_value_when_present() {
+    // Absent: VALID has no `limits` block, so it lowers to LimitsSpec::default().
+    let (_, report, config) = load(VALID);
+    assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    assert_eq!(config.unwrap().limits.max_body_mb, 10);
+
+    // Present: an explicit block overrides the default.
+    let with_limits = format!("{VALID}\nlimits {{\n  max_body_mb = 50\n}}\n");
+    let (_, report, config) = load(&with_limits);
+    assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    assert_eq!(config.unwrap().limits.max_body_mb, 50);
 }
 
 #[test]

@@ -3,7 +3,7 @@
 //! Like [`hcl`](crate::format::hcl), this module's only job is the conversion
 //! from a concrete syntax tree — here `toml_edit`'s — to the owned model in
 //! [`field`](crate::format::field). It parses through
-//! [`Document`](toml_edit::Document), the immutable document type that
+//! [`Document`], the immutable document type that
 //! retains source spans, and emits the same neutral `Fields` every other
 //! frontend does, so the leaf parsers, the derive-generated walks, and the
 //! hand-written [`FromFields`] impls work against it unchanged.

@@ -17,7 +17,7 @@ pub struct Issue {
 ///
 /// The report is source-free: spans carry their [`SourceId`](crate::source::SourceId),
 /// so reports from different files merge trivially and the
-/// [`SourceMap`] is only needed at render time.
+/// [`SourceMap`](crate::source::SourceMap) is only needed at render time.
 #[derive(Debug, Default)]
 pub struct Report {
     issues: Vec<Issue>,

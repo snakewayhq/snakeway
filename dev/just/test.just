@@ -33,6 +33,16 @@ generate-dev-certs:
     @just fetch-pebble-ca
     ./dev/gen-test-certs.sh
 
+# Install mkcert and nss, then create dev certs.
+setup-tls-dev-cert:
+    just brew-install "mkcert nss"
+    mkdir -p ./data/certs/
+    mkcert -install
+    mkcert \
+      -cert-file ./data/certs/snakeway.pem \
+      -key-file ./data/certs/snakeway.key \
+      localhost 127.0.0.1 ::1
+
 generate-all-templates:
     @mkdir -p data/templates data/acme/orders
     @rm -fr data/templates/*
@@ -53,17 +63,17 @@ generate-all-templates:
 
 # Run unit tests
 test:
-    cargo nextest run -p confval -p confval-derive -p snakeway-core -p snakeway-conf --features wasm
+    cargo nextest run -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features
 
 # Run unit tests with coverage, and output HTML
 test-with-coverage:
-    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --features wasm --html --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features--html --ignore-filename-regex 'pingora|tests/|examples/'
     open target/llvm-cov/html/index.html
 
 # Run unit tests with coverage, and output a summary
 test-with-coverage-summary:
-    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --features wasm --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # Run integration tests
-integration-test *ARGS: fetch-pebble-ca generate-dev-certs
+integration-test *ARGS: fetch-pebble-ca generate-dev-certs build-wasm-test-device build-wasm-jwt-device
     cargo nextest run -p snakeway-tests {{ ARGS }}

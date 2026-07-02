@@ -21,13 +21,3 @@ docs:
 
 docs-build:
     cd docs && npm run build
-
-# Install mkcert and nss, then create dev certs.
-setup-tls-dev-cert:
-    just brew-install "mkcert nss"
-    mkdir -p ./data/certs/
-    mkcert -install
-    mkcert \
-      -cert-file ./data/certs/snakeway.pem \
-      -key-file ./data/certs/snakeway.key \
-      localhost 127.0.0.1 ::1

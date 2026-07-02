@@ -46,6 +46,8 @@ const config: Config = {
                 path: './releases',
                 blogTitle: 'Release Notes',
                 blogDescription: 'Snakeway release notes and changelogs.',
+                blogSidebarTitle: 'All Releases',
+                blogSidebarCount: 'ALL',
                 showReadingTime: false,
                 onUntruncatedBlogPosts: 'ignore',
                 onInlineTags: 'warn',

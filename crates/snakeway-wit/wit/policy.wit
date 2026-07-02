@@ -1,0 +1,10 @@
+interface policy {
+  use types.{request, response, body-chunk, request-result, response-result, body-result};
+
+  on-request: func(req: request) -> request-result;
+  on-stream-request-body: func(req: request, chunk: option<body-chunk>) -> body-result;
+  before-proxy: func(req: request) -> request-result;
+  after-proxy: func(resp: response) -> response-result;
+  on-stream-response-body: func(resp: response, chunk: option<body-chunk>) -> body-result;
+  on-response: func(resp: response) -> response-result;
+}

@@ -58,24 +58,33 @@ or server-construction field changed, the zero-drop upgrade path runs automatica
 
 ## Zero-drop upgrade sequence
 
-```
-1. Reload triggered (SIGHUP or admin API)
-2. New config loaded and validated
-3. classify_config_change() returns ListenersChanged
-4. Old process spawns: snakeway run --config <path> --upgrade
-5. New process loads config, builds server and services
-6. New process reads old PID from pid_file, sends SIGQUIT
-7. Old process receives SIGQUIT
-8. Old process serializes listener FDs, sends them over upgrade_sock (SCM_RIGHTS)
-9. New process receives FDs via upgrade_sock
-10. New process calls server.bootstrap() with received FDs (no bind() needed)
-11. New process starts accepting connections on inherited sockets
-12. New process binds any new listener addresses that did not exist before
-13. Old process stops accepting, drains in-flight requests, exits
+```mermaid
+sequenceDiagram
+    participant Old as Old Process
+    participant New as New Process
+
+    Note over Old: Reload triggered<br/>(SIGHUP or admin API)
+    Old->>Old: Load and validate new config
+    Old->>Old: classify_config_change()<br/>returns ListenersChanged
+    Old->>New: Spawn: snakeway run --config ... --upgrade
+    New->>New: Load config, build server and services
+    New->>New: Read old PID from pid_file
+
+    rect rgba(99, 102, 241, 0.08)
+        Note over Old,New: Critical zero-downtime window
+        New->>Old: SIGQUIT
+        Old->>New: Serialize listener FDs over<br/>upgrade_sock (SCM_RIGHTS)
+        New->>New: Receive FDs via upgrade_sock
+        New->>New: server.bootstrap() with received FDs<br/>(no bind needed)
+    end
+
+    New->>New: Start accepting on inherited sockets
+    New->>New: Bind any new listener addresses
+    Old->>Old: Stop accepting, drain in-flight, exit
 ```
 
-Steps 6 through 9 are the critical zero-downtime window. Because the kernel socket object is the
-same, the listen backlog is preserved. No SYN in the accept queue is refused.
+Because the kernel socket object is the same, the listen backlog is preserved. No SYN in the
+accept queue is refused.
 
 ## Key implementation files
 

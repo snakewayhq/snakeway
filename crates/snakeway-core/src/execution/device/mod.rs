@@ -1,21 +1,26 @@
 pub mod builtin;
 pub mod core;
-#[cfg(feature = "wasm")]
 pub(crate) mod wasm;
 
 use crate::execution::device::core::Device;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
-#[cfg(not(feature = "wasm"))]
-pub(crate) fn load_wasm_device(_device_file_path: &PathBuf) -> anyhow::Result<Arc<dyn Device>> {
-    Err(anyhow::anyhow!(
-        "WASM devices are disabled. Rebuild with --features wasm"
-    ))
-}
-
-#[cfg(feature = "wasm")]
-pub(crate) fn load_wasm_device(device_file_path: &PathBuf) -> anyhow::Result<Arc<dyn Device>> {
-    let device = wasm::WasmDevice::load(device_file_path)?;
-    Ok(Arc::new(device))
+pub(crate) fn load_wasm_device(device_file_path: &Path) -> anyhow::Result<Arc<dyn Device>> {
+    use snakeway_conf::types::{WasmDeviceConfig, WasmDeviceFailPolicy};
+    let wasm_engine = wasm::WasmEngine::new()?;
+    let cfg = WasmDeviceConfig {
+        name: "cli-test".to_string(),
+        path: device_file_path.to_path_buf(),
+        fail_policy: WasmDeviceFailPolicy::Open,
+        timeout_ms: 5,
+        ..Default::default()
+    };
+    let device = wasm::WasmDevice::load(Arc::clone(&wasm_engine.engine), &cfg)?;
+    let device: Arc<dyn Device> = Arc::new(device);
+    // Leak the engine so the epoch ticker stays alive for the CLI command's lifetime.
+    // This function is CLI scaffolding/workaround.
+    // Production code uses DeviceRegistry which owns the WasmEngine properly.
+    Box::leak(Box::new(wasm_engine));
+    Ok(device)
 }

@@ -8,14 +8,14 @@ The `server` block in `snakeway.hcl` controls process-level settings.
 
 ```hcl
 server {
-  version  = 1                            # Config format version (always 1 for now)
+  version = 1                            # Config format version (always 1 for now)
   pid_file = "/var/run/snakeway.pid"      # Optional; enables signal-based reload
-  threads  = 8                            # Worker threads for the proxy runtime
-  ca_file  = "/path/to/certs/ca.pem"     # Global CA for verifying upstream TLS
+  threads = 8                            # Worker threads for the proxy runtime
+  ca_file = "/path/to/certs/ca.pem"     # Global CA for verifying upstream TLS
   dns_refresh_interval_seconds = 30       # How often to re-resolve upstream hostnames
 
   shutdown {
-    drain_seconds         = 10            # Time for active connections to finish
+    drain_seconds = 10            # Time for active connections to finish
     force_timeout_seconds = 30            # Hard ceiling on total shutdown time
   }
 
@@ -25,14 +25,19 @@ server {
   }
 
   performance {
-    work_stealing                 = true  # Allow work stealing between threads
-    upstream_connection_pool_size = 128   # Idle upstream connections per worker
+    work_stealing = true  # Allow work stealing between threads
     parallel_accepts_per_listener = 1     # Parallel accept tasks per listener
   }
 
-  upstream_source_addresses {
-    ipv4 = ["10.0.1.5"]
-    ipv6 = ["fd00::1"]
+  upstream {
+    connection_pool_size = 128      # Idle upstream connections per worker
+    connection_timeout_seconds = 10       # Connect timeout (TCP/TLS) - omit to disable
+    read_timeout_seconds = 60       # Per-read idle timeout; omit to disable
+
+    source_addresses {
+      ipv4 = ["10.0.1.5"]
+      ipv6 = ["fd00::1"]
+    }
   }
 }
 ```
@@ -123,7 +128,6 @@ The `performance` block contains runtime tuning knobs that affect throughput and
 ```hcl
 performance {
   work_stealing                 = true
-  upstream_connection_pool_size = 256
   parallel_accepts_per_listener = 4
 }
 ```
@@ -131,35 +135,60 @@ performance {
 `performance.work_stealing` boolean, default: `true`. Controls whether worker threads are allowed
 to steal tasks from one another. Enabling work stealing improves throughput under uneven load.
 
-`performance.upstream_connection_pool_size` integer, default: `128` (Pingora default). Number of
-idle keepalive connections maintained per worker thread to upstream servers. Increase this for
-high-traffic deployments with many backends; decrease it on memory-constrained hosts. Valid range:
-`1` to `65535`.
-
 `performance.parallel_accepts_per_listener` integer, default: `1` (Pingora default). Number of
 parallel accept tasks spawned per listener file descriptor. Higher values reduce contention under
 bursty connection rates (thundering herd). Most deployments do not need to change this. Valid range:
 `1` to `64`.
 
-## Upstream Source Addresses
+## Upstream
 
-The `upstream_source_addresses` block controls which local IP addresses Snakeway uses as the
-source when making outbound connections to upstreams.
+The `upstream` block controls how Snakeway connects to and reads from upstream servers. These are
+global defaults applied to every upstream; a future release may add per-service overrides that take
+precedence.
 
 ```hcl
-upstream_source_addresses {
-  ipv4 = ["10.0.1.5", "10.0.1.6"]
-  ipv6 = ["fd00::1"]
+upstream {
+  connection_pool_size       = 256
+  connection_timeout_seconds = 10
+  read_timeout_seconds       = 60
+}
+```
+
+`upstream.connection_pool_size` integer, default: `128` (Pingora default). Number of idle keepalive
+connections maintained per worker thread to upstream servers. Increase this for high-traffic
+deployments with many backends; decrease it on memory-constrained hosts. Valid range: `1` to `65535`.
+
+`upstream.connection_timeout_seconds` integer, optional. How long to wait when establishing a
+connection to an upstream (TCP, and the TLS handshake for TLS upstreams) before failing. **Omit the
+key to disable it.** When set, the valid range is `1` to `3600`.
+
+`upstream.read_timeout_seconds` integer, optional. Per-read (idle) timeout while reading an upstream
+response: if no data arrives within the window the request fails. This bounds a stalled or wedged
+origin without breaking slow-but-progressing or streaming responses (the timer resets on every read).
+It is **not** applied to websocket upgrades, so idle long-lived websocket connections are not torn
+down. **Omit the key to disable it.** When set, the valid range is `1` to `3600`.
+
+### Source Addresses
+
+The `source_addresses` sub-block controls which local IP addresses Snakeway uses as the source when
+making outbound connections to upstreams.
+
+```hcl
+upstream {
+  source_addresses {
+    ipv4 = ["10.0.1.5", "10.0.1.6"]
+    ipv6 = ["fd00::1"]
+  }
 }
 ```
 
 By default, the operating system selects the source address based on its routing table. Use this
 block when you need to pin outbound traffic to specific interfaces or source IPs.
 
-`upstream_source_addresses.ipv4` list of strings, default: empty. IPv4 addresses to bind outbound
+`upstream.source_addresses.ipv4` list of strings, default: empty. IPv4 addresses to bind outbound
 upstream connections to. When multiple addresses are specified, Snakeway round-robins across them.
 
-`upstream_source_addresses.ipv6` list of strings, default: empty. IPv6 addresses to bind outbound
+`upstream.source_addresses.ipv6` list of strings, default: empty. IPv6 addresses to bind outbound
 upstream connections to. When multiple addresses are specified, Snakeway round-robins across them.
 
 Common use cases:

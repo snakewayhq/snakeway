@@ -20,22 +20,51 @@ It lives in `crates/confval/` and provides the generic primitives that `snakeway
 - **Minimal dependencies.** The core has none. `serde`, `owo-colors`, `hcl-edit`, `toml_edit`, and the
   derive macros are all behind feature flags.
 
+## Usage Examples
+
+Snakeway has a very complex configuration surface.
+It may be overwhelming.
+This documentation page is also very dense.
+
+### Crate Examples
+
+The confval crate has a few examples that are easier to understand.
+
+Run the TOML example:
+
+```shell
+cargo run -p confval --example toml --features="derive color toml"
+```
+
+Run the HCL example:
+
+```shell
+cargo run -p confval --example hcl --features="derive color hcl"
+```
+
+### Mini-Redis Example
+
+This [demo PR for the mini-redis](https://github.com/ethanhann/mini-redis/pull/1) Tokio example server is a bit more
+complex than the crate examples, but not nearly as complex as Snakeway.
+It is meant as a stepping stone.
+
 ## Crate layout
 
 confval is organized into four layers, each a module, plus a prelude. The dependency direction is
 strictly downward: `format` builds on `pipeline`, which builds on `diagnostic`, which builds on
 `source`.
 
-| Module                | Holds                                                                         |
-|-----------------------|-------------------------------------------------------------------------------|
-| `confval::source`     | `Located`, `Span`, `SourceId`, `Source`, `SourceMap` (the "where")            |
-| `confval::diagnostic` | `Report`, `Issue`, `IssueBuilder`, `Severity`, the renderers (the "what")     |
-| `confval::pipeline`   | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint` (the transform) |
-| `confval::format`     | the neutral field model (`field`) and the frontends (`hcl`, `toml`)           |
-| `confval::prelude`    | a glob re-export of the common imports across those layers                    |
+| Module                | Holds                                                                                       |
+|-----------------------|---------------------------------------------------------------------------------------------|
+| `confval::source`     | `Located`, `Span`, `SourceId`, `Source`, `SourceMap` (the "where")                          |
+| `confval::diagnostic` | `Report`, `Issue`, `IssueBuilder`, `Severity`, the renderers (the "what")                   |
+| `confval::pipeline`   | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint`, `KeywordSet` (the transform) |
+| `confval::format`     | the neutral field model (`field`) and the frontends (`hcl`, `toml`)                         |
+| `confval::prelude`    | a glob re-export of the common imports across those layers                                  |
 
 `use confval::prelude::*;` pulls the everyday names (`Located`, `Span`, `Report`, `Lower`, `Validate`,
-`narrow`, and the derives) in one line; the explicit module paths remain available when you want them.
+`narrow`, `RangeConstraint`, `KeywordSet`, and the derives) in one line; the explicit module paths
+remain available when you want them.
 
 ## The source module
 
@@ -261,7 +290,9 @@ Field rules:
 - **`#[confval(nested)]`** delegates to the field type's own `FromFields` impl. Works for single
   structs, optional structs, and `Vec` of structs (repeated blocks).
 - **`#[confval(default)]`** / **`#[confval(default = expr)]`** fills an absent field with a detached
-  default instead of reporting it missing.
+  default instead of reporting it missing. A bare `#[confval(default)]` also applies to a non-optional
+  nested field (`Located<S>` with `#[confval(nested, default)]`), filling an omitted block with
+  `S::default()`; `default = expr` is leaf-only.
 - Unknown fields in the input are reported as errors.
 
 Tagged unions (a block whose shape depends on a discriminator field like `mode` or `type`) are
@@ -301,6 +332,11 @@ Field rules:
   the last.
 - **`#[confval(nested)]`**: the field type implements `Lower` itself; works for single, `Option`,
   and `Vec` shapes.
+- **`#[confval(nested, default)]`**: a non-optional config field lowered from an `Option<Located<S>>`
+  spec field. When the source omits the block, `S::default()` is lowered in its place, so the runtime
+  field is always populated while the spec stays source-faithful (an absent block stays `None`). This
+  is the leaf-default's structural counterpart, and replaces hand-written `*_or_default` lowering
+  functions.
 - **`#[confval(lower(from = field, with = fn))]`**: explicit conversion through a function
   `fn(&SpecField, &mut Report) -> Option<Target>`. All narrowing (`i64` to `u16`, string to enum,
   string to `IpNet`) goes through these functions. `from` also accepts a tuple `(a, b)` when one
@@ -312,10 +348,13 @@ The generated impl destructures the spec exhaustively with no rest pattern. Addi
 struct without accounting for it on the other side is a compile error, which keeps spec and config
 in lockstep.
 
-For integer width changes, `confval::pipeline::narrow` provides ready-made `with` functions:
+`confval::pipeline::narrow` provides ready-made `with` functions. For integer width changes:
 `i64_to_u16`, `i64_to_u32`, `i64_to_u64`, `i64_to_usize`, and `opt_` variants for optional fields.
 They narrow with `try_from` rather than `as`: a value that does not fit is reported at its span and
 lowering fails, so a missing range rule surfaces as a located error instead of a silent truncation.
+`i64_secs_to_duration` (and `opt_i64_secs_to_duration`) route a seconds count through the same checked
+narrow into a `Duration`, rejecting a negative value rather than wrapping it; `i64_to_f64` widens to
+`f64` for the ratio and rate fields where an `as` cast cannot be named in a `with` attribute.
 
 ```rust
 use confval::pipeline::narrow;
@@ -343,6 +382,25 @@ PORT.check_located( & spec.port, "port", report);
 `check_located` emits an error at the value's span when out of range. When **help** is provided it
 overrides the auto-generated suggestion; otherwise confval generates one like "Set port to at
 least 1".
+
+## KeywordSet
+
+Closed sets of allowed keyword strings are checked against located values, the string counterpart of
+`RangeConstraint` for the spec layer's load-balancing strategies, log levels, fail policies, and the
+like:
+
+```rust
+const LOAD_BALANCING_STRATEGIES: [&str; 5] =
+    ["failover", "round_robin", "request_pressure", "sticky_hash", "random"];
+
+KeywordSet::new( & LOAD_BALANCING_STRATEGIES)
+.check_located( & spec.load_balancing_strategy, "load_balancing_strategy", report);
+```
+
+`check_located` reports `unknown {field}: {value}` at the value's span, with a help line of
+`expected one of: <comma-joined options>` (the diagnostic shown in the rendering example above). Every
+keyword field reports the same way, so the operator sees a consistent message and the allowed set
+wherever a closed-set field is wrong.
 
 ## Validate
 
@@ -411,4 +469,4 @@ confval assumes a fixed phase ordering, and the derives are designed around it:
 Two runnable end-to-end examples live in `crates/confval/examples/`: `hcl.rs` and `toml.rs` define the
 same `ServerSpec`/`ServerConfig` and differ only in the source text and the single `parse_hcl` vs
 `parse_toml` call, demonstrating that everything after parsing is format-neutral. See
-[Configuration Internals](/internals/configuration) for how Snakeway applies this pipeline.
+[Configuration Internals](./configuration.md) for how Snakeway applies this pipeline.

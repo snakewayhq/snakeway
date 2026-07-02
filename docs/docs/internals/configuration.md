@@ -4,7 +4,7 @@ title: Configuration Internals
 
 The configuration subsystem lives in the `snakeway-conf` crate. It is responsible for reading HCL
 files from disk, checking them for semantic correctness, and producing the runtime types that the
-rest of the proxy reads. It is built on the primitives provided by [confval](/internals/confval).
+rest of the proxy reads. It is built on the primitives provided by [confval](./confval.md).
 
 ## The pipeline
 

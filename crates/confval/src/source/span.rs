@@ -1,4 +1,4 @@
-/// Identifies a source registered in a [`SourceMap`](crate::provenance::SourceMap).
+/// Identifies a source registered in a [`SourceMap`](crate::source::SourceMap).
 ///
 /// Spans carry a `SourceId` so a single report can reference locations in
 /// many files, and a single issue can relate spans across files.
