@@ -72,7 +72,7 @@ jobs:
             --profile ci
 
       - name: Publish unit test results
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         if: always()
         with:
           report_paths: target/nextest/ci/junit.xml
@@ -135,7 +135,7 @@ jobs:
         run: cargo nextest run --locked -p snakeway-tests --profile ci
 
       - name: Publish integration test results
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         if: always()
         with:
           report_paths: target/nextest/ci/junit.xml
