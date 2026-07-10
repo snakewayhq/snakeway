@@ -2,42 +2,36 @@
 title: Mermaid Diagrams
 ---
 
-This page captures how to add a polished, theme-correct Mermaid diagram to this Docusaurus site.
-It exists because the obvious approaches (hardcoded `classDef` colors, `var()` in `classDef`, CSS overrides of node fills) fail in non-obvious ways.
-Follow the patterns here and you avoid re-discovering each wall.
+This page describes how to add a theme-correct Mermaid diagram to the docs site.
+Mermaid styling has sharp edges under Docusaurus, so follow these patterns rather than styling ad hoc.
 
 Preview your work with `just docs`.
 
-## Setup (one-time, already done)
+## Setup
 
-Mermaid is enabled in `docs/docusaurus.config.ts`:
+Mermaid is already enabled in `docs/docusaurus.config.ts`:
 
 - `markdown: { mermaid: true }`
 - `themes: ['@docusaurus/theme-mermaid']`
 
-The default theme mapping is `{ light: 'default', dark: 'dark' }`.
-The diagram **re-renders on color-mode change**, picking `theme[colorMode]`, so fill and text from the *theme* adapt to light and dark automatically.
-This default fact is the lever the whole color strategy below depends on.
+The theme mapping is `{ light: 'default', dark: 'dark' }`.
+Diagrams re-render when the reader toggles color mode, so any color the theme supplies adapts to light and dark automatically.
+The styling rules below exist to preserve that behavior.
 
-## The Core Constraint: Custom Colors Cannot Follow the Theme
+## Constraints
 
-Two independent walls make per-element, theme-aware custom colors impossible in a single diagram.
-Both were verified in the Mermaid 11.x source (`node_modules/mermaid/dist/mermaid.js`):
+Two Mermaid behaviors rule out per-element custom colors that follow the theme:
 
-1. **The flowchart parser rejects `var(...)` in `classDef` values.**
-   A `(` is a syntax error: `Parse error ... Expecting 'SEMI','COLON','NODE_STRING',... got '(-'`.
-   So CSS custom properties cannot be referenced from the diagram source.
-2. **`classDef` `fill` and `stroke` are applied as inline `!important` styles** on the shape element.
-   Mermaid overwrites the shape's `style` attribute last with the `fill:... !important` form.
-   Inline `!important` is the top of the CSS cascade, so **no stylesheet rule can override it**, regardless of specificity or `!important`.
+1. The flowchart parser rejects `var(...)` in `classDef` values, so CSS custom properties cannot be referenced from diagram source.
+2. `classDef` `fill` and `stroke` become inline `!important` styles on the shape element, which no stylesheet rule can override.
 
-Consequence: a hardcoded `classDef fill:#eef2ff` is identical in both modes.
-A near-white fill that looks right in light mode **glows** on a dark background, and there is no CSS escape hatch.
+A hardcoded `classDef fill` is therefore identical in both color modes.
+A fill chosen for light mode will glow on a dark background, with no CSS override available.
 
-## The Pattern That Works
+## Color Nodes by Stroke Only
 
-**Put role-coding in the `stroke` only.
-Leave `fill` and `color` out of `classDef`, and let the per-mode theme supply them.**
+Set only `stroke` in `classDef`.
+Leave `fill` and `color` unset so the per-mode theme supplies them.
 
 ```
 flowchart TD
@@ -47,23 +41,24 @@ flowchart TD
     classDef bad  stroke:#ef4444,stroke-width:1.5px;
 ```
 
-Because no `fill` or `color` is set:
+With no `fill` or `color` set:
 
-- The **fill** comes from the theme's `mainBkg` (light gray in `default`, dark gray in `dark`) and adapts per mode.
-- The **text** comes from the theme's text color and adapts per mode.
-- The **stroke** carries the role, and a mid-tone hue (slate / indigo / amber / red) reads on both light and dark node backgrounds.
+- The fill comes from the theme and adapts per mode.
+- The text color comes from the theme and adapts per mode.
+- The stroke carries the role.
+  Mid-tone hues (slate, indigo, amber, red) read well on both light and dark node backgrounds.
 
-This is the only approach that is correct in both modes without per-diagram maintenance.
+This is the only approach that stays correct in both modes without per-diagram maintenance.
 
-## What CSS Can Do, in docs/src/css/custom.css
+## Site CSS Overrides
 
-Anything the theme supplies (and `classDef` does **not** set inline-`!important`) is overridable with a scoped `!important` rule.
-Scope to a color mode with the `data-theme` attribute Docusaurus sets on `<html>` (`html:not([data-theme='dark'])` for light, `[data-theme='dark']` for dark).
+Styles the theme supplies (rather than `classDef`) can be overridden in `docs/src/css/custom.css` with a scoped `!important` rule.
+Scope to a color mode with the `data-theme` attribute on `<html>`: `html:not([data-theme='dark'])` for light and `[data-theme='dark']` for dark.
+Every rendered diagram is wrapped in `.docusaurus-mermaid-container`, which is the stable hook for spacing and scoping.
 
-The stable wrapper class for every diagram is **`.docusaurus-mermaid-container`**.
-Use it for spacing and as a scoping prefix.
+The site already defines these rules.
 
-### Spacing around a diagram
+Spacing around each diagram:
 
 ```css
 .docusaurus-mermaid-container {
@@ -71,10 +66,7 @@ Use it for spacing and as a scoping prefix.
 }
 ```
 
-### White node backgrounds in light mode only
-
-This works *because* `classDef` sets no `fill`, so the theme fill is overridable.
-The node shapes are `rect` (rectangles), `polygon` (diamonds), and `path` (stadiums, cylinders):
+White node backgrounds in light mode, possible because `classDef` sets no `fill`:
 
 ```css
 html:not([data-theme='dark']) .docusaurus-mermaid-container .node :is(rect, polygon, path) {
@@ -82,11 +74,7 @@ html:not([data-theme='dark']) .docusaurus-mermaid-container .node :is(rect, poly
 }
 ```
 
-### Padding and rounding edge-label pills (target the inner p element)
-
-With `markdownAutoWrap` on (the default), an edge label is `<foreignObject><div class="labelBkg"><span class="edgeLabel"><p>text</p></span></div>`.
-Mermaid's own theme CSS sets `background-color` on `.edgeLabel`, on that inner `<p>`, **and** (faded) on `.labelBkg`, so the `<p>` carries a visible background.
-Style **that inner `<p>`**, and leave the selector unscoped:
+Padding and rounding on edge-label pills:
 
 ```css
 .labelBkg > span > p {
@@ -95,54 +83,46 @@ Style **that inner `<p>`**, and leave the selector unscoped:
 }
 ```
 
-Two reasons this is the right element, both learned the hard way:
+The edge-label rule targets the inner `<p>` and stays unscoped for two reasons:
 
-1. **It is the measured content.**
-   Mermaid measures the label width *off-DOM*, before the SVG is inserted into `.docusaurus-mermaid-container`, and centers the label on the edge from that width.
-   Padding an outer wrapper (`.labelBkg`) via a container-scoped rule is absent during that measurement, so the padding renders but is not measured.
-   The pill ends up wider than the centering assumed and the text is pushed sideways and out of its background (the "offset and obscured" symptom).
-   The inner `<p>` is intrinsic measured content, and an unscoped rule is present at measurement time, so measured and rendered widths agree.
-2. **It owns a background.**
-   Because the `<p>` itself has `background-color`, padding extends the visible pill and `border-radius` rounds it.
-   (`border-radius` on `.labelBkg` would not round the `<p>`'s own background.)
+1. Mermaid measures label widths off-DOM, before the SVG lands inside `.docusaurus-mermaid-container`, and centers each label from that measurement.
+   A container-scoped padding rule is not active during measurement, so the rendered pill grows wider than the centering assumed and the text shifts out of its background.
+   An unscoped rule on the inner `<p>` is active during measurement, so measured and rendered widths agree.
+2. The `<p>` carries its own `background-color`, so padding extends the visible pill and `border-radius` rounds it.
 
 :::caution
-Any CSS that changes a label's *size* must be active during Mermaid's off-DOM measurement.
-Use an unscoped selector and prefer the innermost measured element, not a `.docusaurus-mermaid-container`-prefixed wrapper.
-Color-only overrides that do not change size are safe to scope to the container.
+Any CSS that changes a label's size must be active during Mermaid's off-DOM measurement.
+Keep size-affecting rules unscoped and target the innermost measured element.
+Color-only overrides are safe to scope to the container.
 :::
 
-## Rendered DOM Cheat Sheet (for writing CSS)
+## Rendered DOM Reference
 
-- Node: `<g class="node default <classDefClass>"> <rect|polygon|path class="...label-container..."/> <foreignObject> ... <span class="nodeLabel">...</span> </foreignObject> </g>`.
+- Node: `<g class="node default <classDefClass>">` containing the shape (`rect`, `polygon`, or `path`) and a `<foreignObject>` with the label.
   The `classDef` class lands on the node `<g>`.
-- Edge line: under `.edgePaths` / `.flowchart-link` (not `.node`), so a `.node` selector never hits arrows.
-- Edge label: `.labelBkg` (div) > `.edgeLabel` (span) > `<p>` (text).
-  With `markdownAutoWrap` (on by default) the text is wrapped in a `<p>`, and `background-color` is set on `.edgeLabel`, on that `<p>`, and (faded) on `.labelBkg`, so the `<p>` is the element to pad and round.
+- Edge line: under `.edgePaths` as `.flowchart-link`, outside `.node`, so node selectors never hit arrows.
+- Edge label: `.labelBkg` (div) containing `.edgeLabel` (span) containing `<p>` (text).
+  The `<p>` carries the visible background and is the element to pad and round.
 
-## Design Choices That Read as Designed, Not Auto-Generated
+## Design Guidelines
 
 - **Vary node shape by role.**
-  Stadium `([text])` for an I/O boundary, cylinder `[(text)]` for an accumulator or store, diamond `{text}` for a decision, rectangle `[text]` for plain data.
-  Varied shapes carry meaning and break the uniform-box look.
-- **Restrained palette.**
-  Encode role in the stroke with a small set of hues.
-  Do not give every box a different color.
-  Two data boxes sharing a stroke color reads as "these are the same kind of thing".
-- **Short edge labels.**
-  Put the function or verb on the edge (`parse_hcl()`), and let the surrounding prose carry the explanation.
-  Long labels clutter and look generated.
-- **Soften branches** with `%%{ init: { "flowchart": { "curve": "basis" } } }%%` at the top.
-- **Two-line node labels.**
-  `"<b>Title</b><br/>subtitle"`.
-  HTML labels (including `<b>` and `<br/>`) render under Docusaurus's default Mermaid security level.
+  Stadium `([text])` for an I/O boundary, cylinder `[(text)]` for a store or accumulator, diamond `{text}` for a decision, rectangle `[text]` for plain data.
+- **Keep the palette small.**
+  Encode role in the stroke with a few hues.
+  Two boxes sharing a stroke color signals that they are the same kind of thing.
+- **Keep edge labels short.**
+  Put the function or verb on the edge, such as `parse_hcl()`, and explain in the surrounding prose.
+- **Soften branch lines** with `%%{ init: { "flowchart": { "curve": "basis" } } }%%` at the top of the diagram.
+- **Use two-line node labels** in the form `"<b>Title</b><br/>subtitle"`.
+  HTML labels render under the default Mermaid security level.
   If a preview shows literal `<b>` tags, switch that label to plain text.
-- Avoid em dashes in labels (house style).
-  A colon or middle dot reads fine as a separator.
+- Avoid em dashes in labels, matching the [prose style rules](writing-documentation.md#prose-style).
+  A colon or middle dot works as a separator.
 
 ## Reference Template
 
-The configuration-pipeline diagram in `docs/docs/internals/configuration.md` is the canonical example of all of the above:
+The configuration-pipeline diagram in `docs/docs/internals/configuration.md` applies all of the above:
 
 ````
 ```mermaid
@@ -173,18 +153,16 @@ flowchart TD
 ```
 ````
 
-The matching `.docusaurus-mermaid-container` rules (margin, light-mode white fill, edge-label padding) live in `docs/src/css/custom.css`.
+## Debugging
 
-## Investigating Mermaid Behavior
+When a styling approach misbehaves, check the installed source:
 
-When a styling approach does not behave, read the source rather than guessing:
-
-- `docs/node_modules/mermaid/dist/mermaid.js`: search `styles2String`, `userNodeOverrides`, `labelBkg`, `classDef` to see how class styles become inline attributes.
-- `docs/node_modules/@docusaurus/theme-mermaid/lib/`: `validateThemeConfig.js` for the default light/dark theme mapping, `client/index.js` for the `theme[colorMode]` selection.
+- `docs/node_modules/mermaid/dist/mermaid.js`: search `styles2String`, `userNodeOverrides`, `labelBkg`, or `classDef` to see how class styles become inline attributes.
+- `docs/node_modules/@docusaurus/theme-mermaid/lib/`: `validateThemeConfig.js` holds the default theme mapping and `client/index.js` selects the theme per color mode.
 
 ## Verifying
 
-- `custom.css` is not always hot-reloaded.
-  Restart `just docs` (or hard-refresh) after CSS edits.
-- Toggle dark mode and confirm: no glowing boxes, text legible in both modes, borders visible against the node fill.
-  If a stroke is too faint on the dark node fill, lighten that one hue or bump `stroke-width`.
+- Restart `just docs` or hard-refresh after editing `custom.css`.
+  It is not always hot-reloaded.
+- Toggle dark mode and confirm there are no glowing boxes, text is legible in both modes, and borders are visible against the node fill.
+  If a stroke is too faint on the dark fill, lighten that hue or increase `stroke-width`.

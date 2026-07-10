@@ -21,22 +21,20 @@ This page describes how to update this documentation site when code changes intr
 ```
 docs/docs/
   introduction/          # Getting started, philosophy, roadmap
-  guide/                 # How-to guides (CLI, TLS, devices, admin API, logging, static files)
   configuration/         # Configuration reference
     overview.md
-    entry-point.md       # snakeway.hcl server block
-    ingress.md           # Ingress/listener config
+    entry-point/         # snakeway.hcl server block (index, server, tls-automation)
+    ingress/             # Listener, services, routes, upstreams, static files
     devices/             # One file per device
-      request-filter.md
-      identity.md
-      network-policy.md
-      request-rate-limiting.md
-      structured-logging.md
+  administration/        # CLI, TLS cert management, admin API, logging, static files
+  extension/             # Device model and WASM device authoring
   contributing/          # This section
   internals/             # Architecture, lifecycle, mental model
 docs/blog/               # Release notes as blog posts
 docs/static/img/         # Images and SVG diagrams
 ```
+
+Sections evolve, so treat this as an orientation map and check `docs/docs/` for the current structure.
 
 ## Frontmatter
 
@@ -59,6 +57,18 @@ Follow these rules precisely to match the existing documentation tone.
 - **Professional but accessible.** Explain complex concepts in plain language.
 - **Imperative and instructional.** Use "you can", "configure", "enable".
 - **Concise.** Dense and scannable, without verbose prose.
+
+### Prose style
+
+- Start each new sentence on a new line in the Markdown source.
+- Do not use em dashes or any dash as punctuation.
+  Restructure the sentence instead.
+- Do not use semicolons in prose.
+  Code examples keep their semicolons.
+- Write ranges with "to", as in "1 to 5", not with a dash.
+- Do not use emojis.
+- Do not separate sections with `---` rules.
+  Headings are sufficient.
 
 ### Structure
 
@@ -114,20 +124,17 @@ Helpful advice or best practice.
 
 ### For new config fields
 
-Compare the Rust spec struct against the corresponding docs page:
+Compare the Rust spec struct against the corresponding docs page.
+The spec structs live under `crates/snakeway-conf/src/types/specification/`, and each family maps to a section of the configuration reference:
 
-| Spec file                                                                       | Docs page                                                  |
-|---------------------------------------------------------------------------------|------------------------------------------------------------|
-| `crates/snakeway-conf/src/types/specification/server.rs`                        | `docs/docs/configuration/entry-point.md`                   |
-| `crates/snakeway-conf/src/types/specification/ingress.rs`                       | `docs/docs/configuration/ingress.md`                       |
-| `crates/snakeway-conf/src/types/specification/device/request_filter.rs`         | `docs/docs/configuration/devices/request-filter.md`        |
-| `crates/snakeway-conf/src/types/specification/device/identity.rs`               | `docs/docs/configuration/devices/identity.md`              |
-| `crates/snakeway-conf/src/types/specification/device/network_policy.rs`         | `docs/docs/configuration/devices/network-policy.md`        |
-| `crates/snakeway-conf/src/types/specification/device/request_rate_limiting.rs`  | `docs/docs/configuration/devices/request-rate-limiting.md` |
-| `crates/snakeway-conf/src/types/specification/device/structured_logging.rs`     | `docs/docs/configuration/devices/structured-logging.md`    |
+- **Server specs** (`specification/server/`, for example `server_spec.rs`) map to pages under `docs/docs/configuration/entry-point/`.
+- **Ingress specs** (`specification/ingress/`) map to pages under `docs/docs/configuration/ingress/`.
+- **Device specs** (`specification/device/`, one `*_device_spec.rs` per device) map to one page per device under `docs/docs/configuration/devices/`.
+
+A worked example: a field added to `RequestFilterDeviceSpec` in `specification/device/request_filter_device_spec.rs` is documented in `docs/docs/configuration/devices/request-filter.md`.
 
 Every `pub` field on a spec struct should have a corresponding section or mention in the docs page.
-Fields with `#[serde(default = "...")]` should show the default value in the docs.
+Fields with a declared default should show the default value in the docs.
 
 ### For new pages
 

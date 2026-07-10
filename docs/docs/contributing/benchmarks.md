@@ -80,11 +80,14 @@ Functions still private to the crate (for example `resolve_client_ip` in `net::c
 
 ### Step 2: Name the file after the component
 
+The existing bench targets follow this pattern:
+
 ```
 crates/snakeway-core/benches/router.rs
 crates/snakeway-core/benches/device_pipeline.rs
 crates/snakeway-core/benches/request_filter.rs
 crates/snakeway-core/benches/identity.rs
+crates/snakeway-core/benches/header_scaling.rs
 ```
 
 ### Step 3: Register the bench target in crates/snakeway-core/Cargo.toml

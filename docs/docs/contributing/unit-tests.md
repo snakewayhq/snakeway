@@ -174,4 +174,8 @@ cargo test -p snakeway-conf
 # Run a specific test by name
 cargo nextest run -p snakeway-core --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
 cargo test -p snakeway-conf -- upstream_validation::tests::weight_greater_than_zero
+
+# Run unit tests with coverage (HTML report, or a terminal summary)
+just test-with-coverage
+just test-with-coverage-summary
 ```

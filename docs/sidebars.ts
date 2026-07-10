@@ -143,8 +143,14 @@ const sidebars: SidebarsConfig = {
                 'contributing/http-replay-tests',
                 'contributing/adding-config-settings',
                 'contributing/benchmarks',
-                'contributing/writing-documentation',
-                'contributing/mermaid-diagrams',
+                {
+                    type: 'category',
+                    label: 'Writing Documentation',
+                    link: {type: 'doc', id: 'contributing/writing-documentation'},
+                    items: [
+                        'contributing/mermaid-diagrams',
+                    ],
+                },
             ],
         },
     ],

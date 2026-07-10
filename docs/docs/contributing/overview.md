@@ -22,10 +22,11 @@ k6/                        # k6 load test scripts
 ## Prerequisites
 
 - A recent stable Rust toolchain with `rustfmt` and `clippy` components.
-- [just](https://github.com/casey/just) for running project recipes.
+- [just](https://github.com/casey/just) for running project recipes (`brew install just` on macOS).
 - [cargo-nextest](https://nexte.st/) for running the test suites.
 - Docker, required only for the ACME integration tests (Pebble CA).
-- The Protocol Buffers compiler (`protoc`), required to build the gRPC stubs in `crates/snakeway-tests`.
+- The Protocol Buffers compiler (`protoc`), required to build the gRPC stubs in `crates/snakeway-tests` (`brew install protobuf` on macOS).
+- [Zig](https://ziglang.org/) and [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild), required only for static Linux cross-builds (`brew install zig` and `cargo install cargo-zigbuild`).
 - Node.js and npm, required only for working on the documentation site.
 
 Run `just -l` to see every available recipe.
@@ -33,18 +34,71 @@ The recipes themselves are good context for what the project can do.
 
 ## Key Commands
 
-| Task                  | Command                      |
-|-----------------------|------------------------------|
-| Build                 | `just build` or `cargo build`|
-| Run unit tests        | `just test`                  |
-| Run integration tests | `just integration-test`      |
-| Run all tests and lint| `just test-everything`       |
-| Format code           | `just fmt`                   |
-| Lint (clippy)         | `just clippy`                |
-| Format and lint       | `just lint`                  |
-| Run locally           | `just run`                   |
-| Preview the docs      | `just docs`                  |
-| Run microbenchmarks   | `just bench`                 |
+| Task                    | Command                       |
+|-------------------------|-------------------------------|
+| Build                   | `cargo build`                 |
+| Type-check              | `just check`                  |
+| Run unit tests          | `just test`                   |
+| Unit tests with coverage| `just test-with-coverage`     |
+| Run integration tests   | `just integration-test`       |
+| Run all tests and lint  | `just test-everything`        |
+| Format code             | `just fmt`                    |
+| Lint (clippy)           | `just clippy`                 |
+| Format and lint         | `just lint`                   |
+| Run locally             | `cargo run -p snakeway`       |
+| Preview the docs        | `just docs`                   |
+| Run microbenchmarks     | `just bench`                  |
+
+For a release build, add `-r`:
+
+```shell
+cargo build -r -p snakeway
+```
+
+## Cross-Compilation
+
+Snakeway targets Linux environments and supports fully static musl builds for both x86_64 and aarch64.
+These builds work on macOS ARM, macOS Intel, and Linux hosts.
+
+Cross-compilation uses:
+
+1. `cargo-zigbuild` as the build runner.
+2. Zig as the C and C++ compiler and linker.
+3. A `.cargo/config.toml` that disables vendored C libraries in dependent crates, including zlib-ng-sys.
+
+This approach removes the need for external cross toolchains, wrapper binaries, or Docker images.
+Zig handles all linking and provides compatible libc implementations for musl targets.
+
+The repository's `.cargo/config.toml`:
+
+1. Selects Zig as the C compiler, C++ compiler, and linker.
+2. Disables all vendored zlib-ng builds in crates that would otherwise invoke CMake.
+3. Configures the proper linker for the aarch64 and x86_64 musl targets.
+
+:::caution
+Do not modify `.cargo/config.toml` unless you are adding a new cross target.
+:::
+
+### Building static Linux binaries
+
+```shell
+# ARM64 Linux (aarch64)
+just musl-aarch64
+
+# x86_64 Linux
+just musl-x86_64
+
+# Both architectures
+just musl-all
+```
+
+The static binaries land under:
+
+```
+target/<triple>/release/snakeway
+```
+
+These binaries are suitable for distribution and container deployment.
 
 ## Contribution Workflow
 
@@ -62,6 +116,31 @@ The recipes themselves are good context for what the project can do.
 Scope your checks while iterating.
 `cargo check -p snakeway-core -p snakeway` is much faster than a full workspace build and covers most changes.
 :::
+
+A pull request for a feature or bug fix typically includes:
+
+1. New unit tests.
+2. New integration tests.
+3. Updated docs.
+4. The code change itself.
+
+Unsafe Rust requires clear justification and should be avoided unless necessary.
+
+## Submitting Changes
+
+1. Fork the repository.
+2. Create a branch with a descriptive name.
+3. Ensure all linting, formatting, tests, and builds succeed, including the musl cross builds.
+4. Submit a pull request with a clear description of the change.
+
+## Reporting Issues
+
+Please include:
+
+1. The operating system and architecture.
+2. The Snakeway version or commit hash.
+3. Steps to reproduce the issue.
+4. Logs where relevant.
 
 ## What Each Page Covers
 

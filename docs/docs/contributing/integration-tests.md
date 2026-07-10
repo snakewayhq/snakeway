@@ -9,7 +9,12 @@ For byte-level protocol tests, see [HTTP Replay Tests](http-replay-tests.md) ins
 
 ## Where Tests Live
 
-Integration tests are Rust test files inside `crates/snakeway-tests/tests/`, organized into subdirectories by feature area:
+Integration tests are Rust test files inside `crates/snakeway-tests/tests/`.
+The organizing rule: **one subdirectory per feature area, each with a `mod.rs` that declares its test modules**.
+Current areas include `proxy/`, `device/`, `net/`, `acme/`, `cli/`, `configuration/`, `otel/`, `traffic/`, and `http_replay/`.
+List the `tests/` directory for the authoritative set.
+
+An illustrative excerpt:
 
 ```
 crates/snakeway-tests/tests/
@@ -17,27 +22,17 @@ crates/snakeway-tests/tests/
     basic_proxy.rs
     static_files.rs
     websocket.rs
-    grpc.rs
-    config_validation.rs
-    mod.rs
-  acme/
-    http01.rs
     mod.rs
   device/
     identity.rs
     network_policy.rs
-    request_filter.rs
-    request_rate_limiting.rs
-    mod.rs
-  cli/
-    route_solve.rs
     mod.rs
   http_replay/        <- covered on the HTTP Replay Tests page
     ...
 ```
 
-Each subdirectory has a `mod.rs` that declares the test modules.
-New feature areas get their own subdirectory.
+Put a new test in the file that matches its feature.
+If no feature area fits, create a new subdirectory with its own `mod.rs`.
 
 ## Setting Up a Test Server
 
@@ -77,15 +72,28 @@ Common pre-built helpers in `integration::conf`:
 | `minimal_static_file_runtime_config()`     | Static file serving (no upstream)            |
 | `minimal_https_runtime_config_with_acme()` | TLS listener with ACME automation            |
 
-`ConfigBuilder` methods chain as needed:
+`ConfigBuilder` methods chain as needed.
+Device and filter methods take a spec struct, with values wrapped in `Located::detached` since they have no source file:
 
 ```rust
 ConfigBuilder::default()
     .with_http_ingress()
-    .with_request_filter_device()
-    .with_connection_filter_cidr_deny_list(&["192.168.1.0/24"])
+    .with_connection_filter(NetworkConnectionFilterSpec {
+        cidr: Located::detached(CidrSpec {
+            allow: vec![Located::detached("127.0.0.1/32".to_string())],
+            deny: vec![],
+        }),
+        ip_family: Located::detached(IpFamilySpec {
+            ipv4: Located::detached(true),
+            ipv6: Located::detached(true),
+        }),
+        on_no_peer_addr: Located::detached("deny".to_string()),
+    })
     .build()
 ```
+
+Other builder methods follow the same shape, for example `with_request_filter(spec)`, `with_identity_device(spec)`, and `with_static_file_ingress(...)`.
+See `crates/snakeway-tests/src/conf/builder/` for the full API.
 
 ### Option B: Fixture directory (for testing the HCL config loader)
 
@@ -133,7 +141,7 @@ fn websocket_echo_is_proxied() {
     let srv = TestServer::start_ws_upstream_with_config(&mut cfg);
     let url = format!(
         "ws://{}{}",
-        srv.base_url().strip_prefix("http://").unwrap(),
+        srv.base_url().as_str().strip_prefix("http://").unwrap(),
         ROUTE_PATH_WS
     );
 

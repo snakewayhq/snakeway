@@ -7,6 +7,12 @@ They are ideal for verifying protocol-level behavior that cannot be expressed wi
 
 ## How the Harness Works
 
+The layout follows one rule: **every fixture category is a directory under `fixtures/http/` with a matching test file under `tests/http_replay/`**.
+Current categories include `headers`, `smuggling`, `cookies`, `browsers`, `connection`, `encoding`, `malformed`, `methods`, `security`, and `uri`.
+List either directory for the authoritative set.
+
+An illustrative excerpt:
+
 ```
 crates/snakeway-tests/
   fixtures/
@@ -18,12 +24,7 @@ crates/snakeway-tests/
         cl_te.http
         te_cl.http
         dual_content_length.http
-      cookies/
-        large_cookie.http
-      browsers/
-        chrome_navigation.http
-        chrome_fetch.http
-        firefox_navigation.http
+      ...                   <- one directory per category
   src/
     harness/
       replay_http.rs        <- replay_http_fixture(path, port) implementation
@@ -32,8 +33,7 @@ crates/snakeway-tests/
       mod.rs                <- shared replay_fixture() helper + module declarations
       headers.rs
       smuggling.rs
-      cookies.rs
-      browsers.rs
+      ...                   <- one test file per category
 ```
 
 `replay_http_fixture(path, port)` (in `src/harness/replay_http.rs`) does the following:
@@ -130,14 +130,14 @@ Its absence means Snakeway rejected or blocked the request.
 ## Declaring a New Test File
 
 1. Create the file: `crates/snakeway-tests/tests/http_replay/my_category.rs`
-2. Declare it in `crates/snakeway-tests/tests/http_replay/mod.rs`:
+2. Declare it alongside the existing modules in `crates/snakeway-tests/tests/http_replay/mod.rs`:
 
 ```rust
 mod browsers;
 mod cookies;
 mod headers;
 mod my_category;   // <- add this
-mod smuggling;
+// ... remaining category modules ...
 ```
 
 ## When to Use Replay Tests vs Standard Integration Tests

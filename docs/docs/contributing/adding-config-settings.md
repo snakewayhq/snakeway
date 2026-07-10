@@ -14,20 +14,34 @@ Skipping one produces a compile error (the derives enforce spec and config parit
 
 Config loading is a strict, span-first pipeline:
 
+```mermaid
+%%{ init: { "flowchart": { "curve": "basis" } } }%%
+flowchart TD
+    files(["HCL files on disk"])
+    spec["<b>Spec types</b><br/>what the operator wrote · fields wrapped in Located&lt;T&gt;"]
+    report[("<b>Report</b><br/>errors and warnings, each with a source Span")]
+    gate{"Report has<br/>errors?"}
+    fail(["SemanticValidationFailed"])
+    config["<b>Config types</b><br/>what the proxy actually runs · fully typed"]
+
+    files -- "parse_hcl()" --> spec
+    spec -- "validate_spec()" --> report
+    report --> gate
+    gate -- "yes" --> fail
+    gate -- "no · Lower::lower()" --> config
+
+    classDef io stroke:#64748b,stroke-width:1.5px;
+    classDef data stroke:#6366f1,stroke-width:1.5px;
+    classDef diag stroke:#f59e0b,stroke-width:1.5px;
+    classDef bad stroke:#ef4444,stroke-width:1.5px;
+
+    class files io;
+    class spec,config data;
+    class report,gate diag;
+    class fail bad;
 ```
-HCL file(s)
-    |  confval::format::hcl::parse_hcl  (structural, span-first)
-    v
-Spec types          <- "what the operator wrote", every field wrapped in Located<T>
-    |  validate_spec()                  (semantic checks appended to a Report)
-    v
-Report              <- errors and warnings, each carrying a source Span
-    |  error gate                       (lowering never runs on a report with errors)
-    v
-    |  lower_configs() / Lower::lower()
-    v
-Config types        <- "what the proxy actually runs", fully typed
-```
+
+The error gate is strict: lowering never runs on a report with errors.
 
 Parsing is **structural only** (does the field exist, is it the right shape).
 Every semantic rule (ranges, closed sets, cross-field invariants) runs in the validate phase, so the operator sees every problem in one pass instead of one at a time.

@@ -21,6 +21,10 @@ Pre-1.0.
 
 Actively developed. APIs may shift while foundations are finalized.
 
+## Contributing
+
+See the [contributing guide](https://snakeway.dev/docs/contributing/overview) on the documentation site.
+
 ## License
 
 Apache 2.0
