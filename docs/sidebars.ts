@@ -132,6 +132,21 @@ const sidebars: SidebarsConfig = {
                 'internals/wasm_devices',
             ],
         },
+        {
+            type: 'category',
+            label: 'Contributing',
+            items: [
+                'contributing/overview',
+                'contributing/code-style',
+                'contributing/unit-tests',
+                'contributing/integration-tests',
+                'contributing/http-replay-tests',
+                'contributing/adding-config-settings',
+                'contributing/benchmarks',
+                'contributing/writing-documentation',
+                'contributing/mermaid-diagrams',
+            ],
+        },
     ],
 };
 
