@@ -1,13 +1,20 @@
-# Skill: integration-test — Writing Standard Integration Tests
+---
+title: Integration Tests
+---
 
-This skill covers how to write standard (non-HTTP-replay) integration tests in the
-`crates/snakeway-tests` crate. These tests spin up a real Snakeway server process and
-exercise it over real network connections.
+This page covers standard integration tests in the `crates/snakeway-tests` crate.
+These tests spin up a real Snakeway server process and exercise it over real network connections.
+
+For byte-level protocol tests, see [HTTP Replay Tests](http-replay-tests.md) instead.
 
 ## Where Tests Live
 
-Integration tests are Rust test files inside `crates/snakeway-tests/tests/`, organised
-into subdirectories by feature area:
+Integration tests are Rust test files inside `crates/snakeway-tests/tests/`.
+The organizing rule: **one subdirectory per feature area, each with a `mod.rs` that declares its test modules**.
+Current areas include `proxy/`, `device/`, `net/`, `acme/`, `cli/`, `configuration/`, `otel/`, `traffic/`, and `http_replay/`.
+List the `tests/` directory for the authoritative set.
+
+An illustrative excerpt:
 
 ```
 crates/snakeway-tests/tests/
@@ -15,36 +22,25 @@ crates/snakeway-tests/tests/
     basic_proxy.rs
     static_files.rs
     websocket.rs
-    grpc.rs
-    config_validation.rs
-    mod.rs
-  acme/
-    http01.rs
     mod.rs
   device/
     identity.rs
     network_policy.rs
-    request_filter.rs
-    request_rate_limiting.rs
     mod.rs
-  cli/
-    route_solve.rs
-    mod.rs
-  http_replay/        ← covered separately in the http-replay-test skill
+  http_replay/        <- covered on the HTTP Replay Tests page
     ...
 ```
 
-Each subdirectory has a `mod.rs` that declares the test modules.
-New feature areas get their own subdirectory.
+Put a new test in the file that matches its feature.
+If no feature area fits, create a new subdirectory with its own `mod.rs`.
 
 ## Setting Up a Test Server
 
-There are two ways to create a `TestServer`:
+There are two ways to create a `TestServer`.
 
-### Option A — `ConfigBuilder` (programmatic, preferred for new tests)
+### Option A: ConfigBuilder (programmatic, preferred for new tests)
 
-Build a `RuntimeConfig` entirely in Rust using the fluent `ConfigBuilder` API,
-then hand it to `TestServer`:
+Build a `RuntimeConfig` entirely in Rust using the fluent `ConfigBuilder` API, then hand it to `TestServer`:
 
 ```rust
 use integration::conf::ConfigBuilder;
@@ -68,25 +64,38 @@ fn my_test() {
 
 Common pre-built helpers in `integration::conf`:
 
-| Helper                                     | What it builds                           |
-|--------------------------------------------|------------------------------------------|
-| `minimal_http_runtime_config()`            | Plain HTTP listener + HTTP upstream      |
-| `minimal_ws_runtime_config()`              | Plain HTTP listener + WebSocket upstream |
-| `minimal_grpc_runtime_config()`            | TLS listener + gRPC upstream             |
-| `minimal_static_file_runtime_config()`     | Static file serving (no upstream)        |
-| `minimal_https_runtime_config_with_acme()` | TLS listener with ACME automation        |
+| Helper                                     | What it builds                              |
+|--------------------------------------------|----------------------------------------------|
+| `minimal_http_runtime_config()`            | Plain HTTP listener and HTTP upstream        |
+| `minimal_ws_runtime_config()`              | Plain HTTP listener and WebSocket upstream   |
+| `minimal_grpc_runtime_config()`            | TLS listener and gRPC upstream               |
+| `minimal_static_file_runtime_config()`     | Static file serving (no upstream)            |
+| `minimal_https_runtime_config_with_acme()` | TLS listener with ACME automation            |
 
-`ConfigBuilder` methods (chain as needed):
+`ConfigBuilder` methods chain as needed.
+Device and filter methods take a spec struct, with values wrapped in `Located::detached` since they have no source file:
 
 ```rust
-ConfigBuilder::default ()
-.with_http_ingress()
-.with_request_filter_device()
-.with_connection_filter_cidr_deny_list( & ["192.168.1.0/24"])
-.build()
+ConfigBuilder::default()
+    .with_http_ingress()
+    .with_connection_filter(NetworkConnectionFilterSpec {
+        cidr: Located::detached(CidrSpec {
+            allow: vec![Located::detached("127.0.0.1/32".to_string())],
+            deny: vec![],
+        }),
+        ip_family: Located::detached(IpFamilySpec {
+            ipv4: Located::detached(true),
+            ipv6: Located::detached(true),
+        }),
+        on_no_peer_addr: Located::detached("deny".to_string()),
+    })
+    .build()
 ```
 
-### Option B — Fixture directory (for testing the HCL config loader)
+Other builder methods follow the same shape, for example `with_request_filter(spec)`, `with_identity_device(spec)`, and `with_static_file_ingress(...)`.
+See `crates/snakeway-tests/src/conf/builder/` for the full API.
+
+### Option B: Fixture directory (for testing the HCL config loader)
 
 Pass the name of a config fixture directory under `crates/snakeway-tests/fixtures/config/`:
 
@@ -94,8 +103,8 @@ Pass the name of a config fixture directory under `crates/snakeway-tests/fixture
 let srv = TestServer::start_with_http_upstream("basic");
 ```
 
-This loads a real HCL config from `fixtures/config/basic/` and is mainly used to
-verify the config loading path itself.
+This loads a real HCL config from `fixtures/config/basic/`.
+Use it mainly to verify the config loading path itself.
 
 ## Making Requests
 
@@ -108,23 +117,21 @@ srv.put("/path")     // PUT  with correct Host header
 srv.delete("/path")  // DELETE with correct Host header
 ```
 
-All methods return a `reqwest::blocking::RequestBuilder` so you can chain headers,
-bodies, etc. before calling `.send()`.
+All methods return a `reqwest::blocking::RequestBuilder`, so you can chain headers and bodies before calling `.send()`.
 
 For TLS endpoints use `srv.https_url()` and build your own client with the test CA cert:
 
 ```rust
 let client = reqwest::blocking::Client::builder()
-.danger_accept_invalid_certs(true) // or pin the test CA
-.build()
-.unwrap();
+    .danger_accept_invalid_certs(true) // or pin the test CA
+    .build()
+    .unwrap();
 let res = client.get(srv.https_url()).send().unwrap();
 ```
 
 ## Async Protocols (WebSocket, gRPC)
 
-WebSocket and gRPC tests are `#[test]` functions (not async) that create a Tokio
-runtime internally:
+WebSocket and gRPC tests are `#[test]` functions (not async) that create a Tokio runtime internally:
 
 ```rust
 #[test]
@@ -134,7 +141,7 @@ fn websocket_echo_is_proxied() {
     let srv = TestServer::start_ws_upstream_with_config(&mut cfg);
     let url = format!(
         "ws://{}{}",
-        srv.base_url().strip_prefix("http://").unwrap(),
+        srv.base_url().as_str().strip_prefix("http://").unwrap(),
         ROUTE_PATH_WS
     );
 
@@ -156,7 +163,7 @@ fn websocket_echo_is_proxied() {
 }
 ```
 
-## Test Structure and AAA Pattern
+## Test Structure and the AAA Pattern
 
 For short, single-assertion tests the AAA sections may be implicit:
 
@@ -198,7 +205,7 @@ fn should_issue_certificate_via_http01_and_serve_tls() {
 
 ## Test Naming
 
-Same convention as unit tests: plain-English `snake_case` sentences describing the behaviour:
+Use the same convention as unit tests: plain-English `snake_case` sentences describing the behavior.
 
 ```
 should_proxy_to_upstream
@@ -221,7 +228,7 @@ Import from `integration::constants`:
 
 ```rust
 use integration::constants::{
-    HTTP_RESPONSE_BODY,   // "hello world" — expected plain upstream body
+    HTTP_RESPONSE_BODY,   // "hello world", the expected plain upstream body
     ROUTE_PATH_API,       // "/api"
     ROUTE_PATH_WS,        // "/ws"
     TEST_HOST,            // "snakeway.test"
@@ -242,6 +249,7 @@ cargo nextest run -p snakeway-tests
 cargo nextest run -p snakeway-tests -E 'test(serves_index_html_from_static_dir)'
 ```
 
-> **Note:** The integration test suite requires Docker for ACME tests (Pebble CA).
-> For everything except ACME tests you can skip `just fetch-pebble-ca` and run
-> `cargo nextest run -p snakeway-tests` directly after generating TLS certs once.
+:::note
+The integration test suite requires Docker for the ACME tests (Pebble CA).
+For everything except ACME tests you can skip `just fetch-pebble-ca` and run `cargo nextest run -p snakeway-tests` directly after generating TLS certs once.
+:::

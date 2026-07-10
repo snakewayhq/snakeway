@@ -1,13 +1,14 @@
-# Skill: unit-test — Writing Unit Tests
+---
+title: Unit Tests
+---
 
-This skill documents the conventions used for unit tests throughout the codebase.
+This page documents the conventions for unit tests in the library crates (`snakeway-core` and `snakeway-conf`).
 Follow these patterns precisely when adding new tests.
 
 ## Where Tests Live
 
-Unit tests live **inline** at the bottom of the file they test, inside a
-`#[cfg(test)] mod tests { ... }` block. This is the idiomatic Rust convention
-and applies to both `snakeway-core` and `snakeway-conf`.
+Unit tests live **inline** at the bottom of the file they test, inside a `#[cfg(test)] mod tests { ... }` block.
+This is the idiomatic Rust convention.
 
 ```rust
 // At the bottom of the file being tested:
@@ -20,12 +21,12 @@ mod tests {
 }
 ```
 
-Do not create separate `tests.rs` or `tests/` submodule directories for new tests.
-Existing test submodules in the codebase may follow an older pattern -- new tests
-should always be inline.
+Do not create separate `tests.rs` files or `tests/` submodule directories for new tests.
+Existing test submodules in the codebase may follow an older pattern.
+New tests should always be inline.
 
-**Key rule:** tests go in the same file as the code they test. Construct types
-directly and call methods -- do not wrap in parent types unnecessarily.
+Construct types directly and call their methods.
+Do not wrap the subject under test in parent types unnecessarily.
 
 ## The AAA Pattern
 
@@ -55,8 +56,11 @@ fn denies_request_when_ip_not_in_allowlist() {
 }
 ```
 
-The comments `// Arrange`, `// Act`, and `// Assert` are **mandatory** — they are not optional
-style decoration. Each section must be separated by a blank line.
+The comments `// Arrange`, `// Act`, and `// Assert` are **mandatory**.
+They are not optional style decoration.
+Separate each section with a blank line.
+
+The Act section should contain a single line unless the structure of what is being tested requires more.
 
 ## Async Tests
 
@@ -81,8 +85,8 @@ async fn test_no_peer_addr_allow() {
 
 ## Test Naming
 
-Use `snake_case` names that read as a plain-English sentence describing the behaviour being verified.
-Prefer positive, behaviour-focused names:
+Use `snake_case` names that read as a plain-English sentence describing the behavior being verified.
+Prefer positive, behavior-focused names:
 
 ```
 // Good
@@ -120,8 +124,7 @@ async fn test_cidr_deny_ip_in_list() { ... }
 
 ## Helper Functions
 
-Extract shared setup into private helper functions within the test module rather than
-repeating construction logic inline:
+Extract shared setup into private helper functions within the test module rather than repeating construction logic inline:
 
 ```rust
 fn allow_all_device() -> NetworkPolicyDevice {
@@ -144,17 +147,17 @@ fn identity(ip: IpAddr, is_forwarded: bool, is_trusted: bool) -> ClientIdentity 
 }
 ```
 
-Helper functions must not contain assertions — they are pure setup utilities.
+Helper functions must not contain assertions.
+They are pure setup utilities.
 
 ## Assertions
 
 - Use `assert!`, `assert_eq!`, and `matches!` from the standard library for simple checks.
-- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs
-  or strings where a diff view is helpful.
-- Prefer `matches!(value, Pattern)` over `assert!(matches!(value, Pattern))` for enum variants
-  when no message is needed. When a failure message would be useful, write it out with
-  `assert!(matches!(...), "explanation")`.
-- Assertions should be high quality, meaning they should actually serve to validate the subject under test meaningfully.
+- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff view is helpful.
+- Prefer `matches!(value, Pattern)` for enum variants when no message is needed.
+  When a failure message would be useful, write it out with `assert!(matches!(...), "explanation")`.
+- Assertion quality matters.
+  A stronger, more complete set of assertions that meaningfully validates the subject under test is better than a minimal one.
 
 ## Running Unit Tests
 
@@ -171,4 +174,8 @@ cargo test -p snakeway-conf
 # Run a specific test by name
 cargo nextest run -p snakeway-core --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
 cargo test -p snakeway-conf -- upstream_validation::tests::weight_greater_than_zero
+
+# Run unit tests with coverage (HTML report, or a terminal summary)
+just test-with-coverage
+just test-with-coverage-summary
 ```

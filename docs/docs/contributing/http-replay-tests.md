@@ -1,17 +1,22 @@
-# Skill: http-replay-test — Writing HTTP Replay Integration Tests
+---
+title: HTTP Replay Tests
+---
 
-HTTP replay tests send **raw, pre-recorded HTTP request bytes** over a plain TCP socket
-to a running Snakeway instance and assert on the raw response string.
-They are ideal for verifying protocol-level behaviour that cannot be expressed with a
-high-level HTTP client — malformed requests, smuggling attempts, browser-specific
-header quirks, large cookies, hop-by-hop header handling, etc.
+HTTP replay tests send **raw, pre-recorded HTTP request bytes** over a plain TCP socket to a running Snakeway instance and assert on the raw response string.
+They are ideal for verifying protocol-level behavior that cannot be expressed with a high-level HTTP client: malformed requests, smuggling attempts, browser-specific header quirks, large cookies, and hop-by-hop header handling.
 
 ## How the Harness Works
+
+The layout follows one rule: **every fixture category is a directory under `fixtures/http/` with a matching test file under `tests/http_replay/`**.
+Current categories include `headers`, `smuggling`, `cookies`, `browsers`, `connection`, `encoding`, `malformed`, `methods`, `security`, and `uri`.
+List either directory for the authoritative set.
+
+An illustrative excerpt:
 
 ```
 crates/snakeway-tests/
   fixtures/
-    http/                   ← raw .http request fixture files
+    http/                   <- raw .http request fixture files
       headers/
         duplicate_header.http
         hop_by_hop.http
@@ -19,35 +24,28 @@ crates/snakeway-tests/
         cl_te.http
         te_cl.http
         dual_content_length.http
-      cookies/
-        large_cookie.http
-      browsers/
-        chrome_navigation.http
-        chrome_fetch.http
-        firefox_navigation.http
+      ...                   <- one directory per category
   src/
     harness/
-      replay_http.rs        ← replay_http_fixture(path, port) implementation
+      replay_http.rs        <- replay_http_fixture(path, port) implementation
   tests/
     http_replay/
-      mod.rs                ← shared replay_fixture() helper + module declarations
+      mod.rs                <- shared replay_fixture() helper + module declarations
       headers.rs
       smuggling.rs
-      cookies.rs
-      browsers.rs
+      ...                   <- one test file per category
 ```
 
-`replay_http_fixture(path, port)` (in `src/harness/replay_http.rs`):
+`replay_http_fixture(path, port)` (in `src/harness/replay_http.rs`) does the following:
 
 1. Reads the raw bytes from `fixtures/http/<path>`.
-2. Normalises line endings to `\r\n` and ensures the request ends with `\r\n\r\n`.
+2. Normalizes line endings to `\r\n` and ensures the request ends with `\r\n\r\n`.
 3. Opens a plain TCP connection to `TEST_HOST:port`.
 4. Writes the raw bytes.
 5. Reads the response until the socket closes or a 10-second timeout fires.
 6. Returns the response as a `String`.
 
-The module-level `replay_fixture(path)` helper in `tests/http_replay/mod.rs` handles
-server startup, so individual tests need only one line of setup:
+The module-level `replay_fixture(path)` helper in `tests/http_replay/mod.rs` handles server startup, so individual tests need only one line of setup:
 
 ```rust
 pub fn replay_fixture(path: &str) -> String {
@@ -61,7 +59,7 @@ pub fn replay_fixture(path: &str) -> String {
 
 Create a plain text file in `crates/snakeway-tests/fixtures/http/<category>/my_request.http`.
 The file contains a raw HTTP/1.1 request exactly as it would appear on the wire.
-Line endings can be `\n` — the harness normalises them to `\r\n` automatically.
+Line endings can be `\n` because the harness normalizes them to `\r\n` automatically.
 
 ```http
 GET /api HTTP/1.1
@@ -91,8 +89,7 @@ A fixture should represent a single, specific HTTP scenario.
 
 ## Writing a Replay Test
 
-Add the test to the appropriate file under `tests/http_replay/`, or create a new file
-and declare it in `tests/http_replay/mod.rs`.
+Add the test to the appropriate file under `tests/http_replay/`, or create a new file and declare it in `tests/http_replay/mod.rs`.
 
 ```rust
 // tests/http_replay/headers.rs
@@ -126,32 +123,32 @@ fn cl_te_smuggling_should_be_rejected() {
 use integration::constants::HTTP_REPLAY_OK_RESPONSE; // "200 OK"
 ```
 
-`HTTP_REPLAY_OK_RESPONSE` (`"200 OK"`) is the canonical string to check for a
-successful proxy pass-through. Its presence means the request reached the upstream
-and received a 200 response. Its absence means Snakeway rejected or blocked the request.
+`HTTP_REPLAY_OK_RESPONSE` (`"200 OK"`) is the canonical string to check for a successful proxy pass-through.
+Its presence means the request reached the upstream and received a 200 response.
+Its absence means Snakeway rejected or blocked the request.
 
 ## Declaring a New Test File
 
 1. Create the file: `crates/snakeway-tests/tests/http_replay/my_category.rs`
-2. Declare it in `crates/snakeway-tests/tests/http_replay/mod.rs`:
+2. Declare it alongside the existing modules in `crates/snakeway-tests/tests/http_replay/mod.rs`:
 
 ```rust
 mod browsers;
 mod cookies;
 mod headers;
-mod my_category;   // ← add this
-mod smuggling;
+mod my_category;   // <- add this
+// ... remaining category modules ...
 ```
 
 ## When to Use Replay Tests vs Standard Integration Tests
 
-| Use HTTP replay when…                                                   | Use standard integration tests when…                    |
-|-------------------------------------------------------------------------|---------------------------------------------------------|
-| Testing protocol-level edge cases (smuggling, malformed headers)        | Testing feature behaviour via normal HTTP verbs         |
-| Verifying browser-specific header sets                                  | Testing response status codes, bodies, JSON             |
-| Reproducing a bug that requires an exact byte-level request             | Testing WebSocket or gRPC protocol flows                |
-| Testing request normalisation (duplicate headers, hop-by-hop stripping) | Testing configuration options and their effects         |
-| The scenario cannot be expressed with a high-level HTTP client          | The test can be written with `srv.get()` / `srv.post()` |
+| Use HTTP replay when...                                                  | Use standard integration tests when...                  |
+|--------------------------------------------------------------------------|---------------------------------------------------------|
+| Testing protocol-level edge cases (smuggling, malformed headers)         | Testing feature behavior via normal HTTP verbs          |
+| Verifying browser-specific header sets                                   | Testing response status codes, bodies, JSON             |
+| Reproducing a bug that requires an exact byte-level request              | Testing WebSocket or gRPC protocol flows                |
+| Testing request normalization (duplicate headers, hop-by-hop stripping)  | Testing configuration options and their effects         |
+| The scenario cannot be expressed with a high-level HTTP client           | The test can be written with `srv.get()` / `srv.post()` |
 
 ## Adding a New Category
 
