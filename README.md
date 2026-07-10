@@ -39,12 +39,26 @@ Any MMDB database is supported, but the default for integration tests is [IP Geo
 
 Uses Woothee by default, but also as a secondary options [ua-parser](https://github.com/ua-parser/uap-core).
 
-## LLM Disclosure
+## LLM Notice
 
-The software was largely written and architected by a human.
+> I decided against using LLMs for this project after some initial success using them to flesh out tests, refactoring,
+> bug fixes, and updating the docs.
+>
+> It worked well... at first...
+> The more I used LLMs, the more problematic it became.
+> I rigorously audit LLM code in this project before tagging a release.
+> The amount of review time became wildly disproportionate to design and implementation.
+> My mind began to flirt with cognitive surrender, which is counter to why this project exists: because I like writing
+> Rust code and am interested in systems development.
+>
+> All the agent memory files and skills have been removed.
+> Any important knowledge they captured has been added to the docs site under a "Contributing" section.
+>
+> Maybe I'll write a full blog post on this down the road ¯\(ツ)/¯
+>
+> ~Ethan, July 10th 2026
 
-An LLM was used *mostly* for fleshing out tests, refactoring, bug fixes,
-and attempting to keep the docs from drifting.
+The software was largely written and architected [by a human](https://ethanhann.com/).
 
-See [LLM_DISCLOSURE.md](LLM_DISCLOSURE.md) for a full transparency report.
+See [LLM_DISCLOSURE.md](LLM_DISCLOSURE.md) for a historical transparency report.
 
