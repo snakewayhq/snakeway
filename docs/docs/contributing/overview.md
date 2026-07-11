@@ -43,20 +43,20 @@ The recipes themselves are good context for what the project can do.
 
 ## Key Commands
 
-| Task                     | Command                   |
-|--------------------------|---------------------------|
-| Build                    | `cargo build`             |
-| Type-check               | `just check`              |
-| Run unit tests           | `just test`               |
-| Unit tests with coverage | `just test-with-coverage` |
-| Run integration tests    | `just integration-test`   |
-| Run all tests and lint   | `just test-everything`    |
-| Format code              | `just fmt`                |
-| Lint (clippy)            | `just clippy`             |
-| Format and lint          | `just lint`               |
-| Run locally              | `cargo run -p snakeway`   |
-| Preview the docs         | `just docs`               |
-| Run microbenchmarks      | `just bench`              |
+| Task                           | Command                   |
+|--------------------------------|---------------------------|
+| Build                          | `cargo build`             |
+| Type-check                     | `just check`              |
+| Run unit tests                 | `just test`               |
+| Unit tests with coverage       | `just test-with-coverage` |
+| Run integration tests          | `just integration-test`   |
+| Run all tests, lint, and bench | `just test-everything`    |
+| Format code                    | `just fmt`                |
+| Lint (clippy)                  | `just clippy`             |
+| Format and lint                | `just lint`               |
+| Run locally                    | `cargo run -p snakeway`   |
+| Preview the docs               | `just docs`               |
+| Run microbenchmarks            | `just bench`              |
 
 For a release build, add `-r`:
 
