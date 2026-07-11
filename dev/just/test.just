@@ -1,8 +1,8 @@
 start-docker:
-    docker compose -f docker-compose-dev.yml up -d --remove-orphans
+    docker compose -f dev/docker-compose-dev.yml up -d --remove-orphans
 
 stop-docker:
-    docker compose -f docker-compose-dev.yml down
+    docker compose -f dev/docker-compose-dev.yml down
 
 fetch-pebble-ca: start-docker
     @echo "Fetch Pebble's CA cert..."

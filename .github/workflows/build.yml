@@ -83,7 +83,7 @@ jobs:
         run: bash ./dev/gen-test-certs.sh
 
       - name: Start Pebble (ACME test server)
-        run: docker compose -f docker-compose-dev.yml up pebble -d --remove-orphans
+        run: docker compose -f dev/docker-compose-dev.yml up pebble -d --remove-orphans
 
       - name: Wait for Pebble to be ready
         run: |
@@ -100,7 +100,7 @@ jobs:
             sleep 2
           done
           echo "::error::Pebble did not become ready within 60 seconds"
-          docker compose -f docker-compose-dev.yml logs pebble
+          docker compose -f dev/docker-compose-dev.yml logs pebble
           exit 1
 
       - name: Fetch Pebble CA certificate
@@ -159,7 +159,7 @@ jobs:
 
       - name: Tear down Pebble
         if: always()
-        run: docker compose -f docker-compose-dev.yml down --volumes --remove-orphans
+        run: docker compose -f dev/docker-compose-dev.yml down --volumes --remove-orphans
 
   coverage:
     name: Coverage
