@@ -1,9 +1,9 @@
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
-use crate::net::CidrCollection;
 use smallvec::SmallVec;
 use snakeway_conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
+use snakeway_net::CidrCollection;
 use tracing::debug;
 
 #[derive(Debug)]
@@ -109,11 +109,11 @@ mod tests {
     use crate::execution::ctx::request::NormalizedPath;
     use crate::execution::device::core::{Device, DeviceResult};
     use crate::execution::enrichment::user_agent::ClientIdentity;
-    use crate::net::CidrCollection;
     use smallvec::SmallVec;
     use snakeway_conf::types::{
         ForwardingConfig, NetworkPolicyDeviceConfig, OnInvalidForwardedConfig,
     };
+    use snakeway_net::CidrCollection;
     use std::net::{IpAddr, Ipv4Addr};
 
     //-----------------------------------------------------------------------------

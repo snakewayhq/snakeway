@@ -4,12 +4,12 @@ use std::fmt::Debug;
 use std::net::IpAddr;
 
 #[derive(Default, Clone)]
-pub(crate) struct CidrCollection {
+pub struct CidrCollection {
     table: IpnetTrie<()>,
 }
 
 impl CidrCollection {
-    pub(crate) fn new(net_list: &[IpNet]) -> Self {
+    pub fn new(net_list: &[IpNet]) -> Self {
         let mut collection = IpnetTrie::new();
         for net in net_list {
             collection.insert(net.to_owned(), ());
@@ -18,17 +18,17 @@ impl CidrCollection {
         Self { table: collection }
     }
 
-    pub(crate) fn contains(&self, addr: IpAddr) -> bool {
+    pub fn contains(&self, addr: IpAddr) -> bool {
         let host_net = IpNet::from(addr);
         self.table.longest_match(&host_net).is_some()
     }
 
     /// Returns the number of IPv4 and IPv6 networks in the collection.
-    pub(crate) fn network_counts(&self) -> (usize, usize) {
+    pub fn network_counts(&self) -> (usize, usize) {
         self.table.len()
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.table.is_empty()
     }
 }

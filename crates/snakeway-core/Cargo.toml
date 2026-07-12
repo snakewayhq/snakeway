@@ -13,8 +13,9 @@ hotpath-alloc = ["hotpath/hotpath-alloc"]
 dev-templates = []
 
 [dependencies]
-snakeway-conf = { workspace = true }
 confval = { workspace = true }
+snakeway-conf = { workspace = true }
+snakeway-net = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 arc-swap = { workspace = true }
@@ -31,7 +32,7 @@ maxminddb = { workspace = true, features = ["mmap"] }
 mime_guess = { workspace = true }
 nix = { workspace = true, features = ["signal"] }
 percent-encoding = { workspace = true }
-pingora = { workspace = true, features = ["proxy", "openssl_derived", "openssl", "connection_filter"] }
+pingora = { workspace = true, features = ["proxy", "openssl_derived", "openssl"] }
 openssl = { workspace = true }
 pingora-limits = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
@@ -51,7 +52,6 @@ uaparser = { workspace = true }
 wasmtime = { workspace = true }
 woothee = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
-ipnet-trie = { workspace = true }
 thiserror = { workspace = true }
 serde_yaml = { workspace = true }
 once_cell = { workspace = true }

@@ -5,7 +5,6 @@ use crate::data_plane::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::data_plane::tls_handshake::{CertMode, build_tls_callbacks};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
-use crate::net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use crate::runtime::RuntimeState;
 use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;
@@ -16,6 +15,7 @@ use pingora::protocols::http::v2::server::default_h2_options;
 use pingora::server::Server;
 use pingora::server::configuration::{Opt, ServerConf};
 use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
+use snakeway_net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
 use std::sync::Arc;
 use tracing::{debug, warn};
 

@@ -1,4 +1,4 @@
-use crate::net::CidrCollection;
+use crate::CidrCollection;
 use async_trait::async_trait;
 use pingora::listeners::ConnectionFilter;
 use snakeway_conf::types::{NetworkConnectionFilterConfig, OnNoPeerAddr};
@@ -7,7 +7,7 @@ use std::net::{IpAddr, SocketAddr};
 use tracing::debug;
 
 #[derive(Debug, Default, Clone)]
-pub(crate) struct NetworkConnectionFilter {
+pub struct NetworkConnectionFilter {
     pub(crate) cidr_allow: CidrCollection,
     pub(crate) cidr_deny: CidrCollection,
     pub(crate) ip_family_ipv4: bool,

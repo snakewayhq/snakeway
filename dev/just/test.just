@@ -63,11 +63,11 @@ generate-all-templates:
 
 # Run unit tests
 test:
-    cargo nextest run -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features
+    cargo nextest run -p confval -p confval-derive -p snakeway-core -p snakeway-conf -p snakeway-net --all-features
 
 # Run unit tests with coverage, and output HTML
 test-with-coverage:
-    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features--html --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf -p snakeway-net --all-features --html --ignore-filename-regex 'pingora|tests/|examples/'
     open target/llvm-cov/html/index.html
 
 # Run unit tests with coverage, and output a summary

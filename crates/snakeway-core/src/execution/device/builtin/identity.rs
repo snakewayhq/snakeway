@@ -3,10 +3,10 @@ use crate::execution::device::core::{Device, DeviceError, DeviceResult};
 use crate::execution::enrichment::user_agent::{
     ClientIdentity, GeoInfo, UaEngine, build_ua_engine,
 };
-use crate::net::resolve_client_ip;
 use ipnet::{AddrParseError, IpNet};
 use maxminddb::{MaxMindDbError, PathElement};
 use snakeway_conf::types::IdentityDeviceConfig;
+use snakeway_net::resolve_client_ip;
 use std::path::PathBuf;
 use thiserror::Error;
 

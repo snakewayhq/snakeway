@@ -14,7 +14,7 @@ use std::net::IpAddr;
 /// - Walk XFF from right → left
 /// - Stop at first IP not in trusted_proxies
 /// - If no untrusted IP found, fall back to peer_ip
-pub(crate) fn resolve_client_ip(
+pub fn resolve_client_ip(
     headers: &HeaderMap,
     peer_ip: IpAddr,
     trusted_proxies: &[IpNet],

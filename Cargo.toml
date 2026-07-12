@@ -1,11 +1,12 @@
 [workspace]
 members = [
-    "crates/snakeway-tests",
+    "crates/confval",
+    "crates/confval-derive",
     "crates/snakeway",
     "crates/snakeway-conf",
     "crates/snakeway-core",
-    "crates/confval",
-    "crates/confval-derive",
+    "crates/snakeway-net",
+    "crates/snakeway-tests",
     "crates/snakeway-jwt-auth-device",
     "crates/snakeway-wasm-test-device",
 ]
@@ -58,6 +59,7 @@ strip = "symbols"           # Strip symbols to minimize binary size
 confval = { path = "crates/confval", features = ["serde", "color", "hcl", "derive"] }
 snakeway-conf = { path = "crates/snakeway-conf" }
 snakeway-core = { path = "crates/snakeway-core" }
+snakeway-net = { path = "crates/snakeway-net" }
 
 anyhow = "1.0"
 async-trait = "0.1"
