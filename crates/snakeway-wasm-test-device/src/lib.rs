@@ -1,3 +1,5 @@
+//! This is primarily a fixture for integration tests.
+//! It also happens to be a good reference for how a device works.
 use wit_bindgen::generate;
 
 generate!({
