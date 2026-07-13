@@ -96,7 +96,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     // the upgrade socket. The old process's send_fds_to retries on
     // ENOENT/ECONNREFUSED, so it tolerates the socket not existing yet.
     if upgrade {
-        crate::control_plane::server::upgrade::signal_old_process(&config.server.pid_file)?;
+        crate::upgrade::signal_old_process(&config.server.pid_file)?;
     }
 
     server.bootstrap();
