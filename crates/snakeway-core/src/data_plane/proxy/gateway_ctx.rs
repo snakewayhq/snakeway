@@ -1,8 +1,8 @@
-use crate::control_plane::observability::Metrics;
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::traffic::TrafficManager;
 use crate::runtime::RuntimeState;
 use arc_swap::{ArcSwap, Guard};
+use snakeway_observability::Metrics;
 use std::sync::Arc;
 
 pub(crate) struct GatewayCtx {

@@ -1,4 +1,3 @@
-use crate::control_plane::observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use crate::data_plane::proxy::error_classification::classify_pingora_error;
 use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
 use crate::data_plane::proxy::handlers::StaticFileHandler;
@@ -20,6 +19,7 @@ use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
+use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;

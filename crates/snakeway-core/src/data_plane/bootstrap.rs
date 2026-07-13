@@ -1,5 +1,4 @@
 use crate::control_plane::ReloadHandle;
-use crate::control_plane::observability::Metrics;
 use crate::data_plane::proxy::{AdminGateway, PublicGateway, RedirectGateway};
 use crate::data_plane::tls_handshake::{CertMode, build_tls_callbacks};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
@@ -16,6 +15,7 @@ use pingora::server::configuration::{Opt, ServerConf};
 use snakeway_acme::CertManager;
 use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
 use snakeway_net::{ConnectionRateLimitingFilter, NetworkConnectionFilter};
+use snakeway_observability::Metrics;
 use std::sync::Arc;
 use tracing::{debug, warn};
 

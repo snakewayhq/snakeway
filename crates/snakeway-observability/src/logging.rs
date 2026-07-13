@@ -1,4 +1,4 @@
-use crate::control_plane::observability::TelemetryProviders;
+use crate::telemetry::TelemetryProviders;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use std::sync::OnceLock;
@@ -72,7 +72,7 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
     }
 }
 
-pub(crate) fn init_logging(telemetry_providers: Option<TelemetryProviders>) {
+pub fn init_logging(telemetry_providers: Option<TelemetryProviders>) {
     if std::env::var("TOKIO_CONSOLE").is_ok() {
         // Tokio console logging is specifically for interactive debugging and profiling.
         console_subscriber::init();

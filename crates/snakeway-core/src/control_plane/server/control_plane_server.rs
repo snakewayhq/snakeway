@@ -1,5 +1,3 @@
-use crate::control_plane::observability;
-use crate::control_plane::observability::Metrics;
 use crate::control_plane::server::pid;
 use crate::control_plane::server::pid::write_pid;
 use crate::control_plane::server::reload::{ReloadEvent, ReloadHandle};
@@ -16,6 +14,8 @@ use snakeway_acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
 use snakeway_conf::types::{CertStoreConfig, RuntimeConfig, TlsAutomationConfig};
+use snakeway_observability;
+use snakeway_observability::Metrics;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
@@ -174,7 +174,7 @@ impl ControlPlaneServer {
         self.pingora_server.run(Default::default());
 
         // Cleanup.
-        observability::shutdown();
+        snakeway_observability::shutdown();
 
         if !self.config.server.pid_file.is_empty() {
             info!("shutdown requested, removing pid file");

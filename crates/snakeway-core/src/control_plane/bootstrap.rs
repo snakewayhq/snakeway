@@ -1,7 +1,7 @@
 use crate::control_plane::ControlPlaneServer;
-use crate::control_plane::observability::{init_logging, init_telemetry};
 use anyhow::Result;
 use snakeway_conf::types::{ListenerConfig, RuntimeConfig};
+use snakeway_observability::{init_logging, init_telemetry};
 use std::net::TcpListener;
 use std::sync::Arc;
 use tracing::{error, warn};

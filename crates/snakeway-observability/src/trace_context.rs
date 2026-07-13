@@ -1,11 +1,11 @@
 use http::HeaderMap;
 use http::header::HeaderName;
 use opentelemetry::propagation::{Extractor, Injector};
-use pingora::http::RequestHeader;
+use pingora_http::RequestHeader;
 
 /// Extracts W3C Trace Context headers (`traceparent`, `tracestate`) from an
 /// incoming HTTP request's [`HeaderMap`].
-pub(crate) struct HeaderExtractor<'a>(pub(crate) &'a HeaderMap);
+pub struct HeaderExtractor<'a>(pub &'a HeaderMap);
 
 impl Extractor for HeaderExtractor<'_> {
     fn get(&self, key: &str) -> Option<&str> {
@@ -19,7 +19,7 @@ impl Extractor for HeaderExtractor<'_> {
 
 /// Injects W3C Trace Context headers (`traceparent`, `tracestate`) into an
 /// upstream [`RequestHeader`].
-pub(crate) struct RequestHeaderInjector<'a>(pub(crate) &'a mut RequestHeader);
+pub struct RequestHeaderInjector<'a>(pub &'a mut RequestHeader);
 
 impl Injector for RequestHeaderInjector<'_> {
     fn set(&mut self, key: &str, value: String) {

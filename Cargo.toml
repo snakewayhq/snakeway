@@ -9,7 +9,7 @@ members = [
     "crates/snakeway-tests",
     "crates/snakeway-jwt-auth-device",
     "crates/snakeway-wasm-test-device",
-    "crates/snakeway-acme",
+    "crates/snakeway-acme", "crates/snakeway-observability",
 ]
 default-members = ["crates/snakeway"]
 exclude = [
@@ -62,6 +62,7 @@ snakeway-acme = { path = "crates/snakeway-acme" }
 snakeway-conf = { path = "crates/snakeway-conf" }
 snakeway-core = { path = "crates/snakeway-core" }
 snakeway-net = { path = "crates/snakeway-net" }
+snakeway-observability = { path = "crates/snakeway-observability" }
 
 anyhow = "1.0"
 async-trait = "0.1"
@@ -80,6 +81,7 @@ nix = "0.31"
 mime_guess = "2.0.5"
 percent-encoding = "2"
 pingora = "0.8"
+pingora-http = "0.8"
 pingora-openssl = "0.8"
 openssl = "0.10"
 pingora-limits = "0.8"

@@ -1,4 +1,4 @@
-use super::Metrics;
+use crate::metrics::Metrics;
 use once_cell::sync::OnceCell;
 use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter, WithExportConfig};
@@ -27,7 +27,7 @@ static METER_PROVIDER: OnceCell<SdkMeterProvider> = OnceCell::new();
 /// Returns `Ok(Some(tracer))` when tracing is enabled and initialized,
 /// `Ok(None)` when tracing is disabled or not configured, and
 /// `Err(...)` when the exporter fails to build.
-pub(crate) async fn init_telemetry(
+pub async fn init_telemetry(
     config: &RuntimeConfig,
 ) -> Result<Option<TelemetryProviders>, Box<dyn std::error::Error>> {
     let Some(obs) = &config.server.observability else {
@@ -153,14 +153,14 @@ pub(crate) async fn init_telemetry(
     }))
 }
 
-pub(crate) struct TelemetryProviders {
-    pub(crate) tracer_provider: SdkTracerProvider,
-    pub(crate) logger_provider: SdkLoggerProvider,
-    pub(crate) metrics: Arc<Metrics>,
+pub struct TelemetryProviders {
+    pub tracer_provider: SdkTracerProvider,
+    pub logger_provider: SdkLoggerProvider,
+    pub metrics: Arc<Metrics>,
 }
 
 /// Shutdown telemetry and flush remaining spans.
-pub(crate) fn shutdown() {
+pub fn shutdown() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         let _ = provider.shutdown();
     }

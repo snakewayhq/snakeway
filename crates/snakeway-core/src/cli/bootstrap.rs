@@ -3,9 +3,9 @@ use crate::cli::logs::run_logs;
 use crate::cli::route::RouteCmd;
 use crate::cli::wasm_device::WasmDeviceCmd;
 use crate::cli::{reload, route, upgrade, wasm_device};
-use crate::control_plane::observability::init_logging;
 use crate::server;
 use clap::{Parser, Subcommand};
+use snakeway_observability::init_logging;
 use std::process::exit;
 
 #[derive(Parser, Debug)]

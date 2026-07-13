@@ -6,12 +6,12 @@ use opentelemetry::metrics::{Counter, Gauge, Histogram, Meter};
 /// via `GatewayCtx`. When OTel is disabled, no `Metrics` instance is created
 /// and all recording call sites are skipped.
 pub struct Metrics {
-    pub(crate) http_requests: Counter<u64>,
-    pub(crate) http_request_duration: Histogram<f64>,
-    pub(crate) http_errors: Counter<u64>,
-    pub(crate) upstream_active_requests: Gauge<u64>,
-    pub(crate) upstream_health: Gauge<u64>,
-    pub(crate) circuit_breaker_state: Gauge<u64>,
+    pub http_requests: Counter<u64>,
+    pub http_request_duration: Histogram<f64>,
+    pub http_errors: Counter<u64>,
+    pub upstream_active_requests: Gauge<u64>,
+    pub upstream_health: Gauge<u64>,
+    pub circuit_breaker_state: Gauge<u64>,
 }
 
 impl Metrics {

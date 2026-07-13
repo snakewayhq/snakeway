@@ -1885,9 +1885,9 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "humantime"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "135b12329e5e3ce057a9f972339ea52bc954fe1e9358ef27f95e89716fbc5424"
+checksum = "15cdd26707701c53297e2fa6afb323d55fbc1d0810c3aec078ae3ef0424c3c15"
 
 [[package]]
 name = "hybrid-array"
@@ -4288,13 +4288,11 @@ dependencies = [
  "chrono",
  "clap",
  "confval",
- "console-subscriber",
  "criterion",
  "ctrlc",
  "dashmap",
  "flate2",
  "hcl-rs",
- "hostname",
  "hotpath",
  "http",
  "httpdate",
@@ -4305,9 +4303,6 @@ dependencies = [
  "once_cell",
  "openssl",
  "opentelemetry",
- "opentelemetry-appender-tracing",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
  "percent-encoding",
  "pingora",
  "pingora-limits",
@@ -4320,13 +4315,12 @@ dependencies = [
  "snakeway-acme",
  "snakeway-conf",
  "snakeway-net",
+ "snakeway-observability",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
- "tracing-appender",
  "tracing-opentelemetry",
- "tracing-subscriber",
  "uaparser",
  "url",
  "uuid",
@@ -4359,6 +4353,26 @@ dependencies = [
  "snakeway-conf",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "snakeway-observability"
+version = "0.15.0"
+dependencies = [
+ "console-subscriber",
+ "hostname",
+ "http",
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "pingora-http",
+ "snakeway-conf",
+ "tracing",
+ "tracing-appender",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
 ]
 
 [[package]]
