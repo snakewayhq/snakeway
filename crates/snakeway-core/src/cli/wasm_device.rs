@@ -1,7 +1,7 @@
-use crate::execution::ctx::{NormalizedPath, RequestCtx};
-use crate::execution::device::load_wasm_device;
 use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
+use snakeway_engine::execution::ctx::{NormalizedPath, RequestCtx};
+use snakeway_engine::execution::device::load_wasm_device;
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 

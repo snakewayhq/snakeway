@@ -9,7 +9,7 @@ members = [
     "crates/snakeway-tests",
     "crates/snakeway-jwt-auth-device",
     "crates/snakeway-wasm-test-device",
-    "crates/snakeway-acme", "crates/snakeway-observability",
+    "crates/snakeway-acme", "crates/snakeway-observability", "crates/snakeway-engine",
 ]
 default-members = ["crates/snakeway"]
 exclude = [
@@ -61,6 +61,7 @@ confval = { path = "crates/confval", features = ["serde", "color", "hcl", "deriv
 snakeway-acme = { path = "crates/snakeway-acme" }
 snakeway-conf = { path = "crates/snakeway-conf" }
 snakeway-core = { path = "crates/snakeway-core" }
+snakeway-engine = { path = "crates/snakeway-engine" }
 snakeway-net = { path = "crates/snakeway-net" }
 snakeway-observability = { path = "crates/snakeway-observability" }
 

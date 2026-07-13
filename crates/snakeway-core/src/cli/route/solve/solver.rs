@@ -2,8 +2,8 @@ use crate::cli::route::solve::types::{
     RouteSolveDecision, RouteSolveNormalized, RouteSolveOptions, RouteSolveRejection,
     RouteSolveTraceStep, SyntheticRequest,
 };
-use crate::execution::route::{RouteEntry, RouteRuntime};
-use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamRuntime};
+use snakeway_engine::execution::route::{RouteEntry, RouteRuntime};
+use snakeway_engine::runtime::{RuntimeState, ServiceRuntime, UpstreamRuntime};
 
 /// Deterministic, side-effect-free route resolution.
 ///
@@ -234,13 +234,13 @@ pub(crate) fn fnv1a_hash(data: &[u8]) -> u32 {
 mod tests {
     use super::*;
     use crate::cli::route::solve::types::{RouteSolveOptions, SyntheticRequest};
-    use crate::execution::device::core::DeviceRegistry;
-    use crate::execution::route::types::RouteId;
-    use crate::execution::route::{RouteRuntime, Router};
-    use crate::runtime::{
+    use snakeway_conf::types::LoadBalancingStrategy;
+    use snakeway_engine::execution::device::core::DeviceRegistry;
+    use snakeway_engine::execution::route::types::RouteId;
+    use snakeway_engine::execution::route::{RouteRuntime, Router};
+    use snakeway_engine::runtime::{
         ResolvedAddr, RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
     };
-    use snakeway_conf::types::LoadBalancingStrategy;
     use std::collections::HashMap;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;

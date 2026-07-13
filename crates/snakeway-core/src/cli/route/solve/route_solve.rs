@@ -1,9 +1,9 @@
 use crate::cli::route::args::{RouteSolveArgs, RouteSolveOutputFormat};
 use crate::cli::route::solve::solver::walk_solve;
 use crate::cli::route::solve::types::{RouteSolveDecision, RouteSolveOptions, SyntheticRequest};
-use crate::runtime::build_runtime_state;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use snakeway_conf::load_config;
+use snakeway_engine::runtime::build_runtime_state;
 use std::net::IpAddr;
 use std::process;
 use url::Url;

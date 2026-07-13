@@ -16,6 +16,7 @@ dev-templates = []
 confval = { workspace = true }
 snakeway-acme = { workspace = true }
 snakeway-conf = { workspace = true }
+snakeway-engine = { workspace = true }
 snakeway-net = { workspace = true }
 snakeway-observability = { workspace = true }
 anyhow = { workspace = true }

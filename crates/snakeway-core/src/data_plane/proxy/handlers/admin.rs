@@ -1,7 +1,7 @@
-use crate::data_plane::ws_connection_management::WsConnectionManager;
-use crate::execution::traffic::TrafficManager;
-use crate::runtime::UpstreamRuntime;
 use snakeway_acme::CertManager;
+use snakeway_engine::execution::traffic::TrafficManager;
+use snakeway_engine::execution::ws_connection_management::WsConnectionManager;
+use snakeway_engine::runtime::UpstreamRuntime;
 
 use http::{Method, StatusCode, header};
 use pingora::http::ResponseHeader;

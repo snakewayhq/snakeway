@@ -1,4 +1,4 @@
-use crate::data_plane::ws_connection_management::state::WsRouteConnectionState;
+use crate::execution::ws_connection_management::state::WsRouteConnectionState;
 use std::sync::Arc;
 
 /// RAII guard for a single acquired connection slot.

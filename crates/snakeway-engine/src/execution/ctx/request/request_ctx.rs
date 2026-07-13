@@ -1,4 +1,4 @@
-use crate::data_plane::ws_connection_management::WsConnectionGuard;
+use crate::execution::DownstreamSni;
 use crate::execution::ctx::RequestId;
 use crate::execution::ctx::request::error::RequestRejectError;
 use crate::execution::ctx::request::normalization::{
@@ -11,6 +11,7 @@ use crate::execution::ctx::request::{
 use crate::execution::enrichment::user_agent::ClientIdentity;
 use crate::execution::route::types::RouteId;
 use crate::execution::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::execution::ws_connection_management::WsConnectionGuard;
 use crate::runtime::UpstreamId;
 use http::header::HOST;
 use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
@@ -322,7 +323,6 @@ impl RequestCtx {
     }
 }
 
-use crate::data_plane::tls_handshake::DownstreamSni;
 /// WASM Device API
 ///
 use http::{HeaderName, HeaderValue};

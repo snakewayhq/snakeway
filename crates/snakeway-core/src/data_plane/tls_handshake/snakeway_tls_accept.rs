@@ -1,9 +1,9 @@
-use crate::data_plane::tls_handshake::DownstreamSni;
-use crate::runtime::RuntimeState;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use pingora::listeners::TlsAccept;
 use pingora::protocols::tls::TlsRef;
+use snakeway_engine::execution::DownstreamSni;
+use snakeway_engine::runtime::RuntimeState;
 use std::any::Any;
 use std::sync::Arc;
 

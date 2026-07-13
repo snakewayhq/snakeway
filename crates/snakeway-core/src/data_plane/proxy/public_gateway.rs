@@ -1,16 +1,6 @@
 use crate::data_plane::proxy::error_classification::classify_pingora_error;
 use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
 use crate::data_plane::proxy::handlers::StaticFileHandler;
-use crate::data_plane::ws_connection_management::WsConnectionManager;
-use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
-use crate::execution::device::builtin::request_filter::ClientBodyTimeout;
-use crate::execution::device::core::{DevicePipeline, DeviceResult};
-use crate::execution::route::RouteRuntime;
-use crate::execution::traffic::{
-    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
-    UpstreamOutcome,
-};
-use crate::runtime::{RuntimeState, UpstreamRuntime};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -19,6 +9,16 @@ use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
+use snakeway_engine::execution::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
+use snakeway_engine::execution::device::builtin::request_filter::ClientBodyTimeout;
+use snakeway_engine::execution::device::core::{DevicePipeline, DeviceResult};
+use snakeway_engine::execution::route::RouteRuntime;
+use snakeway_engine::execution::traffic::{
+    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
+    UpstreamOutcome,
+};
+use snakeway_engine::execution::ws_connection_management::WsConnectionManager;
+use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;
 use std::time::Duration;
@@ -793,7 +793,7 @@ impl ProxyHttp for PublicGateway {
 
 impl PublicGateway {
     fn record_metrics(&self, ctx: &RequestCtx) {
-        use crate::execution::traffic::circuit::CircuitState;
+        use snakeway_engine::execution::traffic::circuit::CircuitState;
 
         let Some(metrics) = &self.gw_ctx.metrics else {
             return;

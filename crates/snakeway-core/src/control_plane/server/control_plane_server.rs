@@ -3,9 +3,6 @@ use crate::control_plane::server::pid::write_pid;
 use crate::control_plane::server::reload::{ReloadEvent, ReloadHandle};
 use crate::control_plane::server::runtime_server::RuntimeServer;
 use crate::data_plane::bootstrap::{DataPlaneServerParams, build_pingora_server};
-use crate::data_plane::ws_connection_management::WsConnectionManager;
-use crate::execution::traffic::{TrafficManager, TrafficSnapshot};
-use crate::runtime::{ReloadError, RuntimeState, build_runtime_state, reload_runtime_state};
 use anyhow::Result;
 use arc_swap::ArcSwap;
 use nix::NixPath;
@@ -14,6 +11,11 @@ use snakeway_acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
 use snakeway_conf::types::{CertStoreConfig, RuntimeConfig, TlsAutomationConfig};
+use snakeway_engine::execution::traffic::{TrafficManager, TrafficSnapshot};
+use snakeway_engine::execution::ws_connection_management::WsConnectionManager;
+use snakeway_engine::runtime::{
+    ReloadError, RuntimeState, build_runtime_state, reload_runtime_state,
+};
 use snakeway_observability;
 use snakeway_observability::Metrics;
 use std::path::PathBuf;
@@ -252,7 +254,7 @@ impl ControlPlaneServer {
 
                         let new_config = validated.config;
 
-                        use crate::runtime::diff::{ConfigChangeKind, classify_config_change};
+                        use snakeway_engine::runtime::diff::{ConfigChangeKind, classify_config_change};
                         let change_kind =
                             classify_config_change(&current_config, &new_config);
 
@@ -303,7 +305,7 @@ impl ControlPlaneServer {
 
         // Background DNS re-resolution for hostname-based upstreams.
         {
-            use crate::runtime::dns_refresh;
+            use snakeway_engine::runtime::dns_refresh;
             let interval = self.config.server.dns_refresh_interval_seconds;
             self.control_rt.spawn(dns_refresh::run_dns_refresh(
                 self.state.clone(),

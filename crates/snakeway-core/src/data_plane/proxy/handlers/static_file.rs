@@ -1,8 +1,8 @@
-use crate::execution::ctx::RequestCtx;
-use crate::execution::device::core::DeviceRegistry;
-use crate::execution::route::RouteEntry;
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
+use snakeway_engine::execution::ctx::RequestCtx;
+use snakeway_engine::execution::device::core::DeviceRegistry;
+use snakeway_engine::execution::route::RouteEntry;
 
 pub(crate) struct StaticFileHandler;
 
@@ -14,10 +14,10 @@ impl StaticFileHandler {
         route: &RouteEntry,
         devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
-        use crate::execution::ctx::{RequestId, ResponseCtx};
-        use crate::execution::device::core::DevicePipeline;
-        use crate::execution::device::core::DeviceResult;
         use pingora::http::ResponseHeader;
+        use snakeway_engine::execution::ctx::{RequestId, ResponseCtx};
+        use snakeway_engine::execution::device::core::DevicePipeline;
+        use snakeway_engine::execution::device::core::DeviceResult;
         use tokio::io::AsyncReadExt;
 
         // Extract conditional headers for cache validation and content negotiation.
