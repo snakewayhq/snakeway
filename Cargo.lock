@@ -4308,6 +4308,7 @@ dependencies = [
  "snakeway-engine",
  "snakeway-net",
  "snakeway-observability",
+ "snakeway-proxy",
  "tempfile",
  "tokio",
  "tracing",
@@ -4396,6 +4397,44 @@ dependencies = [
  "tracing-appender",
  "tracing-opentelemetry",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "snakeway-proxy"
+version = "0.15.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "async-trait",
+ "brotli 8.0.4",
+ "bytes",
+ "chrono",
+ "clap",
+ "confval",
+ "ctrlc",
+ "flate2",
+ "hcl-rs",
+ "hotpath",
+ "http",
+ "httpdate",
+ "mime_guess",
+ "nix 0.31.3",
+ "openssl",
+ "opentelemetry",
+ "percent-encoding",
+ "pingora",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "snakeway-acme",
+ "snakeway-conf",
+ "snakeway-engine",
+ "snakeway-net",
+ "snakeway-observability",
+ "tokio",
+ "tracing",
+ "tracing-opentelemetry",
+ "url",
 ]
 
 [[package]]

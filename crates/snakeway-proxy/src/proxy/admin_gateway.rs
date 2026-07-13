@@ -1,13 +1,13 @@
-use crate::control_plane::ReloadHandle;
-use crate::data_plane::proxy::handlers::{AdminContext, AdminHandler};
+use crate::proxy::handlers::{AdminContext, AdminHandler};
+use crate::reload::ReloadHandle;
 use async_trait::async_trait;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
 use snakeway_acme::CertManager;
 use snakeway_conf::types::AdminAuthConfig;
+use snakeway_engine::WsConnectionManager;
 use snakeway_engine::ctx::RequestCtx;
 use snakeway_engine::traffic::TrafficManager;
-use snakeway_engine::WsConnectionManager;
 use std::sync::Arc;
 
 pub(crate) struct AdminGateway {

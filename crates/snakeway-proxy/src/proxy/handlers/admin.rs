@@ -9,7 +9,7 @@ use pingora::prelude::Session;
 use pingora::{Custom, Error};
 use snakeway_conf::types::AdminAuthConfig;
 
-use crate::control_plane::ReloadHandle;
+use crate::reload::ReloadHandle;
 use std::collections::HashMap;
 use std::sync::Arc;
 

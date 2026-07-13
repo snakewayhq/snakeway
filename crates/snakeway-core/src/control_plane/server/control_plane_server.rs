@@ -1,6 +1,6 @@
 use crate::control_plane::server::pid;
 use crate::control_plane::server::pid::write_pid;
-use crate::control_plane::server::reload::{ReloadEvent, ReloadHandle};
+use snakeway_proxy::{ReloadEvent, ReloadHandle};
 use crate::control_plane::server::runtime_server::RuntimeServer;
 use crate::data_plane::bootstrap::{DataPlaneServerParams, build_pingora_server};
 use anyhow::Result;

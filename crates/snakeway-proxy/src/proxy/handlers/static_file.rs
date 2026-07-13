@@ -21,7 +21,7 @@ impl StaticFileHandler {
         use tokio::io::AsyncReadExt;
 
         // Extract conditional headers for cache validation and content negotiation.
-        let conditional = crate::data_plane::static_files::ConditionalHeaders {
+        let conditional = crate::static_files::ConditionalHeaders {
             if_none_match: ctx
                 .headers()
                 .get(http::header::IF_NONE_MATCH)
@@ -44,7 +44,7 @@ impl StaticFileHandler {
                 .map(|s| s.to_string()),
         };
 
-        let static_resp = crate::data_plane::static_files::handle_static_request(
+        let static_resp = crate::static_files::handle_static_request(
             &route.kind,
             ctx.canonical_path(),
             &conditional,
@@ -68,15 +68,15 @@ impl StaticFileHandler {
         } else {
             // Write body and end the stream.
             match static_resp.body {
-                crate::data_plane::static_files::StaticBody::Empty => {
+                crate::static_files::StaticBody::Empty => {
                     session.write_response_body(None, true).await?;
                 }
 
-                crate::data_plane::static_files::StaticBody::Bytes(bytes) => {
+                crate::static_files::StaticBody::Bytes(bytes) => {
                     session.write_response_body(Some(bytes), true).await?;
                 }
 
-                crate::data_plane::static_files::StaticBody::File(mut file) => {
+                crate::static_files::StaticBody::File(mut file) => {
                     use bytes::{Bytes, BytesMut};
                     use tokio::io::AsyncReadExt;
 
@@ -111,7 +111,7 @@ impl StaticFileHandler {
                     session.write_response_body(None, true).await?;
                 }
 
-                crate::data_plane::static_files::StaticBody::RangedFile {
+                crate::static_files::StaticBody::RangedFile {
                     mut file,
                     mut remaining,
                 } => {
@@ -146,7 +146,10 @@ impl StaticFileHandler {
         }
 
         // Run on_response devices
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
+        let request_id = ctx
+            .extensions
+            .get::<RequestId>()
+            .map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
             static_resp.status,

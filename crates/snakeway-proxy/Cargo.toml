@@ -1,16 +1,8 @@
 [package]
-name = "snakeway-core"
+name = "snakeway-proxy"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
-[features]
-default = []
-hotpath = ["hotpath/hotpath"]
-hotpath-alloc = ["hotpath/hotpath-alloc"]
-# Development-only config templates (`config init --template dev`).
-# Off by default so production builds do not expose the pebble/repo-coupled template.
-dev-templates = []
 
 [dependencies]
 confval = { workspace = true }
@@ -19,7 +11,6 @@ snakeway-conf = { workspace = true }
 snakeway-engine = { workspace = true }
 snakeway-net = { workspace = true }
 snakeway-observability = { workspace = true }
-snakeway-proxy = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 arc-swap = { workspace = true }
@@ -53,30 +44,3 @@ url = { workspace = true }
 opentelemetry = { workspace = true }
 tracing-opentelemetry = { workspace = true }
 hotpath = { workspace = true }
-
-[dev-dependencies]
-criterion = { workspace = true }
-tempfile = { workspace = true }
-
-[[bench]]
-name = "router"
-harness = false
-
-[[bench]]
-name = "device_pipeline"
-harness = false
-
-[[bench]]
-name = "request_filter"
-harness = false
-
-[[bench]]
-name = "identity"
-harness = false
-
-[[bench]]
-name = "header_scaling"
-harness = false
-
-[package.metadata.cargo-machete]
-ignored = ["hcl-rs"]

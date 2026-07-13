@@ -1,4 +1,4 @@
-use crate::control_plane::ReloadHandle;
+use snakeway_proxy::ReloadHandle;
 use std::sync::Arc;
 
 /// Handle to a server running in a background thread.

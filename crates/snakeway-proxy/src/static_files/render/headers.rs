@@ -1,4 +1,4 @@
-use crate::data_plane::static_files::render::range::ByteRange;
+use crate::static_files::render::range::ByteRange;
 use http::{HeaderMap, HeaderName, HeaderValue, header};
 use snakeway_conf::types::CachePolicy;
 

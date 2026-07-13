@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use crate::data_plane::static_files::StaticResponse;
+use crate::static_files::StaticResponse;
 use bytes::Bytes;
 use http::{HeaderMap, HeaderValue, StatusCode};
 
-use crate::data_plane::static_files::StaticBody;
+use crate::static_files::StaticBody;
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use std::fs::DirEntry;
 

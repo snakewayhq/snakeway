@@ -1,6 +1,6 @@
-use crate::data_plane::proxy::error_classification::classify_pingora_error;
-use crate::data_plane::proxy::gateway_ctx::GatewayCtx;
-use crate::data_plane::proxy::handlers::StaticFileHandler;
+use crate::proxy::error_classification::classify_pingora_error;
+use crate::proxy::gateway_ctx::GatewayCtx;
+use crate::proxy::handlers::StaticFileHandler;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -9,16 +9,16 @@ use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
+use snakeway_engine::WsConnectionManager;
 use snakeway_engine::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
 use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
+use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_engine::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
     UpstreamOutcome,
 };
-use snakeway_engine::WsConnectionManager;
-use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;
 use std::time::Duration;
@@ -615,7 +615,10 @@ impl ProxyHttp for PublicGateway {
     ) -> Result<()> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("upstream_response").entered();
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
+        let request_id = ctx
+            .extensions
+            .get::<RequestId>()
+            .map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
             upstream.status,
@@ -680,7 +683,10 @@ impl ProxyHttp for PublicGateway {
             return Ok(());
         }
 
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
+        let request_id = ctx
+            .extensions
+            .get::<RequestId>()
+            .map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
             upstream.status,
@@ -738,7 +744,10 @@ impl ProxyHttp for PublicGateway {
             None => return Ok(None),
         };
 
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
+        let request_id = ctx
+            .extensions
+            .get::<RequestId>()
+            .map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
         let state = self.gw_ctx.state();
 

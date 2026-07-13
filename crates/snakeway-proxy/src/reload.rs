@@ -4,8 +4,8 @@ use tokio::sync::watch;
 static RELOAD_EPOCH: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct ReloadEvent {
-    pub(crate) epoch: u64,
+pub struct ReloadEvent {
+    pub epoch: u64,
 }
 
 #[derive(Clone)]
@@ -25,7 +25,7 @@ impl ReloadHandle {
         Self { tx }
     }
 
-    pub(crate) fn subscribe(&self) -> watch::Receiver<ReloadEvent> {
+    pub fn subscribe(&self) -> watch::Receiver<ReloadEvent> {
         self.tx.subscribe()
     }
 
@@ -36,7 +36,7 @@ impl ReloadHandle {
         epoch
     }
 
-    pub(crate) async fn install_signal_handler(&self) -> anyhow::Result<()> {
+    pub async fn install_signal_handler(&self) -> anyhow::Result<()> {
         let mut hup = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())?;
 
         while hup.recv().await.is_some() {
