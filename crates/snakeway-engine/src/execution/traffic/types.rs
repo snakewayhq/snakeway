@@ -3,7 +3,17 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize)]
-pub(crate) struct ServiceId(pub(crate) Arc<str>);
+pub struct ServiceId(pub(crate) Arc<str>);
+
+impl ServiceId {
+    pub fn new(id: impl Into<Arc<str>>) -> Self {
+        Self(id.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 impl Display for ServiceId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -18,9 +28,9 @@ pub(crate) struct LatencyStats {
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
-pub(crate) struct HealthStatus {
+pub struct HealthStatus {
     /// Whether the upstream is considered healthy or not.
-    pub(crate) healthy: bool,
+    pub healthy: bool,
 }
 
 #[derive(Debug, Clone)]

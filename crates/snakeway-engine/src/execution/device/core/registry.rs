@@ -10,7 +10,7 @@ use snakeway_conf::types::{DeviceConfig, RuntimeConfig};
 use std::sync::Arc;
 use tracing::info;
 
-pub(crate) struct DeviceRegistry {
+pub struct DeviceRegistry {
     devices: Vec<Arc<dyn Device>>,
     _wasm_engine: Option<WasmEngine>,
 }
@@ -22,7 +22,7 @@ impl Default for DeviceRegistry {
 }
 
 impl DeviceRegistry {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             devices: Vec::new(),
             _wasm_engine: None,
@@ -94,7 +94,7 @@ impl DeviceRegistry {
         Ok(())
     }
 
-    pub(crate) fn all(&self) -> &[Arc<dyn Device>] {
+    pub fn all(&self) -> &[Arc<dyn Device>] {
         &self.devices
     }
 }

@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use clap::{Args, Subcommand};
-use snakeway_engine::execution::ctx::{NormalizedPath, RequestCtx};
-use snakeway_engine::execution::device::load_wasm_device;
+use snakeway_engine::ctx::{NormalizedPath, RequestCtx};
+use snakeway_engine::device::load_wasm_device;
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
@@ -42,7 +42,7 @@ fn run_exec(args: WasmDeviceExecArgs) -> Result<()> {
     let device = load_wasm_device(&args.file)?;
 
     let ctx = &mut RequestCtx::empty();
-    ctx.set_normalized_request(NormalizedPath(args.path).into());
+    ctx.set_normalized_request(NormalizedPath::new(args.path).into());
     ctx.hydrated = true;
     ctx.service = Some("some service".to_string());
     ctx.peer_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);

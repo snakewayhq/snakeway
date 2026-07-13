@@ -7,5 +7,5 @@ mod result;
 pub use device_trait::*;
 pub(crate) use errors::*;
 pub use pipeline::*;
-pub(crate) use registry::*;
-pub(crate) use result::*;
+pub use registry::*;
+pub use result::*;

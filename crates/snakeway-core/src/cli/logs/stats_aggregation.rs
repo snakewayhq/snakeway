@@ -1,7 +1,7 @@
 use crate::cli::logs::constants::IN_FLIGHT_TTL;
 use crate::cli::logs::histogram::{Histogram, percentile_from_histogram};
 use crate::cli::logs::types::{IdentitySummary, LogEvent};
-use snakeway_engine::execution::ctx::RequestId;
+use snakeway_engine::ctx::RequestId;
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -44,7 +44,7 @@ impl StatsAggregator {
             return;
         };
 
-        let request_id = RequestId(request_id.clone());
+        let request_id = RequestId::from(request_id.clone());
 
         match e.name.as_str() {
             "request" => {

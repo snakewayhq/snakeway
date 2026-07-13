@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 #[derive(Debug)]
-pub(crate) struct AdmissionGuard {
+pub struct AdmissionGuard {
     tm: Arc<TrafficManager>,
     service_id: ServiceId,
     upstream_id: UpstreamId,
@@ -13,7 +13,7 @@ pub(crate) struct AdmissionGuard {
 }
 
 impl AdmissionGuard {
-    pub(crate) fn new(
+    pub fn new(
         tm: Arc<TrafficManager>,
         service_id: ServiceId,
         upstream_id: UpstreamId,
@@ -29,11 +29,11 @@ impl AdmissionGuard {
         }
     }
 
-    pub(crate) fn success(&mut self) {
+    pub fn success(&mut self) {
         self.finish(true);
     }
 
-    pub(crate) fn failure(&mut self) {
+    pub fn failure(&mut self) {
         self.finish(false);
     }
 

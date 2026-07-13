@@ -32,7 +32,7 @@ impl TrafficManager {
         }
     }
 
-    pub(crate) fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
+    pub fn active_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.active_requests
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))

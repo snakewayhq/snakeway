@@ -9,15 +9,15 @@ use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use pingora::protocols::http::ServerSession;
-use snakeway_engine::execution::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
-use snakeway_engine::execution::device::builtin::request_filter::ClientBodyTimeout;
-use snakeway_engine::execution::device::core::{DevicePipeline, DeviceResult};
-use snakeway_engine::execution::route::RouteRuntime;
-use snakeway_engine::execution::traffic::{
+use snakeway_engine::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
+use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
+use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
+use snakeway_engine::route::RouteRuntime;
+use snakeway_engine::traffic::{
     AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
     UpstreamOutcome,
 };
-use snakeway_engine::execution::ws_connection_management::WsConnectionManager;
+use snakeway_engine::WsConnectionManager;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;
@@ -219,7 +219,7 @@ impl ProxyHttp for PublicGateway {
             .service
             .as_ref()
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
-        let service_id = ServiceId(service_name.as_str().into());
+        let service_id = ServiceId::new(service_name.as_str());
 
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
@@ -615,7 +615,7 @@ impl ProxyHttp for PublicGateway {
     ) -> Result<()> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("upstream_response").entered();
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
             upstream.status,
@@ -680,7 +680,7 @@ impl ProxyHttp for PublicGateway {
             return Ok(());
         }
 
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
             upstream.status,
@@ -738,7 +738,7 @@ impl ProxyHttp for PublicGateway {
             None => return Ok(None),
         };
 
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
         let state = self.gw_ctx.state();
 
@@ -793,7 +793,7 @@ impl ProxyHttp for PublicGateway {
 
 impl PublicGateway {
     fn record_metrics(&self, ctx: &RequestCtx) {
-        use snakeway_engine::execution::traffic::circuit::CircuitState;
+        use snakeway_engine::traffic::circuit::CircuitState;
 
         let Some(metrics) = &self.gw_ctx.metrics else {
             return;
@@ -828,9 +828,9 @@ impl PublicGateway {
         // Duration and upstream-scoped metrics.
         if let Some((service_id, upstream_id)) = &ctx.selected_upstream {
             let duration_ms = ctx.request_start.elapsed().as_secs_f64() * 1000.0;
-            let upstream_str = upstream_id.0.to_string();
+            let upstream_str = upstream_id.as_u32().to_string();
             let upstream_attrs = &[
-                KeyValue::new("service", service_id.0.clone()),
+                KeyValue::new("service", service_id.as_str().to_string()),
                 KeyValue::new("upstream", upstream_str.clone()),
             ];
 
@@ -844,7 +844,7 @@ impl PublicGateway {
                     metrics.http_errors.add(
                         1,
                         &[
-                            KeyValue::new("service", service_id.0.clone()),
+                            KeyValue::new("service", service_id.as_str().to_string()),
                             KeyValue::new("upstream", upstream_str.clone()),
                             KeyValue::new("error.type", "http_5xx"),
                         ],
@@ -861,7 +861,7 @@ impl PublicGateway {
                     metrics.http_errors.add(
                         1,
                         &[
-                            KeyValue::new("service", service_id.0.clone()),
+                            KeyValue::new("service", service_id.as_str().to_string()),
                             KeyValue::new("upstream", upstream_str.clone()),
                             KeyValue::new("error.type", error_type),
                         ],
@@ -883,8 +883,8 @@ impl PublicGateway {
                 .record(u64::from(healthy), upstream_attrs);
 
             // Gauge: circuit breaker state.
-            if let Some(cb) = tm.circuit.get(&(service_id.clone(), *upstream_id)) {
-                let state_value = match cb.state() {
+            if let Some(state) = tm.circuit_state(service_id, upstream_id) {
+                let state_value = match state {
                     CircuitState::Closed => 0,
                     CircuitState::Open => 1,
                     CircuitState::HalfOpen => 2,
@@ -995,9 +995,7 @@ impl PublicGateway {
                 let count_5xx = self
                     .gw_ctx
                     .traffic_manager
-                    .circuit_params
-                    .get(service_id)
-                    .map(|p| p.count_http_5xx_as_failure)
+                    .count_http_5xx_as_failure(service_id)
                     .unwrap_or(true);
 
                 if count_5xx { code < 500 } else { true }

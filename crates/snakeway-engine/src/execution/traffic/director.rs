@@ -11,10 +11,10 @@ static RANDOM: Lazy<Random> = Lazy::new(Random::default);
 static ROUND_ROBIN: Lazy<RoundRobin> = Lazy::new(RoundRobin::default);
 
 #[derive(Debug, Default)]
-pub(crate) struct TrafficDirector;
+pub struct TrafficDirector;
 
 impl TrafficDirector {
-    pub(crate) fn decide(
+    pub fn decide(
         &self,
         req: &crate::execution::ctx::RequestCtx,
         snapshot: &TrafficSnapshot,
@@ -74,7 +74,7 @@ impl TrafficDirector {
 }
 
 #[derive(Debug)]
-pub(crate) enum TrafficError {
+pub enum TrafficError {
     UnknownService,
     NoHealthyUpstreams,
 }

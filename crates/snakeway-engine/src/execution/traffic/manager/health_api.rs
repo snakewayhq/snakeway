@@ -117,7 +117,7 @@ impl TrafficManager {
     }
 
     /// Determines whether an upstream may receive a request
-    pub(crate) fn health_status(
+    pub fn health_status(
         &self,
         service_id: &ServiceId,
         upstream_id: &UpstreamId,

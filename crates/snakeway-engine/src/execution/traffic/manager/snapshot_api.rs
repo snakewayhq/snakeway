@@ -6,11 +6,11 @@ use std::time::Duration;
 
 /// Snapshot API (read-only)
 impl TrafficManager {
-    pub(crate) fn snapshot(&self) -> Arc<TrafficSnapshot> {
+    pub fn snapshot(&self) -> Arc<TrafficSnapshot> {
         self.snapshot.load_full()
     }
 
-    pub(crate) fn update(&self, new_snapshot: TrafficSnapshot) {
+    pub fn update(&self, new_snapshot: TrafficSnapshot) {
         let valid_services: HashSet<ServiceId> = new_snapshot.services.keys().cloned().collect();
 
         // Clean up weighted round-robin cursors

@@ -2,7 +2,7 @@ use crate::runtime::{UpstreamId, UpstreamRuntime};
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum DecisionReason {
+pub enum DecisionReason {
     Failover,
     RoundRobin,
     AdmissionPressure,
@@ -25,13 +25,13 @@ impl Display for DecisionReason {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct TrafficDecision {
-    pub(crate) upstream_id: UpstreamId,
-    pub(crate) reason: DecisionReason,
-    pub(crate) cb_started: bool,
+pub struct TrafficDecision {
+    pub upstream_id: UpstreamId,
+    pub reason: DecisionReason,
+    pub cb_started: bool,
 }
 
-pub(crate) struct SelectedUpstream<'a> {
-    pub(crate) upstream: &'a UpstreamRuntime,
-    pub(crate) cb_started: bool,
+pub struct SelectedUpstream<'a> {
+    pub upstream: &'a UpstreamRuntime,
+    pub cb_started: bool,
 }

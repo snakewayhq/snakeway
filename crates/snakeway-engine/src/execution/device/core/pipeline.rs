@@ -28,13 +28,13 @@ where
 
 /// Device pipeline for WebSocket events
 impl DevicePipeline {
-    pub(crate) fn run_on_ws_open(devices: &[Arc<dyn Device>], ctx: &WsCtx) {
+    pub fn run_on_ws_open(devices: &[Arc<dyn Device>], ctx: &WsCtx) {
         for dev in devices {
             dev.on_ws_open(ctx);
         }
     }
 
-    pub(crate) fn run_on_ws_close(devices: &[Arc<dyn Device>], ctx: &WsCloseCtx) {
+    pub fn run_on_ws_close(devices: &[Arc<dyn Device>], ctx: &WsCloseCtx) {
         for dev in devices {
             dev.on_ws_close(ctx);
         }
@@ -47,7 +47,7 @@ impl DevicePipeline {
         run_device_chain(devices, |dev| dev.on_request(ctx))
     }
 
-    pub(crate) fn on_stream_request_body(
+    pub fn on_stream_request_body(
         devices: &[Arc<dyn Device>],
         ctx: &mut RequestCtx,
         body: &mut Option<Bytes>,
@@ -58,21 +58,21 @@ impl DevicePipeline {
         })
     }
 
-    pub(crate) fn run_before_proxy(
+    pub fn run_before_proxy(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut RequestCtx,
     ) -> DeviceResult {
         run_device_chain(devices, |dev| dev.before_proxy(ctx))
     }
 
-    pub(crate) fn run_after_proxy(
+    pub fn run_after_proxy(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut ResponseCtx,
     ) -> DeviceResult {
         run_device_chain(devices, |dev| dev.after_proxy(ctx))
     }
 
-    pub(crate) fn on_stream_response_body(
+    pub fn on_stream_response_body(
         devices: &[Arc<dyn Device>],
         ctx: &mut ResponseCtx,
         body: &mut Option<Bytes>,
@@ -83,7 +83,7 @@ impl DevicePipeline {
         })
     }
 
-    pub(crate) fn run_on_response(
+    pub fn run_on_response(
         devices: &[impl AsRef<dyn Device>],
         ctx: &mut ResponseCtx,
     ) -> DeviceResult {

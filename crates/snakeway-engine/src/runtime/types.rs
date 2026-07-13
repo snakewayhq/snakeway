@@ -11,9 +11,9 @@ use std::sync::Arc;
 
 pub struct RuntimeState {
     pub tls: Option<TlsRuntime>,
-    pub(crate) routers: HashMap<Arc<str>, Router>,
-    pub(crate) devices: DeviceRegistry,
-    pub(crate) services: HashMap<String, ServiceRuntime>,
+    pub routers: HashMap<Arc<str>, Router>,
+    pub devices: DeviceRegistry,
+    pub services: HashMap<String, ServiceRuntime>,
 }
 
 /// TlsRuntime encapsulates the state of TLS configuration.
@@ -29,23 +29,23 @@ pub struct TlsRuntime {
 /// upstream(s) and load balancing strategy.
 /// It is not just a collection of data, but also a behavioral unit distinct
 /// from RuntimeState.
-pub(crate) struct ServiceRuntime {
-    pub(crate) strategy: LoadBalancingStrategy,
-    pub(crate) upstreams: Vec<UpstreamRuntime>,
-    pub(crate) circuit_breaker_cfg: CircuitBreakerConfig,
-    pub(crate) health_check_cfg: HealthCheckConfig,
+pub struct ServiceRuntime {
+    pub strategy: LoadBalancingStrategy,
+    pub upstreams: Vec<UpstreamRuntime>,
+    pub circuit_breaker_cfg: CircuitBreakerConfig,
+    pub health_check_cfg: HealthCheckConfig,
     #[allow(dead_code)] // useful for debugger inspection
-    pub(crate) listener: Option<Arc<str>>,
+    pub listener: Option<Arc<str>>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum UpstreamRuntime {
+pub enum UpstreamRuntime {
     Tcp(UpstreamTcpRuntime),
     Unix(UpstreamUnixRuntime),
 }
 
 impl UpstreamRuntime {
-    pub(crate) fn id(&self) -> UpstreamId {
+    pub fn id(&self) -> UpstreamId {
         match self {
             UpstreamRuntime::Tcp(u) => u.id,
             UpstreamRuntime::Unix(u) => u.id,
@@ -59,14 +59,14 @@ impl UpstreamRuntime {
         }
     }
 
-    pub(crate) fn use_tls(&self) -> bool {
+    pub fn use_tls(&self) -> bool {
         match self {
             UpstreamRuntime::Tcp(u) => u.use_tls,
             UpstreamRuntime::Unix(u) => u.use_tls,
         }
     }
 
-    pub(crate) fn authority(&self) -> String {
+    pub fn authority(&self) -> String {
         match self {
             UpstreamRuntime::Tcp(u) => {
                 format!("{}:{}", u.host, u.port)
@@ -80,7 +80,17 @@ impl UpstreamRuntime {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub(crate) struct UpstreamId(pub(crate) u32);
+pub struct UpstreamId(pub(crate) u32);
+
+impl UpstreamId {
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    pub fn as_u32(&self) -> u32 {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone, Hash)]
 pub(crate) enum UpstreamAddr {
@@ -90,10 +100,10 @@ pub(crate) enum UpstreamAddr {
 
 /// A DNS-resolved socket address that can be atomically refreshed
 /// by the background DNS re-resolver without rebuilding RuntimeState.
-pub(crate) struct ResolvedAddr(ArcSwap<SocketAddr>);
+pub struct ResolvedAddr(ArcSwap<SocketAddr>);
 
 impl ResolvedAddr {
-    pub(crate) fn new(addr: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr) -> Self {
         Self(ArcSwap::from_pointee(addr))
     }
 
@@ -119,34 +129,34 @@ impl std::fmt::Debug for ResolvedAddr {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct UpstreamTcpRuntime {
-    pub(crate) id: UpstreamId,
-    pub(crate) host: String,
-    pub(crate) port: u16,
-    pub(crate) resolved_addr: ResolvedAddr,
-    pub(crate) use_tls: bool,
-    pub(crate) sni: String,
-    pub(crate) weight: u32,
-    pub(crate) verify: bool,
+pub struct UpstreamTcpRuntime {
+    pub id: UpstreamId,
+    pub host: String,
+    pub port: u16,
+    pub resolved_addr: ResolvedAddr,
+    pub use_tls: bool,
+    pub sni: String,
+    pub weight: u32,
+    pub verify: bool,
     /// Preloaded when the runtime snapshot is created.
-    pub(crate) ca: Option<Arc<CaType>>,
+    pub ca: Option<Arc<CaType>>,
     /// Precomputed when the runtime snapshot is created.
-    pub(crate) group_key: u64,
+    pub group_key: u64,
 }
 
 impl UpstreamTcpRuntime {
-    pub(crate) fn http_peer_addr(&self) -> SocketAddr {
+    pub fn http_peer_addr(&self) -> SocketAddr {
         self.resolved_addr.load()
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct UpstreamUnixRuntime {
-    pub(crate) id: UpstreamId,
-    pub(crate) path: String,
-    pub(crate) use_tls: bool,
-    pub(crate) sni: String,
-    pub(crate) weight: u32,
+pub struct UpstreamUnixRuntime {
+    pub id: UpstreamId,
+    pub path: String,
+    pub use_tls: bool,
+    pub sni: String,
+    pub weight: u32,
 }
 
 #[cfg(test)]

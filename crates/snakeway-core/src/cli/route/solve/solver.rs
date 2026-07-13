@@ -2,7 +2,7 @@ use crate::cli::route::solve::types::{
     RouteSolveDecision, RouteSolveNormalized, RouteSolveOptions, RouteSolveRejection,
     RouteSolveTraceStep, SyntheticRequest,
 };
-use snakeway_engine::execution::route::{RouteEntry, RouteRuntime};
+use snakeway_engine::route::{RouteEntry, RouteRuntime};
 use snakeway_engine::runtime::{RuntimeState, ServiceRuntime, UpstreamRuntime};
 
 /// Deterministic, side-effect-free route resolution.
@@ -235,9 +235,9 @@ mod tests {
     use super::*;
     use crate::cli::route::solve::types::{RouteSolveOptions, SyntheticRequest};
     use snakeway_conf::types::LoadBalancingStrategy;
-    use snakeway_engine::execution::device::core::DeviceRegistry;
-    use snakeway_engine::execution::route::types::RouteId;
-    use snakeway_engine::execution::route::{RouteRuntime, Router};
+    use snakeway_engine::device::core::DeviceRegistry;
+    use snakeway_engine::route::types::RouteId;
+    use snakeway_engine::route::{RouteRuntime, Router};
     use snakeway_engine::runtime::{
         ResolvedAddr, RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
     };
@@ -269,7 +269,7 @@ mod tests {
             .enumerate()
             .map(|(i, (host, port))| {
                 UpstreamRuntime::Tcp(UpstreamTcpRuntime {
-                    id: UpstreamId(i as u32),
+                    id: UpstreamId::new(i as u32),
                     host: host.to_string(),
                     port: *port,
                     resolved_addr: ResolvedAddr::new(
@@ -453,7 +453,7 @@ mod tests {
                 ServiceRuntime {
                     strategy: LoadBalancingStrategy::RoundRobin,
                     upstreams: vec![UpstreamRuntime::Tcp(UpstreamTcpRuntime {
-                        id: UpstreamId(0),
+                        id: UpstreamId::new(0),
                         host: "127.0.0.1".into(),
                         port: 9000,
                         resolved_addr: ResolvedAddr::new("127.0.0.1:9000".parse().unwrap()),

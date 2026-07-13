@@ -6,7 +6,7 @@ use crate::execution::device::core::Device;
 use std::path::Path;
 use std::sync::Arc;
 
-pub(crate) fn load_wasm_device(device_file_path: &Path) -> anyhow::Result<Arc<dyn Device>> {
+pub fn load_wasm_device(device_file_path: &Path) -> anyhow::Result<Arc<dyn Device>> {
     use snakeway_conf::types::{WasmDeviceConfig, WasmDeviceFailPolicy};
     let wasm_engine = wasm::WasmEngine::new()?;
     let cfg = WasmDeviceConfig {

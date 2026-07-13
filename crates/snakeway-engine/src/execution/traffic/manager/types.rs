@@ -2,14 +2,14 @@ use crate::runtime::UpstreamId;
 use std::time::Instant;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum UpstreamOutcome {
+pub enum UpstreamOutcome {
     Transport(TransportFailure),
     HttpStatus(u16),
     Success,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum TransportFailure {
+pub enum TransportFailure {
     Connect,
     Timeout,
     Reset,

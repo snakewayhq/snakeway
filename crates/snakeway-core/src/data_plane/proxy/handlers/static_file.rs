@@ -1,8 +1,8 @@
 use pingora::prelude::Session;
 use pingora::{Custom, Error};
-use snakeway_engine::execution::ctx::RequestCtx;
-use snakeway_engine::execution::device::core::DeviceRegistry;
-use snakeway_engine::execution::route::RouteEntry;
+use snakeway_engine::ctx::RequestCtx;
+use snakeway_engine::device::core::DeviceRegistry;
+use snakeway_engine::route::RouteEntry;
 
 pub(crate) struct StaticFileHandler;
 
@@ -15,9 +15,9 @@ impl StaticFileHandler {
         devices: &DeviceRegistry,
     ) -> pingora::Result<bool> {
         use pingora::http::ResponseHeader;
-        use snakeway_engine::execution::ctx::{RequestId, ResponseCtx};
-        use snakeway_engine::execution::device::core::DevicePipeline;
-        use snakeway_engine::execution::device::core::DeviceResult;
+        use snakeway_engine::ctx::{RequestId, ResponseCtx};
+        use snakeway_engine::device::core::DevicePipeline;
+        use snakeway_engine::device::core::DeviceResult;
         use tokio::io::AsyncReadExt;
 
         // Extract conditional headers for cache validation and content negotiation.
@@ -146,7 +146,7 @@ impl StaticFileHandler {
         }
 
         // Run on_response devices
-        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
+        let request_id = ctx.extensions.get::<RequestId>().map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(
             request_id,
             static_resp.status,

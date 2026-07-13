@@ -1,6 +1,6 @@
 pub(crate) mod admin;
 pub(crate) mod algorithms;
-pub(crate) mod circuit;
+pub mod circuit;
 mod decision;
 mod director;
 mod manager;
@@ -10,12 +10,12 @@ mod types;
 
 mod admission_guard;
 
-pub(crate) use admission_guard::*;
-pub(crate) use decision::SelectedUpstream;
-pub(crate) use director::*;
-pub(crate) use manager::*;
+pub use admission_guard::*;
+pub use decision::SelectedUpstream;
+pub use director::*;
+pub use manager::*;
 pub(crate) use snapshot::*;
-pub(crate) use types::*;
+pub use types::*;
 
 pub use manager::TrafficManager;
 pub use snapshot::TrafficSnapshot;

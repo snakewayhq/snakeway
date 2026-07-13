@@ -11,8 +11,8 @@ use snakeway_acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
 use snakeway_conf::types::{CertStoreConfig, RuntimeConfig, TlsAutomationConfig};
-use snakeway_engine::execution::traffic::{TrafficManager, TrafficSnapshot};
-use snakeway_engine::execution::ws_connection_management::WsConnectionManager;
+use snakeway_engine::traffic::{TrafficManager, TrafficSnapshot};
+use snakeway_engine::WsConnectionManager;
 use snakeway_engine::runtime::{
     ReloadError, RuntimeState, build_runtime_state, reload_runtime_state,
 };

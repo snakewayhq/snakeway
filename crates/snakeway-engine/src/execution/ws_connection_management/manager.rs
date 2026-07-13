@@ -38,7 +38,7 @@ impl WsConnectionManager {
     /// Attempt to acquire a connection slot for the given route.
     ///
     /// On success, returns a ConnectionGuard that will release the slot on Drop.
-    pub(crate) fn try_acquire(
+    pub fn try_acquire(
         &self,
         route_id: &RouteId,
         max: Option<usize>,
@@ -54,14 +54,14 @@ impl WsConnectionManager {
 }
 
 #[derive(Debug, Serialize)]
-pub(crate) struct RouteConnectionSnapshot {
+pub struct RouteConnectionSnapshot {
     pub(crate) route_id: RouteId,
     pub(crate) active: usize,
     pub(crate) max: Option<usize>,
 }
 
 impl WsConnectionManager {
-    pub(crate) fn snapshot(&self) -> Vec<RouteConnectionSnapshot> {
+    pub fn snapshot(&self) -> Vec<RouteConnectionSnapshot> {
         self.routes
             .iter()
             .map(|entry| {

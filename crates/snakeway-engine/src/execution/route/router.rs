@@ -31,8 +31,8 @@ impl From<String> for HostMatcher {
 #[derive(Debug)]
 pub struct RouteEntry {
     pub(crate) hosts: Vec<HostMatcher>,
-    pub(crate) path: String,
-    pub(crate) kind: RouteRuntime,
+    pub path: String,
+    pub kind: RouteRuntime,
 }
 
 impl Default for Router {

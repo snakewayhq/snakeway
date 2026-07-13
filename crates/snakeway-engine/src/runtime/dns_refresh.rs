@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
 
-pub(crate) async fn run_dns_refresh(state: Arc<ArcSwap<RuntimeState>>, interval: Duration) {
+pub async fn run_dns_refresh(state: Arc<ArcSwap<RuntimeState>>, interval: Duration) {
     loop {
         tokio::time::sleep(interval).await;
         refresh_all(&state);

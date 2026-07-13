@@ -20,7 +20,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-pub(crate) async fn reload_runtime_state(
+pub async fn reload_runtime_state(
     config_path: &Path,
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,

@@ -4,18 +4,18 @@ use snakeway_conf::types::LoadBalancingStrategy;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub(crate) struct UpstreamSnapshot {
-    pub(crate) endpoint: UpstreamRuntime,
+pub struct UpstreamSnapshot {
+    pub endpoint: UpstreamRuntime,
     pub(crate) latency: Option<LatencyStats>,
     pub(crate) weight: u32,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ServiceSnapshot {
+pub struct ServiceSnapshot {
     #[allow(dead_code)] // useful for debugger inspection
     pub(crate) service_id: ServiceId,
     pub(crate) strategy: LoadBalancingStrategy,
-    pub(crate) upstreams: Vec<UpstreamSnapshot>,
+    pub upstreams: Vec<UpstreamSnapshot>,
     pub(crate) circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig,
     pub(crate) health_check_cfg: snakeway_conf::types::HealthCheckConfig,
 }
@@ -26,7 +26,7 @@ pub(crate) struct ServiceSnapshot {
 /// Updated only by reload, health checks, or discovery.
 #[derive(Debug, Clone, Default)]
 pub struct TrafficSnapshot {
-    pub(crate) services: HashMap<ServiceId, ServiceSnapshot>,
+    pub services: HashMap<ServiceId, ServiceSnapshot>,
 }
 
 impl TrafficSnapshot {

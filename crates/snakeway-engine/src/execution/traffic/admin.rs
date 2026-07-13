@@ -3,7 +3,7 @@ use crate::execution::traffic::circuit::{CircuitBreakerParams, CircuitState};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-pub(crate) struct AdminUpstreamView {
+pub struct AdminUpstreamView {
     pub(crate) endpoint: String,
     pub(crate) weight: u32,
     pub(crate) latency_ms: Option<u64>,

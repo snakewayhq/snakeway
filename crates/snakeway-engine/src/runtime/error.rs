@@ -1,7 +1,7 @@
 use snakeway_conf::validation::ConfigError;
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum ReloadError {
+pub enum ReloadError {
     #[error("failed to load configuration")]
     Load(#[from] ConfigError),
 

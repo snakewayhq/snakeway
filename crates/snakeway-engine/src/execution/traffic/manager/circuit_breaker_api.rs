@@ -39,28 +39,46 @@ impl TrafficManager {
         entry.on_request_end((service_id, upstream_id), &params, started, success);
     }
 
-    pub(crate) fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
+    /// Current circuit breaker state for an upstream, if one is tracked.
+    pub fn circuit_state(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+    ) -> Option<CircuitState> {
+        self.circuit
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|cb| cb.state())
+    }
+
+    /// Whether a service is configured to count HTTP 5xx responses as circuit failures.
+    pub fn count_http_5xx_as_failure(&self, service_id: &ServiceId) -> Option<bool> {
+        self.circuit_params
+            .get(service_id)
+            .map(|p| p.count_http_5xx_as_failure)
+    }
+
+    pub fn total_requests(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_requests
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub(crate) fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
+    pub fn total_successes(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_successes
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub(crate) fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
+    pub fn total_failures(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> u64 {
         self.total_failures
             .get(&(service_id.clone(), *upstream_id))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }
 
-    pub(crate) fn get_upstream_view(
+    pub fn get_upstream_view(
         &self,
         service_id: &ServiceId,
         upstream: &UpstreamSnapshot,

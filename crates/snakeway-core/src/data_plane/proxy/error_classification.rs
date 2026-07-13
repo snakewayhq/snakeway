@@ -1,4 +1,4 @@
-use snakeway_engine::execution::traffic::TransportFailure;
+use snakeway_engine::traffic::TransportFailure;
 
 /// Classifies Pingora upstream errors into Snakeway transport failures.
 /// Non-upstream errors are intentionally ignored to avoid penalizing healthy upstreams.

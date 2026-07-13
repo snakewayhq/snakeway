@@ -28,7 +28,7 @@ pub enum RouteRuntime {
 }
 
 impl RouteRuntime {
-    pub(crate) fn id(&self) -> &RouteId {
+    pub fn id(&self) -> &RouteId {
         match self {
             RouteRuntime::Service { id, .. } => id,
             RouteRuntime::Static { id, .. } => id,
@@ -81,7 +81,7 @@ impl RouteId {
     }
 
     /// Stable string form for logging / admin APIs
-    pub(crate) fn as_str(&self) -> String {
+    pub fn as_str(&self) -> String {
         let kind = match self.kind {
             RouteKind::Service => "service",
             RouteKind::Static => "static",

@@ -3,7 +3,7 @@ use smallvec::SmallVec;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Default)]
-pub(crate) struct NormalizedRequestParams {
+pub struct NormalizedRequestParams {
     pub(crate) original_uri: Uri,
     pub(crate) method: Method,
     pub(crate) host: String,
@@ -17,7 +17,7 @@ pub(crate) struct NormalizedRequestParams {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct NormalizedRequest(NormalizedRequestParams);
+pub struct NormalizedRequest(NormalizedRequestParams);
 
 impl From<NormalizedRequestParams> for NormalizedRequest {
     fn from(params: NormalizedRequestParams) -> Self {
@@ -111,10 +111,14 @@ impl From<NormalizedPath> for NormalizedRequest {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct NormalizedPath(pub(crate) String);
+pub struct NormalizedPath(pub(crate) String);
 
 impl NormalizedPath {
-    pub(crate) fn as_str(&self) -> &str {
+    pub fn new(path: String) -> Self {
+        Self(path)
+    }
+
+    pub fn as_str(&self) -> &str {
         &self.0
     }
 }

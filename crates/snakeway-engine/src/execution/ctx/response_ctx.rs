@@ -5,13 +5,13 @@ use pingora::protocols::http::ServerSession;
 #[derive(Debug)]
 pub struct ResponseCtx {
     pub(crate) request_id: Option<String>,
-    pub(crate) status: StatusCode,
-    pub(crate) headers: HeaderMap,
+    pub status: StatusCode,
+    pub headers: HeaderMap,
     pub(crate) body: Vec<u8>,
 }
 
 impl ResponseCtx {
-    pub(crate) fn new(
+    pub fn new(
         request_id: Option<String>,
         status: StatusCode,
         headers: HeaderMap,
@@ -43,7 +43,7 @@ impl ResponseCtx {
         )
     }
 
-    pub(crate) async fn write_to_session(self, session: &mut ServerSession) -> pingora::Result<()> {
+    pub async fn write_to_session(self, session: &mut ServerSession) -> pingora::Result<()> {
         let mut response = ResponseHeader::build(self.status, None)?;
         for (name, value) in &self.headers {
             response.append_header(name.clone(), value)?;

@@ -15,7 +15,7 @@ pub(crate) struct CircuitBreakerParams {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum CircuitState {
+pub enum CircuitState {
     Closed,
     Open,
     HalfOpen,

@@ -2,7 +2,7 @@ use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use pingora::listeners::TlsAccept;
 use pingora::protocols::tls::TlsRef;
-use snakeway_engine::execution::DownstreamSni;
+use snakeway_engine::DownstreamSni;
 use snakeway_engine::runtime::RuntimeState;
 use std::any::Any;
 use std::sync::Arc;
@@ -42,7 +42,7 @@ impl TlsAccept for SnakewayTlsAccept {
     ) -> Option<Arc<dyn Any + Send + Sync>> {
         // Extract SNI.
         let hostname = extract_sni(ssl).filter(|s| !s.is_empty())?;
-        let hostname = Arc::new(DownstreamSni(hostname.clone()));
+        let hostname = Arc::new(DownstreamSni::new(hostname.clone()));
         Some(hostname)
     }
 }

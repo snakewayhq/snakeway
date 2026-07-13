@@ -7,7 +7,7 @@ use std::sync::Arc;
 /// - A guard is created *only after* RouteConnectionState::try_acquire() succeeds
 /// - The slot is released exactly once on Drop
 #[derive(Debug)]
-pub(crate) struct WsConnectionGuard {
+pub struct WsConnectionGuard {
     state: Arc<WsRouteConnectionState>,
 }
 

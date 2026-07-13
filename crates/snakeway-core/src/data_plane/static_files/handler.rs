@@ -3,7 +3,7 @@ use http::{HeaderMap, HeaderValue, StatusCode};
 use crate::data_plane::static_files::render::{render_directory, render_file};
 use crate::data_plane::static_files::resolve::{ResolveError, ResolvedStatic, resolve_static_path};
 use crate::data_plane::static_files::{ConditionalHeaders, ServeError, StaticBody, StaticResponse};
-use snakeway_engine::execution::route::RouteRuntime;
+use snakeway_engine::route::RouteRuntime;
 
 pub(crate) async fn handle_static_request(
     route: &RouteRuntime,

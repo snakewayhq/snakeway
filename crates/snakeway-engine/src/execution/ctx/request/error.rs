@@ -2,7 +2,7 @@ use pingora::{BError, Custom, Error as PingoraError};
 use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError)]
-pub(crate) enum RequestRejectError {
+pub enum RequestRejectError {
     #[error("invalid request path")]
     InvalidPath,
 
@@ -23,7 +23,7 @@ pub(crate) enum RequestRejectError {
 }
 
 impl RequestRejectError {
-    pub(crate) fn as_pingora_error(&self) -> BError {
+    pub fn as_pingora_error(&self) -> BError {
         match self {
             Self::InvalidPath => PingoraError::new(Custom("invalid request path")),
             Self::InvalidQueryString => PingoraError::new(Custom("invalid query string")),

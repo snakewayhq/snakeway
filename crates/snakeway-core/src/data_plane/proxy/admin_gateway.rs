@@ -5,9 +5,9 @@ use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
 use snakeway_acme::CertManager;
 use snakeway_conf::types::AdminAuthConfig;
-use snakeway_engine::execution::ctx::RequestCtx;
-use snakeway_engine::execution::traffic::TrafficManager;
-use snakeway_engine::execution::ws_connection_management::WsConnectionManager;
+use snakeway_engine::ctx::RequestCtx;
+use snakeway_engine::traffic::TrafficManager;
+use snakeway_engine::WsConnectionManager;
 use std::sync::Arc;
 
 pub(crate) struct AdminGateway {

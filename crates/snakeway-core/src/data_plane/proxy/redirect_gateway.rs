@@ -4,7 +4,7 @@ use pingora::http::ResponseHeader;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
 use snakeway_acme::CertManager;
-use snakeway_engine::execution::ctx::RequestCtx;
+use snakeway_engine::ctx::RequestCtx;
 use std::sync::Arc;
 
 pub(crate) struct RedirectGateway {
