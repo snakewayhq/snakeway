@@ -26,7 +26,7 @@ Read this page first, then consult the page that matches the kind of change you 
 │   ├── snakeway-wasm-test-device/    # WASM integration test fixture device
 │   └── snakeway-wit/                 # WIT bindings for the WASM device interface
 ├── dev/                              # Dev-related (just recipes, k6 load testing scripts, etc.)
-├── docs/                             # Integration test crate (separate binary, uses nextest)
+├── docs/                             # Docusaurus website.
 ├── packaging/                        # Contains all the packaging config and scripts for Docker, systemd, etc.
 ```
 
