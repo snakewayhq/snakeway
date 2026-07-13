@@ -9,9 +9,11 @@ use crate::harness::{CapturedEvent, init_test_tracing};
 use reqwest::blocking::{Client, RequestBuilder};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
-use snakeway_core::testing_api::conf::load_config;
-use snakeway_core::testing_api::conf::types::RuntimeConfig;
-use snakeway_core::testing_api::{ControlPlaneServer, Metrics};
+use snakeway_core::testing_api::{
+    ControlPlaneServer,
+    conf::{load_config, types::RuntimeConfig},
+    observability::Metrics,
+};
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
