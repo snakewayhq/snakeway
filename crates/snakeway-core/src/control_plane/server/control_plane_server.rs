@@ -1,6 +1,3 @@
-use crate::control_plane::acme::{
-    CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
-};
 use crate::control_plane::observability;
 use crate::control_plane::observability::Metrics;
 use crate::control_plane::server::pid;
@@ -15,6 +12,9 @@ use anyhow::Result;
 use arc_swap::ArcSwap;
 use nix::NixPath;
 use pingora::server::Server;
+use snakeway_acme::{
+    CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
+};
 use snakeway_conf::types::{CertStoreConfig, RuntimeConfig, TlsAutomationConfig};
 use std::path::PathBuf;
 use std::sync::Arc;

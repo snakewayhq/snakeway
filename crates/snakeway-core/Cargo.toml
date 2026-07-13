@@ -14,6 +14,7 @@ dev-templates = []
 
 [dependencies]
 confval = { workspace = true }
+snakeway-acme = { workspace = true }
 snakeway-conf = { workspace = true }
 snakeway-net = { workspace = true }
 anyhow = { workspace = true }
@@ -25,7 +26,6 @@ clap = { workspace = true, features = ["derive", "env"] }
 console-subscriber = { workspace = true }
 ctrlc = { workspace = true }
 flate2 = { workspace = true }
-hex = { workspace = true }
 http = { workspace = true }
 httpdate = { workspace = true }
 maxminddb = { workspace = true, features = ["mmap"] }
@@ -63,10 +63,6 @@ hcl-rs = { workspace = true }
 pretty_assertions = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 smallvec = { workspace = true }
-instant-acme = { workspace = true }
-secrecy = { workspace = true }
-sha2 = { workspace = true }
-x509-parser = { workspace = true }
 url = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }

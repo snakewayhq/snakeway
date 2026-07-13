@@ -1,4 +1,3 @@
-use crate::control_plane::acme::{CertManager, SniRegistry};
 use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
@@ -13,6 +12,7 @@ use arc_swap::ArcSwap;
 use http::Uri;
 use openssl::x509::X509;
 use pingora::protocols::tls::CaType;
+use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;

@@ -9,6 +9,7 @@ members = [
     "crates/snakeway-tests",
     "crates/snakeway-jwt-auth-device",
     "crates/snakeway-wasm-test-device",
+    "crates/snakeway-acme",
 ]
 default-members = ["crates/snakeway"]
 exclude = [
@@ -57,6 +58,7 @@ strip = "symbols"           # Strip symbols to minimize binary size
 
 [workspace.dependencies]
 confval = { path = "crates/confval", features = ["serde", "color", "hcl", "derive"] }
+snakeway-acme = { path = "crates/snakeway-acme" }
 snakeway-conf = { path = "crates/snakeway-conf" }
 snakeway-core = { path = "crates/snakeway-core" }
 snakeway-net = { path = "crates/snakeway-net" }

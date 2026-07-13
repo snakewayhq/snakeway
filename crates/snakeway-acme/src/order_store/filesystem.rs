@@ -1,4 +1,4 @@
-use crate::control_plane::acme::order_store::store_trait::{OrderState, OrderStore};
+use crate::order_store::store_trait::{OrderState, OrderStore};
 use std::path::{Path, PathBuf};
 
 pub struct FilesystemOrderStore {

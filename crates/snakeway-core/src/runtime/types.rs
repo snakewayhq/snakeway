@@ -1,8 +1,8 @@
-use crate::control_plane::acme::SniRegistry;
 use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::Router;
 use arc_swap::ArcSwap;
 use pingora::protocols::tls::CaType;
+use snakeway_acme::SniRegistry;
 use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use std::collections::HashMap;
 use std::hash::Hash;

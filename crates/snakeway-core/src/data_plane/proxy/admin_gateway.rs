@@ -1,5 +1,4 @@
 use crate::control_plane::ReloadHandle;
-use crate::control_plane::acme::CertManager;
 use crate::data_plane::proxy::handlers::{AdminContext, AdminHandler};
 use crate::data_plane::ws_connection_management::WsConnectionManager;
 use crate::execution::ctx::RequestCtx;
@@ -7,6 +6,7 @@ use crate::execution::traffic::TrafficManager;
 use async_trait::async_trait;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
+use snakeway_acme::CertManager;
 use snakeway_conf::types::AdminAuthConfig;
 use std::sync::Arc;
 

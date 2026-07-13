@@ -1,4 +1,4 @@
-use crate::control_plane::acme::cert_store::{CertStore, CertificateMeta, StoredCertificate};
+use crate::cert_store::{CertStore, CertificateMeta, StoredCertificate};
 use std::collections::HashMap;
 use std::sync::RwLock;
 

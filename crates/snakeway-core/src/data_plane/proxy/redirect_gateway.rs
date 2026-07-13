@@ -1,10 +1,10 @@
-use crate::control_plane::acme::CertManager;
 use crate::execution::ctx::RequestCtx;
 use async_trait::async_trait;
 use bytes::Bytes;
 use pingora::http::ResponseHeader;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Custom, Error};
+use snakeway_acme::CertManager;
 use std::sync::Arc;
 
 pub(crate) struct RedirectGateway {

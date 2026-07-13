@@ -1,7 +1,7 @@
-use crate::control_plane::acme::cert_store::{CertificateMeta, StoredCertificate};
-use crate::control_plane::acme::order_store::OrderState;
-use crate::control_plane::acme::state::{CertState, compute_state};
-use crate::control_plane::acme::{CertManager, OrderStatus};
+use crate::cert_store::{CertificateMeta, StoredCertificate};
+use crate::order_store::OrderState;
+use crate::state::{CertState, compute_state};
+use crate::{CertManager, OrderStatus};
 use sha2::{Digest, Sha256};
 use snakeway_conf::types::{AcmeChallengeConfig, RuntimeConfig, TlsTerminationConfig};
 use std::collections::{BTreeMap, HashMap};

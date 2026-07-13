@@ -1,5 +1,5 @@
-use crate::control_plane::acme::order_store::{OrderState, OrderStatus};
-use crate::control_plane::acme::renewal_policy::RenewalPolicy;
+use crate::order_store::{OrderState, OrderStatus};
+use crate::renewal_policy::RenewalPolicy;
 use serde::Serialize;
 use std::fmt;
 use std::time::SystemTime;
@@ -74,7 +74,7 @@ impl fmt::Display for CertState {
 }
 
 pub(crate) fn compute_state(
-    meta: Option<&crate::control_plane::acme::cert_store::CertificateMeta>,
+    meta: Option<&crate::cert_store::CertificateMeta>,
     order_state: Option<&OrderState>,
     renewal_policy: &RenewalPolicy,
 ) -> CertState {

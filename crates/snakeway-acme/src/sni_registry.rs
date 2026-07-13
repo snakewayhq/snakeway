@@ -1,4 +1,4 @@
-use crate::control_plane::acme::ParsedCert;
+use crate::ParsedCert;
 use arc_swap::ArcSwap;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -10,13 +10,13 @@ pub struct SniRegistry {
 }
 
 impl SniRegistry {
-    pub(crate) fn new(initial: SniMap) -> Self {
+    pub fn new(initial: SniMap) -> Self {
         Self {
             inner: ArcSwap::from_pointee(initial),
         }
     }
 
-    pub(crate) fn load(&self) -> Arc<SniMap> {
+    pub fn load(&self) -> Arc<SniMap> {
         self.inner.load_full()
     }
 

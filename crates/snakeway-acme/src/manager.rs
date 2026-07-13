@@ -1,9 +1,9 @@
-use crate::control_plane::acme::acme_client::AcmeClient;
-use crate::control_plane::acme::admin::CertView;
-use crate::control_plane::acme::challenge::Http01Registry;
-use crate::control_plane::acme::error::CertManagerError;
-use crate::control_plane::acme::sni_registry::{SniMap, SniRegistry};
-use crate::control_plane::acme::{
+use crate::acme_client::AcmeClient;
+use crate::admin::CertView;
+use crate::challenge::Http01Registry;
+use crate::error::CertManagerError;
+use crate::sni_registry::{SniMap, SniRegistry};
+use crate::{
     ParsedCert, cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
     renewal_policy::RenewalPolicy,
 };
@@ -66,7 +66,7 @@ impl CertManager {
         reconciler.run().await;
     }
 
-    pub(crate) fn reload(&self, new_config: Arc<RuntimeConfig>) {
+    pub fn reload(&self, new_config: Arc<RuntimeConfig>) {
         self.config.store(new_config);
     }
 
@@ -101,9 +101,7 @@ impl CertManager {
         Ok(Some(ParsedCert { leaf, chain, key }))
     }
 
-    pub(crate) fn build_sni_map(
-        &self,
-    ) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
+    pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
         let mut map = HashMap::new();
 
         for (cert_id, meta) in self.cert_store.list() {
@@ -158,14 +156,14 @@ impl CertManager {
             .ok_or(CertManagerError::AcmeNotInitialized)
     }
 
-    pub(crate) fn http01(&self) -> Arc<Http01Registry> {
+    pub fn http01(&self) -> Arc<Http01Registry> {
         self.http01.clone()
     }
 }
 
 /// Admin API
 impl CertManager {
-    pub(crate) fn snapshot(&self) -> Vec<CertView> {
+    pub fn snapshot(&self) -> Vec<CertView> {
         let now = SystemTime::now();
 
         self.cert_store

@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::time::SystemTime;
 
 #[derive(Serialize)]
-pub(crate) struct CertView {
+pub struct CertView {
     pub(crate) id: String,
     pub(crate) domains: Vec<String>,
     pub(crate) issued_at: SystemTime,

@@ -4232,6 +4232,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "snakeway-acme"
+version = "0.15.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "dashmap",
+ "hex",
+ "instant-acme",
+ "openssl",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "snakeway-conf",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "x509-parser",
+]
+
+[[package]]
 name = "snakeway-conf"
 version = "0.15.0"
 dependencies = [
@@ -4273,12 +4294,10 @@ dependencies = [
  "dashmap",
  "flate2",
  "hcl-rs",
- "hex",
  "hostname",
  "hotpath",
  "http",
  "httpdate",
- "instant-acme",
  "ipnet",
  "maxminddb",
  "mime_guess",
@@ -4294,12 +4313,11 @@ dependencies = [
  "pingora-limits",
  "pretty_assertions",
  "rand 0.10.1",
- "secrecy",
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2 0.11.0",
  "smallvec",
+ "snakeway-acme",
  "snakeway-conf",
  "snakeway-net",
  "tempfile",
@@ -4314,7 +4332,6 @@ dependencies = [
  "uuid",
  "wasmtime",
  "woothee",
- "x509-parser",
 ]
 
 [[package]]
