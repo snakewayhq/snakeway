@@ -1,4 +1,5 @@
-use crate::constants::{ACME_ORDERS_DIR, CERT_PEBBLE_CA_PEM, TEST_HOST};
+use crate::constants::{CERT_PEBBLE_CA_PEM, TEST_HOST};
+use crate::harness::acme::acme_test_root;
 use snakeway::testing_api::conf::types::RuntimeConfig;
 use url::Url;
 
@@ -55,8 +56,9 @@ fn patch_acme_paths(cfg: &mut RuntimeConfig) {
     let Some(tls_auto) = cfg.server.tls_automation.as_mut() else {
         return;
     };
-    // Absolutize the ACME data dir so the test process can find it regardless of cwd.
-    tls_auto.acme.data_dir = manifest_dir.join(ACME_ORDERS_DIR);
+    // Point the ACME data dir at the per-process temp root so state stays fresh
+    // across runs and is found regardless of cwd.
+    tls_auto.acme.data_dir = acme_test_root().join("orders");
     // Absolutize the Pebble CA file path.
     if tls_auto.acme.ca_file.is_some() {
         tls_auto.acme.ca_file = Some(manifest_dir.join(CERT_PEBBLE_CA_PEM));
