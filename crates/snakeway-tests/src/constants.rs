@@ -102,6 +102,10 @@ pub const ACME_DIRECTORY_URL: &str = "https://localhost:14000/dir";
 /// Contact e-mail address registered with the ACME server in test configs.
 pub const ACME_CONTACT_EMAIL: &str = "barryallen@example.com";
 
+pub const ACME_ORDERS_DIR: &str = "orders";
+
+pub const ACME_CERTS_DIR: &str = "certs";
+
 // ---------------------------------------------------------------------------
 // Mock HTTP upstream response
 // ---------------------------------------------------------------------------
