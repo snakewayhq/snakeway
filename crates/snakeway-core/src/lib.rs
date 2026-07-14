@@ -22,6 +22,7 @@ pub mod testing_api {
     pub use crate::cli;
     pub use crate::control_plane::{ControlPlaneServer, RuntimeServer};
     pub use snakeway_conf as conf;
+    pub use snakeway_engine as engine;
     pub use snakeway_observability as observability;
 }
 
