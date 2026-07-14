@@ -16,11 +16,11 @@ Write a Criterion microbenchmark when you need to:
 Do **not** create microbenchmarks for end-to-end proxy throughput.
 Use the existing k6 scripts in `k6/` and the `benchmark-proxy` and `run-load-test` recipes in the Justfile instead.
 
-| Benchmark type                | Location                   | Tool      |
-|-------------------------------|----------------------------|-----------|
-| Rust microbenchmarks          | `crates/snakeway/benches/` | Criterion |
-| Proxy throughput / load tests | `k6/`                      | k6        |
-| Manual load tests             | Justfile recipes           | wrk / hey |
+| Benchmark type                | Location                          | Tool      |
+|-------------------------------|-----------------------------------|-----------|
+| Rust microbenchmarks          | `crates/snakeway-engine/benches/` | Criterion |
+| Proxy throughput / load tests | `k6/`                             | k6        |
+| Manual load tests             | Justfile recipes                  | wrk / hey |
 
 ## Criterion Template
 
@@ -84,11 +84,11 @@ indirectly through the device or ctx APIs that call them.
 The existing bench targets follow this pattern:
 
 ```
-crates/snakeway/benches/router.rs
-crates/snakeway/benches/device_pipeline.rs
-crates/snakeway/benches/request_filter.rs
-crates/snakeway/benches/identity.rs
-crates/snakeway/benches/header_scaling.rs
+crates/snakeway-engine/benches/router.rs
+crates/snakeway-engine/benches/device_pipeline.rs
+crates/snakeway-engine/benches/request_filter.rs
+crates/snakeway-engine/benches/identity.rs
+crates/snakeway-engine/benches/header_scaling.rs
 ```
 
 ### Step 3: Register the bench target in crates/snakeway/Cargo.toml
