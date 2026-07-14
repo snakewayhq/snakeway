@@ -43,3 +43,25 @@ uuid = { workspace = true, features = ["v4"] }
 smallvec = { workspace = true }
 opentelemetry = { workspace = true }
 hotpath = { workspace = true }
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "router"
+harness = false
+
+[[bench]]
+name = "device_pipeline"
+harness = false
+
+[[bench]]
+name = "request_filter"
+harness = false
+
+[[bench]]
+name = "identity"
+harness = false
+
+[[bench]]
+name = "header_scaling"
+harness = false

@@ -18,17 +18,3 @@ pub mod testing_api {
     pub use snakeway_engine as engine;
     pub use snakeway_observability as observability;
 }
-
-#[doc(hidden)]
-pub mod bench_api {
-    pub use snakeway_conf::types::{IdentityDeviceConfig, RequestFilterDeviceConfig, UaEngineKind};
-    pub use snakeway_engine::ctx::request::normalization::{
-        ProtocolNormalizationMode, normalize_headers,
-    };
-    pub use snakeway_engine::ctx::request::request_ctx::RequestCtx;
-    pub use snakeway_engine::device::builtin::identity::IdentityDevice;
-    pub use snakeway_engine::device::builtin::request_filter::RequestFilterDevice;
-    pub use snakeway_engine::device::core::{Device, DevicePipeline};
-    pub use snakeway_engine::route::types::RouteId;
-    pub use snakeway_engine::route::{RouteRuntime, Router};
-}

@@ -1,8 +1,9 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::HeaderName;
-use snakeway::bench_api::{
-    Device, RequestCtx, RequestFilterDevice, RequestFilterDeviceConfig,
-};
+use snakeway_conf::types::RequestFilterDeviceConfig;
+use snakeway_engine::ctx::request::request_ctx::RequestCtx;
+use snakeway_engine::device::builtin::request_filter::RequestFilterDevice;
+use snakeway_engine::device::core::Device;
 
 /// Build a `RequestFilterDevice` with `n` deny-header rules.
 ///

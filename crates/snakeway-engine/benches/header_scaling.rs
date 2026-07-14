@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::HeaderMap;
-use snakeway::bench_api::{ProtocolNormalizationMode, normalize_headers};
+use snakeway_engine::ctx::request::normalization::{ProtocolNormalizationMode, normalize_headers};
 
 /// Build a `HeaderMap` with `n` synthetic headers.
 ///

@@ -1,5 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use snakeway::bench_api::{Device, DevicePipeline, RequestCtx};
+use snakeway_engine::ctx::request::request_ctx::RequestCtx;
+use snakeway_engine::device::core::{Device, DevicePipeline};
 use std::sync::Arc;
 
 struct NoopDevice;

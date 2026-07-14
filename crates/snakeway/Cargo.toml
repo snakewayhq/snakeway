@@ -45,32 +45,11 @@ url = { workspace = true }
 hotpath = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = { workspace = true }
 tempfile = { workspace = true }
 
 [[bin]]
 name = "snakeway"
 path = "src/main.rs"
-
-[[bench]]
-name = "router"
-harness = false
-
-[[bench]]
-name = "device_pipeline"
-harness = false
-
-[[bench]]
-name = "request_filter"
-harness = false
-
-[[bench]]
-name = "identity"
-harness = false
-
-[[bench]]
-name = "header_scaling"
-harness = false
 
 [package.metadata.cargo-machete]
 ignored = ["hcl-rs"]
