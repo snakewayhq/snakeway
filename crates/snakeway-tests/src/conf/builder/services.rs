@@ -1,6 +1,6 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::{
-    ACME_CERTS_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDERS_DIR, ADMIN_TOKEN_FILE,
+    ACME_CERT_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDER_DIR, ADMIN_TOKEN_FILE,
     CERT_ORIGIN_CA_PEM, CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM,
     DEFAULT_ADMIN_LISTENER_PORT, ROUTE_PATH_API, ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST,
     UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
@@ -125,20 +125,20 @@ impl ConfigBuilder {
 
     pub fn with_https_ingress(mut self) -> Self {
         let acme_root = acme_test_root();
-        let orders_dir = acme_root.join(ACME_ORDERS_DIR);
-        let certs_dir = acme_root.join(ACME_CERTS_DIR);
+        let order_dir = acme_root.join(ACME_ORDER_DIR);
+        let cert_dir = acme_root.join(ACME_CERT_DIR);
 
         self.server_spec.ca_file = Some(Located::detached(PathBuf::from(CERT_ORIGIN_CA_PEM)));
         self.server_spec.tls_automation = Some(Located::detached(
             snakeway::testing_api::conf::types::TlsAutomationSpec {
                 acme: Located::detached(AcmeServerSpec {
                     directory_url: Located::detached(ACME_DIRECTORY_URL.to_string()),
-                    data_dir: Located::detached(orders_dir),
+                    data_dir: Located::detached(order_dir),
                     contact_email: vec![Located::detached(ACME_CONTACT_EMAIL.to_string())],
                     ca_file: Some(Located::detached(PathBuf::from(CERT_PEBBLE_CA_PEM))),
                 }),
                 cert_store: Located::detached(CertStoreSpec::Filesystem {
-                    cert_dir: Located::detached(certs_dir),
+                    cert_dir: Located::detached(cert_dir),
                 }),
                 renew_within_days: Located::detached(30),
             },
