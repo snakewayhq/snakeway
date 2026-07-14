@@ -66,7 +66,7 @@ mod tests {
     use super::*;
     use snakeway_conf::types::{
         ListenerConfig, PerformanceConfig, RuntimeConfig, ServerConfig, ShutdownConfig,
-        UpgradeConfig, UpstreamSettingsConfig,
+        UpgradeConfig, UpstreamSettingsConfig, WasmConfig,
     };
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -98,6 +98,7 @@ mod tests {
                 read_timeout: None,
                 source_addresses: None,
             },
+            wasm: WasmConfig::default(),
         }
     }
 

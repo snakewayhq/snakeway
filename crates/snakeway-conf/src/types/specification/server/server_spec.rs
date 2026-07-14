@@ -1,4 +1,4 @@
-use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec};
+use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec, WasmSpec};
 use crate::validation::validator::validate_cert_pem;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -57,6 +57,10 @@ pub struct ServerSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub upstream: Option<Located<UpstreamSettingsSpec>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(nested)]
+    pub wasm: Option<Located<WasmSpec>>,
 }
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -134,6 +138,7 @@ impl Default for ServerSpec {
             upgrade: None,
             performance: None,
             upstream: None,
+            wasm: None,
         }
     }
 }

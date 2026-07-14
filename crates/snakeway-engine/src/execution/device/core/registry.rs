@@ -89,7 +89,7 @@ impl DeviceRegistry {
             }
         }
 
-        self.load_wasm_devices(wasm_configs)?;
+        self.load_wasm_devices(wasm_configs, &cfg.server.wasm)?;
 
         Ok(())
     }
@@ -103,15 +103,20 @@ impl DeviceRegistry {
     fn load_wasm_devices(
         &mut self,
         wasm_configs: Vec<&snakeway_conf::types::WasmDeviceConfig>,
+        wasm_settings: &snakeway_conf::types::WasmConfig,
     ) -> Result<()> {
         if wasm_configs.is_empty() {
             return Ok(());
         }
 
-        let wasm_engine = WasmEngine::new()?;
+        let wasm_engine = WasmEngine::new(wasm_settings)?;
 
         for cfg in wasm_configs {
-            let device = WasmDevice::load(Arc::clone(&wasm_engine.engine), cfg)?;
+            let device = WasmDevice::load(
+                Arc::clone(&wasm_engine.engine),
+                cfg,
+                wasm_settings.max_memory_bytes,
+            )?;
             info!("loaded wasm device: {}", device.name());
             self.devices.push(Arc::new(device));
         }

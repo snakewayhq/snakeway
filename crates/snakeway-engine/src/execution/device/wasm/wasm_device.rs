@@ -23,7 +23,6 @@ use wasmtime::{
     component::{Component, Linker},
 };
 
-const MAX_MEMORY_SIZE: usize = 64 * 1024 * 1024;
 const MAX_TABLE_ELEMENTS: usize = 10_000;
 
 #[derive(Default, Clone)]
@@ -38,6 +37,7 @@ pub(crate) struct WasmDevice {
     fail_policy: WasmDeviceFailPolicy,
     timeout_ms: u64,
     body_buffer_max: u64,
+    max_memory_bytes: usize,
     hooks: WasmHookMask,
     engine: Arc<Engine>,
     hook_duration: Histogram<f64>,
@@ -46,7 +46,11 @@ pub(crate) struct WasmDevice {
 }
 
 impl WasmDevice {
-    pub(crate) fn load(engine: Arc<Engine>, cfg: &WasmDeviceConfig) -> Result<Self> {
+    pub(crate) fn load(
+        engine: Arc<Engine>,
+        cfg: &WasmDeviceConfig,
+        max_memory_bytes: usize,
+    ) -> Result<Self> {
         let component = Component::from_file(&engine, &cfg.path)?;
 
         let mut linker: Linker<HostState> = Linker::new(&engine);
@@ -80,6 +84,7 @@ impl WasmDevice {
             fail_policy: cfg.fail_policy.clone(),
             timeout_ms: cfg.timeout_ms,
             body_buffer_max: cfg.body_buffer_max,
+            max_memory_bytes,
             hooks: cfg.hooks,
             engine,
             hook_duration,
@@ -100,7 +105,7 @@ impl WasmDevice {
 
         let mut store = hotpath::measure_block!("wasm.store_setup", {
             let limits = StoreLimitsBuilder::new()
-                .memory_size(MAX_MEMORY_SIZE)
+                .memory_size(self.max_memory_bytes)
                 .table_elements(MAX_TABLE_ELEMENTS)
                 .build();
 

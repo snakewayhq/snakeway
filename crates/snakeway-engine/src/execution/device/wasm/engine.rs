@@ -1,3 +1,4 @@
+use snakeway_conf::types::WasmConfig;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use wasmtime::{Config, Engine, InstanceAllocationStrategy, PoolingAllocationConfig};
@@ -11,15 +12,20 @@ pub(crate) struct WasmEngine {
 }
 
 impl WasmEngine {
-    pub(crate) fn new() -> anyhow::Result<Self> {
+    pub(crate) fn new(config: &WasmConfig) -> anyhow::Result<Self> {
+        // `max_concurrent_executions` sizes the component-instance pool. The other
+        // pool limits are derived from it at the ratios wasmtime needs so that the
+        // component-instance count stays the real ceiling rather than one of the
+        // secondary limits.
+        let executions = config.max_concurrent_executions;
         let mut pool = PoolingAllocationConfig::new();
-        pool.total_component_instances(512);
+        pool.total_component_instances(executions);
         pool.max_component_instance_size(1 << 20);
-        pool.max_memory_size(64 * 1024 * 1024);
-        pool.total_memories(1024);
-        pool.total_tables(1024);
-        pool.total_core_instances(2048);
-        pool.total_stacks(512);
+        pool.max_memory_size(config.max_memory_bytes);
+        pool.total_memories(2 * executions);
+        pool.total_tables(2 * executions);
+        pool.total_core_instances(4 * executions);
+        pool.total_stacks(executions);
 
         let mut config = Config::new();
         config.wasm_component_model(true);
