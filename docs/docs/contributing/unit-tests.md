@@ -2,7 +2,7 @@
 title: Unit Tests
 ---
 
-This page documents the conventions for unit tests in the library crates (`snakeway-core` and `snakeway-conf`).
+This page documents the conventions for unit tests in the library crates (`snakeway` and `snakeway-conf`).
 Follow these patterns precisely when adding new tests.
 
 ## Where Tests Live
@@ -124,7 +124,8 @@ async fn test_cidr_deny_ip_in_list() { ... }
 
 ## Helper Functions
 
-Extract shared setup into private helper functions within the test module rather than repeating construction logic inline:
+Extract shared setup into private helper functions within the test module rather than repeating construction logic
+inline:
 
 ```rust
 fn allow_all_device() -> NetworkPolicyDevice {
@@ -153,11 +154,13 @@ They are pure setup utilities.
 ## Assertions
 
 - Use `assert!`, `assert_eq!`, and `matches!` from the standard library for simple checks.
-- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff view is helpful.
+- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff
+  view is helpful.
 - Prefer `matches!(value, Pattern)` for enum variants when no message is needed.
   When a failure message would be useful, write it out with `assert!(matches!(...), "explanation")`.
 - Assertion quality matters.
-  A stronger, more complete set of assertions that meaningfully validates the subject under test is better than a minimal one.
+  A stronger, more complete set of assertions that meaningfully validates the subject under test is better than a
+  minimal one.
 
 ## Running Unit Tests
 
@@ -165,14 +168,14 @@ They are pure setup utilities.
 # Run all unit tests
 just test
 
-# Run snakeway-core tests
-cargo nextest run -p snakeway-core --all-features
+# Run snakeway tests
+cargo nextest run -p snakeway --all-features
 
 # Run snakeway-conf tests
 cargo test -p snakeway-conf
 
 # Run a specific test by name
-cargo nextest run -p snakeway-core --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
+cargo nextest run -p snakeway --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
 cargo test -p snakeway-conf -- upstream_validation::tests::weight_greater_than_zero
 
 # Run unit tests with coverage (HTML report, or a terminal summary)

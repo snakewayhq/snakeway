@@ -7,18 +7,48 @@ license.workspace = true
 
 [features]
 default = []
-hotpath = ["dep:hotpath", "hotpath/hotpath", "snakeway-core/hotpath"]
-hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc", "snakeway-core/hotpath-alloc"]
-dev-templates = ["snakeway-core/dev-templates"]
-
+hotpath = ["dep:hotpath", "hotpath/hotpath"]
+hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc"]
+# Development-only config templates (`config init --template dev`).
+# Off by default so production builds do not expose the pebble/repo-coupled template.
+dev-templates = []
 
 [dependencies]
-snakeway-core = { workspace = true }
+confval = { workspace = true }
+snakeway-acme = { workspace = true }
+snakeway-conf = { workspace = true }
+snakeway-engine = { workspace = true }
+snakeway-observability = { workspace = true }
+snakeway-proxy = { workspace = true }
+anyhow = { workspace = true }
+arc-swap = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+ctrlc = { workspace = true }
+http = { workspace = true }
+nix = { workspace = true, features = ["signal"] }
+pingora = { workspace = true, features = ["proxy", "openssl_derived", "openssl"] }
+serde = { workspace = true, features = ["rc"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = [
+    "fs",
+    "rt",
+    "sync",
+    "signal",
+    "macros",
+    "tracing"
+] }
+tracing = { workspace = true }
+serde_yaml = { workspace = true }
+chrono = { workspace = true }
+hcl-rs = { workspace = true }
+url = { workspace = true }
 hotpath = { workspace = true, optional = true }
 
-[[bin]]
-name = "snakeway"
-path = "src/main.rs"
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["hcl-rs"]
 
 # ---------------------------------------------------------------------------
 # Build a .deb package (cargo-deb)

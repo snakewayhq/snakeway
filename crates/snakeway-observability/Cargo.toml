@@ -1,0 +1,21 @@
+[package]
+name = "snakeway-observability"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+snakeway-conf = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+hostname = { workspace = true }
+http = { workspace = true }
+opentelemetry-appender-tracing = { workspace = true }
+console-subscriber = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter"] }
+tracing-appender = { workspace = true }
+pingora-http = { workspace = true }
+once_cell = { workspace = true }

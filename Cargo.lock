@@ -1885,9 +1885,9 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "humantime"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "135b12329e5e3ce057a9f972339ea52bc954fe1e9358ef27f95e89716fbc5424"
+checksum = "15cdd26707701c53297e2fa6afb323d55fbc1d0810c3aec078ae3ef0424c3c15"
 
 [[package]]
 name = "hybrid-array"
@@ -4227,8 +4227,50 @@ dependencies = [
 name = "snakeway"
 version = "0.15.0"
 dependencies = [
+ "anyhow",
+ "arc-swap",
+ "chrono",
+ "clap",
+ "confval",
+ "ctrlc",
+ "hcl-rs",
  "hotpath",
- "snakeway-core",
+ "http",
+ "nix 0.31.3",
+ "pingora",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "snakeway-acme",
+ "snakeway-conf",
+ "snakeway-engine",
+ "snakeway-observability",
+ "snakeway-proxy",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "snakeway-acme"
+version = "0.15.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "dashmap",
+ "hex",
+ "instant-acme",
+ "openssl",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "snakeway-conf",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "x509-parser",
 ]
 
 [[package]]
@@ -4255,66 +4297,40 @@ dependencies = [
 ]
 
 [[package]]
-name = "snakeway-core"
+name = "snakeway-engine"
 version = "0.15.0"
 dependencies = [
  "ahash",
  "anyhow",
  "arc-swap",
- "async-trait",
- "brotli 8.0.4",
  "bytes",
  "chrono",
- "clap",
- "confval",
- "console-subscriber",
  "criterion",
- "ctrlc",
  "dashmap",
- "flate2",
- "hcl-rs",
- "hex",
- "hostname",
  "hotpath",
  "http",
- "httpdate",
- "instant-acme",
  "ipnet",
- "ipnet-trie",
  "maxminddb",
- "mime_guess",
- "nix 0.31.3",
  "once_cell",
  "openssl",
  "opentelemetry",
- "opentelemetry-appender-tracing",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "percent-encoding",
  "pingora",
  "pingora-limits",
  "pretty_assertions",
  "rand 0.10.1",
- "secrecy",
  "serde",
  "serde_json",
- "serde_yaml",
- "sha2 0.11.0",
  "smallvec",
+ "snakeway-acme",
  "snakeway-conf",
- "tempfile",
+ "snakeway-net",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
- "tracing-appender",
- "tracing-opentelemetry",
- "tracing-subscriber",
  "uaparser",
- "url",
  "uuid",
  "wasmtime",
  "woothee",
- "x509-parser",
 ]
 
 [[package]]
@@ -4327,6 +4343,71 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "wit-bindgen",
+]
+
+[[package]]
+name = "snakeway-net"
+version = "0.15.0"
+dependencies = [
+ "async-trait",
+ "http",
+ "ipnet",
+ "ipnet-trie",
+ "pingora",
+ "pingora-limits",
+ "snakeway-conf",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "snakeway-observability"
+version = "0.15.0"
+dependencies = [
+ "console-subscriber",
+ "hostname",
+ "http",
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "pingora-http",
+ "snakeway-conf",
+ "tracing",
+ "tracing-appender",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "snakeway-proxy"
+version = "0.15.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "async-trait",
+ "brotli 8.0.4",
+ "bytes",
+ "flate2",
+ "hotpath",
+ "http",
+ "httpdate",
+ "mime_guess",
+ "nix 0.31.3",
+ "openssl",
+ "opentelemetry",
+ "percent-encoding",
+ "pingora",
+ "serde_json",
+ "snakeway-acme",
+ "snakeway-conf",
+ "snakeway-engine",
+ "snakeway-net",
+ "snakeway-observability",
+ "tokio",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -4345,7 +4426,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sha2 0.11.0",
- "snakeway-core",
+ "snakeway",
  "tempfile",
  "tokio",
  "tokio-tungstenite",

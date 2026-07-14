@@ -1,0 +1,67 @@
+[package]
+name = "snakeway-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+snakeway-acme = { workspace = true }
+snakeway-conf = { workspace = true }
+snakeway-net = { workspace = true }
+
+anyhow = { workspace = true }
+arc-swap = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+maxminddb = { workspace = true, features = ["mmap"] }
+pingora = { workspace = true, features = ["proxy", "openssl_derived", "openssl"] }
+openssl = { workspace = true }
+pingora-limits = { workspace = true }
+serde = { workspace = true, features = ["rc"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = [
+    "fs",
+    "rt",
+    "sync",
+    "signal",
+    "macros",
+    "tracing"
+] }
+tracing = { workspace = true }
+uaparser = { workspace = true }
+wasmtime = { workspace = true }
+woothee = { workspace = true }
+ipnet = { workspace = true, features = ["serde"] }
+thiserror = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }
+ahash = { workspace = true }
+dashmap = { workspace = true }
+chrono = { workspace = true }
+pretty_assertions = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+smallvec = { workspace = true }
+opentelemetry = { workspace = true }
+hotpath = { workspace = true }
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "router"
+harness = false
+
+[[bench]]
+name = "device_pipeline"
+harness = false
+
+[[bench]]
+name = "request_filter"
+harness = false
+
+[[bench]]
+name = "identity"
+harness = false
+
+[[bench]]
+name = "header_scaling"
+harness = false

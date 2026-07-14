@@ -88,14 +88,14 @@ accept queue is refused.
 
 ## Key implementation files
 
-| File | Role |
-|------|------|
-| `snakeway-core/src/runtime/diff.rs` | `classify_config_change()` -- determines ArcSwap vs upgrade |
-| `snakeway-core/src/control_plane/server/upgrade.rs` | `spawn_upgrade()` and `signal_old_process()` |
-| `snakeway-core/src/control_plane/server/control_plane_server.rs` | Reload loop with diff + dispatch |
-| `snakeway-core/src/data_plane/bootstrap.rs` | Passes `Opt { upgrade }` to Pingora, calls `signal_old_process` before `bootstrap()` |
-| `snakeway-core/src/runtime/state.rs` | `reload_runtime_state()` -- the ArcSwap path |
-| `snakeway-core/src/control_plane/server/reload.rs` | `ReloadHandle` -- SIGHUP signal handler and watch channel |
+| File                                                        | Role                                                                                 |
+|-------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| `snakeway/src/runtime/diff.rs`                              | `classify_config_change()` -- determines ArcSwap vs upgrade                          |
+| `snakeway/src/control_plane/server/upgrade.rs`              | `spawn_upgrade()` and `signal_old_process()`                                         |
+| `snakeway/src/control_plane/server/control_plane_server.rs` | Reload loop with diff + dispatch                                                     |
+| `snakeway/src/data_plane/bootstrap.rs`                      | Passes `Opt { upgrade }` to Pingora, calls `signal_old_process` before `bootstrap()` |
+| `snakeway/src/runtime/state.rs`                             | `reload_runtime_state()` -- the ArcSwap path                                         |
+| `snakeway/src/control_plane/server/reload.rs`               | `ReloadHandle` -- SIGHUP signal handler and watch channel                            |
 
 ## Pingora's FD transfer mechanism
 
@@ -172,10 +172,10 @@ automation, CA file) are classified as runtime-only and handled by the ArcSwap p
 
 ## Error handling
 
-| Failure | Effect |
-|---------|--------|
-| New config fails validation | Reload aborted, old process undisturbed |
-| New process fails to spawn | Error logged, old process continues |
-| FD transfer times out | New process exits (bootstrap failure), old process continues |
-| New process crashes after FD transfer | Connections on those FDs are lost |
-| `pid_file` not configured | Automatic upgrade disabled, error logged |
+| Failure                               | Effect                                                       |
+|---------------------------------------|--------------------------------------------------------------|
+| New config fails validation           | Reload aborted, old process undisturbed                      |
+| New process fails to spawn            | Error logged, old process continues                          |
+| FD transfer times out                 | New process exits (bootstrap failure), old process continues |
+| New process crashes after FD transfer | Connections on those FDs are lost                            |
+| `pid_file` not configured             | Automatic upgrade disabled, error logged                     |

@@ -52,7 +52,8 @@ Uses Woothee by default, but also as a secondary options [ua-parser](https://git
 > Rust code and am interested in systems development.
 >
 > All the agent memory files and skills have been removed.
-> Any important knowledge they captured has been added to the docs site under a "Contributing" section.
+> Any important knowledge they captured has been added to the docs site under a developer-friendly "Contributing"
+> section.
 >
 > Maybe I'll write a full blog post on this down the road ¯\(ツ)/¯
 >

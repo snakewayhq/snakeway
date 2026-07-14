@@ -1,8 +1,8 @@
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
-use snakeway_core::testing_api::ControlPlaneServer;
-use snakeway_core::testing_api::conf::load_config;
+use snakeway::testing_api::ControlPlaneServer;
+use snakeway::testing_api::conf::load_config;
 use snakeway_tests::conf::minimal_http_runtime_config_with_admin;
 use snakeway_tests::constants::{
     ADMIN_TOKEN, ADMIN_TOKEN_ALT, ADMIN_TOKEN_FILE, FIXTURES_CONFIG_DIR, ROUTE_PATH_API, TEST_HOST,
