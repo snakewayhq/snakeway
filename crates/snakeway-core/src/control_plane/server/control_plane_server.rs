@@ -260,7 +260,7 @@ impl ControlPlaneServer {
 
                         if change_kind == ConfigChangeKind::ListenersChanged {
                             info!("listener-level change detected; initiating zero-drop upgrade");
-                            use crate::control_plane::server::upgrade::spawn_upgrade;
+                            use snakeway_proxy::spawn_upgrade;
                             if let Err(e) = spawn_upgrade(&config_path) {
                                 error!(error = %e, "zero-drop upgrade failed; old process continues serving");
                             }

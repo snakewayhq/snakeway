@@ -7,3 +7,4 @@ pub(crate) mod upgrade;
 
 pub use bootstrap::build_pingora_server;
 pub use reload::{ReloadEvent, ReloadHandle};
+pub use upgrade::spawn_upgrade;
