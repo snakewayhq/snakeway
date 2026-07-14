@@ -13,6 +13,9 @@ on:
       - main
   pull_request:
 
+env:
+  SKIP_NON_UNIT_CRATES: "--exclude snakeway-tests --exclude snakeway-jwt-auth-device --exclude snakeway-wasm-test-device"
+
 jobs:
   validate:
     name: Validate (lint, unit test, integration test)
@@ -60,14 +63,11 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Run unit tests (snakeway / snakeway-conf)
+      - name: Run unit tests
         run: |
           cargo nextest run \
             --locked \
-            -p confval \
-            -p confval-derive \
-            -p snakeway-conf \
-            -p snakeway \
+            --workspace $SKIP_NON_UNIT_CRATES \
             --all-features \
             --profile ci
 
@@ -161,6 +161,10 @@ jobs:
         if: always()
         run: docker compose -f dev/docker-compose-dev.yml down --volumes --remove-orphans
 
+      - name: Remove trybuild scratch before cache save (confval compile-fail tests leaves a nested cargo build tree)
+        if: always()
+        run: rm -rf target/tests
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
@@ -195,7 +199,7 @@ jobs:
       - name: Run tests with coverage instrumentation
         run: |
           cargo llvm-cov \
-            -p confval -p confval-derive -p snakeway -p snakeway-conf -p snakeway \
+            --workspace $SKIP_NON_UNIT_CRATES \
             --all-features \
             --ignore-filename-regex 'pingora|tests/|examples/' \
             --json --output-path coverage.json
@@ -215,7 +219,7 @@ jobs:
 
       - name: Count tests and generate badge
         run: |
-          UNIT=$(cargo test -p confval -p confval-derive -p snakeway -p snakeway-conf -p snakeway --all-features -- --list 2>/dev/null | grep -c ': test$' || echo 0)
+          UNIT=$(cargo test --workspace $SKIP_NON_UNIT_CRATES --all-features -- --list 2>/dev/null | grep -c ': test$' || echo 0)
           echo "## Tests: ${UNIT}" >> "$GITHUB_STEP_SUMMARY"
           jq -n --arg total "$UNIT" '{schemaVersion:1,label:"tests",message:($total+" passed"),color:"brightgreen"}' \
             > coverage-html/tests-badge.json
@@ -225,6 +229,10 @@ jobs:
         with:
           name: coverage-html
           path: coverage-html/
+
+      - name: Remove trybuild scratch before cache save (confval compile-fail tests leaves a nested cargo build tree)
+        if: always()
+        run: rm -rf target/tests
 
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})
