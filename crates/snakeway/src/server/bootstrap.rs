@@ -1,4 +1,4 @@
-use crate::control_plane::ControlPlaneServer;
+use crate::server::ControlPlaneServer;
 use anyhow::Result;
 use snakeway_conf::types::{ListenerConfig, RuntimeConfig};
 use snakeway_observability::{init_logging, init_telemetry};

@@ -1,6 +1,6 @@
-use crate::control_plane::server::pid;
-use crate::control_plane::server::pid::write_pid;
-use crate::control_plane::server::runtime_server::RuntimeServer;
+use crate::server::pid;
+use crate::server::pid::write_pid;
+use crate::server::runtime_server::RuntimeServer;
 use anyhow::Result;
 use arc_swap::ArcSwap;
 use nix::NixPath;

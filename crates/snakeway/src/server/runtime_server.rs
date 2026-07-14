@@ -7,8 +7,10 @@ use std::sync::Arc;
 /// loop, cert reconciliation) stay alive for the lifetime of the server.
 pub struct RuntimeServer {
     pub reload: Arc<ReloadHandle>,
-    /// Kept alive so spawned tasks (reload loop, cert reconciliation) are
-    /// not canceled. Never read directly. Drop is the only consumer.
+    /// Kept alive to allow spawned tasks (reload loop, cert reconciliation) to
+    /// live long.
+    /// Never read directly.
+    /// Drop is the only consumer.
     _control_rt: tokio::runtime::Runtime,
 }
 
