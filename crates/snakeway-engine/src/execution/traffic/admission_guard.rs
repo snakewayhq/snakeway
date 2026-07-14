@@ -13,11 +13,7 @@ pub struct AdmissionGuard {
 }
 
 impl AdmissionGuard {
-    pub fn new(
-        tm: Arc<TrafficManager>,
-        service_id: ServiceId,
-        upstream_id: UpstreamId,
-    ) -> Self {
+    pub fn new(tm: Arc<TrafficManager>, service_id: ServiceId, upstream_id: UpstreamId) -> Self {
         tm.on_request_start(&service_id, &upstream_id);
 
         Self {

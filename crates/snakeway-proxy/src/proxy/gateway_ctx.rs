@@ -1,7 +1,7 @@
 use arc_swap::{ArcSwap, Guard};
-use snakeway_engine::traffic::TrafficManager;
 use snakeway_engine::WsConnectionManager;
 use snakeway_engine::runtime::RuntimeState;
+use snakeway_engine::traffic::TrafficManager;
 use snakeway_observability::Metrics;
 use std::sync::Arc;
 

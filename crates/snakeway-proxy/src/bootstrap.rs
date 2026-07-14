@@ -1,5 +1,5 @@
-use crate::reload::ReloadHandle;
 use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
+use crate::reload::ReloadHandle;
 use crate::tls_handshake::{CertMode, build_tls_callbacks};
 use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;

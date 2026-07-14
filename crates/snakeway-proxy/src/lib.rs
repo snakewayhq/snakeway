@@ -5,6 +5,6 @@ pub(crate) mod static_files;
 pub(crate) mod tls_handshake;
 pub(crate) mod upgrade;
 
-pub use bootstrap::build_pingora_server;
+pub use bootstrap::{DataPlaneServerParams, build_pingora_server};
 pub use reload::{ReloadEvent, ReloadHandle};
 pub use upgrade::spawn_upgrade;

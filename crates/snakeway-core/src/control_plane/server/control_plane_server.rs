@@ -1,8 +1,6 @@
 use crate::control_plane::server::pid;
 use crate::control_plane::server::pid::write_pid;
-use snakeway_proxy::{ReloadEvent, ReloadHandle};
 use crate::control_plane::server::runtime_server::RuntimeServer;
-use crate::data_plane::bootstrap::{DataPlaneServerParams, build_pingora_server};
 use anyhow::Result;
 use arc_swap::ArcSwap;
 use nix::NixPath;
@@ -11,13 +9,14 @@ use snakeway_acme::{
     CertManager, CertStore, FilesystemCertStore, FilesystemOrderStore, MemoryCertStore, OrderStore,
 };
 use snakeway_conf::types::{CertStoreConfig, RuntimeConfig, TlsAutomationConfig};
-use snakeway_engine::traffic::{TrafficManager, TrafficSnapshot};
 use snakeway_engine::WsConnectionManager;
 use snakeway_engine::runtime::{
     ReloadError, RuntimeState, build_runtime_state, reload_runtime_state,
 };
+use snakeway_engine::traffic::{TrafficManager, TrafficSnapshot};
 use snakeway_observability;
 use snakeway_observability::Metrics;
+use snakeway_proxy::{DataPlaneServerParams, ReloadEvent, ReloadHandle, build_pingora_server};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;

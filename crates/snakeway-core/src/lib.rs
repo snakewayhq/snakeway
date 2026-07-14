@@ -13,8 +13,6 @@ mod server;
 pub mod cli;
 #[doc(hidden)]
 pub mod control_plane;
-#[doc(hidden)]
-pub mod data_plane;
 
 pub use cli::bootstrap::run;
 pub use server::start_server;

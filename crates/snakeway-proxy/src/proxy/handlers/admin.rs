@@ -1,7 +1,7 @@
 use snakeway_acme::CertManager;
-use snakeway_engine::traffic::TrafficManager;
 use snakeway_engine::WsConnectionManager;
 use snakeway_engine::runtime::UpstreamRuntime;
+use snakeway_engine::traffic::TrafficManager;
 
 use http::{Method, StatusCode, header};
 use pingora::http::ResponseHeader;

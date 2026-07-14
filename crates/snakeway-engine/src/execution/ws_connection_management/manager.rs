@@ -38,11 +38,7 @@ impl WsConnectionManager {
     /// Attempt to acquire a connection slot for the given route.
     ///
     /// On success, returns a ConnectionGuard that will release the slot on Drop.
-    pub fn try_acquire(
-        &self,
-        route_id: &RouteId,
-        max: Option<usize>,
-    ) -> Option<WsConnectionGuard> {
+    pub fn try_acquire(&self, route_id: &RouteId, max: Option<usize>) -> Option<WsConnectionGuard> {
         let state = self.route_state(route_id, max);
 
         if !state.try_acquire() {

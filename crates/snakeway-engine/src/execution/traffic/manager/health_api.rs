@@ -117,11 +117,7 @@ impl TrafficManager {
     }
 
     /// Determines whether an upstream may receive a request
-    pub fn health_status(
-        &self,
-        service_id: &ServiceId,
-        upstream_id: &UpstreamId,
-    ) -> HealthStatus {
+    pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
         let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
             unreachable!(
                 "health params missing for service {} — invariant violated",
