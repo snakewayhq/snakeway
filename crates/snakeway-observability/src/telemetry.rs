@@ -160,7 +160,7 @@ pub struct TelemetryProviders {
 }
 
 /// Shutdown telemetry and flush remaining spans.
-pub fn shutdown() {
+pub fn shutdown_telemetry() {
     if let Some(provider) = TRACER_PROVIDER.get() {
         let _ = provider.shutdown();
     }

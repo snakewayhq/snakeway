@@ -14,8 +14,7 @@ use snakeway_engine::runtime::{
     ReloadError, RuntimeState, build_runtime_state, reload_runtime_state,
 };
 use snakeway_engine::traffic::{TrafficManager, TrafficSnapshot};
-use snakeway_observability;
-use snakeway_observability::Metrics;
+use snakeway_observability::{Metrics, shutdown_telemetry};
 use snakeway_proxy::{DataPlaneServerParams, ReloadEvent, ReloadHandle, build_pingora_server};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -175,7 +174,7 @@ impl ControlPlaneServer {
         self.pingora_server.run(Default::default());
 
         // Cleanup.
-        snakeway_observability::shutdown();
+        shutdown_telemetry();
 
         if !self.config.server.pid_file.is_empty() {
             info!("shutdown requested, removing pid file");
