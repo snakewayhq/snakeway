@@ -1,7 +1,7 @@
 use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_server::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
+use snakeway::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
 use snakeway_tests::conf::{ConfigBuilder, minimal_http_runtime_config};
 use snakeway_tests::constants::{
     HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST, UPSTREAM_PORT_PRIMARY,

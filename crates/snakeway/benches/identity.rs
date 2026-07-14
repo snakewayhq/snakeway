@@ -1,5 +1,5 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use snakeway_server::bench_api::{
+use snakeway::bench_api::{
     Device, IdentityDevice, IdentityDeviceConfig, RequestCtx, UaEngineKind,
 };
 

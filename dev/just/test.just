@@ -1,7 +1,7 @@
 # Crates excluded from host unit tests: the binary, the integration suite, and wasm device crates.
 # Every other workspace member is a library and is picked up automatically by `--workspace`.
 [private]
-_skip_non_unit_test_crates := "--exclude snakeway --exclude snakeway-tests --exclude snakeway-jwt-auth-device --exclude snakeway-wasm-test-device"
+_skip_non_unit_test_crates := "--exclude snakeway-tests --exclude snakeway-jwt-auth-device --exclude snakeway-wasm-test-device"
 
 start-docker:
     docker compose -f dev/docker-compose-dev.yml up -d --remove-orphans

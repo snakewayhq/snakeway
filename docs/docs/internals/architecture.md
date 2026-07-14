@@ -24,7 +24,7 @@ The project is split into two primary crates:
 
 1. **`snakeway` (The Binary)**: This is the command-line interface and entry point. It handles configuration loading,
    logging initialization, and lifecycle management (starting, stopping, and reloading the server).
-2. **`snakeway-server` (The Engine)**: This library contains the core logic of the proxy. It includes the router, the
+2. **`snakeway` (The Engine)**: This library contains the core logic of the proxy. It includes the router, the
    device pipeline, the configuration engine, and the management of upstream services.
 
 This separation allows for better testability and enables the core engine to be used as a library in other Rust projects

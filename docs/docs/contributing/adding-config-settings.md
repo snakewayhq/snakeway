@@ -261,8 +261,8 @@ See [Writing Documentation](writing-documentation.md) for the spec-to-docs mappi
 ### Step 5: Verify
 
 ```sh
-cargo check -p snakeway-conf -p snakeway-server -p snakeway
-cargo nextest run -p snakeway-conf -p snakeway-server -p snakeway
+cargo check -p snakeway-conf -p snakeway -p snakeway
+cargo nextest run -p snakeway-conf -p snakeway -p snakeway
 just lint
 ```
 

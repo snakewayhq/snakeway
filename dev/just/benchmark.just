@@ -1,6 +1,6 @@
-# Run Criterion microbenchmarks for snakeway-server.
+# Run Criterion microbenchmarks for snakeway.
 bench:
-    cargo bench -p snakeway-server
+    cargo bench -p snakeway
 
 # Use wrk and hey to test various upstream configurations.
 benchmark-proxy:

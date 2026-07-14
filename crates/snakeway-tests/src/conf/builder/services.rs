@@ -6,7 +6,7 @@ use crate::constants::{
     UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
 };
 use confval::source::Located;
-use snakeway_server::testing_api::conf::types::{
+use snakeway::testing_api::conf::types::{
     AcmeServerSpec, AdminAuthSpec, BearerAuthSpec, BindAdminSpec, CertStoreSpec, EndpointSpec,
     EndpointTlsSpec, Http2Spec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec,
     TlsTerminationSpec, UpstreamSpec,
@@ -131,7 +131,7 @@ impl ConfigBuilder {
 
         self.server_spec.ca_file = Some(Located::detached(PathBuf::from(CERT_ORIGIN_CA_PEM)));
         self.server_spec.tls_automation = Some(Located::detached(
-            snakeway_server::testing_api::conf::types::TlsAutomationSpec {
+            snakeway::testing_api::conf::types::TlsAutomationSpec {
                 acme: Located::detached(AcmeServerSpec {
                     directory_url: Located::detached(ACME_DIRECTORY_URL.to_string()),
                     data_dir: Located::detached(PathBuf::from(ACME_ORDERS_DIR)),

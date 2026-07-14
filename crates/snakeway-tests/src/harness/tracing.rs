@@ -29,7 +29,7 @@ pub fn init_test_tracing(events: Arc<Mutex<Vec<CapturedEvent>>>) {
             // Set RUST_LOG to override this default when debugging.
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 EnvFilter::new(
-                    "info,snakeway=trace,snakeway_server=trace,snakeway_conf=trace,snakeway_tests=trace",
+                    "info,snakeway=trace,snakeway=trace,snakeway_conf=trace,snakeway_tests=trace",
                 )
             }))
             .with(capture_layer)

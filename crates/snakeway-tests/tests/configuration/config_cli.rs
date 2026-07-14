@@ -1,5 +1,5 @@
-use snakeway_server::testing_api::conf::load_config;
-use snakeway_server::testing_api::conf::validation::ConfigError;
+use snakeway::testing_api::conf::load_config;
+use snakeway::testing_api::conf::validation::ConfigError;
 use snakeway_tests::constants::FIXTURES_CONFIG_DIR;
 
 /// Loading the `basic` fixture directory must succeed without validation
@@ -131,7 +131,7 @@ fn empty_config_directory_returns_error() {
 fn nonexistent_ca_file_produces_validation_error() {
     // Arrange
     use confval::source::Located;
-    use snakeway_server::testing_api::conf::types::ServerSpec;
+    use snakeway::testing_api::conf::types::ServerSpec;
     use snakeway_tests::conf::ConfigBuilder;
     use std::path::PathBuf;
 

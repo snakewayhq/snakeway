@@ -88,14 +88,14 @@ accept queue is refused.
 
 ## Key implementation files
 
-| File                                                               | Role                                                                                 |
-|--------------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| `snakeway-server/src/runtime/diff.rs`                              | `classify_config_change()` -- determines ArcSwap vs upgrade                          |
-| `snakeway-server/src/control_plane/server/upgrade.rs`              | `spawn_upgrade()` and `signal_old_process()`                                         |
-| `snakeway-server/src/control_plane/server/control_plane_server.rs` | Reload loop with diff + dispatch                                                     |
-| `snakeway-server/src/data_plane/bootstrap.rs`                      | Passes `Opt { upgrade }` to Pingora, calls `signal_old_process` before `bootstrap()` |
-| `snakeway-server/src/runtime/state.rs`                             | `reload_runtime_state()` -- the ArcSwap path                                         |
-| `snakeway-server/src/control_plane/server/reload.rs`               | `ReloadHandle` -- SIGHUP signal handler and watch channel                            |
+| File                                                        | Role                                                                                 |
+|-------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| `snakeway/src/runtime/diff.rs`                              | `classify_config_change()` -- determines ArcSwap vs upgrade                          |
+| `snakeway/src/control_plane/server/upgrade.rs`              | `spawn_upgrade()` and `signal_old_process()`                                         |
+| `snakeway/src/control_plane/server/control_plane_server.rs` | Reload loop with diff + dispatch                                                     |
+| `snakeway/src/data_plane/bootstrap.rs`                      | Passes `Opt { upgrade }` to Pingora, calls `signal_old_process` before `bootstrap()` |
+| `snakeway/src/runtime/state.rs`                             | `reload_runtime_state()` -- the ArcSwap path                                         |
+| `snakeway/src/control_plane/server/reload.rs`               | `ReloadHandle` -- SIGHUP signal handler and watch channel                            |
 
 ## Pingora's FD transfer mechanism
 

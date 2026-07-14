@@ -11,7 +11,6 @@ members = [
     "crates/snakeway-observability",
     "crates/snakeway-engine",
     "crates/snakeway-proxy",
-    "crates/snakeway-server",
     # Integration tests
     "crates/snakeway-tests",
     # Devices
@@ -65,9 +64,9 @@ strip = "symbols"           # Strip symbols to minimize binary size
 
 [workspace.dependencies]
 confval = { path = "crates/confval", features = ["serde", "color", "hcl", "derive"] }
+snakeway = { path = "crates/snakeway" }
 snakeway-acme = { path = "crates/snakeway-acme" }
 snakeway-conf = { path = "crates/snakeway-conf" }
-snakeway-server = { path = "crates/snakeway-server" }
 snakeway-engine = { path = "crates/snakeway-engine" }
 snakeway-net = { path = "crates/snakeway-net" }
 snakeway-observability = { path = "crates/snakeway-observability" }

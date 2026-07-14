@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::HeaderName;
-use snakeway_server::bench_api::{
+use snakeway::bench_api::{
     Device, RequestCtx, RequestFilterDevice, RequestFilterDeviceConfig,
 };
 

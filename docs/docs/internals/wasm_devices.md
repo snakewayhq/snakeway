@@ -153,11 +153,11 @@ chunk.
 | File                                                                      | Role                                          |
 |---------------------------------------------------------------------------|-----------------------------------------------|
 | `crates/snakeway-wit/wit/`                                                | WIT interface definition                      |
-| `crates/snakeway-server/src/execution/device/wasm/engine.rs`              | `WasmEngine`, pooling allocator, epoch ticker |
-| `crates/snakeway-server/src/execution/device/wasm/wasm_device.rs`         | `WasmDevice` struct and `Device` trait impl   |
-| `crates/snakeway-server/src/execution/device/wasm/state.rs`               | `HostState` (host interface impl)             |
-| `crates/snakeway-server/src/execution/device/wasm/lifecycle.rs`           | Snapshot building, result/patch application   |
-| `crates/snakeway-server/src/execution/device/wasm/bindings.rs`            | `wasmtime::component::bindgen!` invocation    |
-| `crates/snakeway-server/src/execution/device/core/registry.rs`            | Device loading and engine lifecycle           |
+| `crates/snakeway/src/execution/device/wasm/engine.rs`                     | `WasmEngine`, pooling allocator, epoch ticker |
+| `crates/snakeway/src/execution/device/wasm/wasm_device.rs`                | `WasmDevice` struct and `Device` trait impl   |
+| `crates/snakeway/src/execution/device/wasm/state.rs`                      | `HostState` (host interface impl)             |
+| `crates/snakeway/src/execution/device/wasm/lifecycle.rs`                  | Snapshot building, result/patch application   |
+| `crates/snakeway/src/execution/device/wasm/bindings.rs`                   | `wasmtime::component::bindgen!` invocation    |
+| `crates/snakeway/src/execution/device/core/registry.rs`                   | Device loading and engine lifecycle           |
 | `crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs` | Config spec (parsing, validation)             |
 | `crates/snakeway-conf/src/types/runtime/device/wasm_device_config.rs`     | Config runtime type (lowering)                |

@@ -2,7 +2,7 @@
 title: Unit Tests
 ---
 
-This page documents the conventions for unit tests in the library crates (`snakeway-server` and `snakeway-conf`).
+This page documents the conventions for unit tests in the library crates (`snakeway` and `snakeway-conf`).
 Follow these patterns precisely when adding new tests.
 
 ## Where Tests Live
@@ -168,14 +168,14 @@ They are pure setup utilities.
 # Run all unit tests
 just test
 
-# Run snakeway-server tests
-cargo nextest run -p snakeway-server --all-features
+# Run snakeway tests
+cargo nextest run -p snakeway --all-features
 
 # Run snakeway-conf tests
 cargo test -p snakeway-conf
 
 # Run a specific test by name
-cargo nextest run -p snakeway-server --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
+cargo nextest run -p snakeway --all-features -E 'test(denies_request_when_ip_not_in_allowlist)'
 cargo test -p snakeway-conf -- upstream_validation::tests::weight_greater_than_zero
 
 # Run unit tests with coverage (HTML report, or a terminal summary)

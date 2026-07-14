@@ -2,25 +2,25 @@
 title: Benchmarks
 ---
 
-This page documents how to write and run Criterion microbenchmarks for `snakeway-server`.
+This page documents how to write and run Criterion microbenchmarks for `snakeway`.
 Follow these patterns precisely when adding new benchmarks.
 
 ## When to Write a Microbenchmark
 
 Write a Criterion microbenchmark when you need to:
 
-- Measure the performance of an internal `snakeway-server` component.
+- Measure the performance of an internal `snakeway` component.
 - Detect performance regressions in a hot-path function.
 - Compare two implementations or configurations for speed.
 
 Do **not** create microbenchmarks for end-to-end proxy throughput.
 Use the existing k6 scripts in `k6/` and the `benchmark-proxy` and `run-load-test` recipes in the Justfile instead.
 
-| Benchmark type                | Location                          | Tool      |
-|-------------------------------|-----------------------------------|-----------|
-| Rust microbenchmarks          | `crates/snakeway-server/benches/` | Criterion |
-| Proxy throughput / load tests | `k6/`                             | k6        |
-| Manual load tests             | Justfile recipes                  | wrk / hey |
+| Benchmark type                | Location                   | Tool      |
+|-------------------------------|----------------------------|-----------|
+| Rust microbenchmarks          | `crates/snakeway/benches/` | Criterion |
+| Proxy throughput / load tests | `k6/`                      | k6        |
+| Manual load tests             | Justfile recipes           | wrk / hey |
 
 ## Criterion Template
 
@@ -74,7 +74,7 @@ Good candidates are synchronous and perform no I/O:
 | Identity device          | `IdentityDevice::on_request()`      | `device/builtin/identity.rs`       |
 
 :::note
-`normalize_headers()` is accessible via the public `snakeway_server::ctx::normalization` re-export.
+`normalize_headers()` is accessible via the public `snakeway::ctx::normalization` re-export.
 Functions still private to the crate (for example `resolve_client_ip` in `net::client_ip`) should be benchmarked
 indirectly through the device or ctx APIs that call them.
 :::
@@ -84,14 +84,14 @@ indirectly through the device or ctx APIs that call them.
 The existing bench targets follow this pattern:
 
 ```
-crates/snakeway-server/benches/router.rs
-crates/snakeway-server/benches/device_pipeline.rs
-crates/snakeway-server/benches/request_filter.rs
-crates/snakeway-server/benches/identity.rs
-crates/snakeway-server/benches/header_scaling.rs
+crates/snakeway/benches/router.rs
+crates/snakeway/benches/device_pipeline.rs
+crates/snakeway/benches/request_filter.rs
+crates/snakeway/benches/identity.rs
+crates/snakeway/benches/header_scaling.rs
 ```
 
-### Step 3: Register the bench target in crates/snakeway-server/Cargo.toml
+### Step 3: Register the bench target in crates/snakeway/Cargo.toml
 
 ```toml
 [[bench]]
@@ -124,17 +124,17 @@ Use `BenchmarkId::new("dimension", value)` to parameterize across scaling scenar
 ## Running Benchmarks
 
 ```bash
-# Run all snakeway-server microbenchmarks
+# Run all snakeway microbenchmarks
 just bench
 
 # Or directly
-cargo bench -p snakeway-server
+cargo bench -p snakeway
 
 # Run a single benchmark by name
-cargo bench -p snakeway-server --bench router
+cargo bench -p snakeway --bench router
 
 # Filter to a specific scenario
-cargo bench -p snakeway-server --bench router -- router_matching/routes/100
+cargo bench -p snakeway --bench router -- router_matching/routes/100
 ```
 
 HTML reports are written to `target/criterion/report/index.html` after each run.

@@ -1,7 +1,7 @@
 use confval::prelude::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_server::testing_api::conf::types::Http2Spec;
+use snakeway::testing_api::conf::types::Http2Spec;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::conf::minimal_h2_to_h1_runtime_config;
 use snakeway_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST};

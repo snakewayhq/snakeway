@@ -1,8 +1,8 @@
 use pretty_assertions::assert_eq;
-use snakeway_server::testing_api::cli::route::solve::{
+use snakeway::testing_api::cli::route::solve::{
     RouteSolveOptions, SyntheticRequest, walk_solve,
 };
-use snakeway_server::testing_api::engine::runtime::build_runtime_state;
+use snakeway::testing_api::engine::runtime::build_runtime_state;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST};
 
