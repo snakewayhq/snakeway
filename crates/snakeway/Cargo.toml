@@ -47,10 +47,6 @@ hotpath = { workspace = true, optional = true }
 [dev-dependencies]
 tempfile = { workspace = true }
 
-[[bin]]
-name = "snakeway"
-path = "src/main.rs"
-
 [package.metadata.cargo-machete]
 ignored = ["hcl-rs"]
 
