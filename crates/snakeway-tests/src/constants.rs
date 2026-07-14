@@ -96,12 +96,6 @@ pub const ADMIN_TOKEN_ALT: &str =
 // ACME / TLS-automation paths and config
 // ---------------------------------------------------------------------------
 
-/// ACME order store directory (relative to CARGO_MANIFEST_DIR).
-pub const ACME_ORDERS_DIR: &str = "acme/orders/";
-
-/// ACME certificate store directory (relative to CARGO_MANIFEST_DIR).
-pub const ACME_CERTS_DIR: &str = "acme/certs/";
-
 /// ACME directory URL pointing at the local Pebble test server.
 pub const ACME_DIRECTORY_URL: &str = "https://localhost:14000/dir";
 
