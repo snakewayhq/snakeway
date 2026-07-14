@@ -1,15 +1,22 @@
 [workspace]
 members = [
+    # Confval
     "crates/confval",
     "crates/confval-derive",
     "crates/snakeway",
+    # Snakeway, in dep order
     "crates/snakeway-conf",
-    "crates/snakeway-core",
     "crates/snakeway-net",
+    "crates/snakeway-acme",
+    "crates/snakeway-observability",
+    "crates/snakeway-engine",
+    "crates/snakeway-proxy",
+    "crates/snakeway-server",
+    # Integration tests
     "crates/snakeway-tests",
+    # Devices
     "crates/snakeway-jwt-auth-device",
     "crates/snakeway-wasm-test-device",
-    "crates/snakeway-acme", "crates/snakeway-observability", "crates/snakeway-engine", "crates/snakeway-proxy",
 ]
 default-members = ["crates/snakeway"]
 exclude = [
@@ -60,7 +67,7 @@ strip = "symbols"           # Strip symbols to minimize binary size
 confval = { path = "crates/confval", features = ["serde", "color", "hcl", "derive"] }
 snakeway-acme = { path = "crates/snakeway-acme" }
 snakeway-conf = { path = "crates/snakeway-conf" }
-snakeway-core = { path = "crates/snakeway-core" }
+snakeway-server = { path = "crates/snakeway-server" }
 snakeway-engine = { path = "crates/snakeway-engine" }
 snakeway-net = { path = "crates/snakeway-net" }
 snakeway-observability = { path = "crates/snakeway-observability" }

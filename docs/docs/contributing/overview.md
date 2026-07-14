@@ -17,7 +17,7 @@ Read this page first, then consult the page that matches the kind of change you 
 │   ├── snakeway/                     # Main binary crate (entrypoint, CLI wiring)
 │   ├── snakeway-acme/                # ACME certificate management
 │   ├── snakeway-conf/                # Configuration library crate (parsing and lowering)
-│   ├── snakeway-core/                # Data plane, control plane, and CLI
+│   ├── snakeway-server/                # Data plane, control plane, and CLI
 │   ├── snakeway-engine/              # Request execution engine and runtime state
 │   ├── snakeway-jwt-auth-device/     # Example WASM device library crate
 │   ├── snakeway-net/                 # Connection-level filtering
@@ -128,7 +128,7 @@ These binaries are suitable for distribution and container deployment.
 
 :::tip
 Scope your checks while iterating.
-`cargo check -p snakeway-core -p snakeway` is much faster than a full workspace build and covers most changes.
+`cargo check -p snakeway-server -p snakeway` is much faster than a full workspace build and covers most changes.
 :::
 
 A pull request for a feature or bug fix typically includes:

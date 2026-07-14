@@ -1,4 +1,4 @@
-use snakeway_core::run;
+use snakeway_server::run;
 
 // Only compiled for alloc-profiling builds, production and timing-only (`hotpath`) builds
 // keep the system allocator.

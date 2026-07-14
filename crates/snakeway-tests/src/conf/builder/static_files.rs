@@ -1,7 +1,7 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::TEST_HOST;
 use confval::source::Located;
-use snakeway_core::testing_api::conf::types::{
+use snakeway_server::testing_api::conf::types::{
     CachePolicySpec, CompressionOptsSpec, IngressSpec, StaticFilesSpec, StaticRouteSpec,
 };
 use std::path::PathBuf;

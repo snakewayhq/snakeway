@@ -4228,7 +4228,7 @@ name = "snakeway"
 version = "0.15.0"
 dependencies = [
  "hotpath",
- "snakeway-core",
+ "snakeway-server",
 ]
 
 [[package]]
@@ -4273,36 +4273,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tracing",
-]
-
-[[package]]
-name = "snakeway-core"
-version = "0.15.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "chrono",
- "clap",
- "confval",
- "criterion",
- "ctrlc",
- "hcl-rs",
- "hotpath",
- "http",
- "nix 0.31.3",
- "pingora",
- "serde",
- "serde_json",
- "serde_yaml",
- "snakeway-acme",
- "snakeway-conf",
- "snakeway-engine",
- "snakeway-observability",
- "snakeway-proxy",
- "tempfile",
- "tokio",
- "tracing",
- "url",
 ]
 
 [[package]]
@@ -4419,6 +4389,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "snakeway-server"
+version = "0.15.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "chrono",
+ "clap",
+ "confval",
+ "criterion",
+ "ctrlc",
+ "hcl-rs",
+ "hotpath",
+ "http",
+ "nix 0.31.3",
+ "pingora",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "snakeway-acme",
+ "snakeway-conf",
+ "snakeway-engine",
+ "snakeway-observability",
+ "snakeway-proxy",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "snakeway-tests"
 version = "0.15.0"
 dependencies = [
@@ -4434,7 +4434,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sha2 0.11.0",
- "snakeway-core",
+ "snakeway-server",
  "tempfile",
  "tokio",
  "tokio-tungstenite",

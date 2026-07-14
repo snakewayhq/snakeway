@@ -9,7 +9,7 @@ use crate::harness::{CapturedEvent, init_test_tracing};
 use reqwest::blocking::{Client, RequestBuilder};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
-use snakeway_core::testing_api::{
+use snakeway_server::testing_api::{
     ControlPlaneServer,
     conf::{load_config, types::RuntimeConfig},
     observability::Metrics,
@@ -66,7 +66,7 @@ pub struct TestServer {
     pub client: Client,
     /// Keeps the control-plane Tokio runtime alive so spawned tasks
     /// (reload loop, ACME reconciliation) are not cancelled.
-    _runtime: Option<snakeway_core::testing_api::RuntimeServer>,
+    _runtime: Option<snakeway_server::testing_api::RuntimeServer>,
 }
 
 impl TestServer {
@@ -182,7 +182,7 @@ impl TestServer {
 
     fn from_config(
         cfg: &RuntimeConfig,
-        runtime: Option<snakeway_core::testing_api::RuntimeServer>,
+        runtime: Option<snakeway_server::testing_api::RuntimeServer>,
     ) -> Self {
         let listener_addrs: Vec<String> = cfg
             .listeners

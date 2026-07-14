@@ -7,13 +7,13 @@ license.workspace = true
 
 [features]
 default = []
-hotpath = ["dep:hotpath", "hotpath/hotpath", "snakeway-core/hotpath"]
-hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc", "snakeway-core/hotpath-alloc"]
-dev-templates = ["snakeway-core/dev-templates"]
+hotpath = ["dep:hotpath", "hotpath/hotpath", "snakeway-server/hotpath"]
+hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc", "snakeway-server/hotpath-alloc"]
+dev-templates = ["snakeway-server/dev-templates"]
 
 
 [dependencies]
-snakeway-core = { workspace = true }
+snakeway-server = { workspace = true }
 hotpath = { workspace = true, optional = true }
 
 [[bin]]

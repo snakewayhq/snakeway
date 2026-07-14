@@ -1,7 +1,7 @@
 use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
-use snakeway_core::testing_api::conf::types::{
+use snakeway_server::testing_api::conf::types::{
     HealthCheckSpec, RuntimeConfig, ServiceRouteSpec, ServiceSpec,
 };
 use snakeway_tests::conf::ConfigBuilder;

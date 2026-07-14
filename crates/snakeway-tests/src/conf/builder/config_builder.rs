@@ -1,12 +1,12 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
 use confval::source::Located;
-use snakeway_core::testing_api::conf::types::{
+use snakeway_server::testing_api::conf::types::{
     ACME_CHALLENGE_HTTP01, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
     IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,
     RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
     StructuredLoggingDeviceSpec, TlsTerminationSpec, WasmDeviceSpec,
 };
-use snakeway_core::testing_api::conf::{load_config_from_specs, types::RuntimeConfig};
+use snakeway_server::testing_api::conf::{load_config_from_specs, types::RuntimeConfig};
 use std::path::PathBuf;
 
 pub struct ConfigBuilder {
@@ -80,7 +80,7 @@ impl ConfigBuilder {
 
     pub fn try_build(
         self,
-    ) -> Result<RuntimeConfig, snakeway_core::testing_api::conf::validation::ConfigError> {
+    ) -> Result<RuntimeConfig, snakeway_server::testing_api::conf::validation::ConfigError> {
         let mut device_specs = vec![];
 
         if let Some(identity_device_spec) = self.identity_device_spec {

@@ -212,7 +212,7 @@ fn static_file_gzip_compression_negotiation() {
     // small_file_threshold must be >= file size (files below this are compressed in-memory).
     // min_gzip_size must be <= file size.
     for route in &mut cfg.routes {
-        if let snakeway_core::testing_api::conf::types::RouteConfig::Static(sr) = route {
+        if let snakeway_server::testing_api::conf::types::RouteConfig::Static(sr) = route {
             sr.static_config.small_file_threshold = 1_048_576;
             sr.static_config.min_gzip_size = 64;
         }
