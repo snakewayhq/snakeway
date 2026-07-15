@@ -4235,7 +4235,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4264,7 +4264,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-acme"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4285,7 +4285,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-conf"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "confval",
  "glob",
@@ -4308,7 +4308,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-engine"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4345,7 +4345,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-jwt-auth-device"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "base64 0.22.1",
  "hmac",
@@ -4357,7 +4357,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-net"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "async-trait",
  "http",
@@ -4372,7 +4372,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-observability"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "console-subscriber",
  "hostname",
@@ -4392,7 +4392,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-proxy"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4422,7 +4422,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "base64 0.22.1",
  "confval",
@@ -4450,7 +4450,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-wasm-test-device"
-version = "0.16.0-dev"
+version = "0.15.1"
 dependencies = [
  "wit-bindgen",
 ]
