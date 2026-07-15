@@ -244,7 +244,7 @@ Standard installation layout:
 **Goals**
 
 - [x] Expose some HTTP/2 fine-tuning options
-- [ ] Full WASM Device support
+- [x] Full WASM Device support
 
 **What Full WASM Device Support looks like...**
 
