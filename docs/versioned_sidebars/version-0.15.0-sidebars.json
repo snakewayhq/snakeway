@@ -1,0 +1,179 @@
+{
+  "docs": [
+    {
+      "type": "category",
+      "label": "Introduction",
+      "items": [
+        "introduction/getting-started",
+        "introduction/why-snakeway-exists",
+        "introduction/roadmap"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Configuration Reference",
+      "items": [
+        "configuration/overview",
+        {
+          "type": "category",
+          "label": "Entry Point",
+          "link": {
+            "type": "doc",
+            "id": "configuration/entry-point/index"
+          },
+          "items": [
+            "configuration/entry-point/server",
+            {
+              "type": "category",
+              "label": "TLS Automation",
+              "link": {
+                "type": "doc",
+                "id": "configuration/entry-point/tls-automation/index"
+              },
+              "items": [
+                "configuration/entry-point/tls-automation/acme",
+                "configuration/entry-point/tls-automation/cert-store"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "category",
+          "label": "Ingress",
+          "link": {
+            "type": "doc",
+            "id": "configuration/ingress/index"
+          },
+          "items": [
+            {
+              "type": "category",
+              "label": "Bind",
+              "link": {
+                "type": "doc",
+                "id": "configuration/ingress/bind"
+              },
+              "items": [
+                "configuration/ingress/connection-filter",
+                "configuration/ingress/connection-rate-limiter"
+              ]
+            },
+            "configuration/ingress/admin-bind",
+            {
+              "type": "category",
+              "label": "Services",
+              "link": {
+                "type": "doc",
+                "id": "configuration/ingress/services"
+              },
+              "items": [
+                "configuration/ingress/circuit-breaker"
+              ]
+            },
+            "configuration/ingress/routes",
+            {
+              "type": "category",
+              "label": "Upstreams",
+              "link": {
+                "type": "doc",
+                "id": "configuration/ingress/upstreams"
+              },
+              "items": [
+                "configuration/ingress/upstream-tls"
+              ]
+            },
+            {
+              "type": "category",
+              "label": "Static Files",
+              "link": {
+                "type": "doc",
+                "id": "configuration/ingress/static-files"
+              },
+              "items": [
+                "configuration/ingress/compression",
+                "configuration/ingress/cache-policy"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "category",
+          "label": "Devices",
+          "items": [
+            "configuration/devices/identity",
+            "configuration/devices/network-policy",
+            "configuration/devices/request-filter",
+            "configuration/devices/request-rate-limiting",
+            "configuration/devices/structured-logging"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Administration",
+      "items": [
+        "administration/cli",
+        "administration/tls-cert-management",
+        "administration/admin-api",
+        "administration/logging",
+        "administration/static-files"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Extension",
+      "items": [
+        "extension/understanding-devices",
+        "extension/authoring-wasm-devices",
+        {
+          "type": "category",
+          "label": "Devices",
+          "items": [
+            "extension/wasm-devices/integration-test-example-device",
+            "extension/wasm-devices/jwt-auth-device"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Internals",
+      "items": [
+        "internals/architecture",
+        "internals/mental-model",
+        "internals/lifecycle",
+        "internals/control-plane-and-data-plane",
+        "internals/configuration",
+        "internals/confval",
+        "internals/hot-reload",
+        "internals/tls-cert-renewal",
+        "internals/observability",
+        "internals/wasm_devices"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Contributing",
+      "items": [
+        "contributing/overview",
+        "contributing/code-style",
+        "contributing/unit-tests",
+        "contributing/integration-tests",
+        "contributing/http-replay-tests",
+        "contributing/adding-config-settings",
+        "contributing/benchmarks",
+        {
+          "type": "category",
+          "label": "Writing Documentation",
+          "link": {
+            "type": "doc",
+            "id": "contributing/writing-documentation"
+          },
+          "items": [
+            "contributing/mermaid-diagrams"
+          ]
+        }
+      ]
+    }
+  ]
+}
