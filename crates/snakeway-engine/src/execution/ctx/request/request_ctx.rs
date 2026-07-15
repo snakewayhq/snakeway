@@ -306,7 +306,7 @@ impl RequestCtx {
         self.normalized_request.is_http2()
     }
 
-    /// Returns the authority (host[:port]) of the downstream request URI.
+    /// Returns the authority (host:port) of the downstream request URI.
     ///
     /// Present for HTTP/2 requests, where it carries the `:authority`
     /// pseudo-header value; HTTP/1.1 requests in origin-form have no URI
