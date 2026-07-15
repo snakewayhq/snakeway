@@ -223,6 +223,19 @@ mod tests {
     }
 
     #[test]
+    fn wasm_defaults_when_block_omitted() {
+        // Arrange
+        let spec = ServerSpec::default();
+
+        // Act
+        let config = lower_server(&spec);
+
+        // Assert
+        assert_eq!(config.wasm.max_concurrent_executions, 512);
+        assert_eq!(config.wasm.max_memory_bytes, 67_108_864);
+    }
+
+    #[test]
     fn server_config_from_valid_spec() {
         // Arrange
         let spec = ServerSpec::default();

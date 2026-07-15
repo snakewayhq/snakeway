@@ -257,6 +257,10 @@ impl Validate for ServerSpec {
             observability.value.validate(report);
         }
 
+        if let Some(wasm) = &self.wasm {
+            wasm.value.validate(report);
+        }
+
         if let Some(shutdown) = &self.shutdown {
             if let Some(drain) = &shutdown.value.drain_seconds {
                 SHUTDOWN_DRAIN_SECONDS.check_located(drain, "drain_seconds", report);
@@ -624,6 +628,54 @@ observability {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("connection_timeout_seconds"))
+        );
+    }
+
+    #[test]
+    fn validate_wasm_max_concurrent_executions_out_of_range() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            wasm: Some(Located::detached(WasmSpec {
+                max_concurrent_executions: Located::detached(999_999),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_concurrent_executions"))
+        );
+    }
+
+    #[test]
+    fn validate_wasm_max_memory_bytes_out_of_range() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            wasm: Some(Located::detached(WasmSpec {
+                max_memory_bytes: Located::detached(1),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_memory_bytes"))
         );
     }
 
