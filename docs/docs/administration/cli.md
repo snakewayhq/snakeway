@@ -395,8 +395,8 @@ Without the logs command, you will see raw JSON.
 
 ```shell
 snakeway
-{"timestamp":"2026-02-07T19:04:52.546015Z","level":"INFO","message":"pid file written","pid_file":"/tmp/snakeway.pid","target":"snakeway_core::server::setup"}
-{"timestamp":"2026-02-07T19:04:52.547103Z","level":"INFO","message":"Reload loop started","target":"snakeway_core::server::setup"}
+{"timestamp":"2026-02-07T19:04:52.546015Z","level":"INFO","message":"pid file written","pid_file":"/tmp/snakeway.pid","target":"snakeway::server::setup"}
+{"timestamp":"2026-02-07T19:04:52.547103Z","level":"INFO","message":"Reload loop started","target":"snakeway::server::setup"}
 {"timestamp":"2026-02-07T19:04:52.547168Z","level":"INFO","message":"Bootstrap starting","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":431,"target":"pingora_core::server"}
 {"timestamp":"2026-02-07T19:04:52.547203Z","level":"INFO","message":"Bootstrap done","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":451,"target":"pingora_core::server"}
 {"timestamp":"2026-02-07T19:04:52.549202Z","level":"INFO","message":"Server starting","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":492,"target":"pingora_core::server"}
@@ -407,8 +407,8 @@ in the terminal, but the build `logs` command will show something a little nicer
 
 ```shell
 snakeway | snakeway logs
-[INFO] pid file written (snakeway_core::server::setup)
-[INFO] Reload loop started (snakeway_core::server::setup)
+[INFO] pid file written (snakeway::server::setup)
+[INFO] Reload loop started (snakeway::server::setup)
 [INFO] Bootstrap starting (pingora_core::server)
 [INFO] Bootstrap done (pingora_core::server)
 [INFO] Server starting (pingora_core::server)

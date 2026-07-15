@@ -1,4 +1,4 @@
-use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec};
+use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec, WasmSpec};
 use crate::validation::validator::validate_cert_pem;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -57,6 +57,10 @@ pub struct ServerSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub upstream: Option<Located<UpstreamSettingsSpec>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(nested)]
+    pub wasm: Option<Located<WasmSpec>>,
 }
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -134,6 +138,7 @@ impl Default for ServerSpec {
             upgrade: None,
             performance: None,
             upstream: None,
+            wasm: None,
         }
     }
 }
@@ -250,6 +255,10 @@ impl Validate for ServerSpec {
 
         if let Some(observability) = &self.observability {
             observability.value.validate(report);
+        }
+
+        if let Some(wasm) = &self.wasm {
+            wasm.value.validate(report);
         }
 
         if let Some(shutdown) = &self.shutdown {
@@ -619,6 +628,54 @@ observability {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("connection_timeout_seconds"))
+        );
+    }
+
+    #[test]
+    fn validate_wasm_max_concurrent_executions_out_of_range() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            wasm: Some(Located::detached(WasmSpec {
+                max_concurrent_executions: Located::detached(999_999),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_concurrent_executions"))
+        );
+    }
+
+    #[test]
+    fn validate_wasm_max_memory_bytes_out_of_range() {
+        // Arrange
+        let mut report = Report::new();
+        let server = ServerSpec {
+            wasm: Some(Located::detached(WasmSpec {
+                max_memory_bytes: Located::detached(1),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Act
+        server.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_memory_bytes"))
         );
     }
 

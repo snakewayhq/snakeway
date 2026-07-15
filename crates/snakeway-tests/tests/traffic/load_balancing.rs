@@ -2,7 +2,7 @@ use confval::source::Located;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
-use snakeway_core::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
+use snakeway::testing_api::conf::types::{ServiceRouteSpec, ServiceSpec};
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{
     TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY, UPSTREAM_PORT_TERTIARY,
@@ -29,7 +29,7 @@ fn parse_upstream_request_counts(json: &serde_json::Value) -> Vec<(String, u64)>
     result
 }
 
-fn build_lb_config(strategy: &str) -> snakeway_core::testing_api::conf::types::RuntimeConfig {
+fn build_lb_config(strategy: &str) -> snakeway::testing_api::conf::types::RuntimeConfig {
     ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
             load_balancing_strategy: Located::detached(strategy.to_string()),

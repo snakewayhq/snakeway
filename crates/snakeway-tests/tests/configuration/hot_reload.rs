@@ -1,7 +1,7 @@
 use reqwest::StatusCode;
 use reqwest::blocking::Client;
-use snakeway_core::testing_api::ControlPlaneServer;
-use snakeway_core::testing_api::conf::load_config;
+use snakeway::testing_api::ControlPlaneServer;
+use snakeway::testing_api::conf::load_config;
 use snakeway_tests::constants::{FIXTURES_CONFIG_DIR, TEST_HOST};
 use snakeway_tests::harness::server::{free_port, wait_for_listener};
 use snakeway_tests::harness::upstream::{start_http_upstream, start_slow_http_upstream};

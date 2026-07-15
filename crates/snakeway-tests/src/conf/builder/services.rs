@@ -1,12 +1,13 @@
 use crate::conf::ConfigBuilder;
 use crate::constants::{
-    ACME_CERTS_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDERS_DIR, ADMIN_TOKEN_FILE,
+    ACME_CERT_DIR, ACME_CONTACT_EMAIL, ACME_DIRECTORY_URL, ACME_ORDER_DIR, ADMIN_TOKEN_FILE,
     CERT_ORIGIN_CA_PEM, CERT_PEBBLE_CA_PEM, CERT_SERVER_KEY, CERT_SERVER_PEM,
     DEFAULT_ADMIN_LISTENER_PORT, ROUTE_PATH_API, ROUTE_PATH_GRPC, ROUTE_PATH_WS, TEST_HOST,
     UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY,
 };
+use crate::harness::acme::acme_test_root;
 use confval::source::Located;
-use snakeway_core::testing_api::conf::types::{
+use snakeway::testing_api::conf::types::{
     AcmeServerSpec, AdminAuthSpec, BearerAuthSpec, BindAdminSpec, CertStoreSpec, EndpointSpec,
     EndpointTlsSpec, Http2Spec, IngressSpec, RedirectSpec, ServiceRouteSpec, ServiceSpec,
     TlsTerminationSpec, UpstreamSpec,
@@ -123,24 +124,21 @@ impl ConfigBuilder {
     }
 
     pub fn with_https_ingress(mut self) -> Self {
-        // Pre-create the ACME directories before validation runs.  Validation
-        // requires these to exist as directories (they hold private key material
-        // and should be intentionally provisioned by the operator/installer).
-        std::fs::create_dir_all(ACME_ORDERS_DIR).expect("failed to create ACME orders directory");
-        std::fs::create_dir_all(ACME_CERTS_DIR).expect("failed to create ACME certs directory");
+        let acme_root = acme_test_root();
+        let order_dir = acme_root.join(ACME_ORDER_DIR);
+        let cert_dir = acme_root.join(ACME_CERT_DIR);
 
         self.server_spec.ca_file = Some(Located::detached(PathBuf::from(CERT_ORIGIN_CA_PEM)));
         self.server_spec.tls_automation = Some(Located::detached(
-            snakeway_core::testing_api::conf::types::TlsAutomationSpec {
+            snakeway::testing_api::conf::types::TlsAutomationSpec {
                 acme: Located::detached(AcmeServerSpec {
                     directory_url: Located::detached(ACME_DIRECTORY_URL.to_string()),
-                    data_dir: Located::detached(PathBuf::from(ACME_ORDERS_DIR)),
+                    data_dir: Located::detached(order_dir),
                     contact_email: vec![Located::detached(ACME_CONTACT_EMAIL.to_string())],
                     ca_file: Some(Located::detached(PathBuf::from(CERT_PEBBLE_CA_PEM))),
                 }),
-                // Memory store avoids filesystem path concerns in tests.
                 cert_store: Located::detached(CertStoreSpec::Filesystem {
-                    cert_dir: Located::detached(PathBuf::from(ACME_CERTS_DIR)),
+                    cert_dir: Located::detached(cert_dir),
                 }),
                 renew_within_days: Located::detached(30),
             },

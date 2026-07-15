@@ -197,6 +197,38 @@ Common use cases:
 - **Upstream IP allowlists** — guarantee which source IP upstreams see
 - **Port exhaustion** — spread connections across multiple source IPs to get more ephemeral ports
 
+## WASM
+
+The `wasm` block sets engine-wide limits for WASM devices.
+These apply to the shared runtime that all WASM devices execute in, not to any single device.
+The whole block is optional and every field falls back to its default when unset.
+
+```hcl
+wasm {
+  max_concurrent_executions = 512
+  max_memory_bytes          = 67108864   # 64 MiB
+}
+```
+
+`wasm.max_concurrent_executions` integer, default: `512`.
+The maximum number of WASM device hook executions allowed to run at the same time.
+A fresh sandbox is created for each hook invocation, so this is effectively the ceiling on concurrent requests passing
+through WASM devices.
+Requests beyond the limit fail according to each device's `fail_policy`.
+Raise it for high-traffic deployments; lower it on memory-constrained hosts.
+Valid range: `1` to `8192`.
+
+`wasm.max_memory_bytes` integer, default: `67108864` (64 MiB). The maximum linear memory a single WASM
+device execution may allocate.
+An execution that tries to exceed this is trapped, and the outcome follows the device's `fail_policy`.
+Valid range: `1048576` (1 MiB) to `268435456` (256 MiB).
+
+:::caution
+Both limits size a memory pool that the runtime reserves up front, and their effect multiplies.
+A very high `max_concurrent_executions` combined with a very high `max_memory_bytes` reserves a large
+amount of address space at startup, so raise them deliberately.
+:::
+
 ## Observability
 
 The `observability` block configures telemetry export.

@@ -1,6 +1,6 @@
 use crate::constants::{TEST_DEVICE_PATH, TEST_JWT_DEVICE_PATH};
 use confval::prelude::Located;
-use snakeway_core::testing_api::conf::types::WasmDeviceSpec;
+use snakeway::testing_api::conf::types::WasmDeviceSpec;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

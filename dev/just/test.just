@@ -1,8 +1,13 @@
+# Crates excluded from host unit tests: the binary, the integration suite, and wasm device crates.
+# Every other workspace member is a library and is picked up automatically by `--workspace`.
+[private]
+_skip_non_unit_test_crates := "--exclude snakeway-tests --exclude snakeway-jwt-auth-device --exclude snakeway-wasm-test-device"
+
 start-docker:
-    docker compose -f docker-compose-dev.yml up -d --remove-orphans
+    docker compose -f dev/docker-compose-dev.yml up -d --remove-orphans
 
 stop-docker:
-    docker compose -f docker-compose-dev.yml down
+    docker compose -f dev/docker-compose-dev.yml down
 
 fetch-pebble-ca: start-docker
     @echo "Fetch Pebble's CA cert..."
@@ -63,16 +68,16 @@ generate-all-templates:
 
 # Run unit tests
 test:
-    cargo nextest run -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features
+    cargo nextest run --workspace {{ _skip_non_unit_test_crates }} --all-features
 
 # Run unit tests with coverage, and output HTML
 test-with-coverage:
-    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features--html --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest --workspace {{ _skip_non_unit_test_crates }} --all-features --html --ignore-filename-regex 'pingora|tests/|examples/'
     open target/llvm-cov/html/index.html
 
 # Run unit tests with coverage, and output a summary
 test-with-coverage-summary:
-    cargo llvm-cov nextest -p confval -p confval-derive -p snakeway-core -p snakeway-conf --all-features --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
+    cargo llvm-cov nextest --workspace {{ _skip_non_unit_test_crates }} --all-features --summary-only --ignore-filename-regex 'pingora|tests/|examples/'
 
 # Run integration tests
 integration-test *ARGS: fetch-pebble-ca generate-dev-certs build-wasm-test-device build-wasm-jwt-device

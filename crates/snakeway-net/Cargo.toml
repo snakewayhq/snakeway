@@ -1,0 +1,16 @@
+[package]
+name = "snakeway-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+snakeway-conf = { workspace = true }
+ipnet = { workspace = true, features = ["serde"] }
+ipnet-trie = { workspace = true }
+async-trait = { workspace = true }
+pingora = { workspace = true, features = ["connection_filter"] }
+pingora-limits = { workspace = true }
+http = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

@@ -9,14 +9,24 @@ Read this page first, then consult the page that matches the kind of change you 
 
 ## Repository Layout
 
-```
-crates/snakeway/           # Main binary crate (entrypoint, CLI wiring)
-crates/snakeway-conf/      # Configuration library crate (parsing and lowering)
-crates/snakeway-core/      # Core library crate (all business logic)
-crates/snakeway-wit/       # WIT bindings for the WASM device interface
-crates/snakeway-tests/     # Integration test crate (separate binary, uses nextest)
-docs/                      # This documentation site (Docusaurus)
-k6/                        # k6 load test scripts
+```shell
+.
+├── crates
+│   ├── confval/  
+│   ├── confval-derive/
+│   ├── snakeway/                     # Application crate (lib + bin): CLI, control plane, server
+│   ├── snakeway-acme/                # ACME certificate management
+│   ├── snakeway-conf/                # Configuration library crate (parsing and lowering)
+│   ├── snakeway-engine/              # Request execution engine and runtime state
+│   ├── snakeway-jwt-auth-device/     # Example WASM device library crate
+│   ├── snakeway-net/                 # Connection-level filtering
+│   ├── snakeway-observability/       # Logging, metrics, and tracing
+│   ├── snakeway-tests/               # Integration test crate (separate binary, uses nextest)
+│   ├── snakeway-wasm-test-device/    # WASM integration test fixture device
+│   └── snakeway-wit/                 # WIT bindings for the WASM device interface
+├── dev/                              # Dev-related (just recipes, k6 load testing scripts, etc.)
+├── docs/                             # Docusaurus website.
+├── packaging/                        # Contains all the packaging config and scripts for Docker, systemd, etc.
 ```
 
 ## Prerequisites
@@ -25,8 +35,10 @@ k6/                        # k6 load test scripts
 - [just](https://github.com/casey/just) for running project recipes (`brew install just` on macOS).
 - [cargo-nextest](https://nexte.st/) for running the test suites.
 - Docker, required only for the ACME integration tests (Pebble CA).
-- The Protocol Buffers compiler (`protoc`), required to build the gRPC stubs in `crates/snakeway-tests` (`brew install protobuf` on macOS).
-- [Zig](https://ziglang.org/) and [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild), required only for static Linux cross-builds (`brew install zig` and `cargo install cargo-zigbuild`).
+- The Protocol Buffers compiler (`protoc`), required to build the gRPC stubs in `crates/snakeway-tests` (
+  `brew install protobuf` on macOS).
+- [Zig](https://ziglang.org/) and [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild), required only for
+  static Linux cross-builds (`brew install zig` and `cargo install cargo-zigbuild`).
 - Node.js and npm, required only for working on the documentation site.
 
 Run `just -l` to see every available recipe.
@@ -34,20 +46,20 @@ The recipes themselves are good context for what the project can do.
 
 ## Key Commands
 
-| Task                    | Command                       |
-|-------------------------|-------------------------------|
-| Build                   | `cargo build`                 |
-| Type-check              | `just check`                  |
-| Run unit tests          | `just test`                   |
-| Unit tests with coverage| `just test-with-coverage`     |
-| Run integration tests   | `just integration-test`       |
-| Run all tests and lint  | `just test-everything`        |
-| Format code             | `just fmt`                    |
-| Lint (clippy)           | `just clippy`                 |
-| Format and lint         | `just lint`                   |
-| Run locally             | `cargo run -p snakeway`       |
-| Preview the docs        | `just docs`                   |
-| Run microbenchmarks     | `just bench`                  |
+| Task                           | Command                   |
+|--------------------------------|---------------------------|
+| Build                          | `cargo build`             |
+| Type-check                     | `just check`              |
+| Run unit tests                 | `just test`               |
+| Unit tests with coverage       | `just test-with-coverage` |
+| Run integration tests          | `just integration-test`   |
+| Run all tests, lint, and bench | `just test-everything`    |
+| Format code                    | `just fmt`                |
+| Lint (clippy)                  | `just clippy`             |
+| Format and lint                | `just lint`               |
+| Run locally                    | `cargo run -p snakeway`   |
+| Preview the docs               | `just docs`               |
+| Run microbenchmarks            | `just bench`              |
 
 For a release build, add `-r`:
 
@@ -104,7 +116,8 @@ These binaries are suitable for distribution and container deployment.
 
 1. Make your change in the appropriate crate.
 2. Add or update tests.
-   See [Unit Tests](unit-tests.md), [Integration Tests](integration-tests.md), and [HTTP Replay Tests](http-replay-tests.md).
+   See [Unit Tests](unit-tests.md), [Integration Tests](integration-tests.md),
+   and [HTTP Replay Tests](http-replay-tests.md).
 3. Run `just lint` and fix every diagnostic.
    See [Code Style](code-style.md).
 4. If the change touches configuration, follow the full recipe in [Adding a Config Setting](adding-config-settings.md).
@@ -114,7 +127,7 @@ These binaries are suitable for distribution and container deployment.
 
 :::tip
 Scope your checks while iterating.
-`cargo check -p snakeway-core -p snakeway` is much faster than a full workspace build and covers most changes.
+`cargo check -p snakeway -p snakeway` is much faster than a full workspace build and covers most changes.
 :::
 
 A pull request for a feature or bug fix typically includes:

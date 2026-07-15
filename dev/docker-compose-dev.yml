@@ -1,0 +1,97 @@
+services:
+  pebble:
+    container_name: snakeway-pebble
+    image: ghcr.io/letsencrypt/pebble:latest
+    command: -config /test/pebble.json
+    ports:
+      - "14000:14000"  # ACME port
+      - "15000:15000"  # Management port
+    environment:
+      - PEBBLE_VA_NOSLEEP=1
+      - PEBBLE_VA_ALWAYS_VALID=1
+    volumes:
+      - ./pebble.json:/test/pebble.json
+
+  otel-collector:
+    container_name: snakeway-otel-collector
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./otel/collector.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus scrape endpoint
+    depends_on:
+      - tempo
+      - loki
+
+  grafana:
+    container_name: snakeway-grafana
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./otel/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - snakeway-grafana-data:/var/lib/grafana
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+
+  tempo:
+    container_name: snakeway-tempo
+    image: grafana/tempo:2.10.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./otel/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
+
+  loki:
+    container_name: snakeway-loki
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./otel/loki-local-config.yaml:/etc/loki/local-config.yaml
+
+  prometheus:
+    container_name: snakeway-prometheus
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-remote-write-receiver'
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./otel/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - snakeway-prometheus-data:/prometheus
+    depends_on:
+      - otel-collector
+
+  origin:
+    container_name: snakeway-origin
+    image: ghcr.io/snakewayhq/snakeway-origin:latest
+    environment:
+      ORIGIN_HOST: 0.0.0.0
+      ORIGIN_BASE_PORT: 4000
+      TLS_CERT: /certs/server.pem
+      TLS_KEY: /certs/server.key
+    volumes:
+      - ./crates/snakeway-tests/certs:/certs:ro
+      - snakeway-origin-tmp:/tmp
+    ports:
+      - "4000-4004:4000-4004"
+      - "4443-4447:4443-4447"
+      - "6051-6055:6051-6055"
+
+volumes:
+  snakeway-grafana-data:
+  snakeway-prometheus-data:
+  snakeway-origin-tmp:

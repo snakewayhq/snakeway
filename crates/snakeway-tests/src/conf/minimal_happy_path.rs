@@ -1,5 +1,5 @@
 use crate::conf::ConfigBuilder;
-use snakeway_core::testing_api::conf::types::RuntimeConfig;
+use snakeway::testing_api::conf::types::RuntimeConfig;
 
 pub fn minimal_ws_runtime_config() -> RuntimeConfig {
     ConfigBuilder::default().with_ws_ingress().build()

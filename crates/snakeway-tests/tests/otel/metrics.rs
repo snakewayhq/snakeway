@@ -2,7 +2,7 @@ use opentelemetry::metrics::MeterProvider;
 use opentelemetry_sdk::metrics::data::{AggregatedMetrics, Metric, MetricData};
 use opentelemetry_sdk::metrics::{InMemoryMetricExporter, PeriodicReader, SdkMeterProvider};
 use reqwest::StatusCode;
-use snakeway_core::testing_api::Metrics;
+use snakeway::testing_api::observability::Metrics;
 use snakeway_tests::conf::minimal_http_runtime_config;
 use snakeway_tests::harness::TestServer;
 use std::sync::Arc;
