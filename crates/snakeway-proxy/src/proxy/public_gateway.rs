@@ -570,6 +570,16 @@ impl ProxyHttp for PublicGateway {
                         .upstream_authority()
                         .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
                     upstream.insert_header(header::HOST, authority)?;
+                } else if !upstream.headers.contains_key(header::HOST) {
+                    // An HTTP/2 downstream request carries its authority in
+                    // the `:authority` pseudo-header, which never appears in
+                    // the header map rebuilt above.
+                    // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
+                    // from the request authority.
+                    let authority = ctx.downstream_authority().ok_or_else(|| {
+                        Error::new(Custom("missing authority for h1 upstream Host"))
+                    })?;
+                    upstream.insert_header(header::HOST, authority)?;
                 }
 
                 if ctx.is_upgrade_req() {

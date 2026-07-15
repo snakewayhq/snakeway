@@ -305,6 +305,20 @@ impl RequestCtx {
         debug_assert!(self.hydrated);
         self.normalized_request.is_http2()
     }
+
+    /// Returns the authority (host[:port]) of the downstream request URI.
+    ///
+    /// Present for HTTP/2 requests, where it carries the `:authority`
+    /// pseudo-header value; HTTP/1.1 requests in origin-form have no URI
+    /// authority and return `None` (their authority lives in the `Host`
+    /// header instead).
+    pub fn downstream_authority(&self) -> Option<&str> {
+        debug_assert!(self.hydrated);
+        self.normalized_request
+            .original_uri()
+            .authority()
+            .map(|a| a.as_str())
+    }
 }
 
 /// Websocket API
