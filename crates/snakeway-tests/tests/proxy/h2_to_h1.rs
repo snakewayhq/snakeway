@@ -83,3 +83,38 @@ fn h2_max_header_list_size_is_enforced_on_the_wire() {
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().unwrap(), HTTP_RESPONSE_BODY);
 }
+
+/// An HTTP/2 client that supplies no literal `host` header
+/// (only `:authority`, as curl, k6, and browsers do) must still reach the
+/// HTTP/1.1 upstream with a `Host` header derived from the request
+/// authority.
+/// HTTP/1.1 requires `Host`, and strict origins such as nginx reject a request
+/// without it with 400.
+///
+/// This is applicable to proxy-to-proxy communication (e.g., when snakeway
+/// proxies to nginx) as the second proxy server will be stricter than an
+/// application service (e.g., the snakeway-origin test server).
+#[test]
+fn h2_to_h1_upstream_request_carries_host_header() {
+    // Arrange
+    let mut cfg = minimal_h2_to_h1_runtime_config();
+    let srv = TestServer::start_http_upstream_that_echoes_headers_with_config(&mut cfg);
+    let client = reqwest::blocking::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .http2_prior_knowledge()
+        .build()
+        .expect("failed to build HTTP/2 client");
+    let url = format!("https://{}{}", srv.https_addr(), ROUTE_PATH_API);
+
+    // Act: no explicit Host header, so the client sends only :authority.
+    let res = client.get(&url).send().expect("request failed");
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().expect("failed to read body");
+    let expected = format!("\"host\":\"{}\"", srv.https_addr());
+    assert!(
+        body.contains(&expected),
+        "upstream request must carry a Host header derived from :authority; upstream saw: {body}"
+    );
+}

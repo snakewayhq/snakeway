@@ -75,7 +75,7 @@ services:
     depends_on:
       - otel-collector
 
-  origin:
+  snakeway-origin:
     container_name: snakeway-origin
     image: ghcr.io/snakewayhq/snakeway-origin:latest
     environment:
@@ -84,12 +84,23 @@ services:
       TLS_CERT: /certs/server.pem
       TLS_KEY: /certs/server.key
     volumes:
-      - ./crates/snakeway-tests/certs:/certs:ro
+      - ../crates/snakeway-tests/certs:/certs:ro
       - snakeway-origin-tmp:/tmp
     ports:
       - "4000-4004:4000-4004"
       - "4443-4447:4443-4447"
       - "6051-6055:6051-6055"
+
+  nginx-origin:
+    container_name: nginx-origin
+    image: nginx:latest
+    volumes:
+      - ./nginx-origin.conf:/etc/nginx/nginx.conf:ro
+      - ../crates/snakeway-tests/certs:/certs:ro
+      - ../crates/snakeway-tests/fixtures/public:/usr/share/nginx/html:ro
+    ports:
+      - "9080:80"
+      - "9443:443"
 
 volumes:
   snakeway-grafana-data:
