@@ -98,7 +98,7 @@ pub(crate) fn render_directory(dir: PathBuf, request_path: &str) -> StaticRespon
     );
     headers.insert(
         http::header::CONTENT_LENGTH,
-        HeaderValue::from_str(&body.len().to_string()).unwrap(),
+        HeaderValue::from(body.len()),
     );
 
     StaticResponse {
