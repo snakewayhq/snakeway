@@ -4,7 +4,7 @@ use crate::proxy::handlers::StaticFileHandler;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{HeaderMap, StatusCode, Uri, Version, header};
+use http::{HeaderMap, StatusCode, Version, header};
 use opentelemetry::KeyValue;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
