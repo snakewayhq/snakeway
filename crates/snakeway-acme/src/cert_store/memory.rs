@@ -16,16 +16,26 @@ impl Default for MemoryCertStore {
 
 impl CertStore for MemoryCertStore {
     fn get(&self, id: &str) -> Option<StoredCertificate> {
-        self.inner.read().unwrap_or_else(|e| e.into_inner()).get(id).cloned()
+        self.inner
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(id)
+            .cloned()
     }
 
     fn put(&self, id: String, cert: StoredCertificate) -> Result<(), std::io::Error> {
-        self.inner.write().unwrap_or_else(|e| e.into_inner()).insert(id, cert);
+        self.inner
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, cert);
         Ok(())
     }
 
     fn delete(&self, id: &str) -> Result<(), std::io::Error> {
-        self.inner.write().unwrap_or_else(|e| e.into_inner()).remove(id);
+        self.inner
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(id);
         Ok(())
     }
 
