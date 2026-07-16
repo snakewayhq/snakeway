@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "JWT authentication gateway device for Snakeway"
 
+[lints]
+workspace = true
+
 [dependencies]
 wit-bindgen = "0.57"
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
