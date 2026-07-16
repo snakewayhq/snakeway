@@ -39,5 +39,8 @@ pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
         return;
     }
 
-    start_control_plane(config_path, config, upgrade).expect("Failed to start Snakeway server");
+    if let Err(e) = start_control_plane(config_path, config, upgrade) {
+        eprintln!("Failed to start Snakeway server: {e}");
+        exit(1);
+    }
 }
