@@ -3,6 +3,7 @@
 //! lowering. These impls are the reference shape for generated code, so
 //! changes here should stay deliberate.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "derive")]
 
 use confval::format::hcl::parse_hcl;
