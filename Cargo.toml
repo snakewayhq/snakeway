@@ -62,8 +62,8 @@ debug = false               # No debug symbols in distributed binaries
 strip = "symbols"           # Strip symbols to minimize binary size
 
 [workspace.lints.clippy]
-unwrap_used = "warn"
-expect_used = "warn"
+unwrap_used = "deny"
+expect_used = "deny"
 
 [workspace.dependencies]
 confval = { path = "crates/confval", features = ["serde", "color", "hcl", "derive"] }
