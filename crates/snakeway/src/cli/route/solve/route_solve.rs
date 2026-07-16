@@ -206,8 +206,13 @@ fn render_pretty(decision: &RouteSolveDecision, verbose: bool) {
 }
 
 fn render_json(decision: &RouteSolveDecision) {
-    let json = serde_json::to_string_pretty(decision).expect("failed to serialize decision");
-    println!("{}", json);
+    match serde_json::to_string_pretty(decision) {
+        Ok(json) => println!("{json}"),
+        Err(e) => {
+            eprintln!("failed to serialize decision: {e}");
+            process::exit(EXIT_CONFIG_FAILURE);
+        }
+    }
 }
 
 fn exit_code(decision: &RouteSolveDecision) -> i32 {

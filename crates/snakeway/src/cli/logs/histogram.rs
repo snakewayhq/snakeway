@@ -19,7 +19,7 @@ impl Histogram {
                 return;
             }
         }
-        *self.counts.last_mut().unwrap() += 1;
+        self.counts[self.buckets.len()] += 1;
     }
 
     pub(crate) fn snapshot(&self) -> Vec<(String, u64)> {
@@ -31,7 +31,7 @@ impl Histogram {
             } else if i < self.buckets.len() {
                 format!("{}–{}ms", self.buckets[i - 1] + 1, self.buckets[i])
             } else {
-                format!(">{}ms", self.buckets.last().unwrap())
+                format!(">{}ms", self.buckets[self.buckets.len() - 1])
             };
 
             out.push((label, *c));
