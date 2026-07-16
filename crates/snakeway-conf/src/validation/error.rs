@@ -39,4 +39,13 @@ pub enum ConfigError {
         report: confval::diagnostic::Report,
         sources: confval::source::SourceMap,
     },
+
+    //-------------------------------------------------------------------------
+    // Lowering
+    //-------------------------------------------------------------------------
+    #[error("server lowering returned None without reporting an error")]
+    ServerLoweringReturnedNone,
+
+    #[error("server lowering returned None without reporting an error")]
+    ConfigLoweringReturnedNone,
 }
