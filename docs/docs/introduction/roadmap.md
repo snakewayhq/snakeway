@@ -275,9 +275,17 @@ programmable proxy if the programmability features are still experimental.
 
 The following items are not in the critical path for 1.0 but represent the longer-term direction.
 
+### HTTP Upgrade negotiation and HTTP version negotiation State Machine
+
+The HttpProxy and RequestCtx implementations implicitly encode HTTP Upgrade negotiation and HTTP version negotiation
+logic.
+This would (possibly) be better represented with an explicit state machine as the implicit logic is confusing.
+
 ### Router Performance
 
 LRU cache in front of the router to make route lookups O(1) instead of O(n).
+This should be profiled before and after implementing.
+There may be no meaningful difference with a practical number of routes.
 
 ### Caching Device
 
