@@ -1,7 +1,7 @@
 use crate::server::pid;
 use crate::server::pid::write_pid;
 use crate::server::runtime_server::RuntimeServer;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use arc_swap::ArcSwap;
 use nix::NixPath;
 use pingora::server::Server;
@@ -75,7 +75,7 @@ impl ControlPlaneServer {
             .worker_threads(1)
             .enable_all()
             .build()
-            .expect("failed to build control-plane Tokio runtime");
+            .context("failed to build control-plane Tokio runtime")?;
 
         // Metrics override is used by tests that provide their own
         // InMemoryMetricExporter. Telemetry and logging initialization

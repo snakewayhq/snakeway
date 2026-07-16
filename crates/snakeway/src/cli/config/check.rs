@@ -29,10 +29,8 @@ pub(crate) fn check(
                     "upstreams": cfg.services.len(),
                     "devices_enabled": cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 });
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&success_info).expect("could not format JSON")
-                );
+                let json = serde_json::to_string_pretty(&success_info)?;
+                println!("{json}");
             } else {
                 println!("Config loaded successfully");
                 println!("{} routes", cfg.routes.len());

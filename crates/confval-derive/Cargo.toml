@@ -9,6 +9,9 @@ readme = "README.md"
 keywords = ["configuration", "validation", "config", "derive", "macro"]
 categories = ["config", "development-tools::procedural-macro-helpers"]
 
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true
 

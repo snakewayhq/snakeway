@@ -551,7 +551,11 @@ impl ProxyHttp for PublicGateway {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method().to_owned());
-                upstream.set_uri(ctx.upstream_path().parse().unwrap());
+                upstream.set_uri(
+                    ctx.upstream_path()
+                        .parse()
+                        .map_err(|_| Error::new(Custom("invalid upstream path")))?,
+                );
 
                 // Device header ops live on `ctx`, so the upstream request headers
                 // are rebuilt from it. Clearing first lets device removals take effect.

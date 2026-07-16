@@ -69,14 +69,13 @@ fn load_config_from_parts(
     if report.has_errors() {
         return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
-    let server_config =
-        server_config.expect("server lowering returned None without reporting an error");
+    let server_config = server_config.ok_or(ConfigError::ServerLoweringReturnedNone)?;
 
     let config = lower_configs(server_config, ingress_specs, device_specs, &mut report);
     if report.has_errors() {
         return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
-    let config = config.expect("lowering returned None without reporting an error");
+    let config = config.ok_or(ConfigError::ConfigLoweringReturnedNone)?;
 
     Ok(ValidatedConfig {
         config,

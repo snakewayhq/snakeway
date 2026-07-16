@@ -49,7 +49,7 @@ setup-tls-dev-cert:
       localhost 127.0.0.1 ::1
 
 generate-all-templates:
-    @mkdir -p data/templates data/acme/orders
+    @mkdir -p data/templates data/acme/orders data/acme/certs
     @rm -fr data/templates/*
     @echo "Creating minimal conf..."
     @cargo run -q --all-features -- config init data/templates/minimal --template=minimal

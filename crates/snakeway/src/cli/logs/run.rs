@@ -96,10 +96,11 @@ fn run_stats() -> Result<()> {
     let shutdown_flag = shutdown.clone();
 
     CTRL_C_INSTALLED.call_once(|| {
-        ctrlc::set_handler(move || {
+        if let Err(e) = ctrlc::set_handler(move || {
             shutdown_flag.store(true, Ordering::SeqCst);
-        })
-        .expect("failed to set Ctrl-C handler");
+        }) {
+            eprintln!("warning: failed to set Ctrl-C handler: {e}");
+        }
     });
 
     // Stats render loop

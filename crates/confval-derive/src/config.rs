@@ -78,7 +78,9 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let mut constructors = Vec::new();
 
     for field in &fields.named {
-        let ident = field.ident.as_ref().expect("named field");
+        let ident = field.ident.as_ref().ok_or_else(|| {
+            syn::Error::new_spanned(field, "named field is missing an identifier")
+        })?;
         let source = parse_config_field_options(field)?;
 
         match source {

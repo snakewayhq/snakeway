@@ -9,6 +9,9 @@ readme = "README.md"
 keywords = ["configuration", "validation", "config"]
 categories = ["config", "development-tools"]
 
+[lints]
+workspace = true
+
 [features]
 default = []
 serde = ["dep:serde", "dep:serde_json"]

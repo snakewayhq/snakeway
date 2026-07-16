@@ -1,5 +1,5 @@
 use crate::server::ControlPlaneServer;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use snakeway_conf::types::{ListenerConfig, RuntimeConfig};
 use snakeway_observability::{init_logging, init_telemetry};
 use std::net::TcpListener;
@@ -21,7 +21,7 @@ pub fn start_control_plane(config_path: &str, config: RuntimeConfig, upgrade: bo
     let init_rt = Builder::new_current_thread()
         .enable_all()
         .build()
-        .expect("failed to build init runtime");
+        .context("failed to build init runtime")?;
 
     let telemetry_providers = init_rt
         .block_on(init_telemetry(&config))

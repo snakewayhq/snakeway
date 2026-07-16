@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
 [features]
 default = []
 hotpath = ["dep:hotpath", "hotpath/hotpath"]
