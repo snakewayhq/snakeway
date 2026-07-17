@@ -95,7 +95,11 @@ fn classic_upgrade_header_on_http2_is_not_proxied() {
 /// WebSocket over HTTP/2 uses Extended CONNECT (RFC 8441), which requires the
 /// server to advertise `SETTINGS_ENABLE_CONNECT_PROTOCOL`.
 /// Snakeway is not expected to support this, so the tunnel must not be
-/// established: no success status is returned.
+/// established, no success status is expected or returned.
+///
+/// Should this test ever fail, it may mean Pingora started supporting
+/// Extend CONNECT, in which case Snakeway can then support websockets
+/// over HTTP/2.
 #[test]
 fn extended_connect_websocket_over_http2_is_not_supported() {
     // Arrange
