@@ -129,7 +129,7 @@ const sidebars: SidebarsConfig = {
                 'internals/hot-reload',
                 'internals/tls-cert-renewal',
                 'internals/observability',
-                'internals/wasm_devices',
+                'internals/wasm-devices',
             ],
         },
         {
