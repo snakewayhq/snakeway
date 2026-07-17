@@ -4,6 +4,7 @@
 //! the protocol boundary, so the negotiation model is documented.
 
 use bytes::Bytes;
+use snakeway_tests::cert::NoCertVerify;
 use snakeway_tests::conf::{minimal_h2_to_h1_runtime_config, minimal_http_runtime_config};
 use snakeway_tests::constants::{ROUTE_PATH_API, ROUTE_PATH_WS, TEST_HOST};
 use snakeway_tests::harness::TestServer;
@@ -11,11 +12,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
-use tokio_rustls::rustls::client::danger::{
-    HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
-};
-use tokio_rustls::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-use tokio_rustls::rustls::{ClientConfig, DigitallySignedStruct, SignatureScheme};
+use tokio_rustls::rustls::ClientConfig;
+use tokio_rustls::rustls::pki_types::ServerName;
 
 /// Snakeway offers HTTP/2 only over TLS (via ALPN).
 /// A plaintext HTTP/1.1 listener does not speak cleartext HTTP/2 (h2c), so a
@@ -184,54 +182,4 @@ async fn connect_h2_over_tls(addr: &str) -> h2::client::SendRequest<Bytes> {
         let _ = connection.await;
     });
     send
-}
-
-/// Accepts any server certificate. Test-only: the harness listener presents a
-/// self-signed certificate.
-#[derive(Debug)]
-struct NoCertVerify;
-
-impl ServerCertVerifier for NoCertVerify {
-    fn verify_server_cert(
-        &self,
-        _end_entity: &CertificateDer<'_>,
-        _intermediates: &[CertificateDer<'_>],
-        _server_name: &ServerName<'_>,
-        _ocsp_response: &[u8],
-        _now: UnixTime,
-    ) -> Result<ServerCertVerified, rustls::Error> {
-        Ok(ServerCertVerified::assertion())
-    }
-
-    fn verify_tls12_signature(
-        &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &DigitallySignedStruct,
-    ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
-    }
-
-    fn verify_tls13_signature(
-        &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &DigitallySignedStruct,
-    ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
-    }
-
-    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
-        vec![
-            SignatureScheme::RSA_PKCS1_SHA256,
-            SignatureScheme::RSA_PKCS1_SHA384,
-            SignatureScheme::RSA_PKCS1_SHA512,
-            SignatureScheme::ECDSA_NISTP256_SHA256,
-            SignatureScheme::ECDSA_NISTP384_SHA384,
-            SignatureScheme::RSA_PSS_SHA256,
-            SignatureScheme::RSA_PSS_SHA384,
-            SignatureScheme::RSA_PSS_SHA512,
-            SignatureScheme::ED25519,
-        ]
-    }
 }
