@@ -1,6 +1,7 @@
 use crate::proxy::error_classification::classify_pingora_error;
 use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
+use crate::proxy::protocol::{ProtocolFacts, ProtocolMode};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -271,11 +272,12 @@ impl ProxyHttp for PublicGateway {
             peer.options.read_timeout = Some(t);
         }
 
-        // Enforce protocol rules for this upstream and request.
-        self.enforce_protocol(&mut peer, ctx, upstream)?;
+        // Resolve the wire protocol once and store it for later hooks.
+        let mode = self.enforce_protocol(&mut peer, ctx, upstream)?;
+        ctx.extensions.insert(mode);
 
         // Set upstream authority for end-to-end h2 (gRPC, h2-to-h2).
-        if ctx.is_http2() && upstream.use_tls() {
+        if mode == ProtocolMode::Http2EndToEnd {
             ctx.upstream_authority = Some(upstream.authority());
         }
 
@@ -300,10 +302,15 @@ impl ProxyHttp for PublicGateway {
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
-        ctx.hydrate_from_session(session).map_err(|e| {
+        // Normalization rejections (malformed request, missing Host, SNI
+        // mismatch) are client errors, so they get a 400 rather than a 500.
+        if let Err(e) = ctx.hydrate_from_session(session) {
             tracing::warn!(error = %e, "request rejected during normalization");
-            e.as_pingora_error()
-        })?;
+            session
+                .respond_error(StatusCode::BAD_REQUEST.as_u16())
+                .await?;
+            return Ok(true);
+        }
 
         // Extract W3C Trace Context from downstream request headers.
         // When no traceparent header is present, the context is empty and
@@ -422,11 +429,17 @@ impl ProxyHttp for PublicGateway {
                     }
 
                     // Acquire a connection slot for ws guard.
-                    let guard = self
+                    // A full pool is a 503 Service Unavailable (not a 500 Internal Server Error).
+                    let Some(guard) = self
                         .gw_ctx
                         .connection_manager
                         .try_acquire(id, ws_max_connections.to_owned())
-                        .ok_or_else(|| Error::new(Custom("too many websocket connections")))?;
+                    else {
+                        session
+                            .respond_error(StatusCode::SERVICE_UNAVAILABLE.as_u16())
+                            .await?;
+                        return Ok(true);
+                    };
 
                     ctx.ws_guard = Some(guard);
                 }
@@ -567,23 +580,34 @@ impl ProxyHttp for PublicGateway {
                     upstream.append_header(name.clone(), value)?;
                 }
 
-                // Host for HTTP/2 is derived from the upstream authority (Pingora
-                // maps it to :authority) and must override any client-supplied Host.
-                if upstream.version == Version::HTTP_2 {
-                    let authority = ctx
-                        .upstream_authority()
-                        .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
-                    upstream.insert_header(header::HOST, authority)?;
-                } else if !upstream.headers.contains_key(header::HOST) {
-                    // An HTTP/2 downstream request carries its authority in
-                    // the `:authority` pseudo-header, which never appears in
-                    // the header map rebuilt above.
-                    // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
-                    // from the request authority.
-                    let authority = ctx.downstream_authority().ok_or_else(|| {
-                        Error::new(Custom("missing authority for h1 upstream Host"))
-                    })?;
-                    upstream.insert_header(header::HOST, authority)?;
+                // The upstream Host follows the resolved protocol mode.
+                // For end-to-end HTTP/2 it comes from the upstream authority
+                // set in upstream_peer and overrides any client Host.
+                let protocol_mode = ctx
+                    .extensions
+                    .get::<ProtocolMode>()
+                    .copied()
+                    .unwrap_or(ProtocolMode::Http1);
+
+                match protocol_mode {
+                    ProtocolMode::Http2EndToEnd => {
+                        if let Some(authority) = ctx.upstream_authority() {
+                            upstream.insert_header(header::HOST, authority)?;
+                        }
+                    }
+                    ProtocolMode::Http1 => {
+                        if !upstream.headers.contains_key(header::HOST) {
+                            // An HTTP/2 downstream request carries its authority in
+                            // the `:authority` pseudo-header, which never appears in
+                            // the header map rebuilt above.
+                            // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
+                            // from the request authority.
+                            let authority = ctx.downstream_authority().ok_or_else(|| {
+                                Error::new(Custom("missing authority for h1 upstream Host"))
+                            })?;
+                            upstream.insert_header(header::HOST, authority)?;
+                        }
+                    }
                 }
 
                 if ctx.is_upgrade_req() {
@@ -972,13 +996,21 @@ impl PublicGateway {
         peer: &mut HttpPeer,
         ctx: &RequestCtx,
         upstream: &UpstreamRuntime,
-    ) -> Result<(), BError> {
-        if ctx.is_upgrade_req() {
-            peer.options.set_http_version(1, 1);
-        } else if ctx.is_http2() && upstream.use_tls() {
-            peer.options.set_http_version(2, 2);
+    ) -> Result<ProtocolMode, BError> {
+        let is_upgrade = ctx.is_upgrade_req();
+        let mode = ProtocolMode::resolve(ProtocolFacts {
+            downstream_http2: ctx.is_http2(),
+            upstream_tls: upstream.use_tls(),
+            is_upgrade,
+        });
+        match mode {
+            ProtocolMode::Http2EndToEnd => peer.options.set_http_version(2, 2),
+            // An upgrade is forced to HTTP/1.1 so ALPN cannot negotiate h2 on a
+            // TLS upstream. A non-upgrade HTTP/1.1 request keeps Pingora's default.
+            ProtocolMode::Http1 if is_upgrade => peer.options.set_http_version(1, 1),
+            ProtocolMode::Http1 => {}
         }
-        Ok(())
+        Ok(mode)
     }
 
     /// Finalizes the request guard by reporting success or failure to the traffic manager.

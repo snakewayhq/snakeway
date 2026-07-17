@@ -2,6 +2,7 @@ mod admin_gateway;
 mod error_classification;
 mod gateway_ctx;
 mod handlers;
+mod protocol;
 mod public_gateway;
 mod redirect_gateway;
 

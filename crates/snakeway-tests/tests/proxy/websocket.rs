@@ -77,12 +77,19 @@ fn websocket_max_connections_rejects_excess() {
             .await
             .expect("first ws connect should succeed");
 
-        // Second connection should be rejected (proxy enforces max_connections=1).
+        // Second connection is rejected because the pool is full.
+        // A full pool is a 503 Service Unavailable (not a 500 Internal Server Error).
         let result = tokio_tungstenite::connect_async(&url).await;
-        assert!(
-            result.is_err(),
-            "second ws connection should fail when max_connections is 1"
-        );
+        match result {
+            Err(tokio_tungstenite::tungstenite::Error::Http(resp)) => {
+                assert_eq!(
+                    resp.status().as_u16(),
+                    503,
+                    "pool exhaustion must be 503 Service Unavailable"
+                );
+            }
+            other => panic!("expected an HTTP 503 rejection, got {other:?}"),
+        }
     });
 }
 

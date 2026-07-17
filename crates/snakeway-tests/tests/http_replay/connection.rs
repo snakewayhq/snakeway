@@ -14,6 +14,22 @@ fn http10_get_should_proxy() {
     );
 }
 
+/// HTTP/1.0 did not require a `Host` header (it became mandatory in 1.1), so a
+/// Host-less HTTP/1.0 request is legal. The proxy cannot forward it to an
+/// HTTP/1.1 upstream without an authority, but that failure is caused by the
+/// client's missing `Host`, so it must surface as a client error (4xx), never
+/// as a 5xx that blames the server.
+///
+/// Known-failing discovery: the proxy currently returns 500 for this case.
+#[test]
+fn http10_without_host_should_be_a_client_error() {
+    let resp = replay_fixture("connection/http10_no_host.http");
+    assert!(
+        !resp.contains("500 Internal Server Error"),
+        "a legal Host-less HTTP/1.0 request must not cause a 5xx; got:\n{resp}"
+    );
+}
+
 /// HTTP/1.0 clients that want persistent connections include a
 /// `Connection: Keep-Alive` header (a pre-standard negotiation that
 /// predates HTTP/1.1 persistent connections).

@@ -15,7 +15,7 @@ reqwest = { workspace = true, features = ["blocking"] }
 tonic = { workspace = true, features = ["_tls-any"] }
 tokio-tungstenite = { workspace = true }
 futures-util = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 prost = { workspace = true }
 tonic-prost = { workspace = true }
 url = { workspace = true }
@@ -23,11 +23,16 @@ pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
 opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "testing"] }
+rustls = "0.23"
+tokio-rustls = "0.26"
+h2 = "0.4"
+bytes = { workspace = true }
 
 [dev-dependencies]
 hmac = "0.13"
 sha2 = "0.11"
 base64 = "0.22"
+
 
 [build-dependencies]
 tonic-prost-build = "0.14"
