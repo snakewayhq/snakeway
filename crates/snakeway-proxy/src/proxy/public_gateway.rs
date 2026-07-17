@@ -300,10 +300,15 @@ impl ProxyHttp for PublicGateway {
 
     /// ACCEPT → INSPECT → ROUTE → (RESPOND | PROXY)
     async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
-        ctx.hydrate_from_session(session).map_err(|e| {
+        // Normalization rejections (malformed request, missing Host, SNI
+        // mismatch) are client errors, so they get a 400 rather than a 500.
+        if let Err(e) = ctx.hydrate_from_session(session) {
             tracing::warn!(error = %e, "request rejected during normalization");
-            e.as_pingora_error()
-        })?;
+            session
+                .respond_error(StatusCode::BAD_REQUEST.as_u16())
+                .await?;
+            return Ok(true);
+        }
 
         // Extract W3C Trace Context from downstream request headers.
         // When no traceparent header is present, the context is empty and
