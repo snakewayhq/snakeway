@@ -123,6 +123,7 @@ const sidebars: SidebarsConfig = {
                 'internals/architecture',
                 'internals/mental-model',
                 'internals/lifecycle',
+                'internals/protocol-negotiation',
                 'internals/control-plane-and-data-plane',
                 'internals/configuration',
                 'internals/confval',
