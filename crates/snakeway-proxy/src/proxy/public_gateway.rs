@@ -427,11 +427,17 @@ impl ProxyHttp for PublicGateway {
                     }
 
                     // Acquire a connection slot for ws guard.
-                    let guard = self
+                    // A full pool is a 503 Service Unavailable (not a 500 Internal Server Error).
+                    let Some(guard) = self
                         .gw_ctx
                         .connection_manager
                         .try_acquire(id, ws_max_connections.to_owned())
-                        .ok_or_else(|| Error::new(Custom("too many websocket connections")))?;
+                    else {
+                        session
+                            .respond_error(StatusCode::SERVICE_UNAVAILABLE.as_u16())
+                            .await?;
+                        return Ok(true);
+                    };
 
                     ctx.ws_guard = Some(guard);
                 }
