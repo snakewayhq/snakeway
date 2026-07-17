@@ -3,17 +3,11 @@
 //! These establish what Pingora and the current `PublicGateway` actually do at
 //! the protocol boundary, so the negotiation model is documented.
 
-use bytes::Bytes;
-use snakeway_tests::cert::NoCertVerify;
 use snakeway_tests::conf::{minimal_h2_to_h1_runtime_config, minimal_http_runtime_config};
 use snakeway_tests::constants::{ROUTE_PATH_API, ROUTE_PATH_WS, TEST_HOST};
+use snakeway_tests::h2_over_tls::send_h2_request;
 use snakeway_tests::harness::TestServer;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::net::TcpStream;
-use tokio_rustls::TlsConnector;
-use tokio_rustls::rustls::ClientConfig;
-use tokio_rustls::rustls::pki_types::ServerName;
 
 /// Snakeway offers HTTP/2 only over TLS (via ALPN).
 /// A plaintext HTTP/1.1 listener does not speak cleartext HTTP/2 (h2c), so a
@@ -125,61 +119,4 @@ fn extended_connect_websocket_over_http2_is_not_supported() {
         !matches!(outcome, Ok(s) if s.is_success()),
         "WebSocket-over-HTTP/2 (Extended CONNECT) is not expected to be supported, got {outcome:?}"
     );
-}
-
-/// Sends `req` over an HTTP/2-over-TLS connection to `addr` and returns the
-/// response status, or an error string when the request is refused, reset, or
-/// times out before a response arrives.
-fn send_h2_request(
-    addr: &str,
-    req: http::Request<()>,
-    end_stream: bool,
-) -> Result<http::StatusCode, String> {
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("tokio runtime");
-
-    rt.block_on(async move {
-        let send = connect_h2_over_tls(addr).await;
-        let mut send = send
-            .ready()
-            .await
-            .map_err(|e| format!("connection not ready: {e}"))?;
-
-        let (resp, _stream) = send
-            .send_request(req, end_stream)
-            .map_err(|e| e.to_string())?;
-
-        match tokio::time::timeout(Duration::from_secs(10), resp).await {
-            Ok(Ok(response)) => Ok(response.status()),
-            Ok(Err(e)) => Err(e.to_string()),
-            Err(_) => Err("response timed out".to_string()),
-        }
-    })
-}
-
-async fn connect_h2_over_tls(addr: &str) -> h2::client::SendRequest<Bytes> {
-    let provider = Arc::new(tokio_rustls::rustls::crypto::ring::default_provider());
-    let mut config = ClientConfig::builder_with_provider(provider)
-        .with_safe_default_protocol_versions()
-        .expect("tls protocol versions")
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(NoCertVerify))
-        .with_no_client_auth();
-    config.alpn_protocols = vec![b"h2".to_vec()];
-
-    let connector = TlsConnector::from(Arc::new(config));
-    let tcp = TcpStream::connect(addr).await.expect("tcp connect");
-    let server_name = ServerName::try_from(TEST_HOST).expect("valid server name");
-    let tls = connector
-        .connect(server_name, tcp)
-        .await
-        .expect("tls handshake");
-
-    let (send, connection) = h2::client::handshake(tls).await.expect("h2 handshake");
-    tokio::spawn(async move {
-        let _ = connection.await;
-    });
-    send
 }
