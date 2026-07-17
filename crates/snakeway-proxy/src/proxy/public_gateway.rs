@@ -580,23 +580,34 @@ impl ProxyHttp for PublicGateway {
                     upstream.append_header(name.clone(), value)?;
                 }
 
-                // Host for HTTP/2 is derived from the upstream authority (Pingora
-                // maps it to :authority) and must override any client-supplied Host.
-                if upstream.version == Version::HTTP_2 {
-                    let authority = ctx
-                        .upstream_authority()
-                        .ok_or_else(|| Error::new(Custom("missing upstream authority for h2")))?;
-                    upstream.insert_header(header::HOST, authority)?;
-                } else if !upstream.headers.contains_key(header::HOST) {
-                    // An HTTP/2 downstream request carries its authority in
-                    // the `:authority` pseudo-header, which never appears in
-                    // the header map rebuilt above.
-                    // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
-                    // from the request authority.
-                    let authority = ctx.downstream_authority().ok_or_else(|| {
-                        Error::new(Custom("missing authority for h1 upstream Host"))
-                    })?;
-                    upstream.insert_header(header::HOST, authority)?;
+                // The upstream Host follows the resolved protocol mode.
+                // For end-to-end HTTP/2 it comes from the upstream authority
+                // set in upstream_peer and overrides any client Host.
+                let protocol_mode = ctx
+                    .extensions
+                    .get::<ProtocolMode>()
+                    .copied()
+                    .unwrap_or(ProtocolMode::Http1);
+
+                match protocol_mode {
+                    ProtocolMode::Http2EndToEnd => {
+                        if let Some(authority) = ctx.upstream_authority() {
+                            upstream.insert_header(header::HOST, authority)?;
+                        }
+                    }
+                    ProtocolMode::Http1 => {
+                        if !upstream.headers.contains_key(header::HOST) {
+                            // An HTTP/2 downstream request carries its authority in
+                            // the `:authority` pseudo-header, which never appears in
+                            // the header map rebuilt above.
+                            // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
+                            // from the request authority.
+                            let authority = ctx.downstream_authority().ok_or_else(|| {
+                                Error::new(Custom("missing authority for h1 upstream Host"))
+                            })?;
+                            upstream.insert_header(header::HOST, authority)?;
+                        }
+                    }
                 }
 
                 if ctx.is_upgrade_req() {
