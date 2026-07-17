@@ -128,6 +128,7 @@ const sidebars: SidebarsConfig = {
                 'internals/configuration',
                 'internals/confval',
                 'internals/hot-reload',
+                'internals/rfc-quick-reference',
                 'internals/tls-cert-renewal',
                 'internals/observability',
                 'internals/wasm-devices',
