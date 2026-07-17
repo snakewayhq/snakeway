@@ -17,8 +17,8 @@ Three inputs map to one mode.
 It is computed at upstream selection and never revised.
 
 Upgrade negotiation is stateful.
-It spans multiple hooks, is driven by the upstream `101` response, and has terminal rejection at two layers: the
-gateway and the upstream itself.
+It spans multiple hooks, is driven by the upstream `101` response, and has terminal rejection at two layers: the gateway
+and the upstream itself.
 An upgrade constrains version negotiation to HTTP/1.1.
 
 ## Version negotiation
@@ -44,6 +44,7 @@ An upgrade resolves to `Http1`, with the handshake handled by the upgrade machin
 | HTTP/1.1   | Upgrade                     | any          | `Http1`                                                  | client `Host` header (passed through)                                                            |
 | HTTP/1.0   | none, with `Host`           | any          | `Http1` (upgraded to h1.1 upstream)                      | client `Host` header (passed through)                                                            |
 | HTTP/1.0   | none, without `Host`        | any          | rejected with 400 (no authority to forward)              | n/a                                                                                              |
+| HTTP/1.1   | none, without `Host`        | any          | rejected with 400 (no authority to forward)              | n/a                                                                                              |
 | HTTP/2     | Upgrade header              | any          | rejected at the h2 codec as malformed (never reaches us) | n/a                                                                                              |
 | HTTP/2     | Extended CONNECT (RFC 8441) | any          | not supported: Pingora resets the stream                 | n/a                                                                                              |
 
@@ -52,23 +53,26 @@ An upgrade resolves to `Http1`, with the handshake handled by the upgrade machin
 The only supported upgrade mechanism is the HTTP/1.1 `Upgrade` handshake (a WebSocket).
 It forces HTTP/1.1 to the upstream regardless of the version negotiation, because the mechanism does not exist in
 HTTP/2.
-WebSocket over HTTP/2 (RFC 8441 Extended CONNECT) is not supported: Snakeway does not advertise
-`SETTINGS_ENABLE_CONNECT_PROTOCOL`, and such a request is reset.
+WebSocket over HTTP/2 (RFC 8441 Extended CONNECT) is not supported.
+Snakeway does not advertise `SETTINGS_ENABLE_CONNECT_PROTOCOL`, and such a request is reset.
+Foundationally, this is because Pingora does not support websockets over HTTP/2.
 
 An upgrade progresses through these states:
 
-| From       | Event                                                        | To                           |
-|------------|--------------------------------------------------------------|------------------------------|
-| Requested  | `request_filter` sees a valid `Upgrade`                      | Admitted                     |
-| Requested  | the route forbids WebSockets, or the pool is full            | GatewayRejected (426 or 503) |
-| Admitted   | `upstream_request_filter` forces h1 and sets upgrade headers | Negotiated                   |
-| Negotiated | upstream returns `101`                                       | Switched                     |
-| Negotiated | upstream returns a status other than `101`                   | UpstreamRejected (forwarded) |
-| Switched   | either side closes                                           | Closed                       |
+| From       | Event                                                         | To                           |
+|------------|---------------------------------------------------------------|------------------------------|
+| NotUpgrade | `request_filter` sees a valid `Upgrade`                       | Requested                    |
+| Requested  | the route allows WebSockets and a connection slot is acquired | Admitted                     |
+| Requested  | the route forbids WebSockets, or the pool is full             | GatewayRejected (426 or 503) |
+| Admitted   | `upstream_request_filter` forces h1 and sets upgrade headers  | Negotiated                   |
+| Negotiated | upstream returns `101`                                        | Switched                     |
+| Negotiated | upstream returns a status other than `101`                    | UpstreamRejected (forwarded) |
+| Negotiated | the upstream connection fails or aborts before `101`          | Failed                       |
+| Switched   | either side closes                                            | Closed                       |
 
 Reaching `Switched` runs the WebSocket open hook and suppresses the normal response lifecycle.
 `Closed` runs the WebSocket close hook.
-A rejected handshake runs neither.
+A rejected or failed handshake runs neither.
 
 There are two rejection layers.
 
@@ -78,4 +82,3 @@ There are two rejection layers.
 Known limitation: the `Negotiated` state has no timeout.
 An upstream that connects but never sends `101` will hang, because Pingora's single read timeout cannot bound the
 handshake without also tearing down an idle established tunnel.
-
