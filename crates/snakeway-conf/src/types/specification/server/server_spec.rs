@@ -100,9 +100,9 @@ impl ServerSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::CertStoreSpec;
+    use crate::types::{CertStoreSpec, UpstreamSourceAddressesSpec};
     use confval::format::hcl::parse_hcl;
-    use confval::prelude::SourceMap;
+    use confval::prelude::{Report, SourceMap, Validate};
     use std::path::Path;
 
     fn parse_server(input: &str) -> (Report, Option<ServerSpec>) {

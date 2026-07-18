@@ -80,8 +80,13 @@ fn ca_file_to_string(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::prelude::Located;
+    use crate::types::{
+        AcmeServerSpec, CertStoreConfig, CertStoreSpec, PerformanceSpec, ShutdownSpec,
+        TlsAutomationSpec, UpstreamSettingsSpec,
+    };
+    use confval::prelude::{Located, Lower};
     use std::path::PathBuf;
+    use std::time::Duration;
 
     fn lower_server(spec: &ServerSpec) -> ServerConfig {
         let mut report = Report::new();
