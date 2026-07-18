@@ -1,17 +1,15 @@
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::proxy_ctx::ProxyCtx;
-use crate::proxy::traffic::UpstreamResponseSnapshot;
 use crate::proxy::traffic::error_classification::classify_pingora_error;
-use crate::proxy::traffic::protocol::{ProtocolFacts, ProtocolMode};
+use crate::proxy::traffic::protocol::ProtocolMode;
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
+use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{HeaderMap, StatusCode, Version, header};
-use opentelemetry::KeyValue;
+use http::{StatusCode, Version, header};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
-use pingora::protocols::http::ServerSession;
 use snakeway_engine::WsConnectionManager;
 use snakeway_engine::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
@@ -19,8 +17,7 @@ use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_engine::traffic::{
-    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
-    UpstreamOutcome,
+    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;

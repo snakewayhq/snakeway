@@ -6,7 +6,7 @@ use snakeway_engine::traffic::{SelectedUpstream, ServiceId};
 
 impl TrafficProxy {
     /// Select an upstream for the given request.
-    fn select_upstream<'a>(
+    pub(crate) fn select_upstream<'a>(
         &self,
         ctx: &RequestCtx,
         state: &'a RuntimeState,
