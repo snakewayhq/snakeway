@@ -1,6 +1,5 @@
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::proxy_ctx::ProxyCtx;
-use crate::proxy::traffic::error_classification::classify_pingora_error;
 use crate::proxy::traffic::protocol_api::ProtocolMode;
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
 use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
@@ -770,13 +769,6 @@ impl ProxyHttp for TrafficProxy {
             );
         }
 
-        // Classify Pinggora transport error and set as upstream outcome.
-        self.capture_transport_level_failure(ctx, e);
-
-        // Finalize request guard...
-        self.finalize_admission_guard(ctx);
-
-        // Record metrics (no-op when OTel is disabled).
-        self.record_metrics(ctx);
+        self.finalize_request(ctx, e);
     }
 }
