@@ -1,4 +1,7 @@
-use crate::types::{HclInt, ObservabilitySpec, TlsAutomationSpec, WasmSpec};
+use crate::types::{
+    HclInt, ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
+    UpstreamSettingsSpec, WasmSpec,
+};
 use crate::validation::validator::validate_cert_pem;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -63,59 +66,6 @@ pub struct ServerSpec {
     pub wasm: Option<Located<WasmSpec>>,
 }
 
-#[derive(Debug, Serialize, confval::Spec)]
-pub struct ShutdownSpec {
-    /// How long active connections are allowed to finish after a shutdown signal.
-    #[confval(default = 10)]
-    pub drain_seconds: Option<Located<HclInt>>,
-
-    /// Hard ceiling on total shutdown time.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub force_timeout_seconds: Option<Located<HclInt>>,
-}
-
-#[derive(Debug, Serialize, Default, confval::Spec)]
-pub struct UpgradeSpec {
-    /// Path to the Unix domain socket used for zero-drop upgrades.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sock: Option<Located<String>>,
-
-    /// Maximum number of retries when connecting/accepting on the upgrade socket.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_retries: Option<Located<HclInt>>,
-}
-
-#[derive(Debug, Serialize, confval::Spec)]
-pub struct PerformanceSpec {
-    #[confval(default = true)]
-    pub work_stealing: Located<bool>,
-
-    /// Number of parallel accept tasks per listener.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parallel_accepts_per_listener: Option<Located<HclInt>>,
-}
-
-#[derive(Debug, Serialize, Default, confval::Spec)]
-pub struct UpstreamSettingsSpec {
-    /// Idle upstream connections kept warm per worker thread.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub connection_pool_size: Option<Located<HclInt>>,
-
-    /// Connect timeout (seconds) for TCP plus TLS. Omit to disable.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub connection_timeout_seconds: Option<Located<HclInt>>,
-
-    /// Per-read (idle) timeout (seconds) for upstream responses. Omit to disable.
-    /// Not applied to websocket upgrades.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub read_timeout_seconds: Option<Located<HclInt>>,
-
-    /// Local source addresses for outbound upstream connections.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(nested)]
-    pub source_addresses: Option<Located<UpstreamSourceAddressesSpec>>,
-}
-
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct UpstreamSourceAddressesSpec {
     #[confval(default)]
@@ -164,24 +114,6 @@ impl ServerSpec {
         self.upstream
             .get_or_insert_with(|| Located::detached(UpstreamSettingsSpec::default()));
         self
-    }
-}
-
-impl Default for ShutdownSpec {
-    fn default() -> Self {
-        Self {
-            drain_seconds: Some(Located::detached(10)),
-            force_timeout_seconds: None,
-        }
-    }
-}
-
-impl Default for PerformanceSpec {
-    fn default() -> Self {
-        Self {
-            work_stealing: Located::detached(true),
-            parallel_accepts_per_listener: None,
-        }
     }
 }
 
