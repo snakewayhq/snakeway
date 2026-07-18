@@ -12,7 +12,7 @@ check:
 machete:
     cargo machete
 
-# List lines of code (exluding tests) per file
+# List lines of code (excluding tests) per file
 list-lines:
     #!/usr/bin/env bash
     find crates/ -name "*.rs" -type f | while read -r file; do
