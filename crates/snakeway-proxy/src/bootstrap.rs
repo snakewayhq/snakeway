@@ -1,4 +1,4 @@
-use crate::proxy::{AdminProxy, PublicProxy, RedirectProxy};
+use crate::proxy::{AdminProxy, RedirectProxy, TrafficProxy};
 use crate::reload::ReloadHandle;
 use crate::tls_handshake::{CertMode, build_tls_callbacks};
 use anyhow::{Error, Result, anyhow};
@@ -114,7 +114,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         .filter(|l| !l.enable_admin && l.redirect.is_none())
     {
         // Build the public HTTP proxy service from Pingora.
-        let public_proxy = PublicProxy::new(
+        let public_proxy = TrafficProxy::new(
             Arc::from(listener_cfg.name.clone()),
             state.clone(),
             traffic_manager.clone(),

@@ -27,7 +27,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// PublicProxy is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
-pub(crate) struct PublicProxy {
+pub(crate) struct TrafficProxy {
     listener: Arc<str>,
     gw_ctx: ProxyCtx,
     traffic_director: TrafficDirector,
@@ -36,7 +36,7 @@ pub(crate) struct PublicProxy {
     upstream_read_timeout: Option<Duration>,
 }
 
-impl PublicProxy {
+impl TrafficProxy {
     pub(crate) fn new(
         listener: Arc<str>,
         state: Arc<ArcSwap<RuntimeState>>,
@@ -199,7 +199,7 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 
 #[hotpath::measure_all]
 #[async_trait]
-impl ProxyHttp for PublicProxy {
+impl ProxyHttp for TrafficProxy {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
@@ -838,7 +838,7 @@ impl ProxyHttp for PublicProxy {
     }
 }
 
-impl PublicProxy {
+impl TrafficProxy {
     fn record_metrics(&self, ctx: &RequestCtx) {
         use snakeway_engine::traffic::circuit::CircuitState;
 
