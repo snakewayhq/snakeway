@@ -1,15 +1,14 @@
-use crate::proxy::error_classification::classify_pingora_error;
-use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
-use crate::proxy::protocol::{ProtocolFacts, ProtocolMode};
+use crate::proxy::proxy_ctx::ProxyCtx;
+use crate::proxy::traffic::protocol_api::ProtocolMode;
+use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
+use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{HeaderMap, StatusCode, Version, header};
-use opentelemetry::KeyValue;
+use http::{StatusCode, Version, header};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
-use pingora::protocols::http::ServerSession;
 use snakeway_engine::WsConnectionManager;
 use snakeway_engine::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
@@ -17,26 +16,25 @@ use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_engine::traffic::{
-    AdmissionGuard, SelectedUpstream, ServiceId, TrafficDirector, TrafficManager, TransportFailure,
-    UpstreamOutcome,
+    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-/// PublicGateway is the core orchestration abstraction in Snakeway.
+/// PublicProxy is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
-pub(crate) struct PublicGateway {
+pub(crate) struct TrafficProxy {
     listener: Arc<str>,
-    gw_ctx: GatewayCtx,
-    traffic_director: TrafficDirector,
+    pub(crate) proxy_ctx: ProxyCtx,
+    pub(crate) traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
     upstream_connect_timeout: Option<Duration>,
     upstream_read_timeout: Option<Duration>,
 }
 
-impl PublicGateway {
+impl TrafficProxy {
     pub(crate) fn new(
         listener: Arc<str>,
         state: Arc<ArcSwap<RuntimeState>>,
@@ -46,10 +44,10 @@ impl PublicGateway {
         upstream_connect_timeout: Option<Duration>,
         upstream_read_timeout: Option<Duration>,
     ) -> Self {
-        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
+        let proxy_ctx = ProxyCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
             listener,
-            gw_ctx,
+            proxy_ctx,
             traffic_director: TrafficDirector,
             static_file_handler: StaticFileHandler,
             upstream_connect_timeout,
@@ -58,59 +56,7 @@ impl PublicGateway {
     }
 }
 
-/// Detects CL.TE / TE.CL smuggling attempts that Pingora's HTTP/1 parser has partially handled.
-///
-/// When a request carries both `Content-Length` and `Transfer-Encoding`, Pingora strips CL
-/// (RFC 9112 §6.3) and disables keepalive on the session (RFC 9112 §6.1-15). Since CL is gone
-/// by the time we run, we infer CL+TE from the keepalive flag instead.
-///
-/// For an HTTP/1.1 request that didn't send `Connection: close` and still has reuse budget,
-/// Pingora leaves keepalive on by default. Keepalive being off under those conditions means
-/// the CL+TE detection path fired. We read that via `ServerSession::H1.will_keepalive()`.
-///
-/// We filter out the other keepalive-off cases that would false-positive:
-///   * HTTP/1.0 — defaults to keepalive-off (1.0 + TE is already rejected upstream anyway).
-///   * Exhausted reuse counter — `will_keepalive()` is also false when reuses_remaining == 0.
-///
-/// Caveat: this relies on Pingora's current internals, not a stable API. Revisit on upgrade.
-fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
-    let req = session.req_header();
-
-    // Only HTTP/1.1-1.0 defaults to keepalive-off and would false-positive,
-    // and 1.0 + TE is already rejected by Pingora's validate_request.
-    if req.version != Version::HTTP_11 {
-        return false;
-    }
-
-    if !req.headers.contains_key("transfer-encoding") {
-        return false;
-    }
-
-    let client_closed = req
-        .headers
-        .get("connection")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .split(',')
-        .any(|t| t.trim().eq_ignore_ascii_case("close"));
-
-    if client_closed {
-        return false;
-    }
-
-    match session.downstream_session.as_ref() {
-        ServerSession::H1(h1) => {
-            // Exclude the reuse-counter-exhausted case, which also turns keepalive off.
-            if h1.get_keepalive_reuses_remaining() == Some(0) {
-                return false;
-            }
-            !h1.will_keepalive()
-        }
-        _ => false,
-    }
-}
-
-/// Pingora hook execution order in ProxyHttp for PublicGateway
+/// Pingora hook execution order in ProxyHttp for PublicProxy
 ///
 /// This is a giant orchestration trait implementation, so better to lay this out explicitly,
 /// especially because it might change in later Pingora versions.
@@ -199,7 +145,7 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 
 #[hotpath::measure_all]
 #[async_trait]
-impl ProxyHttp for PublicGateway {
+impl ProxyHttp for TrafficProxy {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
@@ -214,7 +160,7 @@ impl ProxyHttp for PublicGateway {
     ) -> Result<Box<HttpPeer>> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _selection_span = tracing::info_span!("upstream_selection").entered();
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         let service_name = ctx
             .service
@@ -287,7 +233,7 @@ impl ProxyHttp for PublicGateway {
 
         if ctx.cb_started {
             let guard = AdmissionGuard::new(
-                self.gw_ctx.traffic_manager.clone(),
+                self.proxy_ctx.traffic_manager.clone(),
                 service_id.clone(),
                 upstream.id(),
             );
@@ -341,7 +287,7 @@ impl ProxyHttp for PublicGateway {
         let _enter = _span.as_ref().map(|s| s.enter());
 
         // Grab state.
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         // Child span covering on_request devices, route matching, and service selection.
         let _routing_span = tracing::info_span!("routing");
@@ -431,7 +377,7 @@ impl ProxyHttp for PublicGateway {
                     // Acquire a connection slot for ws guard.
                     // A full pool is a 503 Service Unavailable (not a 500 Internal Server Error).
                     let Some(guard) = self
-                        .gw_ctx
+                        .proxy_ctx
                         .connection_manager
                         .try_acquire(id, ws_max_connections.to_owned())
                     else {
@@ -454,7 +400,6 @@ impl ProxyHttp for PublicGateway {
     where
         Self::CTX: Send + Sync,
     {
-        // Hydrate request context from session.
         // RFC 9112 §6.3: Reject CL.TE / TE.CL request smuggling attempts.
         //
         // Pingora's HTTP/1 parser strips Content-Length when both CL and Transfer-Encoding
@@ -529,7 +474,7 @@ impl ProxyHttp for PublicGateway {
             }
         }
 
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
             DeviceResult::Continue => Ok(()),
@@ -558,7 +503,7 @@ impl ProxyHttp for PublicGateway {
         let _req_span = tracing::info_span!("upstream_request");
         let _req_enter = _req_span.enter();
 
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
@@ -663,7 +608,7 @@ impl ProxyHttp for PublicGateway {
             upstream.headers.clone(),
             Vec::new(),
         );
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
@@ -698,7 +643,7 @@ impl ProxyHttp for PublicGateway {
             ctx.ws_opened = true;
 
             // Run WS-open hook.
-            DevicePipeline::run_on_ws_open(self.gw_ctx.state().devices.all(), &WsCtx::default());
+            DevicePipeline::run_on_ws_open(self.proxy_ctx.state().devices.all(), &WsCtx::default());
         }
 
         Ok(())
@@ -731,7 +676,7 @@ impl ProxyHttp for PublicGateway {
             upstream.headers.clone(),
             Vec::new(),
         );
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
@@ -787,7 +732,7 @@ impl ProxyHttp for PublicGateway {
             .get::<RequestId>()
             .map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         match DevicePipeline::on_stream_response_body(
             state.devices.all(),
@@ -816,273 +761,14 @@ impl ProxyHttp for PublicGateway {
 
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
-        // done in Pingora 0.6.0.
+        // done in Pingora 0.8.1.
         if ctx.ws_opened {
             DevicePipeline::run_on_ws_close(
-                self.gw_ctx.state().devices.all(),
+                self.proxy_ctx.state().devices.all(),
                 &WsCloseCtx::default(),
             );
         }
 
-        // Capture transport-level failure.
-        if let Some(err) = e
-            && let Some(failure) = classify_pingora_error(err)
-        {
-            ctx.upstream_outcome = Some(UpstreamOutcome::Transport(failure));
-        }
-        // Finalize request guard...
-        self.finalize_admission_guard(ctx);
-
-        // Record metrics (no-op when OTel is disabled).
-        self.record_metrics(ctx);
+        self.finalize_request(ctx, e);
     }
-}
-
-impl PublicGateway {
-    fn record_metrics(&self, ctx: &RequestCtx) {
-        use snakeway_engine::traffic::circuit::CircuitState;
-
-        let Some(metrics) = &self.gw_ctx.metrics else {
-            return;
-        };
-
-        let service = ctx.service.as_deref().unwrap_or("unknown");
-        let route = ctx
-            .route_id
-            .as_ref()
-            .map(|r| r.as_str())
-            .unwrap_or_else(|| "unknown".into());
-        let method = ctx.method_str();
-
-        let status = match &ctx.upstream_outcome {
-            Some(UpstreamOutcome::Success) => "2xx",
-            Some(UpstreamOutcome::HttpStatus(s)) if *s >= 500 => "5xx",
-            Some(UpstreamOutcome::HttpStatus(s)) if *s >= 400 => "4xx",
-            Some(UpstreamOutcome::HttpStatus(_)) => "other",
-            Some(UpstreamOutcome::Transport(_)) => "transport_error",
-            None => "no_upstream",
-        };
-
-        let request_attrs = &[
-            KeyValue::new("method", method.to_string()),
-            KeyValue::new("status", status),
-            KeyValue::new("service", service.to_string()),
-            KeyValue::new("route", route),
-        ];
-
-        metrics.http_requests.add(1, request_attrs);
-
-        // Duration and upstream-scoped metrics.
-        if let Some((service_id, upstream_id)) = &ctx.selected_upstream {
-            let duration_ms = ctx.request_start.elapsed().as_secs_f64() * 1000.0;
-            let upstream_str = upstream_id.as_u32().to_string();
-            let upstream_attrs = &[
-                KeyValue::new("service", service_id.as_str().to_string()),
-                KeyValue::new("upstream", upstream_str.clone()),
-            ];
-
-            metrics
-                .http_request_duration
-                .record(duration_ms, upstream_attrs);
-
-            // Error counter.
-            match &ctx.upstream_outcome {
-                Some(UpstreamOutcome::HttpStatus(s)) if *s >= 500 => {
-                    metrics.http_errors.add(
-                        1,
-                        &[
-                            KeyValue::new("service", service_id.as_str().to_string()),
-                            KeyValue::new("upstream", upstream_str.clone()),
-                            KeyValue::new("error.type", "http_5xx"),
-                        ],
-                    );
-                }
-                Some(UpstreamOutcome::Transport(failure)) => {
-                    let error_type = match failure {
-                        TransportFailure::Connect => "connect",
-                        TransportFailure::Timeout => "timeout",
-                        TransportFailure::Reset => "reset",
-                        TransportFailure::Protocol => "protocol",
-                        TransportFailure::Tls => "tls",
-                    };
-                    metrics.http_errors.add(
-                        1,
-                        &[
-                            KeyValue::new("service", service_id.as_str().to_string()),
-                            KeyValue::new("upstream", upstream_str.clone()),
-                            KeyValue::new("error.type", error_type),
-                        ],
-                    );
-                }
-                _ => {}
-            }
-
-            // Gauge: active requests.
-            let tm = &self.gw_ctx.traffic_manager;
-            metrics
-                .upstream_active_requests
-                .record(tm.active_requests(service_id, upstream_id), upstream_attrs);
-
-            // Gauge: health status.
-            let healthy = tm.health_status(service_id, upstream_id).healthy;
-            metrics
-                .upstream_health
-                .record(u64::from(healthy), upstream_attrs);
-
-            // Gauge: circuit breaker state.
-            if let Some(state) = tm.circuit_state(service_id, upstream_id) {
-                let state_value = match state {
-                    CircuitState::Closed => 0,
-                    CircuitState::Open => 1,
-                    CircuitState::HalfOpen => 2,
-                };
-                metrics
-                    .circuit_breaker_state
-                    .record(state_value, upstream_attrs);
-            }
-        }
-    }
-
-    /// Select an upstream for the given request.
-    fn select_upstream<'a>(
-        &self,
-        ctx: &RequestCtx,
-        state: &'a RuntimeState,
-        service_id: &ServiceId,
-        service_name: &str,
-    ) -> std::result::Result<SelectedUpstream<'a>, BError> {
-        // Get a snapshot (cheap, lock-free)
-        let snapshot = self.gw_ctx.traffic_manager.snapshot();
-
-        // Ask the director for a decision.
-        let decision = self
-            .traffic_director
-            .decide(ctx, &snapshot, service_id, &self.gw_ctx.traffic_manager)
-            .map_err(|e| {
-                tracing::error!(error = ?e, "traffic decision failed");
-                Error::new(Custom("traffic decision failed"))
-            })?;
-
-        tracing::info!("decision reason: {}", decision.reason);
-
-        // Grab the service by name.
-        let service = state
-            .services
-            .get(service_name)
-            .ok_or_else(|| Error::new(Custom("unknown service")))?;
-
-        // Get the upstream based on the decision from the Traffic Director.
-        let upstream = service
-            .upstreams
-            .iter()
-            .find(|u| u.id() == decision.upstream_id)
-            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
-
-        Ok(SelectedUpstream {
-            upstream,
-            cb_started: decision.cb_started,
-        })
-    }
-
-    /// Enforces protocol rules for the given upstream and request.
-    ///
-    /// PROTOCOL PRECEDENCE (highest to lowest):
-    /// 1. WebSocket: HTTP/1.1 only
-    /// 2. HTTP/2 + TLS upstream: end-to-end h2 (gRPC, h2-to-h2)
-    /// 3. HTTP/2 + plaintext upstream: h2-to-h1 (Pingora translates)
-    /// 4. Default: Pingora defaults
-    pub(crate) fn enforce_protocol(
-        &self,
-        peer: &mut HttpPeer,
-        ctx: &RequestCtx,
-        upstream: &UpstreamRuntime,
-    ) -> Result<ProtocolMode, BError> {
-        let is_upgrade = ctx.is_upgrade_req();
-        let mode = ProtocolMode::resolve(ProtocolFacts {
-            downstream_http2: ctx.is_http2(),
-            upstream_tls: upstream.use_tls(),
-            is_upgrade,
-        });
-        match mode {
-            ProtocolMode::Http2EndToEnd => peer.options.set_http_version(2, 2),
-            // An upgrade is forced to HTTP/1.1 so ALPN cannot negotiate h2 on a
-            // TLS upstream. A non-upgrade HTTP/1.1 request keeps Pingora's default.
-            ProtocolMode::Http1 if is_upgrade => peer.options.set_http_version(1, 1),
-            ProtocolMode::Http1 => {}
-        }
-        Ok(mode)
-    }
-
-    /// Finalizes the request guard by reporting success or failure to the traffic manager.
-    ///
-    /// This method determines the outcome of the request based on the upstream response
-    /// and circuit breaker configuration. It marks the request as successful or failed,
-    /// which updates the circuit breaker state for the selected upstream.
-    ///
-    /// Success criteria:
-    /// - No transport error occurred
-    /// - HTTP status < 500 (if count_http_5xx_as_failure is true)
-    /// - Any status code (if count_http_5xx_as_failure is false)
-    ///
-    /// This is called from the logging hook to ensure it runs after all other processing.
-    fn finalize_admission_guard(&self, ctx: &mut RequestCtx) {
-        let (service_id, _) = match ctx.selected_upstream.as_ref() {
-            Some(v) => v,
-            None => return,
-        };
-
-        let guard = match ctx.admission_guard.as_mut() {
-            Some(g) => g,
-            None => return,
-        };
-
-        let success = match ctx.upstream_outcome {
-            Some(UpstreamOutcome::Transport(failure)) => {
-                tracing::debug!(
-                    service = %service_id,
-                    failure = ?failure,
-                    "upstream transport failure"
-                );
-                false
-            }
-
-            Some(UpstreamOutcome::HttpStatus(code)) => {
-                let count_5xx = self
-                    .gw_ctx
-                    .traffic_manager
-                    .count_http_5xx_as_failure(service_id)
-                    .unwrap_or(true);
-
-                if count_5xx { code < 500 } else { true }
-            }
-
-            Some(UpstreamOutcome::Success) => true,
-
-            None => true,
-        };
-
-        if success {
-            guard.success();
-        } else {
-            guard.failure();
-        }
-    }
-}
-
-/// Declared Content-Length from the request headers, stored in extensions
-/// during `request_filter` for comparison at end-of-stream.
-#[derive(Debug, Clone, Copy)]
-struct DeclaredContentLength(u64);
-
-/// Running total of body bytes received from the downstream client,
-/// updated per-chunk in `request_body_filter`.
-#[derive(Debug, Clone, Copy)]
-struct BodyBytesReceived(u64);
-
-/// Snapshot of the upstream response status and headers, stored in extensions
-/// during `upstream_response_filter` for use by `upstream_response_body_filter`.
-#[derive(Debug, Clone)]
-struct UpstreamResponseSnapshot {
-    status: StatusCode,
-    headers: HeaderMap,
 }

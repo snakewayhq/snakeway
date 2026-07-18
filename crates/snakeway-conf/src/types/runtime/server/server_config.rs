@@ -1,13 +1,11 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
-    ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
-    UpstreamSourceAddressesSpec, WasmSpec,
+    ObservabilityConfig, PerformanceConfig, ServerSpec, ShutdownConfig, TlsAutomationConfig,
+    UpgradeConfig, UpstreamSettingsConfig, WasmConfig,
 };
 use confval::prelude::narrow;
-use confval::prelude::{Located, Lower, Report};
+use confval::prelude::{Located, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = ServerSpec, validate)]
@@ -53,125 +51,6 @@ pub struct ServerConfig {
     pub wasm: WasmConfig,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = ShutdownSpec)]
-pub struct ShutdownConfig {
-    /// How long active connections are allowed to finish after a shutdown signal.
-    #[confval(lower(from = drain_seconds, with = narrow::opt_i64_to_u64))]
-    pub drain_seconds: Option<u64>,
-    /// Hard ceiling on total shutdown time.
-    #[confval(lower(from = force_timeout_seconds, with = narrow::opt_i64_to_u64))]
-    pub force_timeout_seconds: Option<u64>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = UpgradeSpec)]
-pub struct UpgradeConfig {
-    /// Path to the Unix domain socket used for zero-drop upgrades (FD transfer).
-    pub sock: Option<String>,
-    /// Maximum retries when connecting/accepting on the upgrade socket.
-    #[confval(lower(from = max_retries, with = narrow::opt_i64_to_usize))]
-    pub max_retries: Option<usize>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = PerformanceSpec)]
-pub struct PerformanceConfig {
-    /// Enable work stealing between threads.
-    pub work_stealing: bool,
-    /// Number of parallel accept tasks per listener.
-    #[confval(lower(from = parallel_accepts_per_listener, with = narrow::opt_i64_to_usize))]
-    pub parallel_accepts_per_listener: Option<usize>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = UpstreamSettingsSpec)]
-pub struct UpstreamSettingsConfig {
-    /// Idle upstream keepalive connections kept per worker thread.
-    #[confval(lower(from = connection_pool_size, with = narrow::opt_i64_to_usize))]
-    pub connection_pool_size: Option<usize>,
-    /// Connect timeout (TCP plus TLS). `None` disables it.
-    #[confval(lower(from = connection_timeout_seconds, with = narrow::opt_i64_secs_to_duration))]
-    pub connection_timeout: Option<Duration>,
-    /// Per-read (idle) timeout. `None` disables it.
-    #[confval(lower(from = read_timeout_seconds, with = narrow::opt_i64_secs_to_duration))]
-    pub read_timeout: Option<Duration>,
-    /// Local source addresses for outbound upstream connections.
-    #[confval(nested)]
-    pub source_addresses: Option<UpstreamSourceAddressesConfig>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = UpstreamSourceAddressesSpec)]
-pub struct UpstreamSourceAddressesConfig {
-    pub ipv4: Vec<String>,
-    pub ipv6: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = WasmSpec, validate)]
-pub struct WasmConfig {
-    /// Maximum concurrent WASM device hook executions (sizes the wasmtime pool).
-    #[confval(lower(from = max_concurrent_executions, with = narrow::i64_to_u32))]
-    pub max_concurrent_executions: u32,
-    /// Per-execution linear memory ceiling, in bytes.
-    #[confval(lower(from = max_memory_bytes, with = narrow::i64_to_usize))]
-    pub max_memory_bytes: usize,
-}
-
-impl Default for WasmConfig {
-    fn default() -> Self {
-        // Mirrors the defaults in `WasmSpec`.
-        // Used by CLI scaffolding that builds a throwaway engine outside the config pipeline.
-        Self {
-            max_concurrent_executions: 512,
-            max_memory_bytes: 64 * 1024 * 1024,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = TlsAutomationSpec, validate)]
-pub struct TlsAutomationConfig {
-    #[confval(nested)]
-    pub acme: AcmeServerConfig,
-    #[confval(nested)]
-    pub cert_store: CertStoreConfig,
-    #[confval(lower(from = renew_within_days, with = narrow::i64_to_u64))]
-    pub renew_within_days: u64,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum CertStoreConfig {
-    Filesystem { cert_dir: PathBuf },
-    Memory,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = AcmeServerSpec)]
-pub struct AcmeServerConfig {
-    pub directory_url: String,
-    pub data_dir: PathBuf,
-    pub contact_email: Vec<String>,
-    pub ca_file: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
-#[confval(lower_from = ObservabilitySpec, validate)]
-pub struct ObservabilityConfig {
-    #[confval(nested)]
-    pub otel: Option<OtelConfig>,
-}
-
-#[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
-#[confval(lower_from = OtelSpec)]
-pub struct OtelConfig {
-    pub enable: bool,
-    pub endpoint: String,
-    pub service_name: String,
-    pub sampling_ratio: f64,
-}
-
 fn pid_file_or_default(value: &Option<Located<PathBuf>>, _report: &mut Report) -> Option<PathBuf> {
     Some(value.as_ref().map(|p| p.value.clone()).unwrap_or_default())
 }
@@ -198,22 +77,16 @@ fn ca_file_to_string(
     }
 }
 
-impl Lower<CertStoreSpec> for CertStoreConfig {
-    fn lower(spec: &CertStoreSpec, _report: &mut Report) -> Option<Self> {
-        Some(match spec {
-            CertStoreSpec::Filesystem { cert_dir } => CertStoreConfig::Filesystem {
-                cert_dir: cert_dir.value.clone(),
-            },
-            CertStoreSpec::Memory => CertStoreConfig::Memory,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use confval::prelude::Located;
+    use crate::types::{
+        AcmeServerSpec, CertStoreConfig, CertStoreSpec, PerformanceSpec, ShutdownSpec,
+        TlsAutomationSpec, UpstreamSettingsSpec,
+    };
+    use confval::prelude::{Located, Lower};
     use std::path::PathBuf;
+    use std::time::Duration;
 
     fn lower_server(spec: &ServerSpec) -> ServerConfig {
         let mut report = Report::new();

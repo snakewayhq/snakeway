@@ -1,6 +1,6 @@
 //! HTTP protocol and upgrade negotiation tests.
 //!
-//! These establish what Pingora and the current `PublicGateway` actually do at
+//! These establish what Pingora and the current `TrafficProxy` actually do at
 //! the protocol boundary, so the negotiation model is documented.
 
 use snakeway_tests::conf::{minimal_h2_to_h1_runtime_config, minimal_http_runtime_config};

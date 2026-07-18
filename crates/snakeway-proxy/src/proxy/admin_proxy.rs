@@ -10,11 +10,11 @@ use snakeway_engine::ctx::RequestCtx;
 use snakeway_engine::traffic::TrafficManager;
 use std::sync::Arc;
 
-pub(crate) struct AdminGateway {
+pub(crate) struct AdminProxy {
     admin_handler: AdminHandler,
 }
 
-impl AdminGateway {
+impl AdminProxy {
     pub(crate) fn new(
         traffic_manager: Arc<TrafficManager>,
         connection_manager: Arc<WsConnectionManager>,
@@ -37,7 +37,7 @@ impl AdminGateway {
 }
 
 #[async_trait]
-impl ProxyHttp for AdminGateway {
+impl ProxyHttp for AdminProxy {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
@@ -52,7 +52,7 @@ impl ProxyHttp for AdminGateway {
     ) -> pingora::Result<Box<HttpPeer>> {
         // This is unreachable by design.
         Err(Error::new(Custom(
-            "AdminGateway attempted to proxy upstream (bug)",
+            "AdminProxy attempted to proxy upstream (bug)",
         )))
     }
 
@@ -61,7 +61,7 @@ impl ProxyHttp for AdminGateway {
         session: &mut Session,
         _ctx: &mut Self::CTX,
     ) -> pingora::Result<bool> {
-        // AdminGateway is terminal: it always handles the request.
+        // AdminProxy is terminal: it always handles the request.
         let path = session.req_header().uri.path().to_owned();
         self.admin_handler.handle(session, &path).await
     }

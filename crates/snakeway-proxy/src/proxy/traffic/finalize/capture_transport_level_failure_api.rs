@@ -1,4 +1,18 @@
-use snakeway_engine::traffic::TransportFailure;
+use crate::proxy::TrafficProxy;
+use pingora::Error;
+use snakeway_engine::ctx::RequestCtx;
+use snakeway_engine::traffic::{TransportFailure, UpstreamOutcome};
+
+impl TrafficProxy {
+    /// Classify a pingora/transport error and set it as the upstream outcome.
+    pub(crate) fn capture_transport_level_failure(&self, ctx: &mut RequestCtx, e: Option<&Error>) {
+        if let Some(err) = e
+            && let Some(failure) = classify_pingora_error(err)
+        {
+            ctx.upstream_outcome = Some(UpstreamOutcome::Transport(failure));
+        }
+    }
+}
 
 /// Classifies Pingora upstream errors into Snakeway transport failures.
 /// Non-upstream errors are intentionally ignored to avoid penalizing healthy upstreams.

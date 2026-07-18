@@ -3,7 +3,7 @@ use opentelemetry::metrics::{Counter, Gauge, Histogram, Meter};
 /// Centralized OTel metric instruments for Snakeway.
 ///
 /// Created once at startup and shared across all request-processing hooks
-/// via `GatewayCtx`. When OTel is disabled, no `Metrics` instance is created
+/// via `ProxyCtx`. When OTel is disabled, no `Metrics` instance is created
 /// and all recording call sites are skipped.
 pub struct Metrics {
     pub http_requests: Counter<u64>,

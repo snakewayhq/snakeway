@@ -7,13 +7,13 @@ use snakeway_acme::CertManager;
 use snakeway_engine::ctx::RequestCtx;
 use std::sync::Arc;
 
-pub(crate) struct RedirectGateway {
+pub(crate) struct RedirectProxy {
     destination: String,
     response_code: u16,
     cert_manager: Option<Arc<CertManager>>,
 }
 
-impl RedirectGateway {
+impl RedirectProxy {
     pub(crate) fn new(
         to: String,
         response_code: u16,
@@ -28,7 +28,7 @@ impl RedirectGateway {
 }
 
 #[async_trait]
-impl ProxyHttp for RedirectGateway {
+impl ProxyHttp for RedirectProxy {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
@@ -43,7 +43,7 @@ impl ProxyHttp for RedirectGateway {
     ) -> pingora::Result<Box<HttpPeer>> {
         // This is unreachable by design.
         Err(Error::new(Custom(
-            "RedirectGateway attempted to proxy upstream (bug)",
+            "RedirectProxy attempted to proxy upstream (bug)",
         )))
     }
 
@@ -78,7 +78,7 @@ impl ProxyHttp for RedirectGateway {
         }
 
         //---------------------------------------------------------------------
-        // RedirectGateway is terminal: it always handles the request.
+        // RedirectProxy is terminal: it always handles the request.
         //---------------------------------------------------------------------
         let mut resp = ResponseHeader::build(self.response_code, None)?;
 

@@ -5,14 +5,14 @@ use snakeway_engine::traffic::TrafficManager;
 use snakeway_observability::Metrics;
 use std::sync::Arc;
 
-pub(crate) struct GatewayCtx {
+pub(crate) struct ProxyCtx {
     state: Arc<ArcSwap<RuntimeState>>,
     pub(crate) traffic_manager: Arc<TrafficManager>,
     pub(crate) connection_manager: Arc<WsConnectionManager>,
     pub(crate) metrics: Option<Arc<Metrics>>,
 }
 
-impl GatewayCtx {
+impl ProxyCtx {
     pub(crate) fn new(
         state: Arc<ArcSwap<RuntimeState>>,
         traffic_manager: Arc<TrafficManager>,
