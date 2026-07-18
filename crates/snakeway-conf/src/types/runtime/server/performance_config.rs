@@ -1,3 +1,5 @@
+use crate::types::PerformanceSpec;
+use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]

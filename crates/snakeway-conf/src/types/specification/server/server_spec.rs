@@ -2,7 +2,7 @@ use crate::types::{
     HclInt, ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
     UpstreamSettingsSpec, WasmSpec,
 };
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::Located;
 use serde::Serialize;
 use std::path::PathBuf;
 

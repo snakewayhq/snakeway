@@ -2,7 +2,7 @@ use crate::types::ServerSpec;
 use crate::validation::validate_cert_pem;
 use confval::diagnostic::Report;
 use confval::pipeline::Validate;
-use confval::range_constraint;
+use confval::{RangeConstraint, range_constraint};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 range_constraint!(THREADS, i64, min: 1, max: 1024);

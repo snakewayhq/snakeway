@@ -1,4 +1,5 @@
-use crate::types::UpstreamSourceAddressesConfig;
+use crate::types::{UpstreamSettingsSpec, UpstreamSourceAddressesSpec};
+use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

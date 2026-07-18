@@ -1,13 +1,11 @@
 use crate::types::{
-    AcmeServerSpec, CertStoreSpec, ObservabilitySpec, OtelSpec, PerformanceSpec, ServerSpec,
-    ShutdownSpec, TlsAutomationSpec, UpgradeSpec, UpstreamSettingsSpec,
-    UpstreamSourceAddressesSpec, WasmSpec,
+    ObservabilityConfig, PerformanceConfig, ServerSpec, ShutdownConfig, TlsAutomationConfig,
+    UpgradeConfig, UpstreamSettingsConfig, WasmConfig,
 };
 use confval::prelude::narrow;
-use confval::prelude::{Located, Lower, Report};
+use confval::prelude::{Located, Report};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = ServerSpec, validate)]

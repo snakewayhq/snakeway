@@ -1,6 +1,5 @@
-use crate::types::CertStoreSpec;
-use confval::diagnostic::Report;
-use confval::pipeline::Lower;
+use crate::types::{AcmeServerSpec, CertStoreSpec, TlsAutomationSpec};
+use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 

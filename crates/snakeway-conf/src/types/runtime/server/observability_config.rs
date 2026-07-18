@@ -1,3 +1,6 @@
+use crate::types::{ObservabilitySpec, OtelSpec};
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
 #[confval(lower_from = ObservabilitySpec, validate)]
 pub struct ObservabilityConfig {
