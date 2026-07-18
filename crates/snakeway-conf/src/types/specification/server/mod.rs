@@ -1,6 +1,7 @@
 mod observability_spec;
 mod performance_spec;
 mod server_spec;
+mod server_spec_validation;
 mod shutdown_spec;
 mod tls_automation_spec;
 mod upgrade_spec;

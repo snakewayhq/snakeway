@@ -1,4 +1,4 @@
-use crate::types::{HclInt, UpstreamSourceAddressesSpec};
+use crate::types::HclInt;
 use confval::prelude::Located;
 use serde::Serialize;
 
@@ -21,4 +21,12 @@ pub struct UpstreamSettingsSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub source_addresses: Option<Located<UpstreamSourceAddressesSpec>>,
+}
+
+#[derive(Debug, Serialize, Default, confval::Spec)]
+pub struct UpstreamSourceAddressesSpec {
+    #[confval(default)]
+    pub ipv4: Vec<Located<String>>,
+    #[confval(default)]
+    pub ipv6: Vec<Located<String>>,
 }
