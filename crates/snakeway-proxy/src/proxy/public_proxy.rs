@@ -1,7 +1,7 @@
 use crate::proxy::error_classification::classify_pingora_error;
-use crate::proxy::gateway_ctx::GatewayCtx;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::protocol::{ProtocolFacts, ProtocolMode};
+use crate::proxy::proxy_ctx::ProxyCtx;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -25,18 +25,18 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-/// PublicGateway is the core orchestration abstraction in Snakeway.
+/// PublicProxy is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
-pub(crate) struct PublicGateway {
+pub(crate) struct PublicProxy {
     listener: Arc<str>,
-    gw_ctx: GatewayCtx,
+    gw_ctx: ProxyCtx,
     traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
     upstream_connect_timeout: Option<Duration>,
     upstream_read_timeout: Option<Duration>,
 }
 
-impl PublicGateway {
+impl PublicProxy {
     pub(crate) fn new(
         listener: Arc<str>,
         state: Arc<ArcSwap<RuntimeState>>,
@@ -46,7 +46,7 @@ impl PublicGateway {
         upstream_connect_timeout: Option<Duration>,
         upstream_read_timeout: Option<Duration>,
     ) -> Self {
-        let gw_ctx = GatewayCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
+        let gw_ctx = ProxyCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
             listener,
             gw_ctx,
@@ -110,7 +110,7 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
     }
 }
 
-/// Pingora hook execution order in ProxyHttp for PublicGateway
+/// Pingora hook execution order in ProxyHttp for PublicProxy
 ///
 /// This is a giant orchestration trait implementation, so better to lay this out explicitly,
 /// especially because it might change in later Pingora versions.
@@ -199,7 +199,7 @@ fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
 
 #[hotpath::measure_all]
 #[async_trait]
-impl ProxyHttp for PublicGateway {
+impl ProxyHttp for PublicProxy {
     type CTX = RequestCtx;
 
     fn new_ctx(&self) -> Self::CTX {
@@ -838,7 +838,7 @@ impl ProxyHttp for PublicGateway {
     }
 }
 
-impl PublicGateway {
+impl PublicProxy {
     fn record_metrics(&self, ctx: &RequestCtx) {
         use snakeway_engine::traffic::circuit::CircuitState;
 

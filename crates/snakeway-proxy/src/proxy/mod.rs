@@ -1,11 +1,11 @@
-mod admin_gateway;
+mod admin_proxy;
 mod error_classification;
-mod gateway_ctx;
 mod handlers;
 mod protocol;
-mod public_gateway;
-mod redirect_gateway;
+mod proxy_ctx;
+mod public_proxy;
+mod redirect_proxy;
 
-pub(crate) use admin_gateway::AdminGateway;
-pub(crate) use public_gateway::PublicGateway;
-pub(crate) use redirect_gateway::RedirectGateway;
+pub(crate) use admin_proxy::AdminProxy;
+pub(crate) use public_proxy::PublicProxy;
+pub(crate) use redirect_proxy::RedirectProxy;
