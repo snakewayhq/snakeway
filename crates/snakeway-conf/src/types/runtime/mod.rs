@@ -1,13 +1,13 @@
 pub mod device;
 pub mod listener;
 pub mod route;
-pub mod server_config;
+pub mod server;
 pub mod service;
 
 pub use device::*;
 pub use listener::*;
 pub use route::*;
-pub use server_config::*;
+pub use server::*;
 pub use service::*;
 
 use serde::Serialize;
