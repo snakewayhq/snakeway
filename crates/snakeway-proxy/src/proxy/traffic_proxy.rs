@@ -45,10 +45,10 @@ impl TrafficProxy {
         upstream_connect_timeout: Option<Duration>,
         upstream_read_timeout: Option<Duration>,
     ) -> Self {
-        let gw_ctx = ProxyCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
+        let proxy_ctx = ProxyCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
             listener,
-            proxy_ctx: gw_ctx,
+            proxy_ctx,
             traffic_director: TrafficDirector,
             static_file_handler: StaticFileHandler,
             upstream_connect_timeout,
