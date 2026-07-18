@@ -5,7 +5,8 @@ mod protocol;
 mod proxy_ctx;
 mod redirect_proxy;
 mod traffic;
+mod traffic_proxy;
 
 pub(crate) use admin_proxy::AdminProxy;
 pub(crate) use redirect_proxy::RedirectProxy;
-pub(crate) use traffic::traffic_proxy::TrafficProxy;
+pub(crate) use traffic_proxy::TrafficProxy;

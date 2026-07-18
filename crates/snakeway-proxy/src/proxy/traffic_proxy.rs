@@ -2,6 +2,7 @@ use crate::proxy::error_classification::classify_pingora_error;
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::protocol::{ProtocolFacts, ProtocolMode};
 use crate::proxy::proxy_ctx::ProxyCtx;
+use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -29,8 +30,8 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub(crate) struct TrafficProxy {
     listener: Arc<str>,
-    gw_ctx: ProxyCtx,
-    traffic_director: TrafficDirector,
+    pub(crate) gw_ctx: ProxyCtx,
+    pub(crate) traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
     upstream_connect_timeout: Option<Duration>,
     upstream_read_timeout: Option<Duration>,
@@ -55,58 +56,6 @@ impl TrafficProxy {
             upstream_connect_timeout,
             upstream_read_timeout,
         }
-    }
-}
-
-/// Detects CL.TE / TE.CL smuggling attempts that Pingora's HTTP/1 parser has partially handled.
-///
-/// When a request carries both `Content-Length` and `Transfer-Encoding`, Pingora strips CL
-/// (RFC 9112 §6.3) and disables keepalive on the session (RFC 9112 §6.1-15). Since CL is gone
-/// by the time we run, we infer CL+TE from the keepalive flag instead.
-///
-/// For an HTTP/1.1 request that didn't send `Connection: close` and still has reuse budget,
-/// Pingora leaves keepalive on by default. Keepalive being off under those conditions means
-/// the CL+TE detection path fired. We read that via `ServerSession::H1.will_keepalive()`.
-///
-/// We filter out the other keepalive-off cases that would false-positive:
-///   * HTTP/1.0 — defaults to keepalive-off (1.0 + TE is already rejected upstream anyway).
-///   * Exhausted reuse counter — `will_keepalive()` is also false when reuses_remaining == 0.
-///
-/// Caveat: this relies on Pingora's current internals, not a stable API. Revisit on upgrade.
-fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
-    let req = session.req_header();
-
-    // Only HTTP/1.1-1.0 defaults to keepalive-off and would false-positive,
-    // and 1.0 + TE is already rejected by Pingora's validate_request.
-    if req.version != Version::HTTP_11 {
-        return false;
-    }
-
-    if !req.headers.contains_key("transfer-encoding") {
-        return false;
-    }
-
-    let client_closed = req
-        .headers
-        .get("connection")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .split(',')
-        .any(|t| t.trim().eq_ignore_ascii_case("close"));
-
-    if client_closed {
-        return false;
-    }
-
-    match session.downstream_session.as_ref() {
-        ServerSession::H1(h1) => {
-            // Exclude the reuse-counter-exhausted case, which also turns keepalive off.
-            if h1.get_keepalive_reuses_remaining() == Some(0) {
-                return false;
-            }
-            !h1.will_keepalive()
-        }
-        _ => false,
     }
 }
 
@@ -454,7 +403,6 @@ impl ProxyHttp for TrafficProxy {
     where
         Self::CTX: Send + Sync,
     {
-        // Hydrate request context from session.
         // RFC 9112 §6.3: Reject CL.TE / TE.CL request smuggling attempts.
         //
         // Pingora's HTTP/1 parser strips Content-Length when both CL and Transfer-Encoding
@@ -839,151 +787,6 @@ impl ProxyHttp for TrafficProxy {
 }
 
 impl TrafficProxy {
-    fn record_metrics(&self, ctx: &RequestCtx) {
-        use snakeway_engine::traffic::circuit::CircuitState;
-
-        let Some(metrics) = &self.gw_ctx.metrics else {
-            return;
-        };
-
-        let service = ctx.service.as_deref().unwrap_or("unknown");
-        let route = ctx
-            .route_id
-            .as_ref()
-            .map(|r| r.as_str())
-            .unwrap_or_else(|| "unknown".into());
-        let method = ctx.method_str();
-
-        let status = match &ctx.upstream_outcome {
-            Some(UpstreamOutcome::Success) => "2xx",
-            Some(UpstreamOutcome::HttpStatus(s)) if *s >= 500 => "5xx",
-            Some(UpstreamOutcome::HttpStatus(s)) if *s >= 400 => "4xx",
-            Some(UpstreamOutcome::HttpStatus(_)) => "other",
-            Some(UpstreamOutcome::Transport(_)) => "transport_error",
-            None => "no_upstream",
-        };
-
-        let request_attrs = &[
-            KeyValue::new("method", method.to_string()),
-            KeyValue::new("status", status),
-            KeyValue::new("service", service.to_string()),
-            KeyValue::new("route", route),
-        ];
-
-        metrics.http_requests.add(1, request_attrs);
-
-        // Duration and upstream-scoped metrics.
-        if let Some((service_id, upstream_id)) = &ctx.selected_upstream {
-            let duration_ms = ctx.request_start.elapsed().as_secs_f64() * 1000.0;
-            let upstream_str = upstream_id.as_u32().to_string();
-            let upstream_attrs = &[
-                KeyValue::new("service", service_id.as_str().to_string()),
-                KeyValue::new("upstream", upstream_str.clone()),
-            ];
-
-            metrics
-                .http_request_duration
-                .record(duration_ms, upstream_attrs);
-
-            // Error counter.
-            match &ctx.upstream_outcome {
-                Some(UpstreamOutcome::HttpStatus(s)) if *s >= 500 => {
-                    metrics.http_errors.add(
-                        1,
-                        &[
-                            KeyValue::new("service", service_id.as_str().to_string()),
-                            KeyValue::new("upstream", upstream_str.clone()),
-                            KeyValue::new("error.type", "http_5xx"),
-                        ],
-                    );
-                }
-                Some(UpstreamOutcome::Transport(failure)) => {
-                    let error_type = match failure {
-                        TransportFailure::Connect => "connect",
-                        TransportFailure::Timeout => "timeout",
-                        TransportFailure::Reset => "reset",
-                        TransportFailure::Protocol => "protocol",
-                        TransportFailure::Tls => "tls",
-                    };
-                    metrics.http_errors.add(
-                        1,
-                        &[
-                            KeyValue::new("service", service_id.as_str().to_string()),
-                            KeyValue::new("upstream", upstream_str.clone()),
-                            KeyValue::new("error.type", error_type),
-                        ],
-                    );
-                }
-                _ => {}
-            }
-
-            // Gauge: active requests.
-            let tm = &self.gw_ctx.traffic_manager;
-            metrics
-                .upstream_active_requests
-                .record(tm.active_requests(service_id, upstream_id), upstream_attrs);
-
-            // Gauge: health status.
-            let healthy = tm.health_status(service_id, upstream_id).healthy;
-            metrics
-                .upstream_health
-                .record(u64::from(healthy), upstream_attrs);
-
-            // Gauge: circuit breaker state.
-            if let Some(state) = tm.circuit_state(service_id, upstream_id) {
-                let state_value = match state {
-                    CircuitState::Closed => 0,
-                    CircuitState::Open => 1,
-                    CircuitState::HalfOpen => 2,
-                };
-                metrics
-                    .circuit_breaker_state
-                    .record(state_value, upstream_attrs);
-            }
-        }
-    }
-
-    /// Select an upstream for the given request.
-    fn select_upstream<'a>(
-        &self,
-        ctx: &RequestCtx,
-        state: &'a RuntimeState,
-        service_id: &ServiceId,
-        service_name: &str,
-    ) -> std::result::Result<SelectedUpstream<'a>, BError> {
-        // Get a snapshot (cheap, lock-free)
-        let snapshot = self.gw_ctx.traffic_manager.snapshot();
-
-        // Ask the director for a decision.
-        let decision = self
-            .traffic_director
-            .decide(ctx, &snapshot, service_id, &self.gw_ctx.traffic_manager)
-            .map_err(|e| {
-                tracing::error!(error = ?e, "traffic decision failed");
-                Error::new(Custom("traffic decision failed"))
-            })?;
-
-        tracing::info!("decision reason: {}", decision.reason);
-
-        // Grab the service by name.
-        let service = state
-            .services
-            .get(service_name)
-            .ok_or_else(|| Error::new(Custom("unknown service")))?;
-
-        // Get the upstream based on the decision from the Traffic Director.
-        let upstream = service
-            .upstreams
-            .iter()
-            .find(|u| u.id() == decision.upstream_id)
-            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
-
-        Ok(SelectedUpstream {
-            upstream,
-            cb_started: decision.cb_started,
-        })
-    }
-
     /// Enforces protocol rules for the given upstream and request.
     ///
     /// PROTOCOL PRECEDENCE (highest to lowest):
@@ -1067,22 +870,4 @@ impl TrafficProxy {
             guard.failure();
         }
     }
-}
-
-/// Declared Content-Length from the request headers, stored in extensions
-/// during `request_filter` for comparison at end-of-stream.
-#[derive(Debug, Clone, Copy)]
-struct DeclaredContentLength(u64);
-
-/// Running total of body bytes received from the downstream client,
-/// updated per-chunk in `request_body_filter`.
-#[derive(Debug, Clone, Copy)]
-struct BodyBytesReceived(u64);
-
-/// Snapshot of the upstream response status and headers, stored in extensions
-/// during `upstream_response_filter` for use by `upstream_response_body_filter`.
-#[derive(Debug, Clone)]
-struct UpstreamResponseSnapshot {
-    status: StatusCode,
-    headers: HeaderMap,
 }
