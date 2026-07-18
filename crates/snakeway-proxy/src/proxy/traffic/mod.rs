@@ -1,9 +1,9 @@
-mod admission_guard;
+mod admission_guard_api;
 pub mod error_classification;
-mod observability;
-pub mod protocol;
+mod observability_api;
+pub mod protocol_api;
 pub(crate) mod smuggle_detection;
 pub(crate) mod types;
-mod upstream_selection;
+mod upstream_selection_api;
 
 pub(crate) use types::*;
