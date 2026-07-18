@@ -762,7 +762,7 @@ impl ProxyHttp for TrafficProxy {
 
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
-        // done in Pingora 0.6.0.
+        // done in Pingora 0.8.1.
         if ctx.ws_opened {
             DevicePipeline::run_on_ws_close(
                 self.proxy_ctx.state().devices.all(),
@@ -770,12 +770,9 @@ impl ProxyHttp for TrafficProxy {
             );
         }
 
-        // Capture transport-level failure.
-        if let Some(err) = e
-            && let Some(failure) = classify_pingora_error(err)
-        {
-            ctx.upstream_outcome = Some(UpstreamOutcome::Transport(failure));
-        }
+        // Classify Pinggora transport error and set as upstream outcome.
+        self.capture_transport_level_failure(ctx, e);
+
         // Finalize request guard...
         self.finalize_admission_guard(ctx);
 
