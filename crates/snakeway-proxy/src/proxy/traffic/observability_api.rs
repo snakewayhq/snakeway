@@ -7,7 +7,7 @@ impl TrafficProxy {
     pub(crate) fn record_metrics(&self, ctx: &RequestCtx) {
         use snakeway_engine::traffic::circuit::CircuitState;
 
-        let Some(metrics) = &self.gw_ctx.metrics else {
+        let Some(metrics) = &self.proxy_ctx.metrics else {
             return;
         };
 
@@ -83,7 +83,7 @@ impl TrafficProxy {
             }
 
             // Gauge: active requests.
-            let tm = &self.gw_ctx.traffic_manager;
+            let tm = &self.proxy_ctx.traffic_manager;
             metrics
                 .upstream_active_requests
                 .record(tm.active_requests(service_id, upstream_id), upstream_attrs);

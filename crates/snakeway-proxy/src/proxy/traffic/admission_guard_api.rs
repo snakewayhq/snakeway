@@ -38,7 +38,7 @@ impl TrafficProxy {
 
             Some(UpstreamOutcome::HttpStatus(code)) => {
                 let count_5xx = self
-                    .gw_ctx
+                    .proxy_ctx
                     .traffic_manager
                     .count_http_5xx_as_failure(service_id)
                     .unwrap_or(true);

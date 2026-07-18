@@ -28,7 +28,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub(crate) struct TrafficProxy {
     listener: Arc<str>,
-    pub(crate) gw_ctx: ProxyCtx,
+    pub(crate) proxy_ctx: ProxyCtx,
     pub(crate) traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
     upstream_connect_timeout: Option<Duration>,
@@ -48,7 +48,7 @@ impl TrafficProxy {
         let gw_ctx = ProxyCtx::new(state, traffic_manager.clone(), connection_manager, metrics);
         Self {
             listener,
-            gw_ctx,
+            proxy_ctx: gw_ctx,
             traffic_director: TrafficDirector,
             static_file_handler: StaticFileHandler,
             upstream_connect_timeout,
@@ -161,7 +161,7 @@ impl ProxyHttp for TrafficProxy {
     ) -> Result<Box<HttpPeer>> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _selection_span = tracing::info_span!("upstream_selection").entered();
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         let service_name = ctx
             .service
@@ -234,7 +234,7 @@ impl ProxyHttp for TrafficProxy {
 
         if ctx.cb_started {
             let guard = AdmissionGuard::new(
-                self.gw_ctx.traffic_manager.clone(),
+                self.proxy_ctx.traffic_manager.clone(),
                 service_id.clone(),
                 upstream.id(),
             );
@@ -288,7 +288,7 @@ impl ProxyHttp for TrafficProxy {
         let _enter = _span.as_ref().map(|s| s.enter());
 
         // Grab state.
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         // Child span covering on_request devices, route matching, and service selection.
         let _routing_span = tracing::info_span!("routing");
@@ -378,7 +378,7 @@ impl ProxyHttp for TrafficProxy {
                     // Acquire a connection slot for ws guard.
                     // A full pool is a 503 Service Unavailable (not a 500 Internal Server Error).
                     let Some(guard) = self
-                        .gw_ctx
+                        .proxy_ctx
                         .connection_manager
                         .try_acquire(id, ws_max_connections.to_owned())
                     else {
@@ -475,7 +475,7 @@ impl ProxyHttp for TrafficProxy {
             }
         }
 
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
         match DevicePipeline::on_stream_request_body(state.devices.all(), ctx, body, end_of_stream)
         {
             DeviceResult::Continue => Ok(()),
@@ -504,7 +504,7 @@ impl ProxyHttp for TrafficProxy {
         let _req_span = tracing::info_span!("upstream_request");
         let _req_enter = _req_span.enter();
 
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
@@ -609,7 +609,7 @@ impl ProxyHttp for TrafficProxy {
             upstream.headers.clone(),
             Vec::new(),
         );
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
@@ -644,7 +644,7 @@ impl ProxyHttp for TrafficProxy {
             ctx.ws_opened = true;
 
             // Run WS-open hook.
-            DevicePipeline::run_on_ws_open(self.gw_ctx.state().devices.all(), &WsCtx::default());
+            DevicePipeline::run_on_ws_open(self.proxy_ctx.state().devices.all(), &WsCtx::default());
         }
 
         Ok(())
@@ -677,7 +677,7 @@ impl ProxyHttp for TrafficProxy {
             upstream.headers.clone(),
             Vec::new(),
         );
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
             DeviceResult::Respond(_) => {}
@@ -733,7 +733,7 @@ impl ProxyHttp for TrafficProxy {
             .get::<RequestId>()
             .map(|id| id.as_str().to_owned());
         let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
-        let state = self.gw_ctx.state();
+        let state = self.proxy_ctx.state();
 
         match DevicePipeline::on_stream_response_body(
             state.devices.all(),
@@ -765,7 +765,7 @@ impl ProxyHttp for TrafficProxy {
         // done in Pingora 0.6.0.
         if ctx.ws_opened {
             DevicePipeline::run_on_ws_close(
-                self.gw_ctx.state().devices.all(),
+                self.proxy_ctx.state().devices.all(),
                 &WsCloseCtx::default(),
             );
         }

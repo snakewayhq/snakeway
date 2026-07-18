@@ -14,12 +14,12 @@ impl TrafficProxy {
         service_name: &str,
     ) -> std::result::Result<SelectedUpstream<'a>, BError> {
         // Get a snapshot (cheap, lock-free)
-        let snapshot = self.gw_ctx.traffic_manager.snapshot();
+        let snapshot = self.proxy_ctx.traffic_manager.snapshot();
 
         // Ask the director for a decision.
         let decision = self
             .traffic_director
-            .decide(ctx, &snapshot, service_id, &self.gw_ctx.traffic_manager)
+            .decide(ctx, &snapshot, service_id, &self.proxy_ctx.traffic_manager)
             .map_err(|e| {
                 tracing::error!(error = ?e, "traffic decision failed");
                 Error::new(Custom("traffic decision failed"))
