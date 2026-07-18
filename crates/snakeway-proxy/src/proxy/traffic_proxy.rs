@@ -1,7 +1,8 @@
-use crate::proxy::error_classification::classify_pingora_error;
 use crate::proxy::handlers::StaticFileHandler;
-use crate::proxy::protocol::{ProtocolFacts, ProtocolMode};
 use crate::proxy::proxy_ctx::ProxyCtx;
+use crate::proxy::traffic::UpstreamResponseSnapshot;
+use crate::proxy::traffic::error_classification::classify_pingora_error;
+use crate::proxy::traffic::protocol::{ProtocolFacts, ProtocolMode};
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
@@ -783,91 +784,5 @@ impl ProxyHttp for TrafficProxy {
 
         // Record metrics (no-op when OTel is disabled).
         self.record_metrics(ctx);
-    }
-}
-
-impl TrafficProxy {
-    /// Enforces protocol rules for the given upstream and request.
-    ///
-    /// PROTOCOL PRECEDENCE (highest to lowest):
-    /// 1. WebSocket: HTTP/1.1 only
-    /// 2. HTTP/2 + TLS upstream: end-to-end h2 (gRPC, h2-to-h2)
-    /// 3. HTTP/2 + plaintext upstream: h2-to-h1 (Pingora translates)
-    /// 4. Default: Pingora defaults
-    pub(crate) fn enforce_protocol(
-        &self,
-        peer: &mut HttpPeer,
-        ctx: &RequestCtx,
-        upstream: &UpstreamRuntime,
-    ) -> Result<ProtocolMode, BError> {
-        let is_upgrade = ctx.is_upgrade_req();
-        let mode = ProtocolMode::resolve(ProtocolFacts {
-            downstream_http2: ctx.is_http2(),
-            upstream_tls: upstream.use_tls(),
-            is_upgrade,
-        });
-        match mode {
-            ProtocolMode::Http2EndToEnd => peer.options.set_http_version(2, 2),
-            // An upgrade is forced to HTTP/1.1 so ALPN cannot negotiate h2 on a
-            // TLS upstream. A non-upgrade HTTP/1.1 request keeps Pingora's default.
-            ProtocolMode::Http1 if is_upgrade => peer.options.set_http_version(1, 1),
-            ProtocolMode::Http1 => {}
-        }
-        Ok(mode)
-    }
-
-    /// Finalizes the request guard by reporting success or failure to the traffic manager.
-    ///
-    /// This method determines the outcome of the request based on the upstream response
-    /// and circuit breaker configuration. It marks the request as successful or failed,
-    /// which updates the circuit breaker state for the selected upstream.
-    ///
-    /// Success criteria:
-    /// - No transport error occurred
-    /// - HTTP status < 500 (if count_http_5xx_as_failure is true)
-    /// - Any status code (if count_http_5xx_as_failure is false)
-    ///
-    /// This is called from the logging hook to ensure it runs after all other processing.
-    fn finalize_admission_guard(&self, ctx: &mut RequestCtx) {
-        let (service_id, _) = match ctx.selected_upstream.as_ref() {
-            Some(v) => v,
-            None => return,
-        };
-
-        let guard = match ctx.admission_guard.as_mut() {
-            Some(g) => g,
-            None => return,
-        };
-
-        let success = match ctx.upstream_outcome {
-            Some(UpstreamOutcome::Transport(failure)) => {
-                tracing::debug!(
-                    service = %service_id,
-                    failure = ?failure,
-                    "upstream transport failure"
-                );
-                false
-            }
-
-            Some(UpstreamOutcome::HttpStatus(code)) => {
-                let count_5xx = self
-                    .gw_ctx
-                    .traffic_manager
-                    .count_http_5xx_as_failure(service_id)
-                    .unwrap_or(true);
-
-                if count_5xx { code < 500 } else { true }
-            }
-
-            Some(UpstreamOutcome::Success) => true,
-
-            None => true,
-        };
-
-        if success {
-            guard.success();
-        } else {
-            guard.failure();
-        }
     }
 }
