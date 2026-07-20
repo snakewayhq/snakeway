@@ -1,5 +1,0 @@
-error: unsupported leaf type; expected String, i64, f64, bool, or PathBuf inside Located, or mark the field #[confval(nested)]
- --> tests/ui/fail/spec_unsupported_leaf.rs:5:11
-  |
-5 |     port: Located<u16>,
-  |           ^^^^^^^

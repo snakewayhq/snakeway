@@ -1,5 +1,0 @@
-error: #[confval(default)] is not supported here; a leaf field takes #[confval(default)] or #[confval(default = expr)], while a string list or a non-optional nested block accepts only a bare #[confval(default)]
-  --> tests/ui/fail/spec_default_on_nested.rs:14:5
-   |
-14 |     #[confval(nested, default)]
-   |     ^

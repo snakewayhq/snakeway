@@ -1,5 +1,0 @@
-error: unknown confval attribute; expected `nested` or `default`
- --> tests/ui/fail/spec_unknown_attribute.rs:5:15
-  |
-5 |     #[confval(rename = "port")]
-  |               ^^^^^^

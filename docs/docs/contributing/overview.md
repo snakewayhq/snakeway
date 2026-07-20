@@ -12,8 +12,6 @@ Read this page first, then consult the page that matches the kind of change you 
 ```shell
 .
 ├── crates
-│   ├── confval/  
-│   ├── confval-derive/
 │   ├── snakeway/                     # Application crate (lib + bin): CLI, control plane, server
 │   ├── snakeway-acme/                # ACME certificate management
 │   ├── snakeway-conf/                # Configuration library crate (parsing and lowering)
