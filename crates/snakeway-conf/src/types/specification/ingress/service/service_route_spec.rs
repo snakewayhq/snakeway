@@ -20,7 +20,9 @@ pub(crate) fn validate_service_route(spec: &ServiceRouteSpec, span: Span, report
         report.error("route has no hosts").at(span).emit();
     }
 
-    if let Some(ws_max_connections) = &spec.ws_max_connections {
+    if spec.enable_websocket.value
+        && let Some(ws_max_connections) = &spec.ws_max_connections
+    {
         WS_MAX_CONNECTIONS.check_located(ws_max_connections, "ws_max_connections", report);
     }
 }
@@ -58,8 +60,8 @@ mod tests {
         let route = ServiceRouteSpec {
             hosts: vec![Located::detached("example.com".to_string())],
             path: Located::detached("/".to_string()),
+            enable_websocket: Located::detached(true),
             ws_max_connections: Some(Located::detached(0)),
-            ..Default::default()
         };
 
         // Act
@@ -81,8 +83,8 @@ mod tests {
         let route = ServiceRouteSpec {
             hosts: vec![Located::detached("example.com".to_string())],
             path: Located::detached("/".to_string()),
+            enable_websocket: Located::detached(true),
             ws_max_connections: Some(Located::detached(1000)),
-            ..Default::default()
         };
 
         // Act
