@@ -15,14 +15,23 @@ static_files = [
   {
     routes = [
       {
-        path     = "/"
-        file_dir = "/var/www/public"
-        index    = "index.html"
+        hosts             = ["*"]
+        path              = "/"
+        file_dir          = "/var/www/public"
+        index             = "index.html"
+        directory_listing = false
+        max_file_size     = 10485760
+        compression       = {}
+        cache_policy      = {}
       }
     ]
   }
 ]
 ```
+
+Every field above except `index` is required.
+Write `compression = {}` and `cache_policy = {}` to accept the defaults for those blocks, or set the individual
+options described below.
 
 ### Configuration Options
 
@@ -39,7 +48,8 @@ static_files = [
 
 ### Cache Policy (Per-Route)
 
-Each static route can have an optional `cache_policy` block.
+Each static route carries a `cache_policy` block. Every option within it has a default, so `cache_policy = {}` is
+valid.
 
 | Option            | Type    | Default | Description                                                                                                                  |
 |-------------------|---------|---------|------------------------------------------------------------------------------------------------------------------------------|
@@ -49,7 +59,7 @@ Each static route can have an optional `cache_policy` block.
 
 ### Advanced Compression (Per-Route)
 
-Each static route can have an optional `compression` block to customize compression behavior.
+Each static route carries a `compression` block. Every option within it has a default, so `compression = {}` is valid.
 
 | Option                 | Type    | Default  | Description                                                                                                 |
 |------------------------|---------|----------|-------------------------------------------------------------------------------------------------------------|
@@ -66,8 +76,12 @@ static_files = [
   {
     routes = [
       {
-        path     = "/"
-        file_dir = "/var/www/public"
+        hosts             = ["*"]
+        path              = "/"
+        file_dir          = "/var/www/public"
+        directory_listing = false
+        max_file_size     = 10485760
+        cache_policy      = {}
         compression = {
           enable_brotli   = true
           enable_gzip     = true
@@ -87,8 +101,12 @@ static_files = [
   {
     routes = [
       {
-        path     = "/raw"
-        file_dir = "/var/www/raw-assets"
+        hosts             = ["*"]
+        path              = "/raw"
+        file_dir          = "/var/www/raw-assets"
+        directory_listing = false
+        max_file_size     = 10485760
+        cache_policy      = {}
         compression = {
           enable_brotli = false
           enable_gzip   = false
@@ -99,18 +117,26 @@ static_files = [
 ]
 ```
 
-**Increase file size limits for large assets:**
+**Serve large assets:**
+
+`max_file_size` is a route field rather than a compression option.
+It caps the size of any file the route will serve, and a larger file is rejected with `403 Forbidden` before it is
+opened, including a range request for a small slice of it.
+The accepted range is 1 to 68719476736 (64 GiB).
 
 ```hcl
 static_files = [
   {
     routes = [
       {
-        path     = "/downloads"
-        file_dir = "/var/www/large-files"
+        hosts             = ["*"]
+        path              = "/downloads"
+        file_dir          = "/var/www/large-files"
+        directory_listing = false
+        max_file_size     = 104857600 # 100 MiB
+        cache_policy      = {}
         compression = {
-          max_file_size = 104857600  # 100 MiB
-          small_file_threshold = 1048576    # 1 MiB - stream files larger than this
+          small_file_threshold = 1048576 # 1 MiB, stream files larger than this
         }
       }
     ]
@@ -127,8 +153,14 @@ static_files = [
   {
     routes = [
       {
-        path     = "/"
-        file_dir = "/var/www/dist"
+        hosts             = ["*"]
+        path              = "/"
+        file_dir          = "/var/www/dist"
+        index             = "index.html"
+        directory_listing = false
+        max_file_size     = 10485760
+        compression       = {}
+        cache_policy      = {}
       }
     ]
   }
@@ -142,8 +174,13 @@ static_files = [
   {
     routes = [
       {
-        path     = "/static"
-        file_dir = "/var/www/assets"
+        hosts             = ["*"]
+        path              = "/static"
+        file_dir          = "/var/www/assets"
+        directory_listing = false
+        max_file_size     = 10485760
+        compression       = {}
+        cache_policy      = {}
       }
     ]
   }
@@ -157,7 +194,8 @@ services = [
   {
     routes = [
       {
-        path = "/api"
+        hosts = ["*"]
+        path  = "/api"
       }
     ]
     upstreams = [
@@ -172,8 +210,13 @@ static_files = [
   {
     routes = [
       {
-        path     = "/"
-        file_dir = "/var/www/public"
+        hosts             = ["*"]
+        path              = "/"
+        file_dir          = "/var/www/public"
+        directory_listing = false
+        max_file_size     = 10485760
+        compression       = {}
+        cache_policy      = {}
       }
     ]
   }
