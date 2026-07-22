@@ -1,7 +1,11 @@
 use crate::types::HclInt;
 use confval::diagnostic::Report;
 use confval::prelude::{Located, Validate};
+use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
+
+range_constraint!(FAILURE_THRESHOLD, i64, min: 1, max: 10_000);
+range_constraint!(UNHEALTHY_COOLDOWN_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct HealthCheckSpec {
@@ -24,6 +28,95 @@ impl Default for HealthCheckSpec {
 
 impl Validate for HealthCheckSpec {
     fn validate(&self, report: &mut Report) {
-        todo!()
+        if !self.enable.value {
+            return;
+        }
+
+        FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
+        UNHEALTHY_COOLDOWN_SECONDS.check_located(
+            &self.unhealthy_cooldown_seconds,
+            "unhealthy_cooldown_seconds",
+            report,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enabled_defaults_are_valid() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = HealthCheckSpec {
+            enable: Located::detached(true),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn disabled_health_check_skips_range_checks() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = HealthCheckSpec {
+            enable: Located::detached(false),
+            failure_threshold: Located::detached(0),
+            unhealthy_cooldown_seconds: Located::detached(0),
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn failure_threshold_below_minimum_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = HealthCheckSpec {
+            enable: Located::detached(true),
+            failure_threshold: Located::detached(0),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert_eq!(report.issues().len(), 1);
+        assert_eq!(
+            report.issues()[0].message,
+            "failure_threshold must be at least 1"
+        );
+    }
+
+    #[test]
+    fn unhealthy_cooldown_above_maximum_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = HealthCheckSpec {
+            enable: Located::detached(true),
+            unhealthy_cooldown_seconds: Located::detached(3601),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert_eq!(report.issues().len(), 1);
+        assert_eq!(
+            report.issues()[0].message,
+            "unhealthy_cooldown_seconds must be at most 3600"
+        );
     }
 }

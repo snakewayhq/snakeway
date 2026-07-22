@@ -51,6 +51,9 @@ impl Default for CircuitBreakerSpec {
 
 impl Validate for CircuitBreakerSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable_auto_recovery.value {
+            return;
+        }
         FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
         OPEN_DURATION_MS.check_located(
             &self.open_duration_milliseconds,

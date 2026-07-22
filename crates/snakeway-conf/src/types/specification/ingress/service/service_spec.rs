@@ -49,10 +49,12 @@ impl Validate for ServiceSpec {
             report,
         );
 
-        if let Some(cb) = &self.circuit_breaker
-            && cb.value.enable_auto_recovery.value
-        {
+        if let Some(cb) = &self.circuit_breaker {
             cb.validate(report);
+        }
+
+        if let Some(health_check) = &self.health_check {
+            health_check.validate(report);
         }
 
         for route in &self.routes {
