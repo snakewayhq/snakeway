@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = ServerSpec, validate)]
+#[confval(lower_from = ServerSpec)]
 pub struct ServerConfig {
     #[confval(lower(from = version, with = narrow::i64_to_u32))]
     pub version: u32,

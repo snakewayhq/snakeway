@@ -39,6 +39,12 @@ pub struct AcmeServerSpec {
     pub ca_file: Option<Located<PathBuf>>,
 }
 
+impl Validate for AcmeServerSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
+    }
+}
+
 /// The cert_store block carries a `type` attribute selecting the variant,
 /// mirroring the serialized form (`type = "filesystem"` or `type = "memory"`).
 impl FromFields for CertStoreSpec {

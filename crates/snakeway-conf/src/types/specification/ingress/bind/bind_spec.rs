@@ -1,4 +1,3 @@
-use super::http2_spec::validate_http2;
 use super::redirect_spec::{report_invalid_port, validate_redirect};
 use super::tls_termination_spec::validate_tls_termination;
 use crate::resolution::ResolveError;
@@ -12,7 +11,6 @@ use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
 
-use super::connection_rate_limiting_filter_spec::validate_connection_rate_limiting_filter;
 use super::network_connection_filter_spec::validate_network_connection_filter;
 
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
@@ -64,10 +62,7 @@ impl Validate for BindSpec {
         }
 
         if let Some(connection_rate_limiting_filter) = &self.connection_rate_limiting_filter {
-            validate_connection_rate_limiting_filter(
-                &connection_rate_limiting_filter.value,
-                report,
-            );
+            connection_rate_limiting_filter.value.validate(report);
         }
 
         // TLS cert/key/acme validation.
@@ -86,7 +81,7 @@ impl Validate for BindSpec {
 
         // HTTP/2 tuning.
         if let Some(http2) = &self.http2 {
-            validate_http2(&http2.value, report);
+            http2.validate(report);
         }
 
         // Redirect HTTP to HTTPS validation.

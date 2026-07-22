@@ -1,5 +1,6 @@
 use crate::types::HclInt;
-use confval::prelude::Located;
+use confval::diagnostic::Report;
+use confval::prelude::{Located, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
@@ -18,5 +19,11 @@ impl Default for HealthCheckSpec {
             failure_threshold: Located::detached(3),
             unhealthy_cooldown_seconds: Located::detached(10),
         }
+    }
+}
+
+impl Validate for HealthCheckSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
     }
 }

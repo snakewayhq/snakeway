@@ -1,5 +1,6 @@
 use crate::types::HclInt;
-use confval::prelude::Located;
+use confval::diagnostic::Report;
+use confval::prelude::{Located, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -19,5 +20,11 @@ impl Default for ShutdownSpec {
             drain_seconds: Some(Located::detached(10)),
             force_timeout_seconds: None,
         }
+    }
+}
+
+impl Validate for ShutdownSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
     }
 }

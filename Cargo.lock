@@ -661,9 +661,9 @@ dependencies = [
 
 [[package]]
 name = "confval"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c138740a14a87e1c63960cf237923442722bb2cb53c1721e0c1e1d7796e7a9a1"
+checksum = "41cccf72642046ddd0514a718086b4fb09d3a69ff7dfb07532e384722554e8a8"
 dependencies = [
  "confval-derive",
  "hcl-edit",
@@ -674,9 +674,9 @@ dependencies = [
 
 [[package]]
 name = "confval-derive"
-version = "0.1.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c5fe4a9fca69b1c988a318912b6c40c46bb90b08e8e163e95b9dbea67c903b7"
+checksum = "57f2bf66e56b623f4fdd4d015193fb1a9ca729ef59e1122c0c07364344245d59"
 dependencies = [
  "proc-macro2",
  "quote",

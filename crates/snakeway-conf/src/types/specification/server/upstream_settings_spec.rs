@@ -1,5 +1,6 @@
 use crate::types::HclInt;
-use confval::prelude::Located;
+use confval::diagnostic::Report;
+use confval::prelude::{Located, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
@@ -23,10 +24,22 @@ pub struct UpstreamSettingsSpec {
     pub source_addresses: Option<Located<UpstreamSourceAddressesSpec>>,
 }
 
+impl Validate for UpstreamSettingsSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
+    }
+}
+
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct UpstreamSourceAddressesSpec {
     #[confval(default)]
     pub ipv4: Vec<Located<String>>,
     #[confval(default)]
     pub ipv6: Vec<Located<String>>,
+}
+
+impl Validate for UpstreamSourceAddressesSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
+    }
 }

@@ -1,4 +1,3 @@
-use super::circuit_breaker_spec::validate_circuit_breaker;
 use super::service_route_spec::validate_service_route;
 use super::upstream_spec::{validate_endpoint, validate_endpoint_tls_verify, validate_upstream};
 use crate::types::{CircuitBreakerSpec, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec};
@@ -53,7 +52,7 @@ impl Validate for ServiceSpec {
         if let Some(cb) = &self.circuit_breaker
             && cb.value.enable_auto_recovery.value
         {
-            validate_circuit_breaker(&cb.value, report);
+            cb.validate(report);
         }
 
         for route in &self.routes {

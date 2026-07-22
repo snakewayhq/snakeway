@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
-#[confval(lower_from = TlsAutomationSpec, validate)]
+#[confval(lower_from = TlsAutomationSpec)]
 pub struct TlsAutomationConfig {
     #[confval(nested)]
     pub acme: AcmeServerConfig,

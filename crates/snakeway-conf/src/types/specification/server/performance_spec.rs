@@ -1,5 +1,6 @@
 use crate::types::HclInt;
-use confval::prelude::Located;
+use confval::diagnostic::Report;
+use confval::prelude::{Located, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, confval::Spec)]
@@ -18,5 +19,11 @@ impl Default for PerformanceSpec {
             work_stealing: Located::detached(true),
             parallel_accepts_per_listener: None,
         }
+    }
+}
+
+impl Validate for PerformanceSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
     }
 }

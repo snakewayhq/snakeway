@@ -1,4 +1,5 @@
 use crate::types::HclInt;
+use confval::pipeline::Validate;
 use confval::prelude::{Located, Report};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -16,6 +17,32 @@ pub struct StaticRouteSpec {
     pub compression: Located<CompressionOptsSpec>,
     #[confval(nested)]
     pub cache_policy: Located<CachePolicySpec>,
+}
+
+impl Validate for StaticRouteSpec {
+    fn validate(&self, report: &mut Report) {
+        if !self.file_dir.value.exists() {
+            report
+                .error(format!(
+                    "invalid static directory: {}",
+                    self.file_dir.value.display()
+                ))
+                .at(self.file_dir.span)
+                .emit();
+        }
+        if self.file_dir.value.is_relative() {
+            report
+                .error(format!(
+                    "static file directory must be an absolute path: {}",
+                    self.file_dir.value.display()
+                ))
+                .at(self.file_dir.span)
+                .emit();
+        }
+
+        self.compression.validate(report);
+        self.cache_policy.validate(report);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
@@ -44,6 +71,12 @@ impl Default for CompressionOptsSpec {
     }
 }
 
+impl Validate for CompressionOptsSpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct CachePolicySpec {
     #[confval(default = 3600)]
@@ -64,24 +97,9 @@ impl Default for CachePolicySpec {
     }
 }
 
-pub(crate) fn validate_static_route(spec: &StaticRouteSpec, report: &mut Report) {
-    if !spec.file_dir.value.exists() {
-        report
-            .error(format!(
-                "invalid static directory: {}",
-                spec.file_dir.value.display()
-            ))
-            .at(spec.file_dir.span)
-            .emit();
-    }
-    if spec.file_dir.value.is_relative() {
-        report
-            .error(format!(
-                "static file directory must be an absolute path: {}",
-                spec.file_dir.value.display()
-            ))
-            .at(spec.file_dir.span)
-            .emit();
+impl Validate for CachePolicySpec {
+    fn validate(&self, report: &mut Report) {
+        todo!()
     }
 }
 
@@ -101,7 +119,7 @@ mod tests {
         };
 
         // Act
-        validate_static_route(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues().first().unwrap().message, expected_error);
@@ -123,7 +141,7 @@ mod tests {
         };
 
         // Act
-        validate_static_route(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues()[0].message, expected_error0);

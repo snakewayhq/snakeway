@@ -1,4 +1,4 @@
-use super::static_route_spec::{StaticRouteSpec, validate_static_route};
+use super::static_route_spec::StaticRouteSpec;
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
@@ -11,7 +11,7 @@ pub struct StaticFilesSpec {
 impl Validate for StaticFilesSpec {
     fn validate(&self, report: &mut Report) {
         for route in &self.routes {
-            validate_static_route(&route.value, report);
+            route.validate(report);
         }
     }
 }
