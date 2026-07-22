@@ -26,14 +26,16 @@ static_files = [
 
 ### Configuration Options
 
-| Option              | Type    | Required | Description                                                        |
-|---------------------|---------|----------|--------------------------------------------------------------------|
-| `path`              | string  | Yes      | The URL path prefix to match                                       |
-| `file_dir`          | string  | Yes      | The directory containing static files                              |
-| `index`             | string  | No       | The name of the index file, e.g., `index.html` (no default)        |
-| `directory_listing` | boolean | No       | Whether list the contents of directory requests (default: `false`) |
-| `cache_policy`      | object  | No       | Advanced cache policy configuration (see below)                    |
-| `compression`       | object  | No       | Advanced compression configuration (see below)                     |
+| Option              | Type    | Required | Description                                                 |
+|---------------------|---------|----------|-------------------------------------------------------------|
+| `path`              | string  | Yes      | The URL path prefix to match                                |
+| `file_dir`          | string  | Yes      | The directory containing static files                       |
+| `hosts`             | list    | Yes      | The hostnames this route applies to                         |
+| `index`             | string  | No       | The name of the index file, e.g., `index.html` (no default) |
+| `directory_listing` | boolean | Yes      | Whether list the contents of directory requests             |
+| `max_file_size`     | integer | Yes      | Largest file that will be served, in bytes (see below)      |
+| `cache_policy`      | object  | Yes      | Advanced cache policy configuration (see below)             |
+| `compression`       | object  | Yes      | Advanced compression configuration (see below)              |
 
 ### Cache Policy (Per-Route)
 
@@ -49,14 +51,13 @@ Each static route can have an optional `cache_policy` block.
 
 Each static route can have an optional `compression` block to customize compression behavior.
 
-| Option                 | Type    | Default    | Description                                                                                                 |
-|------------------------|---------|------------|-------------------------------------------------------------------------------------------------------------|
-| `enable_brotli`        | boolean | `true`     | Enable Brotli compression for compressible content                                                          |
-| `enable_gzip`          | boolean | `true`     | Enable gzip compression (fallback when Brotli is unavailable)                                               |
-| `min_brotli_size`      | integer | `4096`     | Minimum file size in bytes to apply Brotli compression (4 KiB)                                              |
-| `min_gzip_size`        | integer | `1024`     | Minimum file size in bytes to apply gzip compression (1 KiB)                                                |
-| `small_file_threshold` | integer | `262144`   | Files smaller than this (in bytes) are read into memory and compressed; larger files are streamed (256 KiB) |
-| `max_file_size`        | integer | `10485760` | Maximum file size in bytes that will be served (10 MiB)                                                     |
+| Option                 | Type    | Default  | Description                                                                                                 |
+|------------------------|---------|----------|-------------------------------------------------------------------------------------------------------------|
+| `enable_brotli`        | boolean | `true`   | Enable Brotli compression for compressible content                                                          |
+| `enable_gzip`          | boolean | `true`   | Enable gzip compression (fallback when Brotli is unavailable)                                               |
+| `min_brotli_size`      | integer | `4096`   | Minimum file size in bytes to apply Brotli compression (4 KiB)                                              |
+| `min_gzip_size`        | integer | `1024`   | Minimum file size in bytes to apply gzip compression (1 KiB)                                                |
+| `small_file_threshold` | integer | `262144` | Files smaller than this (in bytes) are read into memory and compressed; larger files are streamed (256 KiB) |
 
 **Example with custom compression settings:**
 
