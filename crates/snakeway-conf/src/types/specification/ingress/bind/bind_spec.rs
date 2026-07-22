@@ -62,7 +62,7 @@ impl Validate for BindSpec {
         }
 
         if let Some(connection_rate_limiting_filter) = &self.connection_rate_limiting_filter {
-            connection_rate_limiting_filter.value.validate(report);
+            connection_rate_limiting_filter.validate(report);
         }
 
         // TLS cert/key/acme validation.

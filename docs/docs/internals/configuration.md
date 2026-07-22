@@ -241,7 +241,7 @@ holds, so those presence checks live in the central validator instead (see below
 Cross-field and cross-file rules live under `crates/snakeway-conf/src/validation/`:
 
 - `single_file/ingress.rs` and `single_file/device.rs` walk every parsed ingress and device,
-  dispatch each entity's `Validate` impl (`ingress.value.validate(report)`,
+  dispatch each entity's `Validate` impl (`ingress.validate(report)`,
   `device_cfg.validate(report)`), and check relational rules within and across files: duplicate bind
   addresses, duplicate route paths, HTTP/2 and TLS dependency, WebSocket and HTTP/2 conflict.
   Cross-file duplicates are tracked in a map from key to first-seen `Span`, so the second occurrence

@@ -29,16 +29,16 @@ pub struct IngressSpec {
 impl Validate for IngressSpec {
     fn validate(&self, report: &mut Report) {
         if let Some(bind) = &self.bind {
-            bind.value.validate(report);
+            bind.validate(report);
         }
         if let Some(bind_admin) = &self.bind_admin {
-            bind_admin.value.validate(report);
+            bind_admin.validate(report);
         }
         for static_files in &self.static_files {
-            static_files.value.validate(report);
+            static_files.validate(report);
         }
         for service in &self.services {
-            service.value.validate(report);
+            service.validate(report);
         }
     }
 }

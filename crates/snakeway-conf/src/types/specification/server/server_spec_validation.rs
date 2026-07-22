@@ -72,15 +72,15 @@ impl Validate for ServerSpec {
         );
 
         if let Some(tls_automation) = &self.tls_automation {
-            tls_automation.value.validate(report);
+            tls_automation.validate(report);
         }
 
         if let Some(observability) = &self.observability {
-            observability.value.validate(report);
+            observability.validate(report);
         }
 
         if let Some(wasm) = &self.wasm {
-            wasm.value.validate(report);
+            wasm.validate(report);
         }
 
         if let Some(shutdown) = &self.shutdown {
