@@ -75,6 +75,10 @@ impl Default for RequestFilterDeviceSpec {
 
 impl Validate for RequestFilterDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         if let Some(deny_status) = &self.deny_status {
             DENY_STATUS.check_located(deny_status, "deny_status", report);
         }
@@ -205,6 +209,23 @@ mod tests {
             enable: Located::detached(true),
             allow_methods: vec![Located::detached("GET".to_string())],
             paths: vec![Located::detached("/api".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestFilterDeviceSpec {
+            enable: Located::detached(false),
+            deny_status: Some(Located::detached(399)),
             ..Default::default()
         };
 

@@ -175,6 +175,10 @@ impl FromFields for WasmDeviceSpec {
 
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         if self.name.value.trim().is_empty() {
             report
                 .error("wasm device name must not be empty")
@@ -432,5 +436,22 @@ hooks = ["on_request", "on_response"]
                 .iter()
                 .any(|e| e.message.contains("hooks must not be empty"))
         );
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = WasmDeviceSpec {
+            enable: Located::detached(false),
+            fail_policy: Located::detached("sideways".to_string()),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 }

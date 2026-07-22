@@ -34,6 +34,10 @@ impl Default for ForwardingSpec {
 
 impl Validate for NetworkPolicyDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         let _ = parse_cidr_list(&self.cidr_allow, "network policy allow list", report);
 
         KeywordSet::new(&ON_INVALID_FORWARDED).check_located(
@@ -136,5 +140,22 @@ mod tests {
                 .iter()
                 .any(|e| e.message == "unknown on_invalid: explode")
         );
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = NetworkPolicyDeviceSpec {
+            enable: Located::detached(false),
+            cidr_allow: vec![Located::detached("not-a-cidr".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 }
