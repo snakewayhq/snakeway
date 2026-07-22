@@ -1,7 +1,12 @@
 use crate::types::HclInt;
 use confval::diagnostic::Report;
 use confval::prelude::{Located, Validate};
+use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
+use std::net::{Ipv4Addr, Ipv6Addr};
+
+range_constraint!(CONNECTION_POOL_SIZE, i64, min: 1, max: 65535);
+range_constraint!(TIMEOUT_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct UpstreamSettingsSpec {
@@ -26,7 +31,18 @@ pub struct UpstreamSettingsSpec {
 
 impl Validate for UpstreamSettingsSpec {
     fn validate(&self, report: &mut Report) {
-        todo!()
+        if let Some(pool_size) = &self.connection_pool_size {
+            CONNECTION_POOL_SIZE.check_located(pool_size, "connection_pool_size", report);
+        }
+        if let Some(timeout) = &self.connection_timeout_seconds {
+            TIMEOUT_SECONDS.check_located(timeout, "connection_timeout_seconds", report);
+        }
+        if let Some(timeout) = &self.read_timeout_seconds {
+            TIMEOUT_SECONDS.check_located(timeout, "read_timeout_seconds", report);
+        }
+        if let Some(source_addresses) = &self.source_addresses {
+            source_addresses.validate(report);
+        }
     }
 }
 
@@ -40,6 +56,27 @@ pub struct UpstreamSourceAddressesSpec {
 
 impl Validate for UpstreamSourceAddressesSpec {
     fn validate(&self, report: &mut Report) {
-        todo!()
+        for addr in &self.ipv4 {
+            if addr.value.parse::<Ipv4Addr>().is_err() {
+                report
+                    .error(format!(
+                        "invalid upstream.source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
+                        addr.value
+                    ))
+                    .at(addr.span)
+                    .emit();
+            }
+        }
+        for addr in &self.ipv6 {
+            if addr.value.parse::<Ipv6Addr>().is_err() {
+                report
+                    .error(format!(
+                        "invalid upstream.source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
+                        addr.value
+                    ))
+                    .at(addr.span)
+                    .emit();
+            }
+        }
     }
 }
