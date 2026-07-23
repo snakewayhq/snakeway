@@ -2,7 +2,7 @@ use crate::validation::validator::{require_existing_dir, validate_cert_pem};
 use confval::format::{
     Fields, FromFields, parse_string_field, report_missing_field, report_unknown_field,
 };
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -136,20 +136,22 @@ impl FromFields for CertStoreSpec {
 
 impl Validate for TlsAutomationSpec {
     fn validate(&self, report: &mut Report) {
-        self.acme.validate(report);
-
         RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
-
-        validate_cert_store(&self.cert_store.value, report);
     }
 }
 
-fn validate_cert_store(spec: &CertStoreSpec, report: &mut Report) {
-    match spec {
-        CertStoreSpec::Filesystem { cert_dir } => {
-            require_existing_dir(cert_dir, "server TLS filesystem cert_dir", report);
+impl ValidateNested for CertStoreSpec {
+    fn validate_nested(&self, _report: &mut Report) {}
+}
+
+impl Validate for CertStoreSpec {
+    fn validate(&self, report: &mut Report) {
+        match self {
+            CertStoreSpec::Filesystem { cert_dir } => {
+                require_existing_dir(cert_dir, "server TLS filesystem cert_dir", report);
+            }
+            CertStoreSpec::Memory => {}
         }
-        CertStoreSpec::Memory => {}
     }
 }
 
@@ -388,7 +390,7 @@ cert_store {
         };
 
         // Act
-        validate_cert_store(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(

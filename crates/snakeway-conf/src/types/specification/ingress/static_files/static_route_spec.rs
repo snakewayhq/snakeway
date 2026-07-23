@@ -73,9 +73,6 @@ impl Validate for StaticRouteSpec {
                 .at(self.file_dir.span)
                 .emit();
         }
-
-        self.compression.validate(report);
-        self.cache_policy.validate(report);
     }
 }
 

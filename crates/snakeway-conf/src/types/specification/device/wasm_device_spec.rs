@@ -4,7 +4,7 @@ use confval::format::{
     Field, FieldKind, Fields, FromFields, Scalar, ValueKind, parse_bool_field, parse_int_field,
     parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
 };
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -171,6 +171,10 @@ impl FromFields for WasmDeviceSpec {
             hooks,
         })
     }
+}
+
+impl ValidateNested for WasmDeviceSpec {
+    fn validate_nested(&self, _report: &mut Report) {}
 }
 
 impl Validate for WasmDeviceSpec {

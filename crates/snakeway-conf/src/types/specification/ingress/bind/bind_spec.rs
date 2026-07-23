@@ -1,5 +1,4 @@
-use super::redirect_spec::{report_invalid_port, validate_redirect};
-use super::tls_termination_spec::validate_tls_termination;
+use super::redirect_spec::report_invalid_port;
 use crate::resolution::ResolveError;
 use crate::types::{
     BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclInt, Http2Spec,
@@ -10,8 +9,6 @@ use crate::validation::validator::is_valid_port;
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
-
-use super::network_connection_filter_spec::validate_network_connection_filter;
 
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct BindSpec {
@@ -56,20 +53,6 @@ impl Validate for BindSpec {
             report_invalid_port(&self.port, report);
         }
 
-        // Connection filters.
-        if let Some(connection_filter) = &self.connection_filter {
-            validate_network_connection_filter(&connection_filter.value, report);
-        }
-
-        if let Some(connection_rate_limiting_filter) = &self.connection_rate_limiting_filter {
-            connection_rate_limiting_filter.validate(report);
-        }
-
-        // TLS cert/key/acme validation.
-        if let Some(tls) = &self.tls {
-            validate_tls_termination(&tls.value, report);
-        }
-
         // HTTP/2 requires TLS.
         if self.enable_http2.value && self.tls.is_none() {
             report
@@ -77,16 +60,6 @@ impl Validate for BindSpec {
                 .at(self.enable_http2.span)
                 .help("Enable TLS on the bind or disable HTTP/2.")
                 .emit();
-        }
-
-        // HTTP/2 tuning.
-        if let Some(http2) = &self.http2 {
-            http2.validate(report);
-        }
-
-        // Redirect HTTP to HTTPS validation.
-        if let Some(redirect) = &self.redirect_http_to_https {
-            validate_redirect(&redirect.value, report);
         }
 
         // Redirect HTTP to HTTPS requires TLS.

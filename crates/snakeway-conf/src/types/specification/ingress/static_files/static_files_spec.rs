@@ -9,9 +9,5 @@ pub struct StaticFilesSpec {
 }
 
 impl Validate for StaticFilesSpec {
-    fn validate(&self, report: &mut Report) {
-        for route in &self.routes {
-            route.validate(report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }

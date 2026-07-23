@@ -40,9 +40,6 @@ impl Validate for UpstreamSettingsSpec {
         if let Some(timeout) = &self.read_timeout_seconds {
             TIMEOUT_SECONDS.check_located(timeout, "read_timeout_seconds", report);
         }
-        if let Some(source_addresses) = &self.source_addresses {
-            source_addresses.validate(report);
-        }
     }
 }
 

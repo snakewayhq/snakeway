@@ -31,7 +31,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
             identity_seen = true;
             identity_enabled = cfg.enable.value;
 
-            cfg.validate(report);
+            cfg.validate_all(report);
 
             if cfg.enable_geoip.value
                 && cfg.geoip_city_db.is_none()
@@ -56,7 +56,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 }
                 request_filter_seen = true;
 
-                cfg.validate(report);
+                cfg.validate_all(report);
 
                 if cfg.max_suspicious_body_bytes.value > cfg.max_body_bytes.value {
                     report
@@ -89,7 +89,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                         .emit();
                 }
 
-                cfg.validate(report);
+                cfg.validate_all(report);
             }
             DeviceSpec::RequestRateLimiting(cfg) => {
                 if request_rate_limiting_device_seen {
@@ -101,7 +101,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                     report_requires_identity(device.span, report);
                 }
 
-                cfg.validate(report);
+                cfg.validate_all(report);
             }
             DeviceSpec::Wasm(cfg) => {
                 if !wasm_names_seen.insert(cfg.name.value.clone()) {
@@ -114,7 +114,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                         .emit();
                 }
 
-                cfg.validate(report);
+                cfg.validate_all(report);
             }
             DeviceSpec::StructuredLogging(cfg) => {
                 if structured_logging_seen {
@@ -122,7 +122,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 }
                 structured_logging_seen = true;
 
-                cfg.validate(report);
+                cfg.validate_all(report);
 
                 // These two are no-ops rather than broken config (identity or
                 // headers are requested but nothing is selected, so nothing is

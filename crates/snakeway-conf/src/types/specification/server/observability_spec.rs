@@ -12,11 +12,7 @@ pub struct ObservabilitySpec {
 }
 
 impl Validate for ObservabilitySpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(otel) = &self.otel {
-            otel.validate(report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[derive(Debug, Serialize, Default, confval::Spec)]

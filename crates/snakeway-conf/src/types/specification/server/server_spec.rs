@@ -314,7 +314,7 @@ observability {
         let server = ServerSpec::default();
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -330,7 +330,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -354,7 +354,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -378,7 +378,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -402,7 +402,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -426,7 +426,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -451,7 +451,7 @@ observability {
             ..Default::default()
         };
 
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         assert_eq!(
             report.issues().len(),
@@ -476,7 +476,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -494,7 +494,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -518,7 +518,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -545,7 +545,7 @@ observability {
         );
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -562,7 +562,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -583,7 +583,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -604,7 +604,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -620,7 +620,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -647,7 +647,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -669,7 +669,7 @@ observability {
         };
 
         // Act
-        server.validate(&mut report);
+        server.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 2);

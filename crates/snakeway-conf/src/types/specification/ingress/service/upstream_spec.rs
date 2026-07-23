@@ -2,7 +2,7 @@ use crate::resolution::ResolveError;
 use crate::types::HclInt;
 use crate::types::specification::ingress::bind::report_invalid_port;
 use crate::validation::validator::{is_valid_hostname, is_valid_port, validate_cert_pem};
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
@@ -83,70 +83,77 @@ impl EndpointSpec {
     }
 }
 
-pub(crate) fn validate_upstream(spec: &UpstreamSpec, report: &mut Report) {
-    if spec.weight.value == 0 || spec.weight.value > 1_000 {
-        report
-            .error(format!("invalid upstream weight: {}", spec.weight.value))
-            .at(spec.weight.span)
-            .emit();
+impl Validate for UpstreamSpec {
+    fn validate(&self, report: &mut Report) {
+        if self.weight.value == 0 || self.weight.value > 1_000 {
+            report
+                .error(format!("invalid upstream weight: {}", self.weight.value))
+                .at(self.weight.span)
+                .emit();
+        }
     }
 }
 
-pub(crate) fn validate_endpoint(spec: &EndpointSpec, report: &mut Report) {
-    match HostSpec::parse(&spec.host.value) {
-        HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
-            report
-                .error(format!("invalid upstream ip: {}", ip))
-                .at(spec.host.span)
-                .emit();
+impl Validate for EndpointSpec {
+    fn validate(&self, report: &mut Report) {
+        let spec = self;
+        match HostSpec::parse(&spec.host.value) {
+            HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
+                report
+                    .error(format!("invalid upstream ip: {}", ip))
+                    .at(spec.host.span)
+                    .emit();
+            }
+            HostSpec::Hostname(name) if !is_valid_hostname(&name) => {
+                report
+                    .error(format!("invalid upstream hostname: {}", name))
+                    .at(spec.host.span)
+                    .emit();
+            }
+            _ => {}
         }
-        HostSpec::Hostname(name) if !is_valid_hostname(&name) => {
-            report
-                .error(format!("invalid upstream hostname: {}", name))
-                .at(spec.host.span)
-                .emit();
+
+        if !is_valid_port(spec.port.value) {
+            report_invalid_port(&spec.port, report);
         }
-        _ => {}
-    }
-
-    if !is_valid_port(spec.port.value) {
-        report_invalid_port(&spec.port, report);
-    }
-
-    if let Some(tls) = &spec.tls
-        && tls.value.sni.value.trim().is_empty()
-    {
-        report
-            .error("upstream TLS SNI required")
-            .at(tls.value.sni.span)
-            .emit();
     }
 }
 
-/// TLS checks that only apply when certificate verification is enabled.
-pub(crate) fn validate_endpoint_tls_verify(spec: &EndpointTlsSpec, report: &mut Report) {
-    if !spec.verify.value {
-        return;
-    }
+impl Validate for EndpointTlsSpec {
+    fn validate(&self, report: &mut Report) {
+        let spec = self;
+        if spec.sni.value.trim().is_empty() {
+            report
+                .error("upstream TLS SNI required")
+                .at(spec.sni.span)
+                .emit();
+        }
 
-    if spec.sni.value.parse::<IpAddr>().is_ok() {
-        report
-            .error("upstream TLS SNI must be DNS name")
-            .at(spec.sni.span)
-            .emit();
-    }
+        // The remaining checks describe how the certificate is verified, so
+        // they mean nothing when verification is off.
+        if !spec.verify.value {
+            return;
+        }
 
-    if let Some(ca_file) = &spec.ca_file
-        && let Err(e) = validate_cert_pem(&ca_file.value)
-    {
-        report
-            .error(format!(
-                "upstream TLS has invalid CA file ({}): {}",
-                ca_file.value.to_string_lossy(),
-                e
-            ))
-            .at(ca_file.span)
-            .emit();
+        if spec.sni.value.parse::<IpAddr>().is_ok() {
+            report
+                .error("upstream TLS SNI must be DNS name")
+                .at(spec.sni.span)
+                .emit();
+        }
+
+        if let Some(ca_file) = &spec.ca_file
+            && let Err(e) = validate_cert_pem(&ca_file.value)
+        {
+            report
+                .error(format!(
+                    "upstream TLS has invalid CA file ({}): {}",
+                    ca_file.value.to_string_lossy(),
+                    e
+                ))
+                .at(ca_file.span)
+                .emit();
+        }
     }
 }
 
@@ -178,7 +185,7 @@ mod tests {
         upstream.weight = Located::detached(0);
 
         // Act
-        validate_upstream(&upstream, &mut report);
+        upstream.validate(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -193,7 +200,7 @@ mod tests {
         upstream.weight = Located::detached(1001);
 
         // Act
-        validate_upstream(&upstream, &mut report);
+        upstream.validate(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -210,7 +217,7 @@ mod tests {
         };
 
         // Act
-        validate_endpoint(&endpoint, &mut report);
+        endpoint.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -227,7 +234,7 @@ mod tests {
         };
 
         // Act
-        validate_endpoint(&endpoint, &mut report);
+        endpoint.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -244,7 +251,7 @@ mod tests {
         };
 
         // Act
-        validate_endpoint(&endpoint, &mut report);
+        endpoint.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -265,7 +272,7 @@ mod tests {
         };
 
         // Act
-        validate_endpoint(&endpoint, &mut report);
+        endpoint.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -286,7 +293,7 @@ mod tests {
         };
 
         // Act
-        validate_endpoint(&endpoint, &mut report);
+        endpoint.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -304,7 +311,7 @@ mod tests {
         };
 
         // Act
-        validate_endpoint_tls_verify(&tls, &mut report);
+        tls.validate(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");

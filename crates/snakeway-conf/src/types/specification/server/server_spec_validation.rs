@@ -2,6 +2,7 @@ use crate::types::ServerSpec;
 use crate::validation::validate_cert_pem;
 use confval::diagnostic::Report;
 use confval::pipeline::Validate;
+use confval::prelude::ControlFlow;
 use confval::{RangeConstraint, range_constraint};
 
 range_constraint!(THREADS, i64, min: 1, max: 1024);
@@ -70,33 +71,15 @@ impl Validate for ServerSpec {
             "dns_refresh_interval_seconds",
             report,
         );
+    }
 
-        if let Some(tls_automation) = &self.tls_automation {
-            tls_automation.validate(report);
-        }
-
-        if let Some(observability) = &self.observability {
-            observability.validate(report);
-        }
-
-        if let Some(wasm) = &self.wasm {
-            wasm.validate(report);
-        }
-
-        if let Some(shutdown) = &self.shutdown {
-            shutdown.validate(report);
-        }
-
-        if let Some(upgrade) = &self.upgrade {
-            upgrade.validate(report);
-        }
-
-        if let Some(performance) = &self.performance {
-            performance.validate(report);
-        }
-
-        if let Some(upstream) = &self.upstream {
-            upstream.validate(report);
+    /// A config that targets a different schema version is not checked against
+    /// v1 rules, and its nested blocks are not either.
+    fn descend(&self) -> ControlFlow<()> {
+        if self.version.value == 1 {
+            ControlFlow::Continue(())
+        } else {
+            ControlFlow::Break(())
         }
     }
 }

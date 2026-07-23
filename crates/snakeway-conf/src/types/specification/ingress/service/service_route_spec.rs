@@ -1,5 +1,5 @@
 use crate::types::HclInt;
-use confval::prelude::{Located, Report, Span};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -15,43 +15,21 @@ pub struct ServiceRouteSpec {
     pub ws_max_connections: Option<Located<HclInt>>,
 }
 
-pub(crate) fn validate_service_route(spec: &ServiceRouteSpec, span: Span, report: &mut Report) {
-    if spec.hosts.is_empty() {
-        report.error("route has no hosts").at(span).emit();
-    }
-
-    if spec.enable_websocket.value
-        && let Some(ws_max_connections) = &spec.ws_max_connections
-    {
-        WS_MAX_CONNECTIONS.check_located(ws_max_connections, "ws_max_connections", report);
+/// The "route has no hosts" rule reports at the route's enclosing span, which
+/// an empty `hosts` list cannot supply, so it lives in `ServiceSpec`.
+impl Validate for ServiceRouteSpec {
+    fn validate(&self, report: &mut Report) {
+        if self.enable_websocket.value
+            && let Some(ws_max_connections) = &self.ws_max_connections
+        {
+            WS_MAX_CONNECTIONS.check_located(ws_max_connections, "ws_max_connections", report);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn route_with_no_hosts_produces_error() {
-        // Arrange
-        let mut report = Report::new();
-        let route = ServiceRouteSpec {
-            hosts: vec![],
-            path: Located::detached("/".to_string()),
-            ..Default::default()
-        };
-
-        // Act
-        validate_service_route(&route, Span::detached(), &mut report);
-
-        // Assert
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message.contains("route has no hosts"))
-        );
-    }
 
     #[test]
     fn ws_max_connections_below_minimum_is_rejected() {
@@ -65,7 +43,7 @@ mod tests {
         };
 
         // Act
-        validate_service_route(&route, Span::detached(), &mut report);
+        route.validate(&mut report);
 
         // Assert
         assert!(
@@ -88,7 +66,7 @@ mod tests {
         };
 
         // Act
-        validate_service_route(&route, Span::detached(), &mut report);
+        route.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
