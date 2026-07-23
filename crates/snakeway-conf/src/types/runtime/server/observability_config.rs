@@ -2,7 +2,7 @@ use crate::types::{ObservabilitySpec, OtelSpec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize, confval::Config)]
-#[confval(lower_from = ObservabilitySpec, validate)]
+#[confval(lower_from = ObservabilitySpec)]
 pub struct ObservabilityConfig {
     #[confval(nested)]
     pub otel: Option<OtelConfig>,

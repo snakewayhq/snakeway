@@ -4,7 +4,7 @@ use crate::types::{
     RouteConfig, RuntimeConfig, ServerConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
     StructuredLoggingDeviceConfig, UpstreamTcpConfig, UpstreamUnixConfig, WasmDeviceConfig,
 };
-use confval::prelude::{Located, Lower, Report, Validate, narrow};
+use confval::prelude::{Located, Lower, Report, Validate, ValidateNested, narrow};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -28,7 +28,7 @@ pub(crate) fn lower_configs(
     report: &mut Report,
 ) -> Option<RuntimeConfig>
 where
-    IngressSpec: Validate,
+    IngressSpec: Validate + ValidateNested,
 {
     let mut listeners = Vec::new();
     let mut routes = Vec::new();

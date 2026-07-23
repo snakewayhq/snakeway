@@ -1,6 +1,10 @@
 use crate::types::HclInt;
-use confval::prelude::Located;
+use confval::diagnostic::Report;
+use confval::prelude::{Located, Validate};
+use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
+
+range_constraint!(PARALLEL_ACCEPTS_PER_LISTENER, i64, min: 1, max: 64);
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct PerformanceSpec {
@@ -17,6 +21,18 @@ impl Default for PerformanceSpec {
         Self {
             work_stealing: Located::detached(true),
             parallel_accepts_per_listener: None,
+        }
+    }
+}
+
+impl Validate for PerformanceSpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(accepts) = &self.parallel_accepts_per_listener {
+            PARALLEL_ACCEPTS_PER_LISTENER.check_located(
+                accepts,
+                "parallel_accepts_per_listener",
+                report,
+            );
         }
     }
 }

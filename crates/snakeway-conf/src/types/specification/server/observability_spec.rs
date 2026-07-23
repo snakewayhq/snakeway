@@ -11,6 +11,10 @@ pub struct ObservabilitySpec {
     pub otel: Option<Located<OtelSpec>>,
 }
 
+impl Validate for ObservabilitySpec {
+    fn validate(&self, _report: &mut Report) {}
+}
+
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct OtelSpec {
     pub enable: Located<bool>,
@@ -20,43 +24,37 @@ pub struct OtelSpec {
     pub sampling_ratio: Located<f64>,
 }
 
-impl Validate for ObservabilitySpec {
+impl Validate for OtelSpec {
     fn validate(&self, report: &mut Report) {
-        if let Some(otel) = &self.otel {
-            validate_otel(&otel.value, report);
+        if !self.enable.value {
+            return;
         }
-    }
-}
 
-fn validate_otel(spec: &OtelSpec, report: &mut Report) {
-    if !spec.enable.value {
-        return;
-    }
+        if self.endpoint.value.is_empty() {
+            report
+                .error("observability.otel.endpoint cannot be empty when enabled")
+                .at(self.endpoint.span)
+                .help("Provide the gRPC endpoint for the OTLP exporter (e.g., http://localhost:4317).")
+                .emit();
+        } else if !self.endpoint.value.starts_with("http://")
+            && !self.endpoint.value.starts_with("https://")
+        {
+            report
+                .error("observability.otel.endpoint must be a valid URL")
+                .at(self.endpoint.span)
+                .help("The endpoint must start with http:// or https://.")
+                .emit();
+        }
 
-    if spec.endpoint.value.is_empty() {
-        report
-            .error("observability.otel.endpoint cannot be empty when enabled")
-            .at(spec.endpoint.span)
-            .help("Provide the gRPC endpoint for the OTLP exporter (e.g., http://localhost:4317).")
-            .emit();
-    } else if !spec.endpoint.value.starts_with("http://")
-        && !spec.endpoint.value.starts_with("https://")
-    {
-        report
-            .error("observability.otel.endpoint must be a valid URL")
-            .at(spec.endpoint.span)
-            .help("The endpoint must start with http:// or https://.")
-            .emit();
-    }
+        if self.service_name.value.is_empty() {
+            report
+                .error("observability.otel.service_name cannot be empty when enabled")
+                .at(self.service_name.span)
+                .emit();
+        }
 
-    if spec.service_name.value.is_empty() {
-        report
-            .error("observability.otel.service_name cannot be empty when enabled")
-            .at(spec.service_name.span)
-            .emit();
+        SAMPLING_RATIO.check_located(&self.sampling_ratio, "sampling_ratio", report);
     }
-
-    SAMPLING_RATIO.check_located(&spec.sampling_ratio, "sampling_ratio", report);
 }
 
 #[cfg(test)]
@@ -132,7 +130,7 @@ mod tests {
         };
 
         // Act
-        validate_otel(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -148,7 +146,7 @@ mod tests {
         };
 
         // Act
-        validate_otel(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -169,7 +167,7 @@ mod tests {
         };
 
         // Act
-        validate_otel(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -190,7 +188,7 @@ mod tests {
         };
 
         // Act
-        validate_otel(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -210,7 +208,7 @@ mod tests {
         };
 
         // Act
-        validate_otel(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(

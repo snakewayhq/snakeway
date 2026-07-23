@@ -1,5 +1,0 @@
-error: unsupported Spec field type; expected Located<T>, Option<Located<T>>, Vec<Located<String>>, or a #[confval(nested)] structure
- --> tests/ui/fail/spec_bare_field.rs:3:11
-  |
-3 |     port: i64,
-  |           ^^^

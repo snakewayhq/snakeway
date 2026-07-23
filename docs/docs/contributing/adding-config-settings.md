@@ -4,7 +4,7 @@ title: Adding a Config Setting
 
 This page describes the `snakeway-conf` configuration subsystem and gives a precise recipe for adding a new setting.
 The subsystem is built on the **confval** crate (span-first parsing, validation, and lowering).
-For the generic primitives see the [confval internals page](../internals/confval.md).
+For the generic primitives see the [confval docs](https://ethanhann.com/confval).
 This page is the applied, Snakeway-specific recipe.
 
 Follow every step.
@@ -234,10 +234,10 @@ For a one-off check, emit directly through the report builder:
 
 ```rust
 report
-    .error(format!("max_connections must be even, got {}", value.value))
-    .at(value.span)
-    .help("Set max_connections to an even number.")
-    .emit();
+.error(format!("max_connections must be even, got {}", value.value))
+.at(value.span)
+.help("Set max_connections to an even number.")
+.emit();
 ```
 
 `report.error(msg)` and `report.warning(msg)` return a builder.

@@ -19,28 +19,13 @@ pub struct IngressSpec {
     pub static_files: Vec<Located<StaticFilesSpec>>,
 }
 
-/// Compositional field-local validation: an ingress validates itself by
-/// delegating to each child entity. Delegating (rather than inlining) is what
-/// makes the child validators reachable from the lowering bound on
-/// `lower_configs` (`where IngressSpec: Validate`): removing any child's
-/// `Validate` impl breaks this method, and the bound then fails to compile.
-/// Checks needing an enclosing span (a missing child) stay in the central
-/// validator, which holds the `Located` wrappers.
+/// An ingress has no rules of its own. Its children are reached by the
+/// `ValidateNested` traversal that `#[derive(Spec)]` generates, so a child
+/// entity without a `Validate` impl fails to compile here rather than being
+/// skipped. Checks needing an enclosing span (a missing child) stay in the
+/// central validator, which holds the `Located` wrappers.
 impl Validate for IngressSpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(bind) = &self.bind {
-            bind.value.validate(report);
-        }
-        if let Some(bind_admin) = &self.bind_admin {
-            bind_admin.value.validate(report);
-        }
-        for static_files in &self.static_files {
-            static_files.value.validate(report);
-        }
-        for service in &self.services {
-            service.value.validate(report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]

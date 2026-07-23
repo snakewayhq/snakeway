@@ -65,6 +65,10 @@ impl Default for StructuredLoggingDeviceSpec {
 
 impl Validate for StructuredLoggingDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         KeywordSet::new(&LOG_LEVELS).check_located(&self.level, "level", report);
 
         for field in &self.identity_fields {
@@ -118,6 +122,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let spec = StructuredLoggingDeviceSpec {
+            enable: Located::detached(true),
             level: Located::detached("loud".to_string()),
             ..Default::default()
         };
@@ -139,6 +144,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let spec = StructuredLoggingDeviceSpec {
+            enable: Located::detached(true),
             identity_fields: vec![Located::detached("shoe_size".to_string())],
             ..Default::default()
         };
@@ -160,6 +166,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let spec = StructuredLoggingDeviceSpec {
+            enable: Located::detached(true),
             events: Some(Located::detached(vec![Located::detached(
                 "during_proxy".to_string(),
             )])),
@@ -185,5 +192,22 @@ mod tests {
                 .iter()
                 .any(|e| e.message == "unknown phase: midnight")
         );
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec {
+            enable: Located::detached(false),
+            level: Located::detached("loud".to_string()),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 }

@@ -1,5 +1,0 @@
-error: nested lists are zero-or-more already; drop the Option
-  --> tests/ui/fail/spec_optional_nested_list.rs:11:12
-   |
-11 |     inner: Option<Vec<Located<InnerSpec>>>,
-   |            ^^^^^^

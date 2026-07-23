@@ -1,5 +1,0 @@
-error: #[derive(Spec)] requires named fields
- --> tests/ui/fail/spec_tuple_struct.rs:2:8
-  |
-2 | struct ServerSpec(i64);
-  |        ^^^^^^^^^^

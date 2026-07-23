@@ -1,5 +1,5 @@
 use crate::types::WasmDeviceSpec;
-use confval::prelude::{Lower, Report, Validate, narrow};
+use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -95,7 +95,7 @@ pub struct WasmDeviceConfig {
 
 impl Lower<WasmDeviceSpec> for WasmDeviceConfig
 where
-    WasmDeviceSpec: Validate,
+    WasmDeviceSpec: Validate + ValidateNested,
 {
     fn lower(spec: &WasmDeviceSpec, report: &mut Report) -> Option<Self> {
         let fail_policy = match WasmDeviceFailPolicy::try_from(spec.fail_policy.value.as_str()) {

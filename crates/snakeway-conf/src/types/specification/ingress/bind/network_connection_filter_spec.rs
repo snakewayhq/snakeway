@@ -1,5 +1,5 @@
 use crate::validation::validator::parse_cidr_list;
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 pub const ON_NO_PEER_ADDR_ALLOW: &str = "allow";
@@ -38,36 +38,44 @@ impl Default for NetworkConnectionFilterSpec {
     }
 }
 
-pub(crate) fn validate_network_connection_filter(
-    spec: &NetworkConnectionFilterSpec,
-    report: &mut Report,
-) {
-    if !spec.ip_family.value.ipv4.value && !spec.ip_family.value.ipv6.value {
-        report
-            .error("connection_filter must enable at least one IP family")
-            .at(spec.ip_family.span)
-            .help("Set ip_family.ipv4 and/or ip_family.ipv6 to true.")
-            .emit();
+/// The CIDR lists are checked by their own entries' spans, so the rule lives
+/// with the field rather than the parent.
+impl Validate for CidrSpec {
+    fn validate(&self, report: &mut Report) {
+        let _ = parse_cidr_list(&self.allow, "connection filter allow list", report);
+        let _ = parse_cidr_list(&self.deny, "connection filter deny list", report);
     }
+}
 
-    let _ = parse_cidr_list(
-        &spec.cidr.value.allow,
-        "connection filter allow list",
-        report,
-    );
-    let _ = parse_cidr_list(&spec.cidr.value.deny, "connection filter deny list", report);
+/// The "at least one family" rule reports at the enclosing `ip_family` span,
+/// which this type cannot reach from `&self`, so it stays in the parent.
+impl Validate for IpFamilySpec {
+    fn validate(&self, _report: &mut Report) {}
+}
 
-    if spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_ALLOW
-        && spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_DENY
-    {
-        report
-            .error(format!(
-                "unknown on_no_peer_addr: {}",
-                spec.on_no_peer_addr.value
-            ))
-            .at(spec.on_no_peer_addr.span)
-            .help("expected \"allow\" or \"deny\"")
-            .emit();
+impl Validate for NetworkConnectionFilterSpec {
+    fn validate(&self, report: &mut Report) {
+        let spec = self;
+        if !spec.ip_family.value.ipv4.value && !spec.ip_family.value.ipv6.value {
+            report
+                .error("connection_filter must enable at least one IP family")
+                .at(spec.ip_family.span)
+                .help("Set ip_family.ipv4 and/or ip_family.ipv6 to true.")
+                .emit();
+        }
+
+        if spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_ALLOW
+            && spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_DENY
+        {
+            report
+                .error(format!(
+                    "unknown on_no_peer_addr: {}",
+                    spec.on_no_peer_addr.value
+                ))
+                .at(spec.on_no_peer_addr.span)
+                .help("expected \"allow\" or \"deny\"")
+                .emit();
+        }
     }
 }
 
@@ -107,7 +115,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_network_connection_filter(&spec, &mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -120,7 +128,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_network_connection_filter(&spec, &mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -138,7 +146,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_network_connection_filter(&spec, &mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.issues().iter().any(|e| {
@@ -154,7 +162,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_network_connection_filter(&spec, &mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.issues().iter().any(|e| {
@@ -171,7 +179,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_network_connection_filter(&spec, &mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

@@ -161,10 +161,6 @@ jobs:
         if: always()
         run: docker compose -f dev/docker-compose-dev.yml down --volumes --remove-orphans
 
-      - name: Remove trybuild scratch before cache save (confval compile-fail tests leaves a nested cargo build tree)
-        if: always()
-        run: rm -rf target/tests
-
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
@@ -229,10 +225,6 @@ jobs:
         with:
           name: coverage-html
           path: coverage-html/
-
-      - name: Remove trybuild scratch before cache save (confval compile-fail tests leaves a nested cargo build tree)
-        if: always()
-        run: rm -rf target/tests
 
   build:
     name: Build ${{ matrix.variant.name }} (${{ matrix.target }})

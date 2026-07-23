@@ -1,5 +1,5 @@
 use crate::types::HclInt;
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::{Deserialize, Serialize};
 
@@ -21,18 +21,24 @@ pub struct Http2Spec {
     pub initial_connection_window_size: Option<Located<HclInt>>,
 }
 
-pub(crate) fn validate_http2(spec: &Http2Spec, report: &mut Report) {
-    if let Some(v) = &spec.max_concurrent_streams {
-        MAX_CONCURRENT_STREAMS.check_located(v, "max_concurrent_streams", report);
-    }
-    if let Some(v) = &spec.max_header_list_size {
-        MAX_HEADER_LIST_SIZE.check_located(v, "max_header_list_size", report);
-    }
-    if let Some(v) = &spec.initial_window_size {
-        INITIAL_WINDOW_SIZE.check_located(v, "initial_window_size", report);
-    }
-    if let Some(v) = &spec.initial_connection_window_size {
-        INITIAL_CONNECTION_WINDOW_SIZE.check_located(v, "initial_connection_window_size", report);
+impl Validate for Http2Spec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(v) = &self.max_concurrent_streams {
+            MAX_CONCURRENT_STREAMS.check_located(v, "max_concurrent_streams", report);
+        }
+        if let Some(v) = &self.max_header_list_size {
+            MAX_HEADER_LIST_SIZE.check_located(v, "max_header_list_size", report);
+        }
+        if let Some(v) = &self.initial_window_size {
+            INITIAL_WINDOW_SIZE.check_located(v, "initial_window_size", report);
+        }
+        if let Some(v) = &self.initial_connection_window_size {
+            INITIAL_CONNECTION_WINDOW_SIZE.check_located(
+                v,
+                "initial_connection_window_size",
+                report,
+            );
+        }
     }
 }
 
@@ -47,7 +53,7 @@ mod tests {
         let spec = Http2Spec::default();
 
         // Act
-        validate_http2(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -63,7 +69,7 @@ mod tests {
         };
 
         // Act
-        validate_http2(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_errors());
@@ -84,7 +90,7 @@ mod tests {
         };
 
         // Act
-        validate_http2(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_errors());

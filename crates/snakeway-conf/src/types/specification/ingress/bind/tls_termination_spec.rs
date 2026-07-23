@@ -3,7 +3,7 @@ use confval::format::{
     Fields, FromFields, parse_string_field, parse_string_list_field, report_missing_field,
     report_unknown_field,
 };
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate, ValidateNested};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -102,27 +102,33 @@ impl FromFields for TlsTerminationSpec {
     }
 }
 
-pub fn validate_tls_termination(spec: &TlsTerminationSpec, report: &mut Report) {
-    match spec {
-        TlsTerminationSpec::Manual { cert, key } => {
-            if let Err(e) = validate_cert_key_pair(&cert.value, &key.value) {
-                report
-                    .error(format!("invalid TLS manual cert pair: {}", e))
-                    .at(cert.span)
-                    .help("Use manual mode instead")
-                    .emit();
+impl ValidateNested for TlsTerminationSpec {
+    fn validate_nested(&self, _report: &mut Report) {}
+}
+
+impl Validate for TlsTerminationSpec {
+    fn validate(&self, report: &mut Report) {
+        match self {
+            TlsTerminationSpec::Manual { cert, key } => {
+                if let Err(e) = validate_cert_key_pair(&cert.value, &key.value) {
+                    report
+                        .error(format!("invalid TLS manual cert pair: {}", e))
+                        .at(cert.span)
+                        .help("Use manual mode instead")
+                        .emit();
+                }
             }
-        }
-        TlsTerminationSpec::Acme { domains, challenge } => {
-            if domains.is_empty() {
-                report.error("missing domains for ACME TLS").emit();
-            }
-            if challenge.value != ACME_CHALLENGE_HTTP01 {
-                report
-                    .error(format!("unknown ACME challenge: {}", challenge.value))
-                    .at(challenge.span)
-                    .help("expected \"http01\"")
-                    .emit();
+            TlsTerminationSpec::Acme { domains, challenge } => {
+                if domains.is_empty() {
+                    report.error("missing domains for ACME TLS").emit();
+                }
+                if challenge.value != ACME_CHALLENGE_HTTP01 {
+                    report
+                        .error(format!("unknown ACME challenge: {}", challenge.value))
+                        .at(challenge.span)
+                        .help("expected \"http01\"")
+                        .emit();
+                }
             }
         }
     }
@@ -210,7 +216,7 @@ mod tests {
         };
 
         // Act
-        validate_tls_termination(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -232,7 +238,7 @@ mod tests {
         };
 
         // Act
-        validate_tls_termination(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -248,7 +254,7 @@ mod tests {
         };
 
         // Act
-        validate_tls_termination(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -287,7 +293,7 @@ mod tests {
         };
 
         // Act
-        validate_tls_termination(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -309,7 +315,7 @@ mod tests {
         };
 
         // Act
-        validate_tls_termination(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues()[0].message, expected_error);

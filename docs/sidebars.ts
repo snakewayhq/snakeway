@@ -126,7 +126,6 @@ const sidebars: SidebarsConfig = {
                 'internals/protocol-negotiation',
                 'internals/control-plane-and-data-plane',
                 'internals/configuration',
-                'internals/confval',
                 'internals/hot-reload',
                 'internals/rfc-quick-reference',
                 'internals/tls-cert-renewal',

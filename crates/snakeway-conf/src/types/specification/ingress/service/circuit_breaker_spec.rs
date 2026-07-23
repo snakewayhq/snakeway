@@ -1,5 +1,5 @@
 use crate::types::HclInt;
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -49,19 +49,24 @@ impl Default for CircuitBreakerSpec {
     }
 }
 
-pub(crate) fn validate_circuit_breaker(spec: &CircuitBreakerSpec, report: &mut Report) {
-    FAILURE_THRESHOLD.check_located(&spec.failure_threshold, "failure_threshold", report);
-    OPEN_DURATION_MS.check_located(
-        &spec.open_duration_milliseconds,
-        "open_duration_milliseconds",
-        report,
-    );
-    HALF_OPEN_MAX_REQUESTS.check_located(
-        &spec.half_open_max_requests,
-        "half_open_max_requests",
-        report,
-    );
-    SUCCESS_THRESHOLD.check_located(&spec.success_threshold, "success_threshold", report);
+impl Validate for CircuitBreakerSpec {
+    fn validate(&self, report: &mut Report) {
+        if !self.enable_auto_recovery.value {
+            return;
+        }
+        FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
+        OPEN_DURATION_MS.check_located(
+            &self.open_duration_milliseconds,
+            "open_duration_milliseconds",
+            report,
+        );
+        HALF_OPEN_MAX_REQUESTS.check_located(
+            &self.half_open_max_requests,
+            "half_open_max_requests",
+            report,
+        );
+        SUCCESS_THRESHOLD.check_located(&self.success_threshold, "success_threshold", report);
+    }
 }
 
 #[cfg(test)]
@@ -78,7 +83,7 @@ mod tests {
         };
 
         // Act
-        validate_circuit_breaker(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -95,7 +100,7 @@ mod tests {
         };
 
         // Act
-        validate_circuit_breaker(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -117,7 +122,7 @@ mod tests {
         };
 
         // Act
-        validate_circuit_breaker(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
