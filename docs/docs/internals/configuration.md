@@ -215,34 +215,74 @@ closed keyword sets, format checks, and path existence. Because spans live insid
 fields, the method takes only `&self` and the report; no span or origin parameter is threaded
 through.
 
+A `Validate` impl checks one spec type's own fields.
+Reaching the nested blocks beneath it is a separate step, done by `validate_all`.
+`validate_all` runs this spec's `validate` and then calls `validate_all` on each nested child in turn.
+The traversal comes from `ValidateNested`, which `#[derive(Spec)]` generates from the `#[confval(nested)]` fields.
+The [confval pipeline reference](https://ethanhann.com/confval/docs/pipeline) documents the two methods in full.
+
+For example, each central validator makes one call per entity and reaches the whole subtree:
+
+```rust
+spec.validate_all(report); // this spec's own rules, then every nested child
+```
+
+Calling `validate` instead checks the one spec and stops there.
+Only the central validators start a validation, so they are the only callers of `validate_all`.
+
+Sometimes a block does not apply to the configuration that is running, such as a disabled device or a `server` block whose version this build does not recognize.
+Its nested children are still in the file, and checking them reports on settings that will not run.
+Override `descend` to prune the subtree in that case.
+For example, `ServerSpec` stops at an unrecognized version:
+
+```rust
+impl Validate for ServerSpec {
+    fn validate(&self, report: &mut Report) { /* ... */ }
+
+    fn descend(&self) -> ControlFlow<()> {
+        if self.version.value == 1 { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
+    }
+}
+```
+
+`NetworkPolicyDeviceSpec` does the same for a disabled device.
+The prune has to be explicit.
+A disabled block reports nothing of its own, so a rule like "descend unless the block reported an error" would still walk into it.
+
 The `Validate` trait is not just a convention. It is a compile-time bound on lowering: a spec that
 can be lowered into a runtime config but has no validator fails to compile. The bound lives where
 each family lowers:
 
 - **Server** and the **device** configs carry it on their `Lower` impls
-  (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate`, written as
+  (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as
   `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on
   the hand-written device impls).
 - **Ingresses** lower by flattening in `lower_configs` rather than through a per-entity `Lower` impl,
-  so the bound is a `where IngressSpec: Validate` clause on that function. A compositional
-  `impl Validate for IngressSpec` delegates to each child entity, so the bound transitively requires
-  every ingress child to be validatable.
+  so the bound is a `where IngressSpec: Validate + ValidateNested` clause on that function.
 
-The effect is that you cannot produce a `RuntimeConfig` from a spec family whose entities are not all
-validatable. The guarantee is existence (a validator is defined), not invocation; the orchestrator
-below still calls validation explicitly, before the lowering gate.
+The generated `ValidateNested` impl calls `validate_all` on every nested child.
+A child without a `Validate` impl fails to compile at its parent.
+Adding a nested block to a spec cannot leave it unchecked.
+The earlier hand-written delegation could omit the child, and nothing caught the omission.
+
+You cannot produce a `RuntimeConfig` from a spec family whose entities are not all validatable.
+The compiler guarantees that a validator exists and that every nested child is reached.
+It does not guarantee that lowering runs them.
+Validation is invoked explicitly by the orchestrator below, before the lowering gate.
 
 What does **not** belong in a `Validate` impl is any check needing more than `&self`: a missing
 required child needs the entity's enclosing span, which lives on the `Located` wrapper the caller
-holds, so those presence checks live in the central validator instead (see below).
+holds, so those presence checks live in the central validator instead (see below). The same reason
+puts "route has no hosts" in `ServiceSpec` rather than in `ServiceRouteSpec`, and the missing
+`bind_admin.auth` scheme in `BindAdminSpec` rather than in `AdminAuthSpec`.
 
 ### Centralized validators
 
 Cross-field and cross-file rules live under `crates/snakeway-conf/src/validation/`:
 
 - `single_file/ingress.rs` and `single_file/device.rs` walk every parsed ingress and device,
-  dispatch each entity's `Validate` impl (`ingress.validate(report)`,
-  `device_cfg.validate(report)`), and check relational rules within and across files: duplicate bind
+  run each entity's validation with `ingress.validate_all(report)` and
+  `device_cfg.validate_all(report)`, and check relational rules within and across files: duplicate bind
   addresses, duplicate route paths, HTTP/2 and TLS dependency, WebSocket and HTTP/2 conflict.
   Cross-file duplicates are tracked in a map from key to first-seen `Span`, so the second occurrence
   reports with a related span labelled "first declared here". The single-entity presence checks
@@ -309,7 +349,7 @@ On a successful load, warnings still surface: `ValidatedConfig::has_warnings()` 
 |--------------------------------|--------------------------------------------------------------------------------------|
 | `confval/src/source/`          | `Located`, `Span`, `SourceId`, `SourceMap`                                           |
 | `confval/src/diagnostic/`      | `Report`, `Issue`, `Severity`, the renderers                                         |
-| `confval/src/pipeline/`        | `Lower`, `LowerAuto`, `Validate`, `narrow`, `RangeConstraint`                        |
+| `confval/src/pipeline/`        | `Lower`, `LowerAuto`, `Validate`, `ValidateNested`, `narrow`, `RangeConstraint`      |
 | `confval/src/format/field.rs`  | the neutral field model and `FromFields`, leaf and struct parsers                    |
 | `confval/src/format/hcl.rs`    | `parse_hcl`: the HCL frontend (`format/toml.rs` is the TOML one)                     |
 | `confval-derive/src/lib.rs`    | `#[derive(Spec)]` and `#[derive(Config)]`                                            |
