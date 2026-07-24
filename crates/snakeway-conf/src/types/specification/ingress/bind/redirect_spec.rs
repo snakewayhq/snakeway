@@ -1,6 +1,6 @@
 use crate::types::HclInt;
 use crate::validation::validator::is_valid_port;
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -20,12 +20,14 @@ pub(crate) fn report_invalid_port(port: &Located<HclInt>, report: &mut Report) {
         .emit();
 }
 
-pub(crate) fn validate_redirect(spec: &RedirectSpec, report: &mut Report) {
-    if !is_valid_port(spec.port.value) {
-        report_invalid_port(&spec.port, report);
-    }
+impl Validate for RedirectSpec {
+    fn validate(&self, report: &mut Report) {
+        if !is_valid_port(self.port.value) {
+            report_invalid_port(&self.port, report);
+        }
 
-    RESPONSE_CODE.check_located(&spec.status, "status", report);
+        RESPONSE_CODE.check_located(&self.status, "status", report);
+    }
 }
 
 #[cfg(test)]
@@ -46,7 +48,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_redirect(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_errors());
@@ -59,7 +61,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_redirect(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -76,7 +78,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_redirect(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -93,7 +95,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_redirect(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues()[0].message, "invalid port: 0");

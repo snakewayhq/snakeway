@@ -1,5 +1,0 @@
-error: #[derive(Config)] supports structs with named fields; write Lower by hand for enums
- --> tests/ui/fail/config_on_enum.rs:2:6
-  |
-2 | enum Mode {
-  |      ^^^^

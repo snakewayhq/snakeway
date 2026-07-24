@@ -1,6 +1,0 @@
-error: #[confval(nested, default)] is not supported on an optional config field; an absent block already lowers to `None`
-  --> tests/ui/fail/config_default_on_optional_nested.rs:27:5
-   |
-27 | /     #[confval(nested, default)]
-28 | |     inner: Option<InnerConfig>,
-   | |______________________________^

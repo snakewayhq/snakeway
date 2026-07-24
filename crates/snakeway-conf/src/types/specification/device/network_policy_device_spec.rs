@@ -1,5 +1,5 @@
 use crate::validation::validator::{parse_cidr_list, validate_device_paths};
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use confval::prelude::{ControlFlow, KeywordSet, Located, Report, Validate};
 use serde::Serialize;
 
 pub const ON_INVALID_FORWARDED: [&str; 2] = ["deny", "ignore"];
@@ -32,17 +32,35 @@ impl Default for ForwardingSpec {
     }
 }
 
-impl Validate for NetworkPolicyDeviceSpec {
+impl Validate for ForwardingSpec {
     fn validate(&self, report: &mut Report) {
-        let _ = parse_cidr_list(&self.cidr_allow, "network policy allow list", report);
-
         KeywordSet::new(&ON_INVALID_FORWARDED).check_located(
-            &self.forwarding.value.on_invalid,
+            &self.on_invalid,
             "on_invalid",
             report,
         );
+    }
+}
+
+impl Validate for NetworkPolicyDeviceSpec {
+    fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
+        let _ = parse_cidr_list(&self.cidr_allow, "network policy allow list", report);
 
         validate_device_paths(&self.paths, report);
+    }
+
+    /// A disabled device describes nothing that runs, so its `forwarding`
+    /// block is not worth reporting on.
+    fn descend(&self) -> ControlFlow<()> {
+        if self.enable.value {
+            ControlFlow::Continue(())
+        } else {
+            ControlFlow::Break(())
+        }
     }
 }
 
@@ -61,7 +79,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -82,7 +100,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -100,7 +118,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -127,7 +145,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -136,5 +154,22 @@ mod tests {
                 .iter()
                 .any(|e| e.message == "unknown on_invalid: explode")
         );
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = NetworkPolicyDeviceSpec {
+            enable: Located::detached(false),
+            cidr_allow: vec![Located::detached("not-a-cidr".to_string())],
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 }

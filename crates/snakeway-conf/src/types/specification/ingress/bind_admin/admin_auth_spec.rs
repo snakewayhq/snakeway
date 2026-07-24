@@ -1,5 +1,5 @@
 use crate::validation::{MIN_TOKEN_LENGTH, TokenFileIssue, parse_token_file};
-use confval::prelude::{Located, Report, Span};
+use confval::prelude::{Located, Report, Span, Validate};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -32,51 +32,52 @@ pub(crate) fn report_admin_auth_missing(span: Span, report: &mut Report) {
         .emit();
 }
 
-pub(crate) fn validate_admin_auth(spec: &AdminAuthSpec, span: Span, report: &mut Report) {
-    match &spec.bearer {
-        Some(bearer) => validate_bearer_auth(&bearer.value, report),
-        None => report_admin_auth_missing(span, report),
-    }
+/// An auth block with no scheme is reported at the block's own span, which
+/// this type cannot reach from `&self`, so `BindAdminSpec` reports it.
+impl Validate for AdminAuthSpec {
+    fn validate(&self, _report: &mut Report) {}
 }
 
-fn validate_bearer_auth(spec: &BearerAuthSpec, report: &mut Report) {
-    let path = spec.token_file.value.as_path();
-    let span = spec.token_file.span;
+impl Validate for BearerAuthSpec {
+    fn validate(&self, report: &mut Report) {
+        let spec = self;
+        let path = spec.token_file.value.as_path();
+        let span = spec.token_file.span;
 
-    if path.as_os_str().is_empty() {
-        report
-            .error(format!(
-                "bearer token_file could not be read ({}): token_file path is empty",
-                path.display()
-            ))
-            .at(span)
-            .emit();
-        return;
-    }
+        if path.as_os_str().is_empty() {
+            report
+                .error(format!(
+                    "bearer token_file could not be read ({}): token_file path is empty",
+                    path.display()
+                ))
+                .at(span)
+                .emit();
+            return;
+        }
 
-    let outcome = parse_token_file(path);
+        let outcome = parse_token_file(path);
 
-    for err in &outcome.errors {
-        match err {
-            TokenFileIssue::FileIoError(msg) => {
-                report
-                    .error(format!(
-                        "bearer token_file could not be read ({}): {}",
-                        path.display(),
-                        msg
-                    ))
-                    .at(span)
-                    .emit();
-            }
-            TokenFileIssue::EmptyFile => {
-                report
-                    .error(format!("bearer token_file is empty: {}", path.display()))
-                    .at(span)
-                    .help("Add at least one token line (one token per line).")
-                    .emit();
-            }
-            TokenFileIssue::EmptyLine(line) => {
-                report
+        for err in &outcome.errors {
+            match err {
+                TokenFileIssue::FileIoError(msg) => {
+                    report
+                        .error(format!(
+                            "bearer token_file could not be read ({}): {}",
+                            path.display(),
+                            msg
+                        ))
+                        .at(span)
+                        .emit();
+                }
+                TokenFileIssue::EmptyFile => {
+                    report
+                        .error(format!("bearer token_file is empty: {}", path.display()))
+                        .at(span)
+                        .help("Add at least one token line (one token per line).")
+                        .emit();
+                }
+                TokenFileIssue::EmptyLine(line) => {
+                    report
                     .error(format!(
                         "bearer token_file {} has an empty line at line {}",
                         path.display(),
@@ -85,9 +86,9 @@ fn validate_bearer_auth(spec: &BearerAuthSpec, report: &mut Report) {
                     .at(span)
                     .help("Remove the blank line. Lines must be either a token or the end of the file.")
                     .emit();
-            }
-            TokenFileIssue::CommentNotAllowed(line) => {
-                report
+                }
+                TokenFileIssue::CommentNotAllowed(line) => {
+                    report
                     .error(format!(
                         "bearer token_file {} has a comment at line {}; comments are not permitted",
                         path.display(),
@@ -96,9 +97,9 @@ fn validate_bearer_auth(spec: &BearerAuthSpec, report: &mut Report) {
                     .at(span)
                     .help("Remove the comment line.")
                     .emit();
-            }
-            TokenFileIssue::TokenTooShort { line, len } => {
-                report
+                }
+                TokenFileIssue::TokenTooShort { line, len } => {
+                    report
                     .error(format!(
                         "bearer token_file {} has a token at line {} that is {} bytes; minimum is {}",
                         path.display(),
@@ -112,18 +113,18 @@ fn validate_bearer_auth(spec: &BearerAuthSpec, report: &mut Report) {
                          least 32 bytes of random data).",
                     )
                     .emit();
+                }
+                TokenFileIssue::DuplicateToken { .. } => {}
             }
-            TokenFileIssue::DuplicateToken { .. } => {}
         }
-    }
 
-    for warn in &outcome.warnings {
-        if let TokenFileIssue::DuplicateToken {
-            line,
-            first_seen_line,
-        } = warn
-        {
-            report
+        for warn in &outcome.warnings {
+            if let TokenFileIssue::DuplicateToken {
+                line,
+                first_seen_line,
+            } = warn
+            {
+                report
                 .warning(format!(
                     "bearer token_file {} has a duplicate token at line {} (first seen at line {})",
                     path.display(),
@@ -133,6 +134,7 @@ fn validate_bearer_auth(spec: &BearerAuthSpec, report: &mut Report) {
                 .at(span)
                 .help("Remove the duplicate entry.")
                 .emit();
+            }
         }
     }
 }

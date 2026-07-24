@@ -1,4 +1,4 @@
-use crate::proxy::{AdminGateway, PublicGateway, RedirectGateway};
+use crate::proxy::{AdminProxy, RedirectProxy, TrafficProxy};
 use crate::reload::ReloadHandle;
 use crate::tls_handshake::{CertMode, build_tls_callbacks};
 use anyhow::{Error, Result, anyhow};
@@ -48,8 +48,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         metrics,
         upgrade,
     } = params;
-    let mut pingora_server_conf =
-        ServerConf::new().expect("Could not construct pingora server configuration");
+    let mut pingora_server_conf = ServerConf::new()
+        .ok_or_else(|| anyhow!("Could not construct pingora server configuration"))?;
 
     pingora_server_conf.ca_file = config.server.ca_file.clone();
     pingora_server_conf.work_stealing = config.server.performance.work_stealing;
@@ -114,7 +114,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         .filter(|l| !l.enable_admin && l.redirect.is_none())
     {
         // Build the public HTTP proxy service from Pingora.
-        let public_gateway = PublicGateway::new(
+        let public_proxy = TrafficProxy::new(
             Arc::from(listener_cfg.name.clone()),
             state.clone(),
             traffic_manager.clone(),
@@ -123,7 +123,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             upstream_connect_timeout,
             upstream_read_timeout,
         );
-        let mut public_svc = http_proxy_service(&server.configuration, public_gateway);
+        let mut public_svc = http_proxy_service(&server.configuration, public_proxy);
 
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => match certificate_cfg {
@@ -206,14 +206,14 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     {
         if let Some(redirect) = &listener_cfg.redirect {
             // Build and register the redirect Pingora HTTP proxy service with a standalone listener.
-            let redirect_gateway = RedirectGateway::new(
+            let redirect_proxy = RedirectProxy::new(
                 redirect.destination.clone(),
                 redirect.response_code,
                 cert_manager.clone(),
             );
 
             // Create a TCP listener for the redirect service.
-            let mut redirect_scv = http_proxy_service(&server.configuration, redirect_gateway);
+            let mut redirect_scv = http_proxy_service(&server.configuration, redirect_proxy);
             redirect_scv.add_tcp(&listener_cfg.addr);
 
             // Add a connection filter if configured.
@@ -242,14 +242,14 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                 )
             })?;
 
-            let admin_gateway = AdminGateway::new(
+            let admin_proxy = AdminProxy::new(
                 traffic_manager.clone(),
                 connection_manager.clone(),
                 reload.clone(),
                 cert_manager.clone(),
                 Arc::new(admin_auth),
             );
-            let mut admin_svc = http_proxy_service(&server.configuration, admin_gateway);
+            let mut admin_svc = http_proxy_service(&server.configuration, admin_proxy);
 
             match certificate_cfg {
                 TlsTerminationConfig::Manual { key, cert } => {

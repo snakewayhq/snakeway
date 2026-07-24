@@ -1,5 +1,5 @@
 use crate::types::RequestRateLimitingDeviceSpec;
-use confval::prelude::{Lower, Report, Validate, narrow};
+use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::time::Duration;
@@ -14,7 +14,7 @@ pub struct RequestRateLimitingDeviceConfig {
 
 impl Lower<RequestRateLimitingDeviceSpec> for RequestRateLimitingDeviceConfig
 where
-    RequestRateLimitingDeviceSpec: Validate,
+    RequestRateLimitingDeviceSpec: Validate + ValidateNested,
 {
     fn lower(spec: &RequestRateLimitingDeviceSpec, report: &mut Report) -> Option<Self> {
         Some(Self {

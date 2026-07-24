@@ -121,7 +121,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 
 fn validate_ingress_entity(ingress: &Located<IngressSpec>, report: &mut Report) {
     // Field-local validation for every child entity, dispatched compositionally.
-    ingress.value.validate(report);
+    ingress.validate_all(report);
 
     // Presence checks that need an enclosing span the child cannot reach from
     // `&self` stay here, where the `Located` wrappers are in hand.

@@ -1,5 +1,5 @@
 use crate::types::HclInt;
-use confval::prelude::{Located, Report};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -12,16 +12,15 @@ pub struct ConnectionRateLimitingFilterSpec {
     pub window_seconds: Located<HclInt>,
 }
 
-pub(crate) fn validate_connection_rate_limiting_filter(
-    spec: &ConnectionRateLimitingFilterSpec,
-    report: &mut Report,
-) {
-    REACTION_INTERVAL_IN_SECONDS.check_located(&spec.window_seconds, "window_seconds", report);
-    MAX_CONNECTIONS_PER_SECOND.check_located(
-        &spec.max_connections_per_second,
-        "max_connections_per_second",
-        report,
-    );
+impl Validate for ConnectionRateLimitingFilterSpec {
+    fn validate(&self, report: &mut Report) {
+        REACTION_INTERVAL_IN_SECONDS.check_located(&self.window_seconds, "window_seconds", report);
+        MAX_CONNECTIONS_PER_SECOND.check_located(
+            &self.max_connections_per_second,
+            "max_connections_per_second",
+            report,
+        );
+    }
 }
 
 #[cfg(test)]
@@ -45,7 +44,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_connection_rate_limiting_filter(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
@@ -59,7 +58,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_connection_rate_limiting_filter(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -76,7 +75,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_connection_rate_limiting_filter(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -93,7 +92,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        validate_connection_rate_limiting_filter(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(!report.has_issues());

@@ -1,7 +1,6 @@
-use super::admin_auth_spec::{AdminAuthSpec, validate_admin_auth};
+use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing};
 use crate::resolution::ResolveError;
 use crate::types::specification::ingress::bind::report_invalid_port;
-use crate::types::specification::ingress::bind::validate_tls_termination;
 use crate::types::{BindInterfaceSpec, HclInt, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
@@ -40,9 +39,7 @@ impl Validate for BindAdminSpec {
         }
 
         match &self.tls.value {
-            TlsTerminationSpec::Manual { .. } => {
-                validate_tls_termination(&self.tls.value, report);
-            }
+            TlsTerminationSpec::Manual { .. } => {}
             TlsTerminationSpec::Acme { .. } => {
                 report
                     .error("admin bind does not support ACME TLS")
@@ -54,8 +51,10 @@ impl Validate for BindAdminSpec {
         // The auth-absent case needs the enclosing bind_admin span and is
         // reported by the central validator. A present-but-incomplete auth
         // block is reachable from this field's own span, so it stays here.
-        if let Some(auth) = &self.auth {
-            validate_admin_auth(&auth.value, auth.span, report);
+        if let Some(auth) = &self.auth
+            && auth.value.bearer.is_none()
+        {
+            report_admin_auth_missing(auth.span, report);
         }
 
         let maybe_interface: Result<BindInterfaceSpec, _> =
@@ -128,7 +127,7 @@ mod tests {
 
     fn validate(spec: &BindAdminSpec) -> Report {
         let mut report = Report::new();
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
         report
     }
 

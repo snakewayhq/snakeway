@@ -1,6 +1,3 @@
-use super::circuit_breaker_spec::validate_circuit_breaker;
-use super::service_route_spec::validate_service_route;
-use super::upstream_spec::{validate_endpoint, validate_endpoint_tls_verify, validate_upstream};
 use crate::types::{CircuitBreakerSpec, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec};
 use confval::prelude::{KeywordSet, Located, Report, Validate};
 use serde::Serialize;
@@ -50,21 +47,17 @@ impl Validate for ServiceSpec {
             report,
         );
 
-        if let Some(cb) = &self.circuit_breaker
-            && cb.value.enable_auto_recovery.value
-        {
-            validate_circuit_breaker(&cb.value, report);
-        }
-
+        // A route with no hosts is reported at the route's enclosing span,
+        // which the route cannot reach from `&self`.
         for route in &self.routes {
-            validate_service_route(&route.value, route.span, report);
+            if route.value.hosts.is_empty() {
+                report.error("route has no hosts").at(route.span).emit();
+            }
         }
 
         let mut seen_sock_values = HashSet::new();
 
         for upstream in &self.upstreams {
-            validate_upstream(&upstream.value, report);
-
             if let (Some(sock), Some(endpoint)) = (&upstream.value.sock, &upstream.value.endpoint) {
                 report
                     .error(format!(
@@ -86,14 +79,6 @@ impl Validate for ServiceSpec {
                     .help("Only one can be set.")
                     .emit();
                 continue;
-            }
-
-            if let Some(endpoint) = &upstream.value.endpoint {
-                validate_endpoint(&endpoint.value, report);
-
-                if let Some(tls) = &endpoint.value.tls {
-                    validate_endpoint_tls_verify(&tls.value, report);
-                }
             }
 
             if let Some(sock) = &upstream.value.sock
@@ -134,7 +119,7 @@ mod tests {
 
     fn validate(spec: &ServiceSpec) -> Report {
         let mut report = Report::new();
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
         report
     }
 

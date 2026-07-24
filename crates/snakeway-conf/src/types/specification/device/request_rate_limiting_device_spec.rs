@@ -20,6 +20,10 @@ pub struct RequestRateLimitingDeviceSpec {
 
 impl Validate for RequestRateLimitingDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         MAX_REQUESTS_PER_SECOND.check_located(
             &self.max_requests_per_second,
             "max_requests_per_second",
@@ -95,5 +99,22 @@ mod tests {
                 .iter()
                 .any(|e| e.message.contains("window_seconds must be at least 1"))
         );
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestRateLimitingDeviceSpec {
+            enable: Located::detached(false),
+            max_requests_per_second: Located::detached(0),
+            ..minimal()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 }

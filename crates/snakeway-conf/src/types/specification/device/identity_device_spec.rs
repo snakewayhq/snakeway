@@ -59,6 +59,10 @@ impl Default for IdentityDeviceSpec {
 
 impl Validate for IdentityDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         validate_trusted_proxies(&self.trusted_proxies, report);
 
         MAX_X_FORWARDED_FOR_LENGTH.check_located(
@@ -175,6 +179,23 @@ mod tests {
         let mut report = Report::new();
         let spec = IdentityDeviceSpec {
             enable: Located::detached(true),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(false),
+            max_x_forwarded_for_length: Located::detached(0),
             ..Default::default()
         };
 

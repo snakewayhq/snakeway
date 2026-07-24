@@ -27,13 +27,8 @@ fn init_normal_logging(maybe_telemetry_providers: Option<TelemetryProviders>) {
     // The OpenTelemetry layers must be attached before fmt::Layer.
     // Otherwise, their subscriber types become dependent on the fmt writer type
     // (stdout vs. NonBlocking file writer), which causes nasty trait errors.
-    let otel_filter = EnvFilter::new("info")
-        .add_directive("pingora=off".parse().expect("valid directive"))
-        .add_directive("hyper=off".parse().expect("valid directive"))
-        .add_directive("tower=off".parse().expect("valid directive"))
-        .add_directive("tonic=off".parse().expect("valid directive"))
-        .add_directive("h2=off".parse().expect("valid directive"))
-        .add_directive("reqwest=off".parse().expect("valid directive"));
+    let otel_filter =
+        EnvFilter::new("info,pingora=off,hyper=off,tower=off,tonic=off,h2=off,reqwest=off");
     let (tracer_provider, logger_provider) = match maybe_telemetry_providers {
         None => (None, None),
         Some(providers) => (

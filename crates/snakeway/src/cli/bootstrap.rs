@@ -107,7 +107,10 @@ pub fn run() {
                 }
             }
             ConfigCmd::Init { path, template } => {
-                init(path, template).expect("Failed to initialize config directory");
+                if let Err(e) = init(path, template) {
+                    eprintln!("Failed to initialize config directory: {e}");
+                    exit(1);
+                }
             }
         },
 
@@ -121,7 +124,10 @@ pub fn run() {
             } else {
                 default_log_mode()
             };
-            run_logs(mode).expect("Failed to run logs command");
+            if let Err(e) = run_logs(mode) {
+                eprintln!("Failed to run logs command: {e}");
+                exit(1);
+            }
         }
 
         Some(Command::WasmDevice { cmd }) => {

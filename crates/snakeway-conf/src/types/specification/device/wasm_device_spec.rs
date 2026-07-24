@@ -4,7 +4,7 @@ use confval::format::{
     Field, FieldKind, Fields, FromFields, Scalar, ValueKind, parse_bool_field, parse_int_field,
     parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
 };
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -173,8 +173,16 @@ impl FromFields for WasmDeviceSpec {
     }
 }
 
+impl ValidateNested for WasmDeviceSpec {
+    fn validate_nested(&self, _report: &mut Report) {}
+}
+
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
+        if !self.enable.value {
+            return;
+        }
+
         if self.name.value.trim().is_empty() {
             report
                 .error("wasm device name must not be empty")
@@ -432,5 +440,22 @@ hooks = ["on_request", "on_response"]
                 .iter()
                 .any(|e| e.message.contains("hooks must not be empty"))
         );
+    }
+
+    #[test]
+    fn disabled_device_skips_validation() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = WasmDeviceSpec {
+            enable: Located::detached(false),
+            fail_policy: Located::detached("sideways".to_string()),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 }

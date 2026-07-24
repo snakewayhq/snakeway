@@ -80,7 +80,7 @@ Declaring `hooks = ["on_request"]` avoids paying for the five unused hook instan
 | `public_paths`              | no       |         | Comma-separated exact paths that bypass authentication.                                                                                                                      |
 | `token_type`                | no       |         | Expected `typ` header. When set, a token whose type differs is rejected. The match is case-insensitive and the `application/` prefix is ignored. Omit to skip type checking. |
 | `clock_skew_leeway_seconds` | no       | `0`     | Allowed clock skew in seconds, applied to both `exp` and `nbf`.                                                                                                              |
-| `revoked_jti`               | no       |         | Comma-separated revoked token ids. When set, revocation is enforced and every token must carry a `jti` that is not in this list.                                            |
+| `revoked_jti`               | no       |         | Comma-separated revoked token ids. When set, revocation is enforced and every token must carry a `jti` that is not in this list.                                             |
 
 Generate a secret with:
 
@@ -125,11 +125,13 @@ cannot spoof identity to an upstream that trusts those headers.
 ## Revocation
 
 Set `revoked_jti` to a comma-separated list of token ids to reject specific tokens without rotating the secret.
-When the list is non-empty, revocation is enforced: the device rejects a token whose `jti` is on the list, and also rejects any token that has no `jti`, so that every accepted token is revocable.
+When the list is non-empty, revocation is enforced: the device rejects a token whose `jti` is on the list, and also
+rejects any token that has no `jti`, so that every accepted token is revocable.
 When `revoked_jti` is unset, `jti` is ignored.
 
 Updating the list takes effect on the next configuration reload.
-Because `exp` is mandatory and lifetimes should be short, an id can be dropped from the list once its token would have expired, which keeps the list bounded.
+Because `exp` is mandatory and lifetimes should be short, an id can be dropped from the list once its token would have
+expired, which keeps the list bounded.
 
 :::note
 This is a small denylist delivered through config, suited to a modest number of revoked ids.
@@ -148,4 +150,4 @@ The specific reason is recorded in the Snakeway log stream.
 ## See Also
 
 - [Authoring WASM Devices](../authoring-wasm-devices.md) for building your own device.
-- [WASM Device Internals](../../internals/wasm_devices.md) for how the host applies device patches.
+- [WASM Device Internals](../../internals/wasm-devices.md) for how the host applies device patches.

@@ -9,7 +9,7 @@ pub(crate) fn validate_spec(
     devices: &[Located<DeviceSpec>],
     report: &mut Report,
 ) {
-    server.validate(report);
+    server.validate_all(report);
 
     if server.version.value == 1 {
         // Single file validation.

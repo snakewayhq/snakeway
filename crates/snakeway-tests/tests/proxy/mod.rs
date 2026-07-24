@@ -3,6 +3,7 @@ mod basic_proxy;
 mod config_validation;
 mod grpc;
 mod h2_to_h1;
+mod protocol_negotiation;
 mod response_handling;
 mod routing;
 mod static_files;

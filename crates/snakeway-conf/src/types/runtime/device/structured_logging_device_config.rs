@@ -1,5 +1,5 @@
 use crate::types::StructuredLoggingDeviceSpec;
-use confval::prelude::{Located, Lower, Report, Validate};
+use confval::prelude::{Located, Lower, Report, Validate, ValidateNested};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -19,7 +19,7 @@ pub struct StructuredLoggingDeviceConfig {
 
 impl Lower<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig
 where
-    StructuredLoggingDeviceSpec: Validate,
+    StructuredLoggingDeviceSpec: Validate + ValidateNested,
 {
     fn lower(spec: &StructuredLoggingDeviceSpec, report: &mut Report) -> Option<Self> {
         fn keywords<T: for<'a> TryFrom<&'a str, Error = String>>(

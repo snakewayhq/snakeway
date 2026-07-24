@@ -96,10 +96,7 @@ pub(crate) fn render_directory(dir: PathBuf, request_path: &str) -> StaticRespon
         http::header::CACHE_CONTROL,
         HeaderValue::from_static("no-store"),
     );
-    headers.insert(
-        http::header::CONTENT_LENGTH,
-        HeaderValue::from_str(&body.len().to_string()).unwrap(),
-    );
+    headers.insert(http::header::CONTENT_LENGTH, HeaderValue::from(body.len()));
 
     StaticResponse {
         status: StatusCode::OK,

@@ -10,7 +10,7 @@ pub(crate) fn to_hcl_string<T: Serialize>(value: &T) -> Result<String, hcl::Erro
     let mut serializer = Serializer::with_formatter(formatter);
     serializer.serialize(value)?;
 
-    Ok(String::from_utf8(buf).expect("formatter emits valid UTF-8"))
+    Ok(String::from_utf8_lossy(&buf).into_owned())
 }
 
 /// Serializes a value as HCL using block syntax for nested structures

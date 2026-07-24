@@ -2,7 +2,7 @@ use crate::validation::validator::{require_existing_dir, validate_cert_pem};
 use confval::format::{
     Fields, FromFields, parse_string_field, report_missing_field, report_unknown_field,
 };
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -37,6 +37,51 @@ pub struct AcmeServerSpec {
     pub contact_email: Vec<Located<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ca_file: Option<Located<PathBuf>>,
+}
+
+impl Validate for AcmeServerSpec {
+    fn validate(&self, report: &mut Report) {
+        if self.directory_url.value.is_empty() {
+            report
+                .error("server TLS ACME directory URL cannot be empty")
+                .at(self.directory_url.span)
+                .emit();
+        } else if !self.directory_url.value.starts_with("https://") {
+            report
+                .error("server TLS ACME directory URL must be a valid URL")
+                .at(self.directory_url.span)
+                .emit();
+        }
+
+        if self.contact_email.is_empty() {
+            report
+                .error("server TLS ACME contact email cannot be empty")
+                .help("It must be a list of 1 or more email addresses")
+                .emit();
+        }
+
+        if let Some(ca_file) = &self.ca_file
+            && let Err(e) = validate_cert_pem(&ca_file.value)
+        {
+            report
+                .error(format!(
+                    "server TLS ACME CA file is invalid: {} - {}",
+                    ca_file.value.to_string_lossy(),
+                    e
+                ))
+                .at(ca_file.span)
+                .help(
+                    "In most production scenarios, this should not be set. \
+                    For example, Let's Encrypt will use a root CA that is already \
+                    trusted by your operating system. \
+                    If you are using a custom CA in production or pebble for local development, you should \
+                    set the server.tls.acme.ca_file option.",
+                )
+                .emit();
+        }
+
+        require_existing_dir(&self.data_dir, "server TLS ACME data_dir", report);
+    }
 }
 
 /// The cert_store block carries a `type` attribute selecting the variant,
@@ -91,63 +136,22 @@ impl FromFields for CertStoreSpec {
 
 impl Validate for TlsAutomationSpec {
     fn validate(&self, report: &mut Report) {
-        validate_acme(&self.acme.value, report);
-
         RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
-
-        validate_cert_store(&self.cert_store.value, report);
     }
 }
 
-fn validate_acme(spec: &AcmeServerSpec, report: &mut Report) {
-    if spec.directory_url.value.is_empty() {
-        report
-            .error("server TLS ACME directory URL cannot be empty")
-            .at(spec.directory_url.span)
-            .emit();
-    } else if !spec.directory_url.value.starts_with("https://") {
-        report
-            .error("server TLS ACME directory URL must be a valid URL")
-            .at(spec.directory_url.span)
-            .emit();
-    }
-
-    if spec.contact_email.is_empty() {
-        report
-            .error("server TLS ACME contact email cannot be empty")
-            .help("It must be a list of 1 or more email addresses")
-            .emit();
-    }
-
-    if let Some(ca_file) = &spec.ca_file
-        && let Err(e) = validate_cert_pem(&ca_file.value)
-    {
-        report
-            .error(format!(
-                "server TLS ACME CA file is invalid: {} - {}",
-                ca_file.value.to_string_lossy(),
-                e
-            ))
-            .at(ca_file.span)
-            .help(
-                "In most production scenarios, this should not be set. \
-                For example, Let's Encrypt will use a root CA that is already \
-                trusted by your operating system. \
-                If you are using a custom CA in production or pebble for local development, you should \
-                set the server.tls.acme.ca_file option.",
-            )
-            .emit();
-    }
-
-    require_existing_dir(&spec.data_dir, "server TLS ACME data_dir", report);
+impl ValidateNested for CertStoreSpec {
+    fn validate_nested(&self, _report: &mut Report) {}
 }
 
-fn validate_cert_store(spec: &CertStoreSpec, report: &mut Report) {
-    match spec {
-        CertStoreSpec::Filesystem { cert_dir } => {
-            require_existing_dir(cert_dir, "server TLS filesystem cert_dir", report);
+impl Validate for CertStoreSpec {
+    fn validate(&self, report: &mut Report) {
+        match self {
+            CertStoreSpec::Filesystem { cert_dir } => {
+                require_existing_dir(cert_dir, "server TLS filesystem cert_dir", report);
+            }
+            CertStoreSpec::Memory => {}
         }
-        CertStoreSpec::Memory => {}
     }
 }
 
@@ -326,7 +330,7 @@ cert_store {
         let spec = default_acme();
 
         // Act
-        validate_acme(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -348,7 +352,7 @@ cert_store {
         };
 
         // Act
-        validate_acme(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -366,7 +370,7 @@ cert_store {
         let spec = default_acme();
 
         // Act
-        validate_acme(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
@@ -386,7 +390,7 @@ cert_store {
         };
 
         // Act
-        validate_cert_store(&spec, &mut report);
+        spec.validate(&mut report);
 
         // Assert
         assert!(
