@@ -2,14 +2,13 @@
 title: Admin API
 ---
 
-Snakeway includes a built-in administrative API for monitoring proxy health, inspecting upstream services, viewing
-traffic statistics, and triggering configuration reloads. All endpoints are served on the address configured in
-`bind_admin` under the `/admin/` path, and all responses are JSON-formatted.
+Snakeway includes a built-in administrative API for monitoring proxy health, inspecting upstream services, viewing traffic statistics, and triggering configuration reloads.
+All endpoints are served on the address configured in `bind_admin` under the `/admin/` path, and all responses are JSON-formatted.
 
 ## Configuration
 
-The Admin API listens on the address specified by `bind_admin` in your ingress configuration. See the
-[Admin Bind reference](../configuration/ingress/admin-bind.md) for the full set of fields.
+The Admin API listens on the address specified by `bind_admin` in your ingress configuration.
+See the [Admin Bind reference](../configuration/ingress/admin-bind.md) for the full set of fields.
 
 A minimal block looks like:
 
@@ -38,8 +37,7 @@ Every admin request must present a bearer token in the `Authorization` header:
 curl -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8440/admin/health
 ```
 
-Requests without an `Authorization` header, with a non-`Bearer` scheme, or with an unknown token receive a `401 Unauthorized`
-response and a `WWW-Authenticate: Bearer realm="snakeway-admin"` header.
+Requests without an `Authorization` header, with a non-`Bearer` scheme, or with an unknown token receive a `401 Unauthorized` response and a `WWW-Authenticate: Bearer realm="snakeway-admin"` header.
 
 ### Token file format
 
@@ -52,17 +50,21 @@ a9f1c38de4b67029c5d1e97f4a0ebac12d3b8ffc84e1d27a05f6cb9e83d21a04
 
 Rules:
 
-- Each token must be at least 32 bytes after trimming whitespace. Use a high-entropy source such as `openssl rand -hex 32`.
+- Each token must be at least 32 bytes after trimming whitespace.
+  Use a high-entropy source such as `openssl rand -hex 32`.
 - Blank lines are rejected to avoid masking format mistakes.
-- Comment lines (starting with `#`) are rejected. The format is intentionally unambiguous.
+- Comment lines (starting with `#`) are rejected.
+  The format is intentionally unambiguous.
 - Duplicate tokens are reported as warnings, not errors.
 
-The file should be owned by the Snakeway process user and have mode `0600` (or equivalent ACL). Filesystem permissions are
-the at-rest control. Snakeway does not hash tokens.
+The file should be owned by the Snakeway process user and have mode `0600` (or equivalent ACL).
+Filesystem permissions are the at-rest control.
+Snakeway does not hash tokens.
 
 ### Token rotation
 
-Multiple tokens in the file are all accepted concurrently. The rotation workflow is:
+Multiple tokens in the file are all accepted concurrently.
+The rotation workflow is:
 
 1. Generate a new token and append it to `token_file`.
 2. Run `snakeway reload` (or `POST /admin/reload`).
@@ -70,8 +72,7 @@ Multiple tokens in the file are all accepted concurrently. The rotation workflow
 4. Remove the old token from `token_file`.
 5. Run `snakeway reload` again.
 
-Because both tokens are valid during steps 2 to 4, there is no window where a caller must choose between the old and new
-token.
+Because both tokens are valid during steps 2 to 4, there is no window where a caller must choose between the old and new token.
 
 ### Defense in depth
 
@@ -81,16 +82,16 @@ Authentication is the innermost of three layers:
 2. **Transport** via mandatory TLS.
 3. **Authentication** via bearer token (this section).
 
-Continue to restrict the listener to a trusted interface and configure TLS. Authentication limits who can call the API **given** they can reach it. It does not replace network-level restriction. This mirrors the guidance published by the
-[Envoy project](https://www.envoyproxy.io/docs/envoy/latest/operations/admin) and
-[Caddy project](https://caddyserver.com/docs/api) for their own admin interfaces.
+Continue to restrict the listener to a trusted interface and configure TLS.
+Authentication limits who can call the API **given** they can reach it.
+It does not replace network-level restriction.
+This mirrors the guidance published by the [Envoy project](https://www.envoyproxy.io/docs/envoy/latest/operations/admin) and [Caddy project](https://caddyserver.com/docs/api) for their own admin interfaces.
 
 ## Endpoint Reference
 
 ### `GET /admin/health`
 
-Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream
-health checks and circuit breaker state.
+Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream health checks and circuit breaker state.
 
 ```shell
 curl http://localhost:8081/admin/health
@@ -113,8 +114,7 @@ curl http://localhost:8081/admin/health
 
 ### `GET /admin/upstreams`
 
-Provides a detailed view of all registered upstreams, including their current health status, circuit breaker state, and
-request counters.
+Provides a detailed view of all registered upstreams, including their current health status, circuit breaker state, and request counters.
 
 ```shell
 curl http://localhost:8081/admin/upstreams
@@ -155,8 +155,7 @@ curl http://localhost:8081/admin/upstreams
 }
 ```
 
-The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is
-failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
+The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
 
 ### `GET /admin/stats`
 
@@ -196,8 +195,9 @@ curl http://localhost:8081/admin/stats
 
 ### `POST /admin/reload`
 
-Triggers a hot reload of the Snakeway configuration. Snakeway validates the new configuration before applying it. If
-validation fails, the existing configuration remains active.
+Triggers a hot reload of the Snakeway configuration.
+Snakeway validates the new configuration before applying it.
+If validation fails, the existing configuration remains active.
 
 ```shell
 curl -X POST http://localhost:8081/admin/reload
@@ -232,8 +232,9 @@ The `epoch` field is a version counter that increments with each successful relo
 
 ### `GET /admin/certs`
 
-Returns the current certificate inventory. Only available when TLS automation is configured. When no certificates are
-present (or TLS automation is not enabled), the response contains an empty list.
+Returns the current certificate inventory.
+Only available when TLS automation is configured.
+When no certificates are present (or TLS automation is not enabled), the response contains an empty list.
 
 ```shell
 curl http://localhost:8081/admin/certs

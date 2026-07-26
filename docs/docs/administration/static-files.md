@@ -2,8 +2,7 @@
 title: Static Files
 ---
 
-Snakeway can serve static files directly from the filesystem, so you can host frontend assets, images, and other
-static content without running a separate web server.
+Snakeway can serve static files directly from the filesystem, so you can host frontend assets, images, and other static content without running a separate web server.
 
 ## Configuration
 
@@ -29,8 +28,7 @@ static_files = [
 ```
 
 Every field above except `index` is required.
-Write `compression = {}` and `cache_policy = {}` to accept the defaults for those blocks, or set the individual
-options described below.
+Write `compression = {}` and `cache_policy = {}` to accept the defaults for those blocks, or set the individual options described below.
 
 ### Configuration Options
 
@@ -47,8 +45,8 @@ options described below.
 
 ### Cache Policy (Per-Route)
 
-Each static route carries a `cache_policy` block. Every option within it has a default, so `cache_policy = {}` is
-valid.
+Each static route carries a `cache_policy` block.
+Every option within it has a default, so `cache_policy = {}` is valid.
 
 | Option            | Type    | Default | Description                                                                                                                  |
 |-------------------|---------|---------|------------------------------------------------------------------------------------------------------------------------------|
@@ -58,7 +56,8 @@ valid.
 
 ### Advanced Compression (Per-Route)
 
-Each static route carries a `compression` block. Every option within it has a default, so `compression = {}` is valid.
+Each static route carries a `compression` block.
+Every option within it has a default, so `compression = {}` is valid.
 
 | Option                 | Type    | Default  | Description                                                                                                 |
 |------------------------|---------|----------|-------------------------------------------------------------------------------------------------------------|
@@ -119,8 +118,7 @@ static_files = [
 **Serve large assets:**
 
 `max_file_size` is a route field rather than a compression option.
-It caps the size of any file the route will serve, and a larger file is rejected with `403 Forbidden` before it is
-opened, including a range request for a small slice of it.
+It caps the size of any file the route will serve, and a larger file is rejected with `403 Forbidden` before it is opened, including a range request for a small slice of it.
 The accepted range is 1 to 68719476736 (64 GiB).
 
 ```hcl
@@ -253,8 +251,7 @@ Clients can use conditional requests to avoid re-downloading unchanged files:
 
 ## Compression
 
-Snakeway automatically compresses responses for clients that support it, reducing transfer sizes significantly for
-text-based content.
+Snakeway automatically compresses responses for clients that support it, reducing transfer sizes significantly for text-based content.
 
 :::note[Large Files]
 Snakeway supports compression for static files when the response size is known in advance.
@@ -297,8 +294,8 @@ ETag: W/"1a2b3c-4d5e6f"
 ## File Streaming
 
 - **Small files** (≤ 256 KiB by default): Read entirely into memory, compressed if applicable
-- **Large files** (> 256 KiB by default): Streamed directly from disk in 32 KiB chunks. Streaming responses are not
-  compressed, since compression currently requires buffering the entire file in memory.
+- **Large files** (> 256 KiB by default): Streamed directly from disk in 32 KiB chunks.
+  Streaming responses are not compressed, since compression currently requires buffering the entire file in memory.
 
 The threshold can be adjusted per-route using the `small_file_threshold` option.
 
