@@ -63,8 +63,8 @@ bind = {
 5. Snakeway periodically re-checks certificate expiry and repeats the renewal process as needed.
 
 The `renew_within_days` parameter controls how early renewal begins. A value of 30 means Snakeway will attempt renewal
-when the certificate has 30 or fewer days until expiration. Values between 7 and 30 are typical; lower values reduce
-unnecessary renewals, while higher values provide a larger buffer against transient ACME failures.
+when the certificate has 30 or fewer days until expiration. Values between 7 and 30 are typical.
+Lower values reduce unnecessary renewals, while higher values provide a larger buffer against transient ACME failures.
 
 ### Certificate Stores
 

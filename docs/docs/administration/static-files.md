@@ -2,9 +2,8 @@
 title: Static Files
 ---
 
-
-Snakeway can serve static files directly from the filesystem, making it easy to host frontend assets, images, and other
-static content without needing a separate web server.
+Snakeway can serve static files directly from the filesystem, so you can host frontend assets, images, and other
+static content without running a separate web server.
 
 ## Configuration
 
@@ -67,7 +66,7 @@ Each static route carries a `compression` block. Every option within it has a de
 | `enable_gzip`          | boolean | `true`   | Enable gzip compression (fallback when Brotli is unavailable)                                               |
 | `min_brotli_size`      | integer | `4096`   | Minimum file size in bytes to apply Brotli compression (4 KiB)                                              |
 | `min_gzip_size`        | integer | `1024`   | Minimum file size in bytes to apply gzip compression (1 KiB)                                                |
-| `small_file_threshold` | integer | `262144` | Files smaller than this (in bytes) are read into memory and compressed; larger files are streamed (256 KiB) |
+| `small_file_threshold` | integer | `262144` | Files smaller than this (in bytes) are read into memory and compressed. Larger files are streamed (256 KiB) |
 
 **Example with custom compression settings:**
 

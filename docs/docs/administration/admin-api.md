@@ -9,7 +9,9 @@ traffic statistics, and triggering configuration reloads. All endpoints are serv
 ## Configuration
 
 The Admin API listens on the address specified by `bind_admin` in your ingress configuration. See the
-[Admin Bind reference](../configuration/ingress/admin-bind.md) for the full set of fields; a minimal block looks like:
+[Admin Bind reference](../configuration/ingress/admin-bind.md) for the full set of fields.
+
+A minimal block looks like:
 
 ```hcl
 bind_admin = {
@@ -52,11 +54,11 @@ Rules:
 
 - Each token must be at least 32 bytes after trimming whitespace. Use a high-entropy source such as `openssl rand -hex 32`.
 - Blank lines are rejected to avoid masking format mistakes.
-- Comment lines (starting with `#`) are rejected; the format is intentionally unambiguous.
+- Comment lines (starting with `#`) are rejected. The format is intentionally unambiguous.
 - Duplicate tokens are reported as warnings, not errors.
 
 The file should be owned by the Snakeway process user and have mode `0600` (or equivalent ACL). Filesystem permissions are
-the at-rest control; Snakeway does not hash tokens.
+the at-rest control. Snakeway does not hash tokens.
 
 ### Token rotation
 
@@ -68,7 +70,7 @@ Multiple tokens in the file are all accepted concurrently. The rotation workflow
 4. Remove the old token from `token_file`.
 5. Run `snakeway reload` again.
 
-Because both tokens are valid during steps 2–4, there is no window where a caller must choose between the old and new
+Because both tokens are valid during steps 2 to 4, there is no window where a caller must choose between the old and new
 token.
 
 ### Defense in depth
@@ -79,8 +81,7 @@ Authentication is the innermost of three layers:
 2. **Transport** via mandatory TLS.
 3. **Authentication** via bearer token (this section).
 
-Continue to restrict the listener to a trusted interface and configure TLS. Authentication limits who can call the API
-_given_ they can reach it; it does not replace network-level restriction. This mirrors the guidance published by the
+Continue to restrict the listener to a trusted interface and configure TLS. Authentication limits who can call the API **given** they can reach it. It does not replace network-level restriction. This mirrors the guidance published by the
 [Envoy project](https://www.envoyproxy.io/docs/envoy/latest/operations/admin) and
 [Caddy project](https://caddyserver.com/docs/api) for their own admin interfaces.
 
