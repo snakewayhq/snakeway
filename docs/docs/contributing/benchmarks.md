@@ -75,8 +75,7 @@ Good candidates are synchronous and perform no I/O:
 
 :::note
 `normalize_headers()` is accessible via the public `snakeway::ctx::normalization` re-export.
-Functions still private to the crate (for example `resolve_client_ip` in `net::client_ip`) should be benchmarked
-indirectly through the device or ctx APIs that call them.
+Functions still private to the crate (for example `resolve_client_ip` in `net::client_ip`) should be benchmarked indirectly through the device or ctx APIs that call them.
 :::
 
 ### Step 2: Name the file after the component
@@ -104,8 +103,7 @@ harness = false
 ### Step 4: Write the benchmark
 
 Follow the template above.
-Use `BenchmarkId::new("dimension", value)` to parameterize across scaling scenarios (for example 1/10/100 routes, or
-0/1/5/10 devices).
+Use `BenchmarkId::new("dimension", value)` to parameterize across scaling scenarios (for example 1/10/100 routes, or 0/1/5/10 devices).
 
 ## Rules
 

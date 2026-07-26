@@ -2,7 +2,8 @@
 title: Entry Point Configuration
 ---
 
-The file `snakeway.hcl` is the entry point for all Snakeway configuration. It defines how Snakeway runs as a process, where it finds TLS certificates, and where it discovers the rest of its configuration files.
+The file `snakeway.hcl` is the entry point for all Snakeway configuration.
+It defines how Snakeway runs as a process, where it finds TLS certificates, and where it discovers the rest of its configuration files.
 
 ## Structure Overview
 

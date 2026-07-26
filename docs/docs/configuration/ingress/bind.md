@@ -47,7 +47,7 @@ bind = {
 |-----------------------------------|-----------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `interface`                       | `string`  | (required) | The network interface to bind to.                                                                                                                                                                     |
 | `port`                            | `integer` | (required) | The port to bind to on the specified interface.                                                                                                                                                       |
-| `enable_http2`                    | `boolean` | `false`    | Enable HTTP/2 on the listener. TLS is required. When enabled, HTTP/2 clients can connect even if upstream services only speak HTTP/1.1; the proxy translates between the two protocols automatically. |
+| `enable_http2`                    | `boolean` | `false`    | Enable HTTP/2 on the listener. TLS is required. When enabled, HTTP/2 clients can connect even if upstream services only speak HTTP/1.1. The proxy translates between the two protocols automatically. |
 | `http2`                           | `object`  | (optional) | Advanced HTTP/2 tuning options. See [HTTP/2 settings](#http2-settings).                                                                                                                               |
 | `redirect_http_to_https`          | `boolean` | `false`    | When enabled, plain HTTP requests are redirected to HTTPS.                                                                                                                                            |
 | `tls.mode`                        | `string`  | (required) | TLS mode. Use `"manual"` to provide your own certificate and key.                                                                                                                                     |
@@ -61,9 +61,9 @@ For details on TLS configuration, see the TLS section of the documentation.
 ### HTTP/2 settings
 
 The optional `http2` block tunes the HTTP/2 server parameters advertised to clients.
-It is only valid when `enable_http2 = true`. Every field is optional: when the block
-(or a field) is omitted, the defaults below apply. Requests that exceed
-`max_header_list_size` are refused with status `431`.
+It is only valid when `enable_http2 = true`.
+Every field is optional: when the block (or a field) is omitted, the defaults below apply.
+Requests that exceed `max_header_list_size` are refused with status `431`.
 
 | Field                            | Type      | Default | Description                                                                                     |
 |----------------------------------|-----------|---------|-------------------------------------------------------------------------------------------------|
@@ -73,6 +73,5 @@ It is only valid when `enable_http2 = true`. Every field is optional: when the b
 | `initial_connection_window_size` | `integer` | `65535` | Connection-level flow-control window for received data, in bytes. Must be at most `2147483647`. |
 
 All values must be greater than zero.
-The two window sizes are capped at 2^31 - 1
-(2,147,483,647 bytes), the maximum HTTP/2 flow-control window allowed by RFC 9113.
+The two window sizes are capped at 2^31 - 1 (2,147,483,647 bytes), the maximum HTTP/2 flow-control window allowed by RFC 9113.
 

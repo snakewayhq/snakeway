@@ -2,7 +2,10 @@
 title: CLI
 ---
 
-Snakeway has a set of commands to help operators:
+You operate Snakeway from the command line.
+The `snakeway` binary generates and inspects configuration, runs the proxy, reloads or upgrades a running instance, and formats logs.
+
+The available commands:
 
 | Command     | Description                                 |
 |-------------|---------------------------------------------|
@@ -18,21 +21,21 @@ Snakeway has a set of commands to help operators:
 
 Snakeway cannot run without configuration files.
 
-A new configuration directory can be easily generated in the current directory:
+You can generate a new configuration directory in the current directory:
 
 ```shell
 snakeway config init
 ```
 
-Or, with a custom directory path and template:
+Or with a custom directory path and template:
 
 ```shell
 snakeway config init /etc/snakeway --template=httpbin
 ```
 
-Which will yield...
+This produces:
 
-```shell                                                                                                                  ✔ 
+```shell
 ✔ Initialized Snakeway config in /etc/snakeway
 ✔ Created:
   - /etc/snakeway/device.d/identity.hcl
@@ -44,7 +47,7 @@ Next steps:
   snakeway run --config /etc/snakeway
 ```
 
-By default, the `minimal` template is used by the init command.
+The init command uses the `minimal` template by default.
 
 Other templates are available.
 
@@ -56,13 +59,13 @@ Other templates are available.
 
 ## config check
 
-Ahh, but wait! How to tell if the configuration is valid?
+Before running the proxy, check that the configuration is valid:
 
 ```shell
 snakeway config check /etc/snakeway
 ```
 
-And if everything looks good, something like this will be displayed:
+If the configuration is valid, the command reports a summary:
 
 ```shell
 ✔ Config loaded successfully
@@ -72,7 +75,7 @@ And if everything looks good, something like this will be displayed:
 ✔ 2 devices enabled
 ```
 
-If it fails, you might see something that looks like this:
+If validation fails, the command lists each error:
 
 ```shell
 configuration validation failed (2 errors, 0 warnings)
@@ -84,13 +87,13 @@ configuration validation failed (2 errors, 0 warnings)
   error: device requires identity device to be present and enabled
 ```
 
-For more structure output, use the `JSON` output format:
+For structured output, use the `JSON` format:
 
 ```shell
 snakeway config check /etc/snakeway --format=json
 ```
 
-Which produces:
+This produces:
 
 ```json
 {
@@ -128,7 +131,7 @@ Dump the configuration to stdout:
 snakeway config dump /etc/snakeway
 ```
 
-Various formats are support, i.e., `JSON`, `YAML`, and `HCL`.
+The command supports several formats: `JSON`, `YAML`, and `HCL`.
 
 To dump as `YAML`:
 
@@ -136,15 +139,15 @@ To dump as `YAML`:
 snakeway config dump /etc/snakeway --format=yaml
 ```
 
-By default (`--repr=spec`), the output matches the configuration files: blocks you did not write are omitted, so the
-dump round-trips back to your source.
+By default (`--repr=spec`), the output matches the configuration files: blocks you did not write are omitted, so the dump round-trips back to your source.
 
 Three representations are available through `--repr`:
 
 - `spec` (default): the configuration exactly as written.
-- `populated-spec`: the spec with defaulted blocks filled in. Blocks such as `shutdown`, `upgrade`, `performance`, and
-  `upstream` that you omit are shown with the values Snakeway applies at runtime, so you can see the effective defaults.
-- `runtime`: the lower level internal primitives Snakeway runs on, after lowering. This is useful for debugging.
+- `populated-spec`: the spec with defaulted blocks filled in.
+  Blocks such as `shutdown`, `upgrade`, `performance`, and `upstream` that you omit are shown with the values Snakeway applies at runtime, so you can see the effective defaults.
+- `runtime`: the lower level internal primitives Snakeway runs on, after lowering.
+  This is useful for debugging.
 
 Show the effective defaults Snakeway will apply:
 
@@ -160,8 +163,8 @@ snakeway config dump /etc/snakeway --format=json --repr=runtime
 
 ## route solve
 
-The `route solve` command resolves a URL through the routing table without starting a server. It uses the exact same
-config loading, lowering, and routing code as the running proxy, making it ideal for debugging routing issues.
+The `route solve` command resolves a URL through the routing table without starting a server.
+It uses the exact same config loading, lowering, and routing code as the running proxy, making it ideal for debugging routing issues.
 
 ```shell
 snakeway route solve http://example.com/api/v1/users --config /etc/snakeway
@@ -276,13 +279,13 @@ Start snakeway:
 snakeway run
 ```
 
-or, simply:
+or with no arguments:
 
 ```shell
 snakeway
 ```
 
-A specific config directory can be targeted:
+You can target a specific config directory:
 
 ```shell
 snakeway run --config /etc/snakeway
@@ -296,16 +299,17 @@ snakeway run --config /etc/snakeway
 | `--upgrade` | `false`  | Start in upgrade mode (receive listener FDs from old process) |
 | `--test`    | `false`  | Validate configuration and exit without starting              |
 
-`--test` loads and validates the configuration, then exits with code 0 if valid or 1 if not. This is
-useful for verifying that a new binary or config will pass validation before committing to an upgrade.
+`--test` loads and validates the configuration, then exits with code 0 if valid or 1 if not.
+This is useful for verifying that a new binary or config will pass validation before committing to an upgrade.
 
-`--upgrade` is not intended to be used directly by operators. It is used internally during a
-zero-drop upgrade to start the new process in FD-receive mode. See [`upgrade`](#upgrade) below.
+`--upgrade` is not intended to be used directly by operators.
+It is used internally during a zero-drop upgrade to start the new process in FD-receive mode.
+See [`upgrade`](#upgrade) below.
 
 ### SNAKEWAY_CONFIG environment variable
 
-The `SNAKEWAY_CONFIG` environment variable sets the config directory for all commands. This avoids repeating `--config`
-on every invocation when working with a non-default config path (e.g. `/etc/snakeway` in production).
+The `SNAKEWAY_CONFIG` environment variable sets the config directory for all commands.
+This avoids repeating `--config` on every invocation when working with a non-default config path (e.g. `/etc/snakeway` in production).
 
 ```shell
 export SNAKEWAY_CONFIG=/etc/snakeway
@@ -324,13 +328,11 @@ export SNAKEWAY_CONFIG=/etc/snakeway
 snakeway run --config /tmp/debug-config   # uses /tmp/debug-config
 ```
 
-The packaged systemd unit and Docker image both set this variable to `/etc/snakeway`, so operators who SSH into a
-production host can run diagnostic commands without specifying the path.
+The packaged systemd unit and Docker image both set this variable to `/etc/snakeway`, so operators who SSH into a production host can run diagnostic commands without specifying the path.
 
 ## reload
 
-Reloads via the CLI require Snakeway to be started with a [PID file](/docs/configuration/entry-point/server) (set in
-`snakeway.hcl`).
+Reloads via the CLI require Snakeway to be started with a [PID file](/docs/configuration/entry-point/server) (set in `snakeway.hcl`).
 
 ```shell
 snakeway reload
@@ -349,8 +351,8 @@ It is also possible to reload with the [admin API](./admin-api.md#post-adminrelo
 
 ## upgrade
 
-Triggers a zero-drop upgrade of a running Snakeway instance by sending SIGQUIT. Like `reload`, this
-requires a [PID file](/docs/configuration/entry-point/server).
+Triggers a zero-drop upgrade of a running Snakeway instance by sending SIGQUIT.
+Like `reload`, this requires a [PID file](/docs/configuration/entry-point/server).
 
 ```shell
 snakeway upgrade
@@ -363,14 +365,12 @@ snakeway upgrade
 Sent SIGQUIT to Snakeway (pid 77120)
 ```
 
-This is the manual equivalent of what happens automatically when Snakeway's reload loop detects a
-listener-level configuration change. See the [Hot Reload internals](../internals/hot-reload) page
-for a full explanation of when this is used and what happens during the transition.
+This is the manual equivalent of what happens automatically when Snakeway's reload loop detects a listener-level configuration change.
+See the [Hot Reload internals](../internals/hot-reload) page for a full explanation of when this is used and what happens during the transition.
 
 :::note
-In most cases you do not need to run this command directly. When `upgrade_sock` is configured and
-Snakeway detects a listener change during a normal `reload`, it spawns the new process and sends
-SIGQUIT automatically.
+In most cases you do not need to run this command directly.
+When `upgrade_sock` is configured and Snakeway detects a listener change during a normal `reload`, it spawns the new process and sends SIGQUIT automatically.
 :::
 
 ### Options
@@ -402,8 +402,7 @@ snakeway
 {"timestamp":"2026-02-07T19:04:52.549202Z","level":"INFO","message":"Server starting","log.target":"pingora_core::server","log.module_path":"pingora_core::server","log.file":"/Users/you/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pingora-core-0.7.0/src/server/mod.rs","log.line":492,"target":"pingora_core::server"}
 ```
 
-The output of snakeway can be piped into something like [jq](https://jqlang.org/tutorial/) to at least format the JSON
-in the terminal, but the build `logs` command will show something a little nicer:
+The output of snakeway can be piped into something like [jq](https://jqlang.org/tutorial/) to at least format the JSON in the terminal, but the built-in `logs` command formats it more legibly:
 
 ```shell
 snakeway | snakeway logs

@@ -3,8 +3,7 @@ title: Structured Logging Device
 ---
 
 
-The **Structured Logging device** is a builtin Snakeway device that emits structured tracing events at key points in the
-request/response lifecycle.
+The **Structured Logging device** is a builtin Snakeway device that emits structured tracing events at key points in the request/response lifecycle.
 
 ## Configuration Example
 
@@ -102,7 +101,8 @@ This avoids reparsing headers and ensures consistency with Identity resolution.
 ## Header Logging
 
 :::caution
-Headers often contain personal or sensitive data. Enable this only when necessary.
+Headers often contain personal or sensitive data.
+Enable this only when necessary.
 :::
 
 HTTP headers are **not logged by default**.

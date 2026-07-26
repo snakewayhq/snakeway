@@ -2,14 +2,12 @@
 title: Integration Test Example Device
 ---
 
-The **integration test example device** (`crates/snakeway-wasm-test-device`) is a small WASM device that exercises every
-device capability. Snakeway's integration tests load it as a fixture, and it doubles as a working reference for
-authoring your own device.
+The **integration test example device** (`crates/snakeway-wasm-test-device`) is a small WASM device that exercises every device capability.
+Snakeway's integration tests load it as a fixture, and it doubles as a working reference for authoring your own device.
 
 :::note
 This device exists for testing and learning.
-Its behavior is driven by the request path and a `mode` config value so that tests can trigger each capability on
-demand.
+Its behavior is driven by the request path and a `mode` config value so that tests can trigger each capability on demand.
 It is not meant for production traffic.
 :::
 

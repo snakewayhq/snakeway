@@ -2,7 +2,8 @@
 title: Ingress Configuration
 ---
 
-Ingress files live at `CONFIG_ROOT/ingress.d/*.hcl`. Each file defines a listener bound to an interface and port, along with the services, routes, upstreams, and static file policies attached to it.
+Ingress files live at `CONFIG_ROOT/ingress.d/*.hcl`.
+Each file defines a listener bound to an interface and port, along with the services, routes, upstreams, and static file policies attached to it.
 
 ## Structure
 

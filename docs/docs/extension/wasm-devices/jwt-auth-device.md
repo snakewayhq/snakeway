@@ -2,12 +2,10 @@
 title: JWT Auth WASM Device
 ---
 
-The **JWT Auth device** validates an HMAC-SHA256 (HS256) bearer token on each request, injects the caller identity into
-upstream headers, and rejects unauthenticated requests with a generic 401.
+The **JWT Auth device** validates an HMAC-SHA256 (HS256) bearer token on each request, injects the caller identity into upstream headers, and rejects unauthenticated requests with a generic 401.
 
 :::note
-This is an example device shipped in the Snakeway repository (`crates/snakeway-jwt-auth-device`), not a supported
-product surface.
+This is an example device shipped in the Snakeway repository (`crates/snakeway-jwt-auth-device`), not a supported product surface.
 Use it as a reference and a starting point for your own auth device.
 The WIT interface it builds against may change in future releases.
 :::
@@ -23,8 +21,7 @@ On the `on_request` hook the device:
 - Returns a generic `500` when the device itself is misconfigured.
 
 The device only asserts identity that it derives from a validated token.
-It always removes any client-supplied `X-User-Id` and `X-Tenant-Id` before setting its own, so a client cannot spoof
-identity by sending those headers.
+It always removes any client-supplied `X-User-Id` and `X-Tenant-Id` before setting its own, so a client cannot spoof identity by sending those headers.
 
 ## Building
 
@@ -96,7 +93,8 @@ A request is rejected with `401` when any of the following holds:
 - The token is malformed, or its algorithm is not `HS256`.
 - The signature does not verify against `secret`.
 - `iss` does not match `issuer`, or `aud` does not include `audience`.
-- `exp` is absent, or the token has expired. Expiry is mandatory.
+- `exp` is absent, or the token has expired.
+  Expiry is mandatory.
 - `nbf` is present and the token is not yet valid.
 - The configured `user_id_claim` is missing or is not a scalar value.
 - The resolved identity value is empty or contains control characters.
@@ -119,19 +117,16 @@ On success the device rewrites identity headers so the upstream can trust them:
 Paths listed in `public_paths` bypass token validation.
 The match is exact, so `/health` matches only `/health`.
 
-Even on a bypass the device removes any client-supplied `X-User-Id` and `X-Tenant-Id`, so a request to a public path
-cannot spoof identity to an upstream that trusts those headers.
+Even on a bypass the device removes any client-supplied `X-User-Id` and `X-Tenant-Id`, so a request to a public path cannot spoof identity to an upstream that trusts those headers.
 
 ## Revocation
 
 Set `revoked_jti` to a comma-separated list of token ids to reject specific tokens without rotating the secret.
-When the list is non-empty, revocation is enforced: the device rejects a token whose `jti` is on the list, and also
-rejects any token that has no `jti`, so that every accepted token is revocable.
+When the list is non-empty, revocation is enforced: the device rejects a token whose `jti` is on the list, and also rejects any token that has no `jti`, so that every accepted token is revocable.
 When `revoked_jti` is unset, `jti` is ignored.
 
 Updating the list takes effect on the next configuration reload.
-Because `exp` is mandatory and lifetimes should be short, an id can be dropped from the list once its token would have
-expired, which keeps the list bounded.
+Because `exp` is mandatory and lifetimes should be short, an id can be dropped from the list once its token would have expired, which keeps the list bounded.
 
 :::note
 This is a small denylist delivered through config, suited to a modest number of revoked ids.

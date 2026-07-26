@@ -2,15 +2,23 @@
 title: Circuit Breaker
 ---
 
-The circuit breaker protects your services by stopping traffic to failing upstreams. It is configured inside a [service](services.md) block.
+The circuit breaker protects your services by stopping traffic to failing upstreams.
+It is configured inside a [service](services.md) block.
 
 ## State Transitions
 
 The circuit breaker operates in three states:
 
-1. **Closed** (normal operation). Requests flow to the upstream. When consecutive failures reach the `failure_threshold`, the circuit transitions to Open.
-2. **Open** (blocking). All requests are rejected immediately. After `open_duration_milliseconds` elapses, the circuit transitions to HalfOpen.
-3. **HalfOpen** (probing). A limited number of probe requests (`half_open_max_requests`) are allowed through. If `success_threshold` probes succeed, the circuit closes again. If any probe fails, the circuit reopens.
+1. **Closed** (normal operation).
+   Requests flow to the upstream.
+   When consecutive failures reach the `failure_threshold`, the circuit transitions to Open.
+2. **Open** (blocking).
+   All requests are rejected immediately.
+   After `open_duration_milliseconds` elapses, the circuit transitions to HalfOpen.
+3. **HalfOpen** (probing).
+   A limited number of probe requests (`half_open_max_requests`) are allowed through.
+   If `success_threshold` probes succeed, the circuit closes again.
+   If any probe fails, the circuit reopens.
 
 ```hcl
 circuit_breaker = {
