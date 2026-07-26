@@ -114,8 +114,7 @@ These binaries are suitable for distribution and container deployment.
 
 1. Make your change in the appropriate crate.
 2. Add or update tests.
-   See [Unit Tests](unit-tests.md), [Integration Tests](integration-tests.md),
-   and [HTTP Replay Tests](http-replay-tests.md).
+   See [Unit Tests](unit-tests.md), [Integration Tests](integration-tests.md), and [HTTP Replay Tests](http-replay-tests.md).
 3. Run `just lint` and fix every diagnostic.
    See [Code Style](code-style.md).
 4. If the change touches configuration, follow the full recipe in [Adding a Config Setting](adding-config-settings.md).
