@@ -106,8 +106,9 @@ Allowed headers enforce a **restricted header universe**:
 :::note
 This can be tricky to reason about, but remember:
 
-`allow_headers` controls *which headers may exist*.  
-`required_headers` controls *which headers must exist*.
+`allow_headers` controls which headers **may** exist.
+
+`required_headers` controls which headers **must** exist.
 
 They serve different purposes and are often used together.
 :::
@@ -158,17 +159,15 @@ client_body_timeout_seconds = 10
 Controls how long the proxy waits for each chunk of request body data from the client.
 If the client stalls mid-body for longer than this duration, the connection is terminated.
 
-This prevents **slowloris-style attacks** where an attacker sends a large `Content-Length`
-but trickles body bytes to hold upstream connections open indefinitely.
+This prevents **slowloris-style attacks** where an attacker sends a large `Content-Length` but trickles body bytes to hold upstream connections open indefinitely.
 
 * Default: not set (Pingora's built-in default of 60 seconds applies)
-* Set to a lower value (e.g., `5`–`10`) for public-facing deployments
+* Set to a lower value (e.g., `5` to `10`) for public-facing deployments
 * The timeout is **per-read**, not cumulative: each successful chunk resets the timer
 
 :::caution
-Without this setting, a malicious client can declare `Content-Length: 1000000` and send
-one byte per minute, tying up an upstream connection for hours. Set this in any
-deployment exposed to untrusted clients.
+Without this setting, a malicious client can declare `Content-Length: 1000000` and send one byte per minute, tying up an upstream connection for hours.
+Set this in any deployment exposed to untrusted clients.
 :::
 
 ## Custom Deny Status
@@ -186,8 +185,8 @@ Invalid status codes are rejected at configuration load time.
 
 ## Path Scoping
 
-By default, the Request Filter device applies to all requests. The `paths` field restricts enforcement to requests
-matching one or more path prefixes.
+By default, the Request Filter device applies to all requests.
+The `paths` field restricts enforcement to requests matching one or more path prefixes.
 
 ```hcl
 request_filter_device = {
@@ -197,5 +196,5 @@ request_filter_device = {
 }
 ```
 
-Path matching uses prefix semantics with slash-boundary awareness: `/api` matches `/api/users` but not `/apikeys`. When
-`paths` is empty or omitted, the device applies to all requests.
+Path matching uses prefix semantics with slash-boundary awareness: `/api` matches `/api/users` but not `/apikeys`.
+When `paths` is empty or omitted, the device applies to all requests.

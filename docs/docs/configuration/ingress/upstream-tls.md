@@ -2,7 +2,9 @@
 title: Upstream TLS
 ---
 
-By default, upstream connections use plain HTTP. To connect to an upstream over TLS, add a `tls` block inside the `endpoint`. See [Upstreams](upstreams.md) for the parent structure.
+By default, upstream connections use plain HTTP.
+To connect to an upstream over TLS, add a `tls` block inside the `endpoint`.
+See [Upstreams](upstreams.md) for the parent structure.
 
 ```hcl
 endpoint = {

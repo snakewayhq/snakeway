@@ -2,7 +2,9 @@
 title: Upstreams
 ---
 
-Each [service](services.md) can have one or more upstream servers. Upstreams represent the backend servers that handle proxied requests. Each upstream is either a TCP endpoint or a Unix domain socket.
+Each [service](services.md) can have one or more upstream servers.
+Upstreams represent the backend servers that handle proxied requests.
+Each upstream is either a TCP endpoint or a Unix domain socket.
 
 ## TCP Endpoint
 
@@ -42,9 +44,12 @@ upstreams = [
 | `sock` | `string` | (optional) | The local filesystem path to a Unix domain socket (e.g., `/run/snakeway-http-1.sock`). |
 
 :::note
-Only specify `endpoint` or `sock` on a given upstream, not both. They are mutually exclusive on a single upstream, but a single service may contain a mix of TCP and socket upstreams.
+Only specify `endpoint` or `sock` on a given upstream, not both.
+They are mutually exclusive on a single upstream, but a single service may contain a mix of TCP and socket upstreams.
 :::
 
 :::note
-The underlying Pingora runtime requires TLS to be configured end-to-end. This might not be ideal for UDS-based services. Consider using `endpoint` instead.
+The underlying Pingora runtime requires TLS to be configured end-to-end.
+This might not be ideal for UDS-based services.
+Consider using `endpoint` instead.
 :::

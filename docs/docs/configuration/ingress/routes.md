@@ -2,7 +2,8 @@
 title: Routes
 ---
 
-Each [service](services.md) contains one or more routes. A route matches incoming requests by hostname and path prefix.
+Each [service](services.md) contains one or more routes.
+A route matches incoming requests by hostname and path prefix.
 
 ```hcl
 routes = [

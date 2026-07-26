@@ -2,7 +2,8 @@
 title: Services
 ---
 
-An ingress configuration file may define zero or more services. Each service groups a set of [routes](routes.md) with one or more [upstreams](upstreams.md) and an optional load balancing strategy.
+An ingress configuration file may define zero or more services.
+Each service groups a set of [routes](routes.md) with one or more [upstreams](upstreams.md) and an optional load balancing strategy.
 
 ```hcl
 services = [
@@ -42,7 +43,8 @@ services = [
 ## Load Balancing Strategies
 
 - `failover`: Always picks the first healthy upstream in the list.
-- `round_robin`: Distributes requests evenly across upstreams. Respects the `weight` field on each upstream.
+- `round_robin`: Distributes requests evenly across upstreams.
+  Respects the `weight` field on each upstream.
 - `request_pressure`: Picks the upstream with the lowest recent request pressure (heuristic-based, not transport-level).
 - `random`: Picks a random healthy upstream.
 - `sticky_hash`: Consistent hashing based on request characteristics.

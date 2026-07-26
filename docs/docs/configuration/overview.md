@@ -31,22 +31,20 @@ The `include` section allows you to split your configuration into logical parts 
 - **`ingress.d/`**: Define your [Ingress](/docs/configuration/ingress) files.
 - **`device.d/`**: Define the [Devices](../extension/understanding-devices.md) that should be active in the request pipeline.
 
-When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a
-single unified runtime configuration. This is discussed in more detail
-in [Configuration Internals](/docs/internals/configuration).
+When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a single unified runtime configuration.
+This is discussed in more detail in [Configuration Internals](/docs/internals/configuration).
 
 ## Hot Reloading
 
-Snakeway supports zero-downtime configuration reloads. This means you can update your routes, add new services, or
-change device settings without dropping active connections.
+Snakeway supports zero-downtime configuration reloads.
+This means you can update your routes, add new services, or change device settings without dropping active connections.
 
-Before a reload is applied, Snakeway performs a full semantic validation of the new configuration. If any errors are
-found (e.g., a route pointing to a non-existent service), the reload is aborted, the errors are logged, and the server
-continues running with the previous, stable configuration.
+Before a reload is applied, Snakeway performs a full semantic validation of the new configuration.
+If any errors are found (e.g., a route pointing to a non-existent service), the reload is aborted, the errors are logged, and the server continues running with the previous, stable configuration.
 
 Reloads can be triggered in two ways:
 
-#### Reload command
+### Reload command
 
 Send a `SIGHUP` signal to the Snakeway process.
 
@@ -54,7 +52,7 @@ Send a `SIGHUP` signal to the Snakeway process.
 snakeway reload
 ```
 
-#### Admin API
+### Admin API
 
 If enabled the admin API is enable, you can send a `POST` request to the `/admin/reload` endpoint.
 
@@ -72,5 +70,4 @@ You can manually validate your configuration directory at any time using the `co
 snakeway config check --path /etc/snakeway/
 ```
 
-This will report any syntax errors or logical inconsistencies in your configuration files before you attempt to apply
-them to a running server.
+This will report any syntax errors or logical inconsistencies in your configuration files before you attempt to apply them to a running server.
