@@ -1,5 +1,5 @@
 use crate::types::StructuredLoggingDeviceSpec;
-use confval::prelude::{Located, Lower, Report, Validate, ValidateNested};
+use confval::prelude::{Located, Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -22,34 +22,29 @@ where
     StructuredLoggingDeviceSpec: Validate + ValidateNested,
 {
     fn lower(spec: &StructuredLoggingDeviceSpec, report: &mut Report) -> Option<Self> {
-        fn keywords<T: for<'a> TryFrom<&'a str, Error = String>>(
+        fn keywords<T: for<'a> TryFrom<&'a str>>(
             values: &[Located<String>],
             report: &mut Report,
             ok: &mut bool,
         ) -> Vec<T> {
             values
                 .iter()
-                .filter_map(|value| match value.value.as_str().try_into() {
-                    Ok(keyword) => Some(keyword),
-                    Err(message) => {
-                        report.error(message).at(value.span).emit();
+                .filter_map(|value| {
+                    let parsed = narrow::keyword(value, report);
+                    if parsed.is_none() {
                         *ok = false;
-                        None
                     }
+                    parsed
                 })
                 .collect()
         }
 
         let mut ok = true;
 
-        let level = match LogLevelConfig::try_from(spec.level.value.as_str()) {
-            Ok(level) => Some(level),
-            Err(message) => {
-                report.error(message).at(spec.level.span).emit();
-                ok = false;
-                None
-            }
-        };
+        let level = narrow::keyword::<LogLevelConfig>(&spec.level, report);
+        if level.is_none() {
+            ok = false;
+        }
 
         let config = Self {
             enable: spec.enable.value,
@@ -80,112 +75,60 @@ where
     }
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum LogLevelConfig {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    #[default]
-    Error,
-}
-
-impl TryFrom<&str> for LogLevelConfig {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, String> {
-        match keyword {
-            "trace" => Ok(LogLevelConfig::Trace),
-            "debug" => Ok(LogLevelConfig::Debug),
-            "info" => Ok(LogLevelConfig::Info),
-            "warn" => Ok(LogLevelConfig::Warn),
-            "error" => Ok(LogLevelConfig::Error),
-            other => Err(format!("unknown level: {other}")),
-        }
+confval::keyword_enum!(
+    #[derive(Default, Deserialize, Serialize)]
+    #[serde(rename_all = "lowercase")]
+    pub LogLevelConfig,
+    {
+        Trace => "trace",
+        Debug => "debug",
+        Info => "info",
+        Warn => "warn",
+        #[default]
+        Error => "error",
     }
-}
+);
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum LogEventConfig {
-    Request,
-    BeforeProxy,
-    AfterProxy,
-    Response,
-}
-
-impl TryFrom<&str> for LogEventConfig {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, String> {
-        match keyword {
-            "request" => Ok(LogEventConfig::Request),
-            "before_proxy" => Ok(LogEventConfig::BeforeProxy),
-            "after_proxy" => Ok(LogEventConfig::AfterProxy),
-            "response" => Ok(LogEventConfig::Response),
-            other => Err(format!("unknown event: {other}")),
-        }
+confval::keyword_enum!(
+    #[derive(Deserialize, Serialize)]
+    #[serde(rename_all = "snake_case")]
+    pub LogEventConfig,
+    {
+        Request => "request",
+        BeforeProxy => "before_proxy",
+        AfterProxy => "after_proxy",
+        Response => "response",
     }
-}
+);
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LogPhaseConfig {
-    Request,
-    Response,
-}
-
-impl TryFrom<&str> for LogPhaseConfig {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, String> {
-        match keyword {
-            "request" => Ok(LogPhaseConfig::Request),
-            "response" => Ok(LogPhaseConfig::Response),
-            other => Err(format!("unknown phase: {other}")),
-        }
+confval::keyword_enum!(
+    #[derive(Deserialize, Serialize)]
+    #[serde(rename_all = "lowercase")]
+    pub LogPhaseConfig,
+    {
+        Request => "request",
+        Response => "response",
     }
-}
+);
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum IdentityFieldConfig {
-    ClientIp,
-    ProxyChain,
-    Forwarded,
-    Trusted,
-
-    Asn,
-    Aso,
-    Country,
-    Region,
-    ConnectionType,
-
-    Bot,
-    Device,
-}
-
-impl TryFrom<&str> for IdentityFieldConfig {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, String> {
-        match keyword {
-            "client_ip" => Ok(IdentityFieldConfig::ClientIp),
-            "proxy_chain" => Ok(IdentityFieldConfig::ProxyChain),
-            "forwarded" => Ok(IdentityFieldConfig::Forwarded),
-            "trusted" => Ok(IdentityFieldConfig::Trusted),
-            "asn" => Ok(IdentityFieldConfig::Asn),
-            "aso" => Ok(IdentityFieldConfig::Aso),
-            "country" => Ok(IdentityFieldConfig::Country),
-            "region" => Ok(IdentityFieldConfig::Region),
-            "connection_type" => Ok(IdentityFieldConfig::ConnectionType),
-            "bot" => Ok(IdentityFieldConfig::Bot),
-            "device" => Ok(IdentityFieldConfig::Device),
-            other => Err(format!("unknown identity field: {other}")),
-        }
+confval::keyword_enum!(
+    #[derive(Deserialize, Serialize)]
+    #[serde(rename_all = "snake_case")]
+    pub IdentityFieldConfig,
+    {
+        ClientIp => "client_ip",
+        ProxyChain => "proxy_chain",
+        Forwarded => "forwarded",
+        Trusted => "trusted",
+        Asn => "asn",
+        Aso => "aso",
+        Country => "country",
+        Region => "region",
+        ConnectionType => "connection_type",
+        Bot => "bot",
+        Device => "device",
     }
-}
+);
 
 #[cfg(test)]
 mod tests {
@@ -241,7 +184,7 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|i| i.message == "unknown level: loud")
+                .any(|i| i.message == "unknown keyword: loud")
         );
     }
 }

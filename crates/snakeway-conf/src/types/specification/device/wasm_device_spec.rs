@@ -1,7 +1,7 @@
-use crate::types::HclInt;
 use crate::types::specification::field_emit::{
     bool_field, int_field, path_field, string_field, string_list_field, string_map_field,
 };
+use crate::types::{HclInt, WasmDeviceFailPolicy};
 use crate::validation::validator::require_existing_file;
 use confval::format::{
     Field, FieldKind, Fields, FromFields, Scalar, ToFields, ValueKind, parse_bool_field,
@@ -13,8 +13,6 @@ use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-pub const FAIL_POLICIES: [&str; 2] = ["open", "closed"];
 
 /// Lifecycle hooks a WASM device may declare via the `hooks` allowlist.
 pub const HOOK_NAMES: [&str; 6] = [
@@ -224,7 +222,7 @@ impl Validate for WasmDeviceSpec {
             report,
         );
 
-        KeywordSet::new(&FAIL_POLICIES).check_located(&self.fail_policy, "fail_policy", report);
+        WasmDeviceFailPolicy::keyword_set().check_located(&self.fail_policy, "fail_policy", report);
 
         TIMEOUT_MS.check_located(&self.timeout_ms, "timeout_ms", report);
         BODY_BUFFER_MAX.check_located(&self.body_buffer_max, "body_buffer_max", report);

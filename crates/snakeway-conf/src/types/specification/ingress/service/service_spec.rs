@@ -1,15 +1,9 @@
-use crate::types::{CircuitBreakerSpec, HealthCheckSpec, ServiceRouteSpec, UpstreamSpec};
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use crate::types::{
+    CircuitBreakerSpec, HealthCheckSpec, LoadBalancingStrategy, ServiceRouteSpec, UpstreamSpec,
+};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::collections::HashSet;
-
-pub const LOAD_BALANCING_STRATEGIES: [&str; 5] = [
-    "failover",
-    "round_robin",
-    "request_pressure",
-    "sticky_hash",
-    "random",
-];
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServiceSpec {
@@ -41,7 +35,7 @@ impl Default for ServiceSpec {
 
 impl Validate for ServiceSpec {
     fn validate(&self, report: &mut Report) {
-        KeywordSet::new(&LOAD_BALANCING_STRATEGIES).check_located(
+        LoadBalancingStrategy::keyword_set().check_located(
             &self.load_balancing_strategy,
             "load_balancing_strategy",
             report,

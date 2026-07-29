@@ -1,15 +1,13 @@
-use crate::types::HclInt;
+use crate::types::{HclInt, UaEngineKind};
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
 
 range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, i64, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, i64, min: 1, max: 4096);
-
-pub const UA_ENGINES: [&str; 2] = ["uaparser", "woothee"];
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
 pub struct IdentityDeviceSpec {
@@ -79,7 +77,7 @@ impl Validate for IdentityDeviceSpec {
             );
         }
 
-        KeywordSet::new(&UA_ENGINES).check_located(&self.ua_engine, "ua_engine", report);
+        UaEngineKind::keyword_set().check_located(&self.ua_engine, "ua_engine", report);
 
         if self.enable_geoip.value {
             if let Some(path) = self.geoip_city_db.as_ref() {

@@ -1,6 +1,6 @@
-use crate::types::{NetworkPolicyDeviceSpec, ON_NO_PEER_ADDR_DENY};
+use crate::types::NetworkPolicyDeviceSpec;
 use crate::validation::validator::parse_cidr_list;
-use confval::prelude::{Lower, Report, Validate, ValidateNested};
+use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -19,13 +19,16 @@ pub struct ForwardingConfig {
     pub on_invalid: OnInvalidForwardedConfig,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum OnInvalidForwardedConfig {
-    Deny,
-    #[default]
-    Ignore,
-}
+confval::keyword_enum!(
+    #[derive(Default, Deserialize, Serialize)]
+    #[serde(rename_all = "lowercase")]
+    pub OnInvalidForwardedConfig,
+    {
+        Deny => "deny",
+        #[default]
+        Ignore => "ignore",
+    }
+);
 
 impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig
 where
@@ -33,17 +36,15 @@ where
 {
     fn lower(spec: &NetworkPolicyDeviceSpec, report: &mut Report) -> Option<Self> {
         let cidr_allow = parse_cidr_list(&spec.cidr_allow, "network policy allow list", report)?;
+        let on_invalid =
+            narrow::keyword::<OnInvalidForwardedConfig>(&spec.forwarding.value.on_invalid, report)?;
 
         Some(Self {
             enable: spec.enable.value,
             cidr_allow,
             forwarding: ForwardingConfig {
                 allow: spec.forwarding.value.allow.value,
-                on_invalid: if spec.forwarding.value.on_invalid.value == ON_NO_PEER_ADDR_DENY {
-                    OnInvalidForwardedConfig::Deny
-                } else {
-                    OnInvalidForwardedConfig::Ignore
-                },
+                on_invalid,
             },
             paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         })

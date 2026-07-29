@@ -1,22 +1,6 @@
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use crate::types::{IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
-
-pub const LOG_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
-pub const LOG_EVENTS: [&str; 4] = ["request", "before_proxy", "after_proxy", "response"];
-pub const LOG_PHASES: [&str; 2] = ["request", "response"];
-pub const IDENTITY_FIELDS: [&str; 11] = [
-    "client_ip",
-    "proxy_chain",
-    "forwarded",
-    "trusted",
-    "asn",
-    "aso",
-    "country",
-    "region",
-    "connection_type",
-    "bot",
-    "device",
-];
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
 pub struct StructuredLoggingDeviceSpec {
@@ -69,21 +53,21 @@ impl Validate for StructuredLoggingDeviceSpec {
             return;
         }
 
-        KeywordSet::new(&LOG_LEVELS).check_located(&self.level, "level", report);
+        LogLevelConfig::keyword_set().check_located(&self.level, "level", report);
 
         for field in &self.identity_fields {
-            KeywordSet::new(&IDENTITY_FIELDS).check_located(field, "identity field", report);
+            IdentityFieldConfig::keyword_set().check_located(field, "identity field", report);
         }
 
         if let Some(events) = &self.events {
             for event in &events.value {
-                KeywordSet::new(&LOG_EVENTS).check_located(event, "event", report);
+                LogEventConfig::keyword_set().check_located(event, "event", report);
             }
         }
 
         if let Some(phases) = &self.phases {
             for phase in &phases.value {
-                KeywordSet::new(&LOG_PHASES).check_located(phase, "phase", report);
+                LogPhaseConfig::keyword_set().check_located(phase, "phase", report);
             }
         }
     }

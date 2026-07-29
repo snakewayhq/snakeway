@@ -1,6 +1,6 @@
 use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
 use crate::types::{CircuitBreakerConfig, HealthCheckConfig, ServiceSpec, UpstreamUnixConfig};
-use confval::prelude::{Lower, Report};
+use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -16,29 +16,17 @@ pub struct ServiceConfig {
     pub health_check: HealthCheckConfig,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum LoadBalancingStrategy {
-    Failover,
-    RoundRobin,
-    RequestPressure,
-    StickyHash,
-    Random,
-}
-
-impl TryFrom<&str> for LoadBalancingStrategy {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, Self::Error> {
-        match keyword {
-            "failover" => Ok(LoadBalancingStrategy::Failover),
-            "round_robin" => Ok(LoadBalancingStrategy::RoundRobin),
-            "request_pressure" => Ok(LoadBalancingStrategy::RequestPressure),
-            "sticky_hash" => Ok(LoadBalancingStrategy::StickyHash),
-            "random" => Ok(LoadBalancingStrategy::Random),
-            other => Err(format!("unknown load_balancing_strategy: {other}")),
-        }
+confval::keyword_enum!(
+    #[derive(Deserialize, Serialize)]
+    pub LoadBalancingStrategy,
+    {
+        Failover => "failover",
+        RoundRobin => "round_robin",
+        RequestPressure => "request_pressure",
+        StickyHash => "sticky_hash",
+        Random => "random",
     }
-}
+);
 
 impl ServiceConfig {
     pub fn new(
@@ -49,18 +37,8 @@ impl ServiceConfig {
         spec: &ServiceSpec,
         report: &mut Report,
     ) -> Option<Self> {
-        let strategy: Result<LoadBalancingStrategy, String> =
-            spec.load_balancing_strategy.value.as_str().try_into();
-        let strategy = match strategy {
-            Ok(strategy) => strategy,
-            Err(message) => {
-                report
-                    .error(message)
-                    .at(spec.load_balancing_strategy.span)
-                    .emit();
-                return None;
-            }
-        };
+        let strategy =
+            narrow::keyword::<LoadBalancingStrategy>(&spec.load_balancing_strategy, report)?;
 
         let circuit_breaker = match &spec.circuit_breaker {
             Some(cb) => CircuitBreakerConfig::lower(&cb.value, report)?,

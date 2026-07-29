@@ -27,38 +27,23 @@ pub struct IdentityDeviceConfig {
     pub max_user_agent_length: usize,
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum UaEngineKind {
-    UaParser,
-    #[default]
-    Woothee,
-}
-
-impl TryFrom<&str> for UaEngineKind {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, Self::Error> {
-        match keyword {
-            "uaparser" => Ok(UaEngineKind::UaParser),
-            "woothee" => Ok(UaEngineKind::Woothee),
-            other => Err(format!("unknown ua_engine: {other}")),
-        }
+confval::keyword_enum!(
+    #[derive(Default, Deserialize, Serialize)]
+    #[serde(rename_all = "lowercase")]
+    pub UaEngineKind,
+    {
+        UaParser => "uaparser",
+        #[default]
+        Woothee => "woothee",
     }
-}
+);
 
 impl Lower<IdentityDeviceSpec> for IdentityDeviceConfig
 where
     IdentityDeviceSpec: Validate + ValidateNested,
 {
     fn lower(spec: &IdentityDeviceSpec, report: &mut Report) -> Option<Self> {
-        let ua_engine = match UaEngineKind::try_from(spec.ua_engine.value.as_str()) {
-            Ok(engine) => engine,
-            Err(message) => {
-                report.error(message).at(spec.ua_engine.span).emit();
-                return None;
-            }
-        };
+        let ua_engine = narrow::keyword::<UaEngineKind>(&spec.ua_engine, report)?;
 
         Some(Self {
             enable: spec.enable.value,
@@ -145,7 +130,7 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|i| i.message == "unknown ua_engine: psychic")
+                .any(|i| i.message == "unknown keyword: psychic")
         );
     }
 }
