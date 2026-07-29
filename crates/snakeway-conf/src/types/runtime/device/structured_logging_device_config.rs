@@ -1,4 +1,7 @@
-use crate::types::StructuredLoggingDeviceSpec;
+use crate::types::{
+    IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig,
+    StructuredLoggingDeviceSpec,
+};
 use confval::prelude::{Located, Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -74,61 +77,6 @@ where
         ok.then_some(config)
     }
 }
-
-confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
-    #[serde(rename_all = "lowercase")]
-    pub LogLevelConfig,
-    {
-        Trace => "trace",
-        Debug => "debug",
-        Info => "info",
-        Warn => "warn",
-        #[default]
-        Error => "error",
-    }
-);
-
-confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
-    #[serde(rename_all = "snake_case")]
-    pub LogEventConfig,
-    {
-        Request => "request",
-        BeforeProxy => "before_proxy",
-        AfterProxy => "after_proxy",
-        Response => "response",
-    }
-);
-
-confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
-    #[serde(rename_all = "lowercase")]
-    pub LogPhaseConfig,
-    {
-        Request => "request",
-        Response => "response",
-    }
-);
-
-confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
-    #[serde(rename_all = "snake_case")]
-    pub IdentityFieldConfig,
-    {
-        ClientIp => "client_ip",
-        ProxyChain => "proxy_chain",
-        Forwarded => "forwarded",
-        Trusted => "trusted",
-        Asn => "asn",
-        Aso => "aso",
-        Country => "country",
-        Region => "region",
-        ConnectionType => "connection_type",
-        Bot => "bot",
-        Device => "device",
-    }
-);
 
 #[cfg(test)]
 mod tests {

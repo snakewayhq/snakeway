@@ -1,5 +1,7 @@
 use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
-use crate::types::{CircuitBreakerConfig, HealthCheckConfig, ServiceSpec, UpstreamUnixConfig};
+use crate::types::{
+    CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy, ServiceSpec, UpstreamUnixConfig,
+};
 use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 
@@ -15,18 +17,6 @@ pub struct ServiceConfig {
     pub circuit_breaker: CircuitBreakerConfig,
     pub health_check: HealthCheckConfig,
 }
-
-confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
-    pub LoadBalancingStrategy,
-    {
-        Failover => "failover",
-        RoundRobin => "round_robin",
-        RequestPressure => "request_pressure",
-        StickyHash => "sticky_hash",
-        Random => "random",
-    }
-);
 
 impl ServiceConfig {
     pub fn new(

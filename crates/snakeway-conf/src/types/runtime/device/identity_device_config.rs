@@ -1,4 +1,4 @@
-use crate::types::IdentityDeviceSpec;
+use crate::types::{IdentityDeviceSpec, UaEngineKind};
 use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -26,17 +26,6 @@ pub struct IdentityDeviceConfig {
 
     pub max_user_agent_length: usize,
 }
-
-confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
-    #[serde(rename_all = "lowercase")]
-    pub UaEngineKind,
-    {
-        UaParser => "uaparser",
-        #[default]
-        Woothee => "woothee",
-    }
-);
 
 impl Lower<IdentityDeviceSpec> for IdentityDeviceConfig
 where

@@ -1,19 +1,8 @@
-use crate::types::WasmDeviceSpec;
+use crate::types::{WasmDeviceFailPolicy, WasmDeviceSpec};
 use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
-    #[serde(rename_all = "lowercase")]
-    pub WasmDeviceFailPolicy,
-    {
-        #[default]
-        Open => "open",
-        Closed => "closed",
-    }
-);
 
 /// Which lifecycle hook(s) a WASM device implements.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]

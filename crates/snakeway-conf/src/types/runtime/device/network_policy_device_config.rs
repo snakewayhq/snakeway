@@ -1,4 +1,4 @@
-use crate::types::NetworkPolicyDeviceSpec;
+use crate::types::{NetworkPolicyDeviceSpec, OnInvalidForwardedConfig};
 use crate::validation::validator::parse_cidr_list;
 use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use ipnet::IpNet;
@@ -18,17 +18,6 @@ pub struct ForwardingConfig {
     pub allow: bool,
     pub on_invalid: OnInvalidForwardedConfig,
 }
-
-confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
-    #[serde(rename_all = "lowercase")]
-    pub OnInvalidForwardedConfig,
-    {
-        Deny => "deny",
-        #[default]
-        Ignore => "ignore",
-    }
-);
 
 impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig
 where
