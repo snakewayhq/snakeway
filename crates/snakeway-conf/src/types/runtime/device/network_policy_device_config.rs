@@ -1,4 +1,4 @@
-use crate::types::{NetworkPolicyDeviceSpec, OnInvalidForwardedConfig};
+use crate::types::{NetworkPolicyDeviceSpec, OnInvalidForwarded};
 use crate::validation::validator::parse_cidr_list;
 use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use ipnet::IpNet;
@@ -16,7 +16,7 @@ pub struct NetworkPolicyDeviceConfig {
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ForwardingConfig {
     pub allow: bool,
-    pub on_invalid: OnInvalidForwardedConfig,
+    pub on_invalid: OnInvalidForwarded,
 }
 
 impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig
@@ -26,7 +26,7 @@ where
     fn lower(spec: &NetworkPolicyDeviceSpec, report: &mut Report) -> Option<Self> {
         let cidr_allow = parse_cidr_list(&spec.cidr_allow, "network policy allow list", report)?;
         let on_invalid =
-            narrow::keyword::<OnInvalidForwardedConfig>(&spec.forwarding.value.on_invalid, report)?;
+            narrow::keyword::<OnInvalidForwarded>(&spec.forwarding.value.on_invalid, report)?;
 
         Some(Self {
             enable: spec.enable.value,
@@ -99,7 +99,7 @@ mod tests {
         // Assert
         assert!(matches!(
             config.forwarding.on_invalid,
-            OnInvalidForwardedConfig::Deny
+            OnInvalidForwarded::Deny
         ));
         assert!(config.forwarding.allow);
     }

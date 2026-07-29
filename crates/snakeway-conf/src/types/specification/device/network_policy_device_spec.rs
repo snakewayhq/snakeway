@@ -1,4 +1,4 @@
-use crate::types::OnInvalidForwardedConfig;
+use crate::types::OnInvalidForwarded;
 use crate::validation::validator::{parse_cidr_list, validate_device_paths};
 use confval::prelude::{ControlFlow, Located, Report, Validate};
 use serde::Serialize;
@@ -33,11 +33,7 @@ impl Default for ForwardingSpec {
 
 impl Validate for ForwardingSpec {
     fn validate(&self, report: &mut Report) {
-        OnInvalidForwardedConfig::keyword_set().check_located(
-            &self.on_invalid,
-            "on_invalid",
-            report,
-        );
+        OnInvalidForwarded::keyword_set().check_located(&self.on_invalid, "on_invalid", report);
     }
 }
 

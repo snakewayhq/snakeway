@@ -46,7 +46,7 @@ confval::keyword_enum!(
 confval::keyword_enum!(
     #[derive(Default, Deserialize, Serialize)]
     #[serde(rename_all = "lowercase")]
-    pub LogLevelConfig,
+    pub LogLevel,
     {
         Trace => "trace",
         Debug => "debug",
@@ -60,7 +60,7 @@ confval::keyword_enum!(
 confval::keyword_enum!(
     #[derive(Deserialize, Serialize)]
     #[serde(rename_all = "snake_case")]
-    pub LogEventConfig,
+    pub LogEvent,
     {
         Request => "request",
         BeforeProxy => "before_proxy",
@@ -72,7 +72,7 @@ confval::keyword_enum!(
 confval::keyword_enum!(
     #[derive(Deserialize, Serialize)]
     #[serde(rename_all = "lowercase")]
-    pub LogPhaseConfig,
+    pub LogPhase,
     {
         Request => "request",
         Response => "response",
@@ -82,7 +82,7 @@ confval::keyword_enum!(
 confval::keyword_enum!(
     #[derive(Deserialize, Serialize)]
     #[serde(rename_all = "snake_case")]
-    pub IdentityFieldConfig,
+    pub IdentityField,
     {
         ClientIp => "client_ip",
         ProxyChain => "proxy_chain",
@@ -101,7 +101,7 @@ confval::keyword_enum!(
 confval::keyword_enum!(
     #[derive(Default, Deserialize, Serialize)]
     #[serde(rename_all = "lowercase")]
-    pub OnInvalidForwardedConfig,
+    pub OnInvalidForwarded,
     {
         Deny => "deny",
         #[default]

@@ -1,7 +1,4 @@
-use crate::types::{
-    IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig,
-    StructuredLoggingDeviceSpec,
-};
+use crate::types::{IdentityField, LogEvent, LogLevel, LogPhase, StructuredLoggingDeviceSpec};
 use confval::prelude::{Located, Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -10,14 +7,14 @@ use std::collections::HashSet;
 #[serde(deny_unknown_fields)]
 pub struct StructuredLoggingDeviceConfig {
     pub enable: bool,
-    pub level: LogLevelConfig,
+    pub level: LogLevel,
     pub include_headers: bool,
     pub allowed_headers: HashSet<String>,
     pub redacted_headers: HashSet<String>,
     pub include_identity: bool,
-    pub identity_fields: Vec<IdentityFieldConfig>,
-    pub events: Option<Vec<LogEventConfig>>,
-    pub phases: Option<Vec<LogPhaseConfig>>,
+    pub identity_fields: Vec<IdentityField>,
+    pub events: Option<Vec<LogEvent>>,
+    pub phases: Option<Vec<LogPhase>>,
 }
 
 impl Lower<StructuredLoggingDeviceSpec> for StructuredLoggingDeviceConfig
@@ -44,7 +41,7 @@ where
 
         let mut ok = true;
 
-        let level = narrow::keyword::<LogLevelConfig>(&spec.level, report);
+        let level = narrow::keyword::<LogLevel>(&spec.level, report);
         if level.is_none() {
             ok = false;
         }
@@ -106,12 +103,12 @@ mod tests {
 
         // Assert
         assert!(config.enable);
-        assert!(matches!(config.level, LogLevelConfig::Info));
+        assert!(matches!(config.level, LogLevel::Info));
         assert!(config.allowed_headers.contains("x-request-id"));
         assert!(config.redacted_headers.contains("authorization"));
-        assert_eq!(config.identity_fields, vec![IdentityFieldConfig::ClientIp]);
-        assert_eq!(config.events, Some(vec![LogEventConfig::BeforeProxy]));
-        assert_eq!(config.phases, Some(vec![LogPhaseConfig::Request]));
+        assert_eq!(config.identity_fields, vec![IdentityField::ClientIp]);
+        assert_eq!(config.events, Some(vec![LogEvent::BeforeProxy]));
+        assert_eq!(config.phases, Some(vec![LogPhase::Request]));
     }
 
     #[test]

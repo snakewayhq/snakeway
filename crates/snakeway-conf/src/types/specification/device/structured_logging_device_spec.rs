@@ -1,4 +1,4 @@
-use crate::types::{IdentityFieldConfig, LogEventConfig, LogLevelConfig, LogPhaseConfig};
+use crate::types::{IdentityField, LogEvent, LogLevel, LogPhase};
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
@@ -53,21 +53,21 @@ impl Validate for StructuredLoggingDeviceSpec {
             return;
         }
 
-        LogLevelConfig::keyword_set().check_located(&self.level, "level", report);
+        LogLevel::keyword_set().check_located(&self.level, "level", report);
 
         for field in &self.identity_fields {
-            IdentityFieldConfig::keyword_set().check_located(field, "identity field", report);
+            IdentityField::keyword_set().check_located(field, "identity field", report);
         }
 
         if let Some(events) = &self.events {
             for event in &events.value {
-                LogEventConfig::keyword_set().check_located(event, "event", report);
+                LogEvent::keyword_set().check_located(event, "event", report);
             }
         }
 
         if let Some(phases) = &self.phases {
             for phase in &phases.value {
-                LogPhaseConfig::keyword_set().check_located(phase, "phase", report);
+                LogPhase::keyword_set().check_located(phase, "phase", report);
             }
         }
     }
