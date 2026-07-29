@@ -1,7 +1,8 @@
-use crate::cli::config::hcl::to_hcl_block_string;
 use crate::cli::config::init::templates;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
+use confval::format::ToFields;
+use confval::format::hcl::emit_hcl;
 use confval::source::Located;
 #[cfg(feature = "dev-templates")]
 use snakeway_conf::types::{AcmeServerSpec, CertStoreSpec, TlsAutomationSpec};
@@ -74,7 +75,7 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     let mut files_to_create = HashMap::new();
     files_to_create.insert(
         entrypoint_file_path,
-        to_hcl_block_string(&entrypoint_spec(&template))?,
+        emit_hcl(&entrypoint_spec(&template).to_fields())?,
     );
 
     match template {

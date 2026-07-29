@@ -1,4 +1,5 @@
-use crate::cli::config::hcl::{to_hcl_block_string, to_hcl_string};
+use confval::format::ToFields;
+use confval::format::hcl::emit_hcl;
 use confval::source::Located;
 use snakeway_conf::types::{
     BindSpec, DevicesFile, EndpointSpec, IdentityDeviceSpec, IngressSpec, ServiceRouteSpec,
@@ -23,7 +24,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         device_dir_path.join("identity.hcl"),
-        to_hcl_string(&identity_device_file)?,
+        emit_hcl(&identity_device_file.to_fields())?,
     );
 
     let httpbin_ingress_spec = IngressSpec {
@@ -54,7 +55,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         ingress_dir_path.join("httpbin.hcl"),
-        to_hcl_block_string(&httpbin_ingress_spec)?,
+        emit_hcl(&httpbin_ingress_spec.to_fields())?,
     );
 
     Ok(())

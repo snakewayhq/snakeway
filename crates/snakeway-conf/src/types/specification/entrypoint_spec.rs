@@ -3,7 +3,8 @@ use crate::types::{
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
 use confval::format::{
-    Fields, FromFields, parse_single_struct, report_missing_field, report_unknown_field,
+    Field, Fields, FromFields, ToFields, parse_single_struct, report_missing_field,
+    report_unknown_field,
 };
 use confval::prelude::{Located, Report, Span};
 use serde::Serialize;
@@ -65,6 +66,24 @@ impl FromFields for EntrypointSpec {
     }
 }
 
+/// The write-path counterpart of the handwritten `FromFields`: the two
+/// top-level blocks, in the order an entrypoint file lists them.
+impl ToFields for EntrypointSpec {
+    fn to_fields(&self) -> Fields {
+        Fields::detached(vec![
+            Field::detached_block("server", self.server.to_fields()),
+            Field::detached_block("include", self.include.to_fields()),
+        ])
+    }
+
+    fn to_template(&self) -> Fields {
+        Fields::detached(vec![
+            Field::detached_block("server", self.server.to_template()),
+            Field::detached_block("include", self.include.to_template()),
+        ])
+    }
+}
+
 #[derive(Debug, Serialize, Default, confval::Spec)]
 #[serde(rename_all = "snake_case")]
 pub struct DevicesFile {
@@ -86,4 +105,29 @@ pub struct DevicesFile {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub structured_logging_device: Option<Located<StructuredLoggingDeviceSpec>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_fields_round_trips_default_entrypoint() {
+        // Arrange
+        let spec = EntrypointSpec::default();
+        let mut report = Report::new();
+
+        // Act
+        let round_tripped = EntrypointSpec::from_fields(&spec.to_fields(), &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let round_tripped = round_tripped.unwrap();
+        assert_eq!(round_tripped.include.devices.value, "device.d/*.hcl");
+        assert_eq!(round_tripped.include.ingresses.value, "ingress.d/*.hcl");
+        assert_eq!(
+            round_tripped.server.version.value,
+            spec.server.version.value
+        );
+    }
 }
