@@ -59,7 +59,7 @@ pub(crate) fn generate(
     for (file_name, file_content) in device_files {
         files_to_create.insert(
             device_dir_path.join(file_name),
-            emit_hcl(&file_content.to_fields())?,
+            emit_hcl(&file_content.to_template())?,
         );
     }
 
@@ -83,7 +83,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         ingress_dir_path.join("minimal.hcl"),
-        emit_hcl(&httpbin_ingress_spec.to_fields())?,
+        emit_hcl(&httpbin_ingress_spec.to_template())?,
     );
 
     Ok(())

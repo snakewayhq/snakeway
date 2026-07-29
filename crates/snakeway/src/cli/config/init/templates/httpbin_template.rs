@@ -24,7 +24,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         device_dir_path.join("identity.hcl"),
-        emit_hcl(&identity_device_file.to_fields())?,
+        emit_hcl(&identity_device_file.to_template())?,
     );
 
     let httpbin_ingress_spec = IngressSpec {
@@ -55,7 +55,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         ingress_dir_path.join("httpbin.hcl"),
-        emit_hcl(&httpbin_ingress_spec.to_fields())?,
+        emit_hcl(&httpbin_ingress_spec.to_template())?,
     );
 
     Ok(())

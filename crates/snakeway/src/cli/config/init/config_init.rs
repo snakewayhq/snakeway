@@ -75,7 +75,7 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     let mut files_to_create = HashMap::new();
     files_to_create.insert(
         entrypoint_file_path,
-        emit_hcl(&entrypoint_spec(&template).to_fields())?,
+        emit_hcl(&entrypoint_spec(&template).to_template())?,
     );
 
     match template {
