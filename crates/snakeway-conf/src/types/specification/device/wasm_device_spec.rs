@@ -1,8 +1,12 @@
 use crate::types::HclInt;
+use crate::types::specification::field_emit::{
+    bool_field, int_field, path_field, string_field, string_list_field, string_map_field,
+};
 use crate::validation::validator::require_existing_file;
 use confval::format::{
-    Field, FieldKind, Fields, FromFields, Scalar, ValueKind, parse_bool_field, parse_int_field,
-    parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
+    Field, FieldKind, Fields, FromFields, Scalar, ToFields, ValueKind, parse_bool_field,
+    parse_int_field, parse_string_field, parse_string_list_field, report_missing_field,
+    report_unknown_field,
 };
 use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
@@ -173,6 +177,29 @@ impl FromFields for WasmDeviceSpec {
     }
 }
 
+/// The write-path counterpart of the handwritten `FromFields`. An empty
+/// `config` map and an absent `hooks` list are omitted, matching what the
+/// parse treats as absent.
+impl ToFields for WasmDeviceSpec {
+    fn to_fields(&self) -> Fields {
+        let mut items = vec![
+            string_field("name", &self.name.value),
+            bool_field("enable", self.enable.value),
+            path_field("path", &self.path.value),
+            string_field("fail_policy", &self.fail_policy.value),
+            int_field("timeout_ms", self.timeout_ms.value),
+            int_field("body_buffer_max", self.body_buffer_max.value),
+        ];
+        if !self.config.is_empty() {
+            items.push(string_map_field("config", &self.config));
+        }
+        if let Some(hooks) = &self.hooks {
+            items.push(string_list_field("hooks", &hooks.value));
+        }
+        Fields::detached(items)
+    }
+}
+
 impl ValidateNested for WasmDeviceSpec {
     fn validate_nested(&self, _report: &mut Report) {}
 }
@@ -222,6 +249,67 @@ mod tests {
     use super::*;
     use confval::format::hcl::parse_hcl;
     use confval::prelude::SourceMap;
+
+    #[test]
+    fn to_fields_round_trips_full_spec() {
+        // Arrange
+        let spec = WasmDeviceSpec {
+            name: Located::detached("auth-filter".to_string()),
+            enable: Located::detached(true),
+            path: Located::detached(PathBuf::from("./a.wasm")),
+            fail_policy: Located::detached("closed".to_string()),
+            timeout_ms: Located::detached(250),
+            body_buffer_max: Located::detached(1024),
+            config: HashMap::from([
+                ("mode".to_string(), "strict".to_string()),
+                ("retries".to_string(), "3".to_string()),
+            ]),
+            hooks: Some(Located::detached(vec![Located::detached(
+                "on_request".to_string(),
+            )])),
+        };
+        let mut report = Report::new();
+
+        // Act
+        let round_tripped = WasmDeviceSpec::from_fields(&spec.to_fields(), &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let round_tripped = round_tripped.unwrap();
+        assert_eq!(round_tripped.name.value, "auth-filter");
+        assert!(round_tripped.enable.value);
+        assert_eq!(round_tripped.path.value, PathBuf::from("./a.wasm"));
+        assert_eq!(round_tripped.fail_policy.value, "closed");
+        assert_eq!(round_tripped.timeout_ms.value, 250);
+        assert_eq!(round_tripped.body_buffer_max.value, 1024);
+        assert_eq!(round_tripped.config, spec.config);
+        assert_eq!(round_tripped.hooks.unwrap().value[0].value, "on_request");
+    }
+
+    #[test]
+    fn to_fields_omits_empty_config_and_absent_hooks() {
+        // Arrange
+        let spec = WasmDeviceSpec {
+            name: Located::detached("auth-filter".to_string()),
+            enable: Located::detached(true),
+            path: Located::detached(PathBuf::from("./a.wasm")),
+            fail_policy: Located::detached("open".to_string()),
+            ..WasmDeviceSpec::default()
+        };
+
+        // Act
+        let fields = spec.to_fields();
+
+        // Assert
+        assert!(!fields.has("config"));
+        assert!(!fields.has("hooks"));
+        assert!(fields.has("name"));
+        assert!(fields.has("enable"));
+        assert!(fields.has("path"));
+        assert!(fields.has("fail_policy"));
+        assert!(fields.has("timeout_ms"));
+        assert!(fields.has("body_buffer_max"));
+    }
 
     #[test]
     fn parse_wasm_device_with_config_map() {
