@@ -136,7 +136,7 @@ fn build_runtime_services(
         out.insert(
             name.clone(),
             ServiceRuntime {
-                strategy: svc.load_balancing_strategy.clone(),
+                strategy: svc.load_balancing_strategy,
                 upstreams,
                 circuit_breaker_cfg: svc.circuit_breaker.clone(),
                 health_check_cfg: svc.health_check.clone(),

@@ -1,28 +1,8 @@
-use crate::types::WasmDeviceSpec;
+use crate::types::{WasmDeviceFailPolicy, WasmDeviceSpec};
 use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-#[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum WasmDeviceFailPolicy {
-    #[default]
-    Open,
-    Closed,
-}
-
-impl TryFrom<&str> for WasmDeviceFailPolicy {
-    type Error = String;
-
-    fn try_from(keyword: &str) -> Result<Self, Self::Error> {
-        match keyword {
-            "open" => Ok(WasmDeviceFailPolicy::Open),
-            "closed" => Ok(WasmDeviceFailPolicy::Closed),
-            other => Err(format!("unknown fail_policy: {other}")),
-        }
-    }
-}
 
 /// Which lifecycle hook(s) a WASM device implements.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -98,13 +78,7 @@ where
     WasmDeviceSpec: Validate + ValidateNested,
 {
     fn lower(spec: &WasmDeviceSpec, report: &mut Report) -> Option<Self> {
-        let fail_policy = match WasmDeviceFailPolicy::try_from(spec.fail_policy.value.as_str()) {
-            Ok(policy) => policy,
-            Err(message) => {
-                report.error(message).at(spec.fail_policy.span).emit();
-                return None;
-            }
-        };
+        let fail_policy = narrow::keyword::<WasmDeviceFailPolicy>(&spec.fail_policy, report)?;
 
         let timeout_ms = narrow::i64_to_u64(&spec.timeout_ms, report)?;
         let body_buffer_max = narrow::i64_to_u64(&spec.body_buffer_max, report)?;
@@ -247,7 +221,7 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|i| i.message == "unknown fail_policy: maybe")
+                .any(|i| i.message == "unknown keyword: maybe")
         );
     }
 }

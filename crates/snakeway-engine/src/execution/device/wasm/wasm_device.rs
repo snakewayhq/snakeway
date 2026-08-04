@@ -81,7 +81,7 @@ impl WasmDevice {
             instance_pre,
             config: Arc::new(cfg.config.clone()),
             device_name: Arc::from(cfg.name.clone()),
-            fail_policy: cfg.fail_policy.clone(),
+            fail_policy: cfg.fail_policy,
             timeout_ms: cfg.timeout_ms,
             body_buffer_max: cfg.body_buffer_max,
             max_memory_bytes,

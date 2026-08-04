@@ -1,8 +1,7 @@
+use crate::types::OnInvalidForwarded;
 use crate::validation::validator::{parse_cidr_list, validate_device_paths};
-use confval::prelude::{ControlFlow, KeywordSet, Located, Report, Validate};
+use confval::prelude::{ControlFlow, Located, Report, Validate};
 use serde::Serialize;
-
-pub const ON_INVALID_FORWARDED: [&str; 2] = ["deny", "ignore"];
 
 #[derive(Debug, Clone, Default, Serialize, confval::Spec)]
 pub struct NetworkPolicyDeviceSpec {
@@ -34,11 +33,7 @@ impl Default for ForwardingSpec {
 
 impl Validate for ForwardingSpec {
     fn validate(&self, report: &mut Report) {
-        KeywordSet::new(&ON_INVALID_FORWARDED).check_located(
-            &self.on_invalid,
-            "on_invalid",
-            report,
-        );
+        OnInvalidForwarded::keyword_set().check_located(&self.on_invalid, "on_invalid", report);
     }
 }
 

@@ -2,7 +2,7 @@ use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::execution::route::{request_path_in_scope, sort_paths_longest_first};
 use smallvec::SmallVec;
-use snakeway_conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwardedConfig};
+use snakeway_conf::types::{NetworkPolicyDeviceConfig, OnInvalidForwarded};
 use snakeway_net::CidrCollection;
 use tracing::debug;
 
@@ -14,12 +14,6 @@ pub(crate) struct NetworkPolicyDevice {
     pub(crate) paths: SmallVec<[String; 4]>,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum OnInvalidForwarded {
-    Deny,
-    Ignore,
-}
-
 impl From<NetworkPolicyDeviceConfig> for NetworkPolicyDevice {
     fn from(cfg: NetworkPolicyDeviceConfig) -> Self {
         let mut paths = cfg.paths;
@@ -27,17 +21,8 @@ impl From<NetworkPolicyDeviceConfig> for NetworkPolicyDevice {
         Self {
             cidr_allow: cfg.cidr_allow.into(),
             allow_forwarded: cfg.forwarding.allow,
-            on_invalid_forwarded: cfg.forwarding.on_invalid.into(),
+            on_invalid_forwarded: cfg.forwarding.on_invalid,
             paths,
-        }
-    }
-}
-
-impl From<OnInvalidForwardedConfig> for OnInvalidForwarded {
-    fn from(cfg: OnInvalidForwardedConfig) -> Self {
-        match cfg {
-            OnInvalidForwardedConfig::Deny => OnInvalidForwarded::Deny,
-            OnInvalidForwardedConfig::Ignore => OnInvalidForwarded::Ignore,
         }
     }
 }
@@ -110,9 +95,7 @@ mod tests {
     use crate::execution::device::core::{Device, DeviceResult};
     use crate::execution::enrichment::user_agent::ClientIdentity;
     use smallvec::SmallVec;
-    use snakeway_conf::types::{
-        ForwardingConfig, NetworkPolicyDeviceConfig, OnInvalidForwardedConfig,
-    };
+    use snakeway_conf::types::{ForwardingConfig, NetworkPolicyDeviceConfig, OnInvalidForwarded};
     use snakeway_net::CidrCollection;
     use std::net::{IpAddr, Ipv4Addr};
 
@@ -317,7 +300,7 @@ mod tests {
             cidr_allow: vec![cidr],
             forwarding: ForwardingConfig {
                 allow: false,
-                on_invalid: OnInvalidForwardedConfig::Deny,
+                on_invalid: OnInvalidForwarded::Deny,
             },
             paths: smallvec::smallvec![],
         };
