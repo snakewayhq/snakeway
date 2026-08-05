@@ -3,7 +3,8 @@ use crate::harness::replay_http::replay_http_fixture;
 use crate::harness::runtime_patch::patch_runtime;
 use crate::harness::upstream::{
     start_grpc_upstream, start_http_upstream, start_http_upstream_that_echoes_headers,
-    start_http_upstream_that_reads_request, start_ws_upstream,
+    start_http_upstream_that_echoes_request_line, start_http_upstream_that_reads_request,
+    start_ws_upstream,
 };
 use crate::harness::{CapturedEvent, init_test_tracing};
 use reqwest::blocking::{Client, RequestBuilder};
@@ -88,6 +89,12 @@ impl TestServer {
 
     pub fn start_http_upstream_that_echoes_headers_with_config(cfg: &mut RuntimeConfig) -> Self {
         Self::start_with_config(cfg, start_http_upstream_that_echoes_headers)
+    }
+
+    pub fn start_http_upstream_that_echoes_request_line_with_config(
+        cfg: &mut RuntimeConfig,
+    ) -> Self {
+        Self::start_with_config(cfg, start_http_upstream_that_echoes_request_line)
     }
 
     pub fn start_with_config<F>(cfg: &mut RuntimeConfig, start_upstream: F) -> Self

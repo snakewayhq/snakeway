@@ -1,5 +1,7 @@
 use super::replay_fixture;
+use snakeway_tests::conf::minimal_http_runtime_config;
 use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
+use snakeway_tests::harness::TestServer;
 
 /// Percent-encoded characters in the path must be forwarded intact.
 ///
@@ -20,13 +22,26 @@ fn encoded_path_should_proxy() {
 ///
 /// A proxy must forward the full query string without truncation,
 /// double-encoding, or stripping of parameters.  This fixture exercises
-/// `+` encoding for spaces and multiple parameters.
+/// `+` encoding for spaces and multiple parameters.  The upstream echoes
+/// the request line it received, so the assertion covers what the proxy
+/// actually forwarded rather than only the response status.
 #[test]
 fn query_string_should_proxy() {
-    let resp = replay_fixture("uri/query_string.http");
+    // Arrange
+    let mut cfg = minimal_http_runtime_config();
+    let srv = TestServer::start_http_upstream_that_echoes_request_line_with_config(&mut cfg);
+
+    // Act
+    let resp = srv.replay_http_fixture("uri/query_string.http");
+
+    // Assert
     assert!(
         resp.contains(HTTP_REPLAY_OK_RESPONSE),
-        "Request with query string should be proxied"
+        "Request with query string should be proxied; got: {resp}"
+    );
+    assert!(
+        resp.contains("GET /api?action=search&q=hello+world&page=1&limit=50"),
+        "Upstream must receive the full query string in the request line; upstream saw: {resp}"
     );
 }
 

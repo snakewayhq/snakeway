@@ -214,6 +214,43 @@ pub fn start_http_upstream_that_echoes_headers(port: u16) {
     thread::sleep(Duration::from_millis(25));
 }
 
+/// An upstream that reads the request head and echoes the request line back
+/// as a plain-text response body. Used to verify what the proxy actually
+/// forwarded (method, path, and query), not just that it responded.
+pub fn start_http_upstream_that_echoes_request_line(port: u16) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let addr = format!("127.0.0.1:{port}");
+
+    thread::spawn(move || {
+        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("stream error");
+            let reader = BufReader::new(stream.try_clone().unwrap());
+
+            let mut lines = reader.lines();
+            let request_line = lines.next().and_then(|l| l.ok()).unwrap_or_default();
+            for line in lines {
+                if line.unwrap_or_default().is_empty() {
+                    break;
+                }
+            }
+
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
+                request_line.len(),
+                request_line
+            );
+            let _ = stream.write_all(resp.as_bytes());
+        }
+    });
+
+    thread::sleep(Duration::from_millis(25));
+}
+
 pub mod helloworld {
     tonic::include_proto!("helloworld");
 }
