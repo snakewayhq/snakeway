@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use snakeway_engine::route::types::RouteId;
 use snakeway_engine::route::{RouteRuntime, Router};

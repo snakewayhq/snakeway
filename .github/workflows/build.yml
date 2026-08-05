@@ -55,7 +55,7 @@ jobs:
       # Lint check.
       - name: cargo clippy
         run: |
-          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
           # Second pass without benchmarks to catch dead code only kept alive by bench targets.
           cargo clippy --locked --workspace --exclude snakeway-tests --lib --tests --all-features -- -D warnings
 

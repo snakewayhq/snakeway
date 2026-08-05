@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use http::HeaderMap;
 use snakeway_engine::ctx::request::normalization::{ProtocolNormalizationMode, normalize_headers};
