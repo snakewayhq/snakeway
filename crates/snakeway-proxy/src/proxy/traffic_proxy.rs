@@ -509,9 +509,10 @@ impl ProxyHttp for TrafficProxy {
             DeviceResult::Continue => {
                 // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method().to_owned());
+                // Using try_from(String) is intentional.
+                // It hands the buffer to the Uri without a copy.
                 upstream.set_uri(
-                    ctx.upstream_uri()
-                        .parse()
+                    http::Uri::try_from(ctx.upstream_uri())
                         .map_err(|_| Error::new(Custom("invalid upstream uri")))?,
                 );
 
