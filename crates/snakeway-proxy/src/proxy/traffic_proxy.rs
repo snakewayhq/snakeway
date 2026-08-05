@@ -510,9 +510,9 @@ impl ProxyHttp for TrafficProxy {
                 // Applies upstream intent derived from the request context.
                 upstream.set_method(ctx.method().to_owned());
                 upstream.set_uri(
-                    ctx.upstream_path()
+                    ctx.upstream_uri()
                         .parse()
-                        .map_err(|_| Error::new(Custom("invalid upstream path")))?,
+                        .map_err(|_| Error::new(Custom("invalid upstream uri")))?,
                 );
 
                 // Device header ops live on `ctx`, so the upstream request headers

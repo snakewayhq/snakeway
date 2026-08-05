@@ -372,6 +372,18 @@ impl RequestCtx {
             .unwrap_or(self.canonical_path())
     }
 
+    /// URI used when proxying upstream.
+    /// Appends the original query string to the upstream path when the
+    /// request carried one.
+    pub fn upstream_uri(&self) -> String {
+        let query = self.query_string();
+        if query.is_empty() {
+            self.upstream_path().to_string()
+        } else {
+            format!("{}?{}", self.upstream_path(), query)
+        }
+    }
+
     /// Will return the full original URI as received the proxy.
     /// This may include the scheme, host, and port.
     /// Or, just the path with an optional query string.
@@ -759,6 +771,58 @@ mod tests {
 
         // Assert
         assert_eq!(result, expected_path);
+    }
+
+    #[tokio::test]
+    async fn upstream_uri_includes_query_string() {
+        // Arrange
+        let request = RawHttpRequest::new("GET", "/api?action=search&q=hello+world&page=1")
+            .header("Host", "example.test")
+            .build();
+        let session = make_h1_session(&request).await;
+        let mut ctx = RequestCtx::empty();
+        let _ = ctx.hydrate_from_session(&session);
+
+        // Act
+        let result = ctx.upstream_uri();
+
+        // Assert
+        assert_eq!(result, "/api?action=search&q=hello+world&page=1");
+    }
+
+    #[tokio::test]
+    async fn upstream_uri_omits_query_delimiter_when_no_query() {
+        // Arrange
+        let request = RawHttpRequest::new("GET", "/api")
+            .header("Host", "example.test")
+            .build();
+        let session = make_h1_session(&request).await;
+        let mut ctx = RequestCtx::empty();
+        let _ = ctx.hydrate_from_session(&session);
+
+        // Act
+        let result = ctx.upstream_uri();
+
+        // Assert
+        assert_eq!(result, "/api");
+    }
+
+    #[tokio::test]
+    async fn upstream_uri_appends_query_to_upstream_path_override() {
+        // Arrange
+        let request = RawHttpRequest::new("GET", "/from-route?a=1&b=2")
+            .header("Host", "example.test")
+            .build();
+        let session = make_h1_session(&request).await;
+        let mut ctx = RequestCtx::empty();
+        let _ = ctx.hydrate_from_session(&session);
+        ctx.upstream_path = Some("/override".to_string());
+
+        // Act
+        let result = ctx.upstream_uri();
+
+        // Assert
+        assert_eq!(result, "/override?a=1&b=2");
     }
 
     #[tokio::test]

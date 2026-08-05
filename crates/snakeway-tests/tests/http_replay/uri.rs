@@ -24,7 +24,7 @@ fn encoded_path_should_proxy() {
 /// double-encoding, or stripping of parameters.  This fixture exercises
 /// `+` encoding for spaces and multiple parameters.  The upstream echoes
 /// the request line it received, so the assertion covers what the proxy
-/// actually forwarded rather than only the response status.
+/// forwarded rather than only the response status.
 #[test]
 fn query_string_should_proxy() {
     // Arrange

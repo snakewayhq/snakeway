@@ -215,8 +215,8 @@ pub fn start_http_upstream_that_echoes_headers(port: u16) {
 }
 
 /// An upstream that reads the request head and echoes the request line back
-/// as a plain-text response body. Used to verify what the proxy actually
-/// forwarded (method, path, and query), not just that it responded.
+/// as a plain-text response body. Used by tests that assert on the method,
+/// path, and query the proxy forwarded upstream.
 pub fn start_http_upstream_that_echoes_request_line(port: u16) {
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
