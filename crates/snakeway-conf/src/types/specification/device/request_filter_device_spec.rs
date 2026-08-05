@@ -75,10 +75,6 @@ impl Default for RequestFilterDeviceSpec {
 
 impl Validate for RequestFilterDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         if let Some(deny_status) = &self.deny_status {
             DENY_STATUS.check_located(deny_status, "deny_status", report);
         }
@@ -220,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = RequestFilterDeviceSpec {
@@ -233,6 +229,9 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate deny_status"
+        );
     }
 }

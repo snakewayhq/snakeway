@@ -109,12 +109,8 @@ impl Validate for CompressionOptsSpec {
             "small_file_threshold",
             report,
         );
-        if self.enable_gzip.value {
-            MIN_GZIP_SIZE.check_located(&self.min_gzip_size, "min_gzip_size", report);
-        }
-        if self.enable_brotli.value {
-            MIN_BROTLI_SIZE.check_located(&self.min_brotli_size, "min_brotli_size", report);
-        }
+        MIN_GZIP_SIZE.check_located(&self.min_gzip_size, "min_gzip_size", report);
+        MIN_BROTLI_SIZE.check_located(&self.min_brotli_size, "min_brotli_size", report);
     }
 }
 
@@ -271,7 +267,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_encoder_thresholds_are_not_checked() {
+    fn disabled_encoder_thresholds_are_still_checked() {
         // Arrange
         let mut report = Report::new();
         let spec = CompressionOptsSpec {
@@ -286,7 +282,22 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("min_gzip_size")),
+            "disabled gzip must still validate its threshold; issues: {:?}",
+            report.issues()
+        );
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("min_brotli_size")),
+            "disabled brotli must still validate its threshold; issues: {:?}",
+            report.issues()
+        );
     }
 
     #[test]

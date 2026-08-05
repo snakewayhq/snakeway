@@ -204,10 +204,6 @@ impl ValidateNested for WasmDeviceSpec {
 
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         if self.name.value.trim().is_empty() {
             report
                 .error("wasm device name must not be empty")
@@ -232,7 +228,7 @@ impl Validate for WasmDeviceSpec {
                 report
                     .error("hooks must not be empty")
                     .at(hooks.span)
-                    .help("omit `hooks` to run all hooks, or set enable = false to disable the device")
+                    .help("omit `hooks` to run all hooks, or list at least one hook")
                     .emit();
             }
             for hook in &hooks.value {
@@ -529,7 +525,7 @@ hooks = ["on_request", "on_response"]
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = WasmDeviceSpec {
@@ -542,6 +538,13 @@ hooks = ["on_request", "on_response"]
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("fail_policy")),
+            "a disabled device must still validate fail_policy; issues: {:?}",
+            report.issues()
+        );
     }
 }

@@ -20,10 +20,6 @@ pub struct RequestRateLimitingDeviceSpec {
 
 impl Validate for RequestRateLimitingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         MAX_REQUESTS_PER_SECOND.check_located(
             &self.max_requests_per_second,
             "max_requests_per_second",
@@ -102,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = RequestRateLimitingDeviceSpec {
@@ -115,6 +111,9 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate its rate values"
+        );
     }
 }

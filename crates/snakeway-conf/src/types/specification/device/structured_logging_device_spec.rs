@@ -49,10 +49,6 @@ impl Default for StructuredLoggingDeviceSpec {
 
 impl Validate for StructuredLoggingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         LogLevel::keyword_set().check_located(&self.level, "level", report);
 
         for field in &self.identity_fields {
@@ -179,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = StructuredLoggingDeviceSpec {
@@ -192,6 +188,9 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate its keyword values"
+        );
     }
 }
