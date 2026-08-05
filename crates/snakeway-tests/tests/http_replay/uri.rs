@@ -141,7 +141,9 @@ fn unicode_encoded_query_should_proxy() {
         "Request with Unicode percent-encoded query parameters should be proxied; got: {resp}"
     );
     assert!(
-        resp.contains("GET /api?name=%E4%B8%AD%E6%96%87&emoji=%F0%9F%91%8D&latin=%C3%A9t%C3%A9 HTTP/1.1"),
+        resp.contains(
+            "GET /api?name=%E4%B8%AD%E6%96%87&emoji=%F0%9F%91%8D&latin=%C3%A9t%C3%A9 HTTP/1.1"
+        ),
         "Upstream must receive percent-encoded Unicode query parameters unchanged; upstream saw: {resp}"
     );
 }
