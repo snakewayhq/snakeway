@@ -284,6 +284,7 @@ mod tests {
         assert!(slot_is_held(&manager));
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic(expected = "invalid upgrade transition")]
     fn should_reject_switch_without_negotiation() {
@@ -293,7 +294,7 @@ mod tests {
         // Act
         let _ = state.switch();
 
-        // Assert: the debug assertion panics in test builds.
+        // Assert: the debug assertion panics in debug builds.
     }
 
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -344,6 +345,28 @@ mod tests {
             StateKind::Closed => UpgradeState::Closed,
             with_guard => build_with_guard(with_guard),
         }
+    }
+
+    fn kind_of(state: &UpgradeState) -> StateKind {
+        match state {
+            UpgradeState::NotUpgrade => StateKind::NotUpgrade,
+            UpgradeState::Requested => StateKind::Requested,
+            UpgradeState::Admitted { .. } => StateKind::Admitted,
+            UpgradeState::Negotiated { .. } => StateKind::Negotiated,
+            UpgradeState::Switched { .. } => StateKind::Switched,
+            UpgradeState::ProxyRejected { .. } => StateKind::ProxyRejected,
+            UpgradeState::UpstreamRejected { .. } => StateKind::UpstreamRejected,
+            UpgradeState::Failed { .. } => StateKind::Failed,
+            UpgradeState::Closed => StateKind::Closed,
+        }
+    }
+
+    fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+        payload
+            .downcast_ref::<String>()
+            .cloned()
+            .or_else(|| payload.downcast_ref::<&str>().map(|s| (*s).to_string()))
+            .unwrap_or_default()
     }
 
     fn apply(state: UpgradeState, event: Event) -> UpgradeState {
@@ -397,19 +420,42 @@ mod tests {
 
         for state_kind in all_states {
             for event in all_events {
-                // Act: an illegal pair panics through the debug assertion.
-                let outcome = catch_unwind(AssertUnwindSafe(|| {
-                    let next = apply(make_state(state_kind), event);
-                    drop(next);
-                }));
+                // Act
+                let outcome =
+                    catch_unwind(AssertUnwindSafe(|| apply(make_state(state_kind), event)));
 
-                // Assert
+                // Assert: a legal pair transitions, an illegal pair trips the
+                // debug assertion in debug builds and preserves the state in
+                // release builds.
                 let expected_legal = legal.contains(&(state_kind, event));
-                assert_eq!(
-                    outcome.is_ok(),
-                    expected_legal,
-                    "pair ({state_kind:?}, {event:?}) expected legal={expected_legal}"
-                );
+                match outcome {
+                    Ok(next) => {
+                        if expected_legal {
+                            drop(next);
+                        } else if cfg!(debug_assertions) {
+                            panic!(
+                                "pair ({state_kind:?}, {event:?}) must trip the debug assertion"
+                            );
+                        } else {
+                            assert_eq!(
+                                kind_of(&next),
+                                state_kind,
+                                "illegal pair ({state_kind:?}, {event:?}) must preserve the state in release builds"
+                            );
+                        }
+                    }
+                    Err(payload) => {
+                        let message = panic_message(payload.as_ref());
+                        assert!(
+                            message.contains("invalid upgrade transition"),
+                            "pair ({state_kind:?}, {event:?}) panicked outside the transition: {message}"
+                        );
+                        assert!(
+                            !expected_legal,
+                            "legal pair ({state_kind:?}, {event:?}) must not panic"
+                        );
+                    }
+                }
             }
         }
     }
