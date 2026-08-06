@@ -158,9 +158,12 @@ A rejected or failed handshake runs neither hook.
 There are two rejection layers.
 
 1. ProxyRejected happens in `request_filter`, before any upstream is contacted.
-   The proxy refuses with 404 when no route matches, 400 when the route serves static files, 426 when the route forbids WebSockets, 503 when the connection pool is full, or whatever status an `on_request` device responds with.
+   The proxy refuses with 404 when no route matches, 400 when the route serves static files, 426 when the route forbids WebSockets, 503 when the connection pool is full, 500 when an `on_request` device errors, or whatever status an `on_request` device responds with.
 2. UpstreamRejected happens when the upstream answers the handshake with a non-informational status other than `101`.
    The response is forwarded through the normal response lifecycle.
+
+A request can also end while the machine is still in `Requested`, for example when the client aborts before routing completes.
+No slot is held in that state, so nothing needs releasing.
 
 Known limitation: the `Negotiated` state has no timeout.
 An upstream that connects but never sends `101` will hang, because Pingora's single read timeout cannot bound the
