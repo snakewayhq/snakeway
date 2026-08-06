@@ -96,6 +96,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
     fn max_xff_length_below_range() {
         // Arrange
         let mut report = Report::new();

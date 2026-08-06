@@ -50,6 +50,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = NetworkPolicyDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
     fn invalid_cidr_in_allow_list() {
         // Arrange
         let mut report = Report::new();

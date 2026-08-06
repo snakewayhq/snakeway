@@ -74,6 +74,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
     fn valid_structured_logging_device() {
         // Arrange
         let mut report = Report::new();
