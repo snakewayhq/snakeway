@@ -35,8 +35,8 @@ fn websocket_echo_is_proxied() {
 }
 
 /// When `ws_max_connections` is set to 1, the proxy must reject the
-/// second WebSocket connection. The upstream only handles one connection
-/// at a time, so we use limit=1 to test the enforcement.
+/// second WebSocket connection. Enforcement is proxy-side, meaning
+/// the second request is rejected before any upstream is contacted.
 #[test]
 fn websocket_max_connections_rejects_excess() {
     // Arrange
