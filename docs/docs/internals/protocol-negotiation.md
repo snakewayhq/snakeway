@@ -93,18 +93,27 @@ WebSocket over HTTP/2 (RFC 8441 Extended CONNECT) is not supported.
 Snakeway does not advertise `SETTINGS_ENABLE_CONNECT_PROTOCOL`, and such a request is reset.
 Foundationally, this is because Pingora does not support websockets (RFC 8441 Extended CONNECT) over HTTP/2.
 
+The states are the variants of `UpgradeState`, seeded at hydration and carried on the request context.
+Each hook advances the machine through a transition method, and the states that hold a pool slot own its guard.
+
 An upgrade progresses through these states:
 
-| From       | Event                                                         | To                           |
-|------------|---------------------------------------------------------------|------------------------------|
-| NotUpgrade | `request_filter` sees a valid `Upgrade`                       | Requested                    |
-| Requested  | the route allows WebSockets and a connection slot is acquired | Admitted                     |
-| Requested  | the route forbids WebSockets, or the pool is full             | ProxyRejected (426 or 503) |
-| Admitted   | `upstream_request_filter` forces h1 and sets upgrade headers  | Negotiated                   |
-| Negotiated | upstream returns `101`                                        | Switched                     |
-| Negotiated | upstream returns a status other than `101`                    | UpstreamRejected (forwarded) |
-| Negotiated | the upstream connection fails or aborts before `101`          | Failed                       |
-| Switched   | either side closes                                            | Closed                       |
+| From       | Event                                                                | To                           |
+|------------|----------------------------------------------------------------------|------------------------------|
+| NotUpgrade | `request_filter` sees a valid `Upgrade`                              | Requested                    |
+| Requested  | the route allows WebSockets and a connection slot is acquired        | Admitted                     |
+| Requested  | the proxy refuses the handshake                                      | ProxyRejected                |
+| Admitted   | `upstream_request_filter` forces h1 and sets upgrade headers         | Negotiated                   |
+| Admitted   | upstream selection or the upstream connection fails                  | Failed                       |
+| Negotiated | a Pingora retry re-runs the upgrade request                          | Negotiated                   |
+| Negotiated | upstream returns `101`                                               | Switched                     |
+| Negotiated | upstream returns a non-informational status other than `101`         | UpstreamRejected (forwarded) |
+| Negotiated | the send fails or the upstream aborts before `101`                   | Failed                       |
+| Switched   | either side closes, cleanly or through a transport error             | Closed                       |
+
+`Failed` exits from `Admitted` as well as `Negotiated` because Pingora establishes the upstream connection between `upstream_peer` and `upstream_request_filter`.
+A connect failure or timeout therefore strikes while the machine is still in `Admitted`, and so does an upstream selection error or a `before_proxy` device error.
+The `Negotiated` self-transition covers a Pingora retry, which re-runs `upstream_peer` and `upstream_request_filter` when a reused upstream connection fails.
 
 This diagram demonstrates the upgrade state machine workflow:
 
@@ -117,17 +126,19 @@ flowchart TD
     negotiated["<b>Negotiated</b><br/>h1 forced, headers set"]
     switched["<b>Switched</b><br/>101, tunnel open"]
     closed(["Closed"])
-    proxyReject(["ProxyRejected<br/>426 or 503"])
+    proxyReject(["ProxyRejected<br/>400, 404, 426, 503, or a device response"])
     upReject(["UpstreamRejected<br/>not 101, forwarded"])
     failed(["Failed<br/>transport error"])
 
     notUpgrade -- "valid Upgrade" --> requested
     requested -- "allowed · slot free" --> admitted
-    requested -- "forbidden · pool full" --> proxyReject
+    requested -- "proxy refuses" --> proxyReject
     admitted -- "force h1" --> negotiated
+    admitted -- "selection or connect fails" --> failed
+    negotiated -- "retry" --> negotiated
     negotiated -- "101" --> switched
     negotiated -- "not 101" --> upReject
-    negotiated -- "connect fails" --> failed
+    negotiated -- "send fails · abort before 101" --> failed
     switched -- "either closes" --> closed
 
     classDef io stroke:#64748b,stroke-width:1.5px;
@@ -141,12 +152,15 @@ flowchart TD
 
 Reaching `Switched` runs the WebSocket open hook and suppresses the normal response lifecycle.
 `Closed` runs the WebSocket close hook.
-A rejected or failed handshake runs neither.
+A transport error after the `101` still terminates in `Closed`, because the close hook runs regardless of how the tunnel ended.
+A rejected or failed handshake runs neither hook.
 
 There are two rejection layers.
 
 1. ProxyRejected happens in `request_filter`, before any upstream is contacted.
-2. UpstreamRejected happens when the upstream answers the handshake with a status other than `101`.
+   The proxy refuses with 404 when no route matches, 400 when the route serves static files, 426 when the route forbids WebSockets, 503 when the connection pool is full, or whatever status an `on_request` device responds with.
+2. UpstreamRejected happens when the upstream answers the handshake with a non-informational status other than `101`.
+   The response is forwarded through the normal response lifecycle.
 
 Known limitation: the `Negotiated` state has no timeout.
 An upstream that connects but never sends `101` will hang, because Pingora's single read timeout cannot bound the
