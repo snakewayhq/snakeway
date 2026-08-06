@@ -1,8 +1,7 @@
-use crate::types::specification::field_emit::string_map_field;
 use crate::types::{HclInt, WasmDeviceFailPolicy};
 use crate::validation::validator::require_existing_file;
 use confval::format::{
-    Field, FieldKind, Fields, FieldsBuilder, FromFields, Scalar, ToFields, ValueKind, Walk,
+    Field, FieldKind, Fields, FieldsBuilder, FromFields, Scalar, ToFields, Value, ValueKind, Walk,
     parse_bool_field, parse_int_field, parse_string_field, parse_string_list_field,
     report_missing_field, report_unknown_field,
 };
@@ -63,6 +62,25 @@ impl Default for WasmDeviceSpec {
             hooks: None,
         }
     }
+}
+
+/// Entries are sorted by key so emission is deterministic.
+fn string_map_field(name: &str, entries: &HashMap<String, String>) -> Field {
+    let mut sorted: Vec<(&String, &String)> = entries.iter().collect();
+    sorted.sort_by_key(|(key, _)| key.as_str());
+    let fields = sorted
+        .into_iter()
+        .map(|(key, value)| {
+            Field::detached_value(
+                key,
+                Value::detached(ValueKind::Scalar(Scalar::String(value.to_string()))),
+            )
+        })
+        .collect();
+    Field::detached_value(
+        name,
+        Value::detached(ValueKind::Map(Fields::detached(fields))),
+    )
 }
 
 /// Parses the `config` attribute as a flat string-to-string map.

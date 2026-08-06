@@ -1,6 +1,5 @@
 mod check;
 mod dump;
-pub(crate) mod hcl;
 mod init;
 
 pub(crate) use check::*;

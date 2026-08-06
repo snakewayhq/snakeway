@@ -139,13 +139,12 @@ To dump as `YAML`:
 snakeway config dump /etc/snakeway --format=yaml
 ```
 
-By default (`--repr=spec`), the output matches the configuration files: blocks you did not write are omitted, so the dump round-trips back to your source.
+By default (`--repr=spec`), the output matches the configuration files: settings you did not write are omitted, so the dump round-trips back to your source.
 
 Three representations are available through `--repr`:
 
 - `spec` (default): the configuration exactly as written.
-- `populated-spec`: the spec with defaulted blocks filled in.
-  Blocks such as `shutdown`, `upgrade`, `performance`, and `upstream` that you omit are shown with the values Snakeway applies at runtime, so you can see the effective defaults.
+- `populated-spec`: the spec with defaults filled in, so you can see the effective values Snakeway applies for settings you omitted.
 - `runtime`: the lower level internal primitives Snakeway runs on, after lowering.
   This is useful for debugging.
 
