@@ -20,7 +20,7 @@ fn http10_get_should_proxy() {
 /// client's missing `Host`, so it must surface as a client error (4xx), never
 /// as a 5xx that blames the server.
 ///
-/// Known-failing discovery: the proxy currently returns 500 for this case.
+/// The proxy rejects the request during normalization and responds 400.
 #[test]
 fn http10_without_host_should_be_a_client_error() {
     let resp = replay_fixture("connection/http10_no_host.http");
