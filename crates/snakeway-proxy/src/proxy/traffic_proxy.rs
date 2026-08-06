@@ -1,12 +1,13 @@
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::proxy_ctx::ProxyCtx;
-use crate::proxy::traffic::headers::{write_back_request_headers, write_back_response_headers};
+use crate::proxy::traffic::headers::write_back_response_headers;
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
+use crate::proxy::traffic::upstream_intent::apply_upstream_intent;
 use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{StatusCode, Version, header};
+use http::{StatusCode, header};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use snakeway_engine::WsConnectionManager;
@@ -16,9 +17,9 @@ use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
 use snakeway_engine::runtime::RuntimeState;
 use snakeway_engine::traffic::{
-    AdmissionGuard, ProtocolMode, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
-use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
+use snakeway_observability::{HeaderExtractor, Metrics};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -453,70 +454,7 @@ impl ProxyHttp for TrafficProxy {
         let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
-            DeviceResult::Continue => {
-                // Applies upstream intent derived from the request context.
-                upstream.set_method(ctx.method().to_owned());
-                // Using try_from(String) is intentional.
-                // It hands the buffer to the Uri without a copy.
-                upstream.set_uri(
-                    http::Uri::try_from(ctx.upstream_uri())
-                        .map_err(|_| Error::new(Custom("invalid upstream uri")))?,
-                );
-
-                // Device header ops live on `ctx`, so the upstream request
-                // headers are rebuilt from it.
-                write_back_request_headers(upstream, ctx.headers())?;
-
-                // The upstream Host follows the resolved protocol mode.
-                // For end-to-end HTTP/2 it comes from the upstream authority
-                // set in upstream_peer and overrides any client Host.
-                let protocol_mode = ctx
-                    .protocol_mode
-                    .ok_or_else(|| Error::new(Custom("protocol mode not resolved")))?;
-
-                match protocol_mode {
-                    ProtocolMode::Http2EndToEnd => {
-                        let authority = ctx.upstream_authority().ok_or_else(|| {
-                            Error::new(Custom("missing upstream authority for h2"))
-                        })?;
-                        upstream.insert_header(header::HOST, authority)?;
-                    }
-                    ProtocolMode::Http1 => {
-                        if !upstream.headers.contains_key(header::HOST) {
-                            // An HTTP/2 downstream request carries its authority in
-                            // the `:authority` pseudo-header, which never appears in
-                            // the header map rebuilt above.
-                            // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
-                            // from the request authority.
-                            let authority = ctx.downstream_authority().ok_or_else(|| {
-                                Error::new(Custom("missing authority for h1 upstream Host"))
-                            })?;
-                            upstream.insert_header(header::HOST, authority)?;
-                        }
-                    }
-                }
-
-                if ctx.is_upgrade_req() {
-                    // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
-                    upstream.set_version(Version::HTTP_11);
-
-                    // The headers are explicitly set - upstreams can be picky if they aren't there.
-                    // Note that if the client already set these. they will be replaced.
-                    upstream.insert_header(header::UPGRADE, "websocket")?;
-                    upstream.insert_header(header::CONNECTION, "Upgrade")?;
-                }
-
-                // Inject W3C Trace Context into upstream request headers so
-                // the upstream service can continue the distributed trace.
-                opentelemetry::global::get_text_map_propagator(|prop| {
-                    prop.inject_context(
-                        &tracing::Span::current().context(),
-                        &mut RequestHeaderInjector(upstream),
-                    );
-                });
-
-                Ok(())
-            }
+            DeviceResult::Continue => apply_upstream_intent(upstream, ctx),
 
             DeviceResult::Respond(_resp) => Err(Error::new(Custom("respond before proxy"))),
 
