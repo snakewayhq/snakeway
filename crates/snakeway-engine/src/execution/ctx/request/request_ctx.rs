@@ -10,11 +10,13 @@ use crate::execution::ctx::request::{
 };
 use crate::execution::enrichment::user_agent::ClientIdentity;
 use crate::execution::route::types::RouteId;
-use crate::execution::traffic::{AdmissionGuard, ProtocolMode, ServiceId, UpstreamOutcome};
+use crate::execution::traffic::{
+    AdmissionGuard, ProtocolMode, ServiceId, UpgradeState, UpstreamOutcome,
+};
 use crate::execution::ws_connection_management::WsConnectionGuard;
 use crate::runtime::UpstreamId;
 use http::header::HOST;
-use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
+use http::{Extensions, HeaderMap, Method, StatusCode, Version, uri::Authority};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use tracing::Span;
@@ -22,8 +24,9 @@ use tracing::Span;
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
 pub struct RequestCtx {
-    /// Holds the WS connection slot for the lifetime of the connection
-    pub ws_guard: Option<WsConnectionGuard>,
+    /// Upgrade negotiation lifecycle, owning the WS connection slot in the
+    /// states that hold one
+    pub upgrade: UpgradeState,
 
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
     pub admission_guard: Option<AdmissionGuard>,
@@ -39,9 +42,6 @@ pub struct RequestCtx {
 
     /// Remote IP of the TCP connection (authoritative)
     pub peer_ip: IpAddr,
-
-    /// Was a websocket connection opened?
-    pub ws_opened: bool,
 
     /// Upstream authority for HTTP/2 requests.
     pub upstream_authority: Option<String>,
@@ -90,7 +90,7 @@ impl RequestCtx {
             // Request lifecycle-related.
             hydrated: false,
             admission_guard: None,
-            ws_guard: None,
+            upgrade: UpgradeState::default(),
 
             // Upstream/routing related.
             service: None,
@@ -98,7 +98,6 @@ impl RequestCtx {
             upstream_path: None,
 
             // Protocol flag(s) that help figure out what to do with the request.
-            ws_opened: false,
             protocol_mode: None,
 
             // Required for gRPC.
@@ -233,6 +232,7 @@ impl RequestCtx {
         }
         .into();
 
+        self.upgrade = UpgradeState::begin(src.http_is_upgrade_req());
         self.hydrated = true;
         Ok(())
     }
@@ -330,6 +330,39 @@ impl RequestCtx {
     pub fn is_upgrade_req(&self) -> bool {
         debug_assert!(self.hydrated);
         self.normalized_request.is_upgrade_req()
+    }
+
+    /// True once the upstream answered `101` and the tunnel is open.
+    pub fn ws_switched(&self) -> bool {
+        matches!(self.upgrade, UpgradeState::Switched { .. })
+    }
+
+    pub fn upgrade_admitted(&mut self, guard: WsConnectionGuard) {
+        self.upgrade = std::mem::take(&mut self.upgrade).admit(guard);
+    }
+
+    pub fn upgrade_rejected_at_proxy(&mut self, status: StatusCode) {
+        self.upgrade = std::mem::take(&mut self.upgrade).reject_at_proxy(status);
+    }
+
+    pub fn upgrade_negotiated(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).negotiate();
+    }
+
+    pub fn upgrade_switched(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).switch();
+    }
+
+    pub fn upgrade_rejected_at_upstream(&mut self, status: StatusCode) {
+        self.upgrade = std::mem::take(&mut self.upgrade).reject_at_upstream(status);
+    }
+
+    pub fn upgrade_failed(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).fail();
+    }
+
+    pub fn upgrade_closed(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).close();
     }
 }
 

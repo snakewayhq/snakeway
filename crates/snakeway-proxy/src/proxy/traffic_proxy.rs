@@ -15,7 +15,7 @@ use snakeway_engine::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::runtime::RuntimeState;
 use snakeway_engine::traffic::{
-    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpgradeState, UpstreamOutcome,
 };
 use snakeway_observability::Metrics;
 use std::sync::Arc;
@@ -330,7 +330,13 @@ impl ProxyHttp for TrafficProxy {
         let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
-            DeviceResult::Continue => apply_upstream_intent(upstream, ctx),
+            DeviceResult::Continue => {
+                apply_upstream_intent(upstream, ctx)?;
+                if ctx.is_upgrade_req() {
+                    ctx.upgrade_negotiated();
+                }
+                Ok(())
+            }
 
             DeviceResult::Respond(_resp) => Err(Error::new(Custom("respond before proxy"))),
 
@@ -351,7 +357,8 @@ impl ProxyHttp for TrafficProxy {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root_span = ctx.request_span.clone();
+        let _root = _root_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("upstream_response").entered();
         let mut resp_ctx =
             ResponseCtx::from_request(ctx, upstream.status, upstream.headers.clone());
@@ -373,14 +380,23 @@ impl ProxyHttp for TrafficProxy {
             headers: upstream.headers.clone(),
         });
 
-        if ctx.is_upgrade_req() && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
-            // WS upgrade completed.
-            // After this point, HTTP response lifecycle hooks (on_response)
-            // must NOT run for this request.
-            ctx.ws_opened = true;
+        if ctx.is_upgrade_req() {
+            if upstream.status == StatusCode::SWITCHING_PROTOCOLS {
+                // WS upgrade completed.
+                // After this point, HTTP response lifecycle hooks (on_response)
+                // must NOT run for this request.
+                ctx.upgrade_switched();
 
-            // Run WS-open hook.
-            DevicePipeline::run_on_ws_open(self.proxy_ctx.state().devices.all(), &WsCtx::default());
+                // Run WS-open hook.
+                DevicePipeline::run_on_ws_open(
+                    self.proxy_ctx.state().devices.all(),
+                    &WsCtx::default(),
+                );
+            } else if !upstream.status.is_informational() {
+                // The upstream refused the handshake and its response is
+                // forwarded through the normal response lifecycle.
+                ctx.upgrade_rejected_at_upstream(upstream.status);
+            }
         }
 
         Ok(())
@@ -398,7 +414,7 @@ impl ProxyHttp for TrafficProxy {
     ) -> Result<()> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("response").entered();
-        if ctx.ws_opened {
+        if ctx.ws_switched() {
             // WebSocket upgrade is a protocol switch, not a response.
             return Ok(());
         }
@@ -477,11 +493,18 @@ impl ProxyHttp for TrafficProxy {
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.8.1.
-        if ctx.ws_opened {
-            DevicePipeline::run_on_ws_close(
-                self.proxy_ctx.state().devices.all(),
-                &WsCloseCtx::default(),
-            );
+        match (&ctx.upgrade, e) {
+            (UpgradeState::Switched { .. }, _) => {
+                DevicePipeline::run_on_ws_close(
+                    self.proxy_ctx.state().devices.all(),
+                    &WsCloseCtx::default(),
+                );
+                ctx.upgrade_closed();
+            }
+            (UpgradeState::Admitted { .. } | UpgradeState::Negotiated { .. }, Some(_)) => {
+                ctx.upgrade_failed();
+            }
+            _ => {}
         }
 
         self.finalize_request(ctx, e);

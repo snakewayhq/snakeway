@@ -56,6 +56,9 @@ impl TrafficProxy {
             DeviceResult::Continue => {}
 
             DeviceResult::Respond(resp) => {
+                if ctx.is_upgrade_req() {
+                    ctx.upgrade_rejected_at_proxy(resp.status);
+                }
                 resp.write_to_session(&mut session.downstream_session)
                     .await?;
                 return Ok(true);
@@ -63,6 +66,9 @@ impl TrafficProxy {
 
             DeviceResult::Error(err) => {
                 tracing::error!("device error in on_request: {err}");
+                if ctx.is_upgrade_req() {
+                    ctx.upgrade_rejected_at_proxy(StatusCode::INTERNAL_SERVER_ERROR);
+                }
                 session.respond_error(500).await?;
                 return Ok(true);
             }
@@ -106,6 +112,9 @@ impl TrafficProxy {
             Ok(r) => r,
             Err(err) => {
                 tracing::warn!("no route matched: {err}");
+                if ctx.is_upgrade_req() {
+                    ctx.upgrade_rejected_at_proxy(StatusCode::NOT_FOUND);
+                }
                 session.respond_error(404).await?;
                 return Ok(true);
             }
@@ -116,6 +125,7 @@ impl TrafficProxy {
                 ctx.route_id = Some(id.clone());
                 if ctx.is_upgrade_req() {
                     // Reject websocket upgrade requests for static files.
+                    ctx.upgrade_rejected_at_proxy(StatusCode::BAD_REQUEST);
                     session
                         .respond_error(StatusCode::BAD_REQUEST.as_u16())
                         .await?;
@@ -138,6 +148,7 @@ impl TrafficProxy {
                 // If it is a websocket upgrade request, check if the upstream supports websockets.
                 if ctx.is_upgrade_req() {
                     if !allow_websocket {
+                        ctx.upgrade_rejected_at_proxy(StatusCode::UPGRADE_REQUIRED);
                         session
                             .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
                             .await?;
@@ -151,13 +162,14 @@ impl TrafficProxy {
                         .connection_manager
                         .try_acquire(id, ws_max_connections.to_owned())
                     else {
+                        ctx.upgrade_rejected_at_proxy(StatusCode::SERVICE_UNAVAILABLE);
                         session
                             .respond_error(StatusCode::SERVICE_UNAVAILABLE.as_u16())
                             .await?;
                         return Ok(true);
                     };
 
-                    ctx.ws_guard = Some(guard);
+                    ctx.upgrade_admitted(guard);
                 }
 
                 ctx.service = Some(upstream.clone());
