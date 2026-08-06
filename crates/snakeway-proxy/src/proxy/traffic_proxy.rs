@@ -1,5 +1,6 @@
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::proxy_ctx::ProxyCtx;
+use crate::proxy::traffic::headers::{write_back_request_headers, write_back_response_headers};
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
 use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
 use arc_swap::ArcSwap;
@@ -9,7 +10,7 @@ use http::{StatusCode, Version, header};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use snakeway_engine::WsConnectionManager;
-use snakeway_engine::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
+use snakeway_engine::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
 use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
@@ -515,15 +516,9 @@ impl ProxyHttp for TrafficProxy {
                         .map_err(|_| Error::new(Custom("invalid upstream uri")))?,
                 );
 
-                // Device header ops live on `ctx`, so the upstream request headers
-                // are rebuilt from it. Clearing first lets device removals take effect.
-                let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
-                for name in existing {
-                    upstream.remove_header(&name);
-                }
-                for (name, value) in ctx.headers() {
-                    upstream.append_header(name.clone(), value)?;
-                }
+                // Device header ops live on `ctx`, so the upstream request
+                // headers are rebuilt from it.
+                write_back_request_headers(upstream, ctx.headers())?;
 
                 // The upstream Host follows the resolved protocol mode.
                 // For end-to-end HTTP/2 it comes from the upstream authority
@@ -597,16 +592,8 @@ impl ProxyHttp for TrafficProxy {
     ) -> Result<()> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("upstream_response").entered();
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(
-            request_id,
-            upstream.status,
-            upstream.headers.clone(),
-            Vec::new(),
-        );
+        let mut resp_ctx =
+            ResponseCtx::from_request(ctx, upstream.status, upstream.headers.clone());
         let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
@@ -618,17 +605,7 @@ impl ProxyHttp for TrafficProxy {
         }
 
         upstream.set_status(resp_ctx.status)?;
-
-        // Clear and repopulate so device Remove ops propagate to the response,
-        // mirroring the request-side writeback in upstream_request_filter. An
-        // insert-only loop would drop removals and collapse appended multi-values.
-        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
-        for name in existing {
-            upstream.remove_header(&name);
-        }
-        for (name, value) in &resp_ctx.headers {
-            upstream.append_header(name.clone(), value)?;
-        }
+        write_back_response_headers(upstream, &resp_ctx.headers)?;
 
         ctx.extensions.insert(UpstreamResponseSnapshot {
             status: upstream.status,
@@ -665,16 +642,8 @@ impl ProxyHttp for TrafficProxy {
             return Ok(());
         }
 
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(
-            request_id,
-            upstream.status,
-            upstream.headers.clone(),
-            Vec::new(),
-        );
+        let mut resp_ctx =
+            ResponseCtx::from_request(ctx, upstream.status, upstream.headers.clone());
         let state = self.proxy_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
@@ -685,17 +654,7 @@ impl ProxyHttp for TrafficProxy {
         }
 
         upstream.set_status(resp_ctx.status)?;
-
-        // Clear and repopulate so device Remove ops propagate to the response,
-        // mirroring the request-side writeback in upstream_request_filter. An
-        // insert-only loop would drop removals and collapse appended multi-values.
-        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
-        for name in existing {
-            upstream.remove_header(&name);
-        }
-        for (name, value) in &resp_ctx.headers {
-            upstream.append_header(name.clone(), value)?;
-        }
+        write_back_response_headers(upstream, &resp_ctx.headers)?;
 
         let status = upstream.status.as_u16();
         ctx.upstream_outcome = Some(if status >= 500 {
@@ -726,11 +685,7 @@ impl ProxyHttp for TrafficProxy {
             None => return Ok(None),
         };
 
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
+        let mut resp_ctx = ResponseCtx::from_request(ctx, status, headers);
         let state = self.proxy_ctx.state();
 
         match DevicePipeline::on_stream_response_body(
