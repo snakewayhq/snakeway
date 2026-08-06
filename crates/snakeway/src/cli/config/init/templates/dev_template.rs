@@ -63,7 +63,7 @@ pub(crate) fn generate(
         );
     }
 
-    let httpbin_ingress_spec = IngressSpec {
+    let minimal_ingress_spec = IngressSpec {
         bind: Some(Located::detached(BindSpec {
             interface: Located::detached("loopback".to_string()),
             port: Located::detached(8443),
@@ -83,7 +83,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         ingress_dir_path.join("minimal.hcl"),
-        emit_hcl(&httpbin_ingress_spec.to_template())?,
+        emit_hcl(&minimal_ingress_spec.to_template())?,
     );
 
     Ok(())
