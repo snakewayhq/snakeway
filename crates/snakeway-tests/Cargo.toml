@@ -40,3 +40,6 @@ tonic-prost-build = "0.14"
 [package.metadata.cargo-machete]
 ignored = ["prost", "tonic-prost"]
 
+
+[lints]
+workspace = true

@@ -57,7 +57,7 @@ jobs:
         run: |
           cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
           # Second pass without benchmarks to catch dead code only kept alive by bench targets.
-          cargo clippy --locked --workspace --exclude snakeway-tests --lib --tests --all-features -- -D warnings
+          cargo clippy --locked --workspace --lib --tests --all-features -- -D warnings
 
       # Unit test check.
       - name: Install cargo-nextest
