@@ -10,7 +10,7 @@ use crate::execution::ctx::request::{
 };
 use crate::execution::enrichment::user_agent::ClientIdentity;
 use crate::execution::route::types::RouteId;
-use crate::execution::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::execution::traffic::{AdmissionGuard, ProtocolMode, ServiceId, UpstreamOutcome};
 use crate::execution::ws_connection_management::WsConnectionGuard;
 use crate::runtime::UpstreamId;
 use http::header::HOST;
@@ -45,6 +45,9 @@ pub struct RequestCtx {
 
     /// Upstream authority for HTTP/2 requests.
     pub upstream_authority: Option<String>,
+
+    /// Wire protocol resolved for the selected upstream.
+    pub protocol_mode: Option<ProtocolMode>,
 
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
     pub extensions: Extensions,
@@ -96,6 +99,7 @@ impl RequestCtx {
 
             // Protocol flag(s) that help figure out what to do with the request.
             ws_opened: false,
+            protocol_mode: None,
 
             // Required for gRPC.
             upstream_authority: None,
