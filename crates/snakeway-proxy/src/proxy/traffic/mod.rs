@@ -1,7 +1,7 @@
 mod finalize;
-pub mod protocol_api;
-pub(crate) mod smuggle_detection;
-pub(crate) mod types;
-mod upstream_selection_api;
+mod protocol;
+pub(super) mod smuggle_detection;
+mod types;
+mod upstream_selection;
 
-pub(crate) use types::*;
+pub(super) use types::*;

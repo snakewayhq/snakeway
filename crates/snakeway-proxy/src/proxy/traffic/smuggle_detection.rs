@@ -17,7 +17,7 @@ use pingora::protocols::http::ServerSession;
 ///   * Exhausted reuse counter — `will_keepalive()` is also false when reuses_remaining == 0.
 ///
 /// Caveat: this relies on Pingora's current internals, not a stable API. Revisit on upgrade.
-pub fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
+pub(in crate::proxy) fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
     let req = session.req_header();
 
     // Only HTTP/1.1-1.0 defaults to keepalive-off and would false-positive,

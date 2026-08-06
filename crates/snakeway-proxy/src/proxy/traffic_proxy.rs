@@ -26,8 +26,8 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub(crate) struct TrafficProxy {
     listener: Arc<str>,
-    pub(crate) proxy_ctx: ProxyCtx,
-    pub(crate) traffic_director: TrafficDirector,
+    pub(in crate::proxy) proxy_ctx: ProxyCtx,
+    pub(in crate::proxy) traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
     upstream_connect_timeout: Option<Duration>,
     upstream_read_timeout: Option<Duration>,
