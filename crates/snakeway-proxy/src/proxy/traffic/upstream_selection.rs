@@ -48,9 +48,6 @@ impl TrafficProxy {
     }
 
     /// Build and configure the `HttpPeer` for the selected upstream.
-    ///
-    /// Covers peer construction, per-upstream TLS settings, upstream timeouts,
-    /// and the once-per-request protocol resolution stored on the context.
     pub(in crate::proxy) fn build_peer(
         &self,
         ctx: &mut RequestCtx,

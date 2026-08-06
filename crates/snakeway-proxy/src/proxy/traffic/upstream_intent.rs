@@ -10,10 +10,6 @@ use snakeway_observability::RequestHeaderInjector;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// Applies the request context's upstream intent to the outgoing request.
-///
-/// Covers the method and URI, the header writeback, the upstream Host policy
-/// for the resolved protocol mode, upgrade forcing to HTTP/1.1, and W3C Trace
-/// Context injection.
 pub(in crate::proxy) fn apply_upstream_intent(
     upstream: &mut RequestHeader,
     ctx: &RequestCtx,
