@@ -45,7 +45,7 @@ knowledge that is not characteristic of LLM generation:
   optimised runtime) is a deliberate architectural decision.
 - **SmallVec usage** includes inline comments explaining *why* the optimisation
   was chosen, not just what it does.
-- **Long-form architectural comments** in `public_gateway.rs` document Pingora
+- **Long-form architectural comments** in `traffic_proxy.rs` document Pingora
   hook execution order — knowledge that comes from reading upstream source code.
 - **Error classification** (`error_classification.rs`) and domain-specific error
   types follow a consistent, intentional strategy across the codebase.
