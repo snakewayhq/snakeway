@@ -20,11 +20,11 @@ The circuit breaker operates in three states:
    If `success_threshold` probes succeed, the circuit closes again.
    If any probe fails, the circuit reopens.
 
+The `circuit_breaker` block is optional.
+When it is omitted, the circuit breaker runs with the defaults listed in the field table below.
+
 ```hcl
 circuit_breaker = {
-  # Enable or disable the circuit breaker.
-  enable                     = true
-
   # Allow automatic recovery after the open duration.
   enable_auto_recovery       = false
 
@@ -49,7 +49,6 @@ circuit_breaker = {
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `enable` | `boolean` | `true` | Enable or disable the circuit breaker. |
 | `enable_auto_recovery` | `boolean` | `false` | Allow the circuit breaker to automatically recover after the open duration. |
 | `failure_threshold` | `integer` | `5` | Number of consecutive failures (transport errors or 5xx) in the Closed state before tripping the circuit to Open. |
 | `open_duration_milliseconds` | `integer` | `10000` | How long, in milliseconds, the circuit remains Open before transitioning to HalfOpen. |
