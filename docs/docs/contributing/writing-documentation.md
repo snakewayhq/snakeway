@@ -10,7 +10,7 @@ This page describes how to update this documentation site when code changes intr
 |-----------------|-------------------------------------------------------------------|
 | Framework       | [Docusaurus](https://docusaurus.io/) (classic preset, TypeScript) |
 | Content         | Markdown/MDX in `docs/docs/`                                      |
-| Blog            | Release notes in `docs/blog/`                                     |
+| Release notes   | Blog-style posts in `docs/releases/`                              |
 | Sidebar         | Manual in `docs/sidebars.ts`                                      |
 | Site config     | `docs/docusaurus.config.ts`                                       |
 | Build/Preview   | `just docs` (runs `npm start` in `docs/`)                         |
@@ -30,7 +30,7 @@ docs/docs/
   extension/             # Device model and WASM device authoring
   contributing/          # This section
   internals/             # Architecture, lifecycle, mental model
-docs/blog/               # Release notes as blog posts
+docs/releases/           # Release notes as blog-style posts
 docs/static/img/         # Images and SVG diagrams
 ```
 
