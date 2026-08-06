@@ -26,7 +26,7 @@ pub struct OtelSpec {
 
 impl Validate for OtelSpec {
     fn validate(&self, report: &mut Report) {
-        // Requirement checks: an enabled exporter needs an endpoint and a service name.
+        // An enabled exporter needs an endpoint and a service name.
         if self.enable.value {
             if self.endpoint.value.is_empty() {
                 report

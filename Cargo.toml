@@ -78,7 +78,7 @@ brotli = "8"
 bytes = "1.11"
 clap = "4.5"
 config = "0.15"
-confval = { version = "0.6.1", features = ["serde", "color", "hcl", "derive"] }
+confval = { version = "0.7.1", features = ["serde", "color", "hcl", "derive"] }
 console-subscriber = "0.5"
 ctrlc = "3"
 flate2 = "1.0"

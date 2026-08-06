@@ -1,12 +1,10 @@
-use crate::types::specification::field_emit::{
-    bool_field, int_field, path_field, string_field, string_list_field, string_map_field,
-};
+use crate::types::specification::field_emit::string_map_field;
 use crate::types::{HclInt, WasmDeviceFailPolicy};
 use crate::validation::validator::require_existing_file;
 use confval::format::{
-    Field, FieldKind, Fields, FromFields, Scalar, ToFields, ValueKind, parse_bool_field,
-    parse_int_field, parse_string_field, parse_string_list_field, report_missing_field,
-    report_unknown_field,
+    Field, FieldKind, Fields, FieldsBuilder, FromFields, Scalar, ToFields, ValueKind, Walk,
+    parse_bool_field, parse_int_field, parse_string_field, parse_string_list_field,
+    report_missing_field, report_unknown_field,
 };
 use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
@@ -178,23 +176,31 @@ impl FromFields for WasmDeviceSpec {
 /// The write-path counterpart of the handwritten `FromFields`. An empty
 /// `config` map and an absent `hooks` list are omitted, matching what the
 /// parse treats as absent.
+impl WasmDeviceSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        let mut builder = FieldsBuilder::new(walk)
+            .leaf("name", &self.name)
+            .leaf("enable", &self.enable)
+            .leaf("path", &self.path)
+            .leaf("fail_policy", &self.fail_policy)
+            .leaf("timeout_ms", &self.timeout_ms)
+            .leaf("body_buffer_max", &self.body_buffer_max);
+        if !self.config.is_empty() {
+            builder = builder.push(string_map_field("config", &self.config));
+        }
+        builder
+            .string_list_opt("hooks", self.hooks.as_ref())
+            .finish()
+    }
+}
+
 impl ToFields for WasmDeviceSpec {
     fn to_fields(&self) -> Fields {
-        let mut items = vec![
-            string_field("name", &self.name.value),
-            bool_field("enable", self.enable.value),
-            path_field("path", &self.path.value),
-            string_field("fail_policy", &self.fail_policy.value),
-            int_field("timeout_ms", self.timeout_ms.value),
-            int_field("body_buffer_max", self.body_buffer_max.value),
-        ];
-        if !self.config.is_empty() {
-            items.push(string_map_field("config", &self.config));
-        }
-        if let Some(hooks) = &self.hooks {
-            items.push(string_list_field("hooks", &hooks.value));
-        }
-        Fields::detached(items)
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
     }
 }
 

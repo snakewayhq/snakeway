@@ -1,8 +1,7 @@
 use crate::types::AcmeChallenge;
-use crate::types::specification::field_emit::{path_field, string_field, string_list_field};
 use crate::validation::validator::validate_cert_key_pair;
 use confval::format::{
-    Fields, FromFields, ToFields, parse_string_field, parse_string_list_field,
+    Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, parse_string_list_field,
     report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
@@ -105,21 +104,30 @@ impl FromFields for TlsTerminationSpec {
 
 /// The write-path counterpart of the handwritten `FromFields`: the `mode`
 /// attribute selects the variant, then the variant's own fields follow.
+impl TlsTerminationSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        match self {
+            TlsTerminationSpec::Manual { cert, key } => FieldsBuilder::new(walk)
+                .literal_string("mode", "manual")
+                .leaf("cert", cert)
+                .leaf("key", key)
+                .finish(),
+            TlsTerminationSpec::Acme { domains, challenge } => FieldsBuilder::new(walk)
+                .literal_string("mode", "acme")
+                .string_list("domains", domains)
+                .leaf("challenge", challenge)
+                .finish(),
+        }
+    }
+}
+
 impl ToFields for TlsTerminationSpec {
     fn to_fields(&self) -> Fields {
-        let items = match self {
-            TlsTerminationSpec::Manual { cert, key } => vec![
-                string_field("mode", "manual"),
-                path_field("cert", &cert.value),
-                path_field("key", &key.value),
-            ],
-            TlsTerminationSpec::Acme { domains, challenge } => vec![
-                string_field("mode", "acme"),
-                string_list_field("domains", domains),
-                string_field("challenge", &challenge.value),
-            ],
-        };
-        Fields::detached(items)
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
     }
 }
 

@@ -207,7 +207,7 @@ mod tests {
         );
         assert_eq!(
             report.issues()[0].help.as_deref(),
-            Some("Set max_file_size to at least 1bytes")
+            Some("Set max_file_size to at least 1 bytes")
         );
     }
 

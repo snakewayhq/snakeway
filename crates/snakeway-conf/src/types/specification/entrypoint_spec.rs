@@ -76,6 +76,14 @@ impl ToFields for EntrypointSpec {
         ])
     }
 
+    /// Both blocks are required by the parse, so the source wrote both.
+    fn to_source_fields(&self) -> Fields {
+        Fields::detached(vec![
+            Field::detached_block("server", self.server.to_source_fields()),
+            Field::detached_block("include", self.include.to_source_fields()),
+        ])
+    }
+
     fn to_template(&self) -> Fields {
         Fields::detached(vec![
             Field::detached_block("server", self.server.to_template()),

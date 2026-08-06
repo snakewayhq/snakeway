@@ -7,10 +7,10 @@
 //! runtime config holds the enum. The vocabulary belongs to none of those
 //! stages, so it lives here and each stage imports it.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
+    #[derive(Default, Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub WasmDeviceFailPolicy,
     {
@@ -21,7 +21,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
+    #[derive(Default, Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub UaEngineKind,
     {
@@ -32,7 +32,8 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize)]
+    #[serde(rename_all = "snake_case")]
     pub LoadBalancingStrategy,
     {
         Failover => "failover",
@@ -44,7 +45,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
+    #[derive(Default, Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub LogLevel,
     {
@@ -58,7 +59,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize)]
     #[serde(rename_all = "snake_case")]
     pub LogEvent,
     {
@@ -70,7 +71,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub LogPhase,
     {
@@ -80,7 +81,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize)]
     #[serde(rename_all = "snake_case")]
     pub IdentityField,
     {
@@ -99,7 +100,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
+    #[derive(Default, Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub OnInvalidForwarded,
     {
@@ -110,7 +111,7 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    #[derive(Default, Deserialize, Serialize)]
+    #[derive(Default, Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub OnNoPeerAddr,
     {
@@ -121,12 +122,11 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
-    // There is intentionally no serde rename for this keyword.
-    // The ACME order store persists the serialized variant name
-    // to keep its on-disk form as `Http01`.
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize)]
+    #[serde(rename_all = "lowercase")]
     pub AcmeChallenge,
     {
+        #[serde(alias = "Http01")]
         Http01 => "http01",
     }
 );
