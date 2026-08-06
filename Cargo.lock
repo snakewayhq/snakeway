@@ -661,9 +661,9 @@ dependencies = [
 
 [[package]]
 name = "confval"
-version = "0.7.1"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58b5c2b48d49739501ffc57921f1be4ab51af35237f2030094ac1659cae12ea9"
+checksum = "3d77d2bf1f70bbf8c9885721dee962bf7398e955f8f1a11d2e197ebac898c211"
 dependencies = [
  "confval-derive",
  "hcl-edit",
@@ -674,9 +674,9 @@ dependencies = [
 
 [[package]]
 name = "confval-derive"
-version = "0.7.1"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fb43dff292f703a8e9066fe299d5aa2b9cec8319cae358bf93a2efb7a1081ca"
+checksum = "e4a90c60931a997ff35504caa3dfe6d83e5aa82d4b02e052bc5a074b0a3a9fee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4237,7 +4237,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4266,7 +4266,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-acme"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4287,7 +4287,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-conf"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "confval",
  "glob",
@@ -4310,7 +4310,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-engine"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4347,7 +4347,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-jwt-auth-device"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "base64 0.22.1",
  "hmac",
@@ -4359,7 +4359,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-net"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "http",
@@ -4374,7 +4374,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-observability"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "console-subscriber",
  "hostname",
@@ -4394,7 +4394,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-proxy"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4424,7 +4424,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4456,7 +4456,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-wasm-test-device"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "wit-bindgen",
 ]
