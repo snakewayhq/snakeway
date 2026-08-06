@@ -54,7 +54,7 @@ snakeway reload
 
 ### Admin API
 
-If enabled the admin API is enable, you can send a `POST` request to the `/admin/reload` endpoint.
+If the admin API is enabled, you can send a `POST` request to the `/admin/reload` endpoint.
 
 For example:
 
