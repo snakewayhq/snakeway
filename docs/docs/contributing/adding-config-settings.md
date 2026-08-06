@@ -83,9 +83,9 @@ The `with` conversion functions live **in the runtime file alongside the Config 
 That means `Located<String>`, `Located<HclInt>` (`HclInt` is the crate alias for `i64`, HCL's native integer), `Located<bool>`, `Located<PathBuf>`, `Vec<Located<String>>`, and the `Option<...>` forms.
 The structural parsers never reject a value for a semantic reason, so a port of `99999` or a strategy of `"failovr"` parses fine and is caught by validation with a span, alongside every other problem.
 
-**Keyword fields are `Located<String>` in specs.** Closed sets (load-balancing strategies, log levels) are validated against a constant slice with a help line listing the options.
-The runtime enum implements `TryFrom<&str>` and the conversion happens at lowering.
-Do not put serde keyword enums in the spec layer.
+**Keyword fields are `Located<String>` in specs.** Closed sets (load-balancing strategies, log levels) are declared once with `confval::keyword_enum!` in `types/keyword.rs`, which generates the enum, its keyword list, and the conversions each pipeline stage uses.
+Spec validation checks the string against the generated `keyword_set()`, lowering narrows through the generated `TryFrom` via `narrow::keyword`, and the runtime config holds the enum.
+Spec fields stay `Located<String>`, so the enum appears only from lowering onward.
 
 **Config types use the fully parsed, typed form.** `IpNet`, `Method`, `HeaderName`, `SocketAddr`, runtime enums, exact integer widths.
 Downstream code never re-parses a value it received from config.
@@ -104,7 +104,7 @@ pub trait Validate {
 }
 ```
 
-The impl lives in the **same file as the spec struct** (for example, `ServerSpec` and its `Validate` impl both in `types/specification/server/server_spec.rs`).
+The impl lives beside the spec struct: in the same file for small specs (the device specs, for example), or in a sibling validation module when the spec file is large (`ServerSpec` has its impl in `types/specification/server/server_spec_validation.rs`).
 It takes only `&self` and the report, reporting at the span each field already carries.
 Anything needing more context (a missing required child's enclosing span, a cross-field rule, a relational check across files) goes in the centralized validators instead, not here.
 
@@ -147,7 +147,7 @@ If `ServerSpec` has a hand-written `Default`, update it to include the new field
 
 ### Step 2: Add the field to the Config struct
 
-**File:** `crates/snakeway-conf/src/types/runtime/server_config.rs`
+**File:** `crates/snakeway-conf/src/types/runtime/server/server_config.rs`
 
 Add the matching field to `ServerConfig` and declare how it lowers:
 
@@ -215,16 +215,17 @@ For a one-off check, emit directly through the report builder:
 
 ```rust
 report
-.error(format!("max_connections must be even, got {}", value.value))
-.at(value.span)
-.help("Set max_connections to an even number.")
-.emit();
+    .error(format!("max_connections must be even, got {}", value.value))
+    .at(value.span)
+    .help("Set max_connections to an even number.")
+    .emit();
 ```
 
 `report.error(msg)` and `report.warning(msg)` return a builder.
 Chain `.at(span)`, optional `.help(text)` and `.related(span, label)`, then `.emit()`.
 The builder is `#[must_use]`, so forgetting `.emit()` is a compile warning.
-Range and path helpers (`RangeConstraint::check_located`, `require_existing_file`, `require_existing_dir`) live in `crates/snakeway-conf/src/validation/validator/`.
+`RangeConstraint` and the `range_constraint!` macro come from the external confval crate.
+The path helpers (`require_existing_file`, `require_existing_dir`) live in `crates/snakeway-conf/src/validation/validator/`.
 
 Cross-field checks on the same struct can stay in the `Validate` impl, which has all of `&self`.
 What must move to a centralized validator is a check that needs an entity's *enclosing* span (a missing required child, a presence rule) or a relation *across* entities or files, because neither is reachable from `&self`.
