@@ -345,6 +345,9 @@ On a successful load, warnings still surface: `ValidatedConfig::has_warnings()` 
 
 ## Key files at a glance
 
+The first six rows live in the external [confval repository](https://ethanhann.com/confval), not in this workspace.
+The `conf/` rows are `crates/snakeway-conf/src/`.
+
 | File                           | Responsibility                                                                       |
 |--------------------------------|--------------------------------------------------------------------------------------|
 | `confval/src/source/`          | `Located`, `Span`, `SourceId`, `SourceMap`                                           |
