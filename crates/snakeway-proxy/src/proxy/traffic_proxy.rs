@@ -14,7 +14,7 @@ use snakeway_engine::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
 use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
-use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
+use snakeway_engine::runtime::RuntimeState;
 use snakeway_engine::traffic::{
     AdmissionGuard, ProtocolMode, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
@@ -30,8 +30,8 @@ pub(crate) struct TrafficProxy {
     pub(in crate::proxy) proxy_ctx: ProxyCtx,
     pub(in crate::proxy) traffic_director: TrafficDirector,
     static_file_handler: StaticFileHandler,
-    upstream_connect_timeout: Option<Duration>,
-    upstream_read_timeout: Option<Duration>,
+    pub(in crate::proxy) upstream_connect_timeout: Option<Duration>,
+    pub(in crate::proxy) upstream_read_timeout: Option<Duration>,
 }
 
 impl TrafficProxy {
@@ -158,7 +158,8 @@ impl ProxyHttp for TrafficProxy {
         _session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root_span = ctx.request_span.clone();
+        let _root = _root_span.as_ref().map(|s| s.enter());
         let _selection_span = tracing::info_span!("upstream_selection").entered();
         let state = self.proxy_ctx.state();
 
@@ -171,61 +172,7 @@ impl ProxyHttp for TrafficProxy {
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        // Creating an HttpPeer instance per request may raise an eyebrow, but
-        // it is merely a sort of configuration object that is used by Pingora
-        // to compute a hash later when its internal pooling logic runs.
-        let mut peer = match upstream {
-            UpstreamRuntime::Tcp(tcp) => {
-                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.use_tls, tcp.sni.clone());
-                if tcp.use_tls {
-                    // Wire-up per-upstream TLS settings.
-                    peer.options.verify_cert = tcp.verify;
-                    peer.options.verify_hostname = tcp.verify;
-                    if tcp.verify {
-                        peer.options.ca = tcp.ca.clone();
-                        peer.group_key = tcp.group_key;
-                    }
-                }
-                Ok(peer)
-            }
-            UpstreamRuntime::Unix(unix) => {
-                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
-                    anyhow::anyhow!(
-                        "Could not connect to unix domain socket `{}`: {}",
-                        unix.path,
-                        e
-                    )
-                })
-            }
-        }
-        .map_err(|_| Error::new(Custom("http peer creation failed")))?;
-
-        // Apply upstream timeouts.
-        // The read timeout is per-read (idle), so it bounds a stalled origin
-        // without breaking slow-but-progressing responses.
-        // It is skipped for websocket upgrades so idle long-lived connections
-        // are not torn down.
-        if let Some(t) = self.upstream_connect_timeout {
-            // The total_connection_timeout setting bounds the whole connection
-            // establishment (TCP connect + TLS handshake).
-            // The inner connection_timeout (TCP connect only) is left unset
-            // because it would be redundant since the total bound already caps it.
-            peer.options.total_connection_timeout = Some(t);
-        }
-        if let Some(t) = self.upstream_read_timeout
-            && !ctx.is_upgrade_req()
-        {
-            peer.options.read_timeout = Some(t);
-        }
-
-        // Resolve the wire protocol once and store it for later hooks.
-        let mode = self.enforce_protocol(&mut peer, ctx, upstream)?;
-        ctx.protocol_mode = Some(mode);
-
-        // Set upstream authority for end-to-end h2 (gRPC, h2-to-h2).
-        if mode == ProtocolMode::Http2EndToEnd {
-            ctx.upstream_authority = Some(upstream.authority());
-        }
+        let peer = self.build_peer(ctx, upstream)?;
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
