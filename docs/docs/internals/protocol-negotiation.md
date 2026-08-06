@@ -17,7 +17,7 @@ Three inputs map to one mode.
 It is computed at upstream selection and never revised.
 
 Upgrade negotiation is stateful.
-It spans multiple hooks, is driven by the upstream `101` response, and has terminal rejection at two layers: the gateway
+It spans multiple hooks, is driven by the upstream `101` response, and has terminal rejection at two layers: the proxy
 and the upstream itself.
 An upgrade constrains version negotiation to HTTP/1.1.
 
@@ -99,7 +99,7 @@ An upgrade progresses through these states:
 |------------|---------------------------------------------------------------|------------------------------|
 | NotUpgrade | `request_filter` sees a valid `Upgrade`                       | Requested                    |
 | Requested  | the route allows WebSockets and a connection slot is acquired | Admitted                     |
-| Requested  | the route forbids WebSockets, or the pool is full             | GatewayRejected (426 or 503) |
+| Requested  | the route forbids WebSockets, or the pool is full             | ProxyRejected (426 or 503) |
 | Admitted   | `upstream_request_filter` forces h1 and sets upgrade headers  | Negotiated                   |
 | Negotiated | upstream returns `101`                                        | Switched                     |
 | Negotiated | upstream returns a status other than `101`                    | UpstreamRejected (forwarded) |
@@ -117,13 +117,13 @@ flowchart TD
     negotiated["<b>Negotiated</b><br/>h1 forced, headers set"]
     switched["<b>Switched</b><br/>101, tunnel open"]
     closed(["Closed"])
-    gwReject(["GatewayRejected<br/>426 or 503"])
+    proxyReject(["ProxyRejected<br/>426 or 503"])
     upReject(["UpstreamRejected<br/>not 101, forwarded"])
     failed(["Failed<br/>transport error"])
 
     notUpgrade -- "valid Upgrade" --> requested
     requested -- "allowed · slot free" --> admitted
-    requested -- "forbidden · pool full" --> gwReject
+    requested -- "forbidden · pool full" --> proxyReject
     admitted -- "force h1" --> negotiated
     negotiated -- "101" --> switched
     negotiated -- "not 101" --> upReject
@@ -136,7 +136,7 @@ flowchart TD
 
     class notUpgrade,closed io;
     class requested,admitted,negotiated,switched data;
-    class gwReject,upReject,failed bad;
+    class proxyReject,upReject,failed bad;
 ```
 
 Reaching `Switched` runs the WebSocket open hook and suppresses the normal response lifecycle.
@@ -145,7 +145,7 @@ A rejected or failed handshake runs neither.
 
 There are two rejection layers.
 
-1. GatewayRejected happens in `request_filter`, before any upstream is contacted.
+1. ProxyRejected happens in `request_filter`, before any upstream is contacted.
 2. UpstreamRejected happens when the upstream answers the handshake with a status other than `101`.
 
 Known limitation: the `Negotiated` state has no timeout.

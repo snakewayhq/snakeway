@@ -49,5 +49,5 @@ When a request enters Snakeway, it follows a deterministic path through the syst
 - **Router**: Uses longest-path matching to route requests to the appropriate service or static file handler.
 - **Traffic Manager**: Maintains a real-time snapshot of system health, upstream status, and performance metrics.
 - **Device Registry**: Manages the lifecycle of both built-in and WASM devices.
-- **Admin Gateway**: A specialized, terminal gateway that handles administrative requests and provides access to the
+- **Admin Proxy**: A specialized, terminal proxy that handles administrative requests and provides access to the
   system's internal state.
