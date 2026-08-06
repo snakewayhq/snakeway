@@ -102,7 +102,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     server.bootstrap();
 
     //-------------------------------------------------------------------------
-    // Public Proxy: Create public listener(s).
+    // Traffic Proxy: Create public listener(s).
     //-------------------------------------------------------------------------
     // Global upstream timeouts.
     let upstream_connect_timeout = config.server.upstream.connection_timeout;
@@ -114,7 +114,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         .filter(|l| !l.enable_admin && l.redirect.is_none())
     {
         // Build the public HTTP proxy service from Pingora.
-        let public_proxy = TrafficProxy::new(
+        let traffic_proxy = TrafficProxy::new(
             Arc::from(listener_cfg.name.clone()),
             state.clone(),
             traffic_manager.clone(),
@@ -123,7 +123,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             upstream_connect_timeout,
             upstream_read_timeout,
         );
-        let mut public_svc = http_proxy_service(&server.configuration, public_proxy);
+        let mut traffic_svc = http_proxy_service(&server.configuration, traffic_proxy);
 
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => match certificate_cfg {
@@ -135,7 +135,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
                     }
-                    public_svc.add_tls_with_settings(
+                    traffic_svc.add_tls_with_settings(
                         &listener_cfg.addr.to_string(),
                         None,
                         tls_settings,
@@ -147,7 +147,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
                     }
-                    public_svc.add_tls_with_settings(
+                    traffic_svc.add_tls_with_settings(
                         &listener_cfg.addr.to_string(),
                         None,
                         tls_settings,
@@ -155,7 +155,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                 }
             },
             None => {
-                public_svc.add_tcp(&listener_cfg.addr.to_string());
+                traffic_svc.add_tcp(&listener_cfg.addr.to_string());
             }
         }
 
@@ -175,25 +175,25 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             if let Some(v) = h2_cfg.initial_connection_window_size {
                 options.initial_connection_window_size(v);
             }
-            if let Some(app) = public_svc.app_logic_mut() {
+            if let Some(app) = traffic_svc.app_logic_mut() {
                 app.h2_options = Some(options);
             }
         }
 
         if let Some(connection_filter_cfg) = &listener_cfg.connection_filter {
-            public_svc.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
+            traffic_svc.set_connection_filter(Arc::new(NetworkConnectionFilter::from(
                 connection_filter_cfg.clone(),
             )));
         }
 
         if let Some(rate_limiting_filter_cfg) = &listener_cfg.connection_rate_limiting_filter {
-            public_svc.set_connection_filter(Arc::new(ConnectionRateLimitingFilter::from(
+            traffic_svc.set_connection_filter(Arc::new(ConnectionRateLimitingFilter::from(
                 rate_limiting_filter_cfg.clone(),
             )));
         }
 
         // Register public service.
-        server.add_service(public_svc);
+        server.add_service(traffic_svc);
     }
 
     //-------------------------------------------------------------------------

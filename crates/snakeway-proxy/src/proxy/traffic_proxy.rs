@@ -1,6 +1,5 @@
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::proxy_ctx::ProxyCtx;
-use crate::proxy::traffic::protocol_api::ProtocolMode;
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
 use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
 use arc_swap::ArcSwap;
@@ -16,14 +15,14 @@ use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
 use snakeway_engine::route::RouteRuntime;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_engine::traffic::{
-    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+    AdmissionGuard, ProtocolMode, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
 };
 use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-/// PublicProxy is the core orchestration abstraction in Snakeway.
+/// TrafficProxy is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub(crate) struct TrafficProxy {
     listener: Arc<str>,
@@ -56,7 +55,7 @@ impl TrafficProxy {
     }
 }
 
-/// Pingora hook execution order in ProxyHttp for PublicProxy
+/// Pingora hook execution order in ProxyHttp for TrafficProxy
 ///
 /// This is a giant orchestration trait implementation, so better to lay this out explicitly,
 /// especially because it might change in later Pingora versions.
@@ -220,7 +219,7 @@ impl ProxyHttp for TrafficProxy {
 
         // Resolve the wire protocol once and store it for later hooks.
         let mode = self.enforce_protocol(&mut peer, ctx, upstream)?;
-        ctx.extensions.insert(mode);
+        ctx.protocol_mode = Some(mode);
 
         // Set upstream authority for end-to-end h2 (gRPC, h2-to-h2).
         if mode == ProtocolMode::Http2EndToEnd {
@@ -530,16 +529,15 @@ impl ProxyHttp for TrafficProxy {
                 // For end-to-end HTTP/2 it comes from the upstream authority
                 // set in upstream_peer and overrides any client Host.
                 let protocol_mode = ctx
-                    .extensions
-                    .get::<ProtocolMode>()
-                    .copied()
-                    .unwrap_or(ProtocolMode::Http1);
+                    .protocol_mode
+                    .ok_or_else(|| Error::new(Custom("protocol mode not resolved")))?;
 
                 match protocol_mode {
                     ProtocolMode::Http2EndToEnd => {
-                        if let Some(authority) = ctx.upstream_authority() {
-                            upstream.insert_header(header::HOST, authority)?;
-                        }
+                        let authority = ctx.upstream_authority().ok_or_else(|| {
+                            Error::new(Custom("missing upstream authority for h2"))
+                        })?;
+                        upstream.insert_header(header::HOST, authority)?;
                     }
                     ProtocolMode::Http1 => {
                         if !upstream.headers.contains_key(header::HOST) {
