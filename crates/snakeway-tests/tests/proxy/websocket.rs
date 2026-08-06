@@ -93,6 +93,63 @@ fn websocket_max_connections_rejects_excess() {
     });
 }
 
+/// A closed WebSocket connection must release its pool slot so a later
+/// connection can be admitted.
+#[test]
+fn websocket_slot_releases_after_close() {
+    // Arrange
+    let service = ServiceSpec {
+        routes: vec![Located::detached(ServiceRouteSpec {
+            hosts: vec![Located::detached(TEST_HOST.to_string())],
+            path: Located::detached(ROUTE_PATH_WS.to_string()),
+            enable_websocket: Located::detached(true),
+            ws_max_connections: Some(Located::detached(1)),
+        })],
+        upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
+            UPSTREAM_PORT_PRIMARY,
+            false,
+        ))],
+        ..Default::default()
+    };
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![service])
+        .build();
+    let srv = TestServer::start_ws_upstream_with_config(&mut cfg);
+    let url = format!(
+        "ws://{}{}",
+        srv.base_url().as_str().strip_prefix("http://").unwrap(),
+        ROUTE_PATH_WS
+    );
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let (mut first, _) = tokio_tungstenite::connect_async(&url)
+            .await
+            .expect("first ws connect should succeed");
+        first.close(None).await.expect("close should succeed");
+        drop(first);
+
+        // Act: the slot frees when the proxy finalizes the closed request,
+        // which races this reconnect, so retry briefly on rejection.
+        let mut second = None;
+        for _ in 0..50 {
+            match tokio_tungstenite::connect_async(&url).await {
+                Ok((conn, _)) => {
+                    second = Some(conn);
+                    break;
+                }
+                Err(_) => tokio::time::sleep(std::time::Duration::from_millis(100)).await,
+            }
+        }
+
+        // Assert
+        assert!(
+            second.is_some(),
+            "a closed connection must release its slot for the next connect"
+        );
+    });
+}
+
 /// Sending WebSocket upgrade headers to a route with `enable_websocket = false`
 /// must return HTTP 426 Upgrade Required.
 #[test]

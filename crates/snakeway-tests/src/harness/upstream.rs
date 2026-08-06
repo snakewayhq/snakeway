@@ -312,13 +312,19 @@ pub fn start_ws_upstream(port: u16) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             let listener = TcpListener::bind(("127.0.0.1", port)).await.unwrap();
-            let (stream, _) = listener.accept().await.unwrap();
 
-            let mut ws = accept_async(stream).await.unwrap();
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
 
-            while let Some(msg) = ws.next().await {
-                let msg = msg.unwrap();
-                ws.send(msg).await.unwrap();
+                tokio::spawn(async move {
+                    let mut ws = accept_async(stream).await.unwrap();
+
+                    while let Some(Ok(msg)) = ws.next().await {
+                        if ws.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                });
             }
         });
     });
