@@ -93,6 +93,21 @@ fn websocket_max_connections_rejects_excess() {
     });
 }
 
+type WsClient =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
+
+/// Retries the connect briefly because the slot frees when the proxy
+/// finalizes the closed request, which races a reconnect.
+async fn connect_with_retry(url: &str) -> Option<WsClient> {
+    for _ in 0..50 {
+        if let Ok((conn, _)) = tokio_tungstenite::connect_async(url).await {
+            return Some(conn);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    None
+}
+
 /// A closed WebSocket connection must release its pool slot so a later
 /// connection can be admitted.
 #[test]
@@ -126,25 +141,29 @@ fn websocket_slot_releases_after_close() {
         let (mut first, _) = tokio_tungstenite::connect_async(&url)
             .await
             .expect("first ws connect should succeed");
+
+        // Guard the premise: while the slot is held, the pool must reject.
+        // Without this, the test would also pass if slots were never enforced.
+        match tokio_tungstenite::connect_async(&url).await {
+            Err(tokio_tungstenite::tungstenite::Error::Http(resp)) => {
+                assert_eq!(
+                    resp.status().as_u16(),
+                    503,
+                    "an occupied pool must reject with 503"
+                );
+            }
+            other => panic!("expected an HTTP 503 rejection while the slot is held, got {other:?}"),
+        }
+
         first.close(None).await.expect("close should succeed");
         drop(first);
 
-        // Act: the slot frees when the proxy finalizes the closed request,
-        // which races this reconnect, so retry briefly on rejection.
-        let mut second = None;
-        for _ in 0..50 {
-            match tokio_tungstenite::connect_async(&url).await {
-                Ok((conn, _)) => {
-                    second = Some(conn);
-                    break;
-                }
-                Err(_) => tokio::time::sleep(std::time::Duration::from_millis(100)).await,
-            }
-        }
+        // Act
+        let reconnect = connect_with_retry(&url).await;
 
         // Assert
         assert!(
-            second.is_some(),
+            reconnect.is_some(),
             "a closed connection must release its slot for the next connect"
         );
     });
