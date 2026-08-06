@@ -177,8 +177,8 @@ impl Device for RequestFilterDevice {
                 .insert(RequestBodyLimit::new(self.max_suspicious_body_bytes));
         }
 
-        // Client body timeout — stored in extensions so the gateway can apply
-        // it to the downstream session after the device pipeline runs.
+        // The client body timeout is stored in extensions so the proxy can
+        // apply it to the downstream session after the device pipeline runs.
         if let Some(timeout) = self.client_body_timeout {
             ctx.extensions.insert(ClientBodyTimeout(timeout));
         }
@@ -227,7 +227,7 @@ impl RequestBodyLimit {
 }
 
 /// Stored in `RequestCtx.extensions` by the request filter device so the
-/// gateway layer can apply it to the downstream Pingora session via
+/// proxy layer can apply it to the downstream Pingora session via
 /// `session.downstream_session.set_read_timeout()`.
 #[derive(Debug, Clone, Copy)]
 pub struct ClientBodyTimeout(pub Duration);
