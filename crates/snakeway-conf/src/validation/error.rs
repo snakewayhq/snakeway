@@ -46,6 +46,31 @@ pub enum ConfigError {
     #[error("server lowering returned None without reporting an error")]
     ServerLoweringReturnedNone,
 
-    #[error("server lowering returned None without reporting an error")]
+    #[error("config lowering returned None without reporting an error")]
     ConfigLoweringReturnedNone,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lowering_variants_have_distinct_messages() {
+        // Arrange
+        let server = ConfigError::ServerLoweringReturnedNone;
+        let config = ConfigError::ConfigLoweringReturnedNone;
+
+        // Act
+        let messages = (server.to_string(), config.to_string());
+
+        // Assert
+        assert_ne!(
+            messages.0, messages.1,
+            "the two lowering stages must be distinguishable in diagnostics"
+        );
+        assert_eq!(
+            messages.1,
+            "config lowering returned None without reporting an error"
+        );
+    }
 }
