@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-use snakeway_conf::types::AcmeChallengeConfig;
+use snakeway_conf::types::AcmeChallenge;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderState {
     pub(crate) cert_id: String,
     pub(crate) domains: Vec<String>,
-    pub(crate) challenge: AcmeChallengeConfig,
+    pub(crate) challenge: AcmeChallenge,
 
     pub(crate) status: OrderStatus,
 

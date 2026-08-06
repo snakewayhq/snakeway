@@ -108,3 +108,25 @@ confval::keyword_enum!(
         Ignore => "ignore",
     }
 );
+
+confval::keyword_enum!(
+    #[derive(Default, Deserialize, Serialize)]
+    #[serde(rename_all = "lowercase")]
+    pub OnNoPeerAddr,
+    {
+        #[default]
+        Allow => "allow",
+        Deny => "deny",
+    }
+);
+
+confval::keyword_enum!(
+    // There is intentionally no serde rename for this keyword.
+    // The ACME order store persists the serialized variant name
+    // to keep its on-disk form as `Http01`.
+    #[derive(Deserialize, Serialize)]
+    pub AcmeChallenge,
+    {
+        Http01 => "http01",
+    }
+);

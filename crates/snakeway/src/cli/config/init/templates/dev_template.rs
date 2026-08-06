@@ -2,8 +2,8 @@ use confval::format::ToFields;
 use confval::format::hcl::emit_hcl;
 use confval::source::Located;
 use snakeway_conf::types::{
-    ACME_CHALLENGE_HTTP01, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
-    NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
+    AcmeChallenge, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec, NetworkPolicyDeviceSpec,
+    RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
     StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use std::collections::HashMap;
@@ -69,7 +69,7 @@ pub(crate) fn generate(
             port: Located::detached(8443),
             tls: Some(Located::detached(TlsTerminationSpec::Acme {
                 domains: vec![Located::detached("snakeway.test".to_string())],
-                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
             })),
             enable_http2: Located::detached(false),
             redirect_http_to_https: Some(Located::detached(RedirectSpec {
