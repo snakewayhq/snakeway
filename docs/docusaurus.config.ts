@@ -56,6 +56,14 @@ const config: Config = {
                     type: ['rss', 'atom'],
                     xslt: true,
                 },
+                async processBlogPosts({blogPosts}) {
+                    blogPosts.sort((a, b) => {
+                        const dateDiff = b.metadata.date.getTime() - a.metadata.date.getTime();
+                        if (dateDiff !== 0) return dateDiff;
+                        return b.metadata.title.localeCompare(a.metadata.title);
+                    });
+                    return blogPosts;
+                },
             },
         ],
     ],
