@@ -1,3 +1,4 @@
 all_features = true
 test_workspace = true
 minimum_test_timeout = 600
+test_tool = "nextest"
