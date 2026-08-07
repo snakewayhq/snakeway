@@ -122,10 +122,7 @@ fn setup_config_dir_with_routes(
 #[test]
 fn hot_reload_adds_new_route() {
     let listener_port = free_port();
-    let upstream_port = free_port();
-
-    // Start upstream.
-    start_http_upstream(upstream_port);
+    let upstream_port = start_http_upstream();
 
     // Write initial config to temp dir.
     let config_dir = setup_config_dir(listener_port, upstream_port);
@@ -229,9 +226,7 @@ fn hot_reload_adds_new_route() {
 fn hot_reload_with_invalid_config_preserves_old_routes() {
     // Arrange
     let listener_port = free_port();
-    let upstream_port = free_port();
-
-    start_http_upstream(upstream_port);
+    let upstream_port = start_http_upstream();
 
     let config_dir = setup_config_dir(listener_port, upstream_port);
     let validated = load_config(config_dir.path()).expect("failed to load config");
@@ -286,9 +281,7 @@ fn hot_reload_with_invalid_config_preserves_old_routes() {
 fn hot_reload_removes_route() {
     // Arrange: start with both /api and /v2.
     let listener_port = free_port();
-    let upstream_port = free_port();
-
-    start_http_upstream(upstream_port);
+    let upstream_port = start_http_upstream();
 
     let config_dir = setup_config_dir_with_routes(listener_port, upstream_port, &["/api", "/v2"]);
     let validated = load_config(config_dir.path()).expect("failed to load config");
@@ -367,9 +360,7 @@ fn hot_reload_removes_route() {
 fn hot_reload_while_requests_are_in_flight() {
     // Arrange
     let listener_port = free_port();
-    let upstream_port = free_port();
-
-    start_slow_http_upstream(upstream_port);
+    let upstream_port = start_slow_http_upstream();
 
     let config_dir = setup_config_dir(listener_port, upstream_port);
     let validated = load_config(config_dir.path()).expect("failed to load config");

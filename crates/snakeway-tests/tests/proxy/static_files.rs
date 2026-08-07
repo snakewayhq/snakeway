@@ -3,6 +3,7 @@ use reqwest::StatusCode;
 use snakeway_tests::conf::{ConfigBuilder, minimal_static_file_runtime_config};
 use snakeway_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST};
 use snakeway_tests::harness::TestServer;
+use snakeway_tests::harness::server::free_port;
 
 const INDEX_HTML: &str = "index.html";
 const IMAGES_DIR: &str = "images";
@@ -218,9 +219,9 @@ fn static_file_gzip_compression_negotiation() {
         }
     }
 
-    let srv = TestServer::start_with_config(&mut cfg, |_port| {
-        // Static files don't need an upstream listener.
-    });
+    // Static files need no upstream listener, so any upstream entry gets a
+    // dead port.
+    let srv = TestServer::start_with_config(&mut cfg, free_port);
 
     // Use a client that does NOT auto-decompress gzip.
     let client = reqwest::blocking::Client::builder()

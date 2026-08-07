@@ -1,38 +1,56 @@
+//! Test upstream servers.
+//!
+//! Every starter binds its listener before returning and reports the bound
+//! port, so the port is live from the moment the caller sees it and cannot be
+//! taken by another test or process between allocation and bind. The one
+//! exception is [`start_http_upstream_on`], which exists for tests where the
+//! proxy already carries a port and the upstream comes up later.
+
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, HTTP_UPSTREAM_RESPONSE};
+use std::net::TcpListener;
+use std::thread;
 
-pub fn start_http_upstream(port: u16) {
+fn bind_ephemeral() -> (TcpListener, u16) {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind upstream");
+    let port = listener.local_addr().expect("no local addr").port();
+    (listener, port)
+}
+
+pub fn start_http_upstream() -> u16 {
+    let (listener, port) = bind_ephemeral();
+    thread::spawn(move || serve_http(listener));
+    port
+}
+
+/// Starts the plain HTTP upstream on a known port, for tests where the proxy
+/// config already carries the port and the upstream comes up later (health
+/// check recovery, circuit breaker half-open probes). The port sat unbound
+/// until this call, so this is the one starter that can still lose a bind
+/// race.
+pub fn start_http_upstream_on(port: u16) {
+    let listener = TcpListener::bind(("127.0.0.1", port)).expect("failed to bind upstream");
+    thread::spawn(move || serve_http(listener));
+}
+
+fn serve_http(listener: TcpListener) {
     use std::io::Write;
-    use std::net::TcpListener;
-    use std::thread;
-    use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
-
-    thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
-        for stream in listener.incoming() {
-            let mut stream = stream.expect("stream error");
-            let _ = stream.write_all(HTTP_UPSTREAM_RESPONSE);
-        }
-    });
-
-    // tiny delay so the listener is actually ready
-    thread::sleep(Duration::from_millis(25));
+    for stream in listener.incoming() {
+        let mut stream = stream.expect("stream error");
+        let _ = stream.write_all(HTTP_UPSTREAM_RESPONSE);
+    }
 }
 
 /// An upstream that delays before responding. The delay keeps the
 /// connection active long enough for concurrent requests to exercise
 /// pressure-based load balancing.
-pub fn start_slow_http_upstream(port: u16) {
+pub fn start_slow_http_upstream() -> u16 {
     use std::io::{BufRead, BufReader, Write};
-    use std::net::TcpListener;
-    use std::thread;
     use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let mut stream = stream.expect("stream error");
             // Read headers so the proxy considers the request fully sent.
@@ -49,21 +67,17 @@ pub fn start_slow_http_upstream(port: u16) {
         }
     });
 
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 /// An upstream that returns HTTP 500 Internal Server Error for every request.
 /// Used to test circuit breaker `count_http_5xx_as_failure` behavior.
-pub fn start_http_upstream_that_returns_5xx(port: u16) {
+pub fn start_http_upstream_that_returns_5xx() -> u16 {
     use std::io::Write;
-    use std::net::TcpListener;
-    use std::thread;
-    use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let mut stream = stream.expect("stream error");
             let _ = stream
@@ -71,21 +85,17 @@ pub fn start_http_upstream_that_returns_5xx(port: u16) {
         }
     });
 
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 /// An upstream that returns a large response body of the given size.
 /// Reads request headers before responding to avoid premature close.
-pub fn start_http_upstream_with_large_response(port: u16, size_bytes: usize) {
+pub fn start_http_upstream_with_large_response(size_bytes: usize) -> u16 {
     use std::io::{BufRead, BufReader, Write};
-    use std::net::TcpListener;
-    use std::thread;
-    use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         let body = vec![b'X'; size_bytes];
         let header = format!("HTTP/1.1 200 OK\r\nContent-Length: {size_bytes}\r\n\r\n");
         for stream in listener.incoming() {
@@ -101,20 +111,17 @@ pub fn start_http_upstream_with_large_response(port: u16, size_bytes: usize) {
         }
     });
 
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 /// An upstream that accepts connections but never responds.
 /// Used to test upstream timeout behavior (proxy should return 502/504).
-pub fn start_http_upstream_that_hangs(port: u16) {
-    use std::net::TcpListener;
-    use std::thread;
+pub fn start_http_upstream_that_hangs() -> u16 {
     use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let _stream = stream.expect("stream error");
             // Accept the connection but never write a response.
@@ -123,7 +130,7 @@ pub fn start_http_upstream_that_hangs(port: u16) {
         }
     });
 
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 /// An upstream that reads the full request before responding.
@@ -134,16 +141,13 @@ pub fn start_http_upstream_that_hangs(port: u16) {
 /// for tests where the proxy must time out waiting for client body bytes —
 /// if the upstream responds immediately the proxy forwards that response
 /// before it can detect the body underflow.
-pub fn start_http_upstream_that_reads_request(port: u16) {
+pub fn start_http_upstream_that_reads_request() -> u16 {
     use std::io::{Read, Write};
-    use std::net::TcpListener;
-    use std::thread;
     use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let mut stream = stream.expect("stream error");
             // Set a read timeout so we don't block forever if the proxy
@@ -163,8 +167,7 @@ pub fn start_http_upstream_that_reads_request(port: u16) {
         }
     });
 
-    // tiny delay so the listener is actually ready
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 /// An upstream that reads request headers and echoes them back as a JSON
@@ -172,16 +175,12 @@ pub fn start_http_upstream_that_reads_request(port: u16) {
 /// context headers arrive at the upstream.
 ///
 /// Response format: `{"header-name": "value", ...}` (lowercased keys).
-pub fn start_http_upstream_that_echoes_headers(port: u16) {
+pub fn start_http_upstream_that_echoes_headers() -> u16 {
     use std::io::{BufRead, BufReader, Write};
-    use std::net::TcpListener;
-    use std::thread;
-    use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let mut stream = stream.expect("stream error");
             let reader = BufReader::new(stream.try_clone().unwrap());
@@ -211,22 +210,18 @@ pub fn start_http_upstream_that_echoes_headers(port: u16) {
         }
     });
 
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 /// An upstream that reads the request head and echoes the request line back
 /// as a plain-text response body. Used by tests that assert on the method,
 /// path, and query the proxy forwarded upstream.
-pub fn start_http_upstream_that_echoes_request_line(port: u16) {
+pub fn start_http_upstream_that_echoes_request_line() -> u16 {
     use std::io::{BufRead, BufReader, Write};
-    use std::net::TcpListener;
-    use std::thread;
-    use std::time::Duration;
 
-    let addr = format!("127.0.0.1:{port}");
+    let (listener, port) = bind_ephemeral();
 
     thread::spawn(move || {
-        let listener = TcpListener::bind(&addr).expect("failed to bind upstream");
         for stream in listener.incoming() {
             let mut stream = stream.expect("stream error");
             let reader = BufReader::new(stream.try_clone().unwrap());
@@ -248,15 +243,15 @@ pub fn start_http_upstream_that_echoes_request_line(port: u16) {
         }
     });
 
-    thread::sleep(Duration::from_millis(25));
+    port
 }
 
 pub mod helloworld {
     tonic::include_proto!("helloworld");
 }
 
-pub fn start_grpc_upstream(port: u16) {
-    use std::thread;
+pub fn start_grpc_upstream() -> u16 {
+    use tokio_stream::wrappers::TcpListenerStream;
     use tonic::transport::{Identity, Server, ServerTlsConfig};
     use tonic::{Request, Response, Status};
 
@@ -278,9 +273,12 @@ pub fn start_grpc_upstream(port: u16) {
         }
     }
 
-    thread::spawn(move || {
-        let addr = format!("127.0.0.1:{port}").parse().unwrap();
+    let (listener, port) = bind_ephemeral();
+    listener
+        .set_nonblocking(true)
+        .expect("failed to set nonblocking");
 
+    thread::spawn(move || {
         // Load TLS identity (server cert + key)
         let cert = std::fs::read(CERT_SERVER_PEM).expect("failed to read server.pem");
         let key = std::fs::read(CERT_SERVER_KEY).expect("failed to read server.key");
@@ -289,29 +287,35 @@ pub fn start_grpc_upstream(port: u16) {
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
+            let listener =
+                tokio::net::TcpListener::from_std(listener).expect("failed to adopt listener");
             Server::builder()
                 .tls_config(ServerTlsConfig::new().identity(identity))
                 .expect("failed to configure TLS")
                 .add_service(GreeterServer::new(GreeterSvc))
-                .serve(addr)
+                .serve_with_incoming(TcpListenerStream::new(listener))
                 .await
                 .expect("gRPC server failed");
         });
     });
 
-    // Give the server a moment to bind + advertise ALPN
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    port
 }
 
-pub fn start_ws_upstream(port: u16) {
+pub fn start_ws_upstream() -> u16 {
     use futures_util::{SinkExt, StreamExt};
-    use tokio::net::TcpListener;
     use tokio_tungstenite::accept_async;
 
-    std::thread::spawn(move || {
+    let (listener, port) = bind_ephemeral();
+    listener
+        .set_nonblocking(true)
+        .expect("failed to set nonblocking");
+
+    thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let listener = TcpListener::bind(("127.0.0.1", port)).await.unwrap();
+            let listener =
+                tokio::net::TcpListener::from_std(listener).expect("failed to adopt listener");
 
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
@@ -329,5 +333,5 @@ pub fn start_ws_upstream(port: u16) {
         });
     });
 
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    port
 }

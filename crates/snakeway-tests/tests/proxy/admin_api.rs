@@ -192,9 +192,7 @@ fn admin_reload_with_invalid_config_preserves_old_config() {
     // Arrange
     let listener_port = free_port();
     let admin_port = free_port();
-    let upstream_port = free_port();
-
-    snakeway_tests::harness::upstream::start_http_upstream(upstream_port);
+    let upstream_port = snakeway_tests::harness::upstream::start_http_upstream();
 
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join(FIXTURES_CONFIG_DIR)

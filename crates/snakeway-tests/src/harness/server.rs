@@ -99,18 +99,18 @@ impl TestServer {
 
     pub fn start_with_config<F>(cfg: &mut RuntimeConfig, start_upstream: F) -> Self
     where
-        F: Fn(u16),
+        F: FnMut() -> u16,
     {
         Self::start_with_config_and_metrics(cfg, start_upstream, None)
     }
 
     pub fn start_with_config_and_metrics<F>(
         cfg: &mut RuntimeConfig,
-        start_upstream: F,
+        mut start_upstream: F,
         metrics: Option<Arc<Metrics>>,
     ) -> Self
     where
-        F: Fn(u16),
+        F: FnMut() -> u16,
     {
         // Initialize tracing (this must happen first).
         let events = events();
@@ -118,18 +118,15 @@ impl TestServer {
         // Clear events.
         events.lock().unwrap().clear();
 
-        // Allocate free port(s) for the upstreams(s).
+        // Start one upstream per configured tcp upstream. Each starter binds
+        // its own listener and reports the bound port, so the port is live
+        // before it is patched into the config.
         let upstream_ports = cfg
             .services
             .values()
             .flat_map(|c| c.tcp_upstreams.iter())
-            .map(|_| free_port())
+            .map(|_| start_upstream())
             .collect::<Vec<_>>();
-
-        // Start upstream services in background threads.
-        for p in upstream_ports.clone() {
-            start_upstream(p);
-        }
 
         // Allocate free ports only for non-redirect listeners.
         let listener_ports = cfg
@@ -156,7 +153,7 @@ impl TestServer {
 
     fn start_with<F>(fixture: &str, start_upstream: F) -> Self
     where
-        F: Fn(u16),
+        F: FnMut() -> u16,
     {
         let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join(FIXTURES_CONFIG_DIR)

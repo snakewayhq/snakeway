@@ -172,8 +172,8 @@ fn large_response_body_is_streamed_without_truncation() {
         }])
         .build();
 
-    let srv = TestServer::start_with_config(&mut cfg, |port| {
-        start_http_upstream_with_large_response(port, 2_097_152)
+    let srv = TestServer::start_with_config(&mut cfg, || {
+        start_http_upstream_with_large_response(2_097_152)
     });
 
     // Act
