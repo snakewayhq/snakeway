@@ -4250,6 +4250,7 @@ dependencies = [
  "http",
  "nix 0.31.3",
  "pingora",
+ "pretty_assertions",
  "serde",
  "serde_json",
  "serde_yaml",
