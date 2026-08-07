@@ -67,10 +67,10 @@ const config: Config = {
                 docs: {
                     sidebarPath: './sidebars.ts',
                     editUrl: 'https://github.com/snakewayhq/snakeway/tree/main/docs/',
-                    lastVersion: '0.15.0',
+                    lastVersion: '0.16.0',
                     versions: {
                         current: {
-                            label: '0.16.x-dev',
+                            label: '0.17.x-dev',
                             banner: 'unreleased',
                         },
                     },
