@@ -94,7 +94,7 @@ impl Validate for BindAdminSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{ACME_CHALLENGE_HTTP01, BearerAuthSpec};
+    use crate::types::{AcmeChallenge, BearerAuthSpec};
     use rcgen::generate_simple_self_signed;
     use std::fs::File;
     use std::io::Write;
@@ -137,7 +137,7 @@ mod tests {
         let bind_admin = BindAdminSpec {
             tls: Located::detached(TlsTerminationSpec::Acme {
                 domains: vec![Located::detached("example.com".to_string())],
-                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
             }),
             ..minimal_bind_admin()
         };

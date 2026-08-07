@@ -1,9 +1,7 @@
+use crate::types::OnNoPeerAddr;
 use crate::validation::validator::parse_cidr_list;
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
-
-pub const ON_NO_PEER_ADDR_ALLOW: &str = "allow";
-pub const ON_NO_PEER_ADDR_DENY: &str = "deny";
 
 #[derive(Debug, Serialize, Clone, confval::Spec)]
 pub struct NetworkConnectionFilterSpec {
@@ -33,7 +31,7 @@ impl Default for NetworkConnectionFilterSpec {
         Self {
             cidr: Located::detached(CidrSpec::default()),
             ip_family: Located::detached(IpFamilySpec::default()),
-            on_no_peer_addr: Located::detached(ON_NO_PEER_ADDR_ALLOW.to_string()),
+            on_no_peer_addr: Located::detached(OnNoPeerAddr::Allow.as_str().to_string()),
         }
     }
 }
@@ -64,18 +62,7 @@ impl Validate for NetworkConnectionFilterSpec {
                 .emit();
         }
 
-        if spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_ALLOW
-            && spec.on_no_peer_addr.value != ON_NO_PEER_ADDR_DENY
-        {
-            report
-                .error(format!(
-                    "unknown on_no_peer_addr: {}",
-                    spec.on_no_peer_addr.value
-                ))
-                .at(spec.on_no_peer_addr.span)
-                .help("expected \"allow\" or \"deny\"")
-                .emit();
-        }
+        OnNoPeerAddr::keyword_set().check_located(&spec.on_no_peer_addr, "on_no_peer_addr", report);
     }
 }
 
@@ -104,7 +91,7 @@ mod tests {
                 ipv4: Located::detached(ipv4),
                 ipv6: Located::detached(ipv6),
             }),
-            on_no_peer_addr: Located::detached(ON_NO_PEER_ADDR_ALLOW.to_string()),
+            on_no_peer_addr: Located::detached(OnNoPeerAddr::Allow.as_str().to_string()),
         }
     }
 

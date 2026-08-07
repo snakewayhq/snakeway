@@ -1,3 +1,4 @@
+use crate::execution::ctx::RequestCtx;
 use http::{HeaderMap, StatusCode, header};
 use pingora::http::ResponseHeader;
 use pingora::protocols::http::ServerSession;
@@ -23,6 +24,11 @@ impl ResponseCtx {
             headers,
             body,
         }
+    }
+
+    /// Builds a bodyless response context for the request, carrying its request id.
+    pub fn from_request(request: &RequestCtx, status: StatusCode, headers: HeaderMap) -> Self {
+        Self::new(request.request_id(), status, headers, Vec::new())
     }
 
     pub(crate) fn forbidden(request_id: Option<String>) -> Self {

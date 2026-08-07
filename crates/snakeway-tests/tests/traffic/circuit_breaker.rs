@@ -7,9 +7,9 @@ use snakeway::testing_api::conf::types::{
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use snakeway_tests::harness::TestServer;
-use snakeway_tests::harness::server::admin_client;
+use snakeway_tests::harness::server::{admin_client, free_port};
 use snakeway_tests::harness::upstream::{
-    start_http_upstream, start_http_upstream_that_returns_5xx, start_slow_http_upstream,
+    start_http_upstream_on, start_http_upstream_that_returns_5xx, start_slow_http_upstream,
 };
 use std::time::Duration;
 
@@ -133,10 +133,9 @@ fn circuit_breaker_trips_open_after_connection_failures() {
         .with_admin_ingress()
         .build();
 
-    let srv = TestServer::start_with_config(&mut cfg, |_port| {
-        // Intentionally do nothing: no upstream listener started.
-        // The proxy will fail to connect on every request.
-    });
+    // Intentionally no upstream listener: the dead port makes the proxy fail
+    // to connect on every request.
+    let srv = TestServer::start_with_config(&mut cfg, free_port);
     let admin = admin_client();
 
     // Act: send requests that will all fail (connection refused),
@@ -199,7 +198,7 @@ fn circuit_breaker_recovers_through_half_open_to_closed() {
         .build();
 
     // Start with no upstream to force connection failures.
-    let srv = TestServer::start_with_config(&mut cfg, |_port| {});
+    let srv = TestServer::start_with_config(&mut cfg, free_port);
     let upstream_port = extract_upstream_port(&cfg);
     let admin = admin_client();
 
@@ -227,7 +226,7 @@ fn circuit_breaker_recovers_through_half_open_to_closed() {
     }
 
     // Start a real upstream so half-open probes succeed.
-    start_http_upstream(upstream_port);
+    start_http_upstream_on(upstream_port);
 
     // Wait for the open_duration cooldown to expire.
     std::thread::sleep(Duration::from_millis(700));

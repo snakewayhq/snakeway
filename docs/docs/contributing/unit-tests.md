@@ -124,8 +124,7 @@ async fn test_cidr_deny_ip_in_list() { ... }
 
 ## Helper Functions
 
-Extract shared setup into private helper functions within the test module rather than repeating construction logic
-inline:
+Extract shared setup into private helper functions within the test module rather than repeating construction logic inline:
 
 ```rust
 fn allow_all_device() -> NetworkPolicyDevice {
@@ -154,13 +153,11 @@ They are pure setup utilities.
 ## Assertions
 
 - Use `assert!`, `assert_eq!`, and `matches!` from the standard library for simple checks.
-- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff
-  view is helpful.
+- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff view is helpful.
 - Prefer `matches!(value, Pattern)` for enum variants when no message is needed.
   When a failure message would be useful, write it out with `assert!(matches!(...), "explanation")`.
 - Assertion quality matters.
-  A stronger, more complete set of assertions that meaningfully validates the subject under test is better than a
-  minimal one.
+  A stronger, more complete set of assertions that meaningfully validates the subject under test is better than a minimal one.
 
 ## Running Unit Tests
 

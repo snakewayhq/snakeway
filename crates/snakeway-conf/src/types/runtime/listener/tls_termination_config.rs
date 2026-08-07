@@ -1,5 +1,5 @@
-use crate::types::{ACME_CHALLENGE_HTTP01, TlsTerminationSpec};
-use confval::prelude::{Lower, Report};
+use crate::types::{AcmeChallenge, TlsTerminationSpec};
+use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -14,13 +14,8 @@ pub enum TlsTerminationConfig {
     },
     Acme {
         domains: Vec<String>,
-        challenge: AcmeChallengeConfig,
+        challenge: AcmeChallenge,
     },
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub enum AcmeChallengeConfig {
-    Http01,
 }
 
 impl Lower<TlsTerminationSpec> for TlsTerminationConfig {
@@ -32,16 +27,7 @@ impl Lower<TlsTerminationSpec> for TlsTerminationConfig {
             }),
 
             TlsTerminationSpec::Acme { domains, challenge } => {
-                let challenge = match challenge.value.as_str() {
-                    ACME_CHALLENGE_HTTP01 => AcmeChallengeConfig::Http01,
-                    other => {
-                        report
-                            .error(format!("unknown ACME challenge: {other}"))
-                            .at(challenge.span)
-                            .emit();
-                        return None;
-                    }
-                };
+                let challenge: AcmeChallenge = narrow::keyword(challenge, report)?;
 
                 let mut canonicalize_domains: Vec<String> = domains
                     .iter()
@@ -72,7 +58,7 @@ mod tests {
                 .into_iter()
                 .map(|d| Located::detached(d.to_string()))
                 .collect(),
-            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
         }
     }
 
@@ -95,7 +81,7 @@ mod tests {
         assert!(matches!(
             config,
             TlsTerminationConfig::Acme {
-                challenge: AcmeChallengeConfig::Http01,
+                challenge: AcmeChallenge::Http01,
                 ..
             }
         ));
@@ -173,6 +159,8 @@ mod tests {
         }
     }
 
+    /// Validation rejects an unknown challenge before lowering runs, so this
+    /// exercises the defensive `narrow::keyword` path with confval's message.
     #[test]
     fn unknown_challenge_is_reported() {
         // Arrange
@@ -188,10 +176,9 @@ mod tests {
         // Assert
         assert!(config.is_none());
         assert!(
-            report
-                .issues()
-                .iter()
-                .any(|i| i.message == "unknown ACME challenge: dns01")
+            report.issues().iter().any(|i| i.message.contains("dns01")),
+            "issues: {:?}",
+            report.issues()
         );
     }
 }

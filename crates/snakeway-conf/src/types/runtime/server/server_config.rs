@@ -13,7 +13,7 @@ pub struct ServerConfig {
     #[confval(lower(from = version, with = narrow::i64_to_u32))]
     pub version: u32,
 
-    /// Optional number of worker threads - default is decided by Pingora.
+    /// Number of worker threads. When unset, Pingora chooses the value.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(lower(from = threads, with = narrow::opt_i64_to_usize))]
     pub threads: Option<usize>,

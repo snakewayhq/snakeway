@@ -7,9 +7,8 @@ use snakeway::testing_api::conf::types::{
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use snakeway_tests::harness::TestServer;
-use snakeway_tests::harness::server::admin_client;
-use snakeway_tests::harness::upstream::start_http_upstream;
-use std::sync::atomic::{AtomicBool, Ordering};
+use snakeway_tests::harness::server::{admin_client, free_port};
+use snakeway_tests::harness::upstream::{start_http_upstream, start_http_upstream_on};
 use std::time::Duration;
 
 fn extract_upstream_port(cfg: &RuntimeConfig) -> u16 {
@@ -178,7 +177,7 @@ fn unhealthy_upstream_recovers_after_cooldown_and_success() {
         .build();
 
     // Start with no upstream to force failures.
-    let srv = TestServer::start_with_config(&mut cfg, |_port| {});
+    let srv = TestServer::start_with_config(&mut cfg, free_port);
     let upstream_port = extract_upstream_port(&cfg);
     let admin = admin_client();
 
@@ -207,7 +206,7 @@ fn unhealthy_upstream_recovers_after_cooldown_and_success() {
     }
 
     // Start the upstream so future requests succeed.
-    start_http_upstream(upstream_port);
+    start_http_upstream_on(upstream_port);
 
     // Wait for the unhealthy cooldown to expire.
     std::thread::sleep(Duration::from_millis(1200));
@@ -290,12 +289,12 @@ fn unhealthy_upstream_is_skipped_during_routing() {
 
     // Start a listener only on the second upstream port. The first
     // upstream port will have no listener (connection refused).
-    let first_call = AtomicBool::new(true);
-    let srv = TestServer::start_with_config(&mut cfg, |port| {
-        if first_call.swap(false, Ordering::SeqCst) {
-            // Skip first upstream -- no listener started.
+    let mut first_call = true;
+    let srv = TestServer::start_with_config(&mut cfg, || {
+        if std::mem::take(&mut first_call) {
+            free_port()
         } else {
-            start_http_upstream(port);
+            start_http_upstream()
         }
     });
     let admin = admin_client();

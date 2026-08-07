@@ -1,22 +1,6 @@
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use crate::types::{IdentityField, LogEvent, LogLevel, LogPhase};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
-
-pub const LOG_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
-pub const LOG_EVENTS: [&str; 4] = ["request", "before_proxy", "after_proxy", "response"];
-pub const LOG_PHASES: [&str; 2] = ["request", "response"];
-pub const IDENTITY_FIELDS: [&str; 11] = [
-    "client_ip",
-    "proxy_chain",
-    "forwarded",
-    "trusted",
-    "asn",
-    "aso",
-    "country",
-    "region",
-    "connection_type",
-    "bot",
-    "device",
-];
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
 pub struct StructuredLoggingDeviceSpec {
@@ -65,25 +49,21 @@ impl Default for StructuredLoggingDeviceSpec {
 
 impl Validate for StructuredLoggingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
-        KeywordSet::new(&LOG_LEVELS).check_located(&self.level, "level", report);
+        LogLevel::keyword_set().check_located(&self.level, "level", report);
 
         for field in &self.identity_fields {
-            KeywordSet::new(&IDENTITY_FIELDS).check_located(field, "identity field", report);
+            IdentityField::keyword_set().check_located(field, "identity field", report);
         }
 
         if let Some(events) = &self.events {
             for event in &events.value {
-                KeywordSet::new(&LOG_EVENTS).check_located(event, "event", report);
+                LogEvent::keyword_set().check_located(event, "event", report);
             }
         }
 
         if let Some(phases) = &self.phases {
             for phase in &phases.value {
-                KeywordSet::new(&LOG_PHASES).check_located(phase, "phase", report);
+                LogPhase::keyword_set().check_located(phase, "phase", report);
             }
         }
     }
@@ -92,6 +72,19 @@ impl Validate for StructuredLoggingDeviceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StructuredLoggingDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
 
     #[test]
     fn valid_structured_logging_device() {
@@ -195,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = StructuredLoggingDeviceSpec {
@@ -208,6 +201,9 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate its keyword values"
+        );
     }
 }

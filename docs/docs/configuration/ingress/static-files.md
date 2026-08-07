@@ -2,8 +2,8 @@
 title: Static Files
 ---
 
-An ingress configuration file may define zero or more static file policies. Static file policies serve files directly
-from the local filesystem without proxying to an upstream.
+An ingress configuration file may define zero or more static file policies.
+Static file policies serve files directly from the local filesystem without proxying to an upstream.
 
 ```hcl
 static_files = [

@@ -23,7 +23,6 @@ pub struct CircuitBreakerSpec {
     pub open_duration_milliseconds: Located<HclInt>,
 
     /// How many simultaneous probe requests are allowed in half-open.
-    /// (Start with 1; keep it simple and safe.)
     #[confval(default = 1)]
     pub half_open_max_requests: Located<HclInt>,
 
@@ -51,9 +50,6 @@ impl Default for CircuitBreakerSpec {
 
 impl Validate for CircuitBreakerSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable_auto_recovery.value {
-            return;
-        }
         FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
         OPEN_DURATION_MS.check_located(
             &self.open_duration_milliseconds,
@@ -87,6 +83,30 @@ mod tests {
 
         // Assert
         assert!(!report.has_issues());
+    }
+
+    #[test]
+    fn auto_recovery_disabled_still_checks_ranges() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = CircuitBreakerSpec {
+            enable_auto_recovery: Located::detached(false),
+            failure_threshold: Located::detached(0),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("failure_threshold")),
+            "auto recovery off must not skip range checks; issues: {:?}",
+            report.issues()
+        );
     }
 
     #[test]

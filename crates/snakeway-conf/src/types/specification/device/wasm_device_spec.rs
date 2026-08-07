@@ -1,16 +1,15 @@
-use crate::types::HclInt;
+use crate::types::{HclInt, WasmDeviceFailPolicy};
 use crate::validation::validator::require_existing_file;
 use confval::format::{
-    Field, FieldKind, Fields, FromFields, Scalar, ValueKind, parse_bool_field, parse_int_field,
-    parse_string_field, parse_string_list_field, report_missing_field, report_unknown_field,
+    Field, FieldKind, Fields, FieldsBuilder, FromFields, Scalar, ToFields, Value, ValueKind, Walk,
+    parse_bool_field, parse_int_field, parse_string_field, parse_string_list_field,
+    report_missing_field, report_unknown_field,
 };
 use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-pub const FAIL_POLICIES: [&str; 2] = ["open", "closed"];
 
 /// Lifecycle hooks a WASM device may declare via the `hooks` allowlist.
 pub const HOOK_NAMES: [&str; 6] = [
@@ -63,6 +62,25 @@ impl Default for WasmDeviceSpec {
             hooks: None,
         }
     }
+}
+
+/// Entries are sorted by key so emission is deterministic.
+fn string_map_field(name: &str, entries: &HashMap<String, String>) -> Field {
+    let mut sorted: Vec<(&String, &String)> = entries.iter().collect();
+    sorted.sort_by_key(|(key, _)| key.as_str());
+    let fields = sorted
+        .into_iter()
+        .map(|(key, value)| {
+            Field::detached_value(
+                key,
+                Value::detached(ValueKind::Scalar(Scalar::String(value.to_string()))),
+            )
+        })
+        .collect();
+    Field::detached_value(
+        name,
+        Value::detached(ValueKind::Map(Fields::detached(fields))),
+    )
 }
 
 /// Parses the `config` attribute as a flat string-to-string map.
@@ -173,16 +191,43 @@ impl FromFields for WasmDeviceSpec {
     }
 }
 
+/// The write-path counterpart of the handwritten `FromFields`. An empty
+/// `config` map and an absent `hooks` list are omitted, matching what the
+/// parse treats as absent.
+impl WasmDeviceSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        let mut builder = FieldsBuilder::new(walk)
+            .leaf("name", &self.name)
+            .leaf("enable", &self.enable)
+            .leaf("path", &self.path)
+            .leaf("fail_policy", &self.fail_policy)
+            .leaf("timeout_ms", &self.timeout_ms)
+            .leaf("body_buffer_max", &self.body_buffer_max);
+        if !self.config.is_empty() {
+            builder = builder.push(string_map_field("config", &self.config));
+        }
+        builder
+            .string_list_opt("hooks", self.hooks.as_ref())
+            .finish()
+    }
+}
+
+impl ToFields for WasmDeviceSpec {
+    fn to_fields(&self) -> Fields {
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
+    }
+}
+
 impl ValidateNested for WasmDeviceSpec {
     fn validate_nested(&self, _report: &mut Report) {}
 }
 
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         if self.name.value.trim().is_empty() {
             report
                 .error("wasm device name must not be empty")
@@ -197,7 +242,7 @@ impl Validate for WasmDeviceSpec {
             report,
         );
 
-        KeywordSet::new(&FAIL_POLICIES).check_located(&self.fail_policy, "fail_policy", report);
+        WasmDeviceFailPolicy::keyword_set().check_located(&self.fail_policy, "fail_policy", report);
 
         TIMEOUT_MS.check_located(&self.timeout_ms, "timeout_ms", report);
         BODY_BUFFER_MAX.check_located(&self.body_buffer_max, "body_buffer_max", report);
@@ -207,7 +252,7 @@ impl Validate for WasmDeviceSpec {
                 report
                     .error("hooks must not be empty")
                     .at(hooks.span)
-                    .help("omit `hooks` to run all hooks, or set enable = false to disable the device")
+                    .help("omit `hooks` to run all hooks, or list at least one hook")
                     .emit();
             }
             for hook in &hooks.value {
@@ -222,6 +267,67 @@ mod tests {
     use super::*;
     use confval::format::hcl::parse_hcl;
     use confval::prelude::SourceMap;
+
+    #[test]
+    fn to_fields_round_trips_full_spec() {
+        // Arrange
+        let spec = WasmDeviceSpec {
+            name: Located::detached("auth-filter".to_string()),
+            enable: Located::detached(true),
+            path: Located::detached(PathBuf::from("./a.wasm")),
+            fail_policy: Located::detached("closed".to_string()),
+            timeout_ms: Located::detached(250),
+            body_buffer_max: Located::detached(1024),
+            config: HashMap::from([
+                ("mode".to_string(), "strict".to_string()),
+                ("retries".to_string(), "3".to_string()),
+            ]),
+            hooks: Some(Located::detached(vec![Located::detached(
+                "on_request".to_string(),
+            )])),
+        };
+        let mut report = Report::new();
+
+        // Act
+        let round_tripped = WasmDeviceSpec::from_fields(&spec.to_fields(), &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let round_tripped = round_tripped.unwrap();
+        assert_eq!(round_tripped.name.value, "auth-filter");
+        assert!(round_tripped.enable.value);
+        assert_eq!(round_tripped.path.value, PathBuf::from("./a.wasm"));
+        assert_eq!(round_tripped.fail_policy.value, "closed");
+        assert_eq!(round_tripped.timeout_ms.value, 250);
+        assert_eq!(round_tripped.body_buffer_max.value, 1024);
+        assert_eq!(round_tripped.config, spec.config);
+        assert_eq!(round_tripped.hooks.unwrap().value[0].value, "on_request");
+    }
+
+    #[test]
+    fn to_fields_omits_empty_config_and_absent_hooks() {
+        // Arrange
+        let spec = WasmDeviceSpec {
+            name: Located::detached("auth-filter".to_string()),
+            enable: Located::detached(true),
+            path: Located::detached(PathBuf::from("./a.wasm")),
+            fail_policy: Located::detached("open".to_string()),
+            ..WasmDeviceSpec::default()
+        };
+
+        // Act
+        let fields = spec.to_fields();
+
+        // Assert
+        assert!(!fields.has("config"));
+        assert!(!fields.has("hooks"));
+        assert!(fields.has("name"));
+        assert!(fields.has("enable"));
+        assert!(fields.has("path"));
+        assert!(fields.has("fail_policy"));
+        assert!(fields.has("timeout_ms"));
+        assert!(fields.has("body_buffer_max"));
+    }
 
     #[test]
     fn parse_wasm_device_with_config_map() {
@@ -443,7 +549,7 @@ hooks = ["on_request", "on_response"]
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = WasmDeviceSpec {
@@ -456,6 +562,13 @@ hooks = ["on_request", "on_response"]
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("fail_policy")),
+            "a disabled device must still validate fail_policy; issues: {:?}",
+            report.issues()
+        );
     }
 }

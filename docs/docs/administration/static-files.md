@@ -2,9 +2,7 @@
 title: Static Files
 ---
 
-
-Snakeway can serve static files directly from the filesystem, making it easy to host frontend assets, images, and other
-static content without needing a separate web server.
+Snakeway can serve static files directly from the filesystem, so you can host frontend assets, images, and other static content without running a separate web server.
 
 ## Configuration
 
@@ -30,8 +28,7 @@ static_files = [
 ```
 
 Every field above except `index` is required.
-Write `compression = {}` and `cache_policy = {}` to accept the defaults for those blocks, or set the individual
-options described below.
+Write `compression = {}` and `cache_policy = {}` to accept the defaults for those blocks, or set the individual options described below.
 
 ### Configuration Options
 
@@ -48,8 +45,8 @@ options described below.
 
 ### Cache Policy (Per-Route)
 
-Each static route carries a `cache_policy` block. Every option within it has a default, so `cache_policy = {}` is
-valid.
+Each static route carries a `cache_policy` block.
+Every option within it has a default, so `cache_policy = {}` is valid.
 
 | Option            | Type    | Default | Description                                                                                                                  |
 |-------------------|---------|---------|------------------------------------------------------------------------------------------------------------------------------|
@@ -59,7 +56,8 @@ valid.
 
 ### Advanced Compression (Per-Route)
 
-Each static route carries a `compression` block. Every option within it has a default, so `compression = {}` is valid.
+Each static route carries a `compression` block.
+Every option within it has a default, so `compression = {}` is valid.
 
 | Option                 | Type    | Default  | Description                                                                                                 |
 |------------------------|---------|----------|-------------------------------------------------------------------------------------------------------------|
@@ -67,7 +65,7 @@ Each static route carries a `compression` block. Every option within it has a de
 | `enable_gzip`          | boolean | `true`   | Enable gzip compression (fallback when Brotli is unavailable)                                               |
 | `min_brotli_size`      | integer | `4096`   | Minimum file size in bytes to apply Brotli compression (4 KiB)                                              |
 | `min_gzip_size`        | integer | `1024`   | Minimum file size in bytes to apply gzip compression (1 KiB)                                                |
-| `small_file_threshold` | integer | `262144` | Files smaller than this (in bytes) are read into memory and compressed; larger files are streamed (256 KiB) |
+| `small_file_threshold` | integer | `262144` | Files smaller than this (in bytes) are read into memory and compressed. Larger files are streamed (256 KiB) |
 
 **Example with custom compression settings:**
 
@@ -120,8 +118,7 @@ static_files = [
 **Serve large assets:**
 
 `max_file_size` is a route field rather than a compression option.
-It caps the size of any file the route will serve, and a larger file is rejected with `403 Forbidden` before it is
-opened, including a range request for a small slice of it.
+It caps the size of any file the route will serve, and a larger file is rejected with `403 Forbidden` before it is opened, including a range request for a small slice of it.
 The accepted range is 1 to 68719476736 (64 GiB).
 
 ```hcl
@@ -254,8 +251,7 @@ Clients can use conditional requests to avoid re-downloading unchanged files:
 
 ## Compression
 
-Snakeway automatically compresses responses for clients that support it, reducing transfer sizes significantly for
-text-based content.
+Snakeway automatically compresses responses for clients that support it, reducing transfer sizes significantly for text-based content.
 
 :::note[Large Files]
 Snakeway supports compression for static files when the response size is known in advance.
@@ -265,15 +261,14 @@ Support for precompressed assets is planned.
 
 **Supported encodings (in order of preference):**
 
-1. **Brotli** (`br`) - Best compression ratio, preferred when client supports it
-2. **gzip** - Fallback for clients that don't support Brotli
+1. **Brotli** (`br`) gives the best compression ratio and is preferred when the client supports it.
+2. **gzip** is the fallback for clients that do not support Brotli.
 
 **Compression behavior (default settings):**
 
 - Only compressible MIME types are compressed (text, JSON, JavaScript, XML, SVG, WASM, etc.)
 - Brotli is used for files `≥ 4 KiB` (configurable via `min_brotli_size`)
-- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via
-  `min_gzip_size`)
+- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via `min_gzip_size`)
 - Compression can be disabled per-route using `enable_brotli` and `enable_gzip` options
 - Compression is skipped if the compressed size isn't smaller than the original
 - The `Vary: Accept-Encoding` header is added for proper cache behavior
@@ -298,8 +293,8 @@ ETag: W/"1a2b3c-4d5e6f"
 ## File Streaming
 
 - **Small files** (≤ 256 KiB by default): Read entirely into memory, compressed if applicable
-- **Large files** (> 256 KiB by default): Streamed directly from disk in 32 KiB chunks. Streaming responses are not
-  compressed, since compression currently requires buffering the entire file in memory.
+- **Large files** (> 256 KiB by default): Streamed directly from disk in 32 KiB chunks.
+  Streaming responses are not compressed, since compression currently requires buffering the entire file in memory.
 
 The threshold can be adjusted per-route using the `small_file_threshold` option.
 
@@ -307,9 +302,7 @@ The threshold can be adjusted per-route using the `small_file_threshold` option.
 
 Snakeway includes several security measures to protect against common attacks:
 
-- **Path traversal protection**: Requests containing `..` or attempting to escape the `file_dir` are rejected with
-  `403 Forbidden`
-- **File size limit**: Files larger than 10 MiB (by default) are rejected to prevent memory exhaustion (configurable
-  per-route).
+- **Path traversal protection**: Requests containing `..` or attempting to escape the `file_dir` are rejected with `403 Forbidden`
+- **File size limit**: Files larger than 10 MiB (by default) are rejected to prevent memory exhaustion (configurable per-route).
 - **Symlink resolution**: Paths are canonicalized to prevent symlink-based escapes
 

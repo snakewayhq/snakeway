@@ -1,10 +1,10 @@
 use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, DEFAULT_LISTENER_PORT, TEST_HOST};
 use confval::source::Located;
 use snakeway::testing_api::conf::types::{
-    ACME_CHALLENGE_HTTP01, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec,
-    IdentityDeviceSpec, IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec,
-    RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec, ServerSpec,
-    StructuredLoggingDeviceSpec, TlsTerminationSpec, WasmDeviceSpec,
+    AcmeChallenge, BindSpec, ConnectionRateLimitingFilterSpec, DeviceSpec, IdentityDeviceSpec,
+    IngressSpec, NetworkConnectionFilterSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
+    RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, TlsTerminationSpec,
+    WasmDeviceSpec,
 };
 use snakeway::testing_api::conf::{load_config_from_specs, types::RuntimeConfig};
 use std::path::PathBuf;
@@ -62,7 +62,7 @@ impl ConfigBuilder {
             port: Located::detached(DEFAULT_LISTENER_PORT),
             tls: Some(Located::detached(TlsTerminationSpec::Acme {
                 domains: vec![Located::detached(TEST_HOST.to_string())],
-                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
             })),
             ..Default::default()
         }

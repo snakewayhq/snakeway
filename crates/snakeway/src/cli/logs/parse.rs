@@ -101,3 +101,135 @@ pub(crate) fn parse_event(event: &Value) -> Option<LogEvent> {
         }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn should_parse_snakeway_event_fields() {
+        // Arrange
+        let raw = json!({
+            "level": "WARN",
+            "event": "response",
+            "request_id": "abc123",
+            "method": "GET",
+            "uri": "/api/users",
+            "status": "503",
+            "timestamp": "2026-01-01T00:00:00Z",
+        });
+
+        // Act
+        let event = parse_event(&raw);
+
+        // Assert
+        let Some(LogEvent::Snakeway(e)) = event else {
+            panic!("expected a snakeway event");
+        };
+        assert_eq!(e.level, "WARN");
+        assert_eq!(e.name, "response");
+        assert_eq!(e.request_id.as_deref(), Some("abc123"));
+        assert_eq!(e.method.as_deref(), Some("GET"));
+        assert_eq!(e.uri.as_deref(), Some("/api/users"));
+        assert_eq!(e.status, Some(503));
+        assert!(e.ts.is_some(), "rfc3339 timestamp must parse");
+    }
+
+    #[test]
+    fn should_default_event_name_and_level() {
+        // Arrange
+        let raw = json!({ "method": "GET" });
+
+        // Act
+        let event = parse_event(&raw);
+
+        // Assert
+        let Some(LogEvent::Snakeway(e)) = event else {
+            panic!("expected a snakeway event");
+        };
+        assert_eq!(e.name, "request");
+        assert_eq!(e.level, "INFO");
+        assert_eq!(e.status, None);
+    }
+
+    #[test]
+    fn should_parse_identity_from_encoded_json() {
+        // Arrange
+        let raw = json!({
+            "method": "GET",
+            "identity": r#"{"device":"phone","bot":"true","asn":"64512","aso":"TestNet","connection_type":"cellular","country":"NZ"}"#,
+        });
+
+        // Act
+        let event = parse_event(&raw);
+
+        // Assert
+        let Some(LogEvent::Snakeway(e)) = event else {
+            panic!("expected a snakeway event");
+        };
+        let identity = e.identity.expect("identity must parse");
+        assert_eq!(identity.device.as_deref(), Some("phone"));
+        assert_eq!(identity.bot, Some(true));
+        assert_eq!(identity.asn, Some(64512));
+        assert_eq!(identity.aso.as_deref(), Some("TestNet"));
+        assert_eq!(identity.connection_type.as_deref(), Some("cellular"));
+        assert_eq!(identity.country.as_deref(), Some("NZ"));
+    }
+
+    #[test]
+    fn should_drop_identity_without_device_or_bot() {
+        // Arrange
+        let raw = json!({
+            "method": "GET",
+            "identity": r#"{"country":"NZ"}"#,
+        });
+
+        // Act
+        let event = parse_event(&raw);
+
+        // Assert
+        let Some(LogEvent::Snakeway(e)) = event else {
+            panic!("expected a snakeway event");
+        };
+        assert!(e.identity.is_none());
+    }
+
+    #[test]
+    fn should_parse_generic_event_with_target() {
+        // Arrange
+        let raw = json!({
+            "level": "DEBUG",
+            "message": "reload complete",
+            "target": "snakeway::server",
+        });
+
+        // Act
+        let event = parse_event(&raw);
+
+        // Assert
+        let Some(LogEvent::Generic(e)) = event else {
+            panic!("expected a generic event");
+        };
+        assert_eq!(e.level, "DEBUG");
+        assert_eq!(e.message, "reload complete");
+        assert_eq!(e.target.as_deref(), Some("snakeway::server"));
+    }
+
+    #[test]
+    fn should_fall_back_to_a_placeholder_message() {
+        // Arrange
+        let raw = json!({ "level": "INFO" });
+
+        // Act
+        let event = parse_event(&raw);
+
+        // Assert
+        let Some(LogEvent::Generic(e)) = event else {
+            panic!("expected a generic event");
+        };
+        assert_eq!(e.message, "<no message>");
+        assert_eq!(e.target, None);
+    }
+}

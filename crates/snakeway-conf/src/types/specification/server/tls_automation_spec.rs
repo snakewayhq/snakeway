@@ -1,6 +1,7 @@
 use crate::validation::validator::{require_existing_dir, validate_cert_pem};
 use confval::format::{
-    Fields, FromFields, parse_string_field, report_missing_field, report_unknown_field,
+    Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, report_missing_field,
+    report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
@@ -134,6 +135,32 @@ impl FromFields for CertStoreSpec {
     }
 }
 
+/// The write-path counterpart of the handwritten `FromFields`: the `type`
+/// attribute selects the variant, then the variant's own fields follow.
+impl CertStoreSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        match self {
+            CertStoreSpec::Filesystem { cert_dir } => FieldsBuilder::new(walk)
+                .literal_string("type", "filesystem")
+                .leaf("cert_dir", cert_dir)
+                .finish(),
+            CertStoreSpec::Memory => FieldsBuilder::new(walk)
+                .literal_string("type", "memory")
+                .finish(),
+        }
+    }
+}
+
+impl ToFields for CertStoreSpec {
+    fn to_fields(&self) -> Fields {
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
+    }
+}
+
 impl Validate for TlsAutomationSpec {
     fn validate(&self, report: &mut Report) {
         RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
@@ -177,6 +204,39 @@ mod tests {
             contact_email: vec![],
             ca_file: None,
         }
+    }
+
+    #[test]
+    fn to_fields_round_trips_filesystem_store() {
+        // Arrange
+        let spec = CertStoreSpec::Filesystem {
+            cert_dir: Located::detached(PathBuf::from("/etc/certs")),
+        };
+        let mut report = Report::new();
+
+        // Act
+        let round_tripped = CertStoreSpec::from_fields(&spec.to_fields(), &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(matches!(
+            round_tripped.unwrap(),
+            CertStoreSpec::Filesystem { cert_dir } if cert_dir.value == Path::new("/etc/certs")
+        ));
+    }
+
+    #[test]
+    fn to_fields_round_trips_memory_store() {
+        // Arrange
+        let spec = CertStoreSpec::Memory;
+        let mut report = Report::new();
+
+        // Act
+        let round_tripped = CertStoreSpec::from_fields(&spec.to_fields(), &mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(matches!(round_tripped.unwrap(), CertStoreSpec::Memory));
     }
 
     #[test]

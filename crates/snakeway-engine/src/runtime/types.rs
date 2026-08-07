@@ -25,10 +25,9 @@ pub struct TlsRuntime {
     pub sni_map: Arc<SniRegistry>,
 }
 
-/// ServiceRuntime encapsulates the state of a service, including its
-/// upstream(s) and load balancing strategy.
-/// It is not just a collection of data, but also a behavioral unit distinct
-/// from RuntimeState.
+/// The upstreams and load balancing strategy for one service, along with the selection
+/// behavior over them.
+/// `RuntimeState` holds these and replaces them wholesale on reload.
 pub struct ServiceRuntime {
     pub strategy: LoadBalancingStrategy,
     pub upstreams: Vec<UpstreamRuntime>,

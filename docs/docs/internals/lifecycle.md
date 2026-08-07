@@ -6,12 +6,11 @@ title: Lifecycle
 Snakeway processes every HTTP request through a well-defined lifecycle composed of discrete, ordered phases.
 Read that again, because it is important to understand.
 
-Each phase has a specific purpose, a constrained set of capabilities, and clear rules about what may or may not happen
-next.
+Each phase has a specific purpose, a constrained set of capabilities, and clear rules about what may or may not happen next.
 
 Understanding this lifecycle is critical when writing devices or reasoning about request behavior.
 
-## Request / Response Phases
+## Request and response phases
 
 ```mermaid
 %%{ init: { "flowchart": { "curve": "basis" } } }%%
@@ -35,16 +34,17 @@ flowchart LR
 
 For **proxied requests**, the full lifecycle flows left to right through all six phases.
 
-For **static file requests**, the lifecycle short-circuits from `on_request` directly to `on_response` (the dashed path). Static routes never create an upstream connection and therefore skip all proxy-specific phases.
+For **static file requests**, the lifecycle short-circuits from `on_request` directly to `on_response` (the dashed path).
+Static routes never create an upstream connection and therefore skip all proxy-specific phases.
 
-## Phase Overview
+## Phase overview
 
 ### `on_request`
 
-**Purpose:** Inspection, early decisions, and request mutation  
-**Runs for:** Proxy routes and static routes
+**Purpose:** Inspection, early decisions, and request mutation **Runs for:** Proxy routes and static routes
 
-This is the earliest hook in the lifecycle. Devices may:
+This is the earliest hook in the lifecycle.
+Devices may:
 
 - Inspect request method, path, headers, and body
 - Mutate request metadata
@@ -55,11 +55,10 @@ If a device responds here, no further processing occurs.
 
 ### `on_stream_request_body`
 
-**Purpose:** Inspection and mutation of the request body  
-**Runs for:** Proxy routes
+**Purpose:** Inspection and mutation of the request body **Runs for:** Proxy routes
 
 This hook is only called if there is a request body.
-This means it may not be called at all if there is no body or if the method (e.g., GET) doesn't expect a body.
+It is skipped when there is no body, or when the method does not expect one, as with GET.
 
 Typical uses:
 
@@ -70,8 +69,7 @@ If a device responds here, no further processing occurs.
 
 ### `before_proxy`
 
-**Purpose:** Final upstream mutation or abort  
-**Runs for:** Proxy routes only
+**Purpose:** Final upstream mutation or abort **Runs for:** Proxy routes only
 
 This phase runs **only if the request is being proxied upstream**.
 
@@ -85,10 +83,10 @@ This phase is **never executed for static routes**.
 
 ### `after_proxy`
 
-**Purpose:** Modify the upstream response before it is sent downstream  
-**Runs for:** Proxy routes only
+**Purpose:** Modify the upstream response before it is sent downstream **Runs for:** Proxy routes only
 
-This phase observes the upstream response headers and status before they are written to the client. Devices may:
+This phase observes the upstream response headers and status before they are written to the client.
+Devices may:
 
 - Modify response headers
 - Override the response status
@@ -98,8 +96,7 @@ The upstream connection already exists at this point.
 
 ### `on_stream_response_body`
 
-**Purpose:** Inspection and mutation of the response body
-**Runs for:** Proxy routes
+**Purpose:** Inspection and mutation of the response body **Runs for:** Proxy routes
 
 This hook is called as the upstream response body is streamed to the client.
 It may be invoked zero or more times depending on the response size and chunking.
@@ -113,10 +110,10 @@ If a device responds here, no further body chunks are forwarded.
 
 ### `on_response`
 
-**Purpose:** Final observation and side effects
-**Runs for:** Proxy routes and static routes
+**Purpose:** Final observation and side effects **Runs for:** Proxy routes and static routes
 
-This is the final lifecycle hook. The response is considered committed or about to be committed.
+This is the final lifecycle hook.
+The response is considered committed or about to be committed.
 
 Devices should treat this phase as **observe-only**, used for:
 
@@ -127,7 +124,7 @@ Devices should treat this phase as **observe-only**, used for:
 
 Mutating the response here is allowed but discouraged for anything security-critical.
 
-## Phase Capabilities
+## Phase capabilities
 
 | Phase                   | Continue | Respond                | Error Handling       |
 |-------------------------|----------|------------------------|----------------------|
@@ -138,7 +135,7 @@ Mutating the response here is allowed but discouraged for anything security-crit
 | on_stream_response_body | proceed  | stop forwarding body   | mark error / observe |
 | on_response             | proceed  | override (discouraged) | log + metric only    |
 
-## Static Route Lifecycle Notes
+## Static route lifecycle notes
 
 Static file routes intentionally **short-circuit** the proxy pipeline.
 
@@ -151,27 +148,18 @@ For static routes:
 - `on_stream_response_body` **does not run**
 - `on_response` **runs**
 
-This design ensures that static file serving is:
-
-- Fast
-- Predictable
-- Isolated from upstream concerns
-
 :::caution
-Any **security-critical logic** (authentication, authorization, access control) that must apply to static files **must
-live in `on_request`**.
+Any **security-critical logic** (authentication, authorization, access control) that must apply to static files **must live in `on_request`**.
 
 Proxy-only phases must never be relied upon for static route enforcement.
 :::
 
-## Design Guarantees
-
-Snakeway guarantees that:
+## Design guarantees
 
 - Phases always execute in the documented order.
 - A response returned in an earlier phase halts the lifecycle.
-- Static routes never touch upstream infrastructure.
+- Static routes never reach upstream infrastructure.
 - Devices are never invoked out of band.
 
-These guarantees allow devices to be written with confidence and without defensive duplication.
+You can rely on these when writing a device, so a device does not need to re-check work an earlier phase already did.
 

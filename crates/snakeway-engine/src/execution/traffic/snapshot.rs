@@ -48,7 +48,7 @@ impl TrafficSnapshot {
                 ServiceId(name.as_str().into()),
                 ServiceSnapshot {
                     service_id: ServiceId(name.as_str().into()),
-                    strategy: svc.strategy.clone(),
+                    strategy: svc.strategy,
                     upstreams,
                     circuit_breaker_cfg: svc.circuit_breaker_cfg.clone(),
                     health_check_cfg: svc.health_check_cfg.clone(),

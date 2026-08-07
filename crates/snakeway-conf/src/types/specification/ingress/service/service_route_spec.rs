@@ -19,9 +19,7 @@ pub struct ServiceRouteSpec {
 /// an empty `hosts` list cannot supply, so it lives in `ServiceSpec`.
 impl Validate for ServiceRouteSpec {
     fn validate(&self, report: &mut Report) {
-        if self.enable_websocket.value
-            && let Some(ws_max_connections) = &self.ws_max_connections
-        {
+        if let Some(ws_max_connections) = &self.ws_max_connections {
             WS_MAX_CONNECTIONS.check_located(ws_max_connections, "ws_max_connections", report);
         }
     }
@@ -51,6 +49,31 @@ mod tests {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("ws_max_connections"))
+        );
+    }
+
+    #[test]
+    fn ws_max_connections_checked_when_websocket_disabled() {
+        // Arrange
+        let mut report = Report::new();
+        let route = ServiceRouteSpec {
+            hosts: vec![Located::detached("example.com".to_string())],
+            path: Located::detached("/".to_string()),
+            enable_websocket: Located::detached(false),
+            ws_max_connections: Some(Located::detached(0)),
+        };
+
+        // Act
+        route.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("ws_max_connections")),
+            "a present ws_max_connections must be validated even when websocket is off; issues: {:?}",
+            report.issues()
         );
     }
 

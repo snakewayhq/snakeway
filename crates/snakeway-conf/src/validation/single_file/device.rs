@@ -21,6 +21,19 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
     let mut structured_logging_seen = false;
     let mut wasm_names_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
+    // Value checks apply to every device present.
+    // The enabled-only passes below enforce runtime requirements.
+    for device in devices {
+        match &device.value {
+            DeviceSpec::RequestFilter(cfg) => cfg.validate_all(report),
+            DeviceSpec::Identity(cfg) => cfg.validate_all(report),
+            DeviceSpec::NetworkPolicy(cfg) => cfg.validate_all(report),
+            DeviceSpec::Wasm(cfg) => cfg.validate_all(report),
+            DeviceSpec::StructuredLogging(cfg) => cfg.validate_all(report),
+            DeviceSpec::RequestRateLimiting(cfg) => cfg.validate_all(report),
+        }
+    }
+
     // Identity first: other devices depend on it being enabled.
     let enabled_devices = devices.iter().filter(|device| device.value.is_enabled());
     for device in enabled_devices {
@@ -30,8 +43,6 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
             }
             identity_seen = true;
             identity_enabled = cfg.enable.value;
-
-            cfg.validate_all(report);
 
             if cfg.enable_geoip.value
                 && cfg.geoip_city_db.is_none()
@@ -55,8 +66,6 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                     report_already_defined(device.span, report);
                 }
                 request_filter_seen = true;
-
-                cfg.validate_all(report);
 
                 if cfg.max_suspicious_body_bytes.value > cfg.max_body_bytes.value {
                     report
@@ -88,10 +97,8 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                         .at(device.span)
                         .emit();
                 }
-
-                cfg.validate_all(report);
             }
-            DeviceSpec::RequestRateLimiting(cfg) => {
+            DeviceSpec::RequestRateLimiting(_) => {
                 if request_rate_limiting_device_seen {
                     report_already_defined(device.span, report);
                 }
@@ -100,8 +107,6 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                 if !identity_enabled {
                     report_requires_identity(device.span, report);
                 }
-
-                cfg.validate_all(report);
             }
             DeviceSpec::Wasm(cfg) => {
                 if !wasm_names_seen.insert(cfg.name.value.clone()) {
@@ -113,16 +118,12 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                         .at(device.span)
                         .emit();
                 }
-
-                cfg.validate_all(report);
             }
             DeviceSpec::StructuredLogging(cfg) => {
                 if structured_logging_seen {
                     report_already_defined(device.span, report);
                 }
                 structured_logging_seen = true;
-
-                cfg.validate_all(report);
 
                 // These two are no-ops rather than broken config (identity or
                 // headers are requested but nothing is selected, so nothing is
@@ -198,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_wasm_device_disabled_skips_validation() {
+    fn validate_wasm_device_disabled_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let wasm = device(DeviceSpec::Wasm(WasmDeviceSpec {
@@ -211,7 +212,14 @@ mod tests {
         validate_devices(&[wasm], &mut report);
 
         // Assert
-        assert!(!report.has_issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("wasm device path does not exist")),
+            "a disabled wasm device must still validate its path; issues: {:?}",
+            report.issues()
+        );
     }
 
     #[test]

@@ -224,3 +224,100 @@ fn exit_code(decision: &RouteSolveDecision) -> i32 {
         EXIT_OK
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::route::solve::types::{RouteSolveNormalized, RouteSolveRejection};
+
+    fn decision(
+        matched_route: Option<&str>,
+        rejection: Option<RouteSolveRejection>,
+    ) -> RouteSolveDecision {
+        RouteSolveDecision {
+            matched_route: matched_route.map(str::to_string),
+            route_kind: None,
+            upstream_service: None,
+            selected_upstream: None,
+            static_file_dir: None,
+            rejection,
+            normalized: RouteSolveNormalized {
+                scheme: "http".to_string(),
+                host: "example.test".to_string(),
+                method: "GET".to_string(),
+                path: "/".to_string(),
+                query: None,
+                client_ip: None,
+                body_size: 0,
+            },
+            trace: None,
+        }
+    }
+
+    #[test]
+    fn should_parse_header_name_and_value() {
+        // Arrange
+        let raw = "X-Test: hello";
+
+        // Act
+        let (name, value) = parse_header(raw).expect("header must parse");
+
+        // Assert
+        assert_eq!(name.as_str(), "x-test");
+        assert_eq!(value.to_str().unwrap(), "hello");
+    }
+
+    #[test]
+    fn should_reject_header_without_separator() {
+        // Arrange
+        let raw = "no-separator";
+
+        // Act
+        let result = parse_header(raw);
+
+        // Assert
+        assert!(result.expect_err("must reject").contains("missing ':'"));
+    }
+
+    #[test]
+    fn should_exit_4_for_a_rejected_request() {
+        // Arrange
+        let decision = decision(
+            Some("route"),
+            Some(RouteSolveRejection {
+                stage: "network_policy".to_string(),
+                reason: "denied".to_string(),
+            }),
+        );
+
+        // Act
+        let code = exit_code(&decision);
+
+        // Assert
+        assert_eq!(code, 4);
+    }
+
+    #[test]
+    fn should_exit_3_when_no_route_matches() {
+        // Arrange
+        let decision = decision(None, None);
+
+        // Act
+        let code = exit_code(&decision);
+
+        // Assert
+        assert_eq!(code, 3);
+    }
+
+    #[test]
+    fn should_exit_0_for_a_resolved_route() {
+        // Arrange
+        let decision = decision(Some("route"), None);
+
+        // Act
+        let code = exit_code(&decision);
+
+        // Assert
+        assert_eq!(code, 0);
+    }
+}

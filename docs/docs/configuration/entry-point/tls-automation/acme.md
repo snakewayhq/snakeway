@@ -17,15 +17,21 @@ acme = {
 
 ## Field Reference
 
-`directory_url` string, **required**. The ACME directory URL. For production use with Let's Encrypt, set this to
-`https://acme-v02.api.letsencrypt.org/directory`. For staging, use the Let's Encrypt staging URL.
+`directory_url` string, **required**.
+The ACME directory URL.
+For production use with Let's Encrypt, set this to `https://acme-v02.api.letsencrypt.org/directory`.
+For staging, use the Let's Encrypt staging URL.
 
-`data_dir` string, **required**. Directory for persisting ACME account keys and order state.
-This directory must exist before Snakeway starts; it will not be created automatically.
+`data_dir` string, **required**.
+Directory for persisting ACME account keys and order state.
+This directory must exist before Snakeway starts.
+It will not be created automatically.
 Snakeway must have read and write access to this path.
 
-`contact_email` list of strings, **required**. One or more email addresses registered with the ACME provider. The
-certificate authority uses these addresses for expiry warnings and account recovery.
+`contact_email` list of strings, **required**.
+One or more email addresses registered with the ACME provider.
+The certificate authority uses these addresses for expiry warnings and account recovery.
 
-`ca_file` string, default: none. CA certificate file for verifying the ACME server's TLS certificate. This is useful for
-staging or testing environments that use a private CA.
+`ca_file` string, default: none.
+CA certificate file for verifying the ACME server's TLS certificate.
+This is useful for staging or testing environments that use a private CA.

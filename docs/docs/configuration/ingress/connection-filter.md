@@ -2,7 +2,8 @@
 title: Connection Filter
 ---
 
-The `connection_filter` block restricts which clients may connect based on their source IP address. It is nested inside the [bind](bind.md) block and contains three sub-sections: `cidr`, `ip_family`, and `on_no_peer_addr`.
+The `connection_filter` block restricts which clients may connect based on their source IP address.
+It is nested inside the [bind](bind.md) block and contains three sub-sections: `cidr`, `ip_family`, and `on_no_peer_addr`.
 
 ```hcl
 connection_filter = {
@@ -49,11 +50,12 @@ The `deny` list takes precedence over the `allow` list.
 | `ip_family.ipv6` | `boolean` | `false` | If `true`, IPv6 connections are allowed. |
 
 :::note
-At least one of `ipv4` or `ipv6` must be `true`. A config error will be reported if both are `false`.
+At least one of `ipv4` or `ipv6` must be `true`.
+A config error will be reported if both are `false`.
 :::
 
 ## On No Peer Address
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `on_no_peer_addr` | `string` | `"allow"` | Controls the behavior when a connection arrives without a peer address. Accepts `"allow"` or `"deny"`. The default is permissive; any connection is allowed. |
+| `on_no_peer_addr` | `string` | `"allow"` | Controls the behavior when a connection arrives without a peer address. Accepts `"allow"` or `"deny"`. The default is permissive. Any connection is allowed. |

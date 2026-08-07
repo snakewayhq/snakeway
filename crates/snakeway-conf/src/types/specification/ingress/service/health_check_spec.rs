@@ -28,10 +28,6 @@ impl Default for HealthCheckSpec {
 
 impl Validate for HealthCheckSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
         UNHEALTHY_COOLDOWN_SECONDS.check_located(
             &self.unhealthy_cooldown_seconds,
@@ -62,7 +58,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_health_check_skips_range_checks() {
+    fn disabled_health_check_still_checks_ranges() {
         // Arrange
         let mut report = Report::new();
         let spec = HealthCheckSpec {
@@ -75,7 +71,22 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("failure_threshold")),
+            "a disabled health check must still validate its values; issues: {:?}",
+            report.issues()
+        );
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("unhealthy_cooldown_seconds")),
+            "a disabled health check must still validate its values; issues: {:?}",
+            report.issues()
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
 #![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-//! # JWT Auth Gateway (Snakeway WASM Device)
+//! # JWT Auth (Snakeway WASM Device)
 //!
 //! Validates JWT bearer tokens on incoming requests, extracts claims into
 //! upstream headers, and returns synthetic responses on auth failure.

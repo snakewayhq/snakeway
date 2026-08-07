@@ -17,8 +17,8 @@ pub(crate) fn read_nonempty_file(path: &Path) -> Result<Vec<u8>, String> {
 }
 
 /// Report an error unless `located` points at an existing regular file.
-/// Cascades to a single diagnostic; returns whether the path is usable so a
-/// caller doing further checks (e.g., reading the file) can bail.
+/// At most one diagnostic is reported. The return value says whether the path is
+/// usable, so a caller doing further checks, such as reading the file, can bail.
 /// `help`, when given, is attached to whichever error fires
 /// (empty / missing / not-a-file), so a caller can offer remediation specific
 /// to its setting.

@@ -136,3 +136,93 @@ pub(crate) fn render_pretty(event: &LogEvent) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn snapshot() -> StatsSnapshot {
+        StatsSnapshot {
+            window_seconds: 60,
+            rps: 2.5,
+            window_events: 4,
+            latency: vec![("0–10ms".to_string(), 3), (">10ms".to_string(), 1)],
+            status: (1, 2, 3),
+            p95_ms: 42,
+            p99_ms: 99,
+            device_counts: HashMap::from([("mac".to_string(), 2), ("phone".to_string(), 1)]),
+            connection_type_counts: HashMap::from([("cellular".to_string(), 1)]),
+            asn_counts: HashMap::from([(64512, 1)]),
+            aso_counts: HashMap::from([("TestNet".to_string(), 1)]),
+            country_counts: HashMap::from([("NZ".to_string(), 1)]),
+            bot_count: 6,
+            human_count: 5,
+            unknown_identity_count: 7,
+        }
+    }
+
+    #[test]
+    fn should_render_stats_headline_and_sections() {
+        // Arrange
+        let snapshot = snapshot();
+
+        // Act
+        let out = render_stats(&snapshot);
+
+        // Assert
+        assert!(out.contains("(60s window)"), "out: {out}");
+        assert!(out.contains("RPS: 2.5 | events: 4 | 5xx: 3"), "out: {out}");
+        assert!(
+            out.contains("75.0%"),
+            "latency percentages must render: {out}"
+        );
+        assert!(
+            out.contains("25.0%"),
+            "latency percentages must render: {out}"
+        );
+        assert!(
+            out.contains(&"█".repeat(15)),
+            "a 75 percent bucket renders 15 bars: {out}"
+        );
+        assert!(
+            !out.contains(&"█".repeat(16)),
+            "no bucket renders more bars than its percentage: {out}"
+        );
+        assert!(out.contains("p95 ≈ 42ms | p99 ≈ 99ms"), "out: {out}");
+        assert!(out.contains("2xx=1 4xx=2 5xx=3"), "out: {out}");
+        assert!(out.contains("human=5 bot=6 unknown=7"), "out: {out}");
+        assert!(
+            out.contains("Devices: mac=2 phone=1"),
+            "devices must render sorted by name: {out}"
+        );
+        assert!(out.contains("Connection types: cellular=1"), "out: {out}");
+        assert!(out.contains("Countries: NZ=1"), "out: {out}");
+        assert!(out.contains("ASNs: 64512=1"), "out: {out}");
+        assert!(out.contains("TestNet=1"), "out: {out}");
+    }
+
+    #[test]
+    fn should_render_a_placeholder_without_latency_samples() {
+        // Arrange
+        let snapshot = StatsSnapshot {
+            latency: vec![("0–10ms".to_string(), 0)],
+            device_counts: HashMap::new(),
+            connection_type_counts: HashMap::new(),
+            asn_counts: HashMap::new(),
+            aso_counts: HashMap::new(),
+            country_counts: HashMap::new(),
+            ..snapshot()
+        };
+
+        // Act
+        let out = render_stats(&snapshot);
+
+        // Assert
+        assert!(out.contains("Latency (window): <no samples>"), "out: {out}");
+        assert!(
+            !out.contains("Devices:"),
+            "empty sections must not render: {out}"
+        );
+    }
+}

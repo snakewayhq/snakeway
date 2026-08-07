@@ -1,7 +1,8 @@
-use crate::cli::config::hcl::to_hcl_block_string;
 use crate::cli::config::init::templates;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
+use confval::format::ToFields;
+use confval::format::hcl::emit_hcl;
 use confval::source::Located;
 #[cfg(feature = "dev-templates")]
 use snakeway_conf::types::{AcmeServerSpec, CertStoreSpec, TlsAutomationSpec};
@@ -74,7 +75,7 @@ pub(crate) fn init(path: PathBuf, template: ConfigInitTemplate) -> Result<()> {
     let mut files_to_create = HashMap::new();
     files_to_create.insert(
         entrypoint_file_path,
-        to_hcl_block_string(&entrypoint_spec(&template))?,
+        emit_hcl(&entrypoint_spec(&template).to_template())?,
     );
 
     match template {
@@ -145,6 +146,7 @@ pub(crate) enum ConfigInitTemplate {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snakeway_conf::validation::ConfigError;
     use snakeway_conf::{load_config, load_spec_files};
 
     /// Every file `config init` writes must parse: the entrypoint plus the
@@ -178,12 +180,55 @@ mod tests {
         }
     }
 
+    /// The dev template targets a local pebble setup, so three validation
+    /// checks depend on the host: the ACME CA file, the ACME data_dir, and the
+    /// filesystem cert_dir. Every other check must pass. Any issue outside
+    /// that allowlist is a template defect, such as an emitted value that
+    /// violates its own range constraint.
+    #[cfg(feature = "dev-templates")]
+    #[test]
+    fn dev_template_validates_beyond_environment_checks() {
+        // Arrange
+        let environment_checks = [
+            "server TLS ACME CA file",
+            "server TLS ACME data_dir",
+            "server TLS filesystem cert_dir",
+        ];
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().join("config");
+        init(root.clone(), ConfigInitTemplate::Dev).expect("init writes a config");
+
+        // Act
+        let result = load_config(&root);
+
+        // Assert
+        match result {
+            Ok(_) => {}
+            Err(ConfigError::SemanticValidationFailed { report, .. }) => {
+                let unexpected: Vec<_> = report
+                    .issues()
+                    .iter()
+                    .filter(|issue| {
+                        !environment_checks
+                            .iter()
+                            .any(|check| issue.message.contains(check))
+                    })
+                    .collect();
+                assert!(
+                    unexpected.is_empty(),
+                    "dev template raised issues beyond the environment checks: {unexpected:?}"
+                );
+            }
+            Err(other) => panic!("dev template failed outside validation: {other:?}"),
+        }
+    }
+
     /// Stronger than parsing alone: the portable templates must survive the
     /// full parse -> validate -> lower pipeline on any host, against the actual
     /// files `init` writes. This is what catches a template baking in a path
     /// that validation rejects (for example a pid file under a directory the
-    /// host may not have). The dev template is excluded on purpose: it targets
-    /// a local pebble/ACME setup and is gated behind `dev-templates`.
+    /// host may not have). The dev template is covered separately above, with
+    /// its three host-dependent checks allowlisted.
     #[test]
     fn generated_configs_load_cleanly() {
         for template in [ConfigInitTemplate::Minimal, ConfigInitTemplate::Httpbin] {

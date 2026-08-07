@@ -173,7 +173,9 @@ impl StatsAggregator {
             .map(|(b, f)| b.inserted_at.duration_since(f.inserted_at))
             .unwrap_or(self.window);
 
-        let denom = span.as_secs_f64().clamp(0.1, self.window.as_secs_f64());
+        let denom = span
+            .as_secs_f64()
+            .clamp(0.1, self.window.as_secs_f64().max(0.1));
         let rps = self.events.len() as f64 / denom;
 
         StatsSnapshot {
@@ -215,4 +217,189 @@ pub(crate) struct StatsSnapshot {
     pub(crate) bot_count: u64,
     pub(crate) human_count: u64,
     pub(crate) unknown_identity_count: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::logs::types::SnakewayEvent;
+    use pretty_assertions::assert_eq;
+
+    fn event(name: &str, request_id: &str, status: Option<i64>, ts_ms: u64) -> LogEvent {
+        event_with_identity(name, request_id, status, ts_ms, None)
+    }
+
+    fn event_with_identity(
+        name: &str,
+        request_id: &str,
+        status: Option<i64>,
+        ts_ms: u64,
+        identity: Option<IdentitySummary>,
+    ) -> LogEvent {
+        LogEvent::Snakeway(SnakewayEvent {
+            request_id: Some(request_id.to_string()),
+            level: "INFO".to_string(),
+            name: name.to_string(),
+            method: None,
+            uri: None,
+            status,
+            ts: Some(SystemTime::UNIX_EPOCH + Duration::from_millis(ts_ms)),
+            identity,
+        })
+    }
+
+    fn completed_request(
+        aggregator: &mut StatsAggregator,
+        request_id: &str,
+        status: Option<i64>,
+        latency_ms: u64,
+    ) {
+        aggregator.push(&event("request", request_id, None, 1_000));
+        aggregator.push(&event("response", request_id, status, 1_000 + latency_ms));
+    }
+
+    #[test]
+    fn should_measure_latency_from_request_to_response() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_secs(60));
+        completed_request(&mut aggregator, "r1", Some(200), 50);
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert
+        assert_eq!(snapshot.window_events, 1);
+        assert_eq!(snapshot.status, (1, 0, 0));
+        assert_eq!(
+            snapshot.p95_ms, 50,
+            "a single 50ms sample lands in the 50ms bucket"
+        );
+        assert!(snapshot.latency.contains(&("26–50ms".to_string(), 1)));
+    }
+
+    #[test]
+    fn should_classify_status_ranges() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_secs(60));
+        completed_request(&mut aggregator, "r1", Some(204), 1);
+        completed_request(&mut aggregator, "r2", Some(404), 1);
+        completed_request(&mut aggregator, "r3", Some(503), 1);
+        completed_request(&mut aggregator, "r4", Some(302), 1);
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert
+        assert_eq!(snapshot.status, (1, 1, 1), "3xx must not be counted");
+        assert_eq!(snapshot.window_events, 4);
+    }
+
+    #[test]
+    fn should_take_status_from_after_proxy_when_response_lacks_it() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_secs(60));
+        aggregator.push(&event("request", "r1", None, 1_000));
+        aggregator.push(&event("after_proxy", "r1", Some(503), 1_010));
+        aggregator.push(&event("response", "r1", None, 1_020));
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert
+        assert_eq!(snapshot.status, (0, 0, 1));
+    }
+
+    #[test]
+    fn should_ignore_a_response_without_a_request() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_secs(60));
+        aggregator.push(&event("response", "orphan", Some(200), 1_000));
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert
+        assert_eq!(snapshot.window_events, 0);
+    }
+
+    #[test]
+    fn should_count_identity_summaries() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_secs(60));
+        let bot = IdentitySummary {
+            bot: Some(true),
+            device: Some("crawler".to_string()),
+            asn: Some(64512),
+            aso: Some("TestNet".to_string()),
+            connection_type: Some("cellular".to_string()),
+            country: Some("NZ".to_string()),
+        };
+        let human = IdentitySummary {
+            bot: Some(false),
+            device: Some("phone".to_string()),
+            ..Default::default()
+        };
+        aggregator.push(&event_with_identity(
+            "request",
+            "r1",
+            None,
+            1_000,
+            Some(bot),
+        ));
+        aggregator.push(&event("response", "r1", Some(200), 1_001));
+        aggregator.push(&event_with_identity(
+            "request",
+            "r2",
+            None,
+            1_000,
+            Some(human),
+        ));
+        aggregator.push(&event("response", "r2", Some(200), 1_001));
+        completed_request(&mut aggregator, "r3", Some(200), 1);
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert
+        assert_eq!(snapshot.bot_count, 1);
+        assert_eq!(snapshot.human_count, 1);
+        assert_eq!(snapshot.unknown_identity_count, 1);
+        assert_eq!(snapshot.device_counts.get("crawler"), Some(&1));
+        assert_eq!(snapshot.device_counts.get("phone"), Some(&1));
+        assert_eq!(snapshot.asn_counts.get(&64512), Some(&1));
+        assert_eq!(snapshot.aso_counts.get("TestNet"), Some(&1));
+        assert_eq!(snapshot.connection_type_counts.get("cellular"), Some(&1));
+        assert_eq!(snapshot.country_counts.get("NZ"), Some(&1));
+    }
+
+    #[test]
+    fn should_compute_rps_from_the_clamped_span() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_secs(60));
+        completed_request(&mut aggregator, "r1", Some(200), 1);
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert: one event over the 0.1s clamped floor.
+        assert!(
+            (snapshot.rps - 10.0).abs() < 1e-9,
+            "rps was {}",
+            snapshot.rps
+        );
+    }
+
+    #[test]
+    fn should_evict_events_older_than_the_window() {
+        // Arrange
+        let mut aggregator = StatsAggregator::new(Duration::from_millis(50));
+        completed_request(&mut aggregator, "r1", Some(200), 1);
+        std::thread::sleep(Duration::from_millis(120));
+
+        // Act
+        let snapshot = aggregator.snapshot();
+
+        // Assert
+        assert_eq!(snapshot.window_events, 0);
+    }
 }

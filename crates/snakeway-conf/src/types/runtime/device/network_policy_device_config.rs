@@ -1,6 +1,6 @@
-use crate::types::{NetworkPolicyDeviceSpec, ON_NO_PEER_ADDR_DENY};
+use crate::types::{NetworkPolicyDeviceSpec, OnInvalidForwarded};
 use crate::validation::validator::parse_cidr_list;
-use confval::prelude::{Lower, Report, Validate, ValidateNested};
+use confval::prelude::{Lower, Report, Validate, ValidateNested, narrow};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -16,15 +16,7 @@ pub struct NetworkPolicyDeviceConfig {
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ForwardingConfig {
     pub allow: bool,
-    pub on_invalid: OnInvalidForwardedConfig,
-}
-
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum OnInvalidForwardedConfig {
-    Deny,
-    #[default]
-    Ignore,
+    pub on_invalid: OnInvalidForwarded,
 }
 
 impl Lower<NetworkPolicyDeviceSpec> for NetworkPolicyDeviceConfig
@@ -33,17 +25,15 @@ where
 {
     fn lower(spec: &NetworkPolicyDeviceSpec, report: &mut Report) -> Option<Self> {
         let cidr_allow = parse_cidr_list(&spec.cidr_allow, "network policy allow list", report)?;
+        let on_invalid =
+            narrow::keyword::<OnInvalidForwarded>(&spec.forwarding.value.on_invalid, report)?;
 
         Some(Self {
             enable: spec.enable.value,
             cidr_allow,
             forwarding: ForwardingConfig {
                 allow: spec.forwarding.value.allow.value,
-                on_invalid: if spec.forwarding.value.on_invalid.value == ON_NO_PEER_ADDR_DENY {
-                    OnInvalidForwardedConfig::Deny
-                } else {
-                    OnInvalidForwardedConfig::Ignore
-                },
+                on_invalid,
             },
             paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         })
@@ -109,7 +99,7 @@ mod tests {
         // Assert
         assert!(matches!(
             config.forwarding.on_invalid,
-            OnInvalidForwardedConfig::Deny
+            OnInvalidForwarded::Deny
         ));
         assert!(config.forwarding.allow);
     }

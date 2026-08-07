@@ -124,6 +124,7 @@ const sidebars: SidebarsConfig = {
                 'internals/mental-model',
                 'internals/lifecycle',
                 'internals/protocol-negotiation',
+                'internals/request-normalization',
                 'internals/control-plane-and-data-plane',
                 'internals/configuration',
                 'internals/hot-reload',

@@ -2,22 +2,25 @@
 title: Authoring WASM Devices
 ---
 
+Snakeway ships with builtin devices for common concerns, but your policy logic is often specific to your application.
+When you need custom traffic logic that the builtin devices do not cover, you can write a WASM device.
+A WASM device runs your own code inside the request pipeline, written in any language that compiles to WebAssembly.
+
+Devices run in a sandboxed Wasmtime runtime with access to request and response context, a host API for logging and metrics, and a typed configuration map.
+
 :::caution
 The WIT interface (`snakeway:device@0.4.0`) may change in future releases.
 :::
 
-**WASM devices** let you extend Snakeway with custom traffic logic written in any language
-that compiles to WebAssembly. Devices run in a sandboxed Wasmtime runtime with access to
-request and response context, a host API for logging and metrics, and a typed configuration
-map.
-
 ## Why WebAssembly
 
-- **Language flexibility.** Write devices in Rust, Go, Zig, or any language that targets
-  WASM components.
-- **Isolation.** Each device runs in a memory-limited sandbox. A bug in a WASM device cannot
-  crash the proxy.
-- **Portable artifacts.** A compiled `.wasm` module runs on any platform Snakeway supports.
+- **Language flexibility.**
+  Write devices in Rust, Go, Zig, or any language that targets WASM components.
+- **Isolation.**
+  Each device runs in a memory-limited sandbox.
+  A bug in a WASM device cannot crash the proxy.
+- **Portable artifacts.**
+  A compiled `.wasm` module runs on any platform Snakeway supports.
 
 ## Configuration
 
@@ -50,50 +53,50 @@ wasm_devices = [
 | `enable`          | bool                   | yes      |         | Whether the device is active                                                                                                   |
 | `path`            | string                 | yes      |         | Path to the compiled `.wasm` component                                                                                         |
 | `fail_policy`     | `"open"` or `"closed"` | yes      |         | Behavior on device error (see below)                                                                                           |
-| `timeout_ms`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 -- 60000)                                                                       |
+| `timeout_ms`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 to 60000)                                                                       |
 | `body_buffer_max` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode                                            |
 | `config`          | map of strings         | no       | `{}`    | Key-value pairs accessible to the device via `host.config-get`                                                                 |
 | `hooks`           | list of strings        | no       | all     | Lifecycle hooks this device implements. When set, the host skips every hook not listed. See [Hook Selection](#hook-selection). |
 
-### Fail Policy
+### Fail policy
 
 When a WASM device encounters an error (load failure, timeout, trap, body buffer overflow):
 
-- **`"open"`** -- log a warning and continue processing. The device is skipped.
-- **`"closed"`** -- log an error and return `503 Service Unavailable`. The request is blocked.
+- **`"open"`**: log a warning and continue processing.
+  The device is skipped.
+- **`"closed"`**: log an error and return `503 Service Unavailable`.
+  The request is blocked.
 
-### Body Buffering
+### Body buffering
 
-When `body_buffer_max` is `0` (the default), the `on-stream-request-body` hook is called
-once per chunk as the body streams through. The device sees one chunk at a time.
+When `body_buffer_max` is `0` (the default), the `on-stream-request-body` hook is called once per chunk as the body streams through.
+The device sees one chunk at a time.
 
-When `body_buffer_max` is set to a positive value, Snakeway buffers the request body up to
-that limit and calls `on-stream-request-body` once with the complete body when the stream
-ends. If the body exceeds the limit, the fail policy determines the outcome.
+When `body_buffer_max` is set to a positive value, Snakeway buffers the request body up to that limit and calls `on-stream-request-body` once with the complete body when the stream ends.
+If the body exceeds the limit, the fail policy determines the outcome.
 
-### Hook Selection
+### Hook selection
 
 By default, the host calls all six lifecycle hooks on every request.
-Each call creates a fresh WASM instance, so a device that only implements one hook still pays for five no-op
-instantiations per request.
+Each call creates a fresh WASM instance, so a device that only implements one hook still pays for five no-op instantiations per request.
 
-The optional `hooks` field declares which hooks the device actually implements.
+The optional `hooks` field declares which hooks the device implements.
 The host skips any hook not listed, creating no instance for it, which removes that overhead:
 
 ```hcl
 hooks = ["on_request"]
 ```
 
-Valid values are `on_request`, `on_stream_request_body`, `before_proxy`, `after_proxy`,
-`on_stream_response_body`, and `on_response`.
+Valid values are `on_request`, `on_stream_request_body`, `before_proxy`, `after_proxy`, `on_stream_response_body`, and `on_response`.
 
 Omitting `hooks` runs all six (the previous behavior).
-An empty list is rejected; to disable a device set `enable = false`.
+An empty list is rejected.
+To disable a device, set `enable = false`.
 
-## The WIT Interface
+## The WIT interface
 
-The device interface is defined in `snakeway:device@0.4.0`. A WASM device imports a **host**
-interface and exports a **policy** interface.
+The device interface is defined in `snakeway:device@0.4.0`.
+A WASM device imports a **host** interface and exports a **policy** interface.
 
 ### World
 
@@ -106,9 +109,8 @@ world device {
 
 ### Policy (exported by the device)
 
-The device must export all six lifecycle hooks. Hooks that have no work to do should return
-`continue` with no patch, and may be omitted from the device's `hooks` config so the host
-skips calling them entirely (see [Hook Selection](#hook-selection)).
+The device must export all six lifecycle hooks.
+Hooks that have no work to do should return `continue` with no patch, and may be omitted from the device's `hooks` config so the host skips calling them entirely (see [Hook Selection](#hook-selection)).
 
 ```wit
 interface policy {
@@ -145,7 +147,7 @@ interface host {
 
 ### Types
 
-#### Request and Response Snapshots
+#### Request and response snapshots
 
 ```wit
 record request {
@@ -165,13 +167,13 @@ headers: list<header>,
 }
 ```
 
-Request snapshots are read-only views of the current request state. To mutate the request,
-return a patch in the result.
+Request snapshots are read-only views of the current request state.
+To mutate the request, return a patch in the result.
 
 #### Actions
 
-Every request-phase hook returns a `request-result` and every response-phase hook returns a
-`response-result`. Both contain an **action** and an optional **patch**.
+Every request-phase hook returns a `request-result` and every response-phase hook returns a `response-result`.
+Both contain an **action** and an optional **patch**.
 
 ```wit
 variant action {
@@ -181,14 +183,14 @@ respond(synthetic-response),
 }
 ```
 
-- **`continue`** -- proceed to the next device or phase. Apply the patch if present.
-- **`block`** -- return `403 Forbidden` immediately.
-- **`respond`** -- return a custom HTTP response with the given status, headers, and body.
+- **`continue`**: proceed to the next device or phase.
+  Apply the patch if present.
+- **`block`**: return `403 Forbidden` immediately.
+- **`respond`**: return a custom HTTP response with the given status, headers, and body.
 
 #### Patches
 
-Request patches can rewrite the route path, override the upstream path, and manipulate
-headers:
+Request patches can rewrite the route path, override the upstream path, and manipulate headers:
 
 ```wit
 record request-patch {
@@ -218,7 +220,7 @@ ops: list<header-op>,
 }
 ```
 
-#### Body Actions
+#### Body actions
 
 Body hooks return a `body-result` with a `body-action`:
 
@@ -232,12 +234,12 @@ block,
 }
 ```
 
-- **`passthrough`** -- forward the chunk unmodified
-- **`replace`** -- replace the chunk with the given bytes
-- **`drop`** -- discard the chunk
-- **`block`** -- return `403 Forbidden` immediately
+- **`passthrough`**: forward the chunk unmodified
+- **`replace`**: replace the chunk with the given bytes
+- **`drop`**: discard the chunk
+- **`block`**: return `403 Forbidden` immediately
 
-## Building a Rust WASM Device
+## Building a Rust WASM device
 
 ### Prerequisites
 
@@ -245,7 +247,7 @@ block,
 - `cargo-component`: `cargo install cargo-component`
 - The Snakeway WIT files from `crates/snakeway-wit/wit/`
 
-### 1. Create the Project
+### 1. Create the project
 
 ```shell
 mkdir my-device && cd my-device
@@ -262,10 +264,9 @@ crate-type = ["cdylib"]
 wit-bindgen = "0.57"
 ```
 
-### 2. Generate Bindings and Implement the Device
+### 2. Generate bindings and implement the device
 
-In `src/lib.rs`, use `wit_bindgen::generate!` to create the bindings and implement the
-`Guest` trait:
+In `src/lib.rs`, use `wit_bindgen::generate!` to create the bindings and implement the `Guest` trait:
 
 ```rust
 use wit_bindgen::generate;
@@ -335,8 +336,7 @@ The compiled component is at `target/wasm32-unknown-unknown/release/my_device.wa
 
 ### 4. Deploy
 
-Copy the `.wasm` file to a path accessible by Snakeway and add it to your device
-configuration:
+Copy the `.wasm` file to a path accessible by Snakeway and add it to your device configuration:
 
 ```hcl
 wasm_devices = [
@@ -349,23 +349,23 @@ wasm_devices = [
 ]
 ```
 
-## Runtime Behavior
+## Runtime behavior
 
-### Execution Model
+### Execution model
 
-Each hook invocation creates a fresh, isolated WASM instance. Instances do not share memory
-across hooks or across requests. A **pooling allocator** pre-allocates memory slots so
-instantiation is fast.
+Each hook invocation creates a fresh, isolated WASM instance.
+Instances do not share memory across hooks or across requests.
+A **pooling allocator** pre-allocates memory slots so instantiation is fast.
 
 ### Timeouts
 
-Each hook has an epoch-based deadline controlled by `timeout_ms`. If the device exceeds its
-deadline, the hook is terminated and the fail policy determines the outcome.
+Each hook has an epoch-based deadline controlled by `timeout_ms`.
+If the device exceeds its deadline, the hook is terminated and the fail policy determines the outcome.
 
-### Memory Limits
+### Memory limits
 
-Each instance is limited to 10 MB of linear memory and 10,000 table elements. Exceeding
-these limits triggers a trap, handled by the fail policy.
+Each instance is limited to 10 MB of linear memory and 10,000 table elements.
+Exceeding these limits triggers a trap, handled by the fail policy.
 
 ### Observability
 
@@ -377,5 +377,4 @@ Snakeway emits the following metrics for WASM devices:
 | `snakeway.wasm.device.failures`         | counter   | Failures labeled by device, hook, and reason             |
 | `snakeway.wasm.device.custom`           | counter   | Guest-emitted metrics via `host.metric-increment`        |
 
-Device log output (via `host.log`) appears in the Snakeway structured log stream with a
-`device` field identifying the source.
+Device log output (via `host.log`) appears in the Snakeway structured log stream with a `device` field identifying the source.

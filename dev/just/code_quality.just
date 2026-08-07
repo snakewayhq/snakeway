@@ -2,7 +2,7 @@ fmt:
     cargo fmt
 
 clippy:
-    cargo clippy --all-targets --all-features -- -D warnings
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
     # Second pass without benchmarks to catch dead code only kept alive by bench targets.
     cargo clippy --workspace --lib --tests --all-features -- -D warnings
 

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use snakeway_conf::types::{IdentityDeviceConfig, UaEngineKind};
 use snakeway_engine::ctx::request::request_ctx::RequestCtx;

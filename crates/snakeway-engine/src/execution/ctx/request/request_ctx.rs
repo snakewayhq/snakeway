@@ -10,11 +10,13 @@ use crate::execution::ctx::request::{
 };
 use crate::execution::enrichment::user_agent::ClientIdentity;
 use crate::execution::route::types::RouteId;
-use crate::execution::traffic::{AdmissionGuard, ServiceId, UpstreamOutcome};
+use crate::execution::traffic::{
+    AdmissionGuard, ProtocolMode, ServiceId, UpgradeState, UpstreamOutcome,
+};
 use crate::execution::ws_connection_management::WsConnectionGuard;
 use crate::runtime::UpstreamId;
 use http::header::HOST;
-use http::{Extensions, HeaderMap, Method, Version, uri::Authority};
+use http::{Extensions, HeaderMap, Method, StatusCode, Version, uri::Authority};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use tracing::Span;
@@ -22,8 +24,9 @@ use tracing::Span;
 /// Canonical request context passed through the Snakeway pipeline
 #[derive(Debug)]
 pub struct RequestCtx {
-    /// Holds the WS connection slot for the lifetime of the connection
-    pub ws_guard: Option<WsConnectionGuard>,
+    /// Upgrade negotiation lifecycle, owning the WS connection slot in the
+    /// states that hold one
+    pub upgrade: UpgradeState,
 
     /// It is necessary to guard requests to ensure proper circuit breaker state updates.
     pub admission_guard: Option<AdmissionGuard>,
@@ -40,11 +43,11 @@ pub struct RequestCtx {
     /// Remote IP of the TCP connection (authoritative)
     pub peer_ip: IpAddr,
 
-    /// Was a websocket connection opened?
-    pub ws_opened: bool,
-
     /// Upstream authority for HTTP/2 requests.
     pub upstream_authority: Option<String>,
+
+    /// Wire protocol resolved for the selected upstream.
+    pub protocol_mode: Option<ProtocolMode>,
 
     /// Request-scoped typed extensions (NOT forwarded, NOT logged by default).
     pub extensions: Extensions,
@@ -61,7 +64,7 @@ pub struct RequestCtx {
     /// Outcome of upstream selection
     pub upstream_outcome: Option<UpstreamOutcome>,
 
-    /// Circuit breaker started?
+    /// Set when the circuit breaker admitted this request, so the outcome has to be reported back.
     pub cb_started: bool,
 
     /// Root tracing request span.
@@ -87,7 +90,7 @@ impl RequestCtx {
             // Request lifecycle-related.
             hydrated: false,
             admission_guard: None,
-            ws_guard: None,
+            upgrade: UpgradeState::default(),
 
             // Upstream/routing related.
             service: None,
@@ -95,7 +98,7 @@ impl RequestCtx {
             upstream_path: None,
 
             // Protocol flag(s) that help figure out what to do with the request.
-            ws_opened: false,
+            protocol_mode: None,
 
             // Required for gRPC.
             upstream_authority: None,
@@ -229,6 +232,7 @@ impl RequestCtx {
         }
         .into();
 
+        self.upgrade = UpgradeState::begin(src.http_is_upgrade_req());
         self.hydrated = true;
         Ok(())
     }
@@ -309,9 +313,9 @@ impl RequestCtx {
     /// Returns the authority (host:port) of the downstream request URI.
     ///
     /// Present for HTTP/2 requests, where it carries the `:authority`
-    /// pseudo-header value; HTTP/1.1 requests in origin-form have no URI
-    /// authority and return `None` (their authority lives in the `Host`
-    /// header instead).
+    /// pseudo-header value. HTTP/1.1 requests in origin-form have no URI
+    /// authority and return `None`, since their authority lives in the `Host`
+    /// header instead.
     pub fn downstream_authority(&self) -> Option<&str> {
         debug_assert!(self.hydrated);
         self.normalized_request
@@ -326,6 +330,39 @@ impl RequestCtx {
     pub fn is_upgrade_req(&self) -> bool {
         debug_assert!(self.hydrated);
         self.normalized_request.is_upgrade_req()
+    }
+
+    /// True once the upstream answered `101` and the tunnel is open.
+    pub fn ws_switched(&self) -> bool {
+        matches!(self.upgrade, UpgradeState::Switched { .. })
+    }
+
+    pub fn upgrade_admitted(&mut self, guard: WsConnectionGuard) {
+        self.upgrade = std::mem::take(&mut self.upgrade).admit(guard);
+    }
+
+    pub fn upgrade_rejected_at_proxy(&mut self, status: StatusCode) {
+        self.upgrade = std::mem::take(&mut self.upgrade).reject_at_proxy(status);
+    }
+
+    pub fn upgrade_negotiated(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).negotiate();
+    }
+
+    pub fn upgrade_switched(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).switch();
+    }
+
+    pub fn upgrade_rejected_at_upstream(&mut self, status: StatusCode) {
+        self.upgrade = std::mem::take(&mut self.upgrade).reject_at_upstream(status);
+    }
+
+    pub fn upgrade_failed(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).fail();
+    }
+
+    pub fn upgrade_closed(&mut self) {
+        self.upgrade = std::mem::take(&mut self.upgrade).close();
     }
 }
 
@@ -372,9 +409,21 @@ impl RequestCtx {
             .unwrap_or(self.canonical_path())
     }
 
-    /// Will return the full original URI as received the proxy.
-    /// This may include the scheme, host, and port.
-    /// Or, just the path with an optional query string.
+    /// URI used when proxying upstream.
+    /// Appends the original query string to the upstream path when the
+    /// request carried one.
+    pub fn upstream_uri(&self) -> String {
+        let query = self.query_string();
+        if query.is_empty() {
+            self.upstream_path().to_string()
+        } else {
+            format!("{}?{}", self.upstream_path(), query)
+        }
+    }
+
+    /// Returns the full original URI as the proxy received it.
+    /// The value may carry the scheme, host, and port, or it may be the path with
+    /// an optional query string.
     pub(crate) fn original_uri_string(&self) -> String {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().to_string()
@@ -759,6 +808,58 @@ mod tests {
 
         // Assert
         assert_eq!(result, expected_path);
+    }
+
+    #[tokio::test]
+    async fn upstream_uri_includes_query_string() {
+        // Arrange
+        let request = RawHttpRequest::new("GET", "/api?action=search&q=hello+world&page=1")
+            .header("Host", "example.test")
+            .build();
+        let session = make_h1_session(&request).await;
+        let mut ctx = RequestCtx::empty();
+        let _ = ctx.hydrate_from_session(&session);
+
+        // Act
+        let result = ctx.upstream_uri();
+
+        // Assert
+        assert_eq!(result, "/api?action=search&q=hello+world&page=1");
+    }
+
+    #[tokio::test]
+    async fn upstream_uri_omits_query_delimiter_when_no_query() {
+        // Arrange
+        let request = RawHttpRequest::new("GET", "/api")
+            .header("Host", "example.test")
+            .build();
+        let session = make_h1_session(&request).await;
+        let mut ctx = RequestCtx::empty();
+        let _ = ctx.hydrate_from_session(&session);
+
+        // Act
+        let result = ctx.upstream_uri();
+
+        // Assert
+        assert_eq!(result, "/api");
+    }
+
+    #[tokio::test]
+    async fn upstream_uri_appends_query_to_upstream_path_override() {
+        // Arrange
+        let request = RawHttpRequest::new("GET", "/from-route?a=1&b=2")
+            .header("Host", "example.test")
+            .build();
+        let session = make_h1_session(&request).await;
+        let mut ctx = RequestCtx::empty();
+        let _ = ctx.hydrate_from_session(&session);
+        ctx.upstream_path = Some("/override".to_string());
+
+        // Act
+        let result = ctx.upstream_uri();
+
+        // Assert
+        assert_eq!(result, "/override?a=1&b=2");
     }
 
     #[tokio::test]

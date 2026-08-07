@@ -661,9 +661,9 @@ dependencies = [
 
 [[package]]
 name = "confval"
-version = "0.5.0"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2a038b9af4f47c83b549784139ec8c83817082b13ed0759bb7ece8a6d20e600"
+checksum = "3d77d2bf1f70bbf8c9885721dee962bf7398e955f8f1a11d2e197ebac898c211"
 dependencies = [
  "confval-derive",
  "hcl-edit",
@@ -674,9 +674,9 @@ dependencies = [
 
 [[package]]
 name = "confval-derive"
-version = "0.5.0"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ee4805aaab5d4207d9eae44596fc7b1951615686bfa0274a3764e0c976ad6e6"
+checksum = "e4a90c60931a997ff35504caa3dfe6d83e5aa82d4b02e052bc5a074b0a3a9fee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4237,7 +4237,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4250,6 +4250,7 @@ dependencies = [
  "http",
  "nix 0.31.3",
  "pingora",
+ "pretty_assertions",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -4266,7 +4267,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-acme"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4287,7 +4288,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-conf"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "confval",
  "glob",
@@ -4310,7 +4311,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-engine"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4347,7 +4348,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-jwt-auth-device"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "base64 0.22.1",
  "hmac",
@@ -4359,7 +4360,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-net"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "http",
@@ -4374,7 +4375,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-observability"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "console-subscriber",
  "hostname",
@@ -4394,7 +4395,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-proxy"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4424,7 +4425,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4445,6 +4446,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-rustls",
+ "tokio-stream",
  "tokio-tungstenite",
  "tonic",
  "tonic-prost",
@@ -4456,7 +4458,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-wasm-test-device"
-version = "0.15.1"
+version = "0.16.0"
 dependencies = [
  "wit-bindgen",
 ]

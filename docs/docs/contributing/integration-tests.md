@@ -7,7 +7,7 @@ These tests spin up a real Snakeway server process and exercise it over real net
 
 For byte-level protocol tests, see [HTTP Replay Tests](http-replay-tests.md) instead.
 
-## Where Tests Live
+## Where tests live
 
 Integration tests are Rust test files inside `crates/snakeway-tests/tests/`.
 The organizing rule: **one subdirectory per feature area, each with a `mod.rs` that declares its test modules**.
@@ -34,7 +34,7 @@ crates/snakeway-tests/tests/
 Put a new test in the file that matches its feature.
 If no feature area fits, create a new subdirectory with its own `mod.rs`.
 
-## Setting Up a Test Server
+## Setting up a test server
 
 There are two ways to create a `TestServer`.
 
@@ -106,7 +106,7 @@ let srv = TestServer::start_with_http_upstream("basic");
 This loads a real HCL config from `fixtures/config/basic/`.
 Use it mainly to verify the config loading path itself.
 
-## Making Requests
+## Making requests
 
 `TestServer` exposes a pre-configured `reqwest::blocking::Client` with convenience methods:
 
@@ -129,7 +129,7 @@ let client = reqwest::blocking::Client::builder()
 let res = client.get(srv.https_url()).send().unwrap();
 ```
 
-## Async Protocols (WebSocket, gRPC)
+## Async protocols (WebSocket, gRPC)
 
 WebSocket and gRPC tests are `#[test]` functions (not async) that create a Tokio runtime internally:
 
@@ -163,7 +163,7 @@ fn websocket_echo_is_proxied() {
 }
 ```
 
-## Test Structure and the AAA Pattern
+## Test structure and the AAA pattern
 
 For short, single-assertion tests the AAA sections may be implicit:
 
@@ -203,7 +203,7 @@ fn should_issue_certificate_via_http01_and_serve_tls() {
 }
 ```
 
-## Test Naming
+## Test naming
 
 Use the same convention as unit tests: plain-English `snake_case` sentences describing the behavior.
 
@@ -222,7 +222,7 @@ Use doc comments (`///`) on tests that need more context:
 fn serves_index_html_from_static_dir() { ... }
 ```
 
-## Useful Constants
+## Useful constants
 
 Import from `integration::constants`:
 
@@ -236,7 +236,7 @@ use integration::constants::{
 };
 ```
 
-## Running Integration Tests
+## Running integration tests
 
 ```bash
 # Full integration test run (starts Docker for ACME, generates certs)

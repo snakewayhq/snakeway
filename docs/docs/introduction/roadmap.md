@@ -2,10 +2,9 @@
 title: Roadmap
 ---
 
-This page outlines the development phases of Snakeway, from initial foundation through the 1.0 release and beyond. Each
-phase has a defined set of goals and deliverables. Completed items are marked with checkboxes.
-
----
+This page outlines the development phases of Snakeway, from initial foundation through the 1.0 release and beyond.
+Each phase has a defined set of goals and deliverables.
+Completed items are marked with checkboxes.
 
 ## Milestone 0: Foundation (v0.1.0)
 
@@ -13,7 +12,7 @@ phase has a defined set of goals and deliverables. Completed items are marked wi
 
 - [x] Create a functional binary (`snakeway`)
 - [x] Implement a minimal config format (TOML)
-- [x] Integrate Pingora with downstream and upstream HTTP/1.1 + HTTP/2
+- [x] Integrate Pingora with downstream and upstream HTTP/1.1 and HTTP/2
 - [x] Implement basic reverse proxy routing for a single upstream
 - [x] Implement basic device API
 - [x] Structured logging via the tracing framework
@@ -26,9 +25,7 @@ phase has a defined set of goals and deliverables. Completed items are marked wi
 - Example configurations
 - Linux release binaries
 
----
-
-## Milestone 1: Foundations and Extensibility (v0.2.x)
+## Milestone 1: Foundations and extensibility (v0.2.x)
 
 **Goals**
 
@@ -44,9 +41,7 @@ phase has a defined set of goals and deliverables. Completed items are marked wi
 - Static file server with ETag, If-Modified-Since, gzip, brotli, and range request support
 - Hot reload via signal and CLI command
 
----
-
-## Milestone 1.5: Benchmark and Architecture Review
+## Milestone 1.5: Benchmark and architecture review
 
 Confirm that the architecture is sound before building on top of it.
 
@@ -54,9 +49,7 @@ Confirm that the architecture is sound before building on top of it.
 - [x] Evaluate performance bottlenecks
 - [x] Review error handling in the device lifecycle
 
----
-
-## Milestone 2: Load Balancing and Observability (v0.3.x, v0.4.x)
+## Milestone 2: Load balancing and observability (v0.3.x, v0.4.x)
 
 **Goals**
 
@@ -73,9 +66,7 @@ Confirm that the architecture is sound before building on top of it.
 - Circuit breaker with configurable thresholds
 - Admin API: `/admin/health`, `/admin/upstreams`, `/admin/stats`, `/admin/reload`
 
----
-
-## Milestone 2.5: Outstanding Tasks (v0.5.x)
+## Milestone 2.5: Outstanding tasks (v0.5.x)
 
 **Traffic Management**
 
@@ -99,9 +90,7 @@ Confirm that the architecture is sound before building on top of it.
 
 - [x] Evaluate and document path matching precedence rules
 
----
-
-## Milestone 3: Security and Path Control (v0.6.x)
+## Milestone 3: Security and path control (v0.6.x)
 
 **Goals**
 
@@ -118,8 +107,6 @@ Confirm that the architecture is sound before building on top of it.
 - L7 network policy device
 - Request filter device (methods, headers, body size)
 
----
-
 ## Milestone 3.1: Refinements (v0.7.x)
 
 - [x] Standardize CLI format options between `config dump` and `config check`
@@ -128,15 +115,11 @@ Confirm that the architecture is sound before building on top of it.
 - [x] Separate remaining shared runtime/spec configuration state
 - [x] Make `MAX_USER_AGENT_LENGTH` and `MAX_X_FORWARDED_FOR_LENGTH` configurable
 
----
-
 ## Milestone 3.2: Refinements (v0.8.x)
 
 - [x] Add `work_stealing` toggle to server configuration
 
----
-
-## Milestone 4: ACME TLS Automation (v0.9.0)
+## Milestone 4: ACME TLS automation (v0.9.0)
 
 **Goals**
 
@@ -147,12 +130,10 @@ Confirm that the architecture is sound before building on top of it.
 - [x] `route solve` CLI command for debugging route matching
 - [x] Review configuration lowering logic for safety
 
----
-
 ## Milestone 5: Hardening (v0.10.0)
 
-All core features are implemented at this stage. The focus shifts to architecture review, test coverage, and operational
-polish.
+All core features are implemented at this stage.
+The focus shifts to architecture review, test coverage, and operational polish.
 
 **Goals**
 
@@ -168,27 +149,26 @@ polish.
 **Configuration**
 
 - [x] Consider moving validation logic into spec files where appropriate
-- [x] Evaluate env var / CLI / config parity - current split is intentional (env vars for logging/ops, HCL for app
-  behavior, CLI for paths)
-- [x] Require pre-provisioned ACME cert_dir and data_dir (stop auto-creating directories) - matches certbot behavior
+- [x] Evaluate env var, CLI, and config parity.
+  The current split is intentional (env vars for logging and ops, HCL for app behavior, CLI for paths)
+- [x] Require pre-provisioned ACME cert_dir and data_dir (stop auto-creating directories), matching certbot behavior
 - [x] Lazy DNS resolution for hosts (compatible with container environments)
 
 **Devices**
 
 - [x] Make UA Parser regex file overridable in the config (similar to MMDB files)
 - [x] Review device subsystem against the mature configuration subsystem
-- [x] Consider discrete `on_response_header` and `on_response_body` - implemented `on_stream_response_body` instead.
+- [x] Consider discrete `on_response_header` and `on_response_body`.
+  Implemented `on_stream_response_body` instead.
 - [x] Consider scoping network policy, request filter, and rate limiting devices to specific paths
 
 **Routing**
 
-- [x] Review routing code for conceptual duplication: reviewed, no changes needed; structural parallelism between
-  Static/Service routes is intentional
+- [x] Review routing code for conceptual duplication: reviewed, no changes needed.
+  Structural parallelism between Static/Service routes is intentional
 - [x] Implement more robust path matching
 
----
-
-## Milestone 6: Packaging and Distribution (v0.11.0)
+## Milestone 6: Packaging and distribution (v0.11.0)
 
 **Goals**
 
@@ -206,21 +186,16 @@ Standard installation layout:
 /etc/snakeway/device.d/*.hcl
 ```
 
----
-
-## Milestone 7: Reconsidered Late Additions (v0.12.0)
+## Milestone 7: Reconsidered late additions (v0.12.0)
 
 **Goals**
 
-- [x] Zero-drop reload support for seamless configuration changes under load.
+- [x] Zero-drop reload support for configuration changes under load.
 - [x] Admin API authentication (bearer-token scheme, required on every `bind_admin`).
 - [x] Make a config directory configurable with an environment variable and use it in packaging.
-    - This solves an ergonomics issue where an operator has to specify the non-default values at the CLI per environment
-      when troubleshooting a setup (which is annoying).
+    - This solves an ergonomics issue where an operator has to specify the non-default values at the CLI per environment when troubleshooting a setup (which is annoying).
 
----
-
-## Milestone 8: Alpha Hardening/Refinements (v0.13.0)
+## Milestone 8: Alpha hardening and refinements (v0.13.0)
 
 **Goals**
 
@@ -229,17 +204,14 @@ Standard installation layout:
 - [x] Add sensible defaults and env vars after walking through real world deployment scenarios.
 - [x] Allow HTTP/2-capable listener to proxy to a plaintext HTTP/1.1 origin
 
----
-
 ## Milestone 9: Rework conf subsystem (v0.14.0)
 
 **Goals**
 
-- [x] Rework the `convfal` crate to replace the `Origin` mechanism with true per-line config validation issue provenance
-  messages.
+- [x] Rework the `confval` crate to replace the `Origin` mechanism with true per-line config validation issue provenance messages.
 - [x] Create a `confval-derive` companion crate for confval that replaces o2o.
 
-## Milestone 10: Full Programmability (v0.15.0)
+## Milestone 10: Full programmability (v0.15.0)
 
 **Goals**
 
@@ -248,8 +220,7 @@ Standard installation layout:
 
 **What Full WASM Device Support looks like...**
 
-This is bumped up ahead of the v1.0 release because it does not make sense to release a stable version of a
-programmable proxy if the programmability features are still experimental.
+This is bumped up ahead of the v1.0 release because it does not make sense to release a stable version of a programmable proxy if the programmability features are still experimental.
 
 - Pre-instantiated components (no per-request instantiation)
 - Bounded store pool with memory and execution limits
@@ -258,7 +229,12 @@ programmable proxy if the programmability features are still experimental.
 - Header and path mutation guardrails
 - Plugin versioning and reload validation
 
----
+## Milestone 11: Protocol negotiation (v0.16.0)
+
+**Goals**
+
+- [x] Replace the implicit HTTP version and upgrade negotiation logic in `HttpProxy` and `RequestCtx` with explicit state machines (`ProtocolMode` and `UpgradeState`).
+  See [Protocol negotiation](../internals/protocol-negotiation.md) for the states, transitions, and rejection points.
 
 ## Milestone N: Snakeway 1.0
 
@@ -269,28 +245,19 @@ programmable proxy if the programmability features are still experimental.
 - [ ] Benchmark suite with published results
 - [x] Stabilized device API
 
----
-
 ## Post-1.0
 
 The following items are not in the critical path for 1.0 but represent the longer-term direction.
 
-### HTTP Upgrade negotiation and HTTP version negotiation State Machine
-
-The HttpProxy and RequestCtx implementations implicitly encode HTTP Upgrade negotiation and HTTP version negotiation
-logic.
-This would (possibly) be better represented with an explicit state machine as the implicit logic is confusing.
-
-### Router Performance
+### Router performance
 
 LRU cache in front of the router to make route lookups O(1) instead of O(n).
 This should be profiled before and after implementing.
 There may be no meaningful difference with a practical number of routes.
 
-### Caching Device
+### Caching device
 
-HTTP response caching using Pingora's native cache subsystem with pluggable storage (memory, disk, Redis, or custom
-backends).
+HTTP response caching using Pingora's native cache subsystem with pluggable storage (memory, disk, Redis, or custom backends).
 
 Use Pingora Native HTTP Cache.
 
@@ -307,37 +274,37 @@ Rough draft of approach:
 Pluggable storage (supported by Pingora):
 
 1. memory (LRU)
-2. memory + disk
+2. memory and disk
 3. Redis
 4. custom storage
 
-### Active Health Checks
+### Active health checks
 
-Background probe model (HTTP/TCP) independent of request traffic. Passive health checks already exist.
+Background probe model (HTTP/TCP) independent of request traffic.
+Passive health checks already exist.
 
-### Additional Certificate Management
+### Additional certificate management
 
 - PostgreSQL and/or S3 certificate stores
 - DNS-01 ACME challenge support
 
-### Kubernetes Ingress Controller
+### Kubernetes ingress controller
 
-Optional feature that allows Snakeway to function as a Kubernetes ingress controller, polling for configuration changes
-and applying runtime snapshots through the existing configuration pipeline.
+Optional feature that allows Snakeway to function as a Kubernetes ingress controller, polling for configuration changes and applying runtime snapshots through the existing configuration pipeline.
 
-### Static File Server Enhancements
+### Static file server enhancements
 
 - Precompressed asset serving (`.br`, `.gz`)
 - Zero-copy serving via `sendfile`
 - WASM hooks for static file requests
 - Per-file caching headers
 
-### External Control Planes and Discovery
+### External control planes and discovery
 
 - Dynamic certificate management
 - Service discovery via DNS A/AAAA with TTL, SRV records, plugin-based discovery, and file-based watchers
 
-### Admissions Control
+### Admissions control
 
 Standalone backpressure monitoring tool that integrates with the proxy for graceful load shedding.
 

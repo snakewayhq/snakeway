@@ -25,6 +25,7 @@ opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "testing"] }
 rustls = "0.23"
 tokio-rustls = "0.26"
+tokio-stream = { version = "0.1", features = ["net"] }
 h2 = "0.4"
 bytes = { workspace = true }
 
@@ -40,3 +41,6 @@ tonic-prost-build = "0.14"
 [package.metadata.cargo-machete]
 ignored = ["prost", "tonic-prost"]
 
+
+[lints]
+workspace = true

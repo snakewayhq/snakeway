@@ -1,15 +1,13 @@
-use crate::types::HclInt;
+use crate::types::{HclInt, UaEngineKind};
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
-use confval::prelude::{KeywordSet, Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
 
 range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, i64, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, i64, min: 1, max: 4096);
-
-pub const UA_ENGINES: [&str; 2] = ["uaparser", "woothee"];
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
 pub struct IdentityDeviceSpec {
@@ -59,10 +57,6 @@ impl Default for IdentityDeviceSpec {
 
 impl Validate for IdentityDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         validate_trusted_proxies(&self.trusted_proxies, report);
 
         MAX_X_FORWARDED_FOR_LENGTH.check_located(
@@ -71,28 +65,24 @@ impl Validate for IdentityDeviceSpec {
             report,
         );
 
-        if self.enable_user_agent.value {
-            MAX_USER_AGENT_LENGTH.check_located(
-                &self.max_user_agent_length,
-                "max_user_agent_length",
-                report,
-            );
+        MAX_USER_AGENT_LENGTH.check_located(
+            &self.max_user_agent_length,
+            "max_user_agent_length",
+            report,
+        );
+
+        UaEngineKind::keyword_set().check_located(&self.ua_engine, "ua_engine", report);
+
+        if let Some(path) = self.geoip_city_db.as_ref() {
+            validate_geoip_db_file(path, report);
         }
 
-        KeywordSet::new(&UA_ENGINES).check_located(&self.ua_engine, "ua_engine", report);
+        if let Some(path) = self.geoip_isp_db.as_ref() {
+            validate_geoip_db_file(path, report);
+        }
 
-        if self.enable_geoip.value {
-            if let Some(path) = self.geoip_city_db.as_ref() {
-                validate_geoip_db_file(path, report);
-            }
-
-            if let Some(path) = self.geoip_isp_db.as_ref() {
-                validate_geoip_db_file(path, report);
-            }
-
-            if let Some(path) = self.geoip_connection_type_db.as_ref() {
-                validate_geoip_db_file(path, report);
-            }
+        if let Some(path) = self.geoip_connection_type_db.as_ref() {
+            validate_geoip_db_file(path, report);
         }
 
         if let Some(path) = self.ua_parser_regexes.as_ref() {
@@ -104,6 +94,19 @@ impl Validate for IdentityDeviceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
 
     #[test]
     fn max_xff_length_below_range() {
@@ -190,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = IdentityDeviceSpec {
@@ -203,6 +206,57 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate its values"
+        );
+    }
+
+    #[test]
+    fn disabled_user_agent_still_checks_max_length() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(true),
+            enable_user_agent: Located::detached(false),
+            max_user_agent_length: Located::detached(0),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("max_user_agent_length")),
+            "a disabled user agent feature must still validate its length bound; issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn disabled_geoip_still_checks_db_paths() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = IdentityDeviceSpec {
+            enable: Located::detached(true),
+            enable_geoip: Located::detached(false),
+            geoip_city_db: Some(Located::detached(PathBuf::from(
+                "/nonexistent/geoip-city.mmdb",
+            ))),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report.has_issues(),
+            "a disabled geoip feature must still validate a present db path"
+        );
     }
 }
