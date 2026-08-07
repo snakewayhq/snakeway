@@ -82,3 +82,89 @@ pub(crate) fn percentile_from_histogram(buckets: &[(u64, u64)], total: u64, pct:
 
     0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    const BUCKETS: &[u64] = &[10, 100];
+
+    #[test]
+    fn should_bucket_values_inclusively_at_boundaries() {
+        // Arrange
+        let mut histogram = Histogram::new(BUCKETS);
+        histogram.record(10);
+        histogram.record(11);
+        histogram.record(100);
+        histogram.record(101);
+
+        // Act
+        let snapshot = histogram.snapshot();
+
+        // Assert
+        assert_eq!(
+            snapshot,
+            vec![
+                ("0–10ms".to_string(), 1),
+                ("11–100ms".to_string(), 2),
+                (">100ms".to_string(), 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn should_expose_numeric_buckets_with_overflow_upper_bound() {
+        // Arrange
+        let mut histogram = Histogram::new(BUCKETS);
+        histogram.record(1);
+        histogram.record(50);
+        histogram.record(500);
+
+        // Act
+        let buckets = histogram.numeric_buckets();
+
+        // Assert
+        assert_eq!(buckets, vec![(10, 1), (100, 1), (u64::MAX, 1)]);
+    }
+
+    #[test]
+    fn should_return_bucket_upper_bound_at_percentile() {
+        // Arrange
+        let buckets = vec![(10, 5), (100, 5), (u64::MAX, 0)];
+
+        // Act
+        let median = percentile_from_histogram(&buckets, 10, 0.5);
+
+        // Assert
+        assert_eq!(median, 10);
+        assert_eq!(percentile_from_histogram(&buckets, 10, 0.95), 100);
+    }
+
+    #[test]
+    fn should_report_beyond_last_real_bucket_for_overflow_percentile() {
+        // Arrange
+        let buckets = vec![(10, 1), (100, 0), (u64::MAX, 9)];
+
+        // Act
+        let p99 = percentile_from_histogram(&buckets, 10, 0.99);
+
+        // Assert
+        assert_eq!(
+            p99, 101,
+            "overflow percentile is one past the last real bucket"
+        );
+    }
+
+    #[test]
+    fn should_return_zero_for_an_empty_histogram() {
+        // Arrange
+        let buckets = vec![(10, 0), (u64::MAX, 0)];
+
+        // Act
+        let p95 = percentile_from_histogram(&buckets, 0, 0.95);
+
+        // Assert
+        assert_eq!(p95, 0);
+    }
+}
