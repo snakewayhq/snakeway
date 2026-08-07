@@ -59,8 +59,8 @@ pub(in crate::proxy) fn apply_upstream_intent(
         // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
         upstream.set_version(Version::HTTP_11);
 
-        // The headers are explicitly set - upstreams can be picky if they aren't there.
-        // Note that if the client already set these. they will be replaced.
+        // Some upstreams reject the upgrade when these headers are absent, so set them
+        // unconditionally. Values the client sent are replaced.
         upstream.insert_header(header::UPGRADE, "websocket")?;
         upstream.insert_header(header::CONNECTION, "Upgrade")?;
     }

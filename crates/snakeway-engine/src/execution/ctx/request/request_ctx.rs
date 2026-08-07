@@ -64,7 +64,7 @@ pub struct RequestCtx {
     /// Outcome of upstream selection
     pub upstream_outcome: Option<UpstreamOutcome>,
 
-    /// Circuit breaker started?
+    /// Set when the circuit breaker admitted this request, so the outcome has to be reported back.
     pub cb_started: bool,
 
     /// Root tracing request span.
@@ -313,9 +313,9 @@ impl RequestCtx {
     /// Returns the authority (host:port) of the downstream request URI.
     ///
     /// Present for HTTP/2 requests, where it carries the `:authority`
-    /// pseudo-header value; HTTP/1.1 requests in origin-form have no URI
-    /// authority and return `None` (their authority lives in the `Host`
-    /// header instead).
+    /// pseudo-header value. HTTP/1.1 requests in origin-form have no URI
+    /// authority and return `None`, since their authority lives in the `Host`
+    /// header instead.
     pub fn downstream_authority(&self) -> Option<&str> {
         debug_assert!(self.hydrated);
         self.normalized_request
@@ -421,9 +421,9 @@ impl RequestCtx {
         }
     }
 
-    /// Will return the full original URI as received the proxy.
-    /// This may include the scheme, host, and port.
-    /// Or, just the path with an optional query string.
+    /// Returns the full original URI as the proxy received it.
+    /// The value may carry the scheme, host, and port, or it may be the path with
+    /// an optional query string.
     pub(crate) fn original_uri_string(&self) -> String {
         debug_assert!(self.hydrated);
         self.normalized_request.original_uri().to_string()

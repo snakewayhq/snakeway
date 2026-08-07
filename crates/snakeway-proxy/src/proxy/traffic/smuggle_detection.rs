@@ -13,15 +13,18 @@ use pingora::protocols::http::ServerSession;
 /// the CL+TE detection path fired. We read that via `ServerSession::H1.will_keepalive()`.
 ///
 /// We filter out the other keepalive-off cases that would false-positive:
-///   * HTTP/1.0 — defaults to keepalive-off (1.0 + TE is already rejected upstream anyway).
-///   * Exhausted reuse counter — `will_keepalive()` is also false when reuses_remaining == 0.
+///   * HTTP/1.0 defaults to keepalive-off, and Pingora already rejects HTTP/1.0 carrying
+///     `Transfer-Encoding`.
+///   * An exhausted reuse counter also leaves `will_keepalive()` false once
+///     reuses_remaining reaches 0.
 ///
 /// Caveat: this relies on Pingora's current internals, not a stable API. Revisit on upgrade.
 pub(in crate::proxy) fn is_cl_te_smuggling_attempt(session: &Session) -> bool {
     let req = session.req_header();
 
-    // Only HTTP/1.1-1.0 defaults to keepalive-off and would false-positive,
-    // and 1.0 + TE is already rejected by Pingora's validate_request.
+    // Only HTTP/1.1 is checked. HTTP/1.0 defaults to keepalive-off and would
+    // false-positive, and Pingora's validate_request already rejects HTTP/1.0 carrying
+    // Transfer-Encoding.
     if req.version != Version::HTTP_11 {
         return false;
     }

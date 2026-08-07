@@ -1,5 +1,6 @@
-//! This is primarily a fixture for integration tests.
-//! It also happens to be a good reference for how a device works.
+//! A fixture for integration tests.
+//! It implements every hook, so it also serves as a worked example of the device
+//! interface.
 use wit_bindgen::generate;
 
 generate!({

@@ -16,7 +16,7 @@ pub enum ConfigCmd {
         #[arg(default_value = "config", env = "SNAKEWAY_CONFIG")]
         path: PathBuf,
 
-        /// Suppresses all diagnostic
+        /// Suppress all diagnostic output
         #[arg(short, long)]
         quiet: bool,
 

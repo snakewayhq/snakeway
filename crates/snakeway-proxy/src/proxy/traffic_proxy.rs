@@ -56,9 +56,6 @@ impl TrafficProxy {
 
 /// Pingora hook execution order in ProxyHttp for TrafficProxy
 ///
-/// This is a giant orchestration trait implementation, so better to lay this out explicitly,
-/// especially because it might change in later Pingora versions.
-///
 /// Hooks related to caching, custom forwarding, and subrequest spawning are omitted
 /// because Snakeway does not use those Pingora features.
 ///
@@ -236,7 +233,8 @@ impl ProxyHttp for TrafficProxy {
         //   2. Transfer-Encoding is present (Pingora keeps it)
         //   3. The client did not explicitly send Connection: close (which would legitimately
         //      disable keepalive for an unrelated reason)
-        //   4. Pingora nonetheless disabled keepalive — the only remaining cause is CL+TE
+        //   4. Pingora nonetheless disabled keepalive, which leaves a Content-Length and
+        //      Transfer-Encoding pair as the only remaining cause
         if is_cl_te_smuggling_attempt(session) {
             tracing::warn!("request rejected: CL.TE smuggling attempt detected");
             session.respond_error(400).await?;
@@ -249,9 +247,9 @@ impl ProxyHttp for TrafficProxy {
     ///
     /// Additionally, when `end_of_stream` is true and a `Content-Length` header was
     /// declared, the total bytes received are compared against the declared value.
-    /// A mismatch means the client closed the connection (or timed out) before
-    /// sending the full body — forwarding a truncated body to the upstream would
-    /// waste backend resources or cause incorrect behaviour.
+    /// A mismatch means the client closed the connection or timed out before sending
+    /// the full body. Forwarding a truncated body to the upstream would waste backend
+    /// resources or cause incorrect behaviour.
     async fn request_body_filter(
         &self,
         session: &mut Session,
@@ -312,7 +310,7 @@ impl ProxyHttp for TrafficProxy {
         }
     }
 
-    /// Snakeway `before_proxy` --> Pingora `upstream_request_filter`
+    /// Snakeway `before_proxy`, which runs inside Pingora's `upstream_request_filter`.
     ///
     /// Intent:
     /// MUTATE OR ABORT UPSTREAM
@@ -347,7 +345,7 @@ impl ProxyHttp for TrafficProxy {
         }
     }
 
-    /// Snakeway `after_proxy` --> Pingora `upstream_response_filter`
+    /// Snakeway `after_proxy`, which runs inside Pingora's `upstream_response_filter`.
     ///
     /// Intent:
     /// MUTATE RESPONSE HEADERS / STATUS
@@ -402,7 +400,7 @@ impl ProxyHttp for TrafficProxy {
         Ok(())
     }
 
-    /// Snakeway `on_response` --> Pingora `response_filter`
+    /// Snakeway `on_response`, which runs inside Pingora's `response_filter`.
     ///
     /// Intent:
     /// FINAL OBSERVATION / METRICS / LOGGING
@@ -443,7 +441,8 @@ impl ProxyHttp for TrafficProxy {
         Ok(())
     }
 
-    /// Snakeway `on_stream_response_body` --> Pingora `upstream_response_body_filter`
+    /// Snakeway `on_stream_response_body`, which runs inside Pingora's
+    /// `upstream_response_body_filter`.
     ///
     /// Intent:
     /// INSPECT RESPONSE BODY CHUNKS AS THEY STREAM

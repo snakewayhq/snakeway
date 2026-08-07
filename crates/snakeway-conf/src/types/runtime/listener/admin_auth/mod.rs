@@ -6,8 +6,8 @@ pub use secret_token::*;
 
 use serde::{Deserialize, Serialize};
 
-/// Admin listener authentication. At least one scheme must be populated;
-/// this is enforced by validation.
+/// Admin listener authentication.
+/// Validation requires at least one scheme to be populated.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AdminAuthConfig {
     #[serde(default)]

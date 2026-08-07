@@ -46,9 +46,8 @@ impl TrafficManager {
     ) -> usize {
         debug_assert!(!healthy.is_empty());
 
-        // Build signature inputs (ids + weights)
-        // NOTE: This allocates a Vec each call. If you want to go harder later,
-        // we can avoid allocations by hashing instead.
+        // One allocation per call. Hashing the ids in place would remove it if this
+        // shows up in a profile.
         let upstream_ids: Vec<UpstreamId> = healthy.iter().map(|u| u.endpoint.id()).collect();
 
         let total_weight: i64 = healthy

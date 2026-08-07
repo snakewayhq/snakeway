@@ -11,7 +11,7 @@ pub struct ServerSpec {
     /// Configuration schema version
     pub version: Located<HclInt>,
 
-    /// Optional number of worker threads - default is decided by Pingora.
+    /// Number of worker threads. When unset, Pingora chooses the value.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threads: Option<Located<HclInt>>,
 

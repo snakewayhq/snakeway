@@ -17,8 +17,8 @@ pub struct OrderState {
     pub(crate) authorization_urls: Vec<String>,
 
     /// HTTP-01 challenge tokens: each entry is a (token, keyAuthorization) pair,
-    /// one per pending ACME authorization. A single-domain order has one entry;
-    /// a SAN order covering N domains has N entries.
+    /// one per pending ACME authorization. A single-domain order has one entry.
+    /// A SAN order covering N domains has N entries.
     pub(crate) challenge_tokens: Vec<(String, String)>,
 
     /// Failure count for backoff

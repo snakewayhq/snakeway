@@ -37,7 +37,7 @@ pub struct EndpointTlsSpec {
 }
 
 /// Classification of an endpoint host string, used by validation and
-/// lowering. The Spec stores the raw string; this is the parsed view.
+/// lowering. The spec stores the raw string, and this type is the parsed view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostSpec {
     Ip(IpAddr),

@@ -104,7 +104,7 @@ fn percent_decode_unreserved_with_outcome(input: &str) -> Result<(String, bool),
 ///
 /// # Security
 /// - Rejects malformed percent-encoding sequences (e.g. incomplete or non-hex triplets)
-/// - Restricts decoding to ASCII-range percent-encoded bytes (0–127)
+/// - Restricts decoding to ASCII-range percent-encoded bytes (0 to 127)
 /// - Normalizes preserved percent-encoded sequences to uppercase per RFC 3986 Section 2.1
 fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
     let bytes = input.as_bytes();

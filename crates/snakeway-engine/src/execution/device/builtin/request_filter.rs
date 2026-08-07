@@ -7,17 +7,10 @@ use smallvec::SmallVec;
 use snakeway_conf::types::RequestFilterDeviceConfig;
 use std::time::Duration;
 
-/// RequestFilter validates incoming HTTP requests against various rules.
+/// Validates incoming requests against method, header, and size rules.
 ///
-/// This struct uses `SmallVec` for storing lists of HTTP methods and headers.
-/// SmallVec is a special list type that stores a few items directly inside itself
-/// and only allocates extra memory when you need more space.
-///
-/// For example, `SmallVec<[Method; 4]>` can hold up to 4 HTTP methods without needing
-/// to allocate memory separately. Since most filters only check a few methods
-/// (like GET, POST, PUT, DELETE), this saves memory and makes the code faster.
-/// The same applies to headers - most filters only care about a handful of headers,
-/// so storing 8 directly is usually enough.
+/// The method and header lists use inline capacity, 4 for methods and 8 for headers,
+/// so a filter that names only a few of each does not allocate.
 #[derive(Debug)]
 pub struct RequestFilterDevice {
     pub(crate) allow_methods: SmallVec<[Method; 4]>,
@@ -84,7 +77,7 @@ impl Device for RequestFilterDevice {
     /// RequestFilter is primarily an on_request gate by design.
     /// It should only act on ctx.normalized_request.
     ///
-    /// Matching order...
+    /// Matching order:
     /// 1. Header size limit
     /// 2. Methods gates
     /// 3. Header gates

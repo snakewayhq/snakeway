@@ -329,7 +329,7 @@ fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRu
     }))
 }
 
-/// Fixed-seed ahash - fast and deterministic across restarts.
+/// Fixed-seed ahash, so an upstream keeps the same id across restarts.
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 

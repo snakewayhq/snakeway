@@ -23,7 +23,6 @@ pub struct CircuitBreakerSpec {
     pub open_duration_milliseconds: Located<HclInt>,
 
     /// How many simultaneous probe requests are allowed in half-open.
-    /// (Start with 1; keep it simple and safe.)
     #[confval(default = 1)]
     pub half_open_max_requests: Located<HclInt>,
 
