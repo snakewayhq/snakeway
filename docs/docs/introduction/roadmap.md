@@ -234,7 +234,7 @@ This is bumped up ahead of the v1.0 release because it does not make sense to re
 **Goals**
 
 - [x] Replace the implicit HTTP version and upgrade negotiation logic in `HttpProxy` and `RequestCtx` with explicit state machines (`ProtocolMode` and `UpgradeState`).
-  See [Protocol Negotiation](/docs/internals/protocol-negotiation) for the states, transitions, and rejection points.
+  See [Protocol negotiation](../internals/protocol-negotiation.md) for the states, transitions, and rejection points.
 
 ## Milestone N: Snakeway 1.0
 

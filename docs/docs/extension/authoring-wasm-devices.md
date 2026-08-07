@@ -58,7 +58,7 @@ wasm_devices = [
 | `config`          | map of strings         | no       | `{}`    | Key-value pairs accessible to the device via `host.config-get`                                                                 |
 | `hooks`           | list of strings        | no       | all     | Lifecycle hooks this device implements. When set, the host skips every hook not listed. See [Hook Selection](#hook-selection). |
 
-### Fail Policy
+### Fail policy
 
 When a WASM device encounters an error (load failure, timeout, trap, body buffer overflow):
 
@@ -67,7 +67,7 @@ When a WASM device encounters an error (load failure, timeout, trap, body buffer
 - **`"closed"`**: log an error and return `503 Service Unavailable`.
   The request is blocked.
 
-### Body Buffering
+### Body buffering
 
 When `body_buffer_max` is `0` (the default), the `on-stream-request-body` hook is called once per chunk as the body streams through.
 The device sees one chunk at a time.
@@ -75,7 +75,7 @@ The device sees one chunk at a time.
 When `body_buffer_max` is set to a positive value, Snakeway buffers the request body up to that limit and calls `on-stream-request-body` once with the complete body when the stream ends.
 If the body exceeds the limit, the fail policy determines the outcome.
 
-### Hook Selection
+### Hook selection
 
 By default, the host calls all six lifecycle hooks on every request.
 Each call creates a fresh WASM instance, so a device that only implements one hook still pays for five no-op instantiations per request.
@@ -93,7 +93,7 @@ Omitting `hooks` runs all six (the previous behavior).
 An empty list is rejected.
 To disable a device, set `enable = false`.
 
-## The WIT Interface
+## The WIT interface
 
 The device interface is defined in `snakeway:device@0.4.0`.
 A WASM device imports a **host** interface and exports a **policy** interface.
@@ -147,7 +147,7 @@ interface host {
 
 ### Types
 
-#### Request and Response Snapshots
+#### Request and response snapshots
 
 ```wit
 record request {
@@ -220,7 +220,7 @@ ops: list<header-op>,
 }
 ```
 
-#### Body Actions
+#### Body actions
 
 Body hooks return a `body-result` with a `body-action`:
 
@@ -239,7 +239,7 @@ block,
 - **`drop`**: discard the chunk
 - **`block`**: return `403 Forbidden` immediately
 
-## Building a Rust WASM Device
+## Building a Rust WASM device
 
 ### Prerequisites
 
@@ -247,7 +247,7 @@ block,
 - `cargo-component`: `cargo install cargo-component`
 - The Snakeway WIT files from `crates/snakeway-wit/wit/`
 
-### 1. Create the Project
+### 1. Create the project
 
 ```shell
 mkdir my-device && cd my-device
@@ -264,7 +264,7 @@ crate-type = ["cdylib"]
 wit-bindgen = "0.57"
 ```
 
-### 2. Generate Bindings and Implement the Device
+### 2. Generate bindings and implement the device
 
 In `src/lib.rs`, use `wit_bindgen::generate!` to create the bindings and implement the `Guest` trait:
 
@@ -349,9 +349,9 @@ wasm_devices = [
 ]
 ```
 
-## Runtime Behavior
+## Runtime behavior
 
-### Execution Model
+### Execution model
 
 Each hook invocation creates a fresh, isolated WASM instance.
 Instances do not share memory across hooks or across requests.
@@ -362,7 +362,7 @@ A **pooling allocator** pre-allocates memory slots so instantiation is fast.
 Each hook has an epoch-based deadline controlled by `timeout_ms`.
 If the device exceeds its deadline, the hook is terminated and the fail policy determines the outcome.
 
-### Memory Limits
+### Memory limits
 
 Each instance is limited to 10 MB of linear memory and 10,000 table elements.
 Exceeding these limits triggers a trap, handled by the fail policy.

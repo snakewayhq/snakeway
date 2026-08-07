@@ -7,7 +7,7 @@ It covers the repository layout, the development workflow, and the conventions t
 
 Read this page first, then consult the page that matches the kind of change you are making.
 
-## Repository Layout
+## Repository layout
 
 ```shell
 .
@@ -40,7 +40,7 @@ Read this page first, then consult the page that matches the kind of change you 
 Run `just -l` to see every available recipe.
 The recipes themselves are good context for what the project can do.
 
-## Key Commands
+## Key commands
 
 | Task                           | Command                   |
 |--------------------------------|---------------------------|
@@ -63,7 +63,7 @@ For a release build, add `-r`:
 cargo build -r -p snakeway
 ```
 
-## Cross-Compilation
+## Cross-compilation
 
 Snakeway targets Linux environments and supports fully static musl builds for both x86_64 and aarch64.
 These builds work on macOS ARM, macOS Intel, and Linux hosts.
@@ -108,7 +108,7 @@ target/<triple>/release/snakeway
 
 These binaries are suitable for distribution and container deployment.
 
-## Contribution Workflow
+## Contribution workflow
 
 1. Make your change in the appropriate crate.
 2. Add or update tests.
@@ -134,14 +134,14 @@ A pull request for a feature or bug fix typically includes:
 
 Unsafe Rust requires clear justification and should be avoided unless necessary.
 
-## Submitting Changes
+## Submitting changes
 
 1. Fork the repository.
 2. Create a branch with a descriptive name.
 3. Ensure all linting, formatting, tests, and builds succeed, including the musl cross builds.
 4. Submit a pull request with a clear description of the change.
 
-## Reporting Issues
+## Reporting issues
 
 Please include:
 
@@ -150,7 +150,7 @@ Please include:
 3. Steps to reproduce the issue.
 4. Logs where relevant.
 
-## What Each Page Covers
+## What each page covers
 
 - **[Code Style](code-style.md)**: formatting and lint requirements that match CI.
 - **[Unit Tests](unit-tests.md)**: conventions for inline unit tests in the library crates.

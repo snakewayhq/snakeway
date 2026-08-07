@@ -4,7 +4,7 @@ title: Writing Documentation
 
 This page describes how to update this documentation site when code changes introduce new features, settings, or behavioral changes that are not yet reflected in the docs.
 
-## Documentation Stack
+## Documentation stack
 
 | Component       | Technology                                                        |
 |-----------------|-------------------------------------------------------------------|
@@ -16,7 +16,7 @@ This page describes how to update this documentation site when code changes intr
 | Build/Preview   | `just docs` (runs `npm start` in `docs/`)                         |
 | Package manager | npm (`docs/package.json`)                                         |
 
-## Content Layout
+## Content layout
 
 ```
 docs/docs/
@@ -36,7 +36,7 @@ docs/static/img/         # Images and SVG diagrams
 
 Sections evolve, so treat this as an orientation map and check `docs/docs/` for the current structure.
 
-## Page Types
+## Page types
 
 Every page is one of two types, detailed below.
 The type determines the structure.
@@ -101,7 +101,7 @@ title: Page Title Here
 
 No other fields (no description, date, keywords, and so on).
 
-## Writing Style and Conventions
+## Writing style and conventions
 
 Follow these rules precisely to match the existing documentation tone.
 
@@ -144,13 +144,17 @@ An instructional guide opens with an Introduction that states the reader's situa
 
 ### Headings
 
-- `##` for major sections (for example "Method Filtering", "Body Size Limits").
-- `###` for subsections (for example "Required Headers", "Denied Headers").
+- Write headings in sentence case.
+  Capitalize the first word and any proper noun or literal identifier, and leave the rest lowercase, as in "Path scoping" and "Version negotiation".
+  `internals/protocol-negotiation.md` and `internals/request-normalization.md` model the target.
+  Reference pages keep `Configuration Example` and `Field Reference` as their fixed section names.
+- `##` for major sections (for example "Method filtering", "Body size limits").
+- `###` for subsections (for example "Required headers", "Denied headers").
 - `####` sparingly, for individual field documentation.
 - Do not skip levels.
   A `####` sits under a `###`, which sits under a `##`.
 
-### Code Blocks
+### Code blocks
 
 - Use ` ```hcl ` for all HCL configuration examples.
 - Show a **complete, realistic example** at the top of each page.
@@ -188,7 +192,7 @@ Helpful advice or best practice.
 - Numbered lists only for ordered evaluation steps.
 - Nested lists for hierarchy.
 
-## How to Identify What Needs Updating
+## How to identify what needs updating
 
 ### For new config fields
 
@@ -218,7 +222,7 @@ If the behavior of an existing feature changes (for example a new rejection reas
 Search for references to the changed behavior across all docs.
 It may be mentioned in multiple places (for example a device doc and the lifecycle doc).
 
-## Recipe: Documenting a New Config Field
+## Recipe: documenting a new config field
 
 ### Step 1: Identify the field and its docs page
 
@@ -228,7 +232,7 @@ Read the spec struct to understand:
 - The default value (from `#[serde(default = "...")]` or the `Default` impl).
 - What it controls (from the doc comment or implementation).
 
-### Step 2: Update the Configuration Example
+### Step 2: Update the configuration example
 
 Add the field to the complete HCL example at the top of the page:
 
@@ -245,18 +249,16 @@ request_filter_device = {
 Add a new `##` or `###` section, matching the level used by sibling fields:
 
 ````markdown
-## Client Body Timeout
+## Client body timeout
 
 ```hcl
 client_body_timeout_seconds = 10
 ```
 
-Controls how long the proxy waits for each chunk of request body data from the
-client. If the client stalls mid-body for longer than this duration, the connection
-is terminated.
+Controls how long the proxy waits for each chunk of request body data from the client.
+If the client stalls mid-body for longer than this duration, the connection is terminated.
 
-This prevents slowloris-style attacks where an attacker sends a large
-`Content-Length` but trickles body bytes to hold upstream connections.
+This prevents slowloris-style attacks where an attacker sends a large `Content-Length` but trickles body bytes to hold upstream connections.
 
 * Default: Pingora's default (60 seconds) when not set
 * Set to a lower value (for example 5 to 10 seconds) for public-facing deployments
@@ -272,7 +274,7 @@ just docs
 
 Open `http://localhost:3000` and navigate to the updated page.
 
-## Recipe: Adding a New Docs Page
+## Recipe: adding a new docs page
 
 ### Step 1: Create the file
 

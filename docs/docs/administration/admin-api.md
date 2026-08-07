@@ -87,7 +87,7 @@ Authentication limits who can call the API **given** they can reach it.
 It does not replace network-level restriction.
 This mirrors the guidance published by the [Envoy project](https://www.envoyproxy.io/docs/envoy/latest/operations/admin) and [Caddy project](https://caddyserver.com/docs/api) for their own admin interfaces.
 
-## Endpoint Reference
+## Endpoint reference
 
 ### `GET /admin/health`
 
@@ -271,7 +271,7 @@ curl http://localhost:8081/admin/certs
 | `expires_in_seconds` | Seconds remaining until expiration.        |
 | `state`              | `"Valid"` or `"Expired"`.                  |
 
-## Circuit Breaker Transition Logs
+## Circuit breaker transition logs
 
 When an upstream's circuit state changes, Snakeway emits a structured log event:
 
@@ -298,7 +298,7 @@ When an upstream's circuit state changes, Snakeway emits a structured log event:
 - `half_open_failure`: A failure during HalfOpen immediately re-opens the circuit.
 - `success_threshold_reached`: Enough successful probes in HalfOpen state closed the circuit.
 
-## Using the Admin API for Monitoring
+## Using the Admin API for monitoring
 
 The `/admin/stats` and `/admin/upstreams` endpoints are designed to be polled by monitoring systems.
 A simple health check script might look like this:
