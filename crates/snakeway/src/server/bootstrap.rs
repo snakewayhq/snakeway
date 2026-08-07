@@ -62,3 +62,50 @@ fn bail_if_port_is_in_use(listeners: &[ListenerConfig]) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use confval::prelude::{Located, Report};
+    use snakeway_conf::types::BindSpec;
+
+    fn listener_on(port: u16) -> ListenerConfig {
+        let spec = BindSpec {
+            interface: Located::detached("loopback".to_string()),
+            port: Located::detached(i64::from(port)),
+            ..Default::default()
+        };
+        ListenerConfig::from_bind("test-listener", &spec, &mut Report::new())
+            .expect("listener config")
+    }
+
+    #[test]
+    fn should_bail_when_a_listener_port_is_in_use() {
+        // Arrange
+        let occupied = TcpListener::bind("127.0.0.1:0").expect("bind probe");
+        let port = occupied.local_addr().expect("local addr").port();
+        let listeners = vec![listener_on(port)];
+
+        // Act
+        let result = bail_if_port_is_in_use(&listeners);
+
+        // Assert
+        let err = result.expect_err("an occupied port must bail");
+        assert!(err.to_string().contains("already in use"));
+    }
+
+    #[test]
+    fn should_pass_when_listener_ports_are_free() {
+        // Arrange
+        let probe = TcpListener::bind("127.0.0.1:0").expect("bind probe");
+        let port = probe.local_addr().expect("local addr").port();
+        drop(probe);
+        let listeners = vec![listener_on(port)];
+
+        // Act
+        let result = bail_if_port_is_in_use(&listeners);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+}
