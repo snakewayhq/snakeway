@@ -1,6 +1,5 @@
 mod device;
 mod entrypoint_spec;
-pub(crate) mod field_emit;
 mod ingress;
 mod server;
 

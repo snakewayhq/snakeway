@@ -170,13 +170,16 @@ Valid range: `1` to `65535`.
 
 `upstream.connection_timeout_seconds` integer, optional.
 How long to wait when establishing a connection to an upstream (TCP, and the TLS handshake for TLS upstreams) before failing.
-**Omit the key to disable it.** When set, the valid range is `1` to `3600`.
+**Omit the key to disable it.**
+When set, the valid range is `1` to `3600`.
 
 `upstream.read_timeout_seconds` integer, optional.
-Per-read (idle) timeout while reading an upstream response: if no data arrives within the window the request fails.
+Per-read (idle) timeout while reading an upstream response.
+If no data arrives within the window the request fails.
 This bounds a stalled or wedged origin without breaking slow-but-progressing or streaming responses (the timer resets on every read).
-It is **not** applied to websocket upgrades, so idle long-lived websocket connections are not torn down.
-**Omit the key to disable it.** When set, the valid range is `1` to `3600`.
+It is **not** applied to WebSocket upgrades, so idle long-lived WebSocket connections are not torn down.
+**Omit the key to disable it.**
+When set, the valid range is `1` to `3600`.
 
 ### Source Addresses
 

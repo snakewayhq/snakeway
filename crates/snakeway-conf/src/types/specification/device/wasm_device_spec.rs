@@ -1,12 +1,9 @@
-use crate::types::specification::field_emit::{
-    bool_field, int_field, path_field, string_field, string_list_field, string_map_field,
-};
 use crate::types::{HclInt, WasmDeviceFailPolicy};
 use crate::validation::validator::require_existing_file;
 use confval::format::{
-    Field, FieldKind, Fields, FromFields, Scalar, ToFields, ValueKind, parse_bool_field,
-    parse_int_field, parse_string_field, parse_string_list_field, report_missing_field,
-    report_unknown_field,
+    Field, FieldKind, Fields, FieldsBuilder, FromFields, Scalar, ToFields, Value, ValueKind, Walk,
+    parse_bool_field, parse_int_field, parse_string_field, parse_string_list_field,
+    report_missing_field, report_unknown_field,
 };
 use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
@@ -65,6 +62,25 @@ impl Default for WasmDeviceSpec {
             hooks: None,
         }
     }
+}
+
+/// Entries are sorted by key so emission is deterministic.
+fn string_map_field(name: &str, entries: &HashMap<String, String>) -> Field {
+    let mut sorted: Vec<(&String, &String)> = entries.iter().collect();
+    sorted.sort_by_key(|(key, _)| key.as_str());
+    let fields = sorted
+        .into_iter()
+        .map(|(key, value)| {
+            Field::detached_value(
+                key,
+                Value::detached(ValueKind::Scalar(Scalar::String(value.to_string()))),
+            )
+        })
+        .collect();
+    Field::detached_value(
+        name,
+        Value::detached(ValueKind::Map(Fields::detached(fields))),
+    )
 }
 
 /// Parses the `config` attribute as a flat string-to-string map.
@@ -178,23 +194,31 @@ impl FromFields for WasmDeviceSpec {
 /// The write-path counterpart of the handwritten `FromFields`. An empty
 /// `config` map and an absent `hooks` list are omitted, matching what the
 /// parse treats as absent.
+impl WasmDeviceSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        let mut builder = FieldsBuilder::new(walk)
+            .leaf("name", &self.name)
+            .leaf("enable", &self.enable)
+            .leaf("path", &self.path)
+            .leaf("fail_policy", &self.fail_policy)
+            .leaf("timeout_ms", &self.timeout_ms)
+            .leaf("body_buffer_max", &self.body_buffer_max);
+        if !self.config.is_empty() {
+            builder = builder.push(string_map_field("config", &self.config));
+        }
+        builder
+            .string_list_opt("hooks", self.hooks.as_ref())
+            .finish()
+    }
+}
+
 impl ToFields for WasmDeviceSpec {
     fn to_fields(&self) -> Fields {
-        let mut items = vec![
-            string_field("name", &self.name.value),
-            bool_field("enable", self.enable.value),
-            path_field("path", &self.path.value),
-            string_field("fail_policy", &self.fail_policy.value),
-            int_field("timeout_ms", self.timeout_ms.value),
-            int_field("body_buffer_max", self.body_buffer_max.value),
-        ];
-        if !self.config.is_empty() {
-            items.push(string_map_field("config", &self.config));
-        }
-        if let Some(hooks) = &self.hooks {
-            items.push(string_list_field("hooks", &hooks.value));
-        }
-        Fields::detached(items)
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
     }
 }
 
@@ -204,10 +228,6 @@ impl ValidateNested for WasmDeviceSpec {
 
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         if self.name.value.trim().is_empty() {
             report
                 .error("wasm device name must not be empty")
@@ -232,7 +252,7 @@ impl Validate for WasmDeviceSpec {
                 report
                     .error("hooks must not be empty")
                     .at(hooks.span)
-                    .help("omit `hooks` to run all hooks, or set enable = false to disable the device")
+                    .help("omit `hooks` to run all hooks, or list at least one hook")
                     .emit();
             }
             for hook in &hooks.value {
@@ -529,7 +549,7 @@ hooks = ["on_request", "on_response"]
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = WasmDeviceSpec {
@@ -542,6 +562,13 @@ hooks = ["on_request", "on_response"]
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("fail_policy")),
+            "a disabled device must still validate fail_policy; issues: {:?}",
+            report.issues()
+        );
     }
 }

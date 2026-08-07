@@ -71,7 +71,7 @@ mod tests {
             port: Located::detached(8443),
             tls: Some(Located::detached(TlsTerminationSpec::Acme {
                 domains: vec![Located::detached("example.com".to_string())],
-                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
             })),
             ..Default::default()
         }

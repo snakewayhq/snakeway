@@ -1,7 +1,7 @@
-use crate::types::specification::field_emit::{path_field, string_field, string_list_field};
+use crate::types::AcmeChallenge;
 use crate::validation::validator::validate_cert_key_pair;
 use confval::format::{
-    Fields, FromFields, ToFields, parse_string_field, parse_string_list_field,
+    Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, parse_string_list_field,
     report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
@@ -29,8 +29,6 @@ impl Default for TlsTerminationSpec {
         }
     }
 }
-
-pub const ACME_CHALLENGE_HTTP01: &str = "http01";
 
 /// The tls block carries a `mode` attribute selecting the variant,
 /// mirroring the serialized form (`mode = "manual"` or `mode = "acme"`).
@@ -87,8 +85,9 @@ impl FromFields for TlsTerminationSpec {
                 }
                 Some(TlsTerminationSpec::Acme {
                     domains: domains?.value,
-                    challenge: challenge
-                        .unwrap_or_else(|| Located::detached(ACME_CHALLENGE_HTTP01.to_string())),
+                    challenge: challenge.unwrap_or_else(|| {
+                        Located::detached(AcmeChallenge::Http01.as_str().to_string())
+                    }),
                 })
             }
             other => {
@@ -105,21 +104,30 @@ impl FromFields for TlsTerminationSpec {
 
 /// The write-path counterpart of the handwritten `FromFields`: the `mode`
 /// attribute selects the variant, then the variant's own fields follow.
+impl TlsTerminationSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        match self {
+            TlsTerminationSpec::Manual { cert, key } => FieldsBuilder::new(walk)
+                .literal_string("mode", "manual")
+                .leaf("cert", cert)
+                .leaf("key", key)
+                .finish(),
+            TlsTerminationSpec::Acme { domains, challenge } => FieldsBuilder::new(walk)
+                .literal_string("mode", "acme")
+                .string_list("domains", domains)
+                .leaf("challenge", challenge)
+                .finish(),
+        }
+    }
+}
+
 impl ToFields for TlsTerminationSpec {
     fn to_fields(&self) -> Fields {
-        let items = match self {
-            TlsTerminationSpec::Manual { cert, key } => vec![
-                string_field("mode", "manual"),
-                path_field("cert", &cert.value),
-                path_field("key", &key.value),
-            ],
-            TlsTerminationSpec::Acme { domains, challenge } => vec![
-                string_field("mode", "acme"),
-                string_list_field("domains", domains),
-                string_field("challenge", &challenge.value),
-            ],
-        };
-        Fields::detached(items)
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
     }
 }
 
@@ -143,13 +151,7 @@ impl Validate for TlsTerminationSpec {
                 if domains.is_empty() {
                     report.error("missing domains for ACME TLS").emit();
                 }
-                if challenge.value != ACME_CHALLENGE_HTTP01 {
-                    report
-                        .error(format!("unknown ACME challenge: {}", challenge.value))
-                        .at(challenge.span)
-                        .help("expected \"http01\"")
-                        .emit();
-                }
+                AcmeChallenge::keyword_set().check_located(challenge, "ACME challenge", report);
             }
         }
     }
@@ -204,7 +206,7 @@ mod tests {
                 Located::detached("example.com".to_string()),
                 Located::detached("www.example.com".to_string()),
             ],
-            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
         };
         let mut report = Report::new();
 
@@ -219,7 +221,7 @@ mod tests {
         assert_eq!(domains.len(), 2);
         assert_eq!(domains[0].value, "example.com");
         assert_eq!(domains[1].value, "www.example.com");
-        assert_eq!(challenge.value, ACME_CHALLENGE_HTTP01);
+        assert_eq!(challenge.value, AcmeChallenge::Http01.as_str());
     }
 
     #[test]
@@ -252,7 +254,7 @@ mod tests {
             panic!("expected acme");
         };
         assert_eq!(domains[0].value, "example.com");
-        assert_eq!(challenge.value, ACME_CHALLENGE_HTTP01);
+        assert_eq!(challenge.value, AcmeChallenge::Http01.as_str());
         assert!(challenge.span.is_detached());
     }
 
@@ -280,7 +282,7 @@ mod tests {
         let mut report = Report::new();
         let spec = TlsTerminationSpec::Acme {
             domains: vec![],
-            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
         };
 
         // Act
@@ -302,7 +304,7 @@ mod tests {
         let mut report = Report::new();
         let spec = TlsTerminationSpec::Acme {
             domains: vec![Located::detached("example.com".to_string())],
-            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
         };
 
         // Act

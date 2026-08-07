@@ -1,6 +1,6 @@
-use crate::types::{NetworkConnectionFilterSpec, ON_NO_PEER_ADDR_DENY};
+use crate::types::{NetworkConnectionFilterSpec, OnNoPeerAddr};
 use crate::validation::validator::parse_cidr_list;
-use confval::prelude::{Lower, Report};
+use confval::prelude::{Lower, Report, narrow};
 use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
@@ -26,29 +26,21 @@ impl Lower<NetworkConnectionFilterSpec> for NetworkConnectionFilterConfig {
         Some(Self {
             cidr_allow: cidr_allow?,
             cidr_deny: cidr_deny?,
-            on_no_peer_addr: if spec.on_no_peer_addr.value == ON_NO_PEER_ADDR_DENY {
-                OnNoPeerAddr::Deny
-            } else {
-                OnNoPeerAddr::Allow
-            },
+            on_no_peer_addr: narrow::keyword(&spec.on_no_peer_addr, report)?,
             ip_family_ipv4: spec.ip_family.value.ipv4.value,
             ip_family_ipv6: spec.ip_family.value.ipv6.value,
         })
     }
 }
 
-#[derive(Debug, Deserialize, Default, Serialize, Clone, PartialEq)]
-pub enum OnNoPeerAddr {
-    #[default]
-    Allow,
-    Deny,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{CidrSpec, IpFamilySpec, ON_NO_PEER_ADDR_ALLOW};
+    use crate::types::{CidrSpec, IpFamilySpec};
     use confval::prelude::Located;
+
+    const ON_NO_PEER_ADDR_ALLOW: &str = "allow";
+    const ON_NO_PEER_ADDR_DENY: &str = "deny";
 
     fn filter(
         allow: Vec<&str>,

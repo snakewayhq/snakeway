@@ -48,6 +48,7 @@ url = { workspace = true }
 hotpath = { workspace = true, optional = true }
 
 [dev-dependencies]
+pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
 
 [package.metadata.cargo-machete]

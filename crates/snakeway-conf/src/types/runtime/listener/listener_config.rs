@@ -45,7 +45,7 @@ fn report_resolve_error(err: &ResolveError, interface: &Located<String>, report:
 }
 
 /// Lower an optional connection filter. The outer `Option` is the failure
-/// channel; the inner one mirrors the spec field being optional.
+/// channel. The inner one mirrors the spec field being optional.
 fn lower_connection_filter(
     spec: &BindSpec,
     report: &mut Report,

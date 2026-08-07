@@ -14,7 +14,6 @@ pub enum NormalizationOutcome<T> {
     },
 }
 
-/// Small helper to reduce noisy call site boilerplate.
 impl<T> NormalizationOutcome<T> {
     #[inline]
     pub(crate) fn reject_for_header_encoding_violation() -> Self {

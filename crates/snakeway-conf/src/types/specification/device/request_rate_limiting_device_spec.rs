@@ -7,7 +7,7 @@ use serde::Serialize;
 range_constraint!(MAX_REQUESTS_PER_SECOND, i64, min: 1, max: 30_000);
 range_constraint!(WINDOW_SECONDS, i64, min: 1, max: 60, units: "seconds");
 
-#[derive(Debug, Clone, Default, Serialize, confval::Spec)]
+#[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct RequestRateLimitingDeviceSpec {
     pub enable: Located<bool>,
     pub max_requests_per_second: Located<HclInt>,
@@ -18,12 +18,21 @@ pub struct RequestRateLimitingDeviceSpec {
     pub paths: Vec<Located<String>>,
 }
 
+/// The default doubles as the `config init` template, so its values must pass
+/// this spec's own validation. They match the documented example.
+impl Default for RequestRateLimitingDeviceSpec {
+    fn default() -> Self {
+        Self {
+            enable: Located::detached(false),
+            max_requests_per_second: Located::detached(20),
+            window_seconds: Located::detached(5),
+            paths: Vec::new(),
+        }
+    }
+}
+
 impl Validate for RequestRateLimitingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         MAX_REQUESTS_PER_SECOND.check_located(
             &self.max_requests_per_second,
             "max_requests_per_second",
@@ -38,6 +47,19 @@ impl Validate for RequestRateLimitingDeviceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = RequestRateLimitingDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
 
     fn minimal() -> RequestRateLimitingDeviceSpec {
         RequestRateLimitingDeviceSpec {
@@ -102,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = RequestRateLimitingDeviceSpec {
@@ -115,6 +137,9 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate its rate values"
+        );
     }
 }

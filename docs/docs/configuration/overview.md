@@ -4,7 +4,7 @@ title: Configuration Overview
 
 Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale.
 
-## The Entry Point
+## The entry point
 
 The heart of Snakeway's configuration is the `snakeway.hcl` file.
 This file defines the global server settings and modular configuration file locations.
@@ -24,7 +24,7 @@ include {
 }
 ```
 
-## Modular Configuration
+## Modular configuration
 
 The `include` section allows you to split your configuration into logical parts using glob patterns.
 
@@ -34,7 +34,7 @@ The `include` section allows you to split your configuration into logical parts 
 When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a single unified runtime configuration.
 This is discussed in more detail in [Configuration Internals](/docs/internals/configuration).
 
-## Hot Reloading
+## Hot reloading
 
 Snakeway supports zero-downtime configuration reloads.
 This means you can update your routes, add new services, or change device settings without dropping active connections.
@@ -54,7 +54,7 @@ snakeway reload
 
 ### Admin API
 
-If enabled the admin API is enable, you can send a `POST` request to the `/admin/reload` endpoint.
+If the admin API is enabled, you can send a `POST` request to the `/admin/reload` endpoint.
 
 For example:
 
@@ -62,7 +62,7 @@ For example:
 curl -X POST https://127.0.0.1:8440/admin/reload 
 ```
 
-## Configuration Validation
+## Configuration validation
 
 You can manually validate your configuration directory at any time using the `config check` command:
 

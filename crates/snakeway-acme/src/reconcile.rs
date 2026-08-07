@@ -3,7 +3,7 @@ use crate::order_store::OrderState;
 use crate::state::{CertState, compute_state};
 use crate::{CertManager, OrderStatus};
 use sha2::{Digest, Sha256};
-use snakeway_conf::types::{AcmeChallengeConfig, RuntimeConfig, TlsTerminationConfig};
+use snakeway_conf::types::{AcmeChallenge, RuntimeConfig, TlsTerminationConfig};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use thiserror::Error;
@@ -535,7 +535,7 @@ impl Reconciler {
 #[derive(Debug, Clone)]
 pub(crate) struct DesiredCertificate {
     pub(crate) domains: Vec<String>,
-    pub(crate) challenge: AcmeChallengeConfig,
+    pub(crate) challenge: AcmeChallenge,
 }
 
 fn desired_certificates_from_config(
@@ -554,7 +554,7 @@ fn desired_certificates_from_config(
                     cert_id,
                     DesiredCertificate {
                         domains: domains.clone(),
-                        challenge: challenge.clone(),
+                        challenge: *challenge,
                     },
                 );
             } else {
@@ -569,7 +569,7 @@ fn desired_certificates_from_config(
     out
 }
 
-fn compute_cert_id(domains: &[String], challenge: &AcmeChallengeConfig) -> Option<String> {
+fn compute_cert_id(domains: &[String], challenge: &AcmeChallenge) -> Option<String> {
     let mut hasher = Sha256::new();
 
     for d in domains {

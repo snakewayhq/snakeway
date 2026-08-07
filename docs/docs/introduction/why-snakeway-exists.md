@@ -10,10 +10,8 @@ Snakeway exists to fill the gap between these two extremes.
 
 When teams need to add custom logic to their edge (e.g., request enrichment, custom access rules, or complex observability), they often face a difficult choice:
 
-1. **Simple proxies** are fast and reliable, but extending them often requires writing C modules or using limited
-   scripting languages like Lua, which can be hard to test and maintain.
-2. **Heavy gateways** are powerful, but often bring significant operational overhead, complex DSLs, and opaque behavior
-   that makes debugging difficult.
+1. **Simple proxies** are fast and reliable, but extending them often requires writing C modules or using limited scripting languages like Lua, which can be hard to test and maintain.
+2. **Heavy gateways** are powerful, but often bring significant operational overhead, complex DSLs, and opaque behavior that makes debugging difficult.
 
 ## The Snakeway Approach
 
@@ -36,7 +34,7 @@ You do not need to know Lua, Helm, Kubernetes, or Terraform.
 
 ### Operator Experience
 
-The directory-based configuration and modular design are built for humans, not just machines.
+Configuration is a directory of HCL files that an operator reads and edits by hand.
 The [HCL configuration language](https://github.com/hashicorp/hcl) was chosen for its simplicity, expressiveness, and ubiquity in operations.
 CLI commands generate and inspect configuration.
 

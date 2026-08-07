@@ -83,7 +83,8 @@ impl AdminHandler {
 impl AdminHandler {
     /// Returns `Ok(true)` if the caller is authenticated and the pipeline
     /// should continue. Returns `Ok(false)` after writing a `401 Unauthorized`
-    /// response; callers must short-circuit and not dispatch any endpoint.
+    /// response. On `Ok(false)` the caller must short-circuit and dispatch no
+    /// endpoint.
     async fn authenticate(&self, session: &mut Session) -> pingora::Result<bool> {
         let Some(bearer) = &self.ctx.auth.bearer else {
             // Validation guarantees a scheme is configured on admin listeners.

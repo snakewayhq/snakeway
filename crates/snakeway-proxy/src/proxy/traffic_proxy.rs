@@ -1,37 +1,35 @@
 use crate::proxy::handlers::StaticFileHandler;
 use crate::proxy::proxy_ctx::ProxyCtx;
-use crate::proxy::traffic::protocol_api::ProtocolMode;
+use crate::proxy::traffic::headers::write_back_response_headers;
 use crate::proxy::traffic::smuggle_detection::is_cl_te_smuggling_attempt;
+use crate::proxy::traffic::upstream_intent::apply_upstream_intent;
 use crate::proxy::traffic::{BodyBytesReceived, DeclaredContentLength, UpstreamResponseSnapshot};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{StatusCode, Version, header};
+use http::StatusCode;
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::*;
 use snakeway_engine::WsConnectionManager;
-use snakeway_engine::ctx::{RequestCtx, RequestId, ResponseCtx, WsCloseCtx, WsCtx};
-use snakeway_engine::device::builtin::request_filter::ClientBodyTimeout;
+use snakeway_engine::ctx::{RequestCtx, ResponseCtx, WsCloseCtx, WsCtx};
 use snakeway_engine::device::core::{DevicePipeline, DeviceResult};
-use snakeway_engine::route::RouteRuntime;
-use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
+use snakeway_engine::runtime::RuntimeState;
 use snakeway_engine::traffic::{
-    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpstreamOutcome,
+    AdmissionGuard, ServiceId, TrafficDirector, TrafficManager, UpgradeState, UpstreamOutcome,
 };
-use snakeway_observability::{HeaderExtractor, Metrics, RequestHeaderInjector};
+use snakeway_observability::Metrics;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-/// PublicProxy is the core orchestration abstraction in Snakeway.
+/// TrafficProxy is the core orchestration abstraction in Snakeway.
 /// It wraps Pingora hooks and applies traffic decisions and device lifecycle hooks.
 pub(crate) struct TrafficProxy {
-    listener: Arc<str>,
-    pub(crate) proxy_ctx: ProxyCtx,
-    pub(crate) traffic_director: TrafficDirector,
-    static_file_handler: StaticFileHandler,
-    upstream_connect_timeout: Option<Duration>,
-    upstream_read_timeout: Option<Duration>,
+    pub(in crate::proxy) listener: Arc<str>,
+    pub(in crate::proxy) proxy_ctx: ProxyCtx,
+    pub(in crate::proxy) traffic_director: TrafficDirector,
+    pub(in crate::proxy) static_file_handler: StaticFileHandler,
+    pub(in crate::proxy) upstream_connect_timeout: Option<Duration>,
+    pub(in crate::proxy) upstream_read_timeout: Option<Duration>,
 }
 
 impl TrafficProxy {
@@ -56,10 +54,7 @@ impl TrafficProxy {
     }
 }
 
-/// Pingora hook execution order in ProxyHttp for PublicProxy
-///
-/// This is a giant orchestration trait implementation, so better to lay this out explicitly,
-/// especially because it might change in later Pingora versions.
+/// Pingora hook execution order in ProxyHttp for TrafficProxy
 ///
 /// Hooks related to caching, custom forwarding, and subrequest spawning are omitted
 /// because Snakeway does not use those Pingora features.
@@ -158,7 +153,8 @@ impl ProxyHttp for TrafficProxy {
         _session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root_span = ctx.request_span.clone();
+        let _root = _root_span.as_ref().map(|s| s.enter());
         let _selection_span = tracing::info_span!("upstream_selection").entered();
         let state = self.proxy_ctx.state();
 
@@ -171,61 +167,7 @@ impl ProxyHttp for TrafficProxy {
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        // Creating an HttpPeer instance per request may raise an eyebrow, but
-        // it is merely a sort of configuration object that is used by Pingora
-        // to compute a hash later when its internal pooling logic runs.
-        let mut peer = match upstream {
-            UpstreamRuntime::Tcp(tcp) => {
-                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.use_tls, tcp.sni.clone());
-                if tcp.use_tls {
-                    // Wire-up per-upstream TLS settings.
-                    peer.options.verify_cert = tcp.verify;
-                    peer.options.verify_hostname = tcp.verify;
-                    if tcp.verify {
-                        peer.options.ca = tcp.ca.clone();
-                        peer.group_key = tcp.group_key;
-                    }
-                }
-                Ok(peer)
-            }
-            UpstreamRuntime::Unix(unix) => {
-                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
-                    anyhow::anyhow!(
-                        "Could not connect to unix domain socket `{}`: {}",
-                        unix.path,
-                        e
-                    )
-                })
-            }
-        }
-        .map_err(|_| Error::new(Custom("http peer creation failed")))?;
-
-        // Apply upstream timeouts.
-        // The read timeout is per-read (idle), so it bounds a stalled origin
-        // without breaking slow-but-progressing responses.
-        // It is skipped for websocket upgrades so idle long-lived connections
-        // are not torn down.
-        if let Some(t) = self.upstream_connect_timeout {
-            // The total_connection_timeout setting bounds the whole connection
-            // establishment (TCP connect + TLS handshake).
-            // The inner connection_timeout (TCP connect only) is left unset
-            // because it would be redundant since the total bound already caps it.
-            peer.options.total_connection_timeout = Some(t);
-        }
-        if let Some(t) = self.upstream_read_timeout
-            && !ctx.is_upgrade_req()
-        {
-            peer.options.read_timeout = Some(t);
-        }
-
-        // Resolve the wire protocol once and store it for later hooks.
-        let mode = self.enforce_protocol(&mut peer, ctx, upstream)?;
-        ctx.extensions.insert(mode);
-
-        // Set upstream authority for end-to-end h2 (gRPC, h2-to-h2).
-        if mode == ProtocolMode::Http2EndToEnd {
-            ctx.upstream_authority = Some(upstream.authority());
-        }
+        let peer = self.build_peer(ctx, upstream)?;
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
@@ -258,142 +200,21 @@ impl ProxyHttp for TrafficProxy {
             return Ok(true);
         }
 
-        // Extract W3C Trace Context from downstream request headers.
-        // When no traceparent header is present, the context is empty and
-        // set_parent below becomes a no-op (the span stays a root).
-        let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
-            prop.extract(&HeaderExtractor(&session.req_header().headers))
-        });
-
-        // Setup request root span and add it to the request context.
-        let request_id = ctx.request_id().unwrap_or_else(|| "unknown".into());
-
-        let span = tracing::info_span!(
-            "request",
-            http.method = %ctx.method_str(),
-            http.host = %ctx.effective_host(),
-            http.path = %ctx.canonical_path(),
-            client.ip = %ctx.peer_ip,
-            request.id = %request_id,
-            listener = %self.listener,
-            route = tracing::field::Empty,
-        );
-
-        // Link the request span to the extracted upstream trace context.
-        let _ = span.set_parent(parent_cx);
-
-        ctx.request_span = Some(span);
+        self.open_request_span(session, ctx);
         let _span = ctx.request_span.clone();
         let _enter = _span.as_ref().map(|s| s.enter());
 
-        // Grab state.
         let state = self.proxy_ctx.state();
 
         // Child span covering on_request devices, route matching, and service selection.
         let _routing_span = tracing::info_span!("routing");
         let _routing_enter = _routing_span.enter();
 
-        // Run on_request devices first (applies to both static and upstream requests).
-        match DevicePipeline::run_on_request(state.devices.all(), ctx) {
-            DeviceResult::Continue => {}
-
-            DeviceResult::Respond(resp) => {
-                resp.write_to_session(&mut session.downstream_session)
-                    .await?;
-                return Ok(true);
-            }
-
-            DeviceResult::Error(err) => {
-                tracing::error!("device error in on_request: {err}");
-                session.respond_error(500).await?;
-                return Ok(true);
-            }
+        if self.run_on_request_devices(session, ctx, &state).await? {
+            return Ok(true);
         }
 
-        // Apply client body timeout if the request filter device configured one.
-        if let Some(timeout) = ctx.extensions.get::<ClientBodyTimeout>() {
-            session.downstream_session.set_read_timeout(Some(timeout.0));
-        }
-
-        // Store declared Content-Length for underflow detection in request_body_filter.
-        if let Some(cl) = session
-            .req_header()
-            .headers
-            .get(header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.trim().parse::<u64>().ok())
-        {
-            ctx.extensions.insert(DeclaredContentLength(cl));
-        }
-
-        // Make a decision about the route.
-        let router = state
-            .routers
-            .get(self.listener.as_ref())
-            .ok_or_else(|| Error::new(Custom("no router for listener")))?;
-
-        let route = match router.match_route(ctx.effective_host(), ctx.canonical_path()) {
-            Ok(r) => r,
-            Err(err) => {
-                tracing::warn!("no route matched: {err}");
-                session.respond_error(404).await?;
-                return Ok(true);
-            }
-        };
-
-        match &route.kind {
-            RouteRuntime::Static { id, .. } => {
-                ctx.route_id = Some(id.clone());
-                if ctx.is_upgrade_req() {
-                    // Reject websocket upgrade requests for static files.
-                    session
-                        .respond_error(StatusCode::BAD_REQUEST.as_u16())
-                        .await?;
-                    return Ok(true);
-                }
-                self.static_file_handler
-                    .handle(session, ctx, route, &state.devices)
-                    .await
-            }
-
-            RouteRuntime::Service {
-                id,
-                upstream,
-                allow_websocket,
-                ws_max_connections,
-                ..
-            } => {
-                ctx.route_id = Some(id.clone());
-
-                // If it is a websocket upgrade request, check if the upstream supports websockets.
-                if ctx.is_upgrade_req() {
-                    if !allow_websocket {
-                        session
-                            .respond_error(StatusCode::UPGRADE_REQUIRED.as_u16())
-                            .await?;
-                        return Ok(true);
-                    }
-
-                    // Acquire a connection slot for ws guard.
-                    // A full pool is a 503 Service Unavailable (not a 500 Internal Server Error).
-                    let Some(guard) = self
-                        .proxy_ctx
-                        .connection_manager
-                        .try_acquire(id, ws_max_connections.to_owned())
-                    else {
-                        session
-                            .respond_error(StatusCode::SERVICE_UNAVAILABLE.as_u16())
-                            .await?;
-                        return Ok(true);
-                    };
-
-                    ctx.ws_guard = Some(guard);
-                }
-
-                ctx.service = Some(upstream.clone());
-                Ok(false)
-            }
-        }
+        self.dispatch_route(session, ctx, &state).await
     }
 
     async fn early_request_filter(&self, session: &mut Session, _ctx: &mut Self::CTX) -> Result<()>
@@ -412,7 +233,8 @@ impl ProxyHttp for TrafficProxy {
         //   2. Transfer-Encoding is present (Pingora keeps it)
         //   3. The client did not explicitly send Connection: close (which would legitimately
         //      disable keepalive for an unrelated reason)
-        //   4. Pingora nonetheless disabled keepalive — the only remaining cause is CL+TE
+        //   4. Pingora nonetheless disabled keepalive, which leaves a Content-Length and
+        //      Transfer-Encoding pair as the only remaining cause
         if is_cl_te_smuggling_attempt(session) {
             tracing::warn!("request rejected: CL.TE smuggling attempt detected");
             session.respond_error(400).await?;
@@ -425,9 +247,9 @@ impl ProxyHttp for TrafficProxy {
     ///
     /// Additionally, when `end_of_stream` is true and a `Content-Length` header was
     /// declared, the total bytes received are compared against the declared value.
-    /// A mismatch means the client closed the connection (or timed out) before
-    /// sending the full body — forwarding a truncated body to the upstream would
-    /// waste backend resources or cause incorrect behaviour.
+    /// A mismatch means the client closed the connection or timed out before sending
+    /// the full body. Forwarding a truncated body to the upstream would waste backend
+    /// resources or cause incorrect behaviour.
     async fn request_body_filter(
         &self,
         session: &mut Session,
@@ -488,7 +310,7 @@ impl ProxyHttp for TrafficProxy {
         }
     }
 
-    /// Snakeway `before_proxy` --> Pingora `upstream_request_filter`
+    /// Snakeway `before_proxy`, which runs inside Pingora's `upstream_request_filter`.
     ///
     /// Intent:
     /// MUTATE OR ABORT UPSTREAM
@@ -507,73 +329,10 @@ impl ProxyHttp for TrafficProxy {
 
         match DevicePipeline::run_before_proxy(state.devices.all(), ctx) {
             DeviceResult::Continue => {
-                // Applies upstream intent derived from the request context.
-                upstream.set_method(ctx.method().to_owned());
-                upstream.set_uri(
-                    ctx.upstream_path()
-                        .parse()
-                        .map_err(|_| Error::new(Custom("invalid upstream path")))?,
-                );
-
-                // Device header ops live on `ctx`, so the upstream request headers
-                // are rebuilt from it. Clearing first lets device removals take effect.
-                let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
-                for name in existing {
-                    upstream.remove_header(&name);
-                }
-                for (name, value) in ctx.headers() {
-                    upstream.append_header(name.clone(), value)?;
-                }
-
-                // The upstream Host follows the resolved protocol mode.
-                // For end-to-end HTTP/2 it comes from the upstream authority
-                // set in upstream_peer and overrides any client Host.
-                let protocol_mode = ctx
-                    .extensions
-                    .get::<ProtocolMode>()
-                    .copied()
-                    .unwrap_or(ProtocolMode::Http1);
-
-                match protocol_mode {
-                    ProtocolMode::Http2EndToEnd => {
-                        if let Some(authority) = ctx.upstream_authority() {
-                            upstream.insert_header(header::HOST, authority)?;
-                        }
-                    }
-                    ProtocolMode::Http1 => {
-                        if !upstream.headers.contains_key(header::HOST) {
-                            // An HTTP/2 downstream request carries its authority in
-                            // the `:authority` pseudo-header, which never appears in
-                            // the header map rebuilt above.
-                            // HTTP/1.1 requires Host (RFC 9112 §3.2), so derive it
-                            // from the request authority.
-                            let authority = ctx.downstream_authority().ok_or_else(|| {
-                                Error::new(Custom("missing authority for h1 upstream Host"))
-                            })?;
-                            upstream.insert_header(header::HOST, authority)?;
-                        }
-                    }
-                }
-
+                apply_upstream_intent(upstream, ctx)?;
                 if ctx.is_upgrade_req() {
-                    // Upgrade is an HTTP/1.1 mechanism (HTTP/2 forbids it)
-                    upstream.set_version(Version::HTTP_11);
-
-                    // The headers are explicitly set - upstreams can be picky if they aren't there.
-                    // Note that if the client already set these. they will be replaced.
-                    upstream.insert_header(header::UPGRADE, "websocket")?;
-                    upstream.insert_header(header::CONNECTION, "Upgrade")?;
+                    ctx.upgrade_negotiated();
                 }
-
-                // Inject W3C Trace Context into upstream request headers so
-                // the upstream service can continue the distributed trace.
-                opentelemetry::global::get_text_map_propagator(|prop| {
-                    prop.inject_context(
-                        &tracing::Span::current().context(),
-                        &mut RequestHeaderInjector(upstream),
-                    );
-                });
-
                 Ok(())
             }
 
@@ -586,7 +345,7 @@ impl ProxyHttp for TrafficProxy {
         }
     }
 
-    /// Snakeway `after_proxy` --> Pingora `upstream_response_filter`
+    /// Snakeway `after_proxy`, which runs inside Pingora's `upstream_response_filter`.
     ///
     /// Intent:
     /// MUTATE RESPONSE HEADERS / STATUS
@@ -596,18 +355,11 @@ impl ProxyHttp for TrafficProxy {
         upstream: &mut ResponseHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let _root = ctx.request_span.as_ref().map(|s| s.enter());
+        let _root_span = ctx.request_span.clone();
+        let _root = _root_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("upstream_response").entered();
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(
-            request_id,
-            upstream.status,
-            upstream.headers.clone(),
-            Vec::new(),
-        );
+        let mut resp_ctx =
+            ResponseCtx::from_request(ctx, upstream.status, upstream.headers.clone());
         let state = self.proxy_ctx.state();
 
         match DevicePipeline::run_after_proxy(state.devices.all(), &mut resp_ctx) {
@@ -619,37 +371,36 @@ impl ProxyHttp for TrafficProxy {
         }
 
         upstream.set_status(resp_ctx.status)?;
-
-        // Clear and repopulate so device Remove ops propagate to the response,
-        // mirroring the request-side writeback in upstream_request_filter. An
-        // insert-only loop would drop removals and collapse appended multi-values.
-        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
-        for name in existing {
-            upstream.remove_header(&name);
-        }
-        for (name, value) in &resp_ctx.headers {
-            upstream.append_header(name.clone(), value)?;
-        }
+        write_back_response_headers(upstream, &resp_ctx.headers)?;
 
         ctx.extensions.insert(UpstreamResponseSnapshot {
             status: upstream.status,
             headers: upstream.headers.clone(),
         });
 
-        if ctx.is_upgrade_req() && upstream.status == StatusCode::SWITCHING_PROTOCOLS {
-            // WS upgrade completed.
-            // After this point, HTTP response lifecycle hooks (on_response)
-            // must NOT run for this request.
-            ctx.ws_opened = true;
+        if ctx.is_upgrade_req() {
+            if upstream.status == StatusCode::SWITCHING_PROTOCOLS {
+                // WS upgrade completed.
+                // After this point, HTTP response lifecycle hooks (on_response)
+                // must NOT run for this request.
+                ctx.upgrade_switched();
 
-            // Run WS-open hook.
-            DevicePipeline::run_on_ws_open(self.proxy_ctx.state().devices.all(), &WsCtx::default());
+                // Run WS-open hook.
+                DevicePipeline::run_on_ws_open(
+                    self.proxy_ctx.state().devices.all(),
+                    &WsCtx::default(),
+                );
+            } else if !upstream.status.is_informational() {
+                // The upstream refused the handshake and its response is
+                // forwarded through the normal response lifecycle.
+                ctx.upgrade_rejected_at_upstream(upstream.status);
+            }
         }
 
         Ok(())
     }
 
-    /// Snakeway `on_response` --> Pingora `response_filter`
+    /// Snakeway `on_response`, which runs inside Pingora's `response_filter`.
     ///
     /// Intent:
     /// FINAL OBSERVATION / METRICS / LOGGING
@@ -661,21 +412,13 @@ impl ProxyHttp for TrafficProxy {
     ) -> Result<()> {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("response").entered();
-        if ctx.ws_opened {
+        if ctx.ws_switched() {
             // WebSocket upgrade is a protocol switch, not a response.
             return Ok(());
         }
 
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(
-            request_id,
-            upstream.status,
-            upstream.headers.clone(),
-            Vec::new(),
-        );
+        let mut resp_ctx =
+            ResponseCtx::from_request(ctx, upstream.status, upstream.headers.clone());
         let state = self.proxy_ctx.state();
         match DevicePipeline::run_on_response(state.devices.all(), &mut resp_ctx) {
             DeviceResult::Continue => {}
@@ -686,17 +429,7 @@ impl ProxyHttp for TrafficProxy {
         }
 
         upstream.set_status(resp_ctx.status)?;
-
-        // Clear and repopulate so device Remove ops propagate to the response,
-        // mirroring the request-side writeback in upstream_request_filter. An
-        // insert-only loop would drop removals and collapse appended multi-values.
-        let existing: Vec<header::HeaderName> = upstream.headers.keys().cloned().collect();
-        for name in existing {
-            upstream.remove_header(&name);
-        }
-        for (name, value) in &resp_ctx.headers {
-            upstream.append_header(name.clone(), value)?;
-        }
+        write_back_response_headers(upstream, &resp_ctx.headers)?;
 
         let status = upstream.status.as_u16();
         ctx.upstream_outcome = Some(if status >= 500 {
@@ -708,7 +441,8 @@ impl ProxyHttp for TrafficProxy {
         Ok(())
     }
 
-    /// Snakeway `on_stream_response_body` --> Pingora `upstream_response_body_filter`
+    /// Snakeway `on_stream_response_body`, which runs inside Pingora's
+    /// `upstream_response_body_filter`.
     ///
     /// Intent:
     /// INSPECT RESPONSE BODY CHUNKS AS THEY STREAM
@@ -727,11 +461,7 @@ impl ProxyHttp for TrafficProxy {
             None => return Ok(None),
         };
 
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(request_id, status, headers, Vec::new());
+        let mut resp_ctx = ResponseCtx::from_request(ctx, status, headers);
         let state = self.proxy_ctx.state();
 
         match DevicePipeline::on_stream_response_body(
@@ -762,11 +492,18 @@ impl ProxyHttp for TrafficProxy {
         // It may seem odd to put this in a "logging" hook, but it is the only way to do it.
         // Pingora guarantees the logging hook is called last, which is the best that can be
         // done in Pingora 0.8.1.
-        if ctx.ws_opened {
-            DevicePipeline::run_on_ws_close(
-                self.proxy_ctx.state().devices.all(),
-                &WsCloseCtx::default(),
-            );
+        match (&ctx.upgrade, e) {
+            (UpgradeState::Switched { .. }, _) => {
+                DevicePipeline::run_on_ws_close(
+                    self.proxy_ctx.state().devices.all(),
+                    &WsCloseCtx::default(),
+                );
+                ctx.upgrade_closed();
+            }
+            (UpgradeState::Admitted { .. } | UpgradeState::Negotiated { .. }, Some(_)) => {
+                ctx.upgrade_failed();
+            }
+            _ => {}
         }
 
         self.finalize_request(ctx, e);

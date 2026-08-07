@@ -153,8 +153,7 @@ They are pure setup utilities.
 ## Assertions
 
 - Use `assert!`, `assert_eq!`, and `matches!` from the standard library for simple checks.
-- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff
-  view is helpful.
+- Use `pretty_assertions::assert_eq!` (already in `Cargo.toml`) when comparing complex structs or strings where a diff view is helpful.
 - Prefer `matches!(value, Pattern)` for enum variants when no message is needed.
   When a failure message would be useful, write it out with `assert!(matches!(...), "explanation")`.
 - Assertion quality matters.

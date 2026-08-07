@@ -26,30 +26,32 @@ pub struct OtelSpec {
 
 impl Validate for OtelSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
+        // An enabled exporter needs an endpoint and a service name.
+        if self.enable.value {
+            if self.endpoint.value.is_empty() {
+                report
+                    .error("observability.otel.endpoint cannot be empty when enabled")
+                    .at(self.endpoint.span)
+                    .help("Provide the gRPC endpoint for the OTLP exporter (e.g., http://localhost:4317).")
+                    .emit();
+            }
+
+            if self.service_name.value.is_empty() {
+                report
+                    .error("observability.otel.service_name cannot be empty when enabled")
+                    .at(self.service_name.span)
+                    .emit();
+            }
         }
 
-        if self.endpoint.value.is_empty() {
-            report
-                .error("observability.otel.endpoint cannot be empty when enabled")
-                .at(self.endpoint.span)
-                .help("Provide the gRPC endpoint for the OTLP exporter (e.g., http://localhost:4317).")
-                .emit();
-        } else if !self.endpoint.value.starts_with("http://")
+        if !self.endpoint.value.is_empty()
+            && !self.endpoint.value.starts_with("http://")
             && !self.endpoint.value.starts_with("https://")
         {
             report
                 .error("observability.otel.endpoint must be a valid URL")
                 .at(self.endpoint.span)
                 .help("The endpoint must start with http:// or https://.")
-                .emit();
-        }
-
-        if self.service_name.value.is_empty() {
-            report
-                .error("observability.otel.service_name cannot be empty when enabled")
-                .at(self.service_name.span)
                 .emit();
         }
 
@@ -119,7 +121,42 @@ mod tests {
     }
 
     #[test]
-    fn otel_disabled_skips_validation() {
+    fn otel_disabled_still_validates_present_values() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = OtelSpec {
+            enable: Located::detached(false),
+            endpoint: Located::detached("ftp://collector".to_string()),
+            service_name: Located::detached("snakeway".to_string()),
+            sampling_ratio: Located::detached(2.0),
+        };
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("endpoint")),
+            "a disabled otel block must still validate a present endpoint; issues: {:?}",
+            report.issues()
+        );
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("sampling_ratio")),
+            "a disabled otel block must still validate sampling_ratio; issues: {:?}",
+            report.issues()
+        );
+    }
+
+    /// The empty checks are requirement checks tied to the feature being on,
+    /// so a disabled block with unset fields stays valid.
+    #[test]
+    fn otel_disabled_allows_empty_endpoint_and_service_name() {
         // Arrange
         let mut report = Report::new();
         let spec = OtelSpec {
@@ -133,7 +170,7 @@ mod tests {
         spec.validate(&mut report);
 
         // Assert
-        assert!(!report.has_issues());
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 
     #[test]

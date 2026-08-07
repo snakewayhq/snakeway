@@ -76,7 +76,7 @@ All identity field options:
 include_identity = true
 
 identity_fields = [
-  "asn", # Identifies the client’s network (ISP, cloud provider, enterprise)
+  "asn", # Identifies the client's network (ISP, cloud provider, enterprise)
   "aso", # Human-readable owner of the ASN (e.g. AWS, Comcast)
   "country", # ISO country code (coarse geolocation, privacy-safe)
   "region", # Sub-country region/state (used for traffic analysis and policy)

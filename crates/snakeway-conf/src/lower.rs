@@ -12,7 +12,7 @@ use std::net::SocketAddr;
 ///
 /// Assumes all specs have already passed validation, so any error reported
 /// here indicates a missing validation rule. Lowering continues across
-/// ingresses and devices so every such error is reported in one pass;
+/// ingresses and devices so every such error is reported in one pass, and
 /// `None` is returned when any step failed.
 ///
 /// The `where IngressSpec: Validate` bound is the ingress-family equivalent of

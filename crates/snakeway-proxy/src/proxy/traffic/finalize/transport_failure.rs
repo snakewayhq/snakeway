@@ -16,7 +16,7 @@ impl TrafficProxy {
 
 /// Classifies Pingora upstream errors into Snakeway transport failures.
 /// Non-upstream errors are intentionally ignored to avoid penalizing healthy upstreams.
-pub(crate) fn classify_pingora_error(err: &pingora::Error) -> Option<TransportFailure> {
+fn classify_pingora_error(err: &pingora::Error) -> Option<TransportFailure> {
     use pingora::{ErrorSource, ErrorType::*};
 
     // Only penalize upstream-originated errors.

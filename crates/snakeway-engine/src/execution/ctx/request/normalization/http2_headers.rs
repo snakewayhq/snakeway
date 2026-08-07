@@ -9,7 +9,7 @@ use http::{HeaderMap, HeaderValue};
 /// This function performs the following operations:
 /// 1. Validates header names are lowercase (RFC 9113 §8.2.1)
 /// 2. Rejects connection-specific headers forbidden in HTTP/2 (RFC 9113 §8.2.2)
-/// 3. Enforces TE header restrictions - only "trailers" allowed (RFC 9113 §8.2.1.2)
+/// 3. Enforces the TE header restriction that allows only "trailers" (RFC 9113 §8.2.1.2)
 /// 4. Validates header values for proper encoding (RFC 9110 §5.5)
 /// 5. Trims optional whitespace from header values
 /// 6. Folds duplicate headers with comma-separation (RFC 9110 §5.3)

@@ -73,5 +73,5 @@ Requests that exceed `max_header_list_size` are refused with status `431`.
 | `initial_connection_window_size` | `integer` | `65535` | Connection-level flow-control window for received data, in bytes. Must be at most `2147483647`. |
 
 All values must be greater than zero.
-The two window sizes are capped at 2^31 - 1 (2,147,483,647 bytes), the maximum HTTP/2 flow-control window allowed by RFC 9113.
+The two window sizes are capped at 2,147,483,647 bytes, which is the maximum HTTP/2 flow-control window allowed by RFC 9113.
 

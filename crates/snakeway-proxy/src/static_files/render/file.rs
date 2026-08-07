@@ -133,8 +133,8 @@ pub(crate) async fn render_file(
 
     // For small files, read into memory (and optionally compress)
     if metadata.len() <= compression_opts.small_file_threshold {
-        // Use a pre-allocated vec for better performance.
-        // This is NOT a micro optimization - it yields a 30% rps increase.
+        // Sizing the buffer from the file length avoids growth reallocations, worth
+        // roughly 30 percent requests per second on the small-file path.
         let mut buf = Vec::with_capacity(metadata.len() as usize);
         file.read_to_end(&mut buf)
             .await

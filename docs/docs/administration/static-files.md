@@ -261,15 +261,14 @@ Support for precompressed assets is planned.
 
 **Supported encodings (in order of preference):**
 
-1. **Brotli** (`br`) - Best compression ratio, preferred when client supports it
-2. **gzip** - Fallback for clients that don't support Brotli
+1. **Brotli** (`br`) gives the best compression ratio and is preferred when the client supports it.
+2. **gzip** is the fallback for clients that do not support Brotli.
 
 **Compression behavior (default settings):**
 
 - Only compressible MIME types are compressed (text, JSON, JavaScript, XML, SVG, WASM, etc.)
 - Brotli is used for files `≥ 4 KiB` (configurable via `min_brotli_size`)
-- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via
-  `min_gzip_size`)
+- gzip is used for files `≥ 1 KiB` when Brotli is unavailable or not preferred by the client (configurable via `min_gzip_size`)
 - Compression can be disabled per-route using `enable_brotli` and `enable_gzip` options
 - Compression is skipped if the compressed size isn't smaller than the original
 - The `Vary: Accept-Encoding` header is added for proper cache behavior
@@ -303,9 +302,7 @@ The threshold can be adjusted per-route using the `small_file_threshold` option.
 
 Snakeway includes several security measures to protect against common attacks:
 
-- **Path traversal protection**: Requests containing `..` or attempting to escape the `file_dir` are rejected with
-  `403 Forbidden`
-- **File size limit**: Files larger than 10 MiB (by default) are rejected to prevent memory exhaustion (configurable
-  per-route).
+- **Path traversal protection**: Requests containing `..` or attempting to escape the `file_dir` are rejected with `403 Forbidden`
+- **File size limit**: Files larger than 10 MiB (by default) are rejected to prevent memory exhaustion (configurable per-route).
 - **Symlink resolution**: Paths are canonicalized to prevent symlink-based escapes
 

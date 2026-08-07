@@ -1,5 +1,5 @@
-use super::replay_fixture;
-use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
+use super::{replay_fixture, replay_fixture_with_request_line_echo};
+use snakeway_tests::constants::{FIXTURES_HTTP_DIR, HTTP_REPLAY_OK_RESPONSE};
 
 /// Percent-encoded characters in the path must be forwarded intact.
 ///
@@ -9,10 +9,19 @@ use snakeway_tests::constants::HTTP_REPLAY_OK_RESPONSE;
 /// encoded slashes (%2F) and spaces (%20).
 #[test]
 fn encoded_path_should_proxy() {
-    let resp = replay_fixture("uri/encoded_path.http");
+    // Arrange is inside the helper.
+
+    // Act
+    let resp = replay_fixture_with_request_line_echo("uri/encoded_path.http");
+
+    // Assert
     assert!(
         resp.contains(HTTP_REPLAY_OK_RESPONSE),
-        "Path with percent-encoded characters should be proxied"
+        "Path with percent-encoded characters should be proxied; got: {resp}"
+    );
+    assert!(
+        resp.contains("GET /api/%2Ftest%20resource HTTP/1.1"),
+        "Upstream must receive the percent-encoded path intact; upstream saw: {resp}"
     );
 }
 
@@ -20,26 +29,47 @@ fn encoded_path_should_proxy() {
 ///
 /// A proxy must forward the full query string without truncation,
 /// double-encoding, or stripping of parameters.  This fixture exercises
-/// `+` encoding for spaces and multiple parameters.
+/// `+` encoding for spaces and multiple parameters.  The upstream echoes
+/// the request line it received, so the assertion covers what the proxy
+/// forwarded rather than only the response status.
 #[test]
 fn query_string_should_proxy() {
-    let resp = replay_fixture("uri/query_string.http");
+    // Arrange is inside the helper.
+
+    // Act
+    let resp = replay_fixture_with_request_line_echo("uri/query_string.http");
+
+    // Assert
     assert!(
         resp.contains(HTTP_REPLAY_OK_RESPONSE),
-        "Request with query string should be proxied"
+        "Request with query string should be proxied; got: {resp}"
+    );
+    assert!(
+        resp.contains("GET /api?action=search&q=hello+world&page=1&limit=50"),
+        "Upstream must receive the full query string in the request line; upstream saw: {resp}"
     );
 }
 
 /// An empty query string (`/api?`) is syntactically valid per RFC 3986.
 ///
-/// Some proxy implementations discard the trailing `?` or fail to
-/// parse the path correctly when there are no query parameters.
+/// Snakeway canonicalizes an empty query away during normalization, so the
+/// upstream receives the bare path with no trailing `?`.  This test pins
+/// that decision.
 #[test]
 fn empty_query_string_should_proxy() {
-    let resp = replay_fixture("uri/empty_query_string.http");
+    // Arrange is inside the helper.
+
+    // Act
+    let resp = replay_fixture_with_request_line_echo("uri/empty_query_string.http");
+
+    // Assert
     assert!(
         resp.contains(HTTP_REPLAY_OK_RESPONSE),
-        "Request with empty query string (trailing ?) should be proxied"
+        "Request with empty query string (trailing ?) should be proxied; got: {resp}"
+    );
+    assert!(
+        resp.contains("GET /api HTTP/1.1"),
+        "An empty query is canonicalized away, so the upstream must receive the bare path; upstream saw: {resp}"
     );
 }
 
@@ -47,13 +77,31 @@ fn empty_query_string_should_proxy() {
 ///
 /// Proxies often impose limits on URL length; this verifies that a
 /// realistic but long query string is forwarded rather than silently
-/// truncated or rejected without a meaningful error.
+/// truncated or rejected without a meaningful error.  The expected request
+/// line is read from the fixture itself so the assertion tracks the
+/// fixture content.
 #[test]
 fn long_query_string_should_proxy() {
-    let resp = replay_fixture("uri/long_query_string.http");
+    // Arrange
+    let fixture =
+        std::fs::read_to_string(format!("{FIXTURES_HTTP_DIR}/uri/long_query_string.http"))
+            .expect("fixture should be readable");
+    let request_line = fixture
+        .lines()
+        .next()
+        .expect("fixture should have a request line");
+
+    // Act
+    let resp = replay_fixture_with_request_line_echo("uri/long_query_string.http");
+
+    // Assert
     assert!(
         resp.contains(HTTP_REPLAY_OK_RESPONSE),
-        "Request with a long query string should be proxied"
+        "Request with a long query string should be proxied; got: {resp}"
+    );
+    assert!(
+        resp.contains(request_line),
+        "Upstream must receive the long query string untruncated; upstream saw: {resp}"
     );
 }
 
@@ -82,10 +130,21 @@ fn dot_segment_path_should_be_handled_safely() {
 /// (%E4%B8%AD), emoji (%F0%9F%91%8D), and Latin accented chars (%C3%A9).
 #[test]
 fn unicode_encoded_query_should_proxy() {
-    let resp = replay_fixture("uri/unicode_encoded_query.http");
+    // Arrange is inside the helper.
+
+    // Act
+    let resp = replay_fixture_with_request_line_echo("uri/unicode_encoded_query.http");
+
+    // Assert
     assert!(
         resp.contains(HTTP_REPLAY_OK_RESPONSE),
-        "Request with Unicode percent-encoded query parameters should be proxied"
+        "Request with Unicode percent-encoded query parameters should be proxied; got: {resp}"
+    );
+    assert!(
+        resp.contains(
+            "GET /api?name=%E4%B8%AD%E6%96%87&emoji=%F0%9F%91%8D&latin=%C3%A9t%C3%A9 HTTP/1.1"
+        ),
+        "Upstream must receive percent-encoded Unicode query parameters unchanged; upstream saw: {resp}"
     );
 }
 

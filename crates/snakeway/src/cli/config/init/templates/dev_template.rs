@@ -2,8 +2,8 @@ use confval::format::ToFields;
 use confval::format::hcl::emit_hcl;
 use confval::source::Located;
 use snakeway_conf::types::{
-    ACME_CHALLENGE_HTTP01, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec,
-    NetworkPolicyDeviceSpec, RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
+    AcmeChallenge, BindSpec, DevicesFile, IdentityDeviceSpec, IngressSpec, NetworkPolicyDeviceSpec,
+    RedirectSpec, RequestFilterDeviceSpec, RequestRateLimitingDeviceSpec,
     StructuredLoggingDeviceSpec, TlsTerminationSpec,
 };
 use std::collections::HashMap;
@@ -63,13 +63,13 @@ pub(crate) fn generate(
         );
     }
 
-    let httpbin_ingress_spec = IngressSpec {
+    let minimal_ingress_spec = IngressSpec {
         bind: Some(Located::detached(BindSpec {
             interface: Located::detached("loopback".to_string()),
             port: Located::detached(8443),
             tls: Some(Located::detached(TlsTerminationSpec::Acme {
                 domains: vec![Located::detached("snakeway.test".to_string())],
-                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
             })),
             enable_http2: Located::detached(false),
             redirect_http_to_https: Some(Located::detached(RedirectSpec {
@@ -83,7 +83,7 @@ pub(crate) fn generate(
 
     files_to_create.insert(
         ingress_dir_path.join("minimal.hcl"),
-        emit_hcl(&httpbin_ingress_spec.to_template())?,
+        emit_hcl(&minimal_ingress_spec.to_template())?,
     );
 
     Ok(())

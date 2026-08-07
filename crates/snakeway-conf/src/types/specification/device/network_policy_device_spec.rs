@@ -1,6 +1,6 @@
 use crate::types::OnInvalidForwarded;
 use crate::validation::validator::{parse_cidr_list, validate_device_paths};
-use confval::prelude::{ControlFlow, Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Default, Serialize, confval::Spec)]
@@ -39,29 +39,28 @@ impl Validate for ForwardingSpec {
 
 impl Validate for NetworkPolicyDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.enable.value {
-            return;
-        }
-
         let _ = parse_cidr_list(&self.cidr_allow, "network policy allow list", report);
 
         validate_device_paths(&self.paths, report);
-    }
-
-    /// A disabled device describes nothing that runs, so its `forwarding`
-    /// block is not worth reporting on.
-    fn descend(&self) -> ControlFlow<()> {
-        if self.enable.value {
-            ControlFlow::Continue(())
-        } else {
-            ControlFlow::Break(())
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_spec_validates_clean() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = NetworkPolicyDeviceSpec::default();
+
+        // Act
+        spec.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
 
     #[test]
     fn invalid_cidr_in_allow_list() {
@@ -152,7 +151,7 @@ mod tests {
     }
 
     #[test]
-    fn disabled_device_skips_validation() {
+    fn disabled_device_is_still_validated() {
         // Arrange
         let mut report = Report::new();
         let spec = NetworkPolicyDeviceSpec {
@@ -165,6 +164,9 @@ mod tests {
         spec.validate_all(&mut report);
 
         // Assert
-        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert!(
+            report.has_issues(),
+            "a disabled device must still validate its CIDR lists"
+        );
     }
 }

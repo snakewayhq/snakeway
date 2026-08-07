@@ -13,7 +13,7 @@ pub(crate) struct SnakewayEvent {
     pub(crate) name: String,
     pub(crate) method: Option<String>,
     pub(crate) uri: Option<String>,
-    /// status is a string in logs; we parse to i64
+    /// Logs carry the status as a string. It is parsed to `i64` here.
     pub(crate) status: Option<i64>,
     pub(crate) ts: Option<SystemTime>,
     pub(crate) identity: Option<IdentitySummary>,

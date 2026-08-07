@@ -108,7 +108,8 @@ Color-only overrides are safe to scope to the container.
 
 - **Vary node shape by role.**
   Stadium `([text])` for an I/O boundary, cylinder `[(text)]` for a store or accumulator, diamond `{text}` for a decision, rectangle `[text]` for plain data.
-- **Keep the palette small.** Encode role in the stroke with a few hues.
+- **Keep the palette small.**
+  Encode role in the stroke with a few hues.
   Two boxes sharing a stroke color signals that they are the same kind of thing.
 - **Keep edge labels short.**
   Put the function or verb on the edge, such as `parse_hcl()`, and explain in the surrounding prose.

@@ -5,7 +5,7 @@ title: Benchmarks
 This page documents how to write and run Criterion microbenchmarks for `snakeway`.
 Follow these patterns precisely when adding new benchmarks.
 
-## When to Write a Microbenchmark
+## When to write a microbenchmark
 
 Write a Criterion microbenchmark when you need to:
 
@@ -22,7 +22,7 @@ Use the existing k6 scripts in `k6/` and the `benchmark-proxy` and `run-load-tes
 | Proxy throughput / load tests | `k6/`                             | k6        |
 | Manual load tests             | Justfile recipes                  | wrk / hey |
 
-## Criterion Template
+## Criterion template
 
 Every benchmark file follows this structure:
 
@@ -58,7 +58,7 @@ Key rules:
 - Build expensive inputs (Router, Device, HeaderMap) **outside** `b.iter()`.
 - Only the code under measurement goes inside `b.iter()`.
 
-## Adding a New Benchmark
+## Adding a new benchmark
 
 ### Step 1: Identify the component
 
@@ -107,19 +107,23 @@ Use `BenchmarkId::new("dimension", value)` to parameterize across scaling scenar
 
 ## Rules
 
-1. **Deterministic.** Benchmarks must produce the same result on every run.
-2. **No network.** Do not make HTTP requests or open sockets inside benchmarks.
-3. **No external files.** Do not read files from disk inside `b.iter()`.
+1. **Deterministic.**
+   Benchmarks must produce the same result on every run.
+2. **No network.**
+   Do not make HTTP requests or open sockets inside benchmarks.
+3. **No external files.**
+   Do not read files from disk inside `b.iter()`.
    Pre-load any required data in the setup section outside the loop.
-4. **No randomness.** Use fixed, hard-coded inputs.
+4. **No randomness.**
+   Use fixed, hard-coded inputs.
    If randomness is required, seed it outside `b.iter()` and pre-generate a fixed input slice.
-5. **Single dimension.** Each benchmark group should vary exactly one parameter (for example route count, device count,
-   or header count).
+5. **Single dimension.**
+   Each benchmark group should vary exactly one parameter (for example route count, device count, or header count).
 6. **Never modify production code** purely to make a function benchmarkable.
    Use the public API.
    If needed, propose a narrow feature-gated re-export in a PR discussion.
 
-## Running Benchmarks
+## Running benchmarks
 
 ```bash
 # Run all snakeway microbenchmarks
@@ -137,7 +141,7 @@ cargo bench -p snakeway --bench router -- router_matching/routes/100
 
 HTML reports are written to `target/criterion/report/index.html` after each run.
 
-## Interpreting Output
+## Interpreting output
 
 Criterion prints three timing columns per scenario:
 
@@ -159,7 +163,7 @@ router_matching/routes/1   time: [42.1 ns  42.5 ns  42.9 ns]
 | Device overhead per device | < 10 µs |
 | TLS overhead               | minimal |
 
-## CI Policy
+## CI policy
 
 Benchmarks do **not** run on every CI build.
 

@@ -1,7 +1,7 @@
-use crate::types::specification::field_emit::{path_field, string_field};
 use crate::validation::validator::{require_existing_dir, validate_cert_pem};
 use confval::format::{
-    Fields, FromFields, ToFields, parse_string_field, report_missing_field, report_unknown_field,
+    Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, report_missing_field,
+    report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
 use confval::{RangeConstraint, range_constraint};
@@ -137,16 +137,27 @@ impl FromFields for CertStoreSpec {
 
 /// The write-path counterpart of the handwritten `FromFields`: the `type`
 /// attribute selects the variant, then the variant's own fields follow.
+impl CertStoreSpec {
+    fn build(&self, walk: Walk) -> Fields {
+        match self {
+            CertStoreSpec::Filesystem { cert_dir } => FieldsBuilder::new(walk)
+                .literal_string("type", "filesystem")
+                .leaf("cert_dir", cert_dir)
+                .finish(),
+            CertStoreSpec::Memory => FieldsBuilder::new(walk)
+                .literal_string("type", "memory")
+                .finish(),
+        }
+    }
+}
+
 impl ToFields for CertStoreSpec {
     fn to_fields(&self) -> Fields {
-        let items = match self {
-            CertStoreSpec::Filesystem { cert_dir } => vec![
-                string_field("type", "filesystem"),
-                path_field("cert_dir", &cert_dir.value),
-            ],
-            CertStoreSpec::Memory => vec![string_field("type", "memory")],
-        };
-        Fields::detached(items)
+        self.build(Walk::Populated)
+    }
+
+    fn to_source_fields(&self) -> Fields {
+        self.build(Walk::Source)
     }
 }
 

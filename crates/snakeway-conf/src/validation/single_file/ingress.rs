@@ -371,7 +371,7 @@ mod tests {
         bind.enable_http2 = Located::detached(true);
         bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
             domains: vec![Located::detached("example.com".to_string())],
-            challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
         }));
         let service = Located::detached(ServiceSpec {
             routes: vec![Located::detached(ServiceRouteSpec {
@@ -411,7 +411,7 @@ mod tests {
             bind.port = Located::detached(bind_port);
             bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
                 domains: vec![Located::detached("example.com".to_string())],
-                challenge: Located::detached(ACME_CHALLENGE_HTTP01.to_string()),
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
             }));
             bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
                 port: Located::detached(9090),
