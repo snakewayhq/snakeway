@@ -22,3 +22,21 @@ impl RuntimeServer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_construct_runtime_server() {
+        // Arrange
+        let reload = Arc::new(ReloadHandle::new());
+        let control_rt =
+            tokio::runtime::Runtime::new().expect("Cannot create tokio runtime in test");
+
+        // Act
+        let result = RuntimeServer::new(reload, control_rt);
+
+        // Assert, verified by construction.
+    }
+}
