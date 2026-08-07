@@ -34,9 +34,7 @@ mod tests {
         let control_rt =
             tokio::runtime::Runtime::new().expect("Cannot create tokio runtime in test");
 
-        // Act
+        // Act / Assert, verified by construction.
         let result = RuntimeServer::new(reload, control_rt);
-
-        // Assert, verified by construction.
     }
 }
