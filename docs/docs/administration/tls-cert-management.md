@@ -54,11 +54,9 @@ bind = {
 ### ACME Issuance and Renewal Flow
 
 1. On startup, Snakeway checks the configured cert store for existing certificates covering the declared domains.
-2. If no valid certificate exists, or if an existing certificate will expire within `renew_within_days`, Snakeway
-   initiates an ACME order with the configured directory URL.
+2. If no valid certificate exists, or if an existing certificate will expire within `renew_within_days`, Snakeway initiates an ACME order with the configured directory URL.
 3. Snakeway completes the HTTP-01 challenge by serving the ACME token on the `/.well-known/acme-challenge/` path.
-4. Once the certificate authority validates the challenge, Snakeway retrieves the issued certificate and stores it in
-   the configured cert store.
+4. Once the certificate authority validates the challenge, Snakeway retrieves the issued certificate and stores it in the configured cert store.
 5. Snakeway periodically re-checks certificate expiry and repeats the renewal process as needed.
 
 The `renew_within_days` parameter controls how early renewal begins.
@@ -116,11 +114,14 @@ To rotate a manual certificate, replace the files on disk and trigger a configur
 
 ## Monitoring and Failure Recovery
 
-**Monitor certificate expiry.** Even with automated renewal, operators should monitor certificate expiration dates.
+**Monitor certificate expiry.**
+Even with automated renewal, operators should monitor certificate expiration dates.
 If ACME renewal fails (network issues, DNS misconfiguration, rate limits), the existing certificate continues to serve traffic until it expires.
 
-**Check logs for renewal errors.** Snakeway logs ACME interactions at the `info` level and errors at `warn` or `error`.
+**Check logs for renewal errors.**
+Snakeway logs ACME interactions at the `info` level and errors at `warn` or `error`.
 Watch for repeated renewal failures and investigate the underlying cause promptly.
 
-**Verify the challenge path is reachable.** HTTP-01 challenges require that `/.well-known/acme-challenge/` on port 80 is accessible from the internet.
+**Verify the challenge path is reachable.**
+HTTP-01 challenges require that `/.well-known/acme-challenge/` on port 80 is accessible from the internet.
 If a firewall, CDN, or upstream load balancer blocks this path, ACME validation will fail.

@@ -100,14 +100,18 @@ The same endpoint serves traces, logs, and metrics.
 
 ## Troubleshooting
 
-**No log output appears.** Verify that `TOKIO_CONSOLE` is not set.
+**No log output appears.**
+Verify that `TOKIO_CONSOLE` is not set.
 When Tokio Console mode is active, normal log output is suppressed entirely.
 
-**Logs are too verbose.** Narrow the filter with a crate-specific directive.
+**Logs are too verbose.**
+Narrow the filter with a crate-specific directive.
 For example, `RUST_LOG=warn,snakeway=info` silences everything except warnings, while still showing Snakeway info-level events.
 
-**Log files are not rotating.** File rotation only activates when `SNAKEWAY_LOG_DIR` is set.
+**Log files are not rotating.**
+File rotation only activates when `SNAKEWAY_LOG_DIR` is set.
 Confirm the directory exists and is writable by the Snakeway process.
 
-**Missing request-level detail.** Process-level logs do not include per-request HTTP metadata.
+**Missing request-level detail.**
+Process-level logs do not include per-request HTTP metadata.
 Enable the Structured Logging device and configure `events`, `include_identity`, and `include_headers` to capture the fields you need.

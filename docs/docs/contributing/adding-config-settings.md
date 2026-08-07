@@ -83,14 +83,17 @@ The `with` conversion functions live **in the runtime file alongside the Config 
 That means `Located<String>`, `Located<HclInt>` (`HclInt` is the crate alias for `i64`, HCL's native integer), `Located<bool>`, `Located<PathBuf>`, `Vec<Located<String>>`, and the `Option<...>` forms.
 The structural parsers never reject a value for a semantic reason, so a port of `99999` or a strategy of `"failovr"` parses fine and is caught by validation with a span, alongside every other problem.
 
-**Keyword fields are `Located<String>` in specs.** Closed sets (load-balancing strategies, log levels) are declared once with `confval::keyword_enum!` in `types/keyword.rs`, which generates the enum, its keyword list, and the conversions each pipeline stage uses.
+**Keyword fields are `Located<String>` in specs.**
+Closed sets (load-balancing strategies, log levels) are declared once with `confval::keyword_enum!` in `types/keyword.rs`, which generates the enum, its keyword list, and the conversions each pipeline stage uses.
 Spec validation checks the string against the generated `keyword_set()`, lowering narrows through the generated `TryFrom` via `narrow::keyword`, and the runtime config holds the enum.
 Spec fields stay `Located<String>`, so the enum appears only from lowering onward.
 
-**Config types use the fully parsed, typed form.** `IpNet`, `Method`, `HeaderName`, `SocketAddr`, runtime enums, exact integer widths.
+**Config types use the fully parsed, typed form.**
+`IpNet`, `Method`, `HeaderName`, `SocketAddr`, runtime enums, exact integer widths.
 Downstream code never re-parses a value it received from config.
 
-**Lowering is the typing boundary.** Validation checks values (read-only, collecting errors) and lowering produces the typed value.
+**Lowering is the typing boundary.**
+Validation checks values (read-only, collecting errors) and lowering produces the typed value.
 Because the gate runs first, narrowing conversions inside lowering are safe.
 A failure there means a validation rule is missing, not bad operator input, and it still reports with a span rather than panicking.
 
@@ -140,8 +143,7 @@ Field attributes the `Spec` derive understands:
 - Plain `Located<T>` leaf: dispatched by inner type to the matching parser.
 - `Option<Located<T>>`: optional, absent is not an error.
 - `#[confval(default = 30)]` / `#[confval(default)]`: fill an absent field instead of reporting it.
-- `#[confval(nested)]`: the field is `Located<S>`, `Option<Located<S>>`, or `Vec<Located<S>>` where `S` itself derives
-  `Spec` (or hand-writes `FromFields`).
+- `#[confval(nested)]`: the field is `Located<S>`, `Option<Located<S>>`, or `Vec<Located<S>>` where `S` itself derives `Spec` (or hand-writes `FromFields`).
 
 If `ServerSpec` has a hand-written `Default`, update it to include the new field.
 
@@ -171,8 +173,7 @@ How a Config field obtains its value:
   `from` also takes a tuple `(a, b)` when one config field derives from several spec fields.
 - **`#[confval(nested)]`**: the field's type is another Config that derives `Lower`.
   Works for single, `Option`, and `Vec` shapes.
-- **`#[confval(spec_only(field, ...))]`** at the struct level names spec fields that intentionally have no runtime
-  counterpart.
+- **`#[confval(spec_only(field, ...))]`** at the struct level names spec fields that intentionally have no runtime counterpart.
 
 The generated `lower` destructures the spec exhaustively with **no rest pattern**, so a spec field consumed by nothing, or a missing `from` target, is a compile error.
 This is what keeps spec and config in lockstep.
@@ -314,7 +315,6 @@ Cross-file duplicate detection tracks a map from key to first-seen `Span`, so th
 ## Where Settings Appear in HCL
 
 - **Server-level**: `snakeway.hcl`, inside `server { ... }`.
-- **Ingress-level**: any file matched by `include.ingresses`, at the top level or inside `bind { ... }`,
-  `services = [ { ... } ]`, or `static_files = [ { ... } ]`.
+- **Ingress-level**: any file matched by `include.ingresses`, at the top level or inside `bind { ... }`, `services = [ { ... } ]`, or `static_files = [ { ... } ]`.
 - **Device-level**: any file matched by `include.devices`, inside the named device block (for example `identity_device { ... }`).
   Device spec structs live in `crates/snakeway-conf/src/types/specification/device/` and are validated in `crates/snakeway-conf/src/validation/single_file/device.rs`.

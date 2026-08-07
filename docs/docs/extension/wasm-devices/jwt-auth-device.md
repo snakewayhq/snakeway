@@ -15,8 +15,7 @@ The WIT interface it builds against may change in future releases.
 On the `on_request` hook the device:
 
 - Reads the `Authorization: Bearer <token>` header and validates the token.
-- On success, injects `X-User-Id` (and optionally `X-Tenant-Id`) from the token claims, strips the `Authorization`
-  header, and forwards the request.
+- On success, injects `X-User-Id` (and optionally `X-Tenant-Id`) from the token claims, strips the `Authorization` header, and forwards the request.
 - On failure, returns a generic `401` and does not forward the request.
 - Returns a generic `500` when the device itself is misconfigured.
 

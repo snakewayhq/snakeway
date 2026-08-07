@@ -14,11 +14,13 @@ The WIT interface (`snakeway:device@0.4.0`) may change in future releases.
 
 ## Why WebAssembly
 
-- **Language flexibility.** Write devices in Rust, Go, Zig, or any language that targets
-  WASM components.
-- **Isolation.** Each device runs in a memory-limited sandbox.
+- **Language flexibility.**
+  Write devices in Rust, Go, Zig, or any language that targets WASM components.
+- **Isolation.**
+  Each device runs in a memory-limited sandbox.
   A bug in a WASM device cannot crash the proxy.
-- **Portable artifacts.** A compiled `.wasm` module runs on any platform Snakeway supports.
+- **Portable artifacts.**
+  A compiled `.wasm` module runs on any platform Snakeway supports.
 
 ## Configuration
 
@@ -78,7 +80,7 @@ If the body exceeds the limit, the fail policy determines the outcome.
 By default, the host calls all six lifecycle hooks on every request.
 Each call creates a fresh WASM instance, so a device that only implements one hook still pays for five no-op instantiations per request.
 
-The optional `hooks` field declares which hooks the device actually implements.
+The optional `hooks` field declares which hooks the device implements.
 The host skips any hook not listed, creating no instance for it, which removes that overhead:
 
 ```hcl

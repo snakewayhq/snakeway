@@ -21,7 +21,8 @@ A part that cannot be repaired is rejected, and Snakeway responds with `400 Bad 
 The path is normalized per RFC 3986 and RFC 9110:
 
 - A missing leading slash is added, so a relative path becomes absolute.
-- Dot segments (`.` and `..`) are resolved. A `..` that would climb above the root rejects the request.
+- Dot segments (`.` and `..`) are resolved.
+  A `..` that would climb above the root rejects the request.
 - Consecutive slashes collapse to one.
 - A trailing slash is removed, except on the root path `/`.
 - A NUL byte rejects the request.

@@ -45,11 +45,14 @@ bind_admin = {
 The Admin API provides significant control over the proxy.
 Snakeway enforces three layers on every admin request:
 
-1. **Reachability.** `bind_admin` rejects wildcard interfaces (`0.0.0.0`, `::`, `"all"`).
+1. **Reachability.**
+   `bind_admin` rejects wildcard interfaces (`0.0.0.0`, `::`, `"all"`).
    Operators must bind to loopback or a specific non-public IP.
-2. **Transport.** TLS is required.
+2. **Transport.**
+   TLS is required.
    ACME is not permitted on `bind_admin` because admin certificates should not depend on a public CA.
-3. **Authentication.** Every request must carry a valid bearer token in the `Authorization` header.
+3. **Authentication.**
+   Every request must carry a valid bearer token in the `Authorization` header.
    See [Authentication](../../administration/admin-api.md#authentication) for details on the token file format and the rotation workflow.
 
 :::caution

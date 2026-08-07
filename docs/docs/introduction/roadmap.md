@@ -193,8 +193,7 @@ Standard installation layout:
 - [x] Zero-drop reload support for configuration changes under load.
 - [x] Admin API authentication (bearer-token scheme, required on every `bind_admin`).
 - [x] Make a config directory configurable with an environment variable and use it in packaging.
-    - This solves an ergonomics issue where an operator has to specify the non-default values at the CLI per environment
-      when troubleshooting a setup (which is annoying).
+    - This solves an ergonomics issue where an operator has to specify the non-default values at the CLI per environment when troubleshooting a setup (which is annoying).
 
 ## Milestone 8: Alpha hardening and refinements (v0.13.0)
 
@@ -209,8 +208,7 @@ Standard installation layout:
 
 **Goals**
 
-- [x] Rework the `confval` crate to replace the `Origin` mechanism with true per-line config validation issue provenance
-  messages.
+- [x] Rework the `confval` crate to replace the `Origin` mechanism with true per-line config validation issue provenance messages.
 - [x] Create a `confval-derive` companion crate for confval that replaces o2o.
 
 ## Milestone 10: Full programmability (v0.15.0)
@@ -235,8 +233,7 @@ This is bumped up ahead of the v1.0 release because it does not make sense to re
 
 **Goals**
 
-- [x] Replace the implicit HTTP version and upgrade negotiation logic in `HttpProxy` and `RequestCtx` with explicit
-  state machines (`ProtocolMode` and `UpgradeState`).
+- [x] Replace the implicit HTTP version and upgrade negotiation logic in `HttpProxy` and `RequestCtx` with explicit state machines (`ProtocolMode` and `UpgradeState`).
   See [Protocol Negotiation](/docs/internals/protocol-negotiation) for the states, transitions, and rejection points.
 
 ## Milestone N: Snakeway 1.0

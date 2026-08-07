@@ -65,16 +65,20 @@ The reader arrives with a problem and wants to be walked from that problem to a 
 
 An instructional guide follows this structure:
 
-1. **Introduction.** Open with the reader's situation in the first sentence, not a verdict and not a feature table.
+1. **Introduction.**
+   Open with the reader's situation in the first sentence, not a verdict and not a feature table.
    Name the feature that addresses the situation, then state the value it provides.
    Where a simpler alternative exists, name it and say when the reader would reach past it for this feature.
-2. **Concept overview.** For any page covering more than two or three tasks, give a high-level walk-through with one complete, runnable example before the option-by-option detail.
+2. **Concept overview.**
+   For any page covering more than two or three tasks, give a high-level walk-through with one complete, runnable example before the option-by-option detail.
    Close by pointing the reader to the detailed sections.
    A small single-task page may omit this.
-3. **Progressive task sections.** Order sections from the simplest common task to the most advanced.
+3. **Progressive task sections.**
+   Order sections from the simplest common task to the most advanced.
    In each section, name the situation, name the specific command or setting that addresses it, show it in use, then explain the mechanism in the order it runs.
    Lead an example with "For example" where it reads naturally.
-4. **Cross-references.** Link to related guides and to the matching reference page for the exhaustive field list.
+4. **Cross-references.**
+   Link to related guides and to the matching reference page for the exhaustive field list.
 
 See `extension/understanding-devices.md` and `administration/admin-api.md` for the model.
 
@@ -103,9 +107,12 @@ Follow these rules precisely to match the existing documentation tone.
 
 ### Tone
 
-- **Professional but accessible.** Explain complex concepts in plain language.
-- **Imperative and instructional.** Use "you can", "configure", "enable".
-- **Concise.** Dense and scannable, without verbose prose.
+- **Professional but accessible.**
+  Explain complex concepts in plain language.
+- **Imperative and instructional.**
+  Use "you can", "configure", "enable".
+- **Concise.**
+  Dense and scannable, without verbose prose.
 
 ### Prose style
 

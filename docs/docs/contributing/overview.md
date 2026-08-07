@@ -33,10 +33,8 @@ Read this page first, then consult the page that matches the kind of change you 
 - [just](https://github.com/casey/just) for running project recipes (`brew install just` on macOS).
 - [cargo-nextest](https://nexte.st/) for running the test suites.
 - Docker, required only for the ACME integration tests (Pebble CA).
-- The Protocol Buffers compiler (`protoc`), required to build the gRPC stubs in `crates/snakeway-tests` (
-  `brew install protobuf` on macOS).
-- [Zig](https://ziglang.org/) and [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild), required only for
-  static Linux cross-builds (`brew install zig` and `cargo install cargo-zigbuild`).
+- The Protocol Buffers compiler (`protoc`), required to build the gRPC stubs in `crates/snakeway-tests` (`brew install protobuf` on macOS).
+- [Zig](https://ziglang.org/) and [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild), required only for static Linux cross-builds (`brew install zig` and `cargo install cargo-zigbuild`).
 - Node.js and npm, required only for working on the documentation site.
 
 Run `just -l` to see every available recipe.

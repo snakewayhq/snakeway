@@ -78,5 +78,5 @@ Snakeway resolves the dependency graph at startup and arranges the pipeline acco
 Devices communicate through a typed extension store on the request context.
 A device can insert a strongly-typed value into the store, and any downstream device can retrieve it by type.
 
-Extensions are request-scoped (they exist only for the duration of a single request), never forwarded upstream, and never included in logs unless a device explicitly opts in.
-This design ensures that devices can share computed data efficiently while maintaining clear boundaries between pipeline stages.
+Extensions are request-scoped, so they exist only for the duration of a single request.
+They are never forwarded upstream and never included in logs unless a device explicitly opts in.

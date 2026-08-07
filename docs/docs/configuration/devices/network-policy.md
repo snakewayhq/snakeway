@@ -57,7 +57,7 @@ Requests from disallowed IPs are rejected immediately with `403 Forbidden`.
 ## Forwarded Request Handling
 
 Forwarded requests are those that include a forwarded identity header (such as `X-Forwarded-For`) as resolved by the Identity device.
-The Network Policy device lets operators control whether these requests are permitted at all.
+The Network Policy device lets you control whether these requests are permitted.
 
 ```hcl
 forwarding {
@@ -92,8 +92,7 @@ The Network Policy device evaluates rules in the following order:
 
 1. **CIDR allow list**: If the resolved client IP does not match any entry, the request is denied.
 2. **Forwarded request check**: If forwarding is disallowed and the request was forwarded, the request is denied.
-3. **Forwarded validity check**: If forwarding is allowed but the forwarded identity is invalid, the `on_invalid`
-   setting determines whether the request is denied or allowed to proceed.
+3. **Forwarded validity check**: If forwarding is allowed but the forwarded identity is invalid, the `on_invalid` setting determines whether the request is denied or allowed to proceed.
 
 If any step denies the request, processing stops immediately and no further devices or upstream proxying occurs.
 

@@ -107,14 +107,18 @@ Use `BenchmarkId::new("dimension", value)` to parameterize across scaling scenar
 
 ## Rules
 
-1. **Deterministic.** Benchmarks must produce the same result on every run.
-2. **No network.** Do not make HTTP requests or open sockets inside benchmarks.
-3. **No external files.** Do not read files from disk inside `b.iter()`.
+1. **Deterministic.**
+   Benchmarks must produce the same result on every run.
+2. **No network.**
+   Do not make HTTP requests or open sockets inside benchmarks.
+3. **No external files.**
+   Do not read files from disk inside `b.iter()`.
    Pre-load any required data in the setup section outside the loop.
-4. **No randomness.** Use fixed, hard-coded inputs.
+4. **No randomness.**
+   Use fixed, hard-coded inputs.
    If randomness is required, seed it outside `b.iter()` and pre-generate a fixed input slice.
-5. **Single dimension.** Each benchmark group should vary exactly one parameter (for example route count, device count,
-   or header count).
+5. **Single dimension.**
+   Each benchmark group should vary exactly one parameter (for example route count, device count, or header count).
 6. **Never modify production code** purely to make a function benchmarkable.
    Use the public API.
    If needed, propose a narrow feature-gated re-export in a PR discussion.
