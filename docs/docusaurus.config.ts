@@ -56,6 +56,14 @@ const config: Config = {
                     type: ['rss', 'atom'],
                     xslt: true,
                 },
+                async processBlogPosts({blogPosts}) {
+                    blogPosts.sort((a, b) => {
+                        const dateDiff = b.metadata.date.getTime() - a.metadata.date.getTime();
+                        if (dateDiff !== 0) return dateDiff;
+                        return b.metadata.title.localeCompare(a.metadata.title);
+                    });
+                    return blogPosts;
+                },
             },
         ],
     ],
@@ -67,10 +75,10 @@ const config: Config = {
                 docs: {
                     sidebarPath: './sidebars.ts',
                     editUrl: 'https://github.com/snakewayhq/snakeway/tree/main/docs/',
-                    lastVersion: '0.15.0',
+                    lastVersion: '0.16.0',
                     versions: {
                         current: {
-                            label: '0.16.x-dev',
+                            label: '0.17.x-dev',
                             banner: 'unreleased',
                         },
                     },
