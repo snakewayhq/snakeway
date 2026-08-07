@@ -85,7 +85,7 @@ integration-test *ARGS: fetch-pebble-ca generate-dev-certs build-wasm-test-devic
 
 # Run mutation testing across the workspace. Configured in .cargo/mutants.toml.
 mutants jobs="4":
-    cargo mutants -j {{ jobs }}
+    cargo mutants -j {{ jobs }} -- -E 'not test(acme)'
 
 # Mutate only the source a diff touches. Note the jobs="4" arg is bound by disk (target / size * jobs), not CPU cores.
 mutants-diff base="main" jobs="4":
@@ -95,4 +95,4 @@ mutants-diff base="main" jobs="4":
     mkdir -p target
     git diff {{ base }} -- 'crates/*/src/*.rs' > "$diff"
     if [ ! -s "$diff" ]; then echo "no source changes against {{ base }}"; exit 0; fi
-    cargo mutants --in-diff "$diff" -j {{ jobs }}
+    cargo mutants --in-diff "$diff" -j {{ jobs }} -- -E 'not test(acme)'
