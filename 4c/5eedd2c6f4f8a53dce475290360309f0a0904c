@@ -1,0 +1,45 @@
+crates/snakeway-conf/src/validation/single_file/ingress.rs
+  s_da4d793206de9d::t_6912b8af973ea2 33,82-91
+  s_da4d793206de9d::t_8e320512595960 232,360,362,375,419,487,523
+  s_da4d793206de9d::t_7edd0de19aa72d 328-354
+  s_da4d793206de9d::t_11f67d5bcba0b9 179
+  s_da4d793206de9d::t_a6b563786dcd6d 327
+crates/snakeway-conf/src/types/specification/ingress/ingress_spec.rs
+  s_da4d793206de9d::t_7edd0de19aa72d 102-134
+  s_da4d793206de9d::t_11f67d5bcba0b9 145
+  s_da4d793206de9d::t_d6fd072892ff37 101
+crates/snakeway-conf/src/types/specification/ingress/service/service_spec.rs
+  s_da4d793206de9d::t_3d224255feaf65 201,228
+  s_da4d793206de9d::t_487ed57d5f0a1f 10-12,30,42-49,115
+crates/snakeway-conf/src/loader.rs
+  s_da4d793206de9d::t_8063fc3ff1579f 189-251
+  s_da4d793206de9d::t_1c2864e6ab79d3 9-11,13
+  s_da4d793206de9d::t_c361da963e29b2 171-177
+  s_da4d793206de9d::t_02520042bcb3e1 140-148
+crates/snakeway-conf/src/types/specification/entrypoint_spec.rs
+  s_da4d793206de9d::t_f8c3afa85b282f 186
+  s_da4d793206de9d::t_a6587d9a166a3a 194,209-210,212-218
+  s_da4d793206de9d::t_f92b4bf959749c 121-185,187-193,195-208,211,219-220
+crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs
+  s_da4d793206de9d::t_daaf6869b01deb 24
+crates/snakeway-conf/src/types/runtime/service/service_config.rs
+  s_da4d793206de9d::t_a12927abb99798 62
+crates/snakeway-conf/src/lower.rs
+  s_da4d793206de9d::t_3d224255feaf65 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4c5eedd2c6f4f8a53dce475290360309f0a0904c",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
