@@ -118,6 +118,7 @@ fn trailing_slash_on_path_prefix_is_matched() {
 fn host_routing_status(host_pattern: &str, request_host: &str) -> StatusCode {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(host_pattern.to_string())],
                 path: Located::detached("/api".to_string()),
@@ -171,6 +172,7 @@ fn wildcard_host_does_not_match_bare_domain() {
 fn catch_all_host_matches_any_host() {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached("*".to_string())],
                 path: Located::detached("/api".to_string()),
@@ -209,6 +211,7 @@ fn multiple_services_on_same_listener_with_different_hosts() {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
+                name: Located::detached("svc-1".to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     hosts: vec![Located::detached("a.test".to_string())],
                     path: Located::detached("/svc-a".to_string()),
@@ -227,6 +230,7 @@ fn multiple_services_on_same_listener_with_different_hosts() {
                 ..Default::default()
             },
             ServiceSpec {
+                name: Located::detached("svc-2".to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     hosts: vec![Located::detached("b.test".to_string())],
                     path: Located::detached("/svc-b".to_string()),
@@ -307,6 +311,7 @@ fn longer_path_prefix_wins_over_shorter() {
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
+                name: Located::detached("svc-3".to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     hosts: vec![Located::detached(TEST_HOST.to_string())],
                     path: Located::detached("/api".to_string()),
@@ -325,6 +330,7 @@ fn longer_path_prefix_wins_over_shorter() {
                 ..Default::default()
             },
             ServiceSpec {
+                name: Located::detached("svc-4".to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     hosts: vec![Located::detached(TEST_HOST.to_string())],
                     path: Located::detached("/api/v2".to_string()),
@@ -369,6 +375,7 @@ fn same_path_different_hosts_is_rejected() {
     let result = ConfigBuilder::default()
         .with_custom_ingress(vec![
             ServiceSpec {
+                name: Located::detached("svc-5".to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     hosts: vec![Located::detached("a.test".to_string())],
                     path: Located::detached("/api".to_string()),
@@ -387,6 +394,7 @@ fn same_path_different_hosts_is_rejected() {
                 ..Default::default()
             },
             ServiceSpec {
+                name: Located::detached("svc-6".to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     hosts: vec![Located::detached("b.test".to_string())],
                     path: Located::detached("/api".to_string()),

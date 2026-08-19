@@ -49,6 +49,7 @@ fn circuit_breaker_starts_closed() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
                 enable_auto_recovery: Located::detached(true),
                 failure_threshold: Located::detached(3),
@@ -111,6 +112,7 @@ fn circuit_breaker_trips_open_after_connection_failures() {
     // nothing listening on it. The proxy will get connection refused.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
                 enable_auto_recovery: Located::detached(true),
                 failure_threshold: Located::detached(2),
@@ -175,6 +177,7 @@ fn circuit_breaker_recovers_through_half_open_to_closed() {
     // Arrange: short cooldown so the test completes quickly.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
                 enable_auto_recovery: Located::detached(true),
                 failure_threshold: Located::detached(2),
@@ -265,6 +268,7 @@ fn circuit_breaker_stays_closed_under_concurrent_successful_load() {
     // Arrange: high failure threshold so successful requests never trip it.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
                 enable_auto_recovery: Located::detached(true),
                 failure_threshold: Located::detached(10),
@@ -331,6 +335,7 @@ fn circuit_breaker_trips_open_on_5xx_responses() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
                 enable_auto_recovery: Located::detached(true),
                 failure_threshold: Located::detached(2),
