@@ -1,0 +1,19 @@
+crates/snakeway/src/cli/config/init/templates/httpbin_template.rs
+  s_da4d793206de9d::t_7940951b14d4c8 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "96968af85d6e5225c35a72d9c087f553dc7d1344",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
