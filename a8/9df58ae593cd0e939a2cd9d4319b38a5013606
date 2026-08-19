@@ -1,0 +1,16 @@
+Cargo.lock
+  h_4fc023ad4863a8 96-106,669,671,673,682,684
+Cargo.toml
+  h_4fc023ad4863a8 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a89df58ae593cd0e939a2cd9d4319b38a5013606",
+  "prompts": {},
+  "humans": {
+    "h_4fc023ad4863a8": {
+      "author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
