@@ -94,6 +94,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "annotate-snippets"
+version = "0.12.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f211a51805bc641f3ad5b7664c77d2547af685cc33b4cd8d31964027a46f13f1"
+dependencies = [
+ "anstyle",
+ "memchr",
+ "unicode-width 0.2.2",
+]
+
+[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -655,22 +666,22 @@ dependencies = [
 
 [[package]]
 name = "confval"
-version = "0.7.3"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d77d2bf1f70bbf8c9885721dee962bf7398e955f8f1a11d2e197ebac898c211"
+checksum = "134b53cb74a8f96d84880595dcac1b9c39a20f95a26efc5ad791b622b1383cfd"
 dependencies = [
+ "annotate-snippets",
  "confval-derive",
  "hcl-edit",
- "owo-colors",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "confval-derive"
-version = "0.7.3"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4a90c60931a997ff35504caa3dfe6d83e5aa82d4b02e052bc5a074b0a3a9fee"
+checksum = "e914d0dedfda88662c86079ad6a4c5b15cf4261df18665e2f9849217c1c5c652"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2872,12 +2883,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
 ]
-
-[[package]]
-name = "owo-colors"
-version = "4.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d211803b9b6b570f68772237e415a029d5a50c65d382910b879fb19d3271f94d"
 
 [[package]]
 name = "page_size"
