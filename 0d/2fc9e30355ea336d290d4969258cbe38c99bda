@@ -1,0 +1,77 @@
+crates/snakeway-conf/src/types/specification/device/request_rate_limiting_device_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 12-13
+crates/snakeway-conf/src/types/specification/server/shutdown_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 13,17
+crates/snakeway-conf/src/types/specification/server/upgrade_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 16
+crates/snakeway/src/cli/config/init/config_init.rs
+  s_da4d793206de9d::t_19f9e5bb6dc469 149
+crates/snakeway-conf/src/types/specification/ingress/bind/tls_termination_spec.rs
+  s_da4d793206de9d::t_63139c04a5883d 8
+  s_da4d793206de9d::t_6766a79feefb22 135-180
+  s_da4d793206de9d::t_68d33bddf7d819 181-183
+crates/snakeway-conf/src/types/specification/device/request_filter_device_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 31,33,35,45,49
+crates/snakeway-conf/src/types/specification/server/tls_automation_spec.rs
+  s_da4d793206de9d::t_e371dee7e3bd27 171-197
+  s_da4d793206de9d::t_fd2261c0d7a346 7
+  s_da4d793206de9d::t_213eb1f1ad62ce 198-200
+crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 40,43
+  s_da4d793206de9d::t_6ec26dd86d1dad 226-315
+  s_da4d793206de9d::t_7b3a2026a95049 1
+  s_da4d793206de9d::t_5ff0afab7b5ae7 9
+  s_da4d793206de9d::t_c16b15672a51d3 316
+crates/snakeway-conf/src/types/specification/ingress/service/upstream_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 18,24
+crates/snakeway-conf/src/validation/validator/net.rs
+  s_da4d793206de9d::t_93e333093f9764 23
+crates/snakeway/tests/config_check.rs
+  s_da4d793206de9d::t_a887b8654523c6 57
+crates/snakeway-conf/src/types/specification/server/upstream_settings_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 14,18,23
+crates/snakeway-conf/src/types/specification/ingress/service/health_check_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 13,15
+crates/snakeway-conf/src/types/specification/ingress/service/circuit_breaker_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 18,22,26,30
+crates/snakeway-conf/src/types/specification/ingress/bind_admin/bind_admin_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 4,14
+crates/snakeway-conf/src/types/specification/ingress/bind/bind_spec.rs
+  s_da4d793206de9d::t_7b3a2026a95049 4-5
+  s_da4d793206de9d::t_71809da2d44ba0 16
+crates/snakeway-conf/src/types/specification/ingress/bind/redirect_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 10-11,14
+crates/snakeway-conf/src/types/specification/server/server_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 2,12,16,34
+crates/snakeway-conf/src/types/specification/device/identity_device_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 19,37
+  s_da4d793206de9d::t_7b3a2026a95049 1
+crates/snakeway-conf/src/types/specification/ingress/service/service_route_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 14
+crates/snakeway-conf/src/types/specification/server/wasm_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 17,21
+crates/snakeway-conf/src/types/specification/ingress/bind/connection_rate_limiting_filter_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 10-11
+crates/snakeway-conf/src/types/specification/server/performance_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 15
+crates/snakeway-conf/src/types/specification/ingress/static_files/static_route_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 30,81,83,85,119
+crates/snakeway-conf/src/types/specification/ingress/bind/http2_spec.rs
+  s_da4d793206de9d::t_71809da2d44ba0 14,16,18,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0d2fc9e30355ea336d290d4969258cbe38c99bda",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
