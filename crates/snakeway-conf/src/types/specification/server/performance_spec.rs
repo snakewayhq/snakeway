@@ -12,6 +12,7 @@ pub struct PerformanceSpec {
 
     /// Number of parallel accept tasks per listener.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = PARALLEL_ACCEPTS_PER_LISTENER)]
     pub parallel_accepts_per_listener: Option<Located<i64>>,
 }
 
@@ -25,13 +26,5 @@ impl Default for PerformanceSpec {
 }
 
 impl Validate for PerformanceSpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(accepts) = &self.parallel_accepts_per_listener {
-            PARALLEL_ACCEPTS_PER_LISTENER.check_located(
-                accepts,
-                "parallel_accepts_per_listener",
-                report,
-            );
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }

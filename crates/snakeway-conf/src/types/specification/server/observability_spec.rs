@@ -20,7 +20,7 @@ pub struct OtelSpec {
     pub enable: Located<bool>,
     pub endpoint: Located<String>,
     pub service_name: Located<String>,
-    #[confval(default = 1.0)]
+    #[confval(default = 1.0, range = SAMPLING_RATIO)]
     pub sampling_ratio: Located<f64>,
 }
 
@@ -54,8 +54,6 @@ impl Validate for OtelSpec {
                 .help("The endpoint must start with http:// or https://.")
                 .emit();
         }
-
-        SAMPLING_RATIO.check_located(&self.sampling_ratio, "sampling_ratio", report);
     }
 }
 
@@ -132,7 +130,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -245,7 +243,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

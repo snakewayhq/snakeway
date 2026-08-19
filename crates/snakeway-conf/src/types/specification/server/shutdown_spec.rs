@@ -9,11 +9,12 @@ range_constraint!(FORCE_TIMEOUT_SECONDS, i64, min: 1, max: 300, units: "seconds"
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ShutdownSpec {
     /// How long active connections are allowed to finish after a shutdown signal.
-    #[confval(default = 10)]
+    #[confval(default = 10, range = DRAIN_SECONDS)]
     pub drain_seconds: Option<Located<i64>>,
 
     /// Hard ceiling on total shutdown time.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = FORCE_TIMEOUT_SECONDS)]
     pub force_timeout_seconds: Option<Located<i64>>,
 }
 
@@ -27,12 +28,5 @@ impl Default for ShutdownSpec {
 }
 
 impl Validate for ShutdownSpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(drain) = &self.drain_seconds {
-            DRAIN_SECONDS.check_located(drain, "drain_seconds", report);
-        }
-        if let Some(timeout) = &self.force_timeout_seconds {
-            FORCE_TIMEOUT_SECONDS.check_located(timeout, "force_timeout_seconds", report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }

@@ -8,6 +8,7 @@ range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 #[derive(Debug, Serialize, Clone, confval::Spec)]
 pub struct RedirectSpec {
     pub port: Located<i64>,
+    #[confval(range = RESPONSE_CODE)]
     pub status: Located<i64>,
 }
 
@@ -24,8 +25,6 @@ impl Validate for RedirectSpec {
         if !is_valid_port(self.port.value) {
             report_invalid_port(&self.port, report);
         }
-
-        RESPONSE_CODE.check_located(&self.status, "status", report);
     }
 }
 
@@ -47,7 +46,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_errors());
@@ -60,7 +59,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -77,7 +76,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

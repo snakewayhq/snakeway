@@ -14,19 +14,19 @@ pub struct CircuitBreakerSpec {
     pub enable_auto_recovery: Located<bool>,
 
     /// Failures in the "closed" state before opening the circuit.
-    #[confval(default = 5)]
+    #[confval(default = 5, range = FAILURE_THRESHOLD)]
     pub failure_threshold: Located<i64>,
 
     /// How long to keep the circuit open before allowing probes.
-    #[confval(default = 10_000)]
+    #[confval(default = 10_000, range = OPEN_DURATION_MS)]
     pub open_duration_milliseconds: Located<i64>,
 
     /// How many simultaneous probe requests are allowed in half-open.
-    #[confval(default = 1)]
+    #[confval(default = 1, range = HALF_OPEN_MAX_REQUESTS)]
     pub half_open_max_requests: Located<i64>,
 
     /// How many successful probes close the circuit again.
-    #[confval(default = 2)]
+    #[confval(default = 2, range = SUCCESS_THRESHOLD)]
     pub success_threshold: Located<i64>,
 
     /// Whether HTTP 5xx responses count as failures for the circuit.
@@ -48,20 +48,7 @@ impl Default for CircuitBreakerSpec {
 }
 
 impl Validate for CircuitBreakerSpec {
-    fn validate(&self, report: &mut Report) {
-        FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
-        OPEN_DURATION_MS.check_located(
-            &self.open_duration_milliseconds,
-            "open_duration_milliseconds",
-            report,
-        );
-        HALF_OPEN_MAX_REQUESTS.check_located(
-            &self.half_open_max_requests,
-            "half_open_max_requests",
-            report,
-        );
-        SUCCESS_THRESHOLD.check_located(&self.success_threshold, "success_threshold", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -78,7 +65,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -95,7 +82,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -119,7 +106,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
@@ -141,7 +128,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");

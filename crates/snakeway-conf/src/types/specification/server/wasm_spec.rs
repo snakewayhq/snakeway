@@ -13,11 +13,11 @@ pub struct WasmSpec {
     /// Maximum number of WASM device hook executions allowed to run at once.
     /// This sizes the wasmtime instance pool.
     /// Requests beyond this limit fail according to the device `fail_policy`.
-    #[confval(default = 512)]
+    #[confval(default = 512, range = MAX_CONCURRENT_EXECUTIONS)]
     pub max_concurrent_executions: Located<i64>,
 
     /// Maximum linear memory, in bytes, that a single WASM device execution may use.
-    #[confval(default = 67108864)] // 64 MiB
+    #[confval(default = 67108864, range = MAX_MEMORY_BYTES)] // 64 MiB
     pub max_memory_bytes: Located<i64>,
 }
 
@@ -31,12 +31,5 @@ impl Default for WasmSpec {
 }
 
 impl Validate for WasmSpec {
-    fn validate(&self, report: &mut Report) {
-        MAX_CONCURRENT_EXECUTIONS.check_located(
-            &self.max_concurrent_executions,
-            "max_concurrent_executions",
-            report,
-        );
-        MAX_MEMORY_BYTES.check_located(&self.max_memory_bytes, "max_memory_bytes", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }

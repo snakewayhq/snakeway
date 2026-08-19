@@ -15,7 +15,7 @@ pub struct IdentityDeviceSpec {
 
     /// CIDR strings
     pub trusted_proxies: Vec<Located<String>>,
-    #[confval(default = 1024)]
+    #[confval(default = 1024, range = MAX_X_FORWARDED_FOR_LENGTH)]
     pub max_x_forwarded_for_length: Located<i64>,
 
     pub enable_geoip: Located<bool>,
@@ -30,10 +30,11 @@ pub struct IdentityDeviceSpec {
     pub geoip_connection_type_db: Option<Located<PathBuf>>,
 
     pub enable_user_agent: Located<bool>,
+    #[confval(keywords = UaEngineKind)]
     pub ua_engine: Located<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ua_parser_regexes: Option<Located<PathBuf>>,
-    #[confval(default = 2048)]
+    #[confval(default = 2048, range = MAX_USER_AGENT_LENGTH)]
     pub max_user_agent_length: Located<i64>,
 }
 
@@ -58,20 +59,6 @@ impl Default for IdentityDeviceSpec {
 impl Validate for IdentityDeviceSpec {
     fn validate(&self, report: &mut Report) {
         validate_trusted_proxies(&self.trusted_proxies, report);
-
-        MAX_X_FORWARDED_FOR_LENGTH.check_located(
-            &self.max_x_forwarded_for_length,
-            "max_x_forwarded_for_length",
-            report,
-        );
-
-        MAX_USER_AGENT_LENGTH.check_located(
-            &self.max_user_agent_length,
-            "max_user_agent_length",
-            report,
-        );
-
-        UaEngineKind::keyword_set().check_located(&self.ua_engine, "ua_engine", report);
 
         if let Some(path) = self.geoip_city_db.as_ref() {
             validate_geoip_db_file(path, report);
@@ -102,7 +89,7 @@ mod tests {
         let spec = IdentityDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -119,7 +106,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -142,7 +129,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -165,7 +152,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -186,7 +173,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -203,7 +190,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -224,7 +211,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -251,7 +238,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

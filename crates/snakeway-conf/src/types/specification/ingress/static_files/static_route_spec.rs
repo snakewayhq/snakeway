@@ -27,6 +27,7 @@ pub struct StaticRouteSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<Located<String>>,
     pub directory_listing: Located<bool>,
+    #[confval(range = MAX_FILE_SIZE)]
     pub max_file_size: Located<i64>,
     #[confval(nested)]
     pub compression: Located<CompressionOptsSpec>,
@@ -52,8 +53,6 @@ impl Default for StaticRouteSpec {
 
 impl Validate for StaticRouteSpec {
     fn validate(&self, report: &mut Report) {
-        MAX_FILE_SIZE.check_located(&self.max_file_size, "max_file_size", report);
-
         if !self.file_dir.value.exists() {
             report
                 .error(format!(
@@ -77,11 +76,11 @@ impl Validate for StaticRouteSpec {
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct CompressionOptsSpec {
-    #[confval(default = 256 * 1024)]
+    #[confval(default = 256 * 1024, range = SMALL_FILE_THRESHOLD)]
     pub small_file_threshold: Located<i64>,
-    #[confval(default = 1024)]
+    #[confval(default = 1024, range = MIN_GZIP_SIZE)]
     pub min_gzip_size: Located<i64>,
-    #[confval(default = 4 * 1024)]
+    #[confval(default = 4 * 1024, range = MIN_BROTLI_SIZE)]
     pub min_brotli_size: Located<i64>,
     #[confval(default = true)]
     pub enable_gzip: Located<bool>,
@@ -102,20 +101,12 @@ impl Default for CompressionOptsSpec {
 }
 
 impl Validate for CompressionOptsSpec {
-    fn validate(&self, report: &mut Report) {
-        SMALL_FILE_THRESHOLD.check_located(
-            &self.small_file_threshold,
-            "small_file_threshold",
-            report,
-        );
-        MIN_GZIP_SIZE.check_located(&self.min_gzip_size, "min_gzip_size", report);
-        MIN_BROTLI_SIZE.check_located(&self.min_brotli_size, "min_brotli_size", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct CachePolicySpec {
-    #[confval(default = 3600)]
+    #[confval(default = 3600, range = MAX_AGE_SECONDS)]
     pub max_age_seconds: Located<i64>,
     #[confval(default = true)]
     pub public: Located<bool>,
@@ -134,9 +125,7 @@ impl Default for CachePolicySpec {
 }
 
 impl Validate for CachePolicySpec {
-    fn validate(&self, report: &mut Report) {
-        MAX_AGE_SECONDS.check_located(&self.max_age_seconds, "max_age_seconds", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -196,7 +185,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
@@ -222,7 +211,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
@@ -239,7 +228,7 @@ mod tests {
         let spec = CompressionOptsSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -255,7 +244,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
@@ -278,7 +267,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -309,7 +298,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);

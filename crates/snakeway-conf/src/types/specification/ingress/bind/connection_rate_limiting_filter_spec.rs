@@ -7,19 +7,14 @@ range_constraint!(MAX_CONNECTIONS_PER_SECOND, i64, min: 1, max: 30_000);
 
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct ConnectionRateLimitingFilterSpec {
+    #[confval(range = MAX_CONNECTIONS_PER_SECOND)]
     pub max_connections_per_second: Located<i64>,
+    #[confval(range = REACTION_INTERVAL_IN_SECONDS)]
     pub window_seconds: Located<i64>,
 }
 
 impl Validate for ConnectionRateLimitingFilterSpec {
-    fn validate(&self, report: &mut Report) {
-        REACTION_INTERVAL_IN_SECONDS.check_located(&self.window_seconds, "window_seconds", report);
-        MAX_CONNECTIONS_PER_SECOND.check_located(
-            &self.max_connections_per_second,
-            "max_connections_per_second",
-            report,
-        );
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -43,7 +38,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
@@ -57,7 +52,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -74,7 +69,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -91,7 +86,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());

@@ -11,34 +11,21 @@ range_constraint!(INITIAL_CONNECTION_WINDOW_SIZE, i64, min: 1, max: 2_147_483_64
 #[derive(Debug, Deserialize, Default, Serialize, Clone, confval::Spec)]
 pub struct Http2Spec {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = MAX_CONCURRENT_STREAMS)]
     pub max_concurrent_streams: Option<Located<i64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = MAX_HEADER_LIST_SIZE)]
     pub max_header_list_size: Option<Located<i64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = INITIAL_WINDOW_SIZE)]
     pub initial_window_size: Option<Located<i64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = INITIAL_CONNECTION_WINDOW_SIZE)]
     pub initial_connection_window_size: Option<Located<i64>>,
 }
 
 impl Validate for Http2Spec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(v) = &self.max_concurrent_streams {
-            MAX_CONCURRENT_STREAMS.check_located(v, "max_concurrent_streams", report);
-        }
-        if let Some(v) = &self.max_header_list_size {
-            MAX_HEADER_LIST_SIZE.check_located(v, "max_header_list_size", report);
-        }
-        if let Some(v) = &self.initial_window_size {
-            INITIAL_WINDOW_SIZE.check_located(v, "initial_window_size", report);
-        }
-        if let Some(v) = &self.initial_connection_window_size {
-            INITIAL_CONNECTION_WINDOW_SIZE.check_located(
-                v,
-                "initial_connection_window_size",
-                report,
-            );
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -52,7 +39,7 @@ mod tests {
         let spec = Http2Spec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues());
@@ -68,7 +55,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_errors());
@@ -89,7 +76,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_errors());

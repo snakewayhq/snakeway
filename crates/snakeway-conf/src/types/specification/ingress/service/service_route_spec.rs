@@ -11,17 +11,14 @@ pub struct ServiceRouteSpec {
     #[confval(default)]
     pub enable_websocket: Located<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = WS_MAX_CONNECTIONS)]
     pub ws_max_connections: Option<Located<i64>>,
 }
 
 /// The "route has no hosts" rule reports at the route's enclosing span, which
 /// an empty `hosts` list cannot supply, so it lives in `ServiceSpec`.
 impl Validate for ServiceRouteSpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(ws_max_connections) = &self.ws_max_connections {
-            WS_MAX_CONNECTIONS.check_located(ws_max_connections, "ws_max_connections", report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -40,7 +37,7 @@ mod tests {
         };
 
         // Act
-        route.validate(&mut report);
+        route.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -63,7 +60,7 @@ mod tests {
         };
 
         // Act
-        route.validate(&mut report);
+        route.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -88,7 +85,7 @@ mod tests {
         };
 
         // Act
-        route.validate(&mut report);
+        route.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());

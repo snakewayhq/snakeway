@@ -18,7 +18,7 @@ pub struct NetworkPolicyDeviceSpec {
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct ForwardingSpec {
     pub allow: Located<bool>,
-    #[confval(default = "ignore".to_string())]
+    #[confval(default = "ignore".to_string(), keywords = OnInvalidForwarded)]
     pub on_invalid: Located<String>,
 }
 
@@ -32,9 +32,7 @@ impl Default for ForwardingSpec {
 }
 
 impl Validate for ForwardingSpec {
-    fn validate(&self, report: &mut Report) {
-        OnInvalidForwarded::keyword_set().check_located(&self.on_invalid, "on_invalid", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 impl Validate for NetworkPolicyDeviceSpec {
@@ -56,7 +54,7 @@ mod tests {
         let spec = NetworkPolicyDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());

@@ -9,7 +9,9 @@ range_constraint!(WINDOW_SECONDS, i64, min: 1, max: 60, units: "seconds");
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct RequestRateLimitingDeviceSpec {
     pub enable: Located<bool>,
+    #[confval(range = MAX_REQUESTS_PER_SECOND)]
     pub max_requests_per_second: Located<i64>,
+    #[confval(range = WINDOW_SECONDS)]
     pub window_seconds: Located<i64>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
@@ -32,13 +34,6 @@ impl Default for RequestRateLimitingDeviceSpec {
 
 impl Validate for RequestRateLimitingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        MAX_REQUESTS_PER_SECOND.check_located(
-            &self.max_requests_per_second,
-            "max_requests_per_second",
-            report,
-        );
-        WINDOW_SECONDS.check_located(&self.window_seconds, "window_seconds", report);
-
         validate_device_paths(&self.paths, report);
     }
 }
@@ -54,7 +49,7 @@ mod tests {
         let spec = RequestRateLimitingDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -76,7 +71,7 @@ mod tests {
         let spec = minimal();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -92,7 +87,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.issues().iter().any(|e| {
@@ -111,7 +106,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -133,7 +128,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

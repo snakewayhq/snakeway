@@ -46,6 +46,7 @@ pub struct RequestFilterDeviceSpec {
 
     /// Override the default granular deny status with a device-scoped value.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = DENY_STATUS)]
     pub deny_status: Option<Located<i64>>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
@@ -74,10 +75,6 @@ impl Default for RequestFilterDeviceSpec {
 
 impl Validate for RequestFilterDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if let Some(deny_status) = &self.deny_status {
-            DENY_STATUS.check_located(deny_status, "deny_status", report);
-        }
-
         for method in &self.allow_methods {
             validate_http_method(method, report);
         }
@@ -113,7 +110,7 @@ mod tests {
         let spec = RequestFilterDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -130,7 +127,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -153,7 +150,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -176,7 +173,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -198,7 +195,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -221,7 +218,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -238,7 +235,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

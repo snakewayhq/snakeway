@@ -6,6 +6,7 @@ use serde::Serialize;
 pub struct StructuredLoggingDeviceSpec {
     pub enable: Located<bool>,
 
+    #[confval(keywords = LogLevel)]
     pub level: Located<String>,
 
     /// Headers are excluded by default.
@@ -49,8 +50,6 @@ impl Default for StructuredLoggingDeviceSpec {
 
 impl Validate for StructuredLoggingDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        LogLevel::keyword_set().check_located(&self.level, "level", report);
-
         for field in &self.identity_fields {
             IdentityField::keyword_set().check_located(field, "identity field", report);
         }
@@ -80,7 +79,7 @@ mod tests {
         let spec = StructuredLoggingDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -104,7 +103,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -121,7 +120,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -143,7 +142,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -170,7 +169,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -198,7 +197,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

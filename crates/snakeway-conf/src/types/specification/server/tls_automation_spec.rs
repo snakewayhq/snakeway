@@ -17,7 +17,7 @@ pub struct TlsAutomationSpec {
     pub acme: Located<AcmeServerSpec>,
     #[confval(nested)]
     pub cert_store: Located<CertStoreSpec>,
-    #[confval(default = 30)]
+    #[confval(default = 30, range = RENEW_WITHIN_DAYS)]
     pub renew_within_days: Located<i64>,
 }
 
@@ -163,9 +163,7 @@ impl ToFields for CertStoreSpec {
 }
 
 impl Validate for TlsAutomationSpec {
-    fn validate(&self, report: &mut Report) {
-        RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 /// The schema flattens both variants into one level, because the IR has no
@@ -398,7 +396,7 @@ cert_store {
         // Act
         let (mut report, spec) = parse_tls(input);
         let spec = spec.expect("parent constructs despite the cert_store failure");
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         let messages: Vec<&str> = report.issues().iter().map(|i| i.message.as_str()).collect();
@@ -509,7 +507,7 @@ cert_store {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

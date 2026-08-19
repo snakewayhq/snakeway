@@ -13,6 +13,7 @@ pub struct UpgradeSpec {
 
     /// Maximum number of retries when connecting/accepting on the upgrade socket.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = MAX_RETRIES)]
     pub max_retries: Option<Located<i64>>,
 }
 
@@ -26,10 +27,6 @@ impl Validate for UpgradeSpec {
                 .at(sock.span)
                 .help("Provide a path to the Unix domain socket used for zero-drop upgrades.")
                 .emit();
-        }
-
-        if let Some(retries) = &self.max_retries {
-            MAX_RETRIES.check_located(retries, "max_retries", report);
         }
     }
 }
@@ -45,7 +42,7 @@ mod tests {
         let spec = UpgradeSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -78,7 +75,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);

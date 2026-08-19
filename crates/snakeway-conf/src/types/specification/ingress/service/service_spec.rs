@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServiceSpec {
-    #[confval(default = "failover".to_string())]
+    #[confval(default = "failover".to_string(), keywords = LoadBalancingStrategy)]
     pub load_balancing_strategy: Located<String>,
     #[confval(nested)]
     pub routes: Vec<Located<ServiceRouteSpec>>,
@@ -35,12 +35,6 @@ impl Default for ServiceSpec {
 
 impl Validate for ServiceSpec {
     fn validate(&self, report: &mut Report) {
-        LoadBalancingStrategy::keyword_set().check_located(
-            &self.load_balancing_strategy,
-            "load_balancing_strategy",
-            report,
-        );
-
         // A route with no hosts is reported at the route's enclosing span,
         // which the route cannot reach from `&self`.
         for route in &self.routes {
