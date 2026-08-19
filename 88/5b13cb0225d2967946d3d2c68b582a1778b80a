@@ -1,0 +1,38 @@
+crates/snakeway-tests/tests/traffic/health_check.rs
+  s_da4d793206de9d::t_9390101b57433d 49,107,162,268
+crates/snakeway-tests/src/conf/builder/services.rs
+  s_da4d793206de9d::t_db493338f2d938 32,83,231
+crates/snakeway-tests/tests/configuration/hot_reload.rs
+  s_da4d793206de9d::t_a4589ce18f50ac 34
+crates/snakeway-tests/tests/proxy/websocket.rs
+  s_da4d793206de9d::t_34229cf10a4fb9 44,118
+crates/snakeway-tests/tests/traffic/load_balancing.rs
+  s_da4d793206de9d::t_9390101b57433d 35,256
+crates/snakeway-tests/src/harness/runtime_patch.rs
+  s_da4d793206de9d::t_aa08f87b33d351 73-74,77-88,90-91,93-94
+crates/snakeway-tests/tests/proxy/response_handling.rs
+  s_da4d793206de9d::t_9390101b57433d 162,211
+crates/snakeway-tests/tests/proxy/admin_api.rs
+  s_da4d793206de9d::t_8ae734a2eb18a0 232
+crates/snakeway-tests/tests/traffic/circuit_breaker.rs
+  s_da4d793206de9d::t_9390101b57433d 52,115,180,271,338
+crates/snakeway-tests/tests/proxy/routing.rs
+  s_da4d793206de9d::t_34229cf10a4fb9 214,233,314,333,378,397
+  s_da4d793206de9d::t_9390101b57433d 121,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "885b13cb0225d2967946d3d2c68b582a1778b80a",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
