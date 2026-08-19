@@ -1,0 +1,19 @@
+crates/snakeway-tests/fixtures/config/basic/ingress.d/api.hcl
+  s_da4d793206de9d::t_b9af6e0dc63915 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2d88ec79ff040ab2e2a77a9ab92f8509fa7a296a",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
