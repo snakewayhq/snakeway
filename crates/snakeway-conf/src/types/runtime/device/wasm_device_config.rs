@@ -64,9 +64,9 @@ pub struct WasmDeviceConfig {
 
     pub fail_policy: WasmDeviceFailPolicy,
 
-    pub timeout_ms: u64,
+    pub timeout_milliseconds: u64,
 
-    pub body_buffer_max: u64,
+    pub body_buffer_max_bytes: u64,
 
     pub config: HashMap<String, String>,
 
@@ -80,8 +80,8 @@ where
     fn lower(spec: &WasmDeviceSpec, report: &mut Report) -> Option<Self> {
         let fail_policy = narrow::keyword::<WasmDeviceFailPolicy>(&spec.fail_policy, report)?;
 
-        let timeout_ms = narrow::i64_to_u64(&spec.timeout_ms, report)?;
-        let body_buffer_max = narrow::i64_to_u64(&spec.body_buffer_max, report)?;
+        let timeout_milliseconds = narrow::i64_to_u64(&spec.timeout_milliseconds, report)?;
+        let body_buffer_max_bytes = narrow::i64_to_u64(&spec.body_buffer_max_bytes, report)?;
 
         let hooks = match &spec.hooks {
             None => WasmHookMask::default(),
@@ -99,9 +99,13 @@ where
             enable: spec.enable.value,
             path: spec.path.value.clone(),
             fail_policy,
-            timeout_ms,
-            body_buffer_max,
-            config: spec.config.clone(),
+            timeout_milliseconds,
+            body_buffer_max_bytes,
+            config: spec
+                .config
+                .iter()
+                .map(|(key, value)| (key.clone(), value.value.clone()))
+                .collect(),
             hooks,
         })
     }
@@ -111,6 +115,7 @@ where
 mod tests {
     use super::*;
     use confval::prelude::{Located, Report};
+    use std::collections::BTreeMap;
 
     #[test]
     fn from_spec_maps_fields() {
@@ -120,9 +125,9 @@ mod tests {
             enable: Located::detached(true),
             path: Located::detached(PathBuf::from("/opt/modules/filter.wasm")),
             fail_policy: Located::detached("open".to_string()),
-            timeout_ms: Located::detached(10),
-            body_buffer_max: Located::detached(65536),
-            config: HashMap::from([("key".to_string(), "value".to_string())]),
+            timeout_milliseconds: Located::detached(10),
+            body_buffer_max_bytes: Located::detached(65536),
+            config: BTreeMap::from([("key".to_string(), Located::detached("value".to_string()))]),
             hooks: None,
         };
 
@@ -134,8 +139,8 @@ mod tests {
         assert!(config.enable);
         assert_eq!(config.path, PathBuf::from("/opt/modules/filter.wasm"));
         assert_eq!(config.fail_policy, WasmDeviceFailPolicy::Open);
-        assert_eq!(config.timeout_ms, 10);
-        assert_eq!(config.body_buffer_max, 65536);
+        assert_eq!(config.timeout_milliseconds, 10);
+        assert_eq!(config.body_buffer_max_bytes, 65536);
         assert_eq!(config.config.get("key").unwrap(), "value");
         assert_eq!(config.hooks, WasmHookMask::default());
     }
@@ -164,7 +169,7 @@ mod tests {
         let config = WasmDeviceConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
-        assert_eq!(config.timeout_ms, 5);
+        assert_eq!(config.timeout_milliseconds, 5);
     }
 
     #[test]

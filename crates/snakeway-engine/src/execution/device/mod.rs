@@ -14,7 +14,7 @@ pub fn load_wasm_device(device_file_path: &Path) -> anyhow::Result<Arc<dyn Devic
         name: "cli-test".to_string(),
         path: device_file_path.to_path_buf(),
         fail_policy: WasmDeviceFailPolicy::Open,
-        timeout_ms: 5,
+        timeout_milliseconds: 5,
         ..Default::default()
     };
     let device = wasm::WasmDevice::load(

@@ -32,7 +32,7 @@ The pooling allocator avoids per-instantiation memory allocation.
 Instance slots are reused across hook calls, making instantiation O(1) after the initial pool setup.
 
 An epoch ticker thread increments the engine epoch every 10ms.
-Hook deadlines are expressed as epoch tick counts derived from `timeout_ms / EPOCH_TICK_MS`.
+Hook deadlines are expressed as epoch tick counts derived from `timeout_milliseconds / EPOCH_TICK_MS`.
 
 The `WasmEngine` struct owns the shutdown flag for the ticker thread.
 When the `DeviceRegistry` is dropped (on shutdown or hot reload), the ticker thread exits.
@@ -59,7 +59,7 @@ For an enabled hook, each lifecycle call follows this sequence in `WasmDevice::w
 1. Create a `StoreLimitsBuilder` with memory and table caps.
 2. Build `HostState` with the device's config map, name, and metrics handles.
 3. Create a `Store` on the shared engine with the host state and resource limits.
-4. Set the epoch deadline: `timeout_ms / EPOCH_TICK_MS` ticks.
+4. Set the epoch deadline: `timeout_milliseconds / EPOCH_TICK_MS` ticks.
 5. Instantiate via `DevicePre::instantiate` (uses a pooled memory slot).
 6. Call the exported hook function.
 7. Record hook duration in the `hook_duration_ms` histogram.
