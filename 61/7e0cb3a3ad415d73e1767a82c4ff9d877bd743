@@ -1,0 +1,42 @@
+docs/docs/extension/authoring-wasm-devices.md
+  s_da4d793206de9d::t_4c86aa7a5cfde9 32-36
+  s_da4d793206de9d::t_298723cabb1fa0 37,56-57,72,75,362
+crates/snakeway-engine/src/execution/device/wasm/wasm_device.rs
+  s_da4d793206de9d::t_518a7c29769134 85-86
+crates/snakeway-engine/src/execution/device/mod.rs
+  s_da4d793206de9d::t_753d4344f131da 17
+docs/docs/internals/wasm-devices.md
+  s_da4d793206de9d::t_298723cabb1fa0 35,62
+crates/snakeway-tests/src/device.rs
+  s_da4d793206de9d::t_c4ac8fec66a8ea 4,7-13,15,31
+  s_da4d793206de9d::t_753d4344f131da 21,37
+crates/snakeway-jwt-auth-device/src/lib.rs
+  s_da4d793206de9d::t_4c86aa7a5cfde9 12-16
+crates/snakeway-conf/src/types/runtime/device/wasm_device_config.rs
+  s_da4d793206de9d::t_518a7c29769134 67,69,83-84,102-108,128-129,142-143,172
+  s_da4d793206de9d::t_caf46602d14b78 118
+  s_da4d793206de9d::t_b68b099c32840c 130
+crates/snakeway-conf/src/types/specification/device/wasm_device_spec.rs
+  s_da4d793206de9d::t_0cc094d0d75d3d 260-284
+  s_da4d793206de9d::t_28a5643b2f6fae 241-244
+  s_da4d793206de9d::t_5fdd773800846b 223-225
+  s_da4d793206de9d::t_b68b099c32840c 227-230
+  s_da4d793206de9d::t_067e3b1376d89c 3,6,22,31,35-36,39-40,43-44,58-60,100-102,113-117,135-138,142-143,145,156,159-167,194-222,226,231-240,245-258,309,320-321,361,373,381,386,393,487
+  s_da4d793206de9d::t_859991d6ae1eab 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "617e0cb3a3ad415d73e1767a82c4ff9d877bd743",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
