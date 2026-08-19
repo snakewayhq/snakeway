@@ -1,0 +1,23 @@
+docs/docs/configuration/ingress/services.md
+  s_da4d793206de9d::t_0ed7d0a006b219 11-13,38
+docs/docs/administration/static-files.md
+  s_da4d793206de9d::t_0ed7d0a006b219 192
+docs/docs/configuration/ingress/index.md
+  s_da4d793206de9d::t_0ed7d0a006b219 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "7a42061ba5aa3d55b3a6fe58b3289fb419e972a2",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
