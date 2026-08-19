@@ -118,6 +118,106 @@ pub struct DevicesFile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use confval::format::hcl::{emit_hcl, parse_hcl};
+    use confval::prelude::SourceMap;
+
+    fn parse_devices(input: &str) -> (Report, Option<DevicesFile>) {
+        let mut sources = SourceMap::new();
+        let mut report = Report::new();
+        let id = sources.add("devices.hcl", input);
+        let spec = parse_hcl::<DevicesFile>(&sources, id, &mut report);
+        (report, spec)
+    }
+
+    #[test]
+    fn wasm_device_native_label_fills_name() {
+        // Arrange
+        let input = r#"wasm_devices "auth" {
+  enable = true
+  path = "./a.wasm"
+  fail_policy = "open"
+}
+"#;
+
+        // Act
+        let (report, spec) = parse_devices(input);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let devices = spec.unwrap().wasm_devices;
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0].value.name.value, "auth");
+    }
+
+    #[test]
+    fn wasm_device_name_attribute_still_fills_name() {
+        // Arrange
+        let input = r#"wasm_devices {
+  name = "auth"
+  enable = true
+  path = "./a.wasm"
+  fail_policy = "open"
+}
+"#;
+
+        // Act
+        let (report, spec) = parse_devices(input);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert_eq!(spec.unwrap().wasm_devices[0].value.name.value, "auth");
+    }
+
+    #[test]
+    fn wasm_device_label_and_attribute_together_report() {
+        // Arrange
+        let input = r#"wasm_devices "auth" {
+  name = "other"
+  enable = true
+  path = "./a.wasm"
+  fail_policy = "open"
+}
+"#;
+
+        // Act
+        let (report, spec) = parse_devices(input);
+
+        // Assert
+        let _ = spec;
+        assert!(
+            report.has_issues(),
+            "a label and a name attribute together must be reported"
+        );
+    }
+
+    #[test]
+    fn wasm_device_label_round_trips_through_spec_walk_as_attribute() {
+        // Arrange
+        let input = r#"wasm_devices "auth" {
+  enable = true
+  path = "./a.wasm"
+  fail_policy = "open"
+}
+"#;
+        let (report, spec) = parse_devices(input);
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+
+        // Act
+        let emitted = emit_hcl(&spec.unwrap().to_fields()).unwrap();
+
+        // Assert
+        assert!(emitted.contains("name = \"auth\""), "emitted: {emitted}");
+        let (round_report, round_tripped) = parse_devices(&emitted);
+        assert!(
+            !round_report.has_issues(),
+            "issues: {:?}",
+            round_report.issues()
+        );
+        assert_eq!(
+            round_tripped.unwrap().wasm_devices[0].value.name.value,
+            "auth"
+        );
+    }
 
     #[test]
     fn to_fields_round_trips_default_entrypoint() {

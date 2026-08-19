@@ -30,6 +30,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
     let mut seen_listener_keys: HashMap<String, Span> = HashMap::new();
     let mut seen_redirect_ports: HashMap<i64, Span> = HashMap::new();
     let mut seen_upstream_socks: HashMap<String, Span> = HashMap::new();
+    let mut seen_service_names: HashMap<String, Span> = HashMap::new();
 
     for ingress in ingresses {
         validate_ingress_entity(ingress, report);
@@ -78,6 +79,16 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
         let bind_uses_http2 = maybe_bind.is_some_and(|b| b.value.enable_http2.value);
         let mut seen_route_paths = HashSet::new();
         for service in &ingress.value.services {
+            // The lowered services keep one global map keyed by name, so the
+            // label must be unique across every ingress file, not just its own.
+            report_duplicate(
+                &mut seen_service_names,
+                service.value.name.value.clone(),
+                service.value.name.span,
+                report,
+                || format!("duplicate service name: {}", service.value.name.value),
+            );
+
             for route in &service.value.routes {
                 if !seen_route_paths.insert(route.value.path.value.clone()) {
                     report
@@ -165,6 +176,7 @@ mod tests {
 
     fn minimal_service() -> Located<ServiceSpec> {
         Located::detached(ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 path: Located::detached("/".to_string()),
                 hosts: vec![Located::detached("example.com".to_string())],
@@ -217,6 +229,7 @@ mod tests {
         let ingress = Located::detached(IngressSpec {
             bind: Some(Located::detached(minimal_bind())),
             services: vec![Located::detached(ServiceSpec {
+                name: Located::detached("api".to_string()),
                 load_balancing_strategy: Located::detached("failover".to_string()),
                 upstreams: vec![],
                 ..Default::default()
@@ -312,12 +325,41 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_service_name_across_ingresses_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let make_ingress = |port: i64| {
+            let mut bind = minimal_bind();
+            bind.port = Located::detached(port);
+            Located::detached(IngressSpec {
+                bind: Some(Located::detached(bind)),
+                services: vec![minimal_service()],
+                ..Default::default()
+            })
+        };
+
+        // Act
+        validate_ingresses(&[make_ingress(8080), make_ingress(9090)], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "duplicate service name: api"),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
     fn sock_file_not_reused_across_services() {
         // Arrange
         let mut report = Report::new();
         let expected_error = "duplicate upstream sock: /tmp/shared.sock";
-        let make_service = || {
+        let make_service = |name: &str| {
             Located::detached(ServiceSpec {
+                name: Located::detached(name.to_string()),
                 routes: vec![Located::detached(ServiceRouteSpec {
                     path: Located::detached("/".to_string()),
                     hosts: vec![Located::detached("example.com".to_string())],
@@ -330,7 +372,7 @@ mod tests {
         };
         let ingress = Located::detached(IngressSpec {
             bind: Some(Located::detached(minimal_bind())),
-            services: vec![make_service(), make_service()],
+            services: vec![make_service("svc-a"), make_service("svc-b")],
             ..Default::default()
         });
 
@@ -374,6 +416,7 @@ mod tests {
             challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
         }));
         let service = Located::detached(ServiceSpec {
+            name: Located::detached("ws".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 path: Located::detached("/ws".to_string()),
                 hosts: vec![Located::detached("ws.example.com".to_string())],
@@ -441,6 +484,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let empty_service = Located::detached(ServiceSpec {
+            name: Located::detached("empty".to_string()),
             routes: vec![],
             upstreams: vec![],
             load_balancing_strategy: Located::detached("failover".to_string()),
@@ -476,6 +520,7 @@ mod tests {
             })
         };
         let service = Located::detached(ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![route(), route()],
             upstreams: vec![sock_upstream("/tmp/api.sock")],
             load_balancing_strategy: Located::detached("failover".to_string()),

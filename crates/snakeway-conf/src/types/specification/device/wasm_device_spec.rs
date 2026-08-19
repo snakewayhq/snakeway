@@ -21,6 +21,7 @@ range_constraint!(BODY_BUFFER_MAX, i64, min: 0, max: 104857600);
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct WasmDeviceSpec {
+    #[confval(label)]
     pub name: Located<String>,
 
     pub enable: Located<bool>,

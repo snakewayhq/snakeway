@@ -98,7 +98,7 @@ where
                     }
                 }
 
-                let service_name = format!("{}-service", bind_addr);
+                let service_name = service_spec.name.value.clone();
 
                 let service = ServiceConfig::new(
                     &service_name,
