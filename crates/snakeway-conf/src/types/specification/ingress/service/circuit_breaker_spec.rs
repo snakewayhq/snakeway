@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
@@ -16,19 +15,19 @@ pub struct CircuitBreakerSpec {
 
     /// Failures in the "closed" state before opening the circuit.
     #[confval(default = 5)]
-    pub failure_threshold: Located<HclInt>,
+    pub failure_threshold: Located<i64>,
 
     /// How long to keep the circuit open before allowing probes.
     #[confval(default = 10_000)]
-    pub open_duration_milliseconds: Located<HclInt>,
+    pub open_duration_milliseconds: Located<i64>,
 
     /// How many simultaneous probe requests are allowed in half-open.
     #[confval(default = 1)]
-    pub half_open_max_requests: Located<HclInt>,
+    pub half_open_max_requests: Located<i64>,
 
     /// How many successful probes close the circuit again.
     #[confval(default = 2)]
-    pub success_threshold: Located<HclInt>,
+    pub success_threshold: Located<i64>,
 
     /// Whether HTTP 5xx responses count as failures for the circuit.
     #[confval(default = true)]

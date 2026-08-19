@@ -1,5 +1,5 @@
 use crate::types::{
-    HclInt, ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
+    ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
     UpstreamSettingsSpec, WasmSpec,
 };
 use confval::prelude::Located;
@@ -9,11 +9,11 @@ use std::path::PathBuf;
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
     /// Configuration schema version
-    pub version: Located<HclInt>,
+    pub version: Located<i64>,
 
     /// Number of worker threads. When unset, Pingora chooses the value.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub threads: Option<Located<HclInt>>,
+    pub threads: Option<Located<i64>>,
 
     /// Optional pid file path
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -31,7 +31,7 @@ pub struct ServerSpec {
     pub observability: Option<Located<ObservabilitySpec>>,
 
     #[confval(default = 30)]
-    pub dns_refresh_interval_seconds: Located<HclInt>,
+    pub dns_refresh_interval_seconds: Located<i64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]

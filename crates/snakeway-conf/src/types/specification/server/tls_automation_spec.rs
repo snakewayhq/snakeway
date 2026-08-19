@@ -4,6 +4,7 @@ use confval::format::{
     report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
+use confval::schema::{Constraint, ScalarType, Schema, SchemaField, SchemaType, ToSchema};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -164,6 +165,36 @@ impl ToFields for CertStoreSpec {
 impl Validate for TlsAutomationSpec {
     fn validate(&self, report: &mut Report) {
         RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
+    }
+}
+
+/// The schema flattens both variants into one level, because the IR has no
+/// variant node. `type` selects the variant, so `cert_dir` is unrequired here
+/// and the handwritten parser enforces when it applies.
+impl ToSchema for CertStoreSpec {
+    fn schema() -> Schema {
+        Schema::new(
+            None,
+            vec![
+                SchemaField::new(
+                    "type".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::String,
+                        constraint: Some(Constraint::Keywords(&["memory", "filesystem"])),
+                    },
+                )
+                .required(),
+                SchemaField::new(
+                    "cert_dir".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Path,
+                        constraint: None,
+                    },
+                ),
+            ],
+        )
     }
 }
 

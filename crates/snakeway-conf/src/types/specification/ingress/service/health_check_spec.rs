@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::diagnostic::Report;
 use confval::prelude::{Located, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -11,9 +10,9 @@ range_constraint!(UNHEALTHY_COOLDOWN_SECONDS, i64, min: 1, max: 3600, units: "se
 pub struct HealthCheckSpec {
     pub enable: Located<bool>,
     #[confval(default = 3)]
-    pub failure_threshold: Located<HclInt>,
+    pub failure_threshold: Located<i64>,
     #[confval(default = 10)]
-    pub unhealthy_cooldown_seconds: Located<HclInt>,
+    pub unhealthy_cooldown_seconds: Located<i64>,
 }
 
 impl Default for HealthCheckSpec {

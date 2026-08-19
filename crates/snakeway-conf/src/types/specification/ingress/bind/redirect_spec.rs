@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use crate::validation::validator::is_valid_port;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -8,11 +7,11 @@ range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 #[derive(Debug, Serialize, Clone, confval::Spec)]
 pub struct RedirectSpec {
-    pub port: Located<HclInt>,
-    pub status: Located<HclInt>,
+    pub port: Located<i64>,
+    pub status: Located<i64>,
 }
 
-pub(crate) fn report_invalid_port(port: &Located<HclInt>, report: &mut Report) {
+pub(crate) fn report_invalid_port(port: &Located<i64>, report: &mut Report) {
     report
         .error(format!("invalid port: {}", port.value))
         .at(port.span)

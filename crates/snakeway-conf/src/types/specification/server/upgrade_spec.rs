@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::diagnostic::Report;
 use confval::prelude::{Located, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -14,7 +13,7 @@ pub struct UpgradeSpec {
 
     /// Maximum number of retries when connecting/accepting on the upgrade socket.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_retries: Option<Located<HclInt>>,
+    pub max_retries: Option<Located<i64>>,
 }
 
 impl Validate for UpgradeSpec {

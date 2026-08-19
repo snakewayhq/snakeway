@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::diagnostic::Report;
 use confval::prelude::{Located, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -13,7 +12,7 @@ pub struct PerformanceSpec {
 
     /// Number of parallel accept tasks per listener.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parallel_accepts_per_listener: Option<Located<HclInt>>,
+    pub parallel_accepts_per_listener: Option<Located<i64>>,
 }
 
 impl Default for PerformanceSpec {

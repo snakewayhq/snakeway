@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
@@ -15,11 +14,11 @@ pub struct WasmSpec {
     /// This sizes the wasmtime instance pool.
     /// Requests beyond this limit fail according to the device `fail_policy`.
     #[confval(default = 512)]
-    pub max_concurrent_executions: Located<HclInt>,
+    pub max_concurrent_executions: Located<i64>,
 
     /// Maximum linear memory, in bytes, that a single WASM device execution may use.
     #[confval(default = 67108864)] // 64 MiB
-    pub max_memory_bytes: Located<HclInt>,
+    pub max_memory_bytes: Located<i64>,
 }
 
 impl Default for WasmSpec {

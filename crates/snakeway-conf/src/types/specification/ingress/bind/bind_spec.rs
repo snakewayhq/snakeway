@@ -1,8 +1,8 @@
 use super::redirect_spec::report_invalid_port;
 use crate::resolution::ResolveError;
 use crate::types::{
-    BindInterfaceSpec, ConnectionRateLimitingFilterSpec, HclInt, Http2Spec,
-    NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
+    BindInterfaceSpec, ConnectionRateLimitingFilterSpec, Http2Spec, NetworkConnectionFilterSpec,
+    RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct BindSpec {
     pub interface: Located<String>,
-    pub port: Located<HclInt>,
+    pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub tls: Option<Located<TlsTerminationSpec>>,

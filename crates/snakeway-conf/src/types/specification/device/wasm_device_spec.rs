@@ -1,4 +1,4 @@
-use crate::types::{HclInt, WasmDeviceFailPolicy};
+use crate::types::WasmDeviceFailPolicy;
 use crate::validation::validator::require_existing_file;
 use confval::format::{
     Field, FieldKind, Fields, FieldsBuilder, FromFields, Scalar, ToFields, Value, ValueKind, Walk,
@@ -6,6 +6,7 @@ use confval::format::{
     report_missing_field, report_unknown_field,
 };
 use confval::prelude::{KeywordSet, Located, Report, Validate, ValidateNested};
+use confval::schema::{Constraint, ScalarType, Schema, SchemaField, SchemaType, ToSchema};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -36,10 +37,10 @@ pub struct WasmDeviceSpec {
     pub fail_policy: Located<String>,
 
     /// Per-hook epoch deadline in milliseconds.
-    pub timeout_ms: Located<HclInt>,
+    pub timeout_ms: Located<i64>,
 
     /// Max body buffer bytes. 0 = streaming.
-    pub body_buffer_max: Located<HclInt>,
+    pub body_buffer_max: Located<i64>,
 
     /// Arbitrary key-value config passed to the guest via host.config-get.
     pub config: HashMap<String, String>,
@@ -219,6 +220,97 @@ impl ToFields for WasmDeviceSpec {
 
     fn to_source_fields(&self) -> Fields {
         self.build(Walk::Source)
+    }
+}
+
+fn range_constraint_schema(range: &RangeConstraint<i64>) -> Constraint {
+    Constraint::Range {
+        min: range.min.to_string(),
+        max: range.max.to_string(),
+        units: range.units,
+        help: range.help,
+    }
+}
+
+impl ToSchema for WasmDeviceSpec {
+    fn schema() -> Schema {
+        Schema::new(
+            None,
+            vec![
+                SchemaField::new(
+                    "name".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::String,
+                        constraint: None,
+                    },
+                )
+                .required(),
+                SchemaField::new(
+                    "enable".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Bool,
+                        constraint: None,
+                    },
+                )
+                .required(),
+                SchemaField::new(
+                    "path".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Path,
+                        constraint: None,
+                    },
+                )
+                .required(),
+                SchemaField::new(
+                    "fail_policy".to_string(),
+                    Some(
+                        "Behavior on guest trap, timeout, or load error: \"open\" or \"closed\"."
+                            .to_string(),
+                    ),
+                    SchemaType::Scalar {
+                        leaf: ScalarType::String,
+                        constraint: Some(Constraint::Keywords(&WasmDeviceFailPolicy::KEYWORDS)),
+                    },
+                )
+                .required(),
+                SchemaField::new(
+                    "timeout_ms".to_string(),
+                    Some("Per-hook epoch deadline in milliseconds.".to_string()),
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Int,
+                        constraint: Some(range_constraint_schema(&TIMEOUT_MS)),
+                    },
+                )
+                .with_default()
+                .with_default_text("5".to_string()),
+                SchemaField::new(
+                    "body_buffer_max".to_string(),
+                    Some("Max body buffer bytes. 0 = streaming.".to_string()),
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Int,
+                        constraint: Some(range_constraint_schema(&BODY_BUFFER_MAX)),
+                    },
+                )
+                .with_default()
+                .with_default_text("0".to_string()),
+                SchemaField::new(
+                    "config".to_string(),
+                    Some(
+                        "Arbitrary key-value config passed to the guest via host.config-get."
+                            .to_string(),
+                    ),
+                    SchemaType::StringMap,
+                ),
+                SchemaField::new(
+                    "hooks".to_string(),
+                    Some("Lifecycle hooks this device implements.".to_string()),
+                    SchemaType::StringList,
+                ),
+            ],
+        )
     }
 }
 

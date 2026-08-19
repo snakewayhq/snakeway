@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::diagnostic::Report;
 use confval::prelude::{Located, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -11,11 +10,11 @@ range_constraint!(FORCE_TIMEOUT_SECONDS, i64, min: 1, max: 300, units: "seconds"
 pub struct ShutdownSpec {
     /// How long active connections are allowed to finish after a shutdown signal.
     #[confval(default = 10)]
-    pub drain_seconds: Option<Located<HclInt>>,
+    pub drain_seconds: Option<Located<i64>>,
 
     /// Hard ceiling on total shutdown time.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub force_timeout_seconds: Option<Located<HclInt>>,
+    pub force_timeout_seconds: Option<Located<i64>>,
 }
 
 impl Default for ShutdownSpec {

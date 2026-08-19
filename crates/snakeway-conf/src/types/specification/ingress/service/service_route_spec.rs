@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
@@ -12,7 +11,7 @@ pub struct ServiceRouteSpec {
     #[confval(default)]
     pub enable_websocket: Located<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ws_max_connections: Option<Located<HclInt>>,
+    pub ws_max_connections: Option<Located<i64>>,
 }
 
 /// The "route has no hosts" rule reports at the route's enclosing span, which

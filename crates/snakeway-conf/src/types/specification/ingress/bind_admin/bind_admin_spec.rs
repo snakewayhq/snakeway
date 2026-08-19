@@ -1,7 +1,7 @@
 use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing};
 use crate::resolution::ResolveError;
 use crate::types::specification::ingress::bind::report_invalid_port;
-use crate::types::{BindInterfaceSpec, HclInt, TlsTerminationSpec};
+use crate::types::{BindInterfaceSpec, TlsTerminationSpec};
 use crate::validation::ConfigError;
 use crate::validation::validator::is_valid_port;
 use confval::prelude::{Located, Report, Validate};
@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct BindAdminSpec {
     pub interface: Located<String>,
-    pub port: Located<HclInt>,
+    pub port: Located<i64>,
     #[confval(nested)]
     pub tls: Located<TlsTerminationSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]

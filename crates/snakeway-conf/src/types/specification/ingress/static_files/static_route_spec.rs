@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::pipeline::Validate;
 use confval::prelude::{Located, Report};
 use confval::{RangeConstraint, range_constraint};
@@ -28,7 +27,7 @@ pub struct StaticRouteSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<Located<String>>,
     pub directory_listing: Located<bool>,
-    pub max_file_size: Located<HclInt>,
+    pub max_file_size: Located<i64>,
     #[confval(nested)]
     pub compression: Located<CompressionOptsSpec>,
     #[confval(nested)]
@@ -79,11 +78,11 @@ impl Validate for StaticRouteSpec {
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct CompressionOptsSpec {
     #[confval(default = 256 * 1024)]
-    pub small_file_threshold: Located<HclInt>,
+    pub small_file_threshold: Located<i64>,
     #[confval(default = 1024)]
-    pub min_gzip_size: Located<HclInt>,
+    pub min_gzip_size: Located<i64>,
     #[confval(default = 4 * 1024)]
-    pub min_brotli_size: Located<HclInt>,
+    pub min_brotli_size: Located<i64>,
     #[confval(default = true)]
     pub enable_gzip: Located<bool>,
     #[confval(default = true)]
@@ -117,7 +116,7 @@ impl Validate for CompressionOptsSpec {
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct CachePolicySpec {
     #[confval(default = 3600)]
-    pub max_age_seconds: Located<HclInt>,
+    pub max_age_seconds: Located<i64>,
     #[confval(default = true)]
     pub public: Located<bool>,
     #[confval(default)]

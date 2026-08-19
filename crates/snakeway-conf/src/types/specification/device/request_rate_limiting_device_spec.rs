@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use crate::validation::validator::validate_device_paths;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
@@ -10,8 +9,8 @@ range_constraint!(WINDOW_SECONDS, i64, min: 1, max: 60, units: "seconds");
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct RequestRateLimitingDeviceSpec {
     pub enable: Located<bool>,
-    pub max_requests_per_second: Located<HclInt>,
-    pub window_seconds: Located<HclInt>,
+    pub max_requests_per_second: Located<i64>,
+    pub window_seconds: Located<i64>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
     #[confval(default)]

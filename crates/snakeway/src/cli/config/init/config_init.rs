@@ -146,6 +146,7 @@ pub(crate) enum ConfigInitTemplate {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "dev-templates")]
     use snakeway_conf::validation::ConfigError;
     use snakeway_conf::{load_config, load_spec_files};
 

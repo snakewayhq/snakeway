@@ -5,6 +5,7 @@ use confval::format::{
     report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
+use confval::schema::{Constraint, ScalarType, Schema, SchemaField, SchemaType, ToSchema};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -128,6 +129,55 @@ impl ToFields for TlsTerminationSpec {
 
     fn to_source_fields(&self) -> Fields {
         self.build(Walk::Source)
+    }
+}
+
+/// The schema flattens both variants into one level, because the IR has no
+/// variant node. `mode` selects the variant, so the per-variant fields are
+/// unrequired here and the handwritten parser enforces which ones apply.
+impl ToSchema for TlsTerminationSpec {
+    fn schema() -> Schema {
+        Schema::new(
+            None,
+            vec![
+                SchemaField::new(
+                    "mode".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::String,
+                        constraint: Some(Constraint::Keywords(&["manual", "acme"])),
+                    },
+                )
+                .required(),
+                SchemaField::new(
+                    "cert".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Path,
+                        constraint: None,
+                    },
+                ),
+                SchemaField::new(
+                    "key".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::Path,
+                        constraint: None,
+                    },
+                ),
+                SchemaField::new("domains".to_string(), None, SchemaType::StringList),
+                SchemaField::new(
+                    "challenge".to_string(),
+                    None,
+                    SchemaType::Scalar {
+                        leaf: ScalarType::String,
+                        constraint: Some(Constraint::Keywords(&AcmeChallenge::KEYWORDS)),
+                    },
+                )
+                .with_default()
+                .with_default_text(AcmeChallenge::Http01.as_str().to_string()),
+            ],
+        )
     }
 }
 

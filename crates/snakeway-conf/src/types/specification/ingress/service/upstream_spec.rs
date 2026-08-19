@@ -1,5 +1,4 @@
 use crate::resolution::ResolveError;
-use crate::types::HclInt;
 use crate::types::specification::ingress::bind::report_invalid_port;
 use crate::validation::validator::{is_valid_hostname, is_valid_port, validate_cert_pem};
 use confval::prelude::{Located, Report, Validate};
@@ -16,13 +15,13 @@ pub struct UpstreamSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sock: Option<Located<String>>,
     #[confval(default = 1)]
-    pub weight: Located<HclInt>,
+    pub weight: Located<i64>,
 }
 
 #[derive(Debug, Serialize, Clone, Default, confval::Spec)]
 pub struct EndpointSpec {
     pub host: Located<String>,
-    pub port: Located<HclInt>,
+    pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub tls: Option<Located<EndpointTlsSpec>>,

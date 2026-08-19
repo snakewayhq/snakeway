@@ -1,4 +1,3 @@
-use crate::types::HclInt;
 use confval::prelude::{Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
@@ -8,8 +7,8 @@ range_constraint!(MAX_CONNECTIONS_PER_SECOND, i64, min: 1, max: 30_000);
 
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct ConnectionRateLimitingFilterSpec {
-    pub max_connections_per_second: Located<HclInt>,
-    pub window_seconds: Located<HclInt>,
+    pub max_connections_per_second: Located<i64>,
+    pub window_seconds: Located<i64>,
 }
 
 impl Validate for ConnectionRateLimitingFilterSpec {

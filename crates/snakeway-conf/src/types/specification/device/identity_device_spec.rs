@@ -1,4 +1,4 @@
-use crate::types::{HclInt, UaEngineKind};
+use crate::types::UaEngineKind;
 use crate::validation::validate_trusted_proxies;
 use crate::validation::validator::{validate_geoip_db_file, validate_ua_parser_regexes_file};
 use confval::prelude::{Located, Report, Validate};
@@ -16,7 +16,7 @@ pub struct IdentityDeviceSpec {
     /// CIDR strings
     pub trusted_proxies: Vec<Located<String>>,
     #[confval(default = 1024)]
-    pub max_x_forwarded_for_length: Located<HclInt>,
+    pub max_x_forwarded_for_length: Located<i64>,
 
     pub enable_geoip: Located<bool>,
 
@@ -34,7 +34,7 @@ pub struct IdentityDeviceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ua_parser_regexes: Option<Located<PathBuf>>,
     #[confval(default = 2048)]
-    pub max_user_agent_length: Located<HclInt>,
+    pub max_user_agent_length: Located<i64>,
 }
 
 impl Default for IdentityDeviceSpec {
