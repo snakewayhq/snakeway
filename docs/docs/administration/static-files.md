@@ -189,6 +189,7 @@ static_files = [
 ```hcl
 services = [
   {
+    name = "api"
     routes = [
       {
         hosts = ["*"]
