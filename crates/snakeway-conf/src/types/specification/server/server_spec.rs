@@ -2,9 +2,17 @@ use crate::types::{
     ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
     UpstreamSettingsSpec, WasmSpec,
 };
+use crate::validation::validate_cert_pem;
+use confval::diagnostic::Report;
+use confval::pipeline::Validate;
 use confval::prelude::Located;
+use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
+use std::ops::ControlFlow;
 use std::path::PathBuf;
+
+range_constraint!(THREADS, i64, min: 1, max: 1024);
+range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
@@ -13,6 +21,7 @@ pub struct ServerSpec {
 
     /// Number of worker threads. When unset, Pingora chooses the value.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(range = THREADS)]
     pub threads: Option<Located<i64>>,
 
     /// Optional pid file path
@@ -30,7 +39,7 @@ pub struct ServerSpec {
     #[confval(nested)]
     pub observability: Option<Located<ObservabilitySpec>>,
 
-    #[confval(default = 30)]
+    #[confval(default = 30, range = DNS_REFRESH_INTERVAL_SECONDS)]
     pub dns_refresh_interval_seconds: Located<i64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -94,6 +103,72 @@ impl ServerSpec {
         self.upstream
             .get_or_insert_with(|| Located::detached(UpstreamSettingsSpec::default()));
         self
+    }
+}
+
+/// Entity-level validation for the server section. Runs after parsing (or
+/// after programmatic construction), so it must not assume a source file
+/// exists; spans come from the `Located` values themselves.
+impl Validate for ServerSpec {
+    fn validate(&self, report: &mut Report) {
+        // Version gate...
+        // An unrecognized version means this config targets a different
+        // schema, so the v1-specific field checks below would be validating
+        // against the wrong rules.
+        // Emit only the version error and stop.
+        // This is intentional: it does not make sense to validate a config of the wrong version.
+        if self.version.value != 1 {
+            report
+                .error(format!("invalid config version: {}", self.version.value))
+                .at(self.version.span)
+                .help(
+                    "This version of Snakeway is not compatible with this config file. \
+                     Please upgrade Snakeway.",
+                )
+                .emit();
+            return;
+        }
+
+        if let Some(pid_file) = &self.pid_file
+            && let Some(parent) = pid_file.value.parent()
+        {
+            if !parent.exists() {
+                report
+                    .error(format!(
+                        "pid file parent directory does not exist: {}",
+                        pid_file.value.display()
+                    ))
+                    .at(pid_file.span)
+                    .emit();
+            } else if !parent.is_dir() {
+                report
+                    .error(format!(
+                        "pid file parent is not a directory: {}",
+                        pid_file.value.display()
+                    ))
+                    .at(pid_file.span)
+                    .emit();
+            }
+        }
+
+        if let Some(ca_file) = &self.ca_file
+            && let Err(e) = validate_cert_pem(&ca_file.value)
+        {
+            report
+                .error(format!("server CA file is invalid: {}", e))
+                .at(ca_file.span)
+                .emit();
+        }
+    }
+
+    /// A config that targets a different schema version is not checked against
+    /// v1 rules, and its nested blocks are not either.
+    fn descend(&self) -> ControlFlow<()> {
+        if self.version.value == 1 {
+            ControlFlow::Continue(())
+        } else {
+            ControlFlow::Break(())
+        }
     }
 }
 
