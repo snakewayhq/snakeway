@@ -20,18 +20,18 @@ fn entrypoint_spec(template: &ConfigInitTemplate) -> EntrypointSpec {
     // An operator opts into a pid file by setting one explicitly.
     // The dev template sets a portable /tmp path below.
     let mut spec = EntrypointSpec {
-        server: ServerSpec {
+        server: Located::detached(ServerSpec {
             threads: Some(Located::detached(8)),
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     #[cfg(not(feature = "dev-templates"))]
     let _ = template;
     #[cfg(feature = "dev-templates")]
     if matches!(template, ConfigInitTemplate::Dev) {
-        spec.server.pid_file = Some(Located::detached(PathBuf::from("/tmp/snakeway.pid")));
-        spec.server.tls_automation = Some(Located::detached(TlsAutomationSpec {
+        spec.server.value.pid_file = Some(Located::detached(PathBuf::from("/tmp/snakeway.pid")));
+        spec.server.value.tls_automation = Some(Located::detached(TlsAutomationSpec {
             acme: Located::detached(AcmeServerSpec {
                 directory_url: Located::detached("https://127.0.0.1:14000/dir".to_string()),
                 data_dir: Located::detached(PathBuf::from("data/acme/orders")),

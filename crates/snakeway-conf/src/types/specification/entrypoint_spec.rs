@@ -2,21 +2,32 @@ use crate::types::{
     IdentityDeviceSpec, NetworkPolicyDeviceSpec, RequestFilterDeviceSpec,
     RequestRateLimitingDeviceSpec, ServerSpec, StructuredLoggingDeviceSpec, WasmDeviceSpec,
 };
-use confval::format::{
-    Field, Fields, FromFields, ToFields, parse_single_struct, report_missing_field,
-    report_unknown_field,
-};
-use confval::prelude::{Located, Report, Span};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 /// Represents the top-level configuration file.
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, confval::Spec)]
 pub struct EntrypointSpec {
-    pub server: ServerSpec,
-    pub include: IncludeSpec,
+    #[confval(nested)]
+    pub server: Located<ServerSpec>,
+    #[confval(nested)]
+    pub include: Located<IncludeSpec>,
 }
 
-/// Represents the include section of the top-level config file.
+impl Default for EntrypointSpec {
+    fn default() -> Self {
+        Self {
+            server: Located::detached(ServerSpec::default()),
+            include: Located::detached(IncludeSpec::default()),
+        }
+    }
+}
+
+impl Validate for EntrypointSpec {
+    fn validate(&self, _report: &mut Report) {}
+}
+
+/// The include section of the top-level config file.
 /// The members are directory paths where sub-configuration files are located.
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct IncludeSpec {
@@ -33,63 +44,8 @@ impl Default for IncludeSpec {
     }
 }
 
-impl FromFields for EntrypointSpec {
-    fn from_fields(fields: &Fields, report: &mut Report) -> Option<Self> {
-        let mut server: Option<Located<ServerSpec>> = None;
-        let mut server_seen: Option<Span> = None;
-        let mut include: Option<Located<IncludeSpec>> = None;
-        let mut include_seen = None;
-
-        for field in fields.iter() {
-            match field.name.as_str() {
-                "server" => {
-                    parse_single_struct(&mut server, &mut server_seen, "server", field, report)
-                }
-                "include" => {
-                    parse_single_struct(&mut include, &mut include_seen, "include", field, report)
-                }
-                _ => report_unknown_field(field, report),
-            }
-        }
-
-        if server_seen.is_none() {
-            report_missing_field("server", fields.enclosing(), report);
-        }
-        if include_seen.is_none() {
-            report_missing_field("include", fields.enclosing(), report);
-        }
-
-        Some(EntrypointSpec {
-            server: server?.value,
-            include: include?.value,
-        })
-    }
-}
-
-/// The write-path counterpart of the handwritten `FromFields`: the two
-/// top-level blocks, in the order an entrypoint file lists them.
-impl ToFields for EntrypointSpec {
-    fn to_fields(&self) -> Fields {
-        Fields::detached(vec![
-            Field::detached_block("server", self.server.to_fields()),
-            Field::detached_block("include", self.include.to_fields()),
-        ])
-    }
-
-    /// Both blocks are required by the parse, so the source wrote both.
-    fn to_source_fields(&self) -> Fields {
-        Fields::detached(vec![
-            Field::detached_block("server", self.server.to_source_fields()),
-            Field::detached_block("include", self.include.to_source_fields()),
-        ])
-    }
-
-    fn to_template(&self) -> Fields {
-        Fields::detached(vec![
-            Field::detached_block("server", self.server.to_template()),
-            Field::detached_block("include", self.include.to_template()),
-        ])
-    }
+impl Validate for IncludeSpec {
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
@@ -119,6 +75,7 @@ pub struct DevicesFile {
 mod tests {
     use super::*;
     use confval::format::hcl::{emit_hcl, parse_hcl};
+    use confval::format::{FromFields, ToFields};
     use confval::prelude::SourceMap;
 
     fn parse_devices(input: &str) -> (Report, Option<DevicesFile>) {

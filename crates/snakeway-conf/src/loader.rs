@@ -7,7 +7,7 @@ use crate::types::{
 };
 use crate::validation::{ConfigError, validate_spec};
 use confval::format::FromFields;
-use confval::format::hcl::{parse_hcl, parse_hcl_fields};
+use confval::format::hcl::parse_hcl_fields;
 use confval::pipeline::check_references;
 use confval::prelude::{Located, Lower, Report, SourceMap, Span};
 use confval::schema::ToSchema;
@@ -114,7 +114,13 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     // operator sees parse and validation problems in one pass; the error
     // gate before lowering stops the pipeline either way. Only a tree that
     // could not be built at all stops here.
-    let entry: Option<EntrypointSpec> = parse_hcl(&sources, source_id, &mut report);
+    let entry_fields = parse_hcl_fields(&sources, source_id, &mut report);
+    let entry = entry_fields
+        .as_ref()
+        .and_then(|fields| EntrypointSpec::from_fields(fields, &mut report));
+    if let Some(fields) = &entry_fields {
+        check_references(fields, &EntrypointSpec::schema(), &mut report);
+    }
     let Some(entry) = entry else {
         debug_assert!(report.has_errors());
         return Err(ConfigError::SemanticValidationFailed { report, sources });
@@ -123,8 +129,8 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
     //--------------------------------------------------------------------------
     // Discover included files (hard fail)
     //--------------------------------------------------------------------------
-    let device_files = discover(root, &entry.include.devices.value)?;
-    let ingress_files = discover(root, &entry.include.ingresses.value)?;
+    let device_files = discover(root, &entry.include.value.devices.value)?;
+    let ingress_files = discover(root, &entry.include.value.ingresses.value)?;
 
     //--------------------------------------------------------------------------
     // Parse devices (span-first, same continue-on-Some semantics as ingress)
@@ -184,7 +190,13 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
         return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
 
-    Ok((sources, report, entry.server, parsed_devices, ingresses))
+    Ok((
+        sources,
+        report,
+        entry.server.value,
+        parsed_devices,
+        ingresses,
+    ))
 }
 
 #[cfg(test)]
