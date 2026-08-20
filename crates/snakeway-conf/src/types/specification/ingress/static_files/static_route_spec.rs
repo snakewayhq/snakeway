@@ -75,6 +75,7 @@ impl Validate for StaticRouteSpec {
 }
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct CompressionOptsSpec {
     #[confval(default = 256 * 1024, range = SMALL_FILE_THRESHOLD)]
     pub small_file_threshold: Located<i64>,
@@ -88,23 +89,12 @@ pub struct CompressionOptsSpec {
     pub enable_brotli: Located<bool>,
 }
 
-impl Default for CompressionOptsSpec {
-    fn default() -> Self {
-        Self {
-            small_file_threshold: Located::detached(256 * 1024), // 256 KiB
-            min_gzip_size: Located::detached(1024),              // 1 KiB
-            min_brotli_size: Located::detached(4 * 1024),        // 4 KiB
-            enable_gzip: Located::detached(true),
-            enable_brotli: Located::detached(true),
-        }
-    }
-}
-
 impl Validate for CompressionOptsSpec {
     fn validate(&self, _report: &mut Report) {}
 }
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct CachePolicySpec {
     #[confval(default = 3600, range = MAX_AGE_SECONDS)]
     pub max_age_seconds: Located<i64>,
@@ -112,16 +102,6 @@ pub struct CachePolicySpec {
     pub public: Located<bool>,
     #[confval(default)]
     pub immutable: Located<bool>,
-}
-
-impl Default for CachePolicySpec {
-    fn default() -> Self {
-        Self {
-            max_age_seconds: Located::detached(3600),
-            public: Located::detached(true),
-            immutable: Located::detached(false),
-        }
-    }
 }
 
 impl Validate for CachePolicySpec {

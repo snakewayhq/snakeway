@@ -8,6 +8,7 @@ range_constraint!(HALF_OPEN_MAX_REQUESTS, i64, min: 1, max: 10_000);
 range_constraint!(SUCCESS_THRESHOLD, i64, min: 1, max: 10_000);
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct CircuitBreakerSpec {
     /// Enable circuit breaking auto recovery for this service.
     #[confval(default)]
@@ -32,19 +33,6 @@ pub struct CircuitBreakerSpec {
     /// Whether HTTP 5xx responses count as failures for the circuit.
     #[confval(default = true)]
     pub count_http_5xx_as_failure: Located<bool>,
-}
-
-impl Default for CircuitBreakerSpec {
-    fn default() -> Self {
-        Self {
-            enable_auto_recovery: Located::detached(false),
-            failure_threshold: Located::detached(5),
-            open_duration_milliseconds: Located::detached(10_000),
-            half_open_max_requests: Located::detached(1),
-            success_threshold: Located::detached(2),
-            count_http_5xx_as_failure: Located::detached(true),
-        }
-    }
 }
 
 impl Validate for CircuitBreakerSpec {

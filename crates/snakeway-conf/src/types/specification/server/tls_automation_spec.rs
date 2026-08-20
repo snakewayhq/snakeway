@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 range_constraint!(RENEW_WITHIN_DAYS, i64, min: 7, max: 30, units: "days");
 
-#[derive(Debug, Serialize, Default, confval::Spec)]
+#[derive(Debug, Serialize, confval::Spec)]
 pub struct TlsAutomationSpec {
     #[confval(nested)]
     pub acme: Located<AcmeServerSpec>,

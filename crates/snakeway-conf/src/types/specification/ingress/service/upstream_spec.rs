@@ -7,7 +7,8 @@ use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Default, confval::Spec)]
+#[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct UpstreamSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]

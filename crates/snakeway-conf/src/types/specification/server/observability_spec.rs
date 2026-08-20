@@ -15,7 +15,7 @@ impl Validate for ObservabilitySpec {
     fn validate(&self, _report: &mut Report) {}
 }
 
-#[derive(Debug, Serialize, Default, confval::Spec)]
+#[derive(Debug, Serialize, confval::Spec)]
 pub struct OtelSpec {
     pub enable: Located<bool>,
     pub endpoint: Located<String>,
