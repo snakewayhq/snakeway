@@ -8,7 +8,6 @@ use confval::pipeline::Validate;
 use confval::prelude::Located;
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
-use std::ops::ControlFlow;
 use std::path::PathBuf;
 
 range_constraint!(THREADS, i64, min: 1, max: 1024);
@@ -111,24 +110,6 @@ impl ServerSpec {
 /// exists; spans come from the `Located` values themselves.
 impl Validate for ServerSpec {
     fn validate(&self, report: &mut Report) {
-        // Version gate...
-        // An unrecognized version means this config targets a different
-        // schema, so the v1-specific field checks below would be validating
-        // against the wrong rules.
-        // Emit only the version error and stop.
-        // This is intentional: it does not make sense to validate a config of the wrong version.
-        if self.version.value != 1 {
-            report
-                .error(format!("invalid config version: {}", self.version.value))
-                .at(self.version.span)
-                .help(
-                    "This version of Snakeway is not compatible with this config file. \
-                     Please upgrade Snakeway.",
-                )
-                .emit();
-            return;
-        }
-
         if let Some(pid_file) = &self.pid_file
             && let Some(parent) = pid_file.value.parent()
         {
@@ -158,16 +139,6 @@ impl Validate for ServerSpec {
                 .error(format!("server CA file is invalid: {}", e))
                 .at(ca_file.span)
                 .emit();
-        }
-    }
-
-    /// A config that targets a different schema version is not checked against
-    /// v1 rules, and its nested blocks are not either.
-    fn descend(&self) -> ControlFlow<()> {
-        if self.version.value == 1 {
-            ControlFlow::Continue(())
-        } else {
-            ControlFlow::Break(())
         }
     }
 }
@@ -396,27 +367,6 @@ observability {
     }
 
     #[test]
-    fn validate_server_version_invalid() {
-        // Arrange
-        let mut report = Report::new();
-        let server = ServerSpec {
-            version: Located::detached(2),
-            ..Default::default()
-        };
-
-        // Act
-        server.validate_all(&mut report);
-
-        // Assert
-        assert!(report.has_issues());
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("invalid config version: 2")
-        );
-    }
-
-    #[test]
     fn validate_upstream_timeout_out_of_range() {
         // Arrange
         let mut report = Report::new();
@@ -509,35 +459,6 @@ observability {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("max_memory_bytes"))
-        );
-    }
-
-    #[test]
-    fn validate_server_bad_version_suppresses_other_errors() {
-        // The version gate is intentional: a bad version reports only the
-        // version error and skips the v1-specific field checks, even when a
-        // field is otherwise invalid (here, threads far out of range). If this
-        // ever reports two errors, the early return in ServerSpec::validate was
-        // removed; that is a deliberate design choice, not a bug to "fix".
-        let mut report = Report::new();
-        let server = ServerSpec {
-            version: Located::detached(2),
-            threads: Some(Located::detached(99_999)),
-            ..Default::default()
-        };
-
-        server.validate_all(&mut report);
-
-        assert_eq!(
-            report.issues().len(),
-            1,
-            "expected only the version error, got: {:?}",
-            report.issues()
-        );
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("invalid config version: 2")
         );
     }
 
