@@ -1,0 +1,21 @@
+crates/snakeway-conf/src/validation/validate.rs
+  s_da4d793206de9d::t_8313b4256d2c37 6-10,17-28,31-33,35-36
+  s_da4d793206de9d::t_182721f2cf9f28 71-100
+  s_da4d793206de9d::t_83d750b646e5cb 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4463c0df5984c1cceeddc918be20152cd43e6349",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
