@@ -1,0 +1,14 @@
+crates/snakeway-conf/src/types/specification/server/server_spec.rs
+  h_4fc023ad4863a8 5-7,9,11,14-16,24,42,109-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f1557403a6e54633c259a9ec10a5ed4c96d82d88",
+  "prompts": {},
+  "humans": {
+    "h_4fc023ad4863a8": {
+      "author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
