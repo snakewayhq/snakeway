@@ -1,0 +1,33 @@
+crates/snakeway-conf/src/types/specification/server/shutdown_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 10
+crates/snakeway-conf/src/types/specification/server/performance_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 9
+crates/snakeway-conf/src/types/specification/server/observability_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 18
+crates/snakeway-conf/src/types/specification/ingress/service/upstream_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 10-11
+crates/snakeway-conf/src/types/specification/ingress/service/circuit_breaker_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 11
+crates/snakeway-conf/src/types/specification/server/tls_automation_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 14
+crates/snakeway-conf/src/types/specification/server/wasm_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 12
+crates/snakeway-conf/src/types/specification/ingress/static_files/static_route_spec.rs
+  s_da4d793206de9d::t_60e86cc355ab36 78,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ea8652075e68ebe47283c2976a8a6243c025b5cb",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
