@@ -177,19 +177,16 @@ impl ToSchema for CertStoreSpec {
                 SchemaField::new(
                     "type".to_string(),
                     None,
-                    SchemaType::Scalar {
-                        leaf: ScalarType::String,
-                        constraint: Some(Constraint::Keywords(&["memory", "filesystem"])),
-                    },
+                    SchemaType::scalar(
+                        ScalarType::String,
+                        Some(Constraint::keywords(&["memory", "filesystem"])),
+                    ),
                 )
                 .required(),
                 SchemaField::new(
                     "cert_dir".to_string(),
                     None,
-                    SchemaType::Scalar {
-                        leaf: ScalarType::Path,
-                        constraint: None,
-                    },
+                    SchemaType::scalar(ScalarType::Path, None),
                 ),
             ],
         )

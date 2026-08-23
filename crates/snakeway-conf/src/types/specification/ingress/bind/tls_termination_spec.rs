@@ -143,36 +143,30 @@ impl ToSchema for TlsTerminationSpec {
                 SchemaField::new(
                     "mode".to_string(),
                     None,
-                    SchemaType::Scalar {
-                        leaf: ScalarType::String,
-                        constraint: Some(Constraint::Keywords(&["manual", "acme"])),
-                    },
+                    SchemaType::scalar(
+                        ScalarType::String,
+                        Some(Constraint::keywords(&["manual", "acme"])),
+                    ),
                 )
                 .required(),
                 SchemaField::new(
                     "cert".to_string(),
                     None,
-                    SchemaType::Scalar {
-                        leaf: ScalarType::Path,
-                        constraint: None,
-                    },
+                    SchemaType::scalar(ScalarType::Path, None),
                 ),
                 SchemaField::new(
                     "key".to_string(),
                     None,
-                    SchemaType::Scalar {
-                        leaf: ScalarType::Path,
-                        constraint: None,
-                    },
+                    SchemaType::scalar(ScalarType::Path, None),
                 ),
-                SchemaField::new("domains".to_string(), None, SchemaType::StringList),
+                SchemaField::new("domains".to_string(), None, SchemaType::string_list(None)),
                 SchemaField::new(
                     "challenge".to_string(),
                     None,
-                    SchemaType::Scalar {
-                        leaf: ScalarType::String,
-                        constraint: Some(Constraint::Keywords(&AcmeChallenge::KEYWORDS)),
-                    },
+                    SchemaType::scalar(
+                        ScalarType::String,
+                        Some(Constraint::keywords(&AcmeChallenge::KEYWORDS)),
+                    ),
                 )
                 .with_default()
                 .with_default_text(AcmeChallenge::Http01.as_str().to_string()),

@@ -48,6 +48,11 @@ impl Validate for IncludeSpec {
     fn validate(&self, _report: &mut Report) {}
 }
 
+/// The per-device rules live on each device type.
+impl Validate for DevicesFile {
+    fn validate(&self, _report: &mut Report) {}
+}
+
 #[derive(Debug, Serialize, Default, confval::Spec)]
 #[serde(rename_all = "snake_case")]
 pub struct DevicesFile {
