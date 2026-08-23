@@ -1,0 +1,25 @@
+crates/snakeway-conf/src/types/specification/server/tls_automation_spec.rs
+  s_da4d793206de9d::t_d4479d352d0f49 180-183,189
+crates/snakeway-conf/src/types/specification/device/structured_logging_device_spec.rs
+  s_da4d793206de9d::t_2876c994066baf 26,30,34,55,139,166,172
+crates/snakeway-conf/src/types/specification/ingress/bind/tls_termination_spec.rs
+  s_da4d793206de9d::t_d4479d352d0f49 146-149,155,160,162,166-169
+crates/snakeway-conf/src/types/specification/entrypoint_spec.rs
+  s_da4d793206de9d::t_97d0b55fa85a7f 51-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "bfb4b1dd766c77867754f022b5b537cc0fb36a53",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
