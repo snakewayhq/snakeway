@@ -1,0 +1,22 @@
+docs/docs/administration/editor-support.md
+  s_da4d793206de9d::t_c15846bd40b68e 32-43
+  s_da4d793206de9d::t_370b8aedc84fc7 44-61,63-64,68-69
+  s_da4d793206de9d::t_9f3bff608ec0f5 1-31,62,67,70-83
+  s_da4d793206de9d::t_91415e687791a9 65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "7c9d530d8a97225763c315a1b4133ed5b2107635",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
