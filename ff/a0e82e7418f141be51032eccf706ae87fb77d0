@@ -1,0 +1,30 @@
+crates/snakeway/Cargo.toml
+  s_da4d793206de9d::t_fa83b503f91625 21-22
+crates/snakeway/src/cli/lsp.rs
+  s_da4d793206de9d::t_5b333697b6de59 51
+  s_da4d793206de9d::t_bc64b7565e40dc 1-50,52-204
+crates/snakeway/src/cli/mod.rs
+  s_da4d793206de9d::t_09641d839c3a62 4
+crates/snakeway/tests/lsp.rs
+  s_da4d793206de9d::t_91b25a4f601cc4 45-50,75
+  s_da4d793206de9d::t_c3a4bc68fe1c99 1-44,51-74,76-127
+crates/snakeway/src/cli/bootstrap.rs
+  s_da4d793206de9d::t_09641d839c3a62 5,48-50,149-155
+  s_da4d793206de9d::t_a87eb1ecb76f01 156-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ffa0e82e7418f141be51032eccf706ae87fb77d0",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
