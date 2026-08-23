@@ -1,0 +1,22 @@
+Cargo.toml
+  s_da4d793206de9d::t_38e319173ed902 81
+  s_da4d793206de9d::t_fa83b503f91625 82
+Cargo.lock
+  s_da4d793206de9d::t_978a223dc9ef43 669,671,682,684,688-702,1418-1426,2405-2414,2468-2493,2674-2679,4183-4193,4331,4333,4727-4732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "29f03ed10558ab10b7a8dbb5a9ef328334bb0ad0",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
