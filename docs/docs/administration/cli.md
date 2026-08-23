@@ -15,6 +15,7 @@ The available commands:
 | reload      | Reload a running Snakeway instance (SIGHUP) |
 | upgrade     | Trigger a zero-drop upgrade (SIGQUIT)       |
 | logs        | Format logs from standard out               |
+| lsp         | Serve the config language server over stdio |
 | wasm-device | Debug a WASM device in isolation            |
 
 ## config init
