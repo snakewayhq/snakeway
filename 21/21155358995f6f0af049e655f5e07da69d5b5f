@@ -1,0 +1,19 @@
+docs/releases/v0_17_0.md
+  s_da4d793206de9d::t_28da2cb2a37173 3,5,10-12,18-20,24-28,30,32-38,42,45-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2121155358995f6f0af049e655f5e07da69d5b5f",
+  "prompts": {},
+  "sessions": {
+    "s_da4d793206de9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6a89f4c-ee24-48ac-a0a6-551d51a0fb6a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ethan Hann <ethanhann@gmail.com>"
+    }
+  }
+}
