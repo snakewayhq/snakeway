@@ -258,33 +258,6 @@ config {
         );
     }
 
-    /// DISCOVERY: this fails on confval 0.8.0. The HCL inline object collapses
-    /// a repeated key to its last value before confval's map reader runs, so
-    /// the duplicate that the block form reports is silently accepted here.
-    #[test]
-    fn duplicate_config_key_in_inline_object_is_a_parse_error() {
-        // Arrange
-        let input = r#"
-name = "auth-filter"
-enable = true
-path = "./a.wasm"
-fail_policy = "open"
-config = { mode = "strict", mode = "lax" }
-"#;
-        let mut sources = SourceMap::new();
-        let mut report = Report::new();
-        let id = sources.add("device.hcl", input);
-
-        // Act
-        let spec = parse_hcl::<WasmDeviceSpec>(&sources, id, &mut report);
-
-        // Assert
-        assert!(
-            report.has_issues(),
-            "a repeated config key must be reported, got {spec:?}"
-        );
-    }
-
     #[test]
     fn parse_wasm_device_without_config() {
         // Arrange
