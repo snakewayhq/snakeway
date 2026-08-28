@@ -1,5 +1,4 @@
-use crate::validation::validator::validate_device_paths;
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{AbsolutePath, Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -15,7 +14,7 @@ pub struct RequestRateLimitingDeviceSpec {
     pub window_seconds: Located<i64>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
-    #[confval(default)]
+    #[confval(default, format = AbsolutePath)]
     pub paths: Vec<Located<String>>,
 }
 
@@ -33,9 +32,7 @@ impl Default for RequestRateLimitingDeviceSpec {
 }
 
 impl Validate for RequestRateLimitingDeviceSpec {
-    fn validate(&self, report: &mut Report) {
-        validate_device_paths(&self.paths, report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]

@@ -1,7 +1,5 @@
-use crate::validation::validator::{
-    validate_device_paths, validate_http_header_name, validate_http_method,
-};
-use confval::prelude::{Located, Report, Validate};
+use crate::validation::validator::{validate_http_header_name, validate_http_method};
+use confval::prelude::{AbsolutePath, Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 
@@ -50,7 +48,7 @@ pub struct RequestFilterDeviceSpec {
     pub deny_status: Option<Located<i64>>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
-    #[confval(default)]
+    #[confval(default, format = AbsolutePath)]
     pub paths: Vec<Located<String>>,
 }
 
@@ -94,8 +92,6 @@ impl Validate for RequestFilterDeviceSpec {
         for header in &self.required_headers {
             validate_http_header_name(header, report);
         }
-
-        validate_device_paths(&self.paths, report);
     }
 }
 
