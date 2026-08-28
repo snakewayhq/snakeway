@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServiceSpec {
-    /// The service's unique name across the whole configuration.
+    /// The service's unique name across all ingress files.
     #[confval(label)]
     pub name: Located<String>,
     #[confval(default = "failover".to_string(), keywords = LoadBalancingStrategy)]
