@@ -1,31 +1,20 @@
-use crate::validation::validator::is_valid_port;
 use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::range_constraint;
 use serde::Serialize;
 
+range_constraint!(PORT, i64, min: 1, max: 65535);
 range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 #[derive(Debug, Serialize, Clone, confval::Spec)]
 pub struct RedirectSpec {
+    #[confval(range = PORT)]
     pub port: Located<i64>,
     #[confval(range = RESPONSE_CODE)]
     pub status: Located<i64>,
 }
 
-pub(crate) fn report_invalid_port(port: &Located<i64>, report: &mut Report) {
-    report
-        .error(format!("invalid port: {}", port.value))
-        .at(port.span)
-        .help("ports must be in the range 1–65535")
-        .emit();
-}
-
 impl Validate for RedirectSpec {
-    fn validate(&self, report: &mut Report) {
-        if !is_valid_port(self.port.value) {
-            report_invalid_port(&self.port, report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -93,9 +82,9 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
-        assert_eq!(report.issues()[0].message, "invalid port: 0");
+        assert_eq!(report.issues()[0].message, "port must be at least 1");
     }
 }

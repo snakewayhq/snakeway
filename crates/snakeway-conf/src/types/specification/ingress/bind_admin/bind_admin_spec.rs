@@ -1,16 +1,18 @@
 use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing};
 use crate::resolution::ResolveError;
-use crate::types::specification::ingress::bind::report_invalid_port;
 use crate::types::{BindInterfaceSpec, TlsTerminationSpec};
 use crate::validation::ConfigError;
-use crate::validation::validator::is_valid_port;
 use confval::prelude::{Located, Report, Validate};
+use confval::range_constraint;
 use serde::Serialize;
 use std::net::SocketAddr;
+
+range_constraint!(PORT, i64, min: 1, max: 65535);
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct BindAdminSpec {
     pub interface: Located<String>,
+    #[confval[range = PORT]]
     pub port: Located<i64>,
     #[confval(nested)]
     pub tls: Located<TlsTerminationSpec>,
@@ -34,10 +36,6 @@ impl BindAdminSpec {
 
 impl Validate for BindAdminSpec {
     fn validate(&self, report: &mut Report) {
-        if !is_valid_port(self.port.value) {
-            report_invalid_port(&self.port, report);
-        }
-
         match &self.tls.value {
             TlsTerminationSpec::Manual { .. } => {}
             TlsTerminationSpec::Acme { .. } => {

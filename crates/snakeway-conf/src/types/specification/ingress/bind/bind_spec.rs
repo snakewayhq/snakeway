@@ -1,18 +1,21 @@
-use super::redirect_spec::report_invalid_port;
 use crate::resolution::ResolveError;
 use crate::types::{
     BindInterfaceSpec, ConnectionRateLimitingFilterSpec, Http2Spec, NetworkConnectionFilterSpec,
     RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
-use crate::validation::validator::is_valid_port;
 use confval::prelude::{Located, Report, Validate};
+use confval::range_constraint;
 use serde::Serialize;
 use std::net::SocketAddr;
+
+range_constraint!(PORT, i64, min: 1, max: 65535);
+range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct BindSpec {
     pub interface: Located<String>,
+    #[confval[range = PORT]]
     pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
@@ -48,11 +51,6 @@ impl BindSpec {
 
 impl Validate for BindSpec {
     fn validate(&self, report: &mut Report) {
-        // Port validation.
-        if !is_valid_port(self.port.value) {
-            report_invalid_port(&self.port, report);
-        }
-
         // HTTP/2 requires TLS.
         if self.enable_http2.value && self.tls.is_none() {
             report
@@ -120,7 +118,7 @@ mod tests {
         };
 
         // Act
-        bind.validate(&mut report);
+        bind.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -128,7 +126,7 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|e| e.message.contains("invalid port: 0"))
+                .any(|e| e.message.contains("port must be at least 1"))
         );
     }
 

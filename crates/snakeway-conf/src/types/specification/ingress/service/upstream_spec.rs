@@ -1,11 +1,13 @@
 use crate::resolution::ResolveError;
-use crate::types::specification::ingress::bind::report_invalid_port;
-use crate::validation::validator::{is_valid_hostname, is_valid_port, validate_cert_pem};
+use crate::validation::validator::{is_valid_hostname, validate_cert_pem};
 use confval::prelude::{Located, Report, Validate};
+use confval::range_constraint;
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
+
+range_constraint!(PORT, i64, min: 1, max: 65535);
 
 #[derive(Debug, Serialize, confval::Spec)]
 #[confval(derive_default)]
@@ -22,6 +24,7 @@ pub struct UpstreamSpec {
 #[derive(Debug, Serialize, Clone, Default, confval::Spec)]
 pub struct EndpointSpec {
     pub host: Located<String>,
+    #[confval[range = PORT]]
     pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
@@ -112,10 +115,6 @@ impl Validate for EndpointSpec {
                     .emit();
             }
             _ => {}
-        }
-
-        if !is_valid_port(spec.port.value) {
-            report_invalid_port(&spec.port, report);
         }
     }
 }
@@ -271,7 +270,7 @@ mod tests {
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("invalid port: 0"));
+        assert!(error.message.contains("port must be at least 1"));
     }
 
     #[test]

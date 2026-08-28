@@ -1,6 +1,6 @@
 use crate::validation::validator::{HttpHeaderName, HttpMethod};
 use confval::prelude::{AbsolutePath, Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::range_constraint;
 use serde::Serialize;
 
 range_constraint!(DENY_STATUS, i64, min: 400, max: 599);
