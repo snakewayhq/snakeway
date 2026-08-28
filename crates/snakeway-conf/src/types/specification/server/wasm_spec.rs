@@ -17,7 +17,7 @@ pub struct WasmSpec {
     pub max_concurrent_executions: Located<i64>,
 
     /// Maximum linear memory, in bytes, that a single WASM device execution may use.
-    #[confval(default = 67108864, range = MAX_MEMORY_BYTES)] // 64 MiB
+    #[confval(default = 67_108_864, range = MAX_MEMORY_BYTES)] // 64 MiB
     pub max_memory_bytes: Located<i64>,
 }
 
