@@ -133,7 +133,7 @@ impl Validate for ServerSpec {
             && let Err(e) = validate_cert_pem(&ca_file.value)
         {
             report
-                .error(format!("server CA file is invalid: {}", e))
+                .error(format!("server CA file is invalid: {e}"))
                 .at(ca_file.span)
                 .emit();
         }

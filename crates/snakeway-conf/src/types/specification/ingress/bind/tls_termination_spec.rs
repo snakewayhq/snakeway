@@ -185,7 +185,7 @@ impl Validate for TlsTerminationSpec {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(&cert.value, &key.value) {
                     report
-                        .error(format!("invalid TLS manual cert pair: {}", e))
+                        .error(format!("invalid TLS manual cert pair: {e}"))
                         .at(cert.span)
                         .help("Use manual mode instead")
                         .emit();

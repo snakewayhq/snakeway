@@ -103,13 +103,13 @@ impl Validate for EndpointSpec {
         match HostSpec::parse(&spec.host.value) {
             HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
                 report
-                    .error(format!("invalid upstream ip: {}", ip))
+                    .error(format!("invalid upstream ip: {ip}"))
                     .at(spec.host.span)
                     .emit();
             }
             HostSpec::Hostname(name) if !is_valid_hostname(&name) => {
                 report
-                    .error(format!("invalid upstream hostname: {}", name))
+                    .error(format!("invalid upstream hostname: {name}"))
                     .at(spec.host.span)
                     .emit();
             }

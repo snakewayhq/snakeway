@@ -61,7 +61,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                     port,
                     redirect.value.port.span,
                     report,
-                    || format!("duplicate redirect_http_to_https port: {}", port),
+                    || format!("duplicate redirect_http_to_https port: {port}"),
                 );
             }
         }
@@ -163,7 +163,7 @@ fn validate_listener_uniqueness(
     if let Ok(interface) = maybe_interface {
         let key = interface.socket_address_literal(port as u16);
         report_duplicate(seen_listener_keys, key.clone(), span, report, || {
-            format!("duplicate bind address: {}", key)
+            format!("duplicate bind address: {key}")
         });
     }
 }

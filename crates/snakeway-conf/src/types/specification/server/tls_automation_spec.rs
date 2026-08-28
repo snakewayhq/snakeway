@@ -79,7 +79,7 @@ impl Validate for AcmeServerSpec {
     }
 }
 
-/// The cert_store block carries a `type` attribute selecting the variant,
+/// The `cert_store` block carries a `type` attribute selecting the variant,
 /// mirroring the serialized form (`type = "filesystem"` or `type = "memory"`).
 impl FromFields for CertStoreSpec {
     fn from_fields(fields: &Fields, report: &mut Report) -> Option<Self> {
