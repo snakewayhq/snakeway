@@ -87,7 +87,7 @@ The `HostState` struct implements the `host` interface:
 ## Patch application
 
 WASM devices never mutate the request or response directly.
-Each hook receives a read-only snapshot and returns a **result** that carries an **action** and an optional **patch**.
+Each hook receives a read-only snapshot and returns a **result** that contains an **action** and an optional **patch**.
 The host interface exposes no function that mutates in-flight traffic, so the only way a device changes a request or response is by returning a patch for the host to apply.
 
 ### Patches land on a staging context
@@ -120,7 +120,7 @@ For headers and status this uses a clear-and-repopulate strategy.
 
 :::note
 The writeback clears the headers first and then repopulates them, rather than inserting over the originals.
-An insert-only writeback would not carry a `HeaderOp::Remove` through to the wire, and would collapse an appended multi-value header down to a single value.
+An insert-only writeback would not apply a `HeaderOp::Remove` to the wire, and would collapse an appended multi-value header down to a single value.
 Clearing first makes the forwarded headers exactly match the staging context, so `Set`, `Append`, and `Remove` all take effect.
 :::
 

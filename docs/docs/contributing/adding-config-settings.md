@@ -22,7 +22,7 @@ flowchart TD
     report[("<b>Report</b><br/>errors and warnings, each with a source Span")]
     gate{"Report has<br/>errors?"}
     fail(["SemanticValidationFailed"])
-    config["<b>Config types</b><br/>what the proxy actually runs · fully typed"]
+    config["<b>Config types</b><br/>what the proxy runs · fully typed"]
 
     files -- "parse_hcl()" --> spec
     spec -- "validate_spec()" --> report
@@ -45,7 +45,7 @@ The error gate is strict: lowering never runs on a report with errors.
 
 Parsing is **structural only** (does the field exist, is it the right shape).
 Every semantic rule (ranges, closed sets, cross-field invariants) runs in the validate phase, so the operator sees every problem in one pass instead of one at a time.
-Each value carries the byte `Span` it came from, so diagnostics point at the exact line and column.
+Each value has the byte `Span` it came from, so diagnostics point at the exact line and column.
 
 The orchestrating code:
 
@@ -68,7 +68,7 @@ Every setting exists in **two parallel structs**:
 
 - **Spec** (`crates/snakeway-conf/src/types/specification/`) derives `confval::Spec` and `Serialize`.
   It is populated by `parse_hcl`.
-  Every field is wrapped in `Located<T>` so it carries its source span.
+  Every field is wrapped in `Located<T>` so it has its source span.
   No `Deserialize`, no `Origin` field.
 - **Config** (`crates/snakeway-conf/src/types/runtime/`) derives `confval::Config` (and serde).
   It is the resolved, executable form, produced by lowering.
@@ -108,11 +108,11 @@ pub trait Validate {
 ```
 
 The impl lives beside the spec struct: in the same file for small specs (the device specs, for example), or in a sibling validation module when the spec file is large (`ServerSpec` has its impl in `types/specification/server/server_spec_validation.rs`).
-It takes only `&self` and the report, reporting at the span each field already carries.
+It takes only `&self` and the report, reporting at the span each field already has.
 Anything needing more context (a missing required child's enclosing span, a cross-field rule, a relational check across files) goes in the centralized validators instead, not here.
 
 `Validate` is also a compile-time bound.
-A Config whose derive carries the `validate` flag (`#[confval(lower_from = FooSpec, validate)]`) will not compile unless `FooSpec: Validate`.
+A Config whose derive has the `validate` flag (`#[confval(lower_from = FooSpec, validate)]`) will not compile unless `FooSpec: Validate`.
 This makes "a lowerable spec with no validator" unrepresentable.
 
 ## Recipe: adding a setting to the server block
@@ -270,7 +270,7 @@ If it is built by a hand-written constructor in `lower.rs` (`ListenerConfig::fro
 `lower.rs` constructs `ListenerConfig`, `ServiceConfig`, and `StaticRouteConfig` explicitly (these take `&mut Report` and narrow their own integer fields), so ingress fields on those entities need the constructor updated.
 Pure nested structs (filters, policies, compression options) instead derive `Config` and need no `lower.rs` change.
 
-The `lower_configs` function carries a `where IngressSpec: Validate` bound.
+The `lower_configs` function has a `where IngressSpec: Validate` bound.
 This is the ingress family's equivalent of the `validate` flag, ensuring every ingress child entity is validatable at compile time.
 
 ## Variant: tagged unions and free-form blocks
