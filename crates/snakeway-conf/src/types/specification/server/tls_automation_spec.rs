@@ -3,9 +3,8 @@ use confval::format::{
     Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, report_missing_field,
     report_unknown_field,
 };
-use confval::prelude::{Located, Report, Validate, ValidateNested};
+use confval::prelude::{Located, Report, Validate, ValidateNested, range_constraint};
 use confval::schema::{Constraint, ScalarType, Schema, SchemaField, SchemaType, ToSchema};
-use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
 

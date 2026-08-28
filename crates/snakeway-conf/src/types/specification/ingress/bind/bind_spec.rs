@@ -4,8 +4,7 @@ use crate::types::{
     RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::ConfigError;
-use confval::prelude::{Located, Report, Validate};
-use confval::range_constraint;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::net::SocketAddr;
 

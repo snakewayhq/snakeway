@@ -3,10 +3,7 @@ use crate::types::{
     UpstreamSettingsSpec, WasmSpec,
 };
 use crate::validation::validate_cert_pem;
-use confval::diagnostic::Report;
-use confval::pipeline::Validate;
-use confval::prelude::Located;
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
 

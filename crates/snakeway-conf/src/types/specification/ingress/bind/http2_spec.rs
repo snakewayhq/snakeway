@@ -1,5 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::{Deserialize, Serialize};
 
 range_constraint!(MAX_CONCURRENT_STREAMS, i64, min: 1, max: 65535);

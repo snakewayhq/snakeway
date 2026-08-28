@@ -1,5 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
-use confval::range_constraint;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(PORT, i64, min: 1, max: 65535);

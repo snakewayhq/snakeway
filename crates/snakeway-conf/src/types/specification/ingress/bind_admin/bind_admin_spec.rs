@@ -2,8 +2,7 @@ use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing};
 use crate::resolution::ResolveError;
 use crate::types::{BindInterfaceSpec, TlsTerminationSpec};
 use crate::validation::ConfigError;
-use confval::prelude::{Located, Report, Validate};
-use confval::range_constraint;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::net::SocketAddr;
 

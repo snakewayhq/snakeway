@@ -1,6 +1,4 @@
-use confval::diagnostic::Report;
-use confval::prelude::{Located, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(FAILURE_THRESHOLD, i64, min: 1, max: 10_000);

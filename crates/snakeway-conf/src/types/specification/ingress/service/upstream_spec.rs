@@ -1,7 +1,6 @@
 use crate::resolution::ResolveError;
 use crate::validation::validator::{is_valid_hostname, validate_cert_pem};
-use confval::prelude::{Located, Report, Validate};
-use confval::range_constraint;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};

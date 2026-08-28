@@ -1,5 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(WS_MAX_CONNECTIONS, i64, min: 1, max: 1_048_576);

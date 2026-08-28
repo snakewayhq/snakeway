@@ -1,6 +1,4 @@
-use confval::pipeline::Validate;
-use confval::prelude::{Located, Report};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
 

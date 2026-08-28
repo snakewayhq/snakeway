@@ -1,5 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 // wasmtime pre-reserves virtual address space proportional to the instance pool

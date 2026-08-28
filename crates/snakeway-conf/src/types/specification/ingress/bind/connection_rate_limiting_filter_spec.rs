@@ -1,5 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(REACTION_INTERVAL_IN_SECONDS, i64, min: 1, max: 60, units: "seconds");

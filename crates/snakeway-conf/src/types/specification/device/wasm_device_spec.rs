@@ -1,7 +1,6 @@
 use crate::types::WasmDeviceFailPolicy;
 use crate::validation::validator::require_existing_file;
-use confval::prelude::{KeywordSet, Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{KeywordSet, Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
