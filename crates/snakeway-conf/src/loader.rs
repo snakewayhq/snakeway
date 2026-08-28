@@ -35,13 +35,13 @@ impl ValidatedConfig {
 #[hotpath::measure]
 pub fn load_config(root: &Path) -> Result<ValidatedConfig, ConfigError> {
     let (sources, report, server_spec, device_specs, ingress_specs) = load_spec_files(root)?;
-    load_config_from_parts(sources, report, server_spec, ingress_specs, device_specs)
+    load_config_from_parts(sources, report, &server_spec, ingress_specs, device_specs)
 }
 
 /// Load configs from spec definitions.
 /// Useful for integration testing where reading files is not necessarily scalable/maintainable.
 pub fn load_config_from_specs(
-    server_spec: ServerSpec,
+    server_spec: &ServerSpec,
     ingress_specs: Vec<IngressSpec>,
     device_specs: Vec<DeviceSpec>,
 ) -> Result<ValidatedConfig, ConfigError> {
@@ -57,11 +57,11 @@ pub fn load_config_from_specs(
 fn load_config_from_parts(
     sources: SourceMap,
     mut report: Report,
-    server_spec: ServerSpec,
+    server_spec: &ServerSpec,
     ingress_specs: Vec<Located<IngressSpec>>,
     device_specs: Vec<Located<DeviceSpec>>,
 ) -> Result<ValidatedConfig, ConfigError> {
-    validate_spec(&server_spec, &ingress_specs, &device_specs, &mut report);
+    validate_spec(server_spec, &ingress_specs, &device_specs, &mut report);
 
     // Lowering must not run on a report that contains errors.
     if report.has_errors() {
