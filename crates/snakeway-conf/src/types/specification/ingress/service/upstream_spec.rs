@@ -30,6 +30,7 @@ pub struct EndpointSpec {
 
 #[derive(Debug, Serialize, Clone, Default, confval::Spec)]
 pub struct EndpointTlsSpec {
+    #[confval(non_empty)]
     pub sni: Located<String>,
     pub verify: Located<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,12 +123,6 @@ impl Validate for EndpointSpec {
 impl Validate for EndpointTlsSpec {
     fn validate(&self, report: &mut Report) {
         let spec = self;
-        if spec.sni.value.trim().is_empty() {
-            report
-                .error("upstream TLS SNI required")
-                .at(spec.sni.span)
-                .emit();
-        }
 
         // The remaining checks describe how the certificate is verified, so
         // they mean nothing when verification is off.
@@ -297,7 +292,7 @@ mod tests {
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert_eq!(error.message, "upstream TLS SNI required");
+        assert_eq!(error.message, "sni must not be empty");
     }
 
     #[test]
