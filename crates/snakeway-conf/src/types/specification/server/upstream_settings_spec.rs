@@ -1,8 +1,7 @@
 use confval::diagnostic::Report;
-use confval::prelude::{Located, Validate};
+use confval::prelude::{Ipv4, Ipv6, Located, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
-use std::net::{Ipv4Addr, Ipv6Addr};
 
 range_constraint!(CONNECTION_POOL_SIZE, i64, min: 1, max: 65535);
 range_constraint!(TIMEOUT_SECONDS, i64, min: 1, max: 3600, units: "seconds");
@@ -37,35 +36,12 @@ impl Validate for UpstreamSettingsSpec {
 
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct UpstreamSourceAddressesSpec {
-    #[confval(default)]
+    #[confval(default, format = Ipv4)]
     pub ipv4: Vec<Located<String>>,
-    #[confval(default)]
+    #[confval(default, format = Ipv6)]
     pub ipv6: Vec<Located<String>>,
 }
 
 impl Validate for UpstreamSourceAddressesSpec {
-    fn validate(&self, report: &mut Report) {
-        for addr in &self.ipv4 {
-            if addr.value.parse::<Ipv4Addr>().is_err() {
-                report
-                    .error(format!(
-                        "invalid upstream.source_addresses.ipv4 entry: \"{}\" is not a valid IPv4 address",
-                        addr.value
-                    ))
-                    .at(addr.span)
-                    .emit();
-            }
-        }
-        for addr in &self.ipv6 {
-            if addr.value.parse::<Ipv6Addr>().is_err() {
-                report
-                    .error(format!(
-                        "invalid upstream.source_addresses.ipv6 entry: \"{}\" is not a valid IPv6 address",
-                        addr.value
-                    ))
-                    .at(addr.span)
-                    .emit();
-            }
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
