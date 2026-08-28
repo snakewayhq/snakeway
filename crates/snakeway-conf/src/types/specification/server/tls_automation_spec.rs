@@ -36,6 +36,7 @@ pub enum CertStoreSpec {
 pub struct AcmeServerSpec {
     pub directory_url: Located<String>,
     pub data_dir: Located<PathBuf>,
+    #[confval(non_empty)]
     pub contact_email: Vec<Located<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ca_file: Option<Located<PathBuf>>,
@@ -52,13 +53,6 @@ impl Validate for AcmeServerSpec {
             report
                 .error("server TLS ACME directory URL must be a valid URL")
                 .at(self.directory_url.span)
-                .emit();
-        }
-
-        if self.contact_email.is_empty() {
-            report
-                .error("server TLS ACME contact email cannot be empty")
-                .help("It must be a list of 1 or more email addresses")
                 .emit();
         }
 
@@ -456,14 +450,14 @@ cert_store {
         let spec = default_acme();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|i| i.message == "server TLS ACME contact email cannot be empty")
+                .any(|i| i.message == "contact_email must not be empty")
         );
     }
 
