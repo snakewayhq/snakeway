@@ -29,7 +29,10 @@ impl BindAdminSpec {
             .try_into()
             .map_err(|e: ConfigError| ResolveError::InvalidInterface(e.to_string()))?;
 
-        Ok(SocketAddr::new(interface.as_ip(), self.port.value as u16))
+        let port = u16::try_from(self.port.value)
+            .map_err(|_| ResolveError::InvalidPort(self.port.value))?;
+
+        Ok(SocketAddr::new(interface.as_ip(), port))
     }
 }
 

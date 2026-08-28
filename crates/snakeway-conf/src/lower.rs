@@ -154,13 +154,23 @@ where
             if let Some(redirect) = &bind.redirect_http_to_https {
                 let redirect_listener_name = format!("redirect-listener-{}", idx);
 
+                let Some(redirect_port) = narrow::i64_to_u16(&redirect.value.port, report) else {
+                    failed = true;
+                    continue;
+                };
+                let Some(redirect_status) = narrow::i64_to_u16(&redirect.value.status, report)
+                else {
+                    failed = true;
+                    continue;
+                };
+
                 let mut socket: SocketAddr = bind_addr;
-                socket.set_port(redirect.value.port.value as u16);
+                socket.set_port(redirect_port);
 
                 match ListenerConfig::from_redirect(
                     &redirect_listener_name,
                     socket.to_string(),
-                    redirect.value.status.value as u16,
+                    redirect_status,
                     bind,
                     report,
                 ) {

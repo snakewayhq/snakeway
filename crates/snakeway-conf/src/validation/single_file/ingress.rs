@@ -160,8 +160,8 @@ fn validate_listener_uniqueness(
     seen_listener_keys: &mut HashMap<String, Span>,
 ) {
     let maybe_interface: Result<BindInterfaceSpec, _> = interface.try_into();
-    if let Ok(interface) = maybe_interface {
-        let key = interface.socket_address_literal(port as u16);
+    if let (Ok(interface), Ok(port)) = (maybe_interface, u16::try_from(port)) {
+        let key = interface.socket_address_literal(port);
         report_duplicate(seen_listener_keys, key.clone(), span, report, || {
             format!("duplicate bind address: {key}")
         });

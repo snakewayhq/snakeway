@@ -67,7 +67,8 @@ impl fmt::Display for HostSpec {
 
 impl EndpointSpec {
     pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
-        let port = self.port.value as u16;
+        let port = u16::try_from(self.port.value)
+            .map_err(|_| ResolveError::InvalidPort(self.port.value))?;
         let ip = match HostSpec::parse(&self.host.value) {
             HostSpec::Ip(ip) => ip,
             HostSpec::Hostname(name) => {
