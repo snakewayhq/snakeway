@@ -169,11 +169,12 @@ pub fn load_spec_files(root: &Path) -> Result<Spec, ConfigError> {
             path: path.clone(),
             source: e,
         })?;
-        let file_span = Span::new(
-            sources.add(path.display().to_string(), &text),
-            0,
-            text.len() as u32,
-        );
+        let end = u32::try_from(text.len()).map_err(|_| ConfigError::FileTooLarge {
+            path: path.clone(),
+            size: text.len(),
+            max: u32::MAX,
+        })?;
+        let file_span = Span::new(sources.add(path.display().to_string(), &text), 0, end);
         let fields = parse_hcl_fields(&sources, file_span.source, &mut report);
         let parsed = fields
             .as_ref()
