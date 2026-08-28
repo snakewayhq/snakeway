@@ -1,4 +1,4 @@
-use crate::validation::validator::{validate_http_header_name, validate_http_method};
+use crate::validation::validator::{HttpHeaderName, HttpMethod};
 use confval::prelude::{AbsolutePath, Located, Report, Validate};
 use confval::{RangeConstraint, range_constraint};
 use serde::Serialize;
@@ -10,19 +10,19 @@ pub struct RequestFilterDeviceSpec {
     /// Whether this request filter device is enabled.
     pub enable: Located<bool>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpMethod)]
     pub allow_methods: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpMethod)]
     pub deny_methods: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpHeaderName)]
     pub deny_headers: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpHeaderName)]
     pub allow_headers: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpHeaderName)]
     pub required_headers: Vec<Located<String>>,
 
     #[confval(default = 16 * 1024)]
@@ -72,27 +72,7 @@ impl Default for RequestFilterDeviceSpec {
 }
 
 impl Validate for RequestFilterDeviceSpec {
-    fn validate(&self, report: &mut Report) {
-        for method in &self.allow_methods {
-            validate_http_method(method, report);
-        }
-
-        for method in &self.deny_methods {
-            validate_http_method(method, report);
-        }
-
-        for header in &self.deny_headers {
-            validate_http_header_name(header, report);
-        }
-
-        for header in &self.allow_headers {
-            validate_http_header_name(header, report);
-        }
-
-        for header in &self.required_headers {
-            validate_http_header_name(header, report);
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
