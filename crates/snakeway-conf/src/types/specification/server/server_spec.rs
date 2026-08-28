@@ -669,15 +669,13 @@ observability {
 
         // Assert
         assert_eq!(report.issues().len(), 2);
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("is not a valid IPv4 address")
+        assert_eq!(
+            report.issues()[0].message,
+            "invalid IPv4 address in ipv4: \"not an ip\""
         );
-        assert!(
-            report.issues()[1]
-                .message
-                .contains("is not a valid IPv6 address")
+        assert_eq!(
+            report.issues()[1].message,
+            "invalid IPv6 address in ipv6: \"also wrong\""
         );
     }
 }
