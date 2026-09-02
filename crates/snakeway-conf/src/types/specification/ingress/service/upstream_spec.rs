@@ -1,11 +1,13 @@
 use crate::resolution::ResolveError;
 use crate::validation::PORT;
 use crate::validation::validator::{is_valid_hostname, validate_cert_pem};
-use confval::prelude::{Located, Report, Validate};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
+
+range_constraint!(WEIGHT, i64, min: 1, max: 1_000);
 
 #[derive(Debug, Serialize, confval::Spec)]
 #[confval(derive_default)]
@@ -15,7 +17,7 @@ pub struct UpstreamSpec {
     pub endpoint: Option<Located<EndpointSpec>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sock: Option<Located<String>>,
-    #[confval(default = 1)]
+    #[confval(default = 1, range = WEIGHT)]
     pub weight: Located<i64>,
 }
 
@@ -87,14 +89,7 @@ impl EndpointSpec {
 }
 
 impl Validate for UpstreamSpec {
-    fn validate(&self, report: &mut Report) {
-        if self.weight.value == 0 || self.weight.value > 1_000 {
-            report
-                .error(format!("invalid upstream weight: {}", self.weight.value))
-                .at(self.weight.span)
-                .emit();
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 impl Validate for EndpointSpec {
