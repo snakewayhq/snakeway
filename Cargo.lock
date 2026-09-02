@@ -666,9 +666,9 @@ dependencies = [
 
 [[package]]
 name = "confval"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a189789428f9826c4e8455041a6bc12ee605065eaa673be234679740f83f39a2"
+checksum = "525aef3504869ca892db7c3af50c2ce0bc24e2d1f789bcfb79b34ad92e1c4b65"
 dependencies = [
  "annotate-snippets",
  "confval-derive",
@@ -679,9 +679,9 @@ dependencies = [
 
 [[package]]
 name = "confval-derive"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7c63ace75c90915e6d7d71e74f122583c14623b513eb7491ed3dd0503d71c4f"
+checksum = "4b18e352f38d491e1ed032be6a5a70684cfed877f9f3fc3961280392d43a9edf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -690,9 +690,9 @@ dependencies = [
 
 [[package]]
 name = "confval-lsp"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb1e15aba7544c938c0db9b2231c6d1456095ae5bf78fc0dc71d67570b69747c"
+checksum = "0bcbf466a5abb60cf43f4947d09e29fd342cc3cebaee9ec203c6557d441a5bfa"
 dependencies = [
  "confval",
  "line-index",
