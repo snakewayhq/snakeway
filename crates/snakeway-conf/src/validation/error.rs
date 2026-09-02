@@ -17,7 +17,11 @@ pub enum ConfigError {
     #[error(
         "config file {path} is {size} bytes, larger than the maximum supported size of {max} bytes (4 GiB). Split the configuration into multiple files under the config directory."
     )]
-    FileTooLarge { path: PathBuf, size: usize, max: u32 },
+    FileTooLarge {
+        path: PathBuf,
+        size: usize,
+        max: u32,
+    },
 
     #[error("glob pattern error: {pattern}: {source}")]
     Glob {

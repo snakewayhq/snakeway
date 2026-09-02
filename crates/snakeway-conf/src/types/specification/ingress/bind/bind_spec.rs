@@ -3,13 +3,10 @@ use crate::types::{
     BindInterfaceSpec, ConnectionRateLimitingFilterSpec, Http2Spec, NetworkConnectionFilterSpec,
     RedirectSpec, TlsTerminationSpec,
 };
-use crate::validation::ConfigError;
-use confval::prelude::{Located, Report, Validate, range_constraint};
+use crate::validation::{ConfigError, PORT};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
-
-range_constraint!(PORT, i64, min: 1, max: 65535);
-range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct BindSpec {

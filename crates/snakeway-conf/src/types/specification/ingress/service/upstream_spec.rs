@@ -1,12 +1,11 @@
 use crate::resolution::ResolveError;
+use crate::validation::PORT;
 use crate::validation::validator::{is_valid_hostname, validate_cert_pem};
-use confval::prelude::{Located, Report, Validate, range_constraint};
+use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
-
-range_constraint!(PORT, i64, min: 1, max: 65535);
 
 #[derive(Debug, Serialize, confval::Spec)]
 #[confval(derive_default)]
