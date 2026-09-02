@@ -1,6 +1,8 @@
-use crate::validation::{PORT, RESPONSE_CODE};
-use confval::prelude::{Located, Report, Validate};
+use crate::validation::PORT;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
+
+range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 #[derive(Debug, Serialize, Clone, confval::Spec)]
 pub struct RedirectSpec {
