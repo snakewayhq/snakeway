@@ -1,33 +1,19 @@
-use crate::types::HclInt;
-use crate::validation::validator::is_valid_port;
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use crate::validation::PORT;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(RESPONSE_CODE, i64, min: 300, max: 399);
 
 #[derive(Debug, Serialize, Clone, confval::Spec)]
 pub struct RedirectSpec {
-    pub port: Located<HclInt>,
-    pub status: Located<HclInt>,
-}
-
-pub(crate) fn report_invalid_port(port: &Located<HclInt>, report: &mut Report) {
-    report
-        .error(format!("invalid port: {}", port.value))
-        .at(port.span)
-        .help("ports must be in the range 1–65535")
-        .emit();
+    #[confval(range = PORT)]
+    pub port: Located<i64>,
+    #[confval(range = RESPONSE_CODE)]
+    pub status: Located<i64>,
 }
 
 impl Validate for RedirectSpec {
-    fn validate(&self, report: &mut Report) {
-        if !is_valid_port(self.port.value) {
-            report_invalid_port(&self.port, report);
-        }
-
-        RESPONSE_CODE.check_located(&self.status, "status", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -48,7 +34,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_errors());
@@ -61,7 +47,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -78,7 +64,7 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -95,9 +81,9 @@ mod tests {
         let mut report = Report::new();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
-        assert_eq!(report.issues()[0].message, "invalid port: 0");
+        assert_eq!(report.issues()[0].message, "port must be at least 1");
     }
 }

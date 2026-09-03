@@ -5,6 +5,7 @@ use confval::format::{
     report_missing_field, report_unknown_field,
 };
 use confval::prelude::{Located, Report, Validate, ValidateNested};
+use confval::schema::{Constraint, ScalarType, Schema, SchemaField, SchemaType, ToSchema};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -131,6 +132,49 @@ impl ToFields for TlsTerminationSpec {
     }
 }
 
+/// The schema flattens both variants into one level, because the IR has no
+/// variant node. `mode` selects the variant, so the per-variant fields are
+/// unrequired here and the handwritten parser enforces which ones apply.
+impl ToSchema for TlsTerminationSpec {
+    fn schema() -> Schema {
+        Schema::new(
+            None,
+            vec![
+                SchemaField::new(
+                    "mode".to_string(),
+                    None,
+                    SchemaType::scalar(
+                        ScalarType::String,
+                        Some(Constraint::keywords(&["manual", "acme"])),
+                    ),
+                )
+                .required(),
+                SchemaField::new(
+                    "cert".to_string(),
+                    None,
+                    SchemaType::scalar(ScalarType::Path, None),
+                ),
+                SchemaField::new(
+                    "key".to_string(),
+                    None,
+                    SchemaType::scalar(ScalarType::Path, None),
+                ),
+                SchemaField::new("domains".to_string(), None, SchemaType::string_list(None)),
+                SchemaField::new(
+                    "challenge".to_string(),
+                    None,
+                    SchemaType::scalar(
+                        ScalarType::String,
+                        Some(Constraint::keywords(&AcmeChallenge::KEYWORDS)),
+                    ),
+                )
+                .with_default()
+                .with_default_text(AcmeChallenge::Http01.as_str().to_string()),
+            ],
+        )
+    }
+}
+
 impl ValidateNested for TlsTerminationSpec {
     fn validate_nested(&self, _report: &mut Report) {}
 }
@@ -141,7 +185,7 @@ impl Validate for TlsTerminationSpec {
             TlsTerminationSpec::Manual { cert, key } => {
                 if let Err(e) = validate_cert_key_pair(&cert.value, &key.value) {
                     report
-                        .error(format!("invalid TLS manual cert pair: {}", e))
+                        .error(format!("invalid TLS manual cert pair: {e}"))
                         .at(cert.span)
                         .help("Use manual mode instead")
                         .emit();

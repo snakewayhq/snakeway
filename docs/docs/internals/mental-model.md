@@ -38,7 +38,7 @@ flowchart TD
 A device is not a handler bound to a route.
 A device is a stage that receives a context object and may read it, change it, or stop the pipeline.
 
-Two context objects carry the state.
+Two context objects hold the state.
 
 - `RequestCtx` holds the incoming request and the state that accumulates as devices run.
 - `ResponseCtx` holds the upstream response, or a response generated inside Snakeway.
@@ -60,7 +60,7 @@ A request moves through them in turn.
 3. **Network Policy** reads `ClientIdentity` and checks the resolved IP against its CIDR lists.
    A disallowed IP ends the request with `403 Forbidden`.
 4. **Request Rate Limiting** reads `ClientIdentity`, keys its sliding window on the resolved IP, and rejects with `429 Too Many Requests` when the client is over its budget.
-5. **Structured Logging** emits a tracing event carrying the method, URI, and the identity fields you selected.
+5. **Structured Logging** emits a tracing event with the method, URI, and the identity fields you selected.
 
 Network Policy and Request Rate Limiting both depend on the `ClientIdentity` that Identity produced.
 Neither device calls Identity, and neither knows Identity exists.
@@ -136,7 +136,7 @@ Structured Logging implements `on_error` for exactly that reason, so a request t
 
 Each request is processed independently on a Pingora worker thread.
 A device is shared across all of them, so it must be `Send + Sync`, and any state it keeps across requests has to be explicitly synchronized.
-A device that only reads its configuration and writes to the request context needs no synchronization at all.
+A device that only reads its configuration and writes to the request context needs no synchronization.
 
 This is why the model holds up as a proxy scales.
 A device is a function over one request's context, so nothing about its behavior depends on how many other requests are in flight.

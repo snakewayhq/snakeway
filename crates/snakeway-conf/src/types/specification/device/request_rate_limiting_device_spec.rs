@@ -1,7 +1,4 @@
-use crate::types::HclInt;
-use crate::validation::validator::validate_device_paths;
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{AbsolutePath, Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(MAX_REQUESTS_PER_SECOND, i64, min: 1, max: 30_000);
@@ -10,11 +7,13 @@ range_constraint!(WINDOW_SECONDS, i64, min: 1, max: 60, units: "seconds");
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct RequestRateLimitingDeviceSpec {
     pub enable: Located<bool>,
-    pub max_requests_per_second: Located<HclInt>,
-    pub window_seconds: Located<HclInt>,
+    #[confval(range = MAX_REQUESTS_PER_SECOND)]
+    pub max_requests_per_second: Located<i64>,
+    #[confval(range = WINDOW_SECONDS)]
+    pub window_seconds: Located<i64>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
-    #[confval(default)]
+    #[confval(default, format = AbsolutePath)]
     pub paths: Vec<Located<String>>,
 }
 
@@ -32,16 +31,7 @@ impl Default for RequestRateLimitingDeviceSpec {
 }
 
 impl Validate for RequestRateLimitingDeviceSpec {
-    fn validate(&self, report: &mut Report) {
-        MAX_REQUESTS_PER_SECOND.check_located(
-            &self.max_requests_per_second,
-            "max_requests_per_second",
-            report,
-        );
-        WINDOW_SECONDS.check_located(&self.window_seconds, "window_seconds", report);
-
-        validate_device_paths(&self.paths, report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -55,7 +45,7 @@ mod tests {
         let spec = RequestRateLimitingDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -77,7 +67,7 @@ mod tests {
         let spec = minimal();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -93,7 +83,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.issues().iter().any(|e| {
@@ -112,7 +102,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -134,7 +124,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

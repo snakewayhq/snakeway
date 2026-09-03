@@ -34,6 +34,7 @@ pub(crate) fn generate(
             ..Default::default()
         })),
         services: vec![Located::detached(ServiceSpec {
+            name: Located::detached("httpbin".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 path: Located::detached("/get".to_string()),
                 hosts: vec![Located::detached("*".to_string())],

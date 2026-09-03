@@ -64,7 +64,7 @@ This information allows telemetry backends to distinguish between instances in m
 ### Sampling
 
 Snakeway uses a parent-based sampling model.
-When an incoming request carries a sampled W3C Trace Context, the proxy always honors that decision and samples the request.
+When an incoming request includes a sampled W3C Trace Context, the proxy always honors that decision and samples the request.
 When no parent context is present, the `sampling_ratio` setting determines what fraction of root traces are sampled using a deterministic trace-ID-ratio algorithm.
 
 The default `sampling_ratio` of `1.0` samples all root traces.
@@ -73,7 +73,7 @@ Setting it to a lower value (e.g., `0.1` for 10%) reduces trace volume in high-t
 ### Request instrumentation
 
 A root `request` span is created for every proxied request inside the Pingora `request_filter` hook.
-The span carries the following fields:
+The span has the following fields:
 
 - `http.method`
 - `http.host`

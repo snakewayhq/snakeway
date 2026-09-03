@@ -69,25 +69,28 @@ fn patch_upstream_ports(cfg: &mut RuntimeConfig, upstream_ports: &[u16]) {
     if upstream_ports.is_empty() {
         return;
     }
-    // Patch upstream URLs (preserve scheme)
-    let svc = cfg
-        .services
-        .get_mut("127.0.0.1:8080-service")
-        .expect("service not found");
-
     assert!(
-        svc.tcp_upstreams.len() <= upstream_ports.len(),
-        "fixture defines {} upstreams but only {} ports allocated",
-        svc.tcp_upstreams.len(),
-        upstream_ports.len()
+        !cfg.services.is_empty(),
+        "no services to patch upstream ports into"
     );
 
-    for (i, up) in svc.tcp_upstreams.iter_mut().enumerate() {
-        let mut url = Url::parse(&up.url).expect("invalid upstream URL in fixture");
+    // Patch upstream URLs (preserve scheme). Every service maps its upstreams
+    // onto the same allocated ports, in declaration order.
+    for svc in cfg.services.values_mut() {
+        assert!(
+            svc.tcp_upstreams.len() <= upstream_ports.len(),
+            "fixture defines {} upstreams but only {} ports allocated",
+            svc.tcp_upstreams.len(),
+            upstream_ports.len()
+        );
 
-        url.set_port(Some(upstream_ports[i]))
-            .expect("failed to set upstream port");
+        for (i, up) in svc.tcp_upstreams.iter_mut().enumerate() {
+            let mut url = Url::parse(&up.url).expect("invalid upstream URL in fixture");
 
-        up.url = url.to_string();
+            url.set_port(Some(upstream_ports[i]))
+                .expect("failed to set upstream port");
+
+            up.url = url.to_string();
+        }
     }
 }

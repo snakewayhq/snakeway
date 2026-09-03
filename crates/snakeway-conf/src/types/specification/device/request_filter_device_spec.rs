@@ -1,9 +1,5 @@
-use crate::types::HclInt;
-use crate::validation::validator::{
-    validate_device_paths, validate_http_header_name, validate_http_method,
-};
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use crate::validation::validator::{HttpHeaderName, HttpMethod};
+use confval::prelude::{AbsolutePath, Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(DENY_STATUS, i64, min: 400, max: 599);
@@ -13,27 +9,27 @@ pub struct RequestFilterDeviceSpec {
     /// Whether this request filter device is enabled.
     pub enable: Located<bool>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpMethod)]
     pub allow_methods: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpMethod)]
     pub deny_methods: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpHeaderName)]
     pub deny_headers: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpHeaderName)]
     pub allow_headers: Vec<Located<String>>,
 
-    #[confval(default)]
+    #[confval(default, format = HttpHeaderName)]
     pub required_headers: Vec<Located<String>>,
 
     #[confval(default = 16 * 1024)]
-    pub max_header_bytes: Located<HclInt>,
+    pub max_header_bytes: Located<i64>,
     #[confval(default = 1024 * 1024)]
-    pub max_body_bytes: Located<HclInt>,
+    pub max_body_bytes: Located<i64>,
     #[confval(default = 8 * 1024)]
-    pub max_suspicious_body_bytes: Located<HclInt>,
+    pub max_suspicious_body_bytes: Located<i64>,
 
     /// Maximum time (in seconds) to wait for each chunk of request body data
     /// from the client.  If the client stalls mid-body for longer than this
@@ -43,14 +39,15 @@ pub struct RequestFilterDeviceSpec {
     /// Applied to the downstream read timeout via Pingora's session API.
     /// `None` keeps Pingora's default (60 s).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub client_body_timeout_seconds: Option<Located<HclInt>>,
+    pub client_body_timeout_seconds: Option<Located<i64>>,
 
     /// Override the default granular deny status with a device-scoped value.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub deny_status: Option<Located<HclInt>>,
+    #[confval(range = DENY_STATUS)]
+    pub deny_status: Option<Located<i64>>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
-    #[confval(default)]
+    #[confval(default, format = AbsolutePath)]
     pub paths: Vec<Located<String>>,
 }
 
@@ -74,33 +71,7 @@ impl Default for RequestFilterDeviceSpec {
 }
 
 impl Validate for RequestFilterDeviceSpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(deny_status) = &self.deny_status {
-            DENY_STATUS.check_located(deny_status, "deny_status", report);
-        }
-
-        for method in &self.allow_methods {
-            validate_http_method(method, report);
-        }
-
-        for method in &self.deny_methods {
-            validate_http_method(method, report);
-        }
-
-        for header in &self.deny_headers {
-            validate_http_header_name(header, report);
-        }
-
-        for header in &self.allow_headers {
-            validate_http_header_name(header, report);
-        }
-
-        for header in &self.required_headers {
-            validate_http_header_name(header, report);
-        }
-
-        validate_device_paths(&self.paths, report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -114,7 +85,7 @@ mod tests {
         let spec = RequestFilterDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -131,7 +102,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -154,7 +125,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(report.has_issues());
@@ -177,7 +148,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -199,7 +170,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -222,7 +193,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -239,7 +210,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

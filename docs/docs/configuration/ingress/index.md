@@ -23,6 +23,7 @@ bind_admin = { ... }
 
 services = [
   {
+    name                    = "api"
     load_balancing_strategy = "..."
     circuit_breaker         = { ... }
     routes                  = [ ... ]

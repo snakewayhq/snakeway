@@ -7,7 +7,10 @@ use std::collections::HashSet;
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServiceSpec {
-    #[confval(default = "failover".to_string())]
+    /// The service's unique name across all ingress files.
+    #[confval(label)]
+    pub name: Located<String>,
+    #[confval(default = "failover".to_string(), keywords = LoadBalancingStrategy)]
     pub load_balancing_strategy: Located<String>,
     #[confval(nested)]
     pub routes: Vec<Located<ServiceRouteSpec>>,
@@ -24,6 +27,7 @@ pub struct ServiceSpec {
 impl Default for ServiceSpec {
     fn default() -> Self {
         Self {
+            name: Located::detached(String::new()),
             load_balancing_strategy: Located::detached("failover".to_string()),
             routes: Vec::new(),
             upstreams: Vec::new(),
@@ -35,12 +39,6 @@ impl Default for ServiceSpec {
 
 impl Validate for ServiceSpec {
     fn validate(&self, report: &mut Report) {
-        LoadBalancingStrategy::keyword_set().check_located(
-            &self.load_balancing_strategy,
-            "load_balancing_strategy",
-            report,
-        );
-
         // A route with no hosts is reported at the route's enclosing span,
         // which the route cannot reach from `&self`.
         for route in &self.routes {
@@ -106,6 +104,7 @@ mod tests {
 
     fn minimal_service() -> ServiceSpec {
         ServiceSpec {
+            name: Located::detached("api".to_string()),
             upstreams: vec![Located::detached(minimal_upstream())],
             ..Default::default()
         }
@@ -191,6 +190,7 @@ mod tests {
         upstream.endpoint = None;
         upstream.sock = None;
         let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
             load_balancing_strategy: Located::detached("failover".to_string()),
             upstreams: vec![Located::detached(upstream)],
             ..Default::default()
@@ -217,6 +217,7 @@ mod tests {
             })
         };
         let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
             load_balancing_strategy: Located::detached("failover".to_string()),
             upstreams: vec![sock_upstream(), sock_upstream()],
             ..Default::default()

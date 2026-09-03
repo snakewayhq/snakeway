@@ -59,6 +59,7 @@ mod tests {
     fn service_config_new_sets_fields() {
         // Arrange
         let spec = ServiceSpec {
+            name: confval::source::Located::detached("my-svc".to_string()),
             load_balancing_strategy: confval::source::Located::detached("round_robin".to_string()),
             routes: vec![],
             upstreams: vec![],

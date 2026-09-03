@@ -21,6 +21,21 @@ confval::keyword_enum!(
 );
 
 confval::keyword_enum!(
+    /// Lifecycle hooks a WASM device may declare via the `hooks` allowlist.
+    #[derive(Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    pub WasmHook,
+    {
+        OnRequest => "on_request",
+        OnStreamRequestBody => "on_stream_request_body",
+        BeforeProxy => "before_proxy",
+        AfterProxy => "after_proxy",
+        OnStreamResponseBody => "on_stream_response_body",
+        OnResponse => "on_response",
+    }
+);
+
+confval::keyword_enum!(
     #[derive(Default, Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub UaEngineKind,

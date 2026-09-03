@@ -246,7 +246,7 @@ The `Validate` trait is a compile-time bound on lowering.
 A spec that can be lowered into a runtime config but has no validator fails to compile.
 The bound lives where each family lowers:
 
-- **Server** and the **device** configs carry it on their `Lower` impls (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on the hand-written device impls).
+- **Server** and the **device** configs declare it on their `Lower` impls (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on the hand-written device impls).
 - **Ingresses** lower by flattening in `lower_configs` rather than through a per-entity `Lower` impl, so the bound is a `where IngressSpec: Validate + ValidateNested` clause on that function.
 
 The generated `ValidateNested` impl calls `validate_all` on every nested child.

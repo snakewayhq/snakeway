@@ -3,20 +3,20 @@ use confval::format::{
     Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, report_missing_field,
     report_unknown_field,
 };
-use confval::prelude::{Located, Report, Validate, ValidateNested};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, ValidateNested, range_constraint};
+use confval::schema::{Constraint, ScalarType, Schema, SchemaField, SchemaType, ToSchema};
 use serde::Serialize;
 use std::path::PathBuf;
 
 range_constraint!(RENEW_WITHIN_DAYS, i64, min: 7, max: 30, units: "days");
 
-#[derive(Debug, Serialize, Default, confval::Spec)]
+#[derive(Debug, Serialize, confval::Spec)]
 pub struct TlsAutomationSpec {
     #[confval(nested)]
     pub acme: Located<AcmeServerSpec>,
     #[confval(nested)]
     pub cert_store: Located<CertStoreSpec>,
-    #[confval(default = 30)]
+    #[confval(default = 30, range = RENEW_WITHIN_DAYS)]
     pub renew_within_days: Located<i64>,
 }
 
@@ -35,6 +35,7 @@ pub enum CertStoreSpec {
 pub struct AcmeServerSpec {
     pub directory_url: Located<String>,
     pub data_dir: Located<PathBuf>,
+    #[confval(non_empty)]
     pub contact_email: Vec<Located<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ca_file: Option<Located<PathBuf>>,
@@ -51,13 +52,6 @@ impl Validate for AcmeServerSpec {
             report
                 .error("server TLS ACME directory URL must be a valid URL")
                 .at(self.directory_url.span)
-                .emit();
-        }
-
-        if self.contact_email.is_empty() {
-            report
-                .error("server TLS ACME contact email cannot be empty")
-                .help("It must be a list of 1 or more email addresses")
                 .emit();
         }
 
@@ -85,7 +79,7 @@ impl Validate for AcmeServerSpec {
     }
 }
 
-/// The cert_store block carries a `type` attribute selecting the variant,
+/// The `cert_store` block carries a `type` attribute selecting the variant,
 /// mirroring the serialized form (`type = "filesystem"` or `type = "memory"`).
 impl FromFields for CertStoreSpec {
     fn from_fields(fields: &Fields, report: &mut Report) -> Option<Self> {
@@ -162,8 +156,33 @@ impl ToFields for CertStoreSpec {
 }
 
 impl Validate for TlsAutomationSpec {
-    fn validate(&self, report: &mut Report) {
-        RENEW_WITHIN_DAYS.check_located(&self.renew_within_days, "renew_within_days", report);
+    fn validate(&self, _report: &mut Report) {}
+}
+
+/// The schema flattens both variants into one level, because the IR has no
+/// variant node. `type` selects the variant, so `cert_dir` is unrequired here
+/// and the handwritten parser enforces when it applies.
+impl ToSchema for CertStoreSpec {
+    fn schema() -> Schema {
+        Schema::new(
+            None,
+            vec![
+                SchemaField::new(
+                    "type".to_string(),
+                    None,
+                    SchemaType::scalar(
+                        ScalarType::String,
+                        Some(Constraint::keywords(&["memory", "filesystem"])),
+                    ),
+                )
+                .required(),
+                SchemaField::new(
+                    "cert_dir".to_string(),
+                    None,
+                    SchemaType::scalar(ScalarType::Path, None),
+                ),
+            ],
+        )
     }
 }
 
@@ -367,7 +386,7 @@ cert_store {
         // Act
         let (mut report, spec) = parse_tls(input);
         let spec = spec.expect("parent constructs despite the cert_store failure");
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         let messages: Vec<&str> = report.issues().iter().map(|i| i.message.as_str()).collect();
@@ -430,14 +449,14 @@ cert_store {
         let spec = default_acme();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|i| i.message == "server TLS ACME contact email cannot be empty")
+                .any(|i| i.message == "contact_email must not be empty")
         );
     }
 
@@ -478,7 +497,7 @@ cert_store {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

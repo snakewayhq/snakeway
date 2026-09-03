@@ -76,7 +76,7 @@ Declaring `hooks = ["on_request"]` avoids paying for the five unused hook instan
 | `public_paths`              | no       |         | Comma-separated exact paths that bypass authentication.                                                                                                                      |
 | `token_type`                | no       |         | Expected `typ` header. When set, a token whose type differs is rejected. The match is case-insensitive and the `application/` prefix is ignored. Omit to skip type checking. |
 | `clock_skew_leeway_seconds` | no       | `0`     | Allowed clock skew in seconds, applied to both `exp` and `nbf`.                                                                                                              |
-| `revoked_jti`               | no       |         | Comma-separated revoked token ids. When set, revocation is enforced and every token must carry a `jti` that is not in this list.                                             |
+| `revoked_jti`               | no       |         | Comma-separated revoked token ids. When set, revocation is enforced and every token must include a `jti` that is not in this list.                                             |
 
 Generate a secret with:
 
