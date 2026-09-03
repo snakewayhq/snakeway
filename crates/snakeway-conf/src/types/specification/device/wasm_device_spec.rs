@@ -1,19 +1,9 @@
-use crate::types::WasmDeviceFailPolicy;
+use crate::types::{WasmDeviceFailPolicy, WasmHook};
 use crate::validation::validator::require_existing_file;
-use confval::prelude::{KeywordSet, Located, Report, Validate, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-
-/// Lifecycle hooks a WASM device may declare via the `hooks` allowlist.
-pub const HOOK_NAMES: [&str; 6] = [
-    "on_request",
-    "on_stream_request_body",
-    "before_proxy",
-    "after_proxy",
-    "on_stream_response_body",
-    "on_response",
-];
 
 range_constraint!(TIMEOUT_MS, i64, min: 1, max: 60000);
 range_constraint!(BODY_BUFFER_MAX, i64, min: 0, max: 104857600);
@@ -45,7 +35,7 @@ pub struct WasmDeviceSpec {
 
     /// Lifecycle hooks this device implements.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[confval(non_empty(help = "omit `hooks` to run all hooks, or list at least one hook"))]
+    #[confval(non_empty(help = "omit `hooks` to run all hooks, or list at least one hook"), keywords = WasmHook)]
     pub hooks: Option<Located<Vec<Located<String>>>>,
 }
 
@@ -72,12 +62,6 @@ impl Validate for WasmDeviceSpec {
             Some("Provide a path to a compiled .wasm module."),
             report,
         );
-
-        if let Some(hooks) = &self.hooks {
-            for hook in &hooks.value {
-                KeywordSet::new(&HOOK_NAMES).check_located(hook, "hook", report);
-            }
-        }
     }
 }
 
@@ -373,14 +357,14 @@ hooks = ["on_request", "on_response"]
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|e| e.message.contains("unknown hook: on_bogus"))
+                .any(|e| e.message.contains("unknown value in hooks: on_bogus"))
         );
     }
 
