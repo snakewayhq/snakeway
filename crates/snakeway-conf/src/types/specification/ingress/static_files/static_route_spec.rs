@@ -1,4 +1,4 @@
-use confval::prelude::{Located, Report, Validate, range_constraint};
+use confval::prelude::{AbsolutePath, Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -21,6 +21,7 @@ range_constraint!(MAX_AGE_SECONDS, i64, min: 0, max: ONE_YEAR_IN_SECONDS, units:
 pub struct StaticRouteSpec {
     pub hosts: Vec<Located<String>>,
     pub path: Located<String>,
+    #[confval(format = AbsolutePath)]
     pub file_dir: Located<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<Located<String>>,
@@ -55,15 +56,6 @@ impl Validate for StaticRouteSpec {
             report
                 .error(format!(
                     "invalid static directory: {}",
-                    self.file_dir.value.display()
-                ))
-                .at(self.file_dir.span)
-                .emit();
-        }
-        if self.file_dir.value.is_relative() {
-            report
-                .error(format!(
-                    "static file directory must be an absolute path: {}",
                     self.file_dir.value.display()
                 ))
                 .at(self.file_dir.span)
@@ -133,10 +125,7 @@ mod tests {
         // Arrange
         let file_dir = "./www";
         let expected_error0 = format!("invalid static directory: {}", file_dir);
-        let expected_error1 = format!(
-            "static file directory must be an absolute path: {}",
-            file_dir
-        );
+        let expected_error1 = format!("file_dir is not a valid absolute path: \"{}\"", file_dir);
         let mut report = Report::new();
         let spec = StaticRouteSpec {
             file_dir: Located::detached(PathBuf::from(file_dir)),
@@ -144,11 +133,11 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
-        assert_eq!(report.issues()[0].message, expected_error0);
-        assert_eq!(report.issues()[1].message, expected_error1);
+        assert_eq!(report.issues()[0].message, expected_error1);
+        assert_eq!(report.issues()[1].message, expected_error0);
     }
 
     #[test]

@@ -8,6 +8,9 @@ range_constraint!(MAX_RETRIES, i64, min: 1, max: 60);
 pub struct UpgradeSpec {
     /// Path to the Unix domain socket used for zero-drop upgrades.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(non_empty(
+        help = "Provide a path to the Unix domain socket used for zero-drop upgrades."
+    ))]
     pub sock: Option<Located<String>>,
 
     /// Maximum number of retries when connecting/accepting on the upgrade socket.
@@ -17,17 +20,7 @@ pub struct UpgradeSpec {
 }
 
 impl Validate for UpgradeSpec {
-    fn validate(&self, report: &mut Report) {
-        if let Some(sock) = &self.sock
-            && sock.value.trim().is_empty()
-        {
-            report
-                .error("upgrade.sock cannot be empty")
-                .at(sock.span)
-                .help("Provide a path to the Unix domain socket used for zero-drop upgrades.")
-                .emit();
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -57,11 +50,15 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
-        assert_eq!(report.issues()[0].message, "upgrade.sock cannot be empty");
+        assert_eq!(report.issues()[0].message, "sock must not be empty");
+        assert_eq!(
+            report.issues()[0].help.as_deref(),
+            Some("Provide a path to the Unix domain socket used for zero-drop upgrades.")
+        );
     }
 
     #[test]

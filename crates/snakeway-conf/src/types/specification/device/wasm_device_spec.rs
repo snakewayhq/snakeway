@@ -45,6 +45,7 @@ pub struct WasmDeviceSpec {
 
     /// Lifecycle hooks this device implements.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(non_empty(help = "omit `hooks` to run all hooks, or list at least one hook"))]
     pub hooks: Option<Located<Vec<Located<String>>>>,
 }
 
@@ -65,13 +66,6 @@ impl Default for WasmDeviceSpec {
 
 impl Validate for WasmDeviceSpec {
     fn validate(&self, report: &mut Report) {
-        if self.name.value.trim().is_empty() {
-            report
-                .error("wasm device name must not be empty")
-                .at(self.name.span)
-                .emit();
-        }
-
         require_existing_file(
             &self.path,
             "wasm device",
@@ -80,13 +74,6 @@ impl Validate for WasmDeviceSpec {
         );
 
         if let Some(hooks) = &self.hooks {
-            if hooks.value.is_empty() {
-                report
-                    .error("hooks must not be empty")
-                    .at(hooks.span)
-                    .help("omit `hooks` to run all hooks, or list at least one hook")
-                    .emit();
-            }
             for hook in &hooks.value {
                 KeywordSet::new(&HOOK_NAMES).check_located(hook, "hook", report);
             }
@@ -295,30 +282,6 @@ config {
     }
 
     #[test]
-    fn empty_name_rejected() {
-        // Arrange
-        let mut report = Report::new();
-        let spec = WasmDeviceSpec {
-            name: Located::detached("  ".to_string()),
-            enable: Located::detached(true),
-            path: Located::detached(PathBuf::from("/tmp/test.wasm")),
-            fail_policy: Located::detached("open".to_string()),
-            ..Default::default()
-        };
-
-        // Act
-        spec.validate(&mut report);
-
-        // Assert
-        assert!(
-            report
-                .issues()
-                .iter()
-                .any(|e| e.message.contains("name must not be empty"))
-        );
-    }
-
-    #[test]
     fn unknown_fail_policy_rejected() {
         // Arrange
         let mut report = Report::new();
@@ -435,7 +398,7 @@ hooks = ["on_request", "on_response"]
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -444,6 +407,8 @@ hooks = ["on_request", "on_response"]
                 .iter()
                 .any(|e| e.message.contains("hooks must not be empty"))
         );
+        assert!(report.issues().iter().any(|e| e.help.as_deref()
+            == Some("omit `hooks` to run all hooks, or list at least one hook")));
     }
 
     #[test]

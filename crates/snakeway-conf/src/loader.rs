@@ -68,7 +68,7 @@ fn load_config_from_parts(
         return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
 
-    let server_config = ServerConfig::lower(&server_spec, &mut report);
+    let server_config = ServerConfig::lower(server_spec, &mut report);
     if report.has_errors() {
         return Err(ConfigError::SemanticValidationFailed { report, sources });
     }
@@ -246,6 +246,29 @@ mod tests {
         write_config(
             dir.path(),
             "wasm_devices \"\" {\n  enable = false\n  path = \"./a.wasm\"\n  fail_policy = \"open\"\n}\n",
+        );
+
+        // Act
+        let (_, report, ..) = load_spec_files(dir.path()).unwrap();
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message == "a block label must not be empty"),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn whitespace_only_wasm_device_label_is_reported_by_the_reference_pass() {
+        // Arrange
+        let dir = tempfile::tempdir().unwrap();
+        write_config(
+            dir.path(),
+            "wasm_devices \"  \" {\n  enable = false\n  path = \"./a.wasm\"\n  fail_policy = \"open\"\n}\n",
         );
 
         // Act

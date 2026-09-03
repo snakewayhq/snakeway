@@ -39,14 +39,6 @@ impl Default for ServiceSpec {
 
 impl Validate for ServiceSpec {
     fn validate(&self, report: &mut Report) {
-        if self.name.value.trim().is_empty() {
-            report
-                .error("service name must not be empty")
-                .at(self.name.span)
-                .help("Name the service with a block label: services \"api\" { ... }")
-                .emit();
-        }
-
         // A route with no hosts is reported at the route's enclosing span,
         // which the route cannot reach from `&self`.
         for route in &self.routes {

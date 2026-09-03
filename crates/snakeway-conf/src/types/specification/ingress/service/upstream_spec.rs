@@ -173,11 +173,11 @@ mod tests {
         upstream.weight = Located::detached(0);
 
         // Act
-        upstream.validate(&mut report);
+        upstream.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("invalid upstream weight: 0"));
+        assert_eq!(error.message, "weight must be at least 1");
     }
 
     #[test]
@@ -188,11 +188,11 @@ mod tests {
         upstream.weight = Located::detached(1001);
 
         // Act
-        upstream.validate(&mut report);
+        upstream.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("invalid upstream weight: 1001"));
+        assert_eq!(error.message, "weight must be at most 1000");
     }
 
     #[test]
