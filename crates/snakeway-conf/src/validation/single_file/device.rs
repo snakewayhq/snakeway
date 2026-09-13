@@ -55,7 +55,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
                     .help("At least one geoip db must be specified")
                     .emit();
             }
-        };
+        }
     }
 
     let enabled_devices = devices.iter().filter(|device| device.value.is_enabled());
@@ -153,7 +153,7 @@ pub(crate) fn validate_devices(devices: &[Located<DeviceSpec>], report: &mut Rep
             DeviceSpec::Identity(_) => {
                 // Validated in the first pass.
             }
-        };
+        }
     }
 }
 

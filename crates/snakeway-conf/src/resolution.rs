@@ -19,4 +19,7 @@ pub enum ResolveError {
 
     #[error("invalid bind interface: {0}")]
     InvalidInterface(String),
+
+    #[error("port out of range (1-65535): {0}")]
+    InvalidPort(i64),
 }

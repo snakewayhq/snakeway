@@ -1,9 +1,7 @@
 use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing};
 use crate::resolution::ResolveError;
-use crate::types::specification::ingress::bind::report_invalid_port;
-use crate::types::{BindInterfaceSpec, HclInt, TlsTerminationSpec};
-use crate::validation::ConfigError;
-use crate::validation::validator::is_valid_port;
+use crate::types::{BindInterfaceSpec, TlsTerminationSpec};
+use crate::validation::{ConfigError, PORT};
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 use std::net::SocketAddr;
@@ -11,7 +9,8 @@ use std::net::SocketAddr;
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct BindAdminSpec {
     pub interface: Located<String>,
-    pub port: Located<HclInt>,
+    #[confval[range = PORT]]
+    pub port: Located<i64>,
     #[confval(nested)]
     pub tls: Located<TlsTerminationSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -28,16 +27,15 @@ impl BindAdminSpec {
             .try_into()
             .map_err(|e: ConfigError| ResolveError::InvalidInterface(e.to_string()))?;
 
-        Ok(SocketAddr::new(interface.as_ip(), self.port.value as u16))
+        let port = u16::try_from(self.port.value)
+            .map_err(|_| ResolveError::InvalidPort(self.port.value))?;
+
+        Ok(SocketAddr::new(interface.as_ip(), port))
     }
 }
 
 impl Validate for BindAdminSpec {
     fn validate(&self, report: &mut Report) {
-        if !is_valid_port(self.port.value) {
-            report_invalid_port(&self.port, report);
-        }
-
         match &self.tls.value {
             TlsTerminationSpec::Manual { .. } => {}
             TlsTerminationSpec::Acme { .. } => {

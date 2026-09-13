@@ -159,6 +159,7 @@ fn large_response_body_is_streamed_without_truncation() {
     let expected_size: usize = 2_097_152; // 2 MB
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],
                 path: Located::detached("/api".to_string()),
@@ -207,6 +208,7 @@ fn upstream_that_hangs_does_not_block_client_forever() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],
                 path: Located::detached("/api".to_string()),

@@ -156,7 +156,13 @@ where
             max_header_bytes: bytes(&spec.max_header_bytes, report, &mut ok),
             max_body_bytes: bytes(&spec.max_body_bytes, report, &mut ok),
             max_suspicious_body_bytes: bytes(&spec.max_suspicious_body_bytes, report, &mut ok),
-            deny_status: spec.deny_status.as_ref().map(|v| v.value as u16),
+            deny_status: match narrow::opt_i64_to_u16(&spec.deny_status, report) {
+                Some(status) => status,
+                None => {
+                    ok = false;
+                    None
+                }
+            },
             client_body_timeout,
             paths: spec.paths.iter().map(|p| p.value.clone()).collect(),
         };

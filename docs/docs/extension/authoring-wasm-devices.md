@@ -29,12 +29,12 @@ WASM devices are declared in a device file under `device.d/`:
 ```hcl
 wasm_devices = [
   {
-    name            = "my-device"
-    enable          = true
-    path            = "/etc/snakeway/devices/my_device.wasm"
-    fail_policy     = "open"
-    timeout_ms      = 5
-    body_buffer_max = 0
+    name                  = "my-device"
+    enable                = true
+    path                  = "/etc/snakeway/devices/my_device.wasm"
+    fail_policy           = "open"
+    timeout_milliseconds  = 5
+    body_buffer_max_bytes = 0
     hooks = ["on_request"]
 
     config = {
@@ -53,8 +53,8 @@ wasm_devices = [
 | `enable`          | bool                   | yes      |         | Whether the device is active                                                                                                   |
 | `path`            | string                 | yes      |         | Path to the compiled `.wasm` component                                                                                         |
 | `fail_policy`     | `"open"` or `"closed"` | yes      |         | Behavior on device error (see below)                                                                                           |
-| `timeout_ms`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 to 60000)                                                                       |
-| `body_buffer_max` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode                                            |
+| `timeout_milliseconds`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 to 60000)                                                                       |
+| `body_buffer_max_bytes` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode                                            |
 | `config`          | map of strings         | no       | `{}`    | Key-value pairs accessible to the device via `host.config-get`                                                                 |
 | `hooks`           | list of strings        | no       | all     | Lifecycle hooks this device implements. When set, the host skips every hook not listed. See [Hook Selection](#hook-selection). |
 
@@ -69,10 +69,10 @@ When a WASM device encounters an error (load failure, timeout, trap, body buffer
 
 ### Body buffering
 
-When `body_buffer_max` is `0` (the default), the `on-stream-request-body` hook is called once per chunk as the body streams through.
+When `body_buffer_max_bytes` is `0` (the default), the `on-stream-request-body` hook is called once per chunk as the body streams through.
 The device sees one chunk at a time.
 
-When `body_buffer_max` is set to a positive value, Snakeway buffers the request body up to that limit and calls `on-stream-request-body` once with the complete body when the stream ends.
+When `body_buffer_max_bytes` is set to a positive value, Snakeway buffers the request body up to that limit and calls `on-stream-request-body` once with the complete body when the stream ends.
 If the body exceeds the limit, the fail policy determines the outcome.
 
 ### Hook selection
@@ -359,7 +359,7 @@ A **pooling allocator** pre-allocates memory slots so instantiation is fast.
 
 ### Timeouts
 
-Each hook has an epoch-based deadline controlled by `timeout_ms`.
+Each hook has an epoch-based deadline controlled by `timeout_milliseconds`.
 If the device exceeds its deadline, the hook is terminated and the fail policy determines the outcome.
 
 ### Memory limits

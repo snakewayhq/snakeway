@@ -29,6 +29,7 @@ impl ConfigBuilder {
         let mut bind = Self::make_bind(true);
         bind.enable_http2 = Located::detached(true);
         let service = ServiceSpec {
+            name: Located::detached("grpc".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],
                 path: Located::detached(ROUTE_PATH_GRPC.to_string()),
@@ -79,6 +80,7 @@ impl ConfigBuilder {
     pub fn with_ws_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
         let service = ServiceSpec {
+            name: Located::detached("ws".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],
                 path: Located::detached(ROUTE_PATH_WS.to_string()),
@@ -226,6 +228,7 @@ impl ConfigBuilder {
 
     pub(crate) fn make_service_spec() -> ServiceSpec {
         ServiceSpec {
+            name: Located::detached("api".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],
                 path: Located::detached(ROUTE_PATH_API.to_string()),

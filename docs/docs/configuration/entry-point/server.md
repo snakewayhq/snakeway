@@ -283,7 +283,7 @@ Value used for the `service.name` resource attribute in exported telemetry.
 
 `observability.otel.sampling_ratio` float, default: `1.0`.
 Controls what fraction of root traces are sampled (0.0 to 1.0).
-When an incoming request carries a sampled W3C Trace Context, Snakeway always honors that decision.
+When an incoming request includes a sampled W3C Trace Context, Snakeway always honors that decision.
 For requests without a parent context, this ratio determines sampling probability.
 Set to `0.1` to sample 10% of root traces, or `1.0` to sample all.
 

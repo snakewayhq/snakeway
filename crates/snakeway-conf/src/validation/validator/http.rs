@@ -1,91 +1,78 @@
-use confval::prelude::{Located, Report};
+use confval::prelude::Format;
 use http::{HeaderName, Method};
 
-pub(crate) fn validate_http_header_name(header: &Located<String>, report: &mut Report) {
-    if HeaderName::from_bytes(header.value.as_bytes()).is_err() {
-        report
-            .error(format!("invalid HTTP header name: {}", header.value))
-            .at(header.span)
-            .emit();
+/// An HTTP method name, such as `GET` or `POST`.
+pub(crate) struct HttpMethod;
+
+impl Format for HttpMethod {
+    const NAME: &'static str = "HTTP method";
+
+    fn check(value: &str) -> bool {
+        Method::from_bytes(value.as_bytes()).is_ok()
     }
 }
 
-pub(crate) fn validate_http_method(method: &Located<String>, report: &mut Report) {
-    if Method::from_bytes(method.value.as_bytes()).is_err() {
-        report
-            .error(format!("invalid HTTP method: {}", method.value))
-            .at(method.span)
-            .emit();
+/// An HTTP header name, such as `content-type`.
+pub(crate) struct HttpHeaderName;
+
+impl Format for HttpHeaderName {
+    const NAME: &'static str = "HTTP header name";
+
+    fn check(value: &str) -> bool {
+        HeaderName::from_bytes(value.as_bytes()).is_ok()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use confval::prelude::Format;
 
-    fn located(value: &str) -> Located<String> {
-        Located::detached(value.to_string())
+    #[test]
+    fn valid_header_name_passes() {
+        // Arrange
+        let value = "content-type";
+
+        // Act
+        let result = HttpHeaderName::check(value);
+
+        // Assert
+        assert!(result);
     }
 
     #[test]
-    fn valid_header_name() {
+    fn invalid_header_name_fails() {
         // Arrange
-        let mut report = Report::new();
+        let value = "invalid header!";
 
         // Act
-        validate_http_header_name(&located("content-type"), &mut report);
+        let result = HttpHeaderName::check(value);
 
         // Assert
-        assert!(!report.has_issues());
+        assert!(!result);
     }
 
     #[test]
-    fn invalid_header_name() {
+    fn valid_http_method_passes() {
         // Arrange
-        let mut report = Report::new();
+        let value = "GET";
 
         // Act
-        validate_http_header_name(&located("invalid header!"), &mut report);
+        let result = HttpMethod::check(value);
 
         // Assert
-        assert!(report.has_issues());
-        assert_eq!(report.issues().len(), 1);
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("invalid HTTP header name"),
-            "expected error to contain 'invalid HTTP header name', got: {}",
-            report.issues()[0].message
-        );
+        assert!(result);
     }
 
     #[test]
-    fn valid_http_method() {
+    fn invalid_http_method_fails() {
         // Arrange
-        let mut report = Report::new();
+        let value = "INVALID METHOD";
 
         // Act
-        validate_http_method(&located("GET"), &mut report);
+        let result = HttpMethod::check(value);
 
         // Assert
-        assert!(!report.has_issues());
-    }
-
-    #[test]
-    fn invalid_http_method() {
-        // Arrange
-        let mut report = Report::new();
-
-        // Act
-        validate_http_method(&located("INVALID METHOD"), &mut report);
-
-        // Assert
-        assert!(report.has_issues());
-        assert_eq!(report.issues().len(), 1);
-        assert!(
-            report.issues()[0].message.contains("invalid HTTP method"),
-            "expected error to contain 'invalid HTTP method', got: {}",
-            report.issues()[0].message
-        );
+        assert!(!result);
     }
 }

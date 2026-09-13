@@ -1,5 +1,4 @@
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(SAMPLING_RATIO, f64, min: 0.0, max: 1.0);
@@ -15,12 +14,12 @@ impl Validate for ObservabilitySpec {
     fn validate(&self, _report: &mut Report) {}
 }
 
-#[derive(Debug, Serialize, Default, confval::Spec)]
+#[derive(Debug, Serialize, confval::Spec)]
 pub struct OtelSpec {
     pub enable: Located<bool>,
     pub endpoint: Located<String>,
     pub service_name: Located<String>,
-    #[confval(default = 1.0)]
+    #[confval(default = 1.0, range = SAMPLING_RATIO)]
     pub sampling_ratio: Located<f64>,
 }
 
@@ -54,8 +53,6 @@ impl Validate for OtelSpec {
                 .help("The endpoint must start with http:// or https://.")
                 .emit();
         }
-
-        SAMPLING_RATIO.check_located(&self.sampling_ratio, "sampling_ratio", report);
     }
 }
 
@@ -132,7 +129,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -245,7 +242,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

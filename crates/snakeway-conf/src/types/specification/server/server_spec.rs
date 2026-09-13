@@ -1,19 +1,24 @@
 use crate::types::{
-    HclInt, ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
+    ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
     UpstreamSettingsSpec, WasmSpec,
 };
-use confval::prelude::Located;
+use crate::validation::validate_cert_pem;
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
+
+range_constraint!(THREADS, i64, min: 1, max: 1024);
+range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
     /// Configuration schema version
-    pub version: Located<HclInt>,
+    pub version: Located<i64>,
 
     /// Number of worker threads. When unset, Pingora chooses the value.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub threads: Option<Located<HclInt>>,
+    #[confval(range = THREADS)]
+    pub threads: Option<Located<i64>>,
 
     /// Optional pid file path
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,8 +35,8 @@ pub struct ServerSpec {
     #[confval(nested)]
     pub observability: Option<Located<ObservabilitySpec>>,
 
-    #[confval(default = 30)]
-    pub dns_refresh_interval_seconds: Located<HclInt>,
+    #[confval(default = 30, range = DNS_REFRESH_INTERVAL_SECONDS)]
+    pub dns_refresh_interval_seconds: Located<i64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
@@ -94,6 +99,44 @@ impl ServerSpec {
         self.upstream
             .get_or_insert_with(|| Located::detached(UpstreamSettingsSpec::default()));
         self
+    }
+}
+
+/// Entity-level validation for the server section. Runs after parsing (or
+/// after programmatic construction), so it must not assume a source file
+/// exists; spans come from the `Located` values themselves.
+impl Validate for ServerSpec {
+    fn validate(&self, report: &mut Report) {
+        if let Some(pid_file) = &self.pid_file
+            && let Some(parent) = pid_file.value.parent()
+        {
+            if !parent.exists() {
+                report
+                    .error(format!(
+                        "pid file parent directory does not exist: {}",
+                        pid_file.value.display()
+                    ))
+                    .at(pid_file.span)
+                    .emit();
+            } else if !parent.is_dir() {
+                report
+                    .error(format!(
+                        "pid file parent is not a directory: {}",
+                        pid_file.value.display()
+                    ))
+                    .at(pid_file.span)
+                    .emit();
+            }
+        }
+
+        if let Some(ca_file) = &self.ca_file
+            && let Err(e) = validate_cert_pem(&ca_file.value)
+        {
+            report
+                .error(format!("server CA file is invalid: {e}"))
+                .at(ca_file.span)
+                .emit();
+        }
     }
 }
 
@@ -321,27 +364,6 @@ observability {
     }
 
     #[test]
-    fn validate_server_version_invalid() {
-        // Arrange
-        let mut report = Report::new();
-        let server = ServerSpec {
-            version: Located::detached(2),
-            ..Default::default()
-        };
-
-        // Act
-        server.validate_all(&mut report);
-
-        // Assert
-        assert!(report.has_issues());
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("invalid config version: 2")
-        );
-    }
-
-    #[test]
     fn validate_upstream_timeout_out_of_range() {
         // Arrange
         let mut report = Report::new();
@@ -434,35 +456,6 @@ observability {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("max_memory_bytes"))
-        );
-    }
-
-    #[test]
-    fn validate_server_bad_version_suppresses_other_errors() {
-        // The version gate is intentional: a bad version reports only the
-        // version error and skips the v1-specific field checks, even when a
-        // field is otherwise invalid (here, threads far out of range). If this
-        // ever reports two errors, the early return in ServerSpec::validate was
-        // removed; that is a deliberate design choice, not a bug to "fix".
-        let mut report = Report::new();
-        let server = ServerSpec {
-            version: Located::detached(2),
-            threads: Some(Located::detached(99_999)),
-            ..Default::default()
-        };
-
-        server.validate_all(&mut report);
-
-        assert_eq!(
-            report.issues().len(),
-            1,
-            "expected only the version error, got: {:?}",
-            report.issues()
-        );
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("invalid config version: 2")
         );
     }
 
@@ -673,15 +666,13 @@ observability {
 
         // Assert
         assert_eq!(report.issues().len(), 2);
-        assert!(
-            report.issues()[0]
-                .message
-                .contains("is not a valid IPv4 address")
+        assert_eq!(
+            report.issues()[0].message,
+            "invalid IPv4 address in ipv4: \"not an ip\""
         );
-        assert!(
-            report.issues()[1]
-                .message
-                .contains("is not a valid IPv6 address")
+        assert_eq!(
+            report.issues()[1].message,
+            "invalid IPv6 address in ipv6: \"also wrong\""
         );
     }
 }

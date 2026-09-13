@@ -1,28 +1,31 @@
 use crate::resolution::ResolveError;
-use crate::types::HclInt;
-use crate::types::specification::ingress::bind::report_invalid_port;
-use crate::validation::validator::{is_valid_hostname, is_valid_port, validate_cert_pem};
-use confval::prelude::{Located, Report, Validate};
+use crate::validation::PORT;
+use crate::validation::validator::{is_valid_hostname, validate_cert_pem};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Default, confval::Spec)]
+range_constraint!(WEIGHT, i64, min: 1, max: 1_000);
+
+#[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct UpstreamSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub endpoint: Option<Located<EndpointSpec>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sock: Option<Located<String>>,
-    #[confval(default = 1)]
-    pub weight: Located<HclInt>,
+    #[confval(default = 1, range = WEIGHT)]
+    pub weight: Located<i64>,
 }
 
 #[derive(Debug, Serialize, Clone, Default, confval::Spec)]
 pub struct EndpointSpec {
     pub host: Located<String>,
-    pub port: Located<HclInt>,
+    #[confval[range = PORT]]
+    pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub tls: Option<Located<EndpointTlsSpec>>,
@@ -30,6 +33,7 @@ pub struct EndpointSpec {
 
 #[derive(Debug, Serialize, Clone, Default, confval::Spec)]
 pub struct EndpointTlsSpec {
+    #[confval(non_empty)]
     pub sni: Located<String>,
     pub verify: Located<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -64,7 +68,8 @@ impl fmt::Display for HostSpec {
 
 impl EndpointSpec {
     pub fn resolve(&self) -> Result<SocketAddr, ResolveError> {
-        let port = self.port.value as u16;
+        let port = u16::try_from(self.port.value)
+            .map_err(|_| ResolveError::InvalidPort(self.port.value))?;
         let ip = match HostSpec::parse(&self.host.value) {
             HostSpec::Ip(ip) => ip,
             HostSpec::Hostname(name) => {
@@ -84,14 +89,7 @@ impl EndpointSpec {
 }
 
 impl Validate for UpstreamSpec {
-    fn validate(&self, report: &mut Report) {
-        if self.weight.value == 0 || self.weight.value > 1_000 {
-            report
-                .error(format!("invalid upstream weight: {}", self.weight.value))
-                .at(self.weight.span)
-                .emit();
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 impl Validate for EndpointSpec {
@@ -100,21 +98,17 @@ impl Validate for EndpointSpec {
         match HostSpec::parse(&spec.host.value) {
             HostSpec::Ip(ip) if ip.is_unspecified() || ip.is_multicast() => {
                 report
-                    .error(format!("invalid upstream ip: {}", ip))
+                    .error(format!("invalid upstream ip: {ip}"))
                     .at(spec.host.span)
                     .emit();
             }
             HostSpec::Hostname(name) if !is_valid_hostname(&name) => {
                 report
-                    .error(format!("invalid upstream hostname: {}", name))
+                    .error(format!("invalid upstream hostname: {name}"))
                     .at(spec.host.span)
                     .emit();
             }
             _ => {}
-        }
-
-        if !is_valid_port(spec.port.value) {
-            report_invalid_port(&spec.port, report);
         }
     }
 }
@@ -122,12 +116,6 @@ impl Validate for EndpointSpec {
 impl Validate for EndpointTlsSpec {
     fn validate(&self, report: &mut Report) {
         let spec = self;
-        if spec.sni.value.trim().is_empty() {
-            report
-                .error("upstream TLS SNI required")
-                .at(spec.sni.span)
-                .emit();
-        }
 
         // The remaining checks describe how the certificate is verified, so
         // they mean nothing when verification is off.
@@ -185,11 +173,11 @@ mod tests {
         upstream.weight = Located::detached(0);
 
         // Act
-        upstream.validate(&mut report);
+        upstream.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("invalid upstream weight: 0"));
+        assert_eq!(error.message, "weight must be at least 1");
     }
 
     #[test]
@@ -200,11 +188,11 @@ mod tests {
         upstream.weight = Located::detached(1001);
 
         // Act
-        upstream.validate(&mut report);
+        upstream.validate_all(&mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("invalid upstream weight: 1001"));
+        assert_eq!(error.message, "weight must be at most 1000");
     }
 
     #[test]
@@ -276,7 +264,7 @@ mod tests {
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert!(error.message.contains("invalid port: 0"));
+        assert!(error.message.contains("port must be at least 1"));
     }
 
     #[test]
@@ -297,7 +285,7 @@ mod tests {
 
         // Assert
         let error = report.issues().first().expect("expected an error");
-        assert_eq!(error.message, "upstream TLS SNI required");
+        assert_eq!(error.message, "sni must not be empty");
     }
 
     #[test]

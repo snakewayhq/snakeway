@@ -26,7 +26,7 @@ An upgrade resolves to `Http1`, with the handshake handled by the upgrade machin
 | Downstream | Initiation                  | Upstream TLS | Resolved mode                                            | Host source                                                                                      |
 |------------|-----------------------------|--------------|----------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | HTTP/2     | none                        | TLS          | `Http2EndToEnd`                                          | upstream authority (overrides client)                                                            |
-| HTTP/2     | none                        | plaintext    | `Http1`                                                  | client `:authority` via downstream authority, or the client `Host` if the h2 request carried one |
+| HTTP/2     | none                        | plaintext    | `Http1`                                                  | client `:authority` via downstream authority, or the client `Host` if the h2 request included one |
 | HTTP/1.1   | none                        | TLS          | `Http1`                                                  | client `Host` header (passed through)                                                            |
 | HTTP/1.1   | none                        | plaintext    | `Http1`                                                  | client `Host` header (passed through)                                                            |
 | HTTP/1.1   | Upgrade                     | any          | `Http1`                                                  | client `Host` header (passed through)                                                            |
@@ -77,7 +77,7 @@ It forces HTTP/1.1 to the upstream regardless of the version negotiation, becaus
 WebSocket over HTTP/2 (RFC 8441 Extended CONNECT) is not supported, because Pingora does not implement it.
 Snakeway does not advertise `SETTINGS_ENABLE_CONNECT_PROTOCOL`, and such a request is reset.
 
-The states are the variants of `UpgradeState`, seeded at hydration and carried on the request context.
+The states are the variants of `UpgradeState`, seeded at hydration and stored on the request context.
 Each hook advances the machine through a transition method, and each state that holds a pool slot owns its guard.
 
 An upgrade progresses through these states:

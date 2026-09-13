@@ -8,6 +8,9 @@ Each service groups a set of [routes](routes.md) with one or more [upstreams](up
 ```hcl
 services = [
   {
+    # The service's unique name across all ingress files.
+    name = "api"
+
     # Load balancing strategy for this service.
     load_balancing_strategy = "round_robin"
 
@@ -32,6 +35,7 @@ services = [
 
 | Field | Type | Default | Description |
 |---|---|---|---|
+| `name` | `string` | (required) | The service's unique name across all ingress files. HCL also accepts it as a block label: `services "api" { ... }`. |
 | `load_balancing_strategy` | `string` | `"failover"` | The load balancing strategy. See supported strategies below. |
 | `health_check.enable` | `boolean` | `true` | Enable health checking for upstreams. |
 | `health_check.failure_threshold` | `integer` | `5` | Number of consecutive failures before marking an upstream as unhealthy. |

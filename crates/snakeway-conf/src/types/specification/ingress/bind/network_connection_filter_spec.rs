@@ -9,6 +9,7 @@ pub struct NetworkConnectionFilterSpec {
     pub cidr: Located<CidrSpec>,
     #[confval(nested)]
     pub ip_family: Located<IpFamilySpec>,
+    #[confval(keywords = OnNoPeerAddr)]
     pub on_no_peer_addr: Located<String>,
 }
 
@@ -61,8 +62,6 @@ impl Validate for NetworkConnectionFilterSpec {
                 .help("Set ip_family.ipv4 and/or ip_family.ipv6 to true.")
                 .emit();
         }
-
-        OnNoPeerAddr::keyword_set().check_located(&spec.on_no_peer_addr, "on_no_peer_addr", report);
     }
 }
 

@@ -1,6 +1,4 @@
-use crate::types::HclInt;
-use confval::prelude::{Located, Report, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 // wasmtime pre-reserves virtual address space proportional to the instance pool
@@ -10,34 +8,19 @@ range_constraint!(MAX_CONCURRENT_EXECUTIONS, i64, min: 1, max: 8192);
 range_constraint!(MAX_MEMORY_BYTES, i64, min: 1_048_576, max: 268_435_456, units: "bytes");
 
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct WasmSpec {
     /// Maximum number of WASM device hook executions allowed to run at once.
     /// This sizes the wasmtime instance pool.
     /// Requests beyond this limit fail according to the device `fail_policy`.
-    #[confval(default = 512)]
-    pub max_concurrent_executions: Located<HclInt>,
+    #[confval(default = 512, range = MAX_CONCURRENT_EXECUTIONS)]
+    pub max_concurrent_executions: Located<i64>,
 
     /// Maximum linear memory, in bytes, that a single WASM device execution may use.
-    #[confval(default = 67108864)] // 64 MiB
-    pub max_memory_bytes: Located<HclInt>,
-}
-
-impl Default for WasmSpec {
-    fn default() -> Self {
-        Self {
-            max_concurrent_executions: Located::detached(512),
-            max_memory_bytes: Located::detached(67108864), // 64 MiB
-        }
-    }
+    #[confval(default = 67_108_864, range = MAX_MEMORY_BYTES)] // 64 MiB
+    pub max_memory_bytes: Located<i64>,
 }
 
 impl Validate for WasmSpec {
-    fn validate(&self, report: &mut Report) {
-        MAX_CONCURRENT_EXECUTIONS.check_located(
-            &self.max_concurrent_executions,
-            "max_concurrent_executions",
-            report,
-        );
-        MAX_MEMORY_BYTES.check_located(&self.max_memory_bytes, "max_memory_bytes", report);
-    }
+    fn validate(&self, _report: &mut Report) {}
 }

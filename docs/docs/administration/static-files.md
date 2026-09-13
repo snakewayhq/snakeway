@@ -45,7 +45,7 @@ Write `compression = {}` and `cache_policy = {}` to accept the defaults for thos
 
 ### Cache Policy (Per-Route)
 
-Each static route carries a `cache_policy` block.
+Each static route has a `cache_policy` block.
 Every option within it has a default, so `cache_policy = {}` is valid.
 
 | Option            | Type    | Default | Description                                                                                                                  |
@@ -56,7 +56,7 @@ Every option within it has a default, so `cache_policy = {}` is valid.
 
 ### Advanced Compression (Per-Route)
 
-Each static route carries a `compression` block.
+Each static route has a `compression` block.
 Every option within it has a default, so `compression = {}` is valid.
 
 | Option                 | Type    | Default  | Description                                                                                                 |
@@ -189,6 +189,7 @@ static_files = [
 ```hcl
 services = [
   {
+    name = "api"
     routes = [
       {
         hosts = ["*"]

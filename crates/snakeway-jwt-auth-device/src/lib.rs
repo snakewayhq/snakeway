@@ -9,11 +9,11 @@
 //! ```hcl
 //! wasm_devices = [
 //!   {
-//!     name        = "jwt-auth"
-//!     enable      = true
-//!     path        = "/etc/snakeway/devices/jwt_auth_device.wasm"
-//!     fail_policy = "closed"
-//!     timeout_ms  = 5
+//!     name                 = "jwt-auth"
+//!     enable               = true
+//!     path                 = "/etc/snakeway/devices/jwt_auth_device.wasm"
+//!     fail_policy          = "closed"
+//!     timeout_milliseconds = 5
 //!
 //!     config = {
 //!       # HMAC-SHA256 shared secret, standard base64 (alphabet "+/", padded),

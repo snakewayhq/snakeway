@@ -115,7 +115,7 @@ These binaries are suitable for distribution and container deployment.
    See [Unit Tests](unit-tests.md), [Integration Tests](integration-tests.md), and [HTTP Replay Tests](http-replay-tests.md).
 3. Run `just lint` and fix every diagnostic.
    See [Code Style](code-style.md).
-4. If the change touches configuration, follow the full recipe in [Adding a Config Setting](adding-config-settings.md).
+4. If the change adds or changes configuration, follow the full recipe in [Adding a Config Setting](adding-config-settings.md).
 5. If the change adds or alters user-facing behavior, update the documentation site.
    See [Writing Documentation](writing-documentation.md).
 6. Run `just test-everything` before opening a pull request.

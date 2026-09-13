@@ -6,6 +6,7 @@ bind = {
 
 services = [
   {
+    name                    = "api"
     load_balancing_strategy = "round_robin"
 
     health_check = {

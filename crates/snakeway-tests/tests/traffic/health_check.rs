@@ -46,6 +46,7 @@ fn health_check_enabled_reports_healthy_for_working_upstreams() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             health_check: Some(Located::detached(HealthCheckSpec {
                 enable: Located::detached(true),
                 failure_threshold: Located::detached(3),
@@ -103,6 +104,7 @@ fn health_check_disabled_reports_healthy_by_default() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             health_check: Some(Located::detached(HealthCheckSpec {
                 enable: Located::detached(false),
                 ..Default::default()
@@ -157,6 +159,7 @@ fn unhealthy_upstream_recovers_after_cooldown_and_success() {
     // Arrange: single upstream, low thresholds, short cooldown.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             health_check: Some(Located::detached(HealthCheckSpec {
                 enable: Located::detached(true),
                 failure_threshold: Located::detached(2),
@@ -262,6 +265,7 @@ fn unhealthy_upstream_is_skipped_during_routing() {
     // Arrange: two upstreams, only the second has a real listener.
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             health_check: Some(Located::detached(HealthCheckSpec {
                 enable: Located::detached(true),
                 failure_threshold: Located::detached(2),

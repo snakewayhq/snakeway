@@ -18,6 +18,8 @@ dev-templates = []
 
 [dependencies]
 confval = { workspace = true }
+confval-lsp = { workspace = true }
+glob = { workspace = true }
 snakeway-acme = { workspace = true }
 snakeway-conf = { workspace = true }
 snakeway-engine = { workspace = true }

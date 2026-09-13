@@ -2,7 +2,7 @@ use crate::cli::config::{ConfigCmd, check, dump, init};
 use crate::cli::logs::run_logs;
 use crate::cli::route::RouteCmd;
 use crate::cli::wasm_device::WasmDeviceCmd;
-use crate::cli::{reload, route, upgrade, wasm_device};
+use crate::cli::{lsp, reload, route, upgrade, wasm_device};
 use crate::server;
 use clap::{Parser, Subcommand};
 use snakeway_observability::init_logging;
@@ -44,6 +44,9 @@ enum Command {
         #[arg(long)]
         stats: bool,
     },
+
+    /// Serve the config language server over stdio
+    Lsp,
 
     /// Reload a running Snakeway instance (SIGHUP)
     Reload {
@@ -141,6 +144,15 @@ pub fn run() {
 
         Some(Command::Route { cmd }) => {
             route::run(cmd);
+        }
+
+        Some(Command::Lsp) => {
+            // No logging setup: stdout carries the LSP transport, and a log
+            // line on it would corrupt the session.
+            if let Err(e) = lsp::run() {
+                eprintln!("lsp failed: {e}");
+                exit(1);
+            }
         }
 
         Some(Command::Reload { pid_file }) => {
