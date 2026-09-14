@@ -17,7 +17,6 @@ use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, Upstre
 use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -287,33 +286,13 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Box<CaType>> {
         anyhow::bail!("CA file is empty: {}", path.display());
     }
 
-    let certs: Vec<WrappedX509> = rustls_pemfile::certs(&mut Cursor::new(&pem))
-        .enumerate()
-        .map(|(i, result)| {
-            let cert_der = result.with_context(|| {
-                format!(
-                    "failed to parse PEM certificate in CA file: {}",
-                    path.display()
-                )
-            })?;
-            let der_bytes = cert_der.to_vec();
-            x509_parser::parse_x509_certificate(&der_bytes).with_context(|| {
-                format!(
-                    "invalid X.509 DER at index {} in CA file: {}",
-                    i,
-                    path.display()
-                )
-            })?;
-            Ok(WrappedX509::new(der_bytes, parse_x509))
-        })
-        .collect::<Result<Vec<_>>>()?;
+    let parsed = snakeway_conf::pem::parse_cert_chain(&pem)
+        .map_err(|e| anyhow!("CA file {}: {e}", path.display()))?;
 
-    if certs.is_empty() {
-        anyhow::bail!(
-            "CA file contained no certificates (parsed 0 certs): {}",
-            path.display()
-        );
-    }
+    let certs: Vec<WrappedX509> = parsed
+        .into_iter()
+        .map(|cert_der| WrappedX509::new(cert_der.to_vec(), parse_x509))
+        .collect();
 
     Ok(certs.into_boxed_slice())
 }

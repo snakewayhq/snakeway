@@ -13,7 +13,6 @@ use pingora_rustls::{CryptoProvider, sign};
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime};
 
@@ -78,29 +77,11 @@ impl CertManager {
             return Ok(None);
         };
 
-        let certs: Vec<_> =
-            rustls_pemfile::certs(&mut Cursor::new(&stored.cert_chain_pem))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
+        let certs = snakeway_conf::pem::parse_cert_chain(&stored.cert_chain_pem)
+            .map_err(CertManagerError::InvalidChain)?;
 
-        if certs.is_empty() {
-            return Err(CertManagerError::EmptyChain);
-        }
-
-        for (i, cert_der) in certs.iter().enumerate() {
-            x509_parser::parse_x509_certificate(cert_der.as_ref()).map_err(|e| {
-                CertManagerError::InvalidChain(format!(
-                    "invalid X.509 DER at index {i} for cert {cert_id}: {e}"
-                ))
-            })?;
-        }
-
-        let key =
-            rustls_pemfile::private_key(&mut Cursor::new(stored.expose_private_key_pem()))
-                .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?
-                .ok_or_else(|| {
-                    CertManagerError::InvalidPrivateKey("no private key found in PEM".to_string())
-                })?;
+        let key = snakeway_conf::pem::parse_private_key(stored.expose_private_key_pem())
+            .map_err(CertManagerError::InvalidPrivateKey)?;
 
         let provider = CryptoProvider::get_default().ok_or_else(|| {
             CertManagerError::InvalidChain(

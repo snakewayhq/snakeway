@@ -2,6 +2,7 @@ mod discover;
 mod loader;
 mod lower;
 mod parse;
+pub mod pem;
 mod resolution;
 
 pub mod types;

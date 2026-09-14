@@ -1,31 +1,13 @@
+use crate::pem;
 use crate::validation::validator::read_nonempty_file;
 use pingora_rustls::{CryptoProvider, sign};
-use std::io::Cursor;
 use std::path::Path;
 
 pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
     let bytes = read_nonempty_file(path)?;
 
-    let certs: Vec<_> = rustls_pemfile::certs(&mut Cursor::new(&bytes))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| format!("invalid PEM certificate {}: {e}", path.display()))?;
-
-    if certs.is_empty() {
-        return Err(format!(
-            "certificate file contains no certificates: {}",
-            path.display()
-        ));
-    }
-
-    for (i, cert_der) in certs.iter().enumerate() {
-        x509_parser::parse_x509_certificate(cert_der.as_ref()).map_err(|e| {
-            format!(
-                "invalid X.509 certificate at index {} in {}: {e}",
-                i,
-                path.display()
-            )
-        })?;
-    }
+    pem::parse_cert_chain(&bytes)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
 
     Ok(())
 }
@@ -34,41 +16,19 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
     let cert_bytes = read_nonempty_file(cert_path)?;
     let key_bytes = read_nonempty_file(key_path)?;
 
-    let certs: Vec<_> = rustls_pemfile::certs(&mut Cursor::new(&cert_bytes))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| format!("invalid certificate PEM {}: {e}", cert_path.display()))?;
+    let certs = pem::parse_cert_chain(&cert_bytes)
+        .map_err(|e| format!("{}: {e}", cert_path.display()))?;
 
-    if certs.is_empty() {
-        return Err(format!(
-            "certificate file contains no certificates: {}",
-            cert_path.display()
-        ));
-    }
-
-    for (i, cert_der) in certs.iter().enumerate() {
-        x509_parser::parse_x509_certificate(cert_der.as_ref()).map_err(|e| {
-            format!(
-                "invalid X.509 certificate at index {} in {}: {e}",
-                i,
-                cert_path.display()
-            )
-        })?;
-    }
-
-    let key = rustls_pemfile::private_key(&mut Cursor::new(&key_bytes))
-        .map_err(|e| format!("invalid private key PEM {}: {e}", key_path.display()))?
-        .ok_or_else(|| {
-            format!(
-                "invalid private key PEM {}: no private key found",
-                key_path.display()
-            )
-        })?;
+    let key = pem::parse_private_key(&key_bytes)
+        .map_err(|e| format!("{}: {e}", key_path.display()))?;
 
     let provider = CryptoProvider::get_default().ok_or_else(|| {
         "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
             .to_string()
     })?;
 
+    // from_der silently accepts InconsistentKeys::Unknown when the key type
+    // does not support SPKI comparison (exotic algorithms only).
     sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| match e {
         pingora_rustls::RusTlsError::InconsistentKeys(_) => {
             format!(
@@ -117,7 +77,7 @@ mod tests {
         let path = dir.path().join("bad_cert.pem");
         let mut f = File::create(&path).expect("failed to create file");
         f.write_all(
-            b"-----BEGIN CERTIFICATE-----\ninvalid base64 content\n-----END CERTIFICATE-----\n",
+            b"-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n",
         )
         .expect("failed to write");
 
@@ -227,7 +187,7 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("invalid private key"));
+        assert!(result.unwrap_err().contains("no private key found"));
     }
 
     #[test]
