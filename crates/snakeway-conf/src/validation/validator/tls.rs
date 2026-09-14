@@ -30,7 +30,10 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
             )
         }
         CertKeyError::Other(msg) => {
-            format!("failed to load private key for {}: {msg}", key_path.display())
+            format!(
+                "failed to load private key for {}: {msg}",
+                key_path.display()
+            )
         }
     })?;
 

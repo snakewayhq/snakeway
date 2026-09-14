@@ -126,8 +126,7 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
 
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => {
-                let mut tls_settings =
-                    TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
+                let mut tls_settings = TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
 
                 match certificate_cfg {
                     TlsTerminationConfig::Manual { key, cert } => {
