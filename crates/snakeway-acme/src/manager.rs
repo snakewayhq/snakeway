@@ -13,6 +13,7 @@ use pingora_rustls::{CryptoProvider, sign};
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
+use std::io::Cursor;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime};
 
@@ -78,7 +79,7 @@ impl CertManager {
         };
 
         let certs: Vec<_> =
-            rustls_pemfile::certs(&mut std::io::Cursor::new(&stored.cert_chain_pem))
+            rustls_pemfile::certs(&mut Cursor::new(&stored.cert_chain_pem))
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
 
@@ -95,7 +96,7 @@ impl CertManager {
         }
 
         let key =
-            rustls_pemfile::private_key(&mut std::io::Cursor::new(stored.expose_private_key_pem()))
+            rustls_pemfile::private_key(&mut Cursor::new(stored.expose_private_key_pem()))
                 .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?
                 .ok_or_else(|| {
                     CertManagerError::InvalidPrivateKey("no private key found in PEM".to_string())

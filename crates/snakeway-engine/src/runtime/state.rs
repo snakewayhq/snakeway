@@ -17,6 +17,7 @@ use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, Upstre
 use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;
 use std::fs;
+use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -286,7 +287,7 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Box<CaType>> {
         anyhow::bail!("CA file is empty: {}", path.display());
     }
 
-    let certs: Vec<WrappedX509> = rustls_pemfile::certs(&mut std::io::Cursor::new(&pem))
+    let certs: Vec<WrappedX509> = rustls_pemfile::certs(&mut Cursor::new(&pem))
         .enumerate()
         .map(|(i, result)| {
             let cert_der = result.with_context(|| {
