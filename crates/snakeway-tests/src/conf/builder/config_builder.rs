@@ -69,7 +69,6 @@ impl ConfigBuilder {
     }
 
     pub fn build(self) -> RuntimeConfig {
-        pingora_rustls::install_default_crypto_provider();
         match self.try_build() {
             Ok(cfg) => cfg,
             Err(e) => {

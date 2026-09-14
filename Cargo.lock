@@ -4510,7 +4510,6 @@ dependencies = [
  "http",
  "opentelemetry",
  "opentelemetry_sdk",
- "pingora-rustls",
  "pretty_assertions",
  "prost",
  "reqwest",
