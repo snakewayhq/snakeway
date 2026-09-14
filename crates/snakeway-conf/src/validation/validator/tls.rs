@@ -131,6 +131,7 @@ mod tests {
     #[test]
     fn validate_cert_key_pair_valid() {
         // Arrange
+        pingora_rustls::install_default_crypto_provider();
         let dir = tempdir().expect("failed to create temp dir");
         let cert = generate_simple_self_signed(vec!["localhost".into()])
             .expect("failed to generate self-signed cert");
@@ -157,6 +158,7 @@ mod tests {
     #[test]
     fn validate_cert_key_pair_key_mismatch() {
         // Arrange
+        pingora_rustls::install_default_crypto_provider();
         let dir = tempdir().expect("failed to create temp dir");
 
         let cert1 = generate_simple_self_signed(vec!["first.localhost".into()])

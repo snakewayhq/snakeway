@@ -197,6 +197,7 @@ mod tests {
     #[test]
     fn cannot_bind_to_all_interfaces() {
         // Arrange
+        pingora_rustls::install_default_crypto_provider();
         let dir = tempdir().expect("failed to create temp dir");
 
         let cert = generate_simple_self_signed(vec!["localhost".into()])
