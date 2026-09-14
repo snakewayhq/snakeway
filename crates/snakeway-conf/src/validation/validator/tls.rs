@@ -54,8 +54,10 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
             )
         })?;
 
-    let provider = CryptoProvider::get_default()
-        .ok_or_else(|| "TLS crypto provider not installed (call install_default_crypto_provider at startup)".to_string())?;
+    let provider = CryptoProvider::get_default().ok_or_else(|| {
+        "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
+            .to_string()
+    })?;
 
     sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| {
         format!(
