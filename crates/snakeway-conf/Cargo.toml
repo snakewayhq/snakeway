@@ -15,7 +15,7 @@ hotpath-alloc = ["hotpath/hotpath-alloc"]
 confval = { workspace = true }
 glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
-openssl = { workspace = true }
+pingora-rustls = { workspace = true }
 http = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }

@@ -17,8 +17,8 @@ arc-swap = { workspace = true }
 bytes = { workspace = true }
 http = { workspace = true }
 maxminddb = { workspace = true, features = ["mmap"] }
-pingora = { workspace = true, features = ["proxy", "openssl_derived", "openssl"] }
-openssl = { workspace = true }
+pingora = { workspace = true, features = ["proxy", "rustls"] }
+pingora-rustls = { workspace = true }
 pingora-limits = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
