@@ -1,9 +1,8 @@
 use crate::proxy::{AdminProxy, RedirectProxy, TrafficProxy};
 use crate::reload::ReloadHandle;
-use crate::tls_handshake::{CertMode, build_tls_callbacks};
+use crate::tls_handshake::{SnakewayCertResolver, build_tls_callbacks};
 use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;
-use openssl::ssl::SslFiletype;
 use pingora::listeners::tls::TlsSettings;
 use pingora::prelude::*;
 use pingora::protocols::http::v2::server::default_h2_options;
@@ -128,10 +127,16 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => match certificate_cfg {
                 TlsTerminationConfig::Manual { key, cert } => {
-                    let callbacks = build_tls_callbacks(CertMode::Manual);
+                    let callbacks = build_tls_callbacks();
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
-                    tls_settings.set_private_key_file(key, SslFiletype::PEM)?;
-                    tls_settings.set_certificate_chain_file(cert)?;
+                    let key_str = key
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
+                    let cert_str = cert
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Certificate path is not valid UTF-8"))?;
+                    tls_settings.set_private_key_file(key_str)?;
+                    tls_settings.set_certificate_chain_file(cert_str)?;
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
                     }
@@ -142,8 +147,10 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                     );
                 }
                 TlsTerminationConfig::Acme { .. } => {
-                    let callbacks = build_tls_callbacks(CertMode::Acme(state.clone()));
+                    let callbacks = build_tls_callbacks();
                     let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    let resolver = Arc::new(SnakewayCertResolver::new(state.clone()));
+                    tls_settings.set_cert_resolver(resolver);
                     if listener_cfg.enable_http2 {
                         tls_settings.enable_h2();
                     }

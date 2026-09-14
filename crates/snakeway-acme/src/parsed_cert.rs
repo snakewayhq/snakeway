@@ -1,13 +1,16 @@
-use openssl::pkey::{PKey, Private};
-use openssl::x509::X509;
+use pingora_rustls::sign;
+use std::sync::Arc;
 
 pub struct ParsedCert {
-    /// Leaf certificate (the server cert).
-    pub leaf: X509,
+    certified_key: Arc<sign::CertifiedKey>,
+}
 
-    /// Intermediate chain (does NOT include leaf).
-    pub chain: Vec<X509>,
+impl ParsedCert {
+    pub fn new(certified_key: Arc<sign::CertifiedKey>) -> Self {
+        Self { certified_key }
+    }
 
-    /// Private key.
-    pub key: PKey<Private>,
+    pub fn certified_key(&self) -> &Arc<sign::CertifiedKey> {
+        &self.certified_key
+    }
 }
