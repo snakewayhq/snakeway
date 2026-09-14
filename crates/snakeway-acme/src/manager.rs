@@ -255,7 +255,9 @@ mod tests {
         // Arrange
         pingora_rustls::install_default_crypto_provider();
         let store = MemoryCertStore::default();
-        store.put("test-cert".to_string(), generate_stored_cert()).unwrap();
+        store
+            .put("test-cert".to_string(), generate_stored_cert())
+            .unwrap();
         let manager = make_cert_manager(store);
 
         // Act
@@ -304,7 +306,8 @@ mod tests {
         let result = manager.load_certified_key("empty-chain");
 
         // Assert
-        assert!(matches!(result, Err(CertManagerError::InvalidChain(ref msg)) if msg.contains("no certificates")),
+        assert!(
+            matches!(result, Err(CertManagerError::InvalidChain(ref msg)) if msg.contains("no certificates")),
             "expected InvalidChain with 'no certificates', got: {result:?}"
         );
     }

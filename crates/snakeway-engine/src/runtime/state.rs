@@ -446,6 +446,9 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("invalid X.509 certificate at index 0"), "got: {msg}");
+        assert!(
+            msg.contains("invalid X.509 certificate at index 0"),
+            "got: {msg}"
+        );
     }
 }

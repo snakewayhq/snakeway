@@ -18,8 +18,6 @@ bytes = { workspace = true }
 http = { workspace = true }
 maxminddb = { workspace = true, features = ["mmap"] }
 pingora = { workspace = true, features = ["proxy", "rustls"] }
-rustls-pki-types = { workspace = true }
-x509-parser = { workspace = true }
 pingora-limits = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }

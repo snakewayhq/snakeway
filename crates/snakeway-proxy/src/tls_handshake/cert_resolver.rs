@@ -65,8 +65,9 @@ mod tests {
 
         let certs = snakeway_conf::pem::parse_cert_chain(cert.cert.pem().as_bytes())
             .expect("failed to parse cert PEM");
-        let key = snakeway_conf::pem::parse_private_key(cert.signing_key.serialize_pem().as_bytes())
-            .expect("failed to parse key PEM");
+        let key =
+            snakeway_conf::pem::parse_private_key(cert.signing_key.serialize_pem().as_bytes())
+                .expect("failed to parse key PEM");
 
         let provider =
             pingora_rustls::CryptoProvider::get_default().expect("provider not installed");
@@ -86,9 +87,7 @@ mod tests {
         }
         let registry = Arc::new(SniRegistry::new(map));
         let state = RuntimeState {
-            tls: Some(TlsRuntime {
-                sni_map: registry,
-            }),
+            tls: Some(TlsRuntime { sni_map: registry }),
             routers: HashMap::new(),
             devices: Default::default(),
             services: HashMap::new(),

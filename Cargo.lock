@@ -4344,7 +4344,6 @@ dependencies = [
  "instant-acme",
  "pingora-rustls",
  "rcgen",
- "rustls-pki-types",
  "secrecy",
  "serde",
  "serde_json",
@@ -4403,7 +4402,6 @@ dependencies = [
  "pretty_assertions",
  "rand 0.10.2",
  "rcgen",
- "rustls-pki-types",
  "serde",
  "serde_json",
  "smallvec",
@@ -4418,7 +4416,6 @@ dependencies = [
  "uuid",
  "wasmtime",
  "woothee",
- "x509-parser 0.18.1",
 ]
 
 [[package]]

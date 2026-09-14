@@ -6,8 +6,7 @@ use std::path::Path;
 pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
     let bytes = read_nonempty_file(path)?;
 
-    pem::parse_cert_chain(&bytes)
-        .map_err(|e| format!("{}: {e}", path.display()))?;
+    pem::parse_cert_chain(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
 
     Ok(())
 }
@@ -16,11 +15,11 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
     let cert_bytes = read_nonempty_file(cert_path)?;
     let key_bytes = read_nonempty_file(key_path)?;
 
-    let certs = pem::parse_cert_chain(&cert_bytes)
-        .map_err(|e| format!("{}: {e}", cert_path.display()))?;
+    let certs =
+        pem::parse_cert_chain(&cert_bytes).map_err(|e| format!("{}: {e}", cert_path.display()))?;
 
-    let key = pem::parse_private_key(&key_bytes)
-        .map_err(|e| format!("{}: {e}", key_path.display()))?;
+    let key =
+        pem::parse_private_key(&key_bytes).map_err(|e| format!("{}: {e}", key_path.display()))?;
 
     let provider = CryptoProvider::get_default().ok_or_else(|| {
         "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
@@ -76,10 +75,8 @@ mod tests {
         let dir = tempdir().expect("failed to create temp dir");
         let path = dir.path().join("bad_cert.pem");
         let mut f = File::create(&path).expect("failed to create file");
-        f.write_all(
-            b"-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n",
-        )
-        .expect("failed to write");
+        f.write_all(b"-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n")
+            .expect("failed to write");
 
         // Act
         let result = validate_cert_pem(&path);
@@ -87,7 +84,9 @@ mod tests {
         // Assert
         assert!(result.is_err());
         assert!(
-            result.unwrap_err().contains("invalid X.509 certificate at index 0"),
+            result
+                .unwrap_err()
+                .contains("invalid X.509 certificate at index 0"),
             "expected an X.509 DER validation error"
         );
     }
