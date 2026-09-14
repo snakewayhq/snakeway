@@ -39,3 +39,7 @@ tracing = { workspace = true }
 opentelemetry = { workspace = true }
 tracing-opentelemetry = { workspace = true }
 hotpath = { workspace = true }
+
+[dev-dependencies]
+rcgen = { workspace = true }
+rustls-pemfile = { workspace = true }
