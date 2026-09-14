@@ -86,6 +86,14 @@ impl CertManager {
             return Err(CertManagerError::EmptyChain);
         }
 
+        for (i, cert_der) in certs.iter().enumerate() {
+            x509_parser::parse_x509_certificate(cert_der.as_ref()).map_err(|e| {
+                CertManagerError::InvalidChain(format!(
+                    "invalid X.509 DER at index {i} for cert {cert_id}: {e}"
+                ))
+            })?;
+        }
+
         let key =
             rustls_pemfile::private_key(&mut std::io::Cursor::new(stored.expose_private_key_pem()))
                 .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?

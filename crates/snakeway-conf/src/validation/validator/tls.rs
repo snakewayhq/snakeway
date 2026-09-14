@@ -45,6 +45,16 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
         ));
     }
 
+    for (i, cert_der) in certs.iter().enumerate() {
+        x509_parser::parse_x509_certificate(cert_der.as_ref()).map_err(|e| {
+            format!(
+                "invalid X.509 certificate at index {} in {}: {e}",
+                i,
+                cert_path.display()
+            )
+        })?;
+    }
+
     let key = rustls_pemfile::private_key(&mut Cursor::new(&key_bytes))
         .map_err(|e| format!("invalid private key PEM {}: {e}", key_path.display()))?
         .ok_or_else(|| {
