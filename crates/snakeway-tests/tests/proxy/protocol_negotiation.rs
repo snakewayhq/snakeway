@@ -48,7 +48,6 @@ fn h2_over_tls_harness_proxies_a_normal_get() {
     let req = http::Request::builder()
         .method(http::Method::GET)
         .uri(format!("https://{addr}{ROUTE_PATH_API}"))
-        .header("host", TEST_HOST)
         .body(())
         .expect("request");
 
