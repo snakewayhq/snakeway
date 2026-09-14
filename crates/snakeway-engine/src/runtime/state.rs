@@ -285,7 +285,7 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Vec<WrappedX509>> {
         anyhow::bail!("CA file is empty: {}", path.display());
     }
 
-    let parsed = snakeway_conf::pem::parse_cert_chain(&pem)
+    let parsed = snakeway_conf::tls::parse_cert_chain(&pem)
         .map_err(|e| anyhow!("CA file {}: {e}", path.display()))?;
 
     parsed

@@ -1,12 +1,11 @@
-use crate::pem;
-use crate::pem::CertKeyError;
+use crate::tls::{CertKeyError, build_certified_key, parse_cert_chain, parse_private_key};
 use crate::validation::validator::read_nonempty_file;
 use std::path::Path;
 
 pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
     let bytes = read_nonempty_file(path)?;
 
-    pem::parse_cert_chain(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+    parse_cert_chain(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
 
     Ok(())
 }
@@ -16,12 +15,11 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
     let key_bytes = read_nonempty_file(key_path)?;
 
     let certs =
-        pem::parse_cert_chain(&cert_bytes).map_err(|e| format!("{}: {e}", cert_path.display()))?;
+        parse_cert_chain(&cert_bytes).map_err(|e| format!("{}: {e}", cert_path.display()))?;
 
-    let key =
-        pem::parse_private_key(&key_bytes).map_err(|e| format!("{}: {e}", key_path.display()))?;
+    let key = parse_private_key(&key_bytes).map_err(|e| format!("{}: {e}", key_path.display()))?;
 
-    pem::build_certified_key(certs, key).map_err(|e| match e {
+    build_certified_key(certs, key).map_err(|e| match e {
         CertKeyError::KeyMismatch => {
             format!(
                 "private key does not match certificate: cert={}, key={}",
@@ -105,7 +103,6 @@ mod tests {
     #[test]
     fn validate_cert_key_pair_valid() {
         // Arrange
-        pingora_rustls::install_default_crypto_provider();
         let dir = tempdir().expect("failed to create temp dir");
         let cert = generate_simple_self_signed(vec!["localhost".into()])
             .expect("failed to generate self-signed cert");
@@ -132,7 +129,6 @@ mod tests {
     #[test]
     fn validate_cert_key_pair_key_mismatch() {
         // Arrange
-        pingora_rustls::install_default_crypto_provider();
         let dir = tempdir().expect("failed to create temp dir");
 
         let cert1 = generate_simple_self_signed(vec!["first.localhost".into()])

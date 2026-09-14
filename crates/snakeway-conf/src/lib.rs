@@ -2,8 +2,8 @@ mod discover;
 mod loader;
 mod lower;
 mod parse;
-pub mod pem;
 mod resolution;
+pub mod tls;
 
 pub mod types;
 pub mod validation;

@@ -77,16 +77,16 @@ impl CertManager {
             return Ok(None);
         };
 
-        let certs = snakeway_conf::pem::parse_cert_chain(&stored.cert_chain_pem)
+        let certs = snakeway_conf::tls::parse_cert_chain(&stored.cert_chain_pem)
             .map_err(CertManagerError::InvalidChain)?;
 
-        let key = snakeway_conf::pem::parse_private_key(stored.expose_private_key_pem())
+        let key = snakeway_conf::tls::parse_private_key(stored.expose_private_key_pem())
             .map_err(CertManagerError::InvalidPrivateKey)?;
 
         let certified_key =
-            snakeway_conf::pem::build_certified_key(certs, key).map_err(|e| match e {
-                snakeway_conf::pem::CertKeyError::KeyMismatch => CertManagerError::KeyMismatch,
-                snakeway_conf::pem::CertKeyError::Other(msg) => {
+            snakeway_conf::tls::build_certified_key(certs, key).map_err(|e| match e {
+                snakeway_conf::tls::CertKeyError::KeyMismatch => CertManagerError::KeyMismatch,
+                snakeway_conf::tls::CertKeyError::Other(msg) => {
                     CertManagerError::InvalidPrivateKey(msg)
                 }
             })?;
@@ -248,7 +248,6 @@ mod tests {
     #[test]
     fn load_certified_key_valid_cert() {
         // Arrange
-        pingora_rustls::install_default_crypto_provider();
         let store = MemoryCertStore::default();
         store
             .put("test-cert".to_string(), generate_stored_cert())
@@ -266,7 +265,6 @@ mod tests {
     #[test]
     fn load_certified_key_missing_cert() {
         // Arrange
-        pingora_rustls::install_default_crypto_provider();
         let store = MemoryCertStore::default();
         let manager = make_cert_manager(store);
 
@@ -281,7 +279,6 @@ mod tests {
     #[test]
     fn load_certified_key_empty_chain() {
         // Arrange
-        pingora_rustls::install_default_crypto_provider();
         let store = MemoryCertStore::default();
         let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
             .expect("failed to generate cert");
@@ -310,7 +307,6 @@ mod tests {
     #[test]
     fn load_certified_key_mismatched_key() {
         // Arrange
-        pingora_rustls::install_default_crypto_provider();
         let store = MemoryCertStore::default();
         let cert1 = rcgen::generate_simple_self_signed(vec!["first.example".into()])
             .expect("failed to generate first cert");

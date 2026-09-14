@@ -61,7 +61,6 @@ fn load_config_from_parts(
     ingress_specs: Vec<Located<IngressSpec>>,
     device_specs: Vec<Located<DeviceSpec>>,
 ) -> Result<ValidatedConfig, ConfigError> {
-    pingora_rustls::install_default_crypto_provider();
     validate_spec(server_spec, &ingress_specs, &device_specs, &mut report);
 
     // Lowering must not run on a report that contains errors.

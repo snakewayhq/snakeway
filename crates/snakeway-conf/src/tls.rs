@@ -35,16 +35,17 @@ pub fn parse_private_key(bytes: &[u8]) -> Result<PrivateKeyDer<'static>, String>
 /// Verifies the private key matches the leaf certificate.
 /// `from_der` silently accepts `InconsistentKeys::Unknown` when the key type
 /// does not support SPKI comparison (exotic algorithms only).
+///
+/// If no process-level rustls crypto provider is installed yet, this installs
+/// Pingora's default provider first, so you can call it before any listener or
+/// connector exists.
 pub fn build_certified_key(
     certs: Vec<CertificateDer<'static>>,
     key: PrivateKeyDer<'static>,
 ) -> Result<pingora_rustls::sign::CertifiedKey, CertKeyError> {
-    let provider = pingora_rustls::CryptoProvider::get_default().ok_or_else(|| {
-        CertKeyError::Other(
-            "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
-                .to_string(),
-        )
-    })?;
+    pingora_rustls::install_default_crypto_provider();
+    let provider = pingora_rustls::CryptoProvider::get_default()
+        .ok_or_else(|| CertKeyError::Other("TLS crypto provider is not available".to_string()))?;
 
     pingora_rustls::sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| match e {
         pingora_rustls::RusTlsError::InconsistentKeys(_) => CertKeyError::KeyMismatch,
