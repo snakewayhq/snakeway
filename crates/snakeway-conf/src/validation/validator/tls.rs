@@ -126,6 +126,10 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
+        assert!(
+            result.unwrap_err().contains("invalid X.509 certificate at index 0"),
+            "expected an X.509 DER validation error"
+        );
     }
 
     #[test]
