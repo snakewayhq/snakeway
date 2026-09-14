@@ -358,3 +358,115 @@ fn canonicalize_dir(dir: &Path) -> String {
     let result = path_buf.to_string_lossy();
     result.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn load_ca_from_path_valid_single_cert() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("ca.pem");
+        let cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate CA cert");
+        std::fs::write(&ca_path, cert.cert.pem()).expect("failed to write CA");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn load_ca_from_path_valid_multi_cert_bundle() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("ca-bundle.pem");
+        let cert1 = rcgen::generate_simple_self_signed(vec!["ca1.test".into()])
+            .expect("failed to generate first CA cert");
+        let cert2 = rcgen::generate_simple_self_signed(vec!["ca2.test".into()])
+            .expect("failed to generate second CA cert");
+        let mut f = std::fs::File::create(&ca_path).expect("failed to create file");
+        f.write_all(cert1.cert.pem().as_bytes())
+            .expect("failed to write first cert");
+        f.write_all(cert2.cert.pem().as_bytes())
+            .expect("failed to write second cert");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn load_ca_from_path_nonexistent_file() {
+        // Arrange
+        let path = Path::new("/nonexistent/ca.pem");
+
+        // Act
+        let result = load_ca_from_path(path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("does not exist"), "got: {msg}");
+    }
+
+    #[test]
+    fn load_ca_from_path_empty_file() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("empty.pem");
+        std::fs::File::create(&ca_path).expect("failed to create empty file");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("empty"), "got: {msg}");
+    }
+
+    #[test]
+    fn load_ca_from_path_no_pem_certs() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("no-certs.pem");
+        std::fs::write(&ca_path, "not a PEM file").expect("failed to write");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("no certificates"), "got: {msg}");
+    }
+
+    #[test]
+    fn load_ca_from_path_invalid_der_in_pem() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("bad-der.pem");
+        std::fs::write(
+            &ca_path,
+            "-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n",
+        )
+        .expect("failed to write");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("invalid X.509 DER"), "got: {msg}");
+    }
+}
