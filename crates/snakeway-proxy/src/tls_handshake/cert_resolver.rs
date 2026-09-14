@@ -21,22 +21,16 @@ impl SnakewayCertResolver {
     fn lookup(&self, hostname: &str) -> Option<Arc<sign::CertifiedKey>> {
         let runtime = self.state.load();
 
-        let tls_runtime = match &runtime.tls {
-            Some(tls) => tls,
-            None => {
-                tracing::warn!("TLS requested but runtime has no TLS state");
-                return None;
-            }
+        let Some(tls_runtime) = &runtime.tls else {
+            tracing::warn!("TLS requested but runtime has no TLS state");
+            return None;
         };
 
         let sni_map = tls_runtime.sni_map.load();
 
-        let cert = match sni_map.get(hostname) {
-            Some(c) => c,
-            None => {
-                tracing::warn!("No certificate found for SNI {}", hostname);
-                return None;
-            }
+        let Some(cert) = sni_map.get(hostname) else {
+            tracing::warn!("No certificate found for SNI {}", hostname);
+            return None;
         };
 
         Some(cert.clone())
