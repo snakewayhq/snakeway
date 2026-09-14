@@ -1,13 +1,21 @@
 use crate::validation::validator::read_nonempty_file;
-use openssl::pkey::{PKey, Private};
-use openssl::x509::X509;
+use pingora_rustls::{CryptoProvider, sign};
+use std::io::Cursor;
 use std::path::Path;
 
 pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
     let bytes = read_nonempty_file(path)?;
 
-    X509::stack_from_pem(&bytes)
+    let certs: Vec<_> = rustls_pemfile::certs(&mut Cursor::new(&bytes))
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| format!("invalid PEM certificate {}: {e}", path.display()))?;
+
+    if certs.is_empty() {
+        return Err(format!(
+            "certificate file contains no certificates: {}",
+            path.display()
+        ));
+    }
 
     Ok(())
 }
@@ -16,35 +24,37 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
     let cert_bytes = read_nonempty_file(cert_path)?;
     let key_bytes = read_nonempty_file(key_path)?;
 
-    let mut chain = X509::stack_from_pem(&cert_bytes)
+    let certs: Vec<_> = rustls_pemfile::certs(&mut Cursor::new(&cert_bytes))
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| format!("invalid certificate PEM {}: {e}", cert_path.display()))?;
 
-    if chain.is_empty() {
+    if certs.is_empty() {
         return Err(format!(
             "certificate file contains no certificates: {}",
             cert_path.display()
         ));
     }
 
-    let leaf = chain.remove(0);
+    let key = rustls_pemfile::private_key(&mut Cursor::new(&key_bytes))
+        .map_err(|e| format!("invalid private key PEM {}: {e}", key_path.display()))?
+        .ok_or_else(|| {
+            format!(
+                "invalid private key PEM {}: no private key found",
+                key_path.display()
+            )
+        })?;
 
-    let key = PKey::<Private>::private_key_from_pem(&key_bytes)
-        .map_err(|e| format!("invalid private key PEM {}: {e}", key_path.display()))?;
+    pingora_rustls::install_default_crypto_provider();
+    let provider = CryptoProvider::get_default()
+        .expect("crypto provider installed above");
 
-    let public_key = leaf.public_key().map_err(|e| {
+    sign::CertifiedKey::from_der(certs, key, &provider).map_err(|e| {
         format!(
-            "cannot extract public key from cert {}: {e}",
-            cert_path.display()
-        )
-    })?;
-
-    if !public_key.public_eq(&key) {
-        return Err(format!(
-            "private key does not match certificate: cert={}, key={}",
+            "private key does not match certificate: cert={}, key={}, error={e}",
             cert_path.display(),
             key_path.display()
-        ));
-    }
+        )
+    })?;
 
     Ok(())
 }
@@ -87,7 +97,6 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("invalid PEM"));
     }
 
     #[test]

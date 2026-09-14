@@ -16,6 +16,7 @@ confval = { workspace = true }
 glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
 pingora-rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 http = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
