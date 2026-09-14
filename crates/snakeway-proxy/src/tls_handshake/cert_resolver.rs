@@ -62,23 +62,18 @@ mod tests {
         pingora_rustls::install_default_crypto_provider();
         let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
             .expect("failed to generate cert");
-        let cert_pem = cert.cert.pem();
-        let key_pem = cert.signing_key.serialize_pem();
 
-        let certs: Vec<_> =
-            rustls_pemfile::certs(&mut std::io::Cursor::new(cert_pem.as_bytes()))
-                .collect::<Result<Vec<_>, _>>()
-                .expect("failed to parse cert PEM");
-
-        let key = rustls_pemfile::private_key(&mut std::io::Cursor::new(key_pem.as_bytes()))
-            .expect("failed to parse key PEM")
-            .expect("no key found");
+        let certs = snakeway_conf::pem::parse_cert_chain(cert.cert.pem().as_bytes())
+            .expect("failed to parse cert PEM");
+        let key = snakeway_conf::pem::parse_private_key(cert.signing_key.serialize_pem().as_bytes())
+            .expect("failed to parse key PEM");
 
         let provider =
             pingora_rustls::CryptoProvider::get_default().expect("provider not installed");
 
         Arc::new(
-            sign::CertifiedKey::from_der(certs, key, provider).expect("failed to build CertifiedKey"),
+            sign::CertifiedKey::from_der(certs, key, provider)
+                .expect("failed to build CertifiedKey"),
         )
     }
 
