@@ -9,8 +9,7 @@ use crate::{
 };
 use arc_swap::ArcSwap;
 use arc_swap::ArcSwapOption;
-use openssl::pkey::{PKey, Private};
-use openssl::x509::X509;
+use pingora_rustls::{CryptoProvider, sign};
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
@@ -78,27 +77,31 @@ impl CertManager {
             return Ok(None);
         };
 
-        let mut chain = X509::stack_from_pem(&stored.cert_chain_pem)
-            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
+        let certs: Vec<_> =
+            rustls_pemfile::certs(&mut std::io::Cursor::new(&stored.cert_chain_pem))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
 
-        if chain.is_empty() {
+        if certs.is_empty() {
             return Err(CertManagerError::EmptyChain);
         }
 
-        let leaf = chain.remove(0);
+        let key = rustls_pemfile::private_key(&mut std::io::Cursor::new(
+            stored.expose_private_key_pem(),
+        ))
+        .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?
+        .ok_or_else(|| {
+            CertManagerError::InvalidPrivateKey("no private key found in PEM".to_string())
+        })?;
 
-        let key = PKey::<Private>::private_key_from_pem(stored.expose_private_key_pem())
-            .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?;
+        pingora_rustls::install_default_crypto_provider();
+        let provider = CryptoProvider::get_default()
+            .expect("crypto provider installed above");
 
-        let public_key = leaf
-            .public_key()
-            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
+        let certified_key = sign::CertifiedKey::from_der(certs, key, &provider)
+            .map_err(|_| CertManagerError::KeyMismatch)?;
 
-        if !public_key.public_eq(&key) {
-            return Err(CertManagerError::KeyMismatch);
-        }
-
-        Ok(Some(ParsedCert { leaf, chain, key }))
+        Ok(Some(ParsedCert::new(Arc::new(certified_key))))
     }
 
     pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
