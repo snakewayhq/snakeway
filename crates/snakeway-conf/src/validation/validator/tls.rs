@@ -54,9 +54,8 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
             )
         })?;
 
-    pingora_rustls::install_default_crypto_provider();
     let provider = CryptoProvider::get_default()
-        .ok_or_else(|| "failed to initialize TLS crypto provider".to_string())?;
+        .ok_or_else(|| "TLS crypto provider not installed (call install_default_crypto_provider at startup)".to_string())?;
 
     sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| {
         format!(

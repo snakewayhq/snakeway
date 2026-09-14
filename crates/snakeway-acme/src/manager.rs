@@ -93,9 +93,11 @@ impl CertManager {
                     CertManagerError::InvalidPrivateKey("no private key found in PEM".to_string())
                 })?;
 
-        pingora_rustls::install_default_crypto_provider();
         let provider = CryptoProvider::get_default().ok_or_else(|| {
-            CertManagerError::InvalidChain("failed to initialize TLS crypto provider".to_string())
+            CertManagerError::InvalidChain(
+                "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
+                    .to_string(),
+            )
         })?;
 
         let certified_key = sign::CertifiedKey::from_der(certs, key, provider)
