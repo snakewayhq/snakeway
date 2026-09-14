@@ -304,7 +304,9 @@ mod tests {
         let result = manager.load_certified_key("empty-chain");
 
         // Assert
-        assert!(matches!(result, Err(CertManagerError::EmptyChain)));
+        assert!(matches!(result, Err(CertManagerError::InvalidChain(ref msg)) if msg.contains("no certificates")),
+            "expected InvalidChain with 'no certificates', got: {result:?}"
+        );
     }
 
     #[test]
