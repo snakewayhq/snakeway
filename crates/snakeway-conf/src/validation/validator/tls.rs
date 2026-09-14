@@ -45,8 +45,7 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
         })?;
 
     pingora_rustls::install_default_crypto_provider();
-    let provider = CryptoProvider::get_default()
-        .expect("crypto provider installed above");
+    let provider = CryptoProvider::get_default().expect("crypto provider installed above");
 
     sign::CertifiedKey::from_der(certs, key, &provider).map_err(|e| {
         format!(

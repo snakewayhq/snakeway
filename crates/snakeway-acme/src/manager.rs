@@ -86,17 +86,15 @@ impl CertManager {
             return Err(CertManagerError::EmptyChain);
         }
 
-        let key = rustls_pemfile::private_key(&mut std::io::Cursor::new(
-            stored.expose_private_key_pem(),
-        ))
-        .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?
-        .ok_or_else(|| {
-            CertManagerError::InvalidPrivateKey("no private key found in PEM".to_string())
-        })?;
+        let key =
+            rustls_pemfile::private_key(&mut std::io::Cursor::new(stored.expose_private_key_pem()))
+                .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?
+                .ok_or_else(|| {
+                    CertManagerError::InvalidPrivateKey("no private key found in PEM".to_string())
+                })?;
 
         pingora_rustls::install_default_crypto_provider();
-        let provider = CryptoProvider::get_default()
-            .expect("crypto provider installed above");
+        let provider = CryptoProvider::get_default().expect("crypto provider installed above");
 
         let certified_key = sign::CertifiedKey::from_der(certs, key, &provider)
             .map_err(|_| CertManagerError::KeyMismatch)?;
