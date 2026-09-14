@@ -1,6 +1,6 @@
 use crate::pem;
+use crate::pem::CertKeyError;
 use crate::validation::validator::read_nonempty_file;
-use pingora_rustls::{CryptoProvider, sign};
 use std::path::Path;
 
 pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
@@ -21,26 +21,16 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
     let key =
         pem::parse_private_key(&key_bytes).map_err(|e| format!("{}: {e}", key_path.display()))?;
 
-    let provider = CryptoProvider::get_default().ok_or_else(|| {
-        "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
-            .to_string()
-    })?;
-
-    // from_der silently accepts InconsistentKeys::Unknown when the key type
-    // does not support SPKI comparison (exotic algorithms only).
-    sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| match e {
-        pingora_rustls::RusTlsError::InconsistentKeys(_) => {
+    pem::build_certified_key(certs, key).map_err(|e| match e {
+        CertKeyError::KeyMismatch => {
             format!(
                 "private key does not match certificate: cert={}, key={}",
                 cert_path.display(),
                 key_path.display()
             )
         }
-        other => {
-            format!(
-                "failed to load private key for {}: {other}",
-                key_path.display()
-            )
+        CertKeyError::Other(msg) => {
+            format!("failed to load private key for {}: {msg}", key_path.display())
         }
     })?;
 

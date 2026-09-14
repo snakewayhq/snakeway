@@ -29,3 +29,42 @@ pub fn parse_cert_chain(bytes: &[u8]) -> Result<Vec<CertificateDer<'static>>, St
 pub fn parse_private_key(bytes: &[u8]) -> Result<PrivateKeyDer<'static>, String> {
     PrivateKeyDer::from_pem_slice(bytes).map_err(|e| format!("invalid private key PEM: {e}"))
 }
+
+/// Build a `CertifiedKey` from a parsed certificate chain and private key.
+///
+/// Verifies the private key matches the leaf certificate.
+/// `from_der` silently accepts `InconsistentKeys::Unknown` when the key type
+/// does not support SPKI comparison (exotic algorithms only).
+pub fn build_certified_key(
+    certs: Vec<CertificateDer<'static>>,
+    key: PrivateKeyDer<'static>,
+) -> Result<pingora_rustls::sign::CertifiedKey, CertKeyError> {
+    let provider = pingora_rustls::CryptoProvider::get_default().ok_or_else(|| {
+        CertKeyError::Other(
+            "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
+                .to_string(),
+        )
+    })?;
+
+    pingora_rustls::sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| match e {
+        pingora_rustls::RusTlsError::InconsistentKeys(_) => CertKeyError::KeyMismatch,
+        other => CertKeyError::Other(other.to_string()),
+    })
+}
+
+/// Distinguishes a key/cert mismatch from other failures when building a
+/// `CertifiedKey`.
+#[derive(Debug)]
+pub enum CertKeyError {
+    KeyMismatch,
+    Other(String),
+}
+
+impl std::fmt::Display for CertKeyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CertKeyError::KeyMismatch => write!(f, "private key does not match certificate"),
+            CertKeyError::Other(msg) => write!(f, "{msg}"),
+        }
+    }
+}
