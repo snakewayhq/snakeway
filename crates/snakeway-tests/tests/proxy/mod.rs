@@ -8,4 +8,5 @@ mod protocol_negotiation;
 mod response_handling;
 mod routing;
 mod static_files;
+mod tls_sni;
 mod websocket;

@@ -368,8 +368,12 @@ mod tests {
         let result = load_ca_from_path(&ca_path);
 
         // Assert
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().len(), 1);
+        let certs = result.expect("a single CA certificate must load");
+        assert_eq!(certs.len(), 1);
+        assert_eq!(
+            certs[0].borrow_raw_cert().as_slice(),
+            cert.cert.der().as_ref()
+        );
     }
 
     #[test]
@@ -391,8 +395,16 @@ mod tests {
         let result = load_ca_from_path(&ca_path);
 
         // Assert
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().len(), 2);
+        let certs = result.expect("a CA bundle must load");
+        assert_eq!(certs.len(), 2);
+        assert_eq!(
+            certs[0].borrow_raw_cert().as_slice(),
+            cert1.cert.der().as_ref()
+        );
+        assert_eq!(
+            certs[1].borrow_raw_cert().as_slice(),
+            cert2.cert.der().as_ref()
+        );
     }
 
     #[test]

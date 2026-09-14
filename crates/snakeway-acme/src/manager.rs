@@ -231,35 +231,65 @@ mod tests {
         }
     }
 
-    fn generate_stored_cert() -> StoredCertificate {
-        let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
-            .expect("failed to generate cert");
-        StoredCertificate::new(
+    fn generate_stored_cert(domains: &[&str]) -> (StoredCertificate, Vec<u8>) {
+        let names: Vec<String> = domains.iter().map(|d| d.to_string()).collect();
+        let cert =
+            rcgen::generate_simple_self_signed(names.clone()).expect("failed to generate cert");
+        let der = cert.cert.der().to_vec();
+        let stored = StoredCertificate::new(
             cert.signing_key.serialize_pem().into_bytes(),
             cert.cert.pem().into_bytes(),
             CertificateMeta {
-                domains: vec!["test.example".to_string()],
+                domains: names,
                 not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
                 issued_at: SystemTime::now(),
             },
-        )
+        );
+        (stored, der)
     }
 
     #[test]
     fn load_certified_key_valid_cert() {
         // Arrange
         let store = MemoryCertStore::default();
-        store
-            .put("test-cert".to_string(), generate_stored_cert())
-            .unwrap();
+        let (stored, der) = generate_stored_cert(&["test.example"]);
+        store.put("test-cert".to_string(), stored).unwrap();
         let manager = make_cert_manager(store);
 
         // Act
         let result = manager.load_certified_key("test-cert");
 
         // Assert
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_some());
+        let certified = result
+            .expect("a valid stored certificate must load")
+            .expect("the stored certificate must be found");
+        assert_eq!(certified.cert.len(), 1);
+        assert_eq!(certified.cert[0].as_ref(), der.as_slice());
+    }
+
+    #[test]
+    fn build_sni_map_maps_every_domain_to_one_shared_key() {
+        // Arrange
+        let store = MemoryCertStore::default();
+        let (stored, der) = generate_stored_cert(&["a.example", "b.example"]);
+        store.put("multi-domain".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.build_sni_map();
+
+        // Assert
+        let map = result.expect("the SNI map must build");
+        assert_eq!(map.len(), 2);
+        let first = map
+            .get("a.example")
+            .expect("the first domain must be mapped");
+        let second = map
+            .get("b.example")
+            .expect("the second domain must be mapped");
+        assert!(Arc::ptr_eq(first, second));
+        assert_eq!(first.cert.len(), 1);
+        assert_eq!(first.cert[0].as_ref(), der.as_slice());
     }
 
     #[test]
