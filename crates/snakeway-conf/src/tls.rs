@@ -69,3 +69,205 @@ impl std::fmt::Display for CertKeyError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const RSA_CERT: &str = include_str!("../fixtures/tls/rsa.pem");
+    const RSA_PKCS1_KEY: &str = include_str!("../fixtures/tls/rsa-pkcs1.key");
+    const EC_CERT: &str = include_str!("../fixtures/tls/ec.pem");
+    const EC_SEC1_KEY: &str = include_str!("../fixtures/tls/ec-sec1.key");
+    const EC_ENCRYPTED_PKCS8_KEY: &str = include_str!("../fixtures/tls/ec-encrypted-pkcs8.key");
+    const BAD_CERT_BLOCK: &str =
+        "-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n";
+
+    fn der_of(pem: &str) -> Vec<u8> {
+        let (_, parsed) =
+            x509_parser::pem::parse_x509_pem(pem.as_bytes()).expect("fixture must be PEM");
+        parsed.contents
+    }
+
+    #[test]
+    fn parse_private_key_accepts_pkcs1_rsa_key() {
+        // Arrange
+        let bytes = RSA_PKCS1_KEY.as_bytes();
+
+        // Act
+        let result = parse_private_key(bytes);
+
+        // Assert
+        assert!(
+            matches!(result, Ok(PrivateKeyDer::Pkcs1(_))),
+            "got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn parse_private_key_accepts_sec1_ec_key() {
+        // Arrange
+        let bytes = EC_SEC1_KEY.as_bytes();
+
+        // Act
+        let result = parse_private_key(bytes);
+
+        // Assert
+        assert!(
+            matches!(result, Ok(PrivateKeyDer::Sec1(_))),
+            "got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn parse_private_key_accepts_pkcs8_key() {
+        // Arrange
+        let generated = rcgen::generate_simple_self_signed(vec!["localhost".into()])
+            .expect("failed to generate self-signed cert");
+        let key_pem = generated.signing_key.serialize_pem();
+
+        // Act
+        let result = parse_private_key(key_pem.as_bytes());
+
+        // Assert
+        assert!(
+            matches!(result, Ok(PrivateKeyDer::Pkcs8(_))),
+            "got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn parse_private_key_rejects_encrypted_pkcs8_key() {
+        // Arrange
+        let bytes = EC_ENCRYPTED_PKCS8_KEY.as_bytes();
+
+        // Act
+        let result = parse_private_key(bytes);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("an encrypted key must be rejected"),
+            "invalid private key PEM: no items found"
+        );
+    }
+
+    #[test]
+    fn parse_private_key_rejects_file_with_only_a_certificate() {
+        // Arrange
+        let bytes = EC_CERT.as_bytes();
+
+        // Act
+        let result = parse_private_key(bytes);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("a certificate is not a private key"),
+            "invalid private key PEM: no items found"
+        );
+    }
+
+    #[test]
+    fn parse_private_key_reads_key_that_follows_a_certificate() {
+        // Arrange
+        let combined = format!("{EC_CERT}{EC_SEC1_KEY}");
+
+        // Act
+        let result = parse_private_key(combined.as_bytes());
+
+        // Assert
+        assert!(
+            matches!(result, Ok(PrivateKeyDer::Sec1(_))),
+            "got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn parse_cert_chain_ignores_key_that_follows_a_certificate() {
+        // Arrange
+        let combined = format!("{EC_CERT}{EC_SEC1_KEY}");
+
+        // Act
+        let result = parse_cert_chain(combined.as_bytes());
+
+        // Assert
+        let certs = result.expect("the certificate must parse");
+        assert_eq!(certs.len(), 1);
+        assert_eq!(certs[0].as_ref(), der_of(EC_CERT).as_slice());
+    }
+
+    #[test]
+    fn parse_cert_chain_returns_every_certificate_in_order() {
+        // Arrange
+        let chain = format!("{RSA_CERT}{EC_CERT}");
+
+        // Act
+        let result = parse_cert_chain(chain.as_bytes());
+
+        // Assert
+        let certs = result.expect("both certificates must parse");
+        assert_eq!(certs.len(), 2);
+        assert_eq!(certs[0].as_ref(), der_of(RSA_CERT).as_slice());
+        assert_eq!(certs[1].as_ref(), der_of(EC_CERT).as_slice());
+    }
+
+    #[test]
+    fn parse_cert_chain_reports_invalid_certificate_after_valid_leaf() {
+        // Arrange
+        let chain = format!("{EC_CERT}{BAD_CERT_BLOCK}");
+
+        // Act
+        let result = parse_cert_chain(chain.as_bytes());
+
+        // Assert
+        let msg = result.expect_err("a bad intermediate must be rejected");
+        assert!(
+            msg.starts_with("invalid X.509 certificate at index 1: "),
+            "got: {msg}"
+        );
+    }
+
+    #[test]
+    fn build_certified_key_accepts_pkcs1_rsa_pair() {
+        // Arrange
+        let certs = parse_cert_chain(RSA_CERT.as_bytes()).expect("fixture cert must parse");
+        let key = parse_private_key(RSA_PKCS1_KEY.as_bytes()).expect("fixture key must parse");
+
+        // Act
+        let result = build_certified_key(certs, key);
+
+        // Assert
+        let certified = result.expect("a PKCS#1 RSA pair must build");
+        assert_eq!(certified.cert.len(), 1);
+        assert_eq!(certified.cert[0].as_ref(), der_of(RSA_CERT).as_slice());
+    }
+
+    #[test]
+    fn build_certified_key_accepts_sec1_ec_pair() {
+        // Arrange
+        let certs = parse_cert_chain(EC_CERT.as_bytes()).expect("fixture cert must parse");
+        let key = parse_private_key(EC_SEC1_KEY.as_bytes()).expect("fixture key must parse");
+
+        // Act
+        let result = build_certified_key(certs, key);
+
+        // Assert
+        let certified = result.expect("a SEC1 EC pair must build");
+        assert_eq!(certified.cert.len(), 1);
+        assert_eq!(certified.cert[0].as_ref(), der_of(EC_CERT).as_slice());
+    }
+
+    #[test]
+    fn build_certified_key_reports_mismatch_between_rsa_cert_and_ec_key() {
+        // Arrange
+        let certs = parse_cert_chain(RSA_CERT.as_bytes()).expect("fixture cert must parse");
+        let key = parse_private_key(EC_SEC1_KEY.as_bytes()).expect("fixture key must parse");
+
+        // Act
+        let result = build_certified_key(certs, key);
+
+        // Assert
+        assert!(
+            matches!(result, Err(CertKeyError::KeyMismatch)),
+            "got: {result:?}"
+        );
+    }
+}
