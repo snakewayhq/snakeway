@@ -35,3 +35,5 @@ The certificate authority uses these addresses for expiry warnings and account r
 `ca_file` string, default: none.
 CA certificate file for verifying the ACME server's TLS certificate.
 This is useful for staging or testing environments that use a private CA.
+The file must contain PEM-encoded X.509 certificates.
+A file that holds a placeholder or a damaged certificate fails validation when Snakeway loads the configuration.
