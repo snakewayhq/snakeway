@@ -125,42 +125,36 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         let mut traffic_svc = http_proxy_service(&server.configuration, traffic_proxy);
 
         match &listener_cfg.tls_termination {
-            Some(certificate_cfg) => match certificate_cfg {
-                TlsTerminationConfig::Manual { key, cert } => {
-                    let mut tls_settings =
-                        TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
-                    let key_str = key
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
-                    let cert_str = cert
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Certificate path is not valid UTF-8"))?;
-                    tls_settings.set_private_key_file(key_str)?;
-                    tls_settings.set_certificate_chain_file(cert_str)?;
-                    if listener_cfg.enable_http2 {
-                        tls_settings.enable_h2();
+            Some(certificate_cfg) => {
+                let mut tls_settings =
+                    TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
+
+                match certificate_cfg {
+                    TlsTerminationConfig::Manual { key, cert } => {
+                        let key_str = key
+                            .to_str()
+                            .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
+                        let cert_str = cert
+                            .to_str()
+                            .ok_or_else(|| anyhow!("Certificate path is not valid UTF-8"))?;
+                        tls_settings.set_private_key_file(key_str)?;
+                        tls_settings.set_certificate_chain_file(cert_str)?;
                     }
-                    traffic_svc.add_tls_with_settings(
-                        &listener_cfg.addr.to_string(),
-                        None,
-                        tls_settings,
-                    );
-                }
-                TlsTerminationConfig::Acme { .. } => {
-                    let mut tls_settings =
-                        TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
-                    let resolver = Arc::new(SnakewayCertResolver::new(state.clone()));
-                    tls_settings.set_cert_resolver(resolver);
-                    if listener_cfg.enable_http2 {
-                        tls_settings.enable_h2();
+                    TlsTerminationConfig::Acme { .. } => {
+                        let resolver = Arc::new(SnakewayCertResolver::new(state.clone()));
+                        tls_settings.set_cert_resolver(resolver);
                     }
-                    traffic_svc.add_tls_with_settings(
-                        &listener_cfg.addr.to_string(),
-                        None,
-                        tls_settings,
-                    );
                 }
-            },
+
+                if listener_cfg.enable_http2 {
+                    tls_settings.enable_h2();
+                }
+                traffic_svc.add_tls_with_settings(
+                    &listener_cfg.addr.to_string(),
+                    None,
+                    tls_settings,
+                );
+            }
             None => {
                 traffic_svc.add_tcp(&listener_cfg.addr.to_string());
             }
