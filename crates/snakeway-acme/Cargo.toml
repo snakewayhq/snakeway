@@ -12,7 +12,7 @@ arc-swap = { workspace = true }
 snakeway-conf = { workspace = true }
 thiserror = { workspace = true }
 pingora-rustls = { workspace = true }
-rustls-pemfile = { workspace = true }
+rustls-pki-types = { workspace = true }
 instant-acme = { workspace = true }
 x509-parser = { workspace = true }
 tracing = { workspace = true }
