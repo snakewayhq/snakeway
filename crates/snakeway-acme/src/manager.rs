@@ -9,7 +9,7 @@ use crate::{
 };
 use arc_swap::ArcSwap;
 use arc_swap::ArcSwapOption;
-use pingora_rustls::{CryptoProvider, sign};
+use pingora_rustls::sign;
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
@@ -83,17 +83,12 @@ impl CertManager {
         let key = snakeway_conf::pem::parse_private_key(stored.expose_private_key_pem())
             .map_err(CertManagerError::InvalidPrivateKey)?;
 
-        let provider = CryptoProvider::get_default().ok_or_else(|| {
-            CertManagerError::InvalidChain(
-                "TLS crypto provider not installed (call install_default_crypto_provider at startup)"
-                    .to_string(),
-            )
-        })?;
-
         let certified_key =
-            sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| match e {
-                pingora_rustls::RusTlsError::InconsistentKeys(_) => CertManagerError::KeyMismatch,
-                other => CertManagerError::InvalidPrivateKey(other.to_string()),
+            snakeway_conf::pem::build_certified_key(certs, key).map_err(|e| match e {
+                snakeway_conf::pem::CertKeyError::KeyMismatch => CertManagerError::KeyMismatch,
+                snakeway_conf::pem::CertKeyError::Other(msg) => {
+                    CertManagerError::InvalidPrivateKey(msg)
+                }
             })?;
 
         Ok(Some(Arc::new(certified_key)))
