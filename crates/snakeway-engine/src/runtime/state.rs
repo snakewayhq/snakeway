@@ -10,8 +10,8 @@ use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
-use openssl::x509::X509;
 use pingora::protocols::tls::CaType;
+use pingora::utils::tls::{WrappedX509, parse_x509};
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use snakeway_conf::{load_config, types::RuntimeConfig};
@@ -228,7 +228,7 @@ fn make_upstream_runtime_from_tcp(
         if let Some(ca_file) = effective_ca {
             let ca = load_ca_from_path(ca_file)?;
             let group_key = calculate_group_key(ca_file);
-            (true, Some(Arc::new(ca)), group_key)
+            (true, Some(Arc::from(ca)), group_key)
         } else {
             (false, None, 0)
         }
@@ -272,7 +272,7 @@ fn make_upstream_runtime_from_tcp(
 /// Load a per-upstream CA file.
 /// This happens when the runtime state is recomputed,
 /// keeping it out of the data plane.
-pub(crate) fn load_ca_from_path(path: &Path) -> Result<CaType> {
+pub(crate) fn load_ca_from_path(path: &Path) -> Result<Box<CaType>> {
     if !path.exists() {
         anyhow::bail!("CA file does not exist: {}", path.display());
     }
@@ -286,14 +286,17 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<CaType> {
         anyhow::bail!("CA file is empty: {}", path.display());
     }
 
-    // Parse ALL certs in the PEM bundle.
-    // stack_from_pem returns Vec<X509> (OpenSSL) / equivalent for boringssl shim.
-    let certs = X509::stack_from_pem(&pem).with_context(|| {
-        format!(
-            "failed to parse PEM certificates in CA file: {}",
-            path.display()
-        )
-    })?;
+    let certs: Vec<WrappedX509> = rustls_pemfile::certs(&mut std::io::Cursor::new(&pem))
+        .map(|result| {
+            let cert_der = result.with_context(|| {
+                format!(
+                    "failed to parse PEM certificate in CA file: {}",
+                    path.display()
+                )
+            })?;
+            Ok(WrappedX509::new(cert_der.to_vec(), parse_x509))
+        })
+        .collect::<Result<Vec<_>>>()?;
 
     if certs.is_empty() {
         anyhow::bail!(
