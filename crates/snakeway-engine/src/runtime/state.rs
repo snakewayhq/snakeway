@@ -287,14 +287,23 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Box<CaType>> {
     }
 
     let certs: Vec<WrappedX509> = rustls_pemfile::certs(&mut std::io::Cursor::new(&pem))
-        .map(|result| {
+        .enumerate()
+        .map(|(i, result)| {
             let cert_der = result.with_context(|| {
                 format!(
                     "failed to parse PEM certificate in CA file: {}",
                     path.display()
                 )
             })?;
-            Ok(WrappedX509::new(cert_der.to_vec(), parse_x509))
+            let der_bytes = cert_der.to_vec();
+            x509_parser::parse_x509_certificate(&der_bytes).with_context(|| {
+                format!(
+                    "invalid X.509 DER at index {} in CA file: {}",
+                    i,
+                    path.display()
+                )
+            })?;
+            Ok(WrappedX509::new(der_bytes, parse_x509))
         })
         .collect::<Result<Vec<_>>>()?;
 

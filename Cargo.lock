@@ -4415,6 +4415,7 @@ dependencies = [
  "uuid",
  "wasmtime",
  "woothee",
+ "x509-parser 0.18.1",
 ]
 
 [[package]]
