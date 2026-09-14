@@ -1,6 +1,6 @@
 use crate::proxy::{AdminProxy, RedirectProxy, TrafficProxy};
 use crate::reload::ReloadHandle;
-use crate::tls_handshake::{SnakewayCertResolver, build_tls_callbacks};
+use crate::tls_handshake::{SnakewayCertResolver, SnakewayTlsAccept};
 use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;
 use pingora::listeners::tls::TlsSettings;
@@ -127,8 +127,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => match certificate_cfg {
                 TlsTerminationConfig::Manual { key, cert } => {
-                    let callbacks = build_tls_callbacks();
-                    let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    let mut tls_settings =
+                        TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
                     let key_str = key
                         .to_str()
                         .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
@@ -147,8 +147,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                     );
                 }
                 TlsTerminationConfig::Acme { .. } => {
-                    let callbacks = build_tls_callbacks();
-                    let mut tls_settings = TlsSettings::with_callbacks(callbacks)?;
+                    let mut tls_settings =
+                        TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
                     let resolver = Arc::new(SnakewayCertResolver::new(state.clone()));
                     tls_settings.set_cert_resolver(resolver);
                     if listener_cfg.enable_http2 {
