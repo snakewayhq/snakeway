@@ -10,7 +10,7 @@ use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
-use pingora::utils::tls::{WrappedX509, parse_x509};
+use pingora::utils::tls::WrappedX509;
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use snakeway_conf::{load_config, types::RuntimeConfig};
@@ -288,12 +288,21 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Vec<WrappedX509>> {
     let parsed = snakeway_conf::pem::parse_cert_chain(&pem)
         .map_err(|e| anyhow!("CA file {}: {e}", path.display()))?;
 
-    let certs: Vec<WrappedX509> = parsed
+    parsed
         .into_iter()
-        .map(|cert_der| WrappedX509::new(cert_der.to_vec(), parse_x509))
-        .collect();
+        .map(|cert_der| wrap_ca_certificate(cert_der.to_vec()))
+        .collect()
+}
 
-    Ok(certs)
+/// The closure must return Pingora's `X509Certificate` type, so this only compiles while
+/// Snakeway and Pingora resolve the same x509-parser version. If a dependency update splits
+/// them, align the versions again rather than working around the type error.
+fn wrap_ca_certificate(der: Vec<u8>) -> Result<WrappedX509> {
+    WrappedX509::try_new(der, |raw| {
+        x509_parser::parse_x509_certificate(raw)
+            .map(|(_, cert)| cert)
+            .map_err(|e| anyhow!("invalid X.509 certificate: {e}"))
+    })
 }
 
 /// Hash a path to a u64.
@@ -450,5 +459,20 @@ mod tests {
             msg.contains("invalid X.509 certificate at index 0"),
             "got: {msg}"
         );
+    }
+
+    #[test]
+    fn wrap_ca_certificate_invalid_der_returns_error() {
+        // Arrange
+        let der = b"invalid".to_vec();
+
+        // Act
+        let result = wrap_ca_certificate(der);
+
+        // Assert
+        let msg = result
+            .expect_err("invalid DER must return an error")
+            .to_string();
+        assert!(msg.starts_with("invalid X.509 certificate"), "got: {msg}");
     }
 }
