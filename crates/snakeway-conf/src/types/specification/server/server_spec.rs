@@ -632,7 +632,9 @@ observability {
         let pid_dir = dir.path().join("pid");
         std::fs::create_dir(&pid_dir).unwrap();
         let ca_file = dir.path().join("ca.pem");
-        std::fs::write(&ca_file, "dummy").unwrap();
+        let ca_cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate CA cert");
+        std::fs::write(&ca_file, ca_cert.cert.pem()).unwrap();
         let server = ServerSpec {
             pid_file: Some(Located::detached(pid_dir.join("snakeway.pid"))),
             ca_file: Some(Located::detached(ca_file)),
