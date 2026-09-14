@@ -1,6 +1,7 @@
 pub mod diff;
 pub mod dns_refresh;
 mod error;
+mod manual_tls;
 mod state;
 mod types;
 

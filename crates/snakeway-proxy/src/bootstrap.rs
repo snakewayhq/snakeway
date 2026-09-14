@@ -1,6 +1,6 @@
 use crate::proxy::{AdminProxy, RedirectProxy, TrafficProxy};
 use crate::reload::ReloadHandle;
-use crate::tls_handshake::{SnakewayCertResolver, SnakewayTlsAccept};
+use crate::tls_handshake::{ManualCertResolver, SnakewayCertResolver, SnakewayTlsAccept};
 use anyhow::{Error, Result, anyhow};
 use arc_swap::ArcSwap;
 use pingora::listeners::tls::TlsSettings;
@@ -8,6 +8,7 @@ use pingora::prelude::*;
 use pingora::protocols::http::v2::server::default_h2_options;
 use pingora::server::Server;
 use pingora::server::configuration::{Opt, ServerConf};
+use pingora_rustls::ResolvesServerCert;
 use snakeway_acme::CertManager;
 use snakeway_conf::types::{RuntimeConfig, TlsTerminationConfig};
 use snakeway_engine::WsConnectionManager;
@@ -126,24 +127,16 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
 
         match &listener_cfg.tls_termination {
             Some(certificate_cfg) => {
-                let mut tls_settings = TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
-
-                match certificate_cfg {
-                    TlsTerminationConfig::Manual { key, cert } => {
-                        let key_str = key
-                            .to_str()
-                            .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
-                        let cert_str = cert
-                            .to_str()
-                            .ok_or_else(|| anyhow!("Certificate path is not valid UTF-8"))?;
-                        tls_settings.set_private_key_file(key_str)?;
-                        tls_settings.set_certificate_chain_file(cert_str)?;
-                    }
+                let resolver: Arc<dyn ResolvesServerCert> = match certificate_cfg {
+                    TlsTerminationConfig::Manual { .. } => Arc::new(ManualCertResolver::new(
+                        state.clone(),
+                        listener_cfg.addr.clone(),
+                    )),
                     TlsTerminationConfig::Acme { .. } => {
-                        let resolver = Arc::new(SnakewayCertResolver::new(state.clone()));
-                        tls_settings.set_cert_resolver(resolver);
+                        Arc::new(SnakewayCertResolver::new(state.clone()))
                     }
-                }
+                };
+                let mut tls_settings = tls_settings_with_resolver(resolver)?;
 
                 if listener_cfg.enable_http2 {
                     tls_settings.enable_h2();
@@ -252,18 +245,12 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
             let mut admin_svc = http_proxy_service(&server.configuration, admin_proxy);
 
             match certificate_cfg {
-                TlsTerminationConfig::Manual { key, cert } => {
-                    // This may seem a little dicey, but the configuration layer validates the file
-                    // pair and reports errors long before this code is ever called.
-                    // If these errors are produced, it means there is a bug in validation,
-                    // or the cert files were deleted a microsecond between validation and use.
-                    let cert_str = cert
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Certificate path is not valid UTF-8"))?;
-                    let key_str = key
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Key path is not valid UTF-8"))?;
-                    let tls_settings = TlsSettings::intermediate(cert_str, key_str)?;
+                TlsTerminationConfig::Manual { .. } => {
+                    let resolver = Arc::new(ManualCertResolver::new(
+                        state.clone(),
+                        listener_cfg.addr.clone(),
+                    ));
+                    let tls_settings = tls_settings_with_resolver(resolver)?;
                     admin_svc.add_tls_with_settings(&listener_cfg.addr, None, tls_settings);
                 }
                 TlsTerminationConfig::Acme { .. } => {
@@ -285,4 +272,12 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     }
 
     Ok(server)
+}
+
+/// Both manual and ACME listeners select their certificate through a resolver, so Pingora
+/// never loads certificate files itself and `TlsSettings::build` has no file errors to panic on.
+fn tls_settings_with_resolver(resolver: Arc<dyn ResolvesServerCert>) -> Result<TlsSettings> {
+    let mut tls_settings = TlsSettings::with_callbacks(Box::new(SnakewayTlsAccept))?;
+    tls_settings.set_cert_resolver(resolver);
+    Ok(tls_settings)
 }

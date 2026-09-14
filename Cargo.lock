@@ -4513,6 +4513,7 @@ dependencies = [
  "opentelemetry_sdk",
  "pretty_assertions",
  "prost",
+ "rcgen",
  "reqwest",
  "rustls",
  "serde_json",

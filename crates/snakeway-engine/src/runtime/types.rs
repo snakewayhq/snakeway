@@ -2,6 +2,7 @@ use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::Router;
 use arc_swap::ArcSwap;
 use pingora::protocols::tls::CaType;
+use pingora::tls::sign::CertifiedKey;
 use snakeway_acme::SniRegistry;
 use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use std::collections::HashMap;
@@ -11,10 +12,15 @@ use std::sync::Arc;
 
 pub struct RuntimeState {
     pub tls: Option<TlsRuntime>,
+    pub manual_certs: ManualCertMap,
     pub routers: HashMap<Arc<str>, Router>,
     pub devices: DeviceRegistry,
     pub services: HashMap<String, ServiceRuntime>,
 }
+
+/// The certificate and private key of each listener that uses manual TLS, keyed by the
+/// listener bind address.
+pub type ManualCertMap = HashMap<String, Arc<CertifiedKey>>;
 
 /// TlsRuntime encapsulates the state of TLS configuration.
 /// It is reloadable independent of RuntimeState (hence the ArcSwap).

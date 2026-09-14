@@ -302,6 +302,7 @@ mod tests {
 
         RuntimeState {
             tls: None,
+            manual_certs: HashMap::new(),
             routers,
             devices: DeviceRegistry::new(),
             services,
@@ -473,6 +474,7 @@ mod tests {
 
         let state = RuntimeState {
             tls: None,
+            manual_certs: HashMap::new(),
             routers,
             devices: DeviceRegistry::new(),
             services,

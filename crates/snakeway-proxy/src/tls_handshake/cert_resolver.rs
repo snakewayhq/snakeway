@@ -54,25 +54,10 @@ impl ResolvesServerCert for SnakewayCertResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tls_handshake::test_support::{make_runtime_state, make_test_certified_key};
     use snakeway_acme::SniRegistry;
     use snakeway_engine::runtime::TlsRuntime;
     use std::collections::HashMap;
-
-    fn make_test_certified_key() -> Arc<sign::CertifiedKey> {
-        let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
-            .expect("failed to generate cert");
-
-        let certs = snakeway_conf::tls::parse_cert_chain(cert.cert.pem().as_bytes())
-            .expect("failed to parse cert PEM");
-        let key =
-            snakeway_conf::tls::parse_private_key(cert.signing_key.serialize_pem().as_bytes())
-                .expect("failed to parse key PEM");
-
-        Arc::new(
-            snakeway_conf::tls::build_certified_key(certs, key)
-                .expect("failed to build CertifiedKey"),
-        )
-    }
 
     fn make_resolver_with_sni(
         entries: Vec<(&str, Arc<sign::CertifiedKey>)>,
@@ -82,22 +67,12 @@ mod tests {
             map.insert(domain.to_string(), key);
         }
         let registry = Arc::new(SniRegistry::new(map));
-        let state = RuntimeState {
-            tls: Some(TlsRuntime { sni_map: registry }),
-            routers: HashMap::new(),
-            devices: Default::default(),
-            services: HashMap::new(),
-        };
+        let state = make_runtime_state(Some(TlsRuntime { sni_map: registry }), HashMap::new());
         SnakewayCertResolver::new(Arc::new(ArcSwap::from_pointee(state)))
     }
 
     fn make_resolver_without_tls() -> SnakewayCertResolver {
-        let state = RuntimeState {
-            tls: None,
-            routers: HashMap::new(),
-            devices: Default::default(),
-            services: HashMap::new(),
-        };
+        let state = make_runtime_state(None, HashMap::new());
         SnakewayCertResolver::new(Arc::new(ArcSwap::from_pointee(state)))
     }
 
@@ -111,7 +86,8 @@ mod tests {
         let result = resolver.lookup("test.example");
 
         // Assert
-        assert!(result.is_some());
+        let found = result.expect("the certificate for a known hostname must resolve");
+        assert!(Arc::ptr_eq(&found, &key));
     }
 
     #[test]

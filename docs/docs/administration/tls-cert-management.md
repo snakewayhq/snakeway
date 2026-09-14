@@ -115,8 +115,11 @@ The private key file must contain one PEM-encoded key in PKCS#8, PKCS#1 (RSA), o
 Encrypted PEM keys are not supported.
 TLS 1.2 and TLS 1.3 are the supported protocol versions.
 
-Snakeway reads the certificate and key files at startup.
-To rotate a manual certificate, replace the files on disk and trigger a configuration reload via the [Admin API](./admin-api.md) or by sending SIGHUP.
+Snakeway reads the certificate and key files at startup and on each configuration reload.
+To rotate a manual certificate, replace the files at the same paths and trigger a configuration reload via the [Admin API](./admin-api.md) or by sending SIGHUP.
+The next TLS handshake on that listener presents the new certificate.
+If the new files cannot be loaded, the reload fails and the listener keeps serving the previous certificate.
+If you change the `cert` or `key` path instead, Snakeway applies the new listener configuration with a zero-drop upgrade.
 
 ## Monitoring and Failure Recovery
 

@@ -2,6 +2,7 @@ use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;
+use crate::runtime::manual_tls::load_manual_certs;
 use crate::runtime::types::{
     ResolvedAddr, TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime,
 };
@@ -74,6 +75,7 @@ pub fn build_runtime_state(
 ) -> Result<RuntimeState> {
     // TLS Certificates
     let tls: Option<TlsRuntime> = cert_manager.as_ref().map(build_tls_runtime).transpose()?;
+    let manual_certs = load_manual_certs(&cfg.listeners)?;
 
     // Routers
     let routers = build_runtime_routers(&cfg.routes)?;
@@ -89,6 +91,7 @@ pub fn build_runtime_state(
 
     Ok(RuntimeState {
         tls,
+        manual_certs,
         routers,
         devices,
         services,
