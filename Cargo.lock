@@ -4317,6 +4317,7 @@ dependencies = [
  "http",
  "nix",
  "pingora",
+ "pingora-rustls",
  "pretty_assertions",
  "serde",
  "serde_json",
