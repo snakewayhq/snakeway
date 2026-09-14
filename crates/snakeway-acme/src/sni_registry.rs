@@ -3,8 +3,13 @@ use pingora_rustls::sign;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Maps each domain name to the TLS certificate chain and private key that
+/// the proxy presents during the handshake for that domain.
+/// The leaf certificate is first in the chain.
 pub(crate) type SniMap = HashMap<String, Arc<sign::CertifiedKey>>;
 
+/// Thread-safe, lock-free registry of domain-to-certificate mappings.
+/// Updated atomically when ACME issues or renews a certificate.
 pub struct SniRegistry {
     inner: ArcSwap<SniMap>,
 }
