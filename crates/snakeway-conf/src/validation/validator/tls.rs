@@ -17,6 +17,16 @@ pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
         ));
     }
 
+    for (i, cert_der) in certs.iter().enumerate() {
+        x509_parser::parse_x509_certificate(cert_der.as_ref()).map_err(|e| {
+            format!(
+                "invalid X.509 certificate at index {} in {}: {e}",
+                i,
+                path.display()
+            )
+        })?;
+    }
+
     Ok(())
 }
 
