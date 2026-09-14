@@ -4,7 +4,7 @@ use crate::challenge::Http01Registry;
 use crate::error::CertManagerError;
 use crate::sni_registry::{SniMap, SniRegistry};
 use crate::{
-    ParsedCert, cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
+    cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
     renewal_policy::RenewalPolicy,
 };
 use arc_swap::ArcSwap;
@@ -69,10 +69,10 @@ impl CertManager {
         self.config.store(new_config);
     }
 
-    pub(crate) fn load_parsed_cert(
+    pub(crate) fn load_certified_key(
         &self,
         cert_id: &str,
-    ) -> Result<Option<ParsedCert>, CertManagerError> {
+    ) -> Result<Option<Arc<sign::CertifiedKey>>, CertManagerError> {
         let Some(stored) = self.cert_store.get(cert_id) else {
             return Ok(None);
         };
@@ -114,18 +114,18 @@ impl CertManager {
                 other => CertManagerError::InvalidPrivateKey(other.to_string()),
             })?;
 
-        Ok(Some(ParsedCert::new(Arc::new(certified_key))))
+        Ok(Some(Arc::new(certified_key)))
     }
 
-    pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
+    pub fn build_sni_map(
+        &self,
+    ) -> Result<HashMap<String, Arc<sign::CertifiedKey>>, CertManagerError> {
         let mut map = HashMap::new();
 
         for (cert_id, meta) in self.cert_store.list() {
-            if let Some(parsed) = self.load_parsed_cert(&cert_id)? {
-                let parsed = Arc::new(parsed);
-
+            if let Some(key) = self.load_certified_key(&cert_id)? {
                 for domain in meta.domains {
-                    map.insert(domain, parsed.clone());
+                    map.insert(domain, key.clone());
                 }
             }
         }

@@ -1,9 +1,9 @@
-use crate::ParsedCert;
 use arc_swap::ArcSwap;
+use pingora_rustls::sign;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub(crate) type SniMap = HashMap<String, Arc<ParsedCert>>;
+pub(crate) type SniMap = HashMap<String, Arc<sign::CertifiedKey>>;
 
 pub struct SniRegistry {
     inner: ArcSwap<SniMap>,
