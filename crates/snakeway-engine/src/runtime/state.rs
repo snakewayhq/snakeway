@@ -10,7 +10,6 @@ use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
-use pingora::protocols::tls::CaType;
 use pingora::utils::tls::{WrappedX509, parse_x509};
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
@@ -272,7 +271,7 @@ fn make_upstream_runtime_from_tcp(
 /// Load a per-upstream CA file.
 /// This happens when the runtime state is recomputed,
 /// keeping it out of the data plane.
-pub(crate) fn load_ca_from_path(path: &Path) -> Result<Box<CaType>> {
+pub(crate) fn load_ca_from_path(path: &Path) -> Result<Vec<WrappedX509>> {
     if !path.exists() {
         anyhow::bail!("CA file does not exist: {}", path.display());
     }
@@ -294,7 +293,7 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Box<CaType>> {
         .map(|cert_der| WrappedX509::new(cert_der.to_vec(), parse_x509))
         .collect();
 
-    Ok(certs.into_boxed_slice())
+    Ok(certs)
 }
 
 /// Hash a path to a u64.
