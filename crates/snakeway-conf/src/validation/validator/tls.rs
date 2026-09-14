@@ -59,12 +59,20 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
             .to_string()
     })?;
 
-    sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| {
-        format!(
-            "private key does not match certificate: cert={}, key={}, error={e}",
-            cert_path.display(),
-            key_path.display()
-        )
+    sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| match e {
+        pingora_rustls::RusTlsError::InconsistentKeys(_) => {
+            format!(
+                "private key does not match certificate: cert={}, key={}",
+                cert_path.display(),
+                key_path.display()
+            )
+        }
+        other => {
+            format!(
+                "failed to load private key for {}: {other}",
+                key_path.display()
+            )
+        }
     })?;
 
     Ok(())

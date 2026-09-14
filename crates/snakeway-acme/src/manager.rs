@@ -100,8 +100,12 @@ impl CertManager {
             )
         })?;
 
-        let certified_key = sign::CertifiedKey::from_der(certs, key, provider)
-            .map_err(|_| CertManagerError::KeyMismatch)?;
+        let certified_key = sign::CertifiedKey::from_der(certs, key, provider).map_err(|e| {
+            match e {
+                pingora_rustls::RusTlsError::InconsistentKeys(_) => CertManagerError::KeyMismatch,
+                other => CertManagerError::InvalidPrivateKey(other.to_string()),
+            }
+        })?;
 
         Ok(Some(ParsedCert::new(Arc::new(certified_key))))
     }
