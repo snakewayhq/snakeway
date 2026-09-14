@@ -4343,6 +4343,7 @@ dependencies = [
  "hex",
  "instant-acme",
  "pingora-rustls",
+ "rcgen",
  "rustls-pemfile",
  "secrecy",
  "serde",

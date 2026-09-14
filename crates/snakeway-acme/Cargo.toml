@@ -24,3 +24,6 @@ serde_json = { workspace = true }
 secrecy = { workspace = true }
 anyhow = { workspace = true }
 hex = { workspace = true }
+
+[dev-dependencies]
+rcgen = { workspace = true }

@@ -7,5 +7,6 @@ mod types;
 pub use error::ReloadError;
 pub use state::{build_runtime_state, reload_runtime_state};
 pub use types::{
-    ResolvedAddr, RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime, UpstreamTcpRuntime,
+    ResolvedAddr, RuntimeState, ServiceRuntime, TlsRuntime, UpstreamId, UpstreamRuntime,
+    UpstreamTcpRuntime,
 };

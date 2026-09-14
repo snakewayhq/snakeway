@@ -210,3 +210,146 @@ impl CertManager {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cert_store::{CertificateMeta, MemoryCertStore, StoredCertificate};
+    use crate::order_store::OrderStore;
+    use std::time::SystemTime;
+
+    struct StubOrderStore;
+
+    impl OrderStore for StubOrderStore {
+        fn get(&self, _id: &str) -> std::io::Result<Option<crate::order_store::OrderState>> {
+            Ok(None)
+        }
+        fn put(&self, _state: &crate::order_store::OrderState) -> std::io::Result<()> {
+            Ok(())
+        }
+        fn delete(&self, _id: &str) -> std::io::Result<()> {
+            Ok(())
+        }
+        fn list(&self) -> std::io::Result<Vec<crate::order_store::OrderState>> {
+            Ok(vec![])
+        }
+    }
+
+    fn make_cert_manager(store: MemoryCertStore) -> CertManager {
+        let validated = snakeway_conf::load_config_from_specs(
+            &snakeway_conf::types::ServerSpec::default(),
+            vec![],
+            vec![],
+        )
+        .expect("fixture config");
+
+        CertManager {
+            acme_client: OnceLock::new(),
+            http01: Arc::new(Http01Registry::default()),
+            cert_store: Arc::new(store),
+            order_store: Arc::new(StubOrderStore),
+            renewal_policy: RenewalPolicy::new(30),
+            config: Arc::new(ArcSwap::from_pointee(validated.config)),
+            tls_sni_map: ArcSwapOption::from(None),
+        }
+    }
+
+    fn generate_stored_cert() -> StoredCertificate {
+        let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
+            .expect("failed to generate cert");
+        StoredCertificate::new(
+            cert.signing_key.serialize_pem().into_bytes(),
+            cert.cert.pem().into_bytes(),
+            CertificateMeta {
+                domains: vec!["test.example".to_string()],
+                not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
+                issued_at: SystemTime::now(),
+            },
+        )
+    }
+
+    #[test]
+    fn load_certified_key_valid_cert() {
+        // Arrange
+        pingora_rustls::install_default_crypto_provider();
+        let store = MemoryCertStore::default();
+        store.put("test-cert".to_string(), generate_stored_cert()).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("test-cert");
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_some());
+    }
+
+    #[test]
+    fn load_certified_key_missing_cert() {
+        // Arrange
+        pingora_rustls::install_default_crypto_provider();
+        let store = MemoryCertStore::default();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("nonexistent");
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn load_certified_key_empty_chain() {
+        // Arrange
+        pingora_rustls::install_default_crypto_provider();
+        let store = MemoryCertStore::default();
+        let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
+            .expect("failed to generate cert");
+        let stored = StoredCertificate::new(
+            cert.signing_key.serialize_pem().into_bytes(),
+            Vec::new(),
+            CertificateMeta {
+                domains: vec!["test.example".to_string()],
+                not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
+                issued_at: SystemTime::now(),
+            },
+        );
+        store.put("empty-chain".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("empty-chain");
+
+        // Assert
+        assert!(matches!(result, Err(CertManagerError::EmptyChain)));
+    }
+
+    #[test]
+    fn load_certified_key_mismatched_key() {
+        // Arrange
+        pingora_rustls::install_default_crypto_provider();
+        let store = MemoryCertStore::default();
+        let cert1 = rcgen::generate_simple_self_signed(vec!["first.example".into()])
+            .expect("failed to generate first cert");
+        let cert2 = rcgen::generate_simple_self_signed(vec!["second.example".into()])
+            .expect("failed to generate second cert");
+        let stored = StoredCertificate::new(
+            cert2.signing_key.serialize_pem().into_bytes(),
+            cert1.cert.pem().into_bytes(),
+            CertificateMeta {
+                domains: vec!["first.example".to_string()],
+                not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
+                issued_at: SystemTime::now(),
+            },
+        );
+        store.put("mismatched".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("mismatched");
+
+        // Assert
+        assert!(matches!(result, Err(CertManagerError::KeyMismatch)));
+    }
+}
