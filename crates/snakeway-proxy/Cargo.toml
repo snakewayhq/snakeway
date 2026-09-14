@@ -42,4 +42,3 @@ hotpath = { workspace = true }
 
 [dev-dependencies]
 rcgen = { workspace = true }
-rustls-pki-types = { workspace = true }

@@ -4486,7 +4486,6 @@ dependencies = [
  "pingora",
  "pingora-rustls",
  "rcgen",
- "rustls-pki-types",
  "serde_json",
  "snakeway-acme",
  "snakeway-conf",
