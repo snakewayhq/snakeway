@@ -1,11 +1,9 @@
 use crate::proxy::TrafficProxy;
 use pingora::prelude::HttpPeer;
-use pingora::protocols::tls::CaType;
 use pingora::{BError, Custom, Error};
 use snakeway_engine::ctx::RequestCtx;
-use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
+use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime, UpstreamTlsRuntime};
 use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId};
-use std::sync::Arc;
 
 impl TrafficProxy {
     /// Select an upstream for the given request.
@@ -60,22 +58,19 @@ impl TrafficProxy {
         // to compute a hash later when its internal pooling logic runs.
         let mut peer = match upstream {
             UpstreamRuntime::Tcp(tcp) => {
-                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.use_tls, tcp.sni.clone());
-                if tcp.use_tls {
-                    apply_tls_verification(&mut peer, tcp.verify, &tcp.ca, tcp.group_key);
+                let sni = tcp.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default();
+                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.tls.is_some(), sni);
+                if let Some(tls) = &tcp.tls {
+                    apply_tls_verification(&mut peer, tls);
                 }
                 Ok(peer)
             }
             UpstreamRuntime::Unix(unix) => {
-                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone())
+                let sni = unix.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default();
+                HttpPeer::new_uds(&unix.path, unix.tls.is_some(), sni)
                     .map(|mut peer| {
-                        if unix.use_tls {
-                            apply_tls_verification(
-                                &mut peer,
-                                unix.verify,
-                                &unix.ca,
-                                unix.group_key,
-                            );
+                        if let Some(tls) = &unix.tls {
+                            apply_tls_verification(&mut peer, tls);
                         }
                         peer
                     })
@@ -122,16 +117,11 @@ impl TrafficProxy {
 }
 
 /// Set how Pingora verifies the TLS certificate of an upstream peer.
-fn apply_tls_verification(
-    peer: &mut HttpPeer,
-    verify: bool,
-    ca: &Option<Arc<CaType>>,
-    group_key: u64,
-) {
-    peer.options.verify_cert = verify;
-    peer.options.verify_hostname = verify;
-    if verify {
-        peer.options.ca = ca.clone();
-        peer.group_key = group_key;
+fn apply_tls_verification(peer: &mut HttpPeer, tls: &UpstreamTlsRuntime) {
+    peer.options.verify_cert = tls.verify;
+    peer.options.verify_hostname = tls.verify;
+    if tls.verify {
+        peer.options.ca = tls.ca.clone();
+        peer.group_key = tls.group_key;
     }
 }

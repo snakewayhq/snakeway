@@ -265,8 +265,17 @@ impl AdminHandler {
     }
 
     async fn reload(&self, session: &mut Session) -> pingora::Result<bool> {
-        if session.req_header().method != Method::POST {
-            return self.method_not_allowed(session, "POST").await;
+        let method = session.req_header().method.clone();
+        if method == Method::GET {
+            let body = match self.ctx.reload.last_status() {
+                Some(status) => status.to_json(),
+                None => serde_json::json!({ "epoch": 0, "result": "none" }),
+            };
+            self.json(session, StatusCode::OK, body).await?;
+            return Ok(true);
+        }
+        if method != Method::POST {
+            return self.method_not_allowed(session, "GET, POST").await;
         }
 
         let epoch = self.ctx.reload.notify_reload();

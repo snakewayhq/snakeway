@@ -48,7 +48,7 @@ pub fn spawn_upgrade(config_path: &Path) -> anyhow::Result<()> {
 /// `server.bootstrap()` blocks on the upgrade socket. The old process's
 /// `send_fds_to` retries on ENOENT/ECONNREFUSED, so it is safe to send
 /// SIGQUIT before the new process has created the upgrade socket.
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub(crate) fn signal_old_process(pid_file: &Path) -> anyhow::Result<()> {
     use nix::sys::signal::{Signal, kill};
     use nix::unistd::Pid;
@@ -81,8 +81,49 @@ pub(crate) fn signal_old_process(pid_file: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(not(unix))]
+/// Outside Linux a new process cannot receive the listeners, so it must not tell the running
+/// process to hand them over and shut down.
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn signal_old_process(_pid_file: &Path) -> anyhow::Result<()> {
-    tracing::warn!("zero-drop upgrade is only supported on Linux; skipping SIGQUIT");
-    Ok(())
+    anyhow::bail!("zero-drop upgrade is only supported on Linux, restart Snakeway instead")
+}
+
+#[cfg(all(test, not(target_os = "linux")))]
+mod tests {
+    use super::*;
+
+    /// Outside Linux a new process cannot receive the listeners, so it must not tell the running
+    /// process to hand them over and shut down.
+    #[test]
+    fn signal_old_process_does_not_signal_outside_linux() {
+        // Arrange
+        let mut stand_in = Command::new("sleep")
+            .arg("30")
+            .spawn()
+            .expect("failed to start a stand-in process");
+        let pid_file = std::env::temp_dir().join(format!(
+            "snakeway-signal-test-{}-{}.pid",
+            std::process::id(),
+            stand_in.id()
+        ));
+        std::fs::write(&pid_file, stand_in.id().to_string()).expect("failed to write pid file");
+
+        // Act
+        let result = signal_old_process(&pid_file);
+
+        // Assert
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        let still_running = stand_in
+            .try_wait()
+            .expect("failed to check the stand-in process")
+            .is_none();
+        let _ = stand_in.kill();
+        let _ = stand_in.wait();
+        let _ = std::fs::remove_file(&pid_file);
+        assert!(result.is_err(), "got: {result:?}");
+        assert!(
+            still_running,
+            "the stand-in process must not receive SIGQUIT"
+        );
+    }
 }
