@@ -1,4 +1,4 @@
-use crate::validation::validator::{require_existing_dir, validate_cert_pem};
+use crate::validation::validator::{require_existing_dir, validate_ca_file};
 use confval::format::{
     Fields, FieldsBuilder, FromFields, ToFields, Walk, parse_string_field, report_missing_field,
     report_unknown_field,
@@ -56,7 +56,7 @@ impl Validate for AcmeServerSpec {
         }
 
         if let Some(ca_file) = &self.ca_file
-            && let Err(e) = validate_cert_pem(&ca_file.value)
+            && let Err(e) = validate_ca_file(&ca_file.value)
         {
             report
                 .error(format!(

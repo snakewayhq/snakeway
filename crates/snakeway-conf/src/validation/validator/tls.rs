@@ -1,11 +1,13 @@
-use crate::tls::{CertKeyError, build_certified_key, parse_cert_chain, parse_private_key};
+use crate::tls::{
+    TlsError, build_certified_key, parse_ca_certificates, parse_cert_chain, parse_private_key,
+};
 use crate::validation::validator::read_nonempty_file;
 use std::path::Path;
 
-pub(crate) fn validate_cert_pem(path: &Path) -> Result<(), String> {
+pub(crate) fn validate_ca_file(path: &Path) -> Result<(), String> {
     let bytes = read_nonempty_file(path)?;
 
-    parse_cert_chain(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+    parse_ca_certificates(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
 
     Ok(())
 }
@@ -20,19 +22,22 @@ pub(crate) fn validate_cert_key_pair(cert_path: &Path, key_path: &Path) -> Resul
     let key = parse_private_key(&key_bytes).map_err(|e| format!("{}: {e}", key_path.display()))?;
 
     build_certified_key(certs, key).map_err(|e| match e {
-        CertKeyError::KeyMismatch => {
+        TlsError::KeyMismatch => {
             format!(
                 "private key does not match certificate: cert={}, key={}",
                 cert_path.display(),
                 key_path.display()
             )
         }
-        CertKeyError::Other(msg) => {
-            format!(
-                "failed to load private key for {}: {msg}",
-                key_path.display()
-            )
+        TlsError::NoCertificates | TlsError::CertificateRejected(_) => {
+            format!("{}: {e}", cert_path.display())
         }
+        TlsError::UnsupportedPrivateKey(_) => format!("{}: {e}", key_path.display()),
+        other => format!(
+            "cert={}, key={}: {other}",
+            cert_path.display(),
+            key_path.display()
+        ),
     })?;
 
     Ok(())
@@ -48,12 +53,12 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn validate_cert_pem_file_not_found() {
+    fn validate_ca_file_file_not_found() {
         // Arrange
         let path = PathBuf::from("/nonexistent/cert.pem");
 
         // Act
-        let result = validate_cert_pem(&path);
+        let result = validate_ca_file(&path);
 
         // Assert
         assert!(result.is_err());
@@ -61,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_cert_pem_invalid_content() {
+    fn validate_ca_file_invalid_content() {
         // Arrange
         let dir = tempdir().expect("failed to create temp dir");
         let path = dir.path().join("bad_cert.pem");
@@ -70,7 +75,7 @@ mod tests {
             .expect("failed to write");
 
         // Act
-        let result = validate_cert_pem(&path);
+        let result = validate_ca_file(&path);
 
         // Assert
         assert!(result.is_err());
@@ -83,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_cert_pem_valid() {
+    fn validate_ca_file_valid() {
         // Arrange
         let dir = tempdir().expect("failed to create temp dir");
         let cert = generate_simple_self_signed(vec!["localhost".into()])
@@ -94,7 +99,7 @@ mod tests {
         f.write_all(cert_pem.as_bytes()).expect("failed to write");
 
         // Act
-        let result = validate_cert_pem(&path);
+        let result = validate_ca_file(&path);
 
         // Assert
         assert!(result.is_ok());
@@ -176,6 +181,51 @@ mod tests {
         // Assert
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("invalid private key PEM"));
+    }
+
+    #[test]
+    fn validate_cert_key_pair_names_certificate_file_when_rustls_rejects_certificate() {
+        // Arrange
+        let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/tls");
+        let cert_path = fixtures.join("ec-unknown-critical-extension.pem");
+        let key_path = fixtures.join("ec-sec1.key");
+
+        // Act
+        let result = validate_cert_key_pair(&cert_path, &key_path);
+
+        // Assert
+        let msg = result.expect_err("a certificate that rustls rejects must fail validation");
+        assert!(
+            msg.starts_with(&format!("{}: ", cert_path.display())),
+            "the error must name the certificate file, got: {msg}"
+        );
+        assert!(!msg.contains("private key"), "got: {msg}");
+        assert!(!msg.contains(&key_path.display().to_string()), "got: {msg}");
+    }
+
+    #[test]
+    fn validate_ca_file_rejects_private_key_section_in_ca_file() {
+        // Arrange
+        let dir = tempdir().expect("failed to create temp dir");
+        let cert = generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate self-signed cert");
+        let path = dir.path().join("ca-with-key.pem");
+        std::fs::write(
+            &path,
+            format!("{}{}", cert.cert.pem(), cert.signing_key.serialize_pem()),
+        )
+        .expect("failed to write CA file");
+
+        // Act
+        let result = validate_ca_file(&path);
+
+        // Assert
+        let msg = result.expect_err("a CA file with a private key section must fail validation");
+        assert!(
+            msg.starts_with(&format!("{}: ", path.display())),
+            "got: {msg}"
+        );
+        assert!(msg.contains("PRIVATE KEY"), "got: {msg}");
     }
 
     #[test]
