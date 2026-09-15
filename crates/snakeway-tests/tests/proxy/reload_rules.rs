@@ -52,12 +52,45 @@ impl ReloadableServer {
         }
     }
 
-    fn reload(&self) -> StatusCode {
-        admin_client()
+    /// Request a reload and return the epoch that the admin API assigned to it.
+    fn reload(&self) -> u64 {
+        let res = admin_client()
             .post(format!("https://{}/admin/reload", self.admin_addr))
             .send()
-            .expect("reload request failed")
-            .status()
+            .expect("reload request failed");
+        assert_eq!(res.status(), StatusCode::OK);
+        let body: serde_json::Value =
+            serde_json::from_str(&res.text().expect("failed to read reload response"))
+                .expect("reload response must be JSON");
+        body["epoch"]
+            .as_u64()
+            .expect("reload response must carry an epoch")
+    }
+
+    fn reload_status(&self) -> (StatusCode, serde_json::Value) {
+        let res = admin_client()
+            .get(format!("https://{}/admin/reload", self.admin_addr))
+            .send()
+            .expect("reload status request failed");
+        let status = res.status();
+        let body = serde_json::from_str(&res.text().expect("failed to read reload status"))
+            .unwrap_or(serde_json::Value::Null);
+        (status, body)
+    }
+
+    /// A reload finishes on the control plane after the admin API returns, so poll the reload
+    /// status until it reports the given epoch or later, or the deadline passes.
+    fn wait_for_reload_status(&self, epoch: u64) -> (StatusCode, serde_json::Value) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let (status, body) = self.reload_status();
+            let finished = status == StatusCode::OK
+                && body["epoch"].as_u64().is_some_and(|done| done >= epoch);
+            if finished || Instant::now() >= deadline {
+                return (status, body);
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
     }
 
     fn status_of(&self, path: &str) -> StatusCode {
@@ -70,19 +103,6 @@ impl ReloadableServer {
             .send()
             .expect("request failed")
             .status()
-    }
-
-    /// A reload runs on the control plane after the admin API returns, so poll until the
-    /// expected status appears or the deadline passes.
-    fn wait_for_status(&self, path: &str, expected: StatusCode) -> StatusCode {
-        let deadline = Instant::now() + Duration::from_secs(5);
-        loop {
-            let status = self.status_of(path);
-            if status == expected || Instant::now() >= deadline {
-                return status;
-            }
-            std::thread::sleep(Duration::from_millis(100));
-        }
     }
 }
 
@@ -175,6 +195,20 @@ fn write_admin_ingress(dir: &Path, admin_port: u16) {
     std::fs::write(dir.join("ingress.d").join("admin.hcl"), hcl).unwrap();
 }
 
+/// Before any reload, the reload status reports that no reload has finished.
+#[test]
+fn reload_status_reports_none_before_any_reload() {
+    // Arrange
+    let srv = ReloadableServer::start();
+
+    // Act
+    let (status, body) = srv.reload_status();
+
+    // Assert
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, serde_json::json!({ "epoch": 0, "result": "none" }));
+}
+
 /// A reload that changes only a route applies the new route.
 #[test]
 fn reload_applies_route_change() {
@@ -184,11 +218,16 @@ fn reload_applies_route_change() {
     write_api_ingress(srv.dir.path(), srv.listener_port, srv.upstream_port, "/v2");
 
     // Act
-    let reload = srv.reload();
+    let epoch = srv.reload();
 
     // Assert
-    assert_eq!(reload, StatusCode::OK);
-    assert_eq!(srv.wait_for_status("/v2", StatusCode::OK), StatusCode::OK);
+    let (status, body) = srv.wait_for_reload_status(epoch);
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body,
+        serde_json::json!({ "epoch": epoch, "result": "applied" })
+    );
+    assert_eq!(srv.status_of("/v2"), StatusCode::OK);
     assert_eq!(srv.status_of("/api"), StatusCode::NOT_FOUND);
 }
 
@@ -203,11 +242,20 @@ fn reload_with_pid_file_change_is_rejected() {
     write_snakeway_hcl(srv.dir.path(), &srv.dir.path().join("second.pid"));
 
     // Act
-    let reload = srv.reload();
+    let epoch = srv.reload();
 
     // Assert
-    assert_eq!(reload, StatusCode::OK);
-    std::thread::sleep(Duration::from_secs(1));
+    let (status, body) = srv.wait_for_reload_status(epoch);
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "epoch": epoch,
+            "result": "rejected",
+            "reason": "restart_required",
+            "settings": ["server.pid_file"],
+        })
+    );
     assert_eq!(srv.status_of("/api"), StatusCode::OK);
     assert_eq!(srv.status_of("/v2"), StatusCode::NOT_FOUND);
 }
