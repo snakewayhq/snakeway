@@ -15,7 +15,9 @@ use snakeway_engine::runtime::{
 };
 use snakeway_engine::traffic::{TrafficManager, TrafficSnapshot};
 use snakeway_observability::{Metrics, shutdown_telemetry};
-use snakeway_proxy::{DataPlaneServerParams, ReloadEvent, ReloadHandle, build_pingora_server};
+use snakeway_proxy::{
+    DataPlaneServerParams, ReloadEvent, ReloadHandle, ReloadOutcome, build_pingora_server,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
@@ -217,6 +219,7 @@ impl ControlPlaneServer {
         if let Some(config_path) = &self.config_path {
             self.control_rt.spawn({
                 let mut reload_rx = self.reload.subscribe();
+                let reload = self.reload.clone();
                 let mut last_epoch = 0;
                 let state = self.state.clone();
                 let config_path = config_path.clone();
@@ -242,6 +245,12 @@ impl ControlPlaneServer {
                             Ok(v) => v,
                             Err(e) => {
                                 error!(error = %e, "failed to reload config");
+                                reload.record_outcome(
+                                    epoch,
+                                    ReloadOutcome::LoadFailed {
+                                        error: e.to_string(),
+                                    },
+                                );
                                 continue;
                             }
                         };
@@ -254,24 +263,43 @@ impl ControlPlaneServer {
 
                         let new_config = validated.config;
 
-                        use snakeway_engine::runtime::diff::{ConfigChangeKind, classify_config_change};
-                        match classify_config_change(&current_config, &new_config) {
-                            ConfigChangeKind::RestartRequired { settings } => {
+                        use snakeway_engine::runtime::diff::{
+                            ReloadPlan, classify_config_change, plan_reload,
+                        };
+                        let change = classify_config_change(&current_config, &new_config);
+                        match plan_reload(change, cfg!(target_os = "linux")) {
+                            ReloadPlan::Reject { reason, settings } => {
                                 error!(
+                                    reason = reason.as_str(),
                                     settings = ?settings,
-                                    "reload rejected because these settings apply only after a restart"
+                                    "reload rejected, restart Snakeway to apply this change"
+                                );
+                                reload.record_outcome(
+                                    epoch,
+                                    ReloadOutcome::Rejected { reason, settings },
                                 );
                                 continue;
                             }
-                            ConfigChangeKind::UpgradeRequired => {
-                                info!("change needs a new process; initiating zero-drop upgrade");
+                            ReloadPlan::Upgrade => {
+                                info!("change needs a new process, starting a zero-drop upgrade");
                                 use snakeway_proxy::spawn_upgrade;
-                                if let Err(e) = spawn_upgrade(&config_path) {
-                                    error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                                match spawn_upgrade(&config_path) {
+                                    Ok(()) => {
+                                        reload.record_outcome(epoch, ReloadOutcome::UpgradeStarted);
+                                    }
+                                    Err(e) => {
+                                        error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                                        reload.record_outcome(
+                                            epoch,
+                                            ReloadOutcome::UpgradeFailed {
+                                                error: e.to_string(),
+                                            },
+                                        );
+                                    }
                                 }
                                 continue;
                             }
-                            ConfigChangeKind::RuntimeOnly => {}
+                            ReloadPlan::ApplyInPlace => {}
                         }
 
                         // Runtime-only change: apply in-process via ArcSwap.
@@ -290,13 +318,26 @@ impl ControlPlaneServer {
                                 let new_snapshot =
                                     TrafficSnapshot::from_runtime(state.load().as_ref());
                                 traffic.update(new_snapshot);
+                                reload.record_outcome(epoch, ReloadOutcome::Applied);
                             }
                             Err(reload_err) => match reload_err {
                                 ReloadError::Load(e) => {
                                     error!(error = %e, "failed to reload config");
+                                    reload.record_outcome(
+                                        epoch,
+                                        ReloadOutcome::LoadFailed {
+                                            error: e.to_string(),
+                                        },
+                                    );
                                 }
                                 ReloadError::Build(e) => {
                                     error!(error = %e, "failed to build runtime state");
+                                    reload.record_outcome(
+                                        epoch,
+                                        ReloadOutcome::BuildFailed {
+                                            error: e.to_string(),
+                                        },
+                                    );
                                 }
                             },
                         }
