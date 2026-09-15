@@ -381,11 +381,13 @@ When `upgrade_sock` is configured and Snakeway detects a listener change during 
 
 ### When to use upgrade vs reload
 
-| Change type                          | Command   | Mechanism               |
-|--------------------------------------|-----------|-------------------------|
-| Routes, services, devices, TLS certs | `reload`  | In-process ArcSwap      |
-| Listener address, port, TLS mode     | `upgrade` | Fork/exec + FD transfer |
-| Worker threads, work stealing        | `upgrade` | Fork/exec + FD transfer |
+| Change type                                          | Command   | Mechanism               |
+|------------------------------------------------------|-----------|-------------------------|
+| Routes, services, devices, TLS certs                 | `reload`  | In-process ArcSwap      |
+| Listener address, port, TLS mode                     | `upgrade` | Fork/exec + FD transfer |
+| Worker threads, work stealing                        | `upgrade` | Fork/exec + FD transfer |
+| Other server settings that are read at startup       | `upgrade` | Fork/exec + FD transfer |
+| `pid_file`, `upgrade.sock`                           | Restart   | Stop and start Snakeway |
 
 ## logs
 

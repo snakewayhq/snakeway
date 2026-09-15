@@ -20,7 +20,6 @@ This path handles changes to:
 - Services (upstreams, load balancing strategy, circuit breaker, health check)
 - Devices (added, removed, reconfigured)
 - TLS certificates (ACME rotation, manual cert file changes)
-- DNS refresh interval
 
 No connections are dropped.
 No new process is spawned.
@@ -44,14 +43,30 @@ This path handles changes to:
 - Admin authentication (token file path)
 - Worker thread count
 - Work stealing
+- Shutdown timeouts
+- Upstream connection pool size, source addresses, connect timeout, and read timeout
+- Parallel accepts per listener
+- The global `ca_file`
+- DNS refresh interval
+- Observability
+- TLS automation
+- `upgrade.max_retries`
+
+### 3. Restart
+
+Some settings cannot change through either path.
+An upgrade cannot apply a change to `pid_file` or `upgrade.sock`, because the running process uses both settings to hand its listeners to the new process.
+When a reload finds a change to either setting, it rejects the whole reload, logs an error that names the settings, and keeps the running configuration.
+Restart Snakeway to apply these changes.
 
 ## How the reload loop classifies changes
 
 When a reload is triggered, the reload loop in `ControlPlaneServer` loads the new config from disk and runs a diff against the currently running config.
-The diff function (`classify_config_change` in `runtime/diff.rs`) compares listeners field-by-field and checks the server-level fields that are baked at construction (`threads`, `work_stealing`).
+The diff function (`classify_config_change` in `runtime/diff.rs`) compares listeners field by field and compares the server settings that are read only at startup.
 
+If `pid_file` or `upgrade.sock` changed, the reload is rejected.
+If a listener or a startup server setting changed, the zero-drop upgrade path runs automatically.
 If only runtime-swappable fields changed, the in-process ArcSwap path runs.
-If any listener-level or server-construction field changed, the zero-drop upgrade path runs automatically.
 
 ## Zero-drop upgrade sequence
 
@@ -62,7 +77,7 @@ sequenceDiagram
 
     Note over Old: Reload triggered<br/>(SIGHUP or admin API)
     Old->>Old: Load and validate new config
-    Old->>Old: classify_config_change()<br/>returns ListenersChanged
+    Old->>Old: classify_config_change()<br/>returns UpgradeRequired
     Old->>New: Spawn: snakeway run --config ... --upgrade
     New->>New: Load config, build server and services
     New->>New: Read old PID from pid_file
@@ -156,15 +171,17 @@ Two listeners are considered equivalent when all of the following match:
 - `connection_rate_limiting_filter` (rate, interval)
 - `admin_auth` (compared by token file path, not token values)
 
-At the server level, `threads` and `work_stealing` are also compared because they are set on Pingora's `ServerConf` at construction time and cannot be changed in a running process.
+At the server level, the diff compares every setting that Pingora, the traffic proxy, or the control plane reads only at startup.
+Those are the server settings in the upgrade list above, together with `pid_file` and `upgrade.sock`.
 
-Changes to any other field (routes, services, devices, DNS interval, observability, TLS automation, CA file) are classified as runtime-only and handled by the ArcSwap path.
+Changes to routes, services, devices, and `server.wasm` are classified as runtime-only and handled by the ArcSwap path.
 
 ## Error handling
 
 | Failure                               | Effect                                                       |
 |---------------------------------------|--------------------------------------------------------------|
 | New config fails validation           | Reload aborted, old process undisturbed                      |
+| `pid_file` or `upgrade.sock` changed  | Reload rejected, error logged, old process undisturbed       |
 | New process fails to spawn            | Error logged, old process continues                          |
 | FD transfer times out                 | New process exits (bootstrap failure), old process continues |
 | New process crashes after FD transfer | Connections on those FDs are lost                            |
