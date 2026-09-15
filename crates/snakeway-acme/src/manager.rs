@@ -10,6 +10,7 @@ use crate::{
 use arc_swap::ArcSwap;
 use arc_swap::ArcSwapOption;
 use pingora_rustls::sign;
+use snakeway_conf::tls::TlsError;
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
@@ -78,17 +79,18 @@ impl CertManager {
         };
 
         let certs = snakeway_conf::tls::parse_cert_chain(&stored.cert_chain_pem)
-            .map_err(CertManagerError::InvalidChain)?;
+            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
 
         let key = snakeway_conf::tls::parse_private_key(stored.expose_private_key_pem())
-            .map_err(CertManagerError::InvalidPrivateKey)?;
+            .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?;
 
         let certified_key =
             snakeway_conf::tls::build_certified_key(certs, key).map_err(|e| match e {
-                snakeway_conf::tls::CertKeyError::KeyMismatch => CertManagerError::KeyMismatch,
-                snakeway_conf::tls::CertKeyError::Other(msg) => {
-                    CertManagerError::InvalidPrivateKey(msg)
+                TlsError::KeyMismatch => CertManagerError::KeyMismatch,
+                TlsError::NoCertificates | TlsError::CertificateRejected(_) => {
+                    CertManagerError::InvalidChain(e.to_string())
                 }
+                other => CertManagerError::InvalidPrivateKey(other.to_string()),
             })?;
 
         Ok(Some(Arc::new(certified_key)))
