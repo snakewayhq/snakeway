@@ -1,7 +1,7 @@
 use crate::runtime::types::ManualCertMap;
 use anyhow::{Result, anyhow};
 use pingora::tls::sign::CertifiedKey;
-use snakeway_conf::tls::{CertKeyError, build_certified_key, parse_cert_chain, parse_private_key};
+use snakeway_conf::tls::{TlsError, build_certified_key, parse_cert_chain, parse_private_key};
 use snakeway_conf::types::{ListenerConfig, TlsTerminationConfig};
 use std::path::Path;
 use std::sync::Arc;
@@ -46,13 +46,17 @@ fn load_certified_key(cert_path: &Path, key_path: &Path) -> Result<CertifiedKey>
     let key = parse_private_key(&key_bytes).map_err(|e| anyhow!("{}: {e}", key_path.display()))?;
 
     build_certified_key(certs, key).map_err(|e| match e {
-        CertKeyError::KeyMismatch => anyhow!(
+        TlsError::KeyMismatch => anyhow!(
             "private key does not match certificate: cert={}, key={}",
             cert_path.display(),
             key_path.display()
         ),
-        CertKeyError::Other(msg) => anyhow!(
-            "failed to build certified key: cert={}, key={}: {msg}",
+        TlsError::NoCertificates | TlsError::CertificateRejected(_) => {
+            anyhow!("{}: {e}", cert_path.display())
+        }
+        TlsError::UnsupportedPrivateKey(_) => anyhow!("{}: {e}", key_path.display()),
+        other => anyhow!(
+            "failed to build certified key: cert={}, key={}: {other}",
             cert_path.display(),
             key_path.display()
         ),

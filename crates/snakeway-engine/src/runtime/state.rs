@@ -288,7 +288,7 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<Vec<WrappedX509>> {
         anyhow::bail!("CA file is empty: {}", path.display());
     }
 
-    let parsed = snakeway_conf::tls::parse_cert_chain(&pem)
+    let parsed = snakeway_conf::tls::parse_ca_certificates(&pem)
         .map_err(|e| anyhow!("CA file {}: {e}", path.display()))?;
 
     parsed
@@ -474,6 +474,29 @@ mod tests {
             msg.contains("invalid X.509 certificate at index 0"),
             "got: {msg}"
         );
+    }
+
+    #[test]
+    fn load_ca_from_path_rejects_private_key_section() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("ca-with-key.pem");
+        let cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate CA cert");
+        std::fs::write(
+            &ca_path,
+            format!("{}{}", cert.cert.pem(), cert.signing_key.serialize_pem()),
+        )
+        .expect("failed to write CA file");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        let msg = result
+            .expect_err("a CA file with a private key section must fail to load")
+            .to_string();
+        assert!(msg.contains("PRIVATE KEY"), "got: {msg}");
     }
 
     #[test]
