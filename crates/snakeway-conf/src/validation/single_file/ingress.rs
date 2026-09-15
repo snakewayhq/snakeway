@@ -119,10 +119,10 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                 if let Some(sock) = &upstream.value.sock {
                     report_duplicate(
                         &mut seen_upstream_socks,
-                        sock.value.clone(),
+                        sock.value.path.value.clone(),
                         sock.span,
                         report,
-                        || format!("duplicate upstream sock: {}", sock.value),
+                        || format!("duplicate upstream sock: {}", sock.value.path.value),
                     );
                 }
             }
@@ -215,7 +215,10 @@ mod tests {
     fn sock_upstream(sock: &str) -> Located<UpstreamSpec> {
         Located::detached(UpstreamSpec {
             endpoint: None,
-            sock: Some(Located::detached(sock.to_string())),
+            sock: Some(Located::detached(SockSpec {
+                path: Located::detached(sock.to_string()),
+                tls: None,
+            })),
             weight: Located::detached(1),
         })
     }

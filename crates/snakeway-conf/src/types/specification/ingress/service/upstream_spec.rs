@@ -16,7 +16,8 @@ pub struct UpstreamSpec {
     #[confval(nested)]
     pub endpoint: Option<Located<EndpointSpec>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sock: Option<Located<String>>,
+    #[confval(nested)]
+    pub sock: Option<Located<SockSpec>>,
     #[confval(default = 1, range = WEIGHT)]
     pub weight: Located<i64>,
 }
@@ -26,6 +27,15 @@ pub struct EndpointSpec {
     pub host: Located<String>,
     #[confval[range = PORT]]
     pub port: Located<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(nested)]
+    pub tls: Option<Located<EndpointTlsSpec>>,
+}
+
+#[derive(Debug, Serialize, Clone, Default, confval::Spec)]
+pub struct SockSpec {
+    #[confval(non_empty)]
+    pub path: Located<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub tls: Option<Located<EndpointTlsSpec>>,
@@ -89,6 +99,10 @@ impl EndpointSpec {
 }
 
 impl Validate for UpstreamSpec {
+    fn validate(&self, _report: &mut Report) {}
+}
+
+impl Validate for SockSpec {
     fn validate(&self, _report: &mut Report) {}
 }
 

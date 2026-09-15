@@ -54,7 +54,7 @@ impl Validate for ServiceSpec {
                 report
                     .error(format!(
                         "upstream cannot have both sock {} and endpoint: {}:{}",
-                        sock.value, endpoint.value.host.value, endpoint.value.port.value
+                        sock.value.path.value, endpoint.value.host.value, endpoint.value.port.value
                     ))
                     .at(upstream.span)
                     .emit();
@@ -74,11 +74,14 @@ impl Validate for ServiceSpec {
             }
 
             if let Some(sock) = &upstream.value.sock
-                && !seen_sock_values.insert(sock.value.clone())
+                && !seen_sock_values.insert(sock.value.path.value.clone())
             {
                 report
-                    .error(format!("duplicate upstream sock: {}", sock.value))
-                    .at(sock.span)
+                    .error(format!(
+                        "duplicate upstream sock: {}",
+                        sock.value.path.value
+                    ))
+                    .at(sock.value.path.span)
                     .emit();
             }
         }
@@ -88,7 +91,7 @@ impl Validate for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{EndpointSpec, EndpointTlsSpec};
+    use crate::types::{EndpointSpec, EndpointTlsSpec, SockSpec};
 
     fn minimal_upstream() -> UpstreamSpec {
         UpstreamSpec {
@@ -171,7 +174,10 @@ mod tests {
         // Arrange
         let mut service = minimal_service();
         service.load_balancing_strategy = Located::detached("failover".to_string());
-        service.upstreams[0].value.sock = Some(Located::detached("/tmp/test.sock".to_string()));
+        service.upstreams[0].value.sock = Some(Located::detached(SockSpec {
+            path: Located::detached("/tmp/test.sock".to_string()),
+            tls: None,
+        }));
 
         // Act
         let report = validate(&service);
@@ -212,7 +218,10 @@ mod tests {
         let sock_upstream = || {
             Located::detached(UpstreamSpec {
                 endpoint: None,
-                sock: Some(Located::detached("/tmp/test.sock".to_string())),
+                sock: Some(Located::detached(SockSpec {
+                    path: Located::detached("/tmp/test.sock".to_string()),
+                    tls: None,
+                })),
                 weight: Located::detached(1),
             })
         };

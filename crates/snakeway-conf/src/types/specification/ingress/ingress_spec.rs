@@ -196,7 +196,7 @@ services = [
 
 service {
   routes = [{ hosts = ["a.example.com"], path = "/a" }]
-  upstreams = [{ sock = "/tmp/a.sock" }]
+  upstreams = [{ sock = { path = "/tmp/a.sock" } }]
 }
 "#;
 
