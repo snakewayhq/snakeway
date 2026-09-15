@@ -1,6 +1,6 @@
 use crate::resolution::ResolveError;
 use crate::validation::PORT;
-use crate::validation::validator::{is_valid_hostname, validate_cert_pem};
+use crate::validation::validator::{is_valid_hostname, validate_ca_file};
 use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::fmt;
@@ -131,7 +131,7 @@ impl Validate for EndpointTlsSpec {
         }
 
         if let Some(ca_file) = &spec.ca_file
-            && let Err(e) = validate_cert_pem(&ca_file.value)
+            && let Err(e) = validate_ca_file(&ca_file.value)
         {
             report
                 .error(format!(

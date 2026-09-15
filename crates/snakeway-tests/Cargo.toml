@@ -31,6 +31,7 @@ bytes = { workspace = true }
 
 [dev-dependencies]
 hmac = "0.13"
+rcgen = { workspace = true }
 sha2 = "0.11"
 base64 = "0.22"
 

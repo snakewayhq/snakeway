@@ -89,6 +89,8 @@ enum Command {
 }
 
 pub fn run() {
+    pingora_rustls::install_default_crypto_provider();
+
     let cli = Cli::parse();
 
     match cli.command {

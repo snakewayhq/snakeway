@@ -2,7 +2,7 @@ use crate::types::{
     ObservabilitySpec, PerformanceSpec, ShutdownSpec, TlsAutomationSpec, UpgradeSpec,
     UpstreamSettingsSpec, WasmSpec,
 };
-use crate::validation::validate_cert_pem;
+use crate::validation::validate_ca_file;
 use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -130,7 +130,7 @@ impl Validate for ServerSpec {
         }
 
         if let Some(ca_file) = &self.ca_file
-            && let Err(e) = validate_cert_pem(&ca_file.value)
+            && let Err(e) = validate_ca_file(&ca_file.value)
         {
             report
                 .error(format!("server CA file is invalid: {e}"))
@@ -632,7 +632,9 @@ observability {
         let pid_dir = dir.path().join("pid");
         std::fs::create_dir(&pid_dir).unwrap();
         let ca_file = dir.path().join("ca.pem");
-        std::fs::write(&ca_file, "dummy").unwrap();
+        let ca_cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate CA cert");
+        std::fs::write(&ca_file, ca_cert.cert.pem()).unwrap();
         let server = ServerSpec {
             pid_file: Some(Located::detached(pid_dir.join("snakeway.pid"))),
             ca_file: Some(Located::detached(ca_file)),

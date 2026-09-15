@@ -1,8 +1,9 @@
+mod cert_resolver;
+mod manual_cert_resolver;
 mod snakeway_tls_accept;
+#[cfg(test)]
+mod test_support;
 
-use pingora::listeners::TlsAcceptCallbacks;
-pub(crate) use snakeway_tls_accept::{CertMode, SnakewayTlsAccept};
-
-pub(crate) fn build_tls_callbacks(mode: CertMode) -> TlsAcceptCallbacks {
-    Box::new(SnakewayTlsAccept::new(mode))
-}
+pub(crate) use cert_resolver::SnakewayCertResolver;
+pub(crate) use manual_cert_resolver::ManualCertResolver;
+pub(crate) use snakeway_tls_accept::SnakewayTlsAccept;

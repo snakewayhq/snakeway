@@ -2,6 +2,7 @@ use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;
+use crate::runtime::manual_tls::load_manual_certs;
 use crate::runtime::types::{
     ResolvedAddr, TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime,
 };
@@ -10,8 +11,7 @@ use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
-use openssl::x509::X509;
-use pingora::protocols::tls::CaType;
+use pingora::utils::tls::WrappedX509;
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use snakeway_conf::{load_config, types::RuntimeConfig};
@@ -75,6 +75,7 @@ pub fn build_runtime_state(
 ) -> Result<RuntimeState> {
     // TLS Certificates
     let tls: Option<TlsRuntime> = cert_manager.as_ref().map(build_tls_runtime).transpose()?;
+    let manual_certs = load_manual_certs(&cfg.listeners)?;
 
     // Routers
     let routers = build_runtime_routers(&cfg.routes)?;
@@ -90,6 +91,7 @@ pub fn build_runtime_state(
 
     Ok(RuntimeState {
         tls,
+        manual_certs,
         routers,
         devices,
         services,
@@ -228,7 +230,7 @@ fn make_upstream_runtime_from_tcp(
         if let Some(ca_file) = effective_ca {
             let ca = load_ca_from_path(ca_file)?;
             let group_key = calculate_group_key(ca_file);
-            (true, Some(Arc::new(ca)), group_key)
+            (true, Some(Arc::from(ca)), group_key)
         } else {
             (false, None, 0)
         }
@@ -272,7 +274,7 @@ fn make_upstream_runtime_from_tcp(
 /// Load a per-upstream CA file.
 /// This happens when the runtime state is recomputed,
 /// keeping it out of the data plane.
-pub(crate) fn load_ca_from_path(path: &Path) -> Result<CaType> {
+pub(crate) fn load_ca_from_path(path: &Path) -> Result<Vec<WrappedX509>> {
     if !path.exists() {
         anyhow::bail!("CA file does not exist: {}", path.display());
     }
@@ -286,23 +288,24 @@ pub(crate) fn load_ca_from_path(path: &Path) -> Result<CaType> {
         anyhow::bail!("CA file is empty: {}", path.display());
     }
 
-    // Parse ALL certs in the PEM bundle.
-    // stack_from_pem returns Vec<X509> (OpenSSL) / equivalent for boringssl shim.
-    let certs = X509::stack_from_pem(&pem).with_context(|| {
-        format!(
-            "failed to parse PEM certificates in CA file: {}",
-            path.display()
-        )
-    })?;
+    let parsed = snakeway_conf::tls::parse_ca_certificates(&pem)
+        .map_err(|e| anyhow!("CA file {}: {e}", path.display()))?;
 
-    if certs.is_empty() {
-        anyhow::bail!(
-            "CA file contained no certificates (parsed 0 certs): {}",
-            path.display()
-        );
-    }
+    parsed
+        .into_iter()
+        .map(|cert_der| wrap_ca_certificate(cert_der.to_vec()))
+        .collect()
+}
 
-    Ok(certs.into_boxed_slice())
+/// The closure must return Pingora's `X509Certificate` type, so this only compiles while
+/// Snakeway and Pingora resolve the same x509-parser version. If a dependency update splits
+/// them, align the versions again rather than working around the type error.
+fn wrap_ca_certificate(der: Vec<u8>) -> Result<WrappedX509> {
+    WrappedX509::try_new(der, |raw| {
+        x509_parser::parse_x509_certificate(raw)
+            .map(|(_, cert)| cert)
+            .map_err(|e| anyhow!("invalid X.509 certificate: {e}"))
+    })
 }
 
 /// Hash a path to a u64.
@@ -345,4 +348,169 @@ fn canonicalize_dir(dir: &Path) -> String {
     let path_buf = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
     let result = path_buf.to_string_lossy();
     result.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn load_ca_from_path_valid_single_cert() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("ca.pem");
+        let cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate CA cert");
+        std::fs::write(&ca_path, cert.cert.pem()).expect("failed to write CA");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        let certs = result.expect("a single CA certificate must load");
+        assert_eq!(certs.len(), 1);
+        assert_eq!(
+            certs[0].borrow_raw_cert().as_slice(),
+            cert.cert.der().as_ref()
+        );
+    }
+
+    #[test]
+    fn load_ca_from_path_valid_multi_cert_bundle() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("ca-bundle.pem");
+        let cert1 = rcgen::generate_simple_self_signed(vec!["ca1.test".into()])
+            .expect("failed to generate first CA cert");
+        let cert2 = rcgen::generate_simple_self_signed(vec!["ca2.test".into()])
+            .expect("failed to generate second CA cert");
+        let mut f = std::fs::File::create(&ca_path).expect("failed to create file");
+        f.write_all(cert1.cert.pem().as_bytes())
+            .expect("failed to write first cert");
+        f.write_all(cert2.cert.pem().as_bytes())
+            .expect("failed to write second cert");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        let certs = result.expect("a CA bundle must load");
+        assert_eq!(certs.len(), 2);
+        assert_eq!(
+            certs[0].borrow_raw_cert().as_slice(),
+            cert1.cert.der().as_ref()
+        );
+        assert_eq!(
+            certs[1].borrow_raw_cert().as_slice(),
+            cert2.cert.der().as_ref()
+        );
+    }
+
+    #[test]
+    fn load_ca_from_path_nonexistent_file() {
+        // Arrange
+        let path = Path::new("/nonexistent/ca.pem");
+
+        // Act
+        let result = load_ca_from_path(path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("does not exist"), "got: {msg}");
+    }
+
+    #[test]
+    fn load_ca_from_path_empty_file() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("empty.pem");
+        std::fs::File::create(&ca_path).expect("failed to create empty file");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("empty"), "got: {msg}");
+    }
+
+    #[test]
+    fn load_ca_from_path_no_pem_certs() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("no-certs.pem");
+        std::fs::write(&ca_path, "not a PEM file").expect("failed to write");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("no certificates"), "got: {msg}");
+    }
+
+    #[test]
+    fn load_ca_from_path_invalid_der_in_pem() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("bad-der.pem");
+        std::fs::write(
+            &ca_path,
+            "-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n",
+        )
+        .expect("failed to write");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("invalid X.509 certificate at index 0"),
+            "got: {msg}"
+        );
+    }
+
+    #[test]
+    fn load_ca_from_path_rejects_private_key_section() {
+        // Arrange
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let ca_path = dir.path().join("ca-with-key.pem");
+        let cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
+            .expect("failed to generate CA cert");
+        std::fs::write(
+            &ca_path,
+            format!("{}{}", cert.cert.pem(), cert.signing_key.serialize_pem()),
+        )
+        .expect("failed to write CA file");
+
+        // Act
+        let result = load_ca_from_path(&ca_path);
+
+        // Assert
+        let msg = result
+            .expect_err("a CA file with a private key section must fail to load")
+            .to_string();
+        assert!(msg.contains("PRIVATE KEY"), "got: {msg}");
+    }
+
+    #[test]
+    fn wrap_ca_certificate_invalid_der_returns_error() {
+        // Arrange
+        let der = b"invalid".to_vec();
+
+        // Act
+        let result = wrap_ca_certificate(der);
+
+        // Assert
+        let msg = result
+            .expect_err("invalid DER must return an error")
+            .to_string();
+        assert!(msg.starts_with("invalid X.509 certificate"), "got: {msg}");
+    }
 }

@@ -13,7 +13,7 @@ Pingora supplies the layers below the device pipeline:
 - **HTTP parsing**: parsing of HTTP/1 and HTTP/2 request and response framing.
 - **Asynchronous runtime**: Tokio, so a single process handles many concurrent connections without a thread per connection.
 - **Upstream connection pooling**: reuse of established connections to backend services.
-- **TLS**: termination and origination through OpenSSL or BoringSSL.
+- **TLS**: termination and origination through [rustls](https://rustls.dev/).
 
 ## Crate layout
 

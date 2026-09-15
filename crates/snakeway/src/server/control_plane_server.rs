@@ -71,6 +71,8 @@ impl ControlPlaneServer {
     ) -> Result<Self> {
         use tokio::runtime::Builder;
 
+        pingora_rustls::install_default_crypto_provider();
+
         let control_rt = Builder::new_multi_thread()
             .worker_threads(1)
             .enable_all()
