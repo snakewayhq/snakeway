@@ -240,6 +240,93 @@ mod tests {
         assert!(error.message.contains("duplicate upstream sock"));
     }
 
+    fn sock_service(sock: SockSpec) -> ServiceSpec {
+        ServiceSpec {
+            name: Located::detached("api".to_string()),
+            load_balancing_strategy: Located::detached("failover".to_string()),
+            upstreams: vec![Located::detached(UpstreamSpec {
+                endpoint: None,
+                sock: Some(Located::detached(sock)),
+                weight: Located::detached(1),
+            })],
+            ..Default::default()
+        }
+    }
+
+    fn sock_tls(sni: &str) -> Option<Located<EndpointTlsSpec>> {
+        Some(Located::detached(EndpointTlsSpec {
+            sni: Located::detached(sni.to_string()),
+            verify: Located::detached(true),
+            ca_file: None,
+        }))
+    }
+
+    #[test]
+    fn empty_sock_path_is_rejected() {
+        // Arrange
+        let service = sock_service(SockSpec {
+            path: Located::detached(String::new()),
+            tls: None,
+        });
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "path must not be empty"),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn empty_sni_in_sock_tls_is_rejected() {
+        // Arrange
+        let service = sock_service(SockSpec {
+            path: Located::detached("/run/app.sock".to_string()),
+            tls: sock_tls(""),
+        });
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "sni must not be empty"),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn ip_sni_in_sock_tls_is_rejected_when_verify_is_true() {
+        // Arrange
+        let service = sock_service(SockSpec {
+            path: Located::detached("/run/app.sock".to_string()),
+            tls: sock_tls("10.0.0.1"),
+        });
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "upstream TLS SNI must be DNS name"),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
     #[test]
     fn route_with_no_hosts_produces_error() {
         // Arrange
