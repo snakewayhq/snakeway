@@ -59,7 +59,7 @@ For most deployments, set this to the number of CPU cores on your server.
 `ca_file` string, default: none.
 Path to a CA certificate file used to verify upstream TLS connections when no per-upstream `ca_file` is configured.
 The file must contain only PEM-encoded X.509 certificates.
-A file that holds a placeholder, a private key, or a damaged certificate stops Snakeway from loading the configuration or from starting.
+A file that holds a placeholder, a damaged certificate, or a section of another kind, such as a private key, stops Snakeway from loading the configuration.
 When this file is set, upstream certificates are verified against the certificates in it and not against the trusted roots of the operating system.
 Without a `ca_file`, Snakeway uses the trusted roots of the operating system.
 To use a different bundle, set the `SSL_CERT_FILE` or `SSL_CERT_DIR` environment variable.
