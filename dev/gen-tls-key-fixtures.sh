@@ -30,6 +30,17 @@ openssl req -x509 -new \
   -addext "subjectAltName=DNS:localhost" \
   -out "${FIXTURE_DIR}/ec.pem"
 
+openssl req -x509 -new \
+  -key "${FIXTURE_DIR}/ec-sec1.key" \
+  -sha256 \
+  -days "${DAYS}" \
+  -subj "/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost" \
+  -addext "1.3.6.1.4.1.55555.1=critical,ASN1:UTF8String:snakeway" \
+  -out "${FIXTURE_DIR}/ec-unknown-critical-extension.pem"
+
+openssl ecparam -name secp521r1 -genkey -noout -out "${FIXTURE_DIR}/ec-p521-sec1.key"
+
 openssl pkcs8 -topk8 -v2 aes-256-cbc \
   -in "${FIXTURE_DIR}/ec-sec1.key" \
   -passout pass:snakeway-test \
