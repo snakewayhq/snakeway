@@ -1,9 +1,11 @@
 use crate::proxy::TrafficProxy;
 use pingora::prelude::HttpPeer;
+use pingora::protocols::tls::CaType;
 use pingora::{BError, Custom, Error};
 use snakeway_engine::ctx::RequestCtx;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
 use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId};
+use std::sync::Arc;
 
 impl TrafficProxy {
     /// Select an upstream for the given request.
@@ -60,24 +62,30 @@ impl TrafficProxy {
             UpstreamRuntime::Tcp(tcp) => {
                 let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.use_tls, tcp.sni.clone());
                 if tcp.use_tls {
-                    // Wire-up per-upstream TLS settings.
-                    peer.options.verify_cert = tcp.verify;
-                    peer.options.verify_hostname = tcp.verify;
-                    if tcp.verify {
-                        peer.options.ca = tcp.ca.clone();
-                        peer.group_key = tcp.group_key;
-                    }
+                    apply_tls_verification(&mut peer, tcp.verify, &tcp.ca, tcp.group_key);
                 }
                 Ok(peer)
             }
             UpstreamRuntime::Unix(unix) => {
-                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
-                    anyhow::anyhow!(
-                        "Could not connect to unix domain socket `{}`: {}",
-                        unix.path,
-                        e
-                    )
-                })
+                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone())
+                    .map(|mut peer| {
+                        if unix.use_tls {
+                            apply_tls_verification(
+                                &mut peer,
+                                unix.verify,
+                                &unix.ca,
+                                unix.group_key,
+                            );
+                        }
+                        peer
+                    })
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Could not connect to unix domain socket `{}`: {}",
+                            unix.path,
+                            e
+                        )
+                    })
             }
         }
         .map_err(|_| Error::new(Custom("http peer creation failed")))?;
@@ -110,5 +118,20 @@ impl TrafficProxy {
         }
 
         Ok(peer)
+    }
+}
+
+/// Set how Pingora verifies the TLS certificate of an upstream peer.
+fn apply_tls_verification(
+    peer: &mut HttpPeer,
+    verify: bool,
+    ca: &Option<Arc<CaType>>,
+    group_key: u64,
+) {
+    peer.options.verify_cert = verify;
+    peer.options.verify_hostname = verify;
+    if verify {
+        peer.options.ca = ca.clone();
+        peer.group_key = group_key;
     }
 }
