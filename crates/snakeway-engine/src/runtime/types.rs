@@ -162,6 +162,11 @@ pub struct UpstreamUnixRuntime {
     pub use_tls: bool,
     pub sni: String,
     pub weight: u32,
+    pub verify: bool,
+    /// Preloaded when the runtime snapshot is created.
+    pub ca: Option<Arc<CaType>>,
+    /// Precomputed when the runtime snapshot is created.
+    pub group_key: u64,
 }
 
 #[cfg(test)]

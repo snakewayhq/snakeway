@@ -11,9 +11,12 @@ use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
+use pingora::protocols::tls::CaType;
 use pingora::utils::tls::WrappedX509;
 use snakeway_acme::{CertManager, SniRegistry};
-use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
+use snakeway_conf::types::{
+    RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamTlsConfig, UpstreamUnixConfig,
+};
 use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;
 use std::fs;
@@ -129,7 +132,7 @@ fn build_runtime_services(
             svc.unix_upstreams
                 .iter()
                 .map(|u| {
-                    let rt = make_upstream_runtime_for_unix(u)?;
+                    let rt = make_upstream_runtime_for_unix(u, global_ca_file)?;
                     Ok(rt)
                 })
                 .collect::<Result<Vec<_>>>()?,
@@ -222,21 +225,8 @@ fn make_upstream_runtime_from_tcp(
 
     // Handle per-endpoint TLS settings.
     let use_tls = cfg.tls.is_some();
-    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
-        && tls_cfg.verify
-    {
-        // Prefer the per-endpoint ca_file; fall back to the global server.ca_file.
-        let effective_ca = tls_cfg.ca_file.as_deref().or(global_ca_file);
-        if let Some(ca_file) = effective_ca {
-            let ca = load_ca_from_path(ca_file)?;
-            let group_key = calculate_group_key(ca_file);
-            (true, Some(Arc::from(ca)), group_key)
-        } else {
-            (false, None, 0)
-        }
-    } else {
-        (false, None, 0)
-    };
+    let (verify, ca, group_key) =
+        resolve_upstream_tls_verification(cfg.tls.as_ref(), global_ca_file)?;
 
     // Determine SNI.
     let sni = if let Some(tls_cfg) = &cfg.tls {
@@ -269,6 +259,24 @@ fn make_upstream_runtime_from_tcp(
         ca,
         group_key,
     }))
+}
+
+/// Resolve how Snakeway verifies the TLS certificate of one upstream.
+///
+/// The per-upstream `ca_file` is used before the global `server.ca_file`. Without either, the
+/// peer carries no CA and Pingora verifies against the trust store of its connector.
+fn resolve_upstream_tls_verification(
+    tls: Option<&UpstreamTlsConfig>,
+    global_ca_file: Option<&Path>,
+) -> Result<(bool, Option<Arc<CaType>>, u64)> {
+    let Some(tls_cfg) = tls.filter(|t| t.verify) else {
+        return Ok((false, None, 0));
+    };
+    let Some(ca_file) = tls_cfg.ca_file.as_deref().or(global_ca_file) else {
+        return Ok((true, None, 0));
+    };
+    let ca = load_ca_from_path(ca_file)?;
+    Ok((true, Some(Arc::from(ca)), calculate_group_key(ca_file)))
 }
 
 /// Load a per-upstream CA file.
@@ -319,16 +327,24 @@ fn calculate_group_key(path: &Path) -> u64 {
 }
 
 /// Factory function to make a unix upstream runtime.
-fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRuntime> {
+fn make_upstream_runtime_for_unix(
+    cfg: &UpstreamUnixConfig,
+    global_ca_file: Option<&Path>,
+) -> Result<UpstreamRuntime> {
     let addr = UpstreamAddr::Unix {
         path: cfg.sock.clone(),
     };
+    let (verify, ca, group_key) =
+        resolve_upstream_tls_verification(cfg.tls.as_ref(), global_ca_file)?;
     Ok(UpstreamRuntime::Unix(UpstreamUnixRuntime {
         id: make_upstream_id(&addr),
         path: cfg.sock.clone(),
-        use_tls: cfg.use_tls,
-        sni: cfg.sni.clone(),
+        use_tls: cfg.tls.is_some(),
+        sni: cfg.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default(),
         weight: cfg.weight,
+        verify,
+        ca,
+        group_key,
     }))
 }
 
@@ -354,6 +370,102 @@ fn canonicalize_dir(dir: &Path) -> String {
 mod tests {
     use super::*;
     use std::io::Write;
+
+    fn unix_upstream_config(tls: Option<UpstreamTlsConfig>) -> UpstreamUnixConfig {
+        UpstreamUnixConfig {
+            sock: "/tmp/app.sock".to_string(),
+            weight: 1,
+            tls,
+        }
+    }
+
+    #[test]
+    fn unix_upstream_without_tls_block_uses_plain_http() {
+        // Arrange
+        let cfg = unix_upstream_config(None);
+
+        // Act
+        let result = make_upstream_runtime_for_unix(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Unix(unix) = result.expect("the upstream runtime must build") else {
+            panic!("expected a Unix upstream runtime");
+        };
+        assert!(!unix.use_tls);
+        assert!(!unix.verify);
+        assert!(unix.sni.is_empty());
+        assert!(unix.ca.is_none());
+    }
+
+    #[test]
+    fn unix_upstream_with_verify_and_no_ca_file_keeps_verification_on() {
+        // Arrange
+        let cfg = unix_upstream_config(Some(UpstreamTlsConfig {
+            sni: "app.internal".to_string(),
+            verify: true,
+            ca_file: None,
+        }));
+
+        // Act
+        let result = make_upstream_runtime_for_unix(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Unix(unix) = result.expect("the upstream runtime must build") else {
+            panic!("expected a Unix upstream runtime");
+        };
+        assert!(unix.use_tls);
+        assert!(unix.verify);
+        assert_eq!(unix.sni, "app.internal");
+        assert!(unix.ca.is_none());
+        assert_eq!(unix.group_key, 0);
+    }
+
+    fn tcp_upstream_config(verify: bool) -> UpstreamTcpConfig {
+        UpstreamTcpConfig {
+            url: "https://127.0.0.1:8443".to_string(),
+            weight: 1,
+            tls: Some(snakeway_conf::types::UpstreamTlsConfig {
+                sni: "backend.test".to_string(),
+                verify,
+                ca_file: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn tcp_upstream_with_verify_and_no_ca_file_keeps_verification_on() {
+        // Arrange
+        let cfg = tcp_upstream_config(true);
+
+        // Act
+        let result = make_upstream_runtime_from_tcp(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Tcp(tcp) = result.expect("the upstream runtime must build") else {
+            panic!("expected a TCP upstream runtime");
+        };
+        assert!(tcp.use_tls);
+        assert!(tcp.verify);
+        assert!(tcp.ca.is_none());
+        assert_eq!(tcp.group_key, 0);
+    }
+
+    #[test]
+    fn tcp_upstream_with_verify_false_skips_verification() {
+        // Arrange
+        let cfg = tcp_upstream_config(false);
+
+        // Act
+        let result = make_upstream_runtime_from_tcp(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Tcp(tcp) = result.expect("the upstream runtime must build") else {
+            panic!("expected a TCP upstream runtime");
+        };
+        assert!(tcp.use_tls);
+        assert!(!tcp.verify);
+        assert!(tcp.ca.is_none());
+    }
 
     #[test]
     fn load_ca_from_path_valid_single_cert() {
