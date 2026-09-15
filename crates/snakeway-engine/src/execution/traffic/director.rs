@@ -116,12 +116,8 @@ mod tests {
                 host: "127.0.0.1".to_string(),
                 port: id,
                 resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], id).into()),
-                use_tls: false,
-                sni: "localhost".to_string(),
+                tls: None,
                 weight: 1,
-                verify: false,
-                ca: None,
-                group_key: 0,
             }),
             latency: Some(LatencyStats {
                 ewma: Duration::from_millis(10),
