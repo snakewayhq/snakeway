@@ -9,4 +9,6 @@ mod response_handling;
 mod routing;
 mod static_files;
 mod tls_sni;
+mod unix_socket_upstream;
+mod upstream_tls_verify;
 mod websocket;

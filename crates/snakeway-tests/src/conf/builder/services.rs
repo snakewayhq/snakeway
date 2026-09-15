@@ -113,6 +113,18 @@ impl ConfigBuilder {
         self
     }
 
+    /// Adds custom services behind a manual TLS listener that uses the test server certificate.
+    pub fn with_custom_tls_ingress(mut self, services: Vec<ServiceSpec>) -> Self {
+        let bind = Self::make_bind(true);
+        let ingress_spec = IngressSpec {
+            bind: Some(Located::detached(bind)),
+            services: services.into_iter().map(Located::detached).collect(),
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
+
     pub fn with_http_ingress(mut self) -> Self {
         let bind = Self::make_bind(false);
         let service = Self::make_service_spec();
