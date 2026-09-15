@@ -255,16 +255,23 @@ impl ControlPlaneServer {
                         let new_config = validated.config;
 
                         use snakeway_engine::runtime::diff::{ConfigChangeKind, classify_config_change};
-                        let change_kind =
-                            classify_config_change(&current_config, &new_config);
-
-                        if change_kind == ConfigChangeKind::ListenersChanged {
-                            info!("listener-level change detected; initiating zero-drop upgrade");
-                            use snakeway_proxy::spawn_upgrade;
-                            if let Err(e) = spawn_upgrade(&config_path) {
-                                error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                        match classify_config_change(&current_config, &new_config) {
+                            ConfigChangeKind::RestartRequired { settings } => {
+                                error!(
+                                    settings = ?settings,
+                                    "reload rejected because these settings apply only after a restart"
+                                );
+                                continue;
                             }
-                            continue;
+                            ConfigChangeKind::UpgradeRequired => {
+                                info!("change needs a new process; initiating zero-drop upgrade");
+                                use snakeway_proxy::spawn_upgrade;
+                                if let Err(e) = spawn_upgrade(&config_path) {
+                                    error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                                }
+                                continue;
+                            }
+                            ConfigChangeKind::RuntimeOnly => {}
                         }
 
                         // Runtime-only change: apply in-process via ArcSwap.
