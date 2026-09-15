@@ -5,6 +5,7 @@ mod grpc;
 mod h2_to_h1;
 mod manual_tls_rotation;
 mod protocol_negotiation;
+mod reload_rules;
 mod response_handling;
 mod routing;
 mod static_files;
