@@ -120,7 +120,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                     report_duplicate(
                         &mut seen_upstream_socks,
                         sock.value.path.value.clone(),
-                        sock.span,
+                        sock.value.path.span,
                         report,
                         || format!("duplicate upstream sock: {}", sock.value.path.value),
                     );
