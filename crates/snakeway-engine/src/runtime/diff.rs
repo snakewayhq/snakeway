@@ -1,3 +1,4 @@
+use pingora::server::configuration::ServerConf;
 use snakeway_conf::types::{ListenerConfig, RuntimeConfig};
 
 #[derive(Debug, PartialEq)]
@@ -23,6 +24,54 @@ pub fn classify_config_change(old: &RuntimeConfig, new: &RuntimeConfig) -> Confi
     }
 }
 
+/// Why a reload is rejected.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RejectReason {
+    /// A setting changed that even a zero-drop upgrade cannot apply.
+    RestartRequired,
+    /// The change needs a zero-drop upgrade, and this platform cannot perform one.
+    UpgradeUnsupported,
+}
+
+impl RejectReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::RestartRequired => "restart_required",
+            Self::UpgradeUnsupported => "upgrade_unsupported",
+        }
+    }
+}
+
+/// What the reload loop does with a classified change.
+#[derive(Debug, PartialEq)]
+pub enum ReloadPlan {
+    ApplyInPlace,
+    Upgrade,
+    Reject {
+        reason: RejectReason,
+        settings: Vec<&'static str>,
+    },
+}
+
+/// Decide how to handle a classified change.
+///
+/// Zero-drop upgrades work only on Linux. On any other platform, pass `upgrade_supported` as
+/// `false`, and a change that needs an upgrade is rejected instead of stopping the process.
+pub fn plan_reload(change: ConfigChangeKind, upgrade_supported: bool) -> ReloadPlan {
+    match change {
+        ConfigChangeKind::RuntimeOnly => ReloadPlan::ApplyInPlace,
+        ConfigChangeKind::UpgradeRequired if upgrade_supported => ReloadPlan::Upgrade,
+        ConfigChangeKind::UpgradeRequired => ReloadPlan::Reject {
+            reason: RejectReason::UpgradeUnsupported,
+            settings: Vec::new(),
+        },
+        ConfigChangeKind::RestartRequired { settings } => ReloadPlan::Reject {
+            reason: RejectReason::RestartRequired,
+            settings,
+        },
+    }
+}
+
 /// The running process uses these settings to hand its listeners to a new process, so an
 /// upgrade cannot apply a change to them.
 fn restart_settings_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> Vec<&'static str> {
@@ -30,10 +79,21 @@ fn restart_settings_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> Vec<&'s
     if old.server.pid_file != new.server.pid_file {
         settings.push("server.pid_file");
     }
-    if old.server.upgrade.sock != new.server.upgrade.sock {
+    if effective_upgrade_sock(old) != effective_upgrade_sock(new) {
         settings.push("server.upgrade.sock");
     }
     settings
+}
+
+/// Pingora uses its own default path when `upgrade.sock` is not set, so an explicit default is
+/// not a change.
+fn effective_upgrade_sock(config: &RuntimeConfig) -> String {
+    config
+        .server
+        .upgrade
+        .sock
+        .clone()
+        .unwrap_or_else(|| ServerConf::default().upgrade_sock)
 }
 
 /// Settings that Pingora, the traffic proxy, or the control plane read only when the process
@@ -44,7 +104,6 @@ fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
         || old.performance != new.performance
         || old.shutdown != new.shutdown
         || old.upstream != new.upstream
-        || old.upgrade.max_retries != new.upgrade.max_retries
         || old.ca_file != new.ca_file
         || old.dns_refresh_interval_seconds != new.dns_refresh_interval_seconds
         || old.observability != new.observability
@@ -463,7 +522,7 @@ mod tests {
     }
 
     #[test]
-    fn upgrade_max_retries_changed() {
+    fn upgrade_max_retries_change_is_runtime_only() {
         // Arrange
         let (old, new) = configs_with_server_change(|s| {
             s.upgrade.max_retries = Some(5);
@@ -473,7 +532,7 @@ mod tests {
         let kind = classify_config_change(&old, &new);
 
         // Assert
-        assert_eq!(kind, ConfigChangeKind::UpgradeRequired);
+        assert_eq!(kind, ConfigChangeKind::RuntimeOnly);
     }
 
     #[test]
@@ -550,6 +609,82 @@ mod tests {
             kind,
             ConfigChangeKind::RestartRequired {
                 settings: vec!["server.pid_file", "server.upgrade.sock"]
+            }
+        );
+    }
+
+    #[test]
+    fn writing_the_default_upgrade_sock_is_runtime_only() {
+        // Arrange
+        let (old, new) = configs_with_server_change(|s| {
+            s.upgrade.sock = Some("/tmp/pingora_upgrade.sock".to_string());
+        });
+
+        // Act
+        let kind = classify_config_change(&old, &new);
+
+        // Assert
+        assert_eq!(kind, ConfigChangeKind::RuntimeOnly);
+    }
+
+    #[test]
+    fn runtime_only_change_is_applied_in_place() {
+        // Arrange
+        let change = ConfigChangeKind::RuntimeOnly;
+
+        // Act
+        let plan = plan_reload(change, false);
+
+        // Assert
+        assert_eq!(plan, ReloadPlan::ApplyInPlace);
+    }
+
+    #[test]
+    fn upgrade_required_change_upgrades_where_upgrades_are_supported() {
+        // Arrange
+        let change = ConfigChangeKind::UpgradeRequired;
+
+        // Act
+        let plan = plan_reload(change, true);
+
+        // Assert
+        assert_eq!(plan, ReloadPlan::Upgrade);
+    }
+
+    #[test]
+    fn upgrade_required_change_is_rejected_where_upgrades_are_unsupported() {
+        // Arrange
+        let change = ConfigChangeKind::UpgradeRequired;
+
+        // Act
+        let plan = plan_reload(change, false);
+
+        // Assert
+        assert_eq!(
+            plan,
+            ReloadPlan::Reject {
+                reason: RejectReason::UpgradeUnsupported,
+                settings: vec![]
+            }
+        );
+    }
+
+    #[test]
+    fn restart_required_change_is_rejected_on_every_platform() {
+        // Arrange
+        let change = ConfigChangeKind::RestartRequired {
+            settings: vec!["server.pid_file"],
+        };
+
+        // Act
+        let plan = plan_reload(change, true);
+
+        // Assert
+        assert_eq!(
+            plan,
+            ReloadPlan::Reject {
+                reason: RejectReason::RestartRequired,
+                settings: vec!["server.pid_file"]
             }
         );
     }
