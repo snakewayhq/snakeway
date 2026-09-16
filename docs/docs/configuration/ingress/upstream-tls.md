@@ -58,7 +58,7 @@ None of these rules apply when `verify` is `false`, because Snakeway does not ch
 
 Snakeway compares the `sni` value with the subject alternative name (SAN) entries of the upstream certificate.
 A certificate that names the host only in its common name (CN) fails, because the CN is not compared.
-If `sni` is an IP address, the certificate needs an IP address SAN entry with the same address.
+An IP address is not accepted as `sni` when `verify` is `true`.
 
 For example, this command prints the SAN entries of a certificate:
 
