@@ -1,7 +1,4 @@
-use crate::types::HclInt;
-use confval::diagnostic::Report;
-use confval::prelude::{Located, Validate};
-use confval::{RangeConstraint, range_constraint};
+use confval::prelude::{Located, Report, Validate, range_constraint};
 use serde::Serialize;
 
 range_constraint!(FAILURE_THRESHOLD, i64, min: 1, max: 10_000);
@@ -10,10 +7,10 @@ range_constraint!(UNHEALTHY_COOLDOWN_SECONDS, i64, min: 1, max: 3600, units: "se
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 pub struct HealthCheckSpec {
     pub enable: Located<bool>,
-    #[confval(default = 3)]
-    pub failure_threshold: Located<HclInt>,
-    #[confval(default = 10)]
-    pub unhealthy_cooldown_seconds: Located<HclInt>,
+    #[confval(default = 3, range = FAILURE_THRESHOLD)]
+    pub failure_threshold: Located<i64>,
+    #[confval(default = 10, range = UNHEALTHY_COOLDOWN_SECONDS)]
+    pub unhealthy_cooldown_seconds: Located<i64>,
 }
 
 impl Default for HealthCheckSpec {
@@ -27,14 +24,7 @@ impl Default for HealthCheckSpec {
 }
 
 impl Validate for HealthCheckSpec {
-    fn validate(&self, report: &mut Report) {
-        FAILURE_THRESHOLD.check_located(&self.failure_threshold, "failure_threshold", report);
-        UNHEALTHY_COOLDOWN_SECONDS.check_located(
-            &self.unhealthy_cooldown_seconds,
-            "unhealthy_cooldown_seconds",
-            report,
-        );
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -51,7 +41,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -68,7 +58,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -100,7 +90,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);
@@ -121,7 +111,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert_eq!(report.issues().len(), 1);

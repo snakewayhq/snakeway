@@ -52,7 +52,7 @@ Snakeway enforces three layers on every admin request:
    TLS is required.
    ACME is not permitted on `bind_admin` because admin certificates should not depend on a public CA.
 3. **Authentication.**
-   Every request must carry a valid bearer token in the `Authorization` header.
+   Every request must include a valid bearer token in the `Authorization` header.
    See [Authentication](../../administration/admin-api.md#authentication) for details on the token file format and the rotation workflow.
 
 :::caution

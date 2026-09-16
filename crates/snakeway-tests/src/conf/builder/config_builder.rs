@@ -111,7 +111,8 @@ impl ConfigBuilder {
             device_specs.push(DeviceSpec::Wasm(wasm_spec));
         }
 
-        load_config_from_specs(self.server_spec, self.ingress_specs, device_specs).map(|v| v.config)
+        load_config_from_specs(&self.server_spec, self.ingress_specs, device_specs)
+            .map(|v| v.config)
     }
 }
 

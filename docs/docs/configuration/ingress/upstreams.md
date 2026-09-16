@@ -27,8 +27,8 @@ upstreams = [
   {
     weight = 1
 
-    # Path to the Unix domain socket.
-    sock   = "/tmp/snakeway-http-1.sock"
+    # Unix domain socket of the backend.
+    sock = { path = "/tmp/snakeway-http-1.sock" }
   }
 ]
 ```
@@ -41,15 +41,10 @@ upstreams = [
 | `endpoint` | `object` | (optional) | The address of the upstream server. Contains `host` and `port` fields, and an optional `tls` block. See [Upstream TLS](upstream-tls.md). |
 | `endpoint.host` | `string` | (required) | The hostname or IP address of the upstream server. |
 | `endpoint.port` | `integer` | (required) | The port of the upstream server. |
-| `sock` | `string` | (optional) | The local filesystem path to a Unix domain socket (e.g., `/run/snakeway-http-1.sock`). |
+| `sock` | `object` | (optional) | The Unix domain socket of the upstream server. Contains a `path` field and an optional `tls` block. See [Upstream TLS](upstream-tls.md). |
+| `sock.path` | `string` | (required) | The local filesystem path to the Unix domain socket, for example `/run/snakeway-http-1.sock`. |
 
 :::note
 Only specify `endpoint` or `sock` on a given upstream, not both.
 They are mutually exclusive on a single upstream, but a single service may contain a mix of TCP and socket upstreams.
-:::
-
-:::note
-The underlying Pingora runtime requires TLS to be configured end-to-end.
-This might not be ideal for UDS-based services.
-Consider using `endpoint` instead.
 :::

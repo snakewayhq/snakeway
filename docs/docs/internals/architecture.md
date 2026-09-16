@@ -13,7 +13,7 @@ Pingora supplies the layers below the device pipeline:
 - **HTTP parsing**: parsing of HTTP/1 and HTTP/2 request and response framing.
 - **Asynchronous runtime**: Tokio, so a single process handles many concurrent connections without a thread per connection.
 - **Upstream connection pooling**: reuse of established connections to backend services.
-- **TLS**: termination and origination through OpenSSL or BoringSSL.
+- **TLS**: termination and origination through [rustls](https://rustls.dev/).
 
 ## Crate layout
 
@@ -27,7 +27,7 @@ The workspace splits into a binary crate and the libraries it drives.
 - **`snakeway-proxy`** implements the Pingora `ProxyHttp` service, the static file handler, the admin handler, and the bootstrap and zero-drop upgrade paths.
 - **`snakeway-net`** holds the connection-level primitives: CIDR matching, client IP resolution, the network connection filter, and the connection rate limiting filter.
 - **`snakeway-acme`** runs ACME certificate issuance, the certificate and order stores, and the renewal scheduler.
-- **`snakeway-observability`** initializes logging, metrics, and OpenTelemetry export, and carries W3C trace context across the proxy hop.
+- **`snakeway-observability`** initializes logging, metrics, and OpenTelemetry export, and propagates W3C trace context across the proxy hop.
 
 The engine does not depend on the binary, so you can drive the pipeline from a test harness or another Rust program without starting the CLI.
 

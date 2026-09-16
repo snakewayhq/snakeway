@@ -6,6 +6,7 @@ use serde::Serialize;
 pub struct StructuredLoggingDeviceSpec {
     pub enable: Located<bool>,
 
+    #[confval(keywords = LogLevel)]
     pub level: Located<String>,
 
     /// Headers are excluded by default.
@@ -22,12 +23,15 @@ pub struct StructuredLoggingDeviceSpec {
     pub include_identity: Located<bool>,
 
     /// Identity fields to include in the request context (and possibly log).
+    #[confval(keywords = IdentityField)]
     pub identity_fields: Vec<Located<String>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(keywords = LogEvent)]
     pub events: Option<Located<Vec<Located<String>>>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[confval(keywords = LogPhase)]
     pub phases: Option<Located<Vec<Located<String>>>>,
 }
 
@@ -48,25 +52,7 @@ impl Default for StructuredLoggingDeviceSpec {
 }
 
 impl Validate for StructuredLoggingDeviceSpec {
-    fn validate(&self, report: &mut Report) {
-        LogLevel::keyword_set().check_located(&self.level, "level", report);
-
-        for field in &self.identity_fields {
-            IdentityField::keyword_set().check_located(field, "identity field", report);
-        }
-
-        if let Some(events) = &self.events {
-            for event in &events.value {
-                LogEvent::keyword_set().check_located(event, "event", report);
-            }
-        }
-
-        if let Some(phases) = &self.phases {
-            for phase in &phases.value {
-                LogPhase::keyword_set().check_located(phase, "phase", report);
-            }
-        }
-    }
+    fn validate(&self, _report: &mut Report) {}
 }
 
 #[cfg(test)]
@@ -80,7 +66,7 @@ mod tests {
         let spec = StructuredLoggingDeviceSpec::default();
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -104,7 +90,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
@@ -121,7 +107,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
@@ -143,14 +129,14 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|e| e.message == "unknown identity field: shoe_size")
+                .any(|e| e.message == "unknown value in identity_fields: shoe_size")
         );
     }
 
@@ -170,20 +156,20 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|e| e.message == "unknown event: during_proxy")
+                .any(|e| e.message == "unknown value in events: during_proxy")
         );
         assert!(
             report
                 .issues()
                 .iter()
-                .any(|e| e.message == "unknown phase: midnight")
+                .any(|e| e.message == "unknown value in phases: midnight")
         );
     }
 
@@ -198,7 +184,7 @@ mod tests {
         };
 
         // Act
-        spec.validate(&mut report);
+        spec.validate_all(&mut report);
 
         // Assert
         assert!(

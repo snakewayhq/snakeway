@@ -41,6 +41,7 @@ fn websocket_echo_is_proxied() {
 fn websocket_max_connections_rejects_excess() {
     // Arrange
     let service = ServiceSpec {
+        name: Located::detached("ws".to_string()),
         routes: vec![Located::detached(ServiceRouteSpec {
             hosts: vec![Located::detached(TEST_HOST.to_string())],
             path: Located::detached(ROUTE_PATH_WS.to_string()),
@@ -114,6 +115,7 @@ async fn connect_with_retry(url: &str) -> Option<WsClient> {
 fn websocket_slot_releases_after_close() {
     // Arrange
     let service = ServiceSpec {
+        name: Located::detached("ws".to_string()),
         routes: vec![Located::detached(ServiceRouteSpec {
             hosts: vec![Located::detached(TEST_HOST.to_string())],
             path: Located::detached(ROUTE_PATH_WS.to_string()),

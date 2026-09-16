@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use snakeway::testing_api::conf::types::Http2Spec;
 use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::conf::minimal_h2_to_h1_runtime_config;
-use snakeway_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST};
+use snakeway_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API};
 use snakeway_tests::harness::TestServer;
 
 /// An HTTP/2 client connecting to a TLS listener should successfully proxy
@@ -21,11 +21,7 @@ fn h2_to_h1_proxy_returns_upstream_response() {
         .expect("failed to build HTTP/2 client");
 
     let url = format!("https://{}{}", srv.https_addr(), ROUTE_PATH_API);
-    let res = client
-        .get(&url)
-        .header("Host", TEST_HOST)
-        .send()
-        .expect("request failed");
+    let res = client.get(&url).send().expect("request failed");
 
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().unwrap(), HTTP_RESPONSE_BODY);
@@ -55,7 +51,6 @@ fn h2_max_header_list_size_is_enforced_on_the_wire() {
     // Act: oversized headers are rejected by the advertised limit.
     let oversized = client
         .get(&url)
-        .header("Host", TEST_HOST)
         .header("x-large-header", "x".repeat(4096))
         .send();
 
@@ -75,11 +70,7 @@ fn h2_max_header_list_size_is_enforced_on_the_wire() {
     }
 
     // Act + Assert: a request within the limit still proxies normally
-    let res = client
-        .get(&url)
-        .header("Host", TEST_HOST)
-        .send()
-        .expect("small request failed");
+    let res = client.get(&url).send().expect("small request failed");
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().unwrap(), HTTP_RESPONSE_BODY);
 }

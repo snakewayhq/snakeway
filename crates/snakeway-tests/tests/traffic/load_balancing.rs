@@ -32,6 +32,7 @@ fn parse_upstream_request_counts(json: &serde_json::Value) -> Vec<(String, u64)>
 fn build_lb_config(strategy: &str) -> snakeway::testing_api::conf::types::RuntimeConfig {
     ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             load_balancing_strategy: Located::detached(strategy.to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],
@@ -252,6 +253,7 @@ fn round_robin_distributes_across_3_upstreams() {
     // Arrange
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
             load_balancing_strategy: Located::detached("round_robin".to_string()),
             routes: vec![Located::detached(ServiceRouteSpec {
                 hosts: vec![Located::detached(TEST_HOST.to_string())],

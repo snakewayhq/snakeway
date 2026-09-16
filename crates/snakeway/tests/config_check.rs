@@ -54,7 +54,7 @@ fn check_reports_semantic_failures_with_source_locations() {
         "stderr must carry the semantic error: {stderr}"
     );
     assert!(
-        stderr.contains("-->"),
+        stderr.contains("rate_limit.hcl:3:"),
         "semantic failures must render with source locations, not a debug dump: {stderr}"
     );
 }

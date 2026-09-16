@@ -2,7 +2,7 @@ use crate::types::ShutdownSpec;
 use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = ShutdownSpec)]
 pub struct ShutdownConfig {
     /// How long active connections are allowed to finish after a shutdown signal.

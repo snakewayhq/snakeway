@@ -275,12 +275,8 @@ mod tests {
                     resolved_addr: ResolvedAddr::new(
                         (*host, *port).to_socket_addrs().unwrap().next().unwrap(),
                     ),
-                    use_tls: false,
-                    sni: host.to_string(),
+                    tls: None,
                     weight: 1,
-                    verify: false,
-                    ca: None,
-                    group_key: 0,
                 })
             })
             .collect();
@@ -302,6 +298,7 @@ mod tests {
 
         RuntimeState {
             tls: None,
+            manual_certs: HashMap::new(),
             routers,
             devices: DeviceRegistry::new(),
             services,
@@ -457,12 +454,8 @@ mod tests {
                         host: "127.0.0.1".into(),
                         port: 9000,
                         resolved_addr: ResolvedAddr::new("127.0.0.1:9000".parse().unwrap()),
-                        use_tls: false,
-                        sni: "127.0.0.1".into(),
+                        tls: None,
                         weight: 1,
-                        verify: false,
-                        ca: None,
-                        group_key: 0,
                     })],
                     circuit_breaker_cfg: Default::default(),
                     health_check_cfg: Default::default(),
@@ -473,6 +466,7 @@ mod tests {
 
         let state = RuntimeState {
             tls: None,
+            manual_certs: HashMap::new(),
             routers,
             devices: DeviceRegistry::new(),
             services,

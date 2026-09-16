@@ -2,7 +2,7 @@ use crate::proxy::TrafficProxy;
 use pingora::prelude::HttpPeer;
 use pingora::{BError, Custom, Error};
 use snakeway_engine::ctx::RequestCtx;
-use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime};
+use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime, UpstreamTlsRuntime};
 use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId};
 
 impl TrafficProxy {
@@ -58,26 +58,29 @@ impl TrafficProxy {
         // to compute a hash later when its internal pooling logic runs.
         let mut peer = match upstream {
             UpstreamRuntime::Tcp(tcp) => {
-                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.use_tls, tcp.sni.clone());
-                if tcp.use_tls {
-                    // Wire-up per-upstream TLS settings.
-                    peer.options.verify_cert = tcp.verify;
-                    peer.options.verify_hostname = tcp.verify;
-                    if tcp.verify {
-                        peer.options.ca = tcp.ca.clone();
-                        peer.group_key = tcp.group_key;
-                    }
+                let sni = tcp.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default();
+                let mut peer = HttpPeer::new(tcp.http_peer_addr(), tcp.tls.is_some(), sni);
+                if let Some(tls) = &tcp.tls {
+                    apply_tls_verification(&mut peer, tls);
                 }
                 Ok(peer)
             }
             UpstreamRuntime::Unix(unix) => {
-                HttpPeer::new_uds(&unix.path, unix.use_tls, unix.sni.clone()).map_err(|e| {
-                    anyhow::anyhow!(
-                        "Could not connect to unix domain socket `{}`: {}",
-                        unix.path,
-                        e
-                    )
-                })
+                let sni = unix.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default();
+                HttpPeer::new_uds(&unix.path, unix.tls.is_some(), sni)
+                    .map(|mut peer| {
+                        if let Some(tls) = &unix.tls {
+                            apply_tls_verification(&mut peer, tls);
+                        }
+                        peer
+                    })
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Could not connect to unix domain socket `{}`: {}",
+                            unix.path,
+                            e
+                        )
+                    })
             }
         }
         .map_err(|_| Error::new(Custom("http peer creation failed")))?;
@@ -110,5 +113,15 @@ impl TrafficProxy {
         }
 
         Ok(peer)
+    }
+}
+
+/// Set how Pingora verifies the TLS certificate of an upstream peer.
+fn apply_tls_verification(peer: &mut HttpPeer, tls: &UpstreamTlsRuntime) {
+    peer.options.verify_cert = tls.verify;
+    peer.options.verify_hostname = tls.verify;
+    if tls.verify {
+        peer.options.ca = tls.ca.clone();
+        peer.group_key = tls.group_key;
     }
 }

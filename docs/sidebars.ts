@@ -94,6 +94,7 @@ const sidebars: SidebarsConfig = {
             label: 'Administration',
             items: [
                 'administration/cli',
+                'administration/editor-support',
                 'administration/tls-cert-management',
                 'administration/admin-api',
                 'administration/logging',

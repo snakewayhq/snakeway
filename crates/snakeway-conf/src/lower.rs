@@ -57,7 +57,6 @@ where
         //--------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
             let bind = &bind.value;
-            let use_tls = bind.tls.is_some();
             // The address names the services below, so nothing else in this
             // bind can lower without it.
             let bind_addr = match bind.resolve() {
@@ -87,18 +86,14 @@ where
                         continue;
                     };
                     if let Some(sock) = &u.value.sock {
-                        unix_upstreams.push(UpstreamUnixConfig::new(
-                            sock.value.clone(),
-                            use_tls,
-                            weight,
-                        ));
+                        unix_upstreams.push(UpstreamUnixConfig::new(weight, &sock.value));
                     }
                     if let Some(endpoint) = &u.value.endpoint {
                         tcp_upstreams.push(UpstreamTcpConfig::new(weight, &endpoint.value));
                     }
                 }
 
-                let service_name = format!("{}-service", bind_addr);
+                let service_name = service_spec.name.value.clone();
 
                 let service = ServiceConfig::new(
                     &service_name,
@@ -154,13 +149,23 @@ where
             if let Some(redirect) = &bind.redirect_http_to_https {
                 let redirect_listener_name = format!("redirect-listener-{}", idx);
 
+                let Some(redirect_port) = narrow::i64_to_u16(&redirect.value.port, report) else {
+                    failed = true;
+                    continue;
+                };
+                let Some(redirect_status) = narrow::i64_to_u16(&redirect.value.status, report)
+                else {
+                    failed = true;
+                    continue;
+                };
+
                 let mut socket: SocketAddr = bind_addr;
-                socket.set_port(redirect.value.port.value as u16);
+                socket.set_port(redirect_port);
 
                 match ListenerConfig::from_redirect(
                     &redirect_listener_name,
                     socket.to_string(),
-                    redirect.value.status.value as u16,
+                    redirect_status,
                     bind,
                     report,
                 ) {

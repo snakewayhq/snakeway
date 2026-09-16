@@ -50,7 +50,7 @@ HTTP/1.1 requests follow RFC 9110 and RFC 9112, and HTTP/2 requests follow RFC 9
 - Header names are lowercased.
 - Duplicate headers fold into a single comma separated value.
 - Standard hop-by-hop headers, and any header named in the `Connection` header, are stripped and never forwarded.
-- A request carrying both `Transfer-Encoding` and `Content-Length` is rejected, because the two headers disagree about where the message ends.
+- A request with both `Transfer-Encoding` and `Content-Length` is rejected, because the two headers disagree about where the message ends.
 - Duplicate `Content-Length` headers with differing values are rejected for the same reason.
 - A header value with invalid encoding rejects the request.
 

@@ -15,6 +15,7 @@ The available commands:
 | reload      | Reload a running Snakeway instance (SIGHUP) |
 | upgrade     | Trigger a zero-drop upgrade (SIGQUIT)       |
 | logs        | Format logs from standard out               |
+| lsp         | Serve the configuration language server over standard input and output |
 | wasm-device | Debug a WASM device in isolation            |
 
 ## config init
@@ -364,12 +365,13 @@ snakeway upgrade
 Sent SIGQUIT to Snakeway (pid 77120)
 ```
 
-This is the manual equivalent of what happens automatically when Snakeway's reload loop detects a listener-level configuration change.
+This is the manual equivalent of what happens automatically when a reload changes a listener or a server setting that Snakeway reads only at startup.
 See the [Hot Reload internals](../internals/hot-reload) page for a full explanation of when this is used and what happens during the transition.
 
 :::note
 In most cases you do not need to run this command directly.
-When `upgrade_sock` is configured and Snakeway detects a listener change during a normal `reload`, it spawns the new process and sends SIGQUIT automatically.
+When a normal `reload` changes a listener or a startup server setting, Snakeway spawns the new process automatically, and the new process sends SIGQUIT to the old one.
+This works only on Linux with a `pid_file`.
 :::
 
 ### Options
@@ -380,11 +382,13 @@ When `upgrade_sock` is configured and Snakeway detects a listener change during 
 
 ### When to use upgrade vs reload
 
-| Change type                          | Command   | Mechanism               |
-|--------------------------------------|-----------|-------------------------|
-| Routes, services, devices, TLS certs | `reload`  | In-process ArcSwap      |
-| Listener address, port, TLS mode     | `upgrade` | Fork/exec + FD transfer |
-| Worker threads, work stealing        | `upgrade` | Fork/exec + FD transfer |
+| Change type                                          | Command   | Mechanism               |
+|------------------------------------------------------|-----------|-------------------------|
+| Routes, services, devices, TLS certs                 | `reload`  | In-process ArcSwap      |
+| Listener address, port, TLS mode                     | `upgrade` | Fork/exec + FD transfer |
+| Worker threads, work stealing                        | `upgrade` | Fork/exec + FD transfer |
+| Other server settings that are read at startup       | `upgrade` | Fork/exec + FD transfer |
+| `pid_file`, `upgrade.sock`                           | Restart   | Stop and start Snakeway |
 
 ## logs
 

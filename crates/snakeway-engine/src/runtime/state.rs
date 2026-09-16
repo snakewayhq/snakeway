@@ -2,21 +2,20 @@ use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::types::RouteId;
 use crate::execution::route::{RouteRuntime, Router};
 use crate::runtime::error::ReloadError;
+use crate::runtime::manual_tls::load_manual_certs;
 use crate::runtime::types::{
     ResolvedAddr, TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime,
 };
+use crate::runtime::upstream_tls::resolve_upstream_tls;
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
-use openssl::x509::X509;
-use pingora::protocols::tls::CaType;
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -75,6 +74,7 @@ pub fn build_runtime_state(
 ) -> Result<RuntimeState> {
     // TLS Certificates
     let tls: Option<TlsRuntime> = cert_manager.as_ref().map(build_tls_runtime).transpose()?;
+    let manual_certs = load_manual_certs(&cfg.listeners)?;
 
     // Routers
     let routers = build_runtime_routers(&cfg.routes)?;
@@ -90,6 +90,7 @@ pub fn build_runtime_state(
 
     Ok(RuntimeState {
         tls,
+        manual_certs,
         routers,
         devices,
         services,
@@ -127,7 +128,7 @@ fn build_runtime_services(
             svc.unix_upstreams
                 .iter()
                 .map(|u| {
-                    let rt = make_upstream_runtime_for_unix(u)?;
+                    let rt = make_upstream_runtime_for_unix(u, global_ca_file)?;
                     Ok(rt)
                 })
                 .collect::<Result<Vec<_>>>()?,
@@ -218,24 +219,6 @@ fn make_upstream_runtime_from_tcp(
         port,
     };
 
-    // Handle per-endpoint TLS settings.
-    let use_tls = cfg.tls.is_some();
-    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
-        && tls_cfg.verify
-    {
-        // Prefer the per-endpoint ca_file; fall back to the global server.ca_file.
-        let effective_ca = tls_cfg.ca_file.as_deref().or(global_ca_file);
-        if let Some(ca_file) = effective_ca {
-            let ca = load_ca_from_path(ca_file)?;
-            let group_key = calculate_group_key(ca_file);
-            (true, Some(Arc::new(ca)), group_key)
-        } else {
-            (false, None, 0)
-        }
-    } else {
-        (false, None, 0)
-    };
-
     // Determine SNI.
     let sni = if let Some(tls_cfg) = &cfg.tls {
         // Explicit SNI overrides everything
@@ -260,72 +243,28 @@ fn make_upstream_runtime_from_tcp(
         host,
         port,
         resolved_addr: ResolvedAddr::new(resolved_addr),
-        use_tls,
-        sni,
         weight: cfg.weight,
-        verify,
-        ca,
-        group_key,
+        tls: resolve_upstream_tls(cfg.tls.as_ref(), sni, global_ca_file)?,
     }))
 }
 
-/// Load a per-upstream CA file.
-/// This happens when the runtime state is recomputed,
-/// keeping it out of the data plane.
-pub(crate) fn load_ca_from_path(path: &Path) -> Result<CaType> {
-    if !path.exists() {
-        anyhow::bail!("CA file does not exist: {}", path.display());
-    }
-    if !path.is_file() {
-        anyhow::bail!("CA path is not a file: {}", path.display());
-    }
-
-    let pem =
-        fs::read(path).with_context(|| format!("failed to read CA file: {}", path.display()))?;
-    if pem.is_empty() {
-        anyhow::bail!("CA file is empty: {}", path.display());
-    }
-
-    // Parse ALL certs in the PEM bundle.
-    // stack_from_pem returns Vec<X509> (OpenSSL) / equivalent for boringssl shim.
-    let certs = X509::stack_from_pem(&pem).with_context(|| {
-        format!(
-            "failed to parse PEM certificates in CA file: {}",
-            path.display()
-        )
-    })?;
-
-    if certs.is_empty() {
-        anyhow::bail!(
-            "CA file contained no certificates (parsed 0 certs): {}",
-            path.display()
-        );
-    }
-
-    Ok(certs.into_boxed_slice())
-}
-
-/// Hash a path to a u64.
-/// This is used to group per-upstream CAs,
-/// keeping them out of the data plane.
-fn calculate_group_key(path: &Path) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = ahash::AHasher::default();
-    path.as_os_str().hash(&mut h);
-    h.finish()
-}
-
 /// Factory function to make a unix upstream runtime.
-fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRuntime> {
+fn make_upstream_runtime_for_unix(
+    cfg: &UpstreamUnixConfig,
+    global_ca_file: Option<&Path>,
+) -> Result<UpstreamRuntime> {
     let addr = UpstreamAddr::Unix {
         path: cfg.sock.clone(),
     };
     Ok(UpstreamRuntime::Unix(UpstreamUnixRuntime {
         id: make_upstream_id(&addr),
         path: cfg.sock.clone(),
-        use_tls: cfg.use_tls,
-        sni: cfg.sni.clone(),
         weight: cfg.weight,
+        tls: resolve_upstream_tls(
+            cfg.tls.as_ref(),
+            cfg.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default(),
+            global_ca_file,
+        )?,
     }))
 }
 
@@ -345,4 +284,104 @@ fn canonicalize_dir(dir: &Path) -> String {
     let path_buf = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
     let result = path_buf.to_string_lossy();
     result.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snakeway_conf::types::UpstreamTlsConfig;
+
+    fn unix_upstream_config(tls: Option<UpstreamTlsConfig>) -> UpstreamUnixConfig {
+        UpstreamUnixConfig {
+            sock: "/tmp/app.sock".to_string(),
+            weight: 1,
+            tls,
+        }
+    }
+
+    #[test]
+    fn unix_upstream_without_tls_block_uses_plain_http() {
+        // Arrange
+        let cfg = unix_upstream_config(None);
+
+        // Act
+        let result = make_upstream_runtime_for_unix(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Unix(unix) = result.expect("the upstream runtime must build") else {
+            panic!("expected a Unix upstream runtime");
+        };
+        assert!(unix.tls.is_none());
+    }
+
+    #[test]
+    fn unix_upstream_with_verify_and_no_ca_file_keeps_verification_on() {
+        // Arrange
+        let cfg = unix_upstream_config(Some(UpstreamTlsConfig {
+            sni: "app.internal".to_string(),
+            verify: true,
+            ca_file: None,
+        }));
+
+        // Act
+        let result = make_upstream_runtime_for_unix(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Unix(unix) = result.expect("the upstream runtime must build") else {
+            panic!("expected a Unix upstream runtime");
+        };
+        let tls = unix.tls.expect("the upstream must use TLS");
+        assert!(tls.verify);
+        assert_eq!(tls.sni, "app.internal");
+        assert!(tls.ca.is_none());
+        assert_eq!(tls.group_key, 0);
+    }
+
+    fn tcp_upstream_config(verify: bool) -> UpstreamTcpConfig {
+        UpstreamTcpConfig {
+            url: "https://127.0.0.1:8443".to_string(),
+            weight: 1,
+            tls: Some(snakeway_conf::types::UpstreamTlsConfig {
+                sni: "backend.test".to_string(),
+                verify,
+                ca_file: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn tcp_upstream_with_verify_and_no_ca_file_keeps_verification_on() {
+        // Arrange
+        let cfg = tcp_upstream_config(true);
+
+        // Act
+        let result = make_upstream_runtime_from_tcp(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Tcp(tcp) = result.expect("the upstream runtime must build") else {
+            panic!("expected a TCP upstream runtime");
+        };
+        let tls = tcp.tls.expect("the upstream must use TLS");
+        assert!(tls.verify);
+        assert_eq!(tls.sni, "backend.test");
+        assert!(tls.ca.is_none());
+        assert_eq!(tls.group_key, 0);
+    }
+
+    #[test]
+    fn tcp_upstream_with_verify_false_skips_verification() {
+        // Arrange
+        let cfg = tcp_upstream_config(false);
+
+        // Act
+        let result = make_upstream_runtime_from_tcp(&cfg, None);
+
+        // Assert
+        let UpstreamRuntime::Tcp(tcp) = result.expect("the upstream runtime must build") else {
+            panic!("expected a TCP upstream runtime");
+        };
+        let tls = tcp.tls.expect("the upstream must use TLS");
+        assert!(!tls.verify);
+        assert!(tls.ca.is_none());
+    }
 }

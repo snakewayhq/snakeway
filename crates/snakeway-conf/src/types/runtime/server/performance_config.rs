@@ -2,7 +2,7 @@ use crate::types::PerformanceSpec;
 use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = PerformanceSpec)]
 pub struct PerformanceConfig {
     /// Enable work stealing between threads.

@@ -1,11 +1,11 @@
-use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec};
+use crate::types::{EndpointSpec, EndpointTlsSpec, HostSpec, SockSpec};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamTcpConfig {
-    /// e.g. "http://my-service:8080" or "http://10.0.0.1:8080"
+    /// e.g. `<http://my-service:8080>` or `<http://10.0.0.1:8080>`
     pub url: String,
 
     pub weight: u32,
@@ -36,11 +36,9 @@ pub struct UpstreamUnixConfig {
     /// e.g. "/var/run/snakeway.sock"
     pub sock: String,
 
-    pub use_tls: bool,
-
-    pub sni: String,
-
     pub weight: u32,
+
+    pub tls: Option<UpstreamTlsConfig>,
 }
 
 /// Build an upstream config without performing DNS resolution.
@@ -68,12 +66,11 @@ impl UpstreamTcpConfig {
 }
 
 impl UpstreamUnixConfig {
-    pub fn new(sock: String, use_tls: bool, weight: u32) -> Self {
+    pub fn new(weight: u32, spec: &SockSpec) -> Self {
         Self {
-            sock,
-            use_tls,
-            sni: "localhost".to_string(),
+            sock: spec.path.value.clone(),
             weight,
+            tls: spec.tls.as_ref().map(|t| (&t.value).into()),
         }
     }
 }
@@ -172,14 +169,43 @@ mod tests {
     }
 
     #[test]
-    fn unix_upstream_sets_localhost_sni() {
-        // Arrange / Act
-        let config = UpstreamUnixConfig::new("/var/run/app.sock".to_string(), false, 1);
+    fn unix_upstream_without_tls_block_uses_plain_http() {
+        // Arrange
+        let spec = SockSpec {
+            path: confval::source::Located::detached("/var/run/app.sock".to_string()),
+            tls: None,
+        };
+
+        // Act
+        let config = UpstreamUnixConfig::new(1, &spec);
 
         // Assert
-        assert_eq!(config.sni, "localhost");
         assert_eq!(config.sock, "/var/run/app.sock");
-        assert!(!config.use_tls);
         assert_eq!(config.weight, 1);
+        assert!(config.tls.is_none());
+    }
+
+    #[test]
+    fn unix_upstream_takes_tls_settings_from_its_tls_block() {
+        // Arrange
+        let spec = SockSpec {
+            path: confval::source::Located::detached("/var/run/app.sock".to_string()),
+            tls: Some(confval::source::Located::detached(EndpointTlsSpec {
+                sni: confval::source::Located::detached("app.internal".to_string()),
+                verify: confval::source::Located::detached(true),
+                ca_file: Some(confval::source::Located::detached(PathBuf::from(
+                    "/etc/ssl/app-ca.pem",
+                ))),
+            })),
+        };
+
+        // Act
+        let config = UpstreamUnixConfig::new(1, &spec);
+
+        // Assert
+        let tls = config.tls.expect("the tls block must lower");
+        assert_eq!(tls.sni, "app.internal");
+        assert!(tls.verify);
+        assert_eq!(tls.ca_file, Some(PathBuf::from("/etc/ssl/app-ca.pem")));
     }
 }

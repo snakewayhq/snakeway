@@ -3,6 +3,7 @@ mod loader;
 mod lower;
 mod parse;
 mod resolution;
+pub mod tls;
 
 pub mod types;
 pub mod validation;

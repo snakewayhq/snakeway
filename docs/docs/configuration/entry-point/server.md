@@ -58,6 +58,12 @@ For most deployments, set this to the number of CPU cores on your server.
 
 `ca_file` string, default: none.
 Path to a CA certificate file used to verify upstream TLS connections when no per-upstream `ca_file` is configured.
+The file must contain only PEM-encoded X.509 certificates.
+A file that holds a placeholder, a damaged certificate, or a section of another kind, such as a private key, stops Snakeway from loading the configuration.
+When this file is set, upstream certificates are verified against the certificates in it and not against the trusted roots of the operating system.
+Without a `ca_file`, Snakeway uses the trusted roots of the operating system.
+To use a different bundle, set the `SSL_CERT_FILE` or `SSL_CERT_DIR` environment variable.
+See [Upstream TLS](../ingress/upstream-tls.md#certificate-requirements) for the requirements that each upstream certificate must meet.
 
 `dns_refresh_interval_seconds` integer, default: `30`.
 How often (in seconds) Snakeway re-resolves upstream hostnames in the background.
@@ -283,7 +289,7 @@ Value used for the `service.name` resource attribute in exported telemetry.
 
 `observability.otel.sampling_ratio` float, default: `1.0`.
 Controls what fraction of root traces are sampled (0.0 to 1.0).
-When an incoming request carries a sampled W3C Trace Context, Snakeway always honors that decision.
+When an incoming request includes a sampled W3C Trace Context, Snakeway always honors that decision.
 For requests without a parent context, this ratio determines sampling probability.
 Set to `0.1` to sample 10% of root traces, or `1.0` to sample all.
 

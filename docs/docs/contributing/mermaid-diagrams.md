@@ -45,7 +45,7 @@ With no `fill` or `color` set:
 
 - The fill comes from the theme and adapts per mode.
 - The text color comes from the theme and adapts per mode.
-- The stroke carries the role.
+- The stroke shows the role.
   Mid-tone hues (slate, indigo, amber, red) read well on both light and dark node backgrounds.
 
 This is the only approach that stays correct in both modes without per-diagram maintenance.
@@ -88,7 +88,7 @@ The edge-label rule targets the inner `<p>` and stays unscoped for two reasons:
 1. Mermaid measures label widths off-DOM, before the SVG lands inside `.docusaurus-mermaid-container`, and centers each label from that measurement.
    A container-scoped padding rule is not active during measurement, so the rendered pill grows wider than the centering assumed and the text shifts out of its background.
    An unscoped rule on the inner `<p>` is active during measurement, so measured and rendered widths agree.
-2. The `<p>` carries its own `background-color`, so padding extends the visible pill and `border-radius` rounds it.
+2. The `<p>` has its own `background-color`, so padding extends the visible pill and `border-radius` rounds it.
 
 :::caution
 Any CSS that changes a label's size must be active during Mermaid's off-DOM measurement.
@@ -102,7 +102,7 @@ Color-only overrides are safe to scope to the container.
   The `classDef` class lands on the node `<g>`.
 - Edge line: under `.edgePaths` as `.flowchart-link`, outside `.node`, so node selectors never hit arrows.
 - Edge label: `.labelBkg` (div) containing `.edgeLabel` (span) containing `<p>` (text).
-  The `<p>` carries the visible background and is the element to pad and round.
+  The `<p>` has the visible background and is the element to pad and round.
 
 ## Design Guidelines
 

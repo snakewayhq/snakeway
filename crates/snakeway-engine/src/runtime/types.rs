@@ -2,6 +2,7 @@ use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::Router;
 use arc_swap::ArcSwap;
 use pingora::protocols::tls::CaType;
+use pingora::tls::sign::CertifiedKey;
 use snakeway_acme::SniRegistry;
 use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
 use std::collections::HashMap;
@@ -11,10 +12,15 @@ use std::sync::Arc;
 
 pub struct RuntimeState {
     pub tls: Option<TlsRuntime>,
+    pub manual_certs: ManualCertMap,
     pub routers: HashMap<Arc<str>, Router>,
     pub devices: DeviceRegistry,
     pub services: HashMap<String, ServiceRuntime>,
 }
+
+/// The certificate and private key of each listener that uses manual TLS, keyed by the
+/// listener bind address.
+pub type ManualCertMap = HashMap<String, Arc<CertifiedKey>>;
 
 /// TlsRuntime encapsulates the state of TLS configuration.
 /// It is reloadable independent of RuntimeState (hence the ArcSwap).
@@ -60,8 +66,8 @@ impl UpstreamRuntime {
 
     pub fn use_tls(&self) -> bool {
         match self {
-            UpstreamRuntime::Tcp(u) => u.use_tls,
-            UpstreamRuntime::Unix(u) => u.use_tls,
+            UpstreamRuntime::Tcp(u) => u.tls.is_some(),
+            UpstreamRuntime::Unix(u) => u.tls.is_some(),
         }
     }
 
@@ -72,7 +78,10 @@ impl UpstreamRuntime {
             }
             UpstreamRuntime::Unix(u) => {
                 // Logical authority - must exist, even over UDS
-                u.sni.clone()
+                u.tls
+                    .as_ref()
+                    .map(|tls| tls.sni.clone())
+                    .unwrap_or_else(|| "localhost".to_string())
             }
         }
     }
@@ -133,14 +142,8 @@ pub struct UpstreamTcpRuntime {
     pub host: String,
     pub port: u16,
     pub resolved_addr: ResolvedAddr,
-    pub use_tls: bool,
-    pub sni: String,
     pub weight: u32,
-    pub verify: bool,
-    /// Preloaded when the runtime snapshot is created.
-    pub ca: Option<Arc<CaType>>,
-    /// Precomputed when the runtime snapshot is created.
-    pub group_key: u64,
+    pub tls: Option<UpstreamTlsRuntime>,
 }
 
 impl UpstreamTcpRuntime {
@@ -153,9 +156,19 @@ impl UpstreamTcpRuntime {
 pub struct UpstreamUnixRuntime {
     pub id: UpstreamId,
     pub path: String,
-    pub use_tls: bool,
-    pub sni: String,
     pub weight: u32,
+    pub tls: Option<UpstreamTlsRuntime>,
+}
+
+/// The TLS settings of one upstream, resolved when the runtime snapshot is created.
+#[derive(Debug, Clone)]
+pub struct UpstreamTlsRuntime {
+    pub sni: String,
+    pub verify: bool,
+    /// Preloaded when the runtime snapshot is created.
+    pub ca: Option<Arc<CaType>>,
+    /// Precomputed when the runtime snapshot is created.
+    pub group_key: u64,
 }
 
 #[cfg(test)]
@@ -203,6 +216,23 @@ mod tests {
     }
 
     #[test]
+    fn unix_upstream_without_tls_uses_localhost_authority() {
+        // Arrange
+        let upstream = UpstreamRuntime::Unix(UpstreamUnixRuntime {
+            id: UpstreamId(0),
+            path: "/run/app.sock".to_string(),
+            weight: 1,
+            tls: None,
+        });
+
+        // Act
+        let authority = upstream.authority();
+
+        // Assert
+        assert_eq!(authority, "localhost");
+    }
+
+    #[test]
     fn http_peer_addr_returns_resolved_socket_addr() {
         // Arrange
         let addr: SocketAddr = "192.168.1.1:3000".parse().unwrap();
@@ -211,12 +241,8 @@ mod tests {
             host: "my-service".to_string(),
             port: 3000,
             resolved_addr: ResolvedAddr::new(addr),
-            use_tls: false,
-            sni: String::new(),
             weight: 1,
-            verify: false,
-            ca: None,
-            group_key: 0,
+            tls: None,
         };
 
         // Act

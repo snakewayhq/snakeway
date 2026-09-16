@@ -18,5 +18,8 @@ import "dev/just/tools_and_docs.just"
 import "dev/just/wasm.just"
 
 # Holistically validate: lint, unit tests, integrations tests, generate config templates
-test-everything: machete lint doc test integration-test generate-all-templates bench
+validate: machete lint doc test integration-test generate-all-templates
+
+# Holistically validate and bench
+test-everything: validate bench
     @echo "All good."

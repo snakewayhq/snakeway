@@ -4,13 +4,13 @@ use crate::challenge::Http01Registry;
 use crate::error::CertManagerError;
 use crate::sni_registry::{SniMap, SniRegistry};
 use crate::{
-    ParsedCert, cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
+    cert_store::CertStore, order_store::OrderStore, reconcile::Reconciler,
     renewal_policy::RenewalPolicy,
 };
 use arc_swap::ArcSwap;
 use arc_swap::ArcSwapOption;
-use openssl::pkey::{PKey, Private};
-use openssl::x509::X509;
+use pingora_rustls::sign;
+use snakeway_conf::tls::TlsError;
 use snakeway_conf::types::RuntimeConfig;
 use snakeway_conf::types::{AcmeServerConfig, TlsAutomationConfig};
 use std::collections::HashMap;
@@ -70,46 +70,41 @@ impl CertManager {
         self.config.store(new_config);
     }
 
-    pub(crate) fn load_parsed_cert(
+    pub(crate) fn load_certified_key(
         &self,
         cert_id: &str,
-    ) -> Result<Option<ParsedCert>, CertManagerError> {
+    ) -> Result<Option<Arc<sign::CertifiedKey>>, CertManagerError> {
         let Some(stored) = self.cert_store.get(cert_id) else {
             return Ok(None);
         };
 
-        let mut chain = X509::stack_from_pem(&stored.cert_chain_pem)
+        let certs = snakeway_conf::tls::parse_cert_chain(&stored.cert_chain_pem)
             .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
 
-        if chain.is_empty() {
-            return Err(CertManagerError::EmptyChain);
-        }
-
-        let leaf = chain.remove(0);
-
-        let key = PKey::<Private>::private_key_from_pem(stored.expose_private_key_pem())
+        let key = snakeway_conf::tls::parse_private_key(stored.expose_private_key_pem())
             .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?;
 
-        let public_key = leaf
-            .public_key()
-            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
+        let certified_key =
+            snakeway_conf::tls::build_certified_key(certs, key).map_err(|e| match e {
+                TlsError::KeyMismatch => CertManagerError::KeyMismatch,
+                TlsError::NoCertificates | TlsError::CertificateRejected(_) => {
+                    CertManagerError::InvalidChain(e.to_string())
+                }
+                other => CertManagerError::InvalidPrivateKey(other.to_string()),
+            })?;
 
-        if !public_key.public_eq(&key) {
-            return Err(CertManagerError::KeyMismatch);
-        }
-
-        Ok(Some(ParsedCert { leaf, chain, key }))
+        Ok(Some(Arc::new(certified_key)))
     }
 
-    pub fn build_sni_map(&self) -> Result<HashMap<String, Arc<ParsedCert>>, CertManagerError> {
+    pub fn build_sni_map(
+        &self,
+    ) -> Result<HashMap<String, Arc<sign::CertifiedKey>>, CertManagerError> {
         let mut map = HashMap::new();
 
         for (cert_id, meta) in self.cert_store.list() {
-            if let Some(parsed) = self.load_parsed_cert(&cert_id)? {
-                let parsed = Arc::new(parsed);
-
+            if let Some(key) = self.load_certified_key(&cert_id)? {
                 for domain in meta.domains {
-                    map.insert(domain, parsed.clone());
+                    map.insert(domain, key.clone());
                 }
             }
         }
@@ -192,5 +187,179 @@ impl CertManager {
                 }
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cert_store::{CertificateMeta, MemoryCertStore, StoredCertificate};
+    use crate::order_store::OrderStore;
+    use std::time::SystemTime;
+
+    struct StubOrderStore;
+
+    impl OrderStore for StubOrderStore {
+        fn get(&self, _id: &str) -> std::io::Result<Option<crate::order_store::OrderState>> {
+            Ok(None)
+        }
+        fn put(&self, _state: &crate::order_store::OrderState) -> std::io::Result<()> {
+            Ok(())
+        }
+        fn delete(&self, _id: &str) -> std::io::Result<()> {
+            Ok(())
+        }
+        fn list(&self) -> std::io::Result<Vec<crate::order_store::OrderState>> {
+            Ok(vec![])
+        }
+    }
+
+    fn make_cert_manager(store: MemoryCertStore) -> CertManager {
+        let validated = snakeway_conf::load_config_from_specs(
+            &snakeway_conf::types::ServerSpec::default(),
+            vec![],
+            vec![],
+        )
+        .expect("fixture config");
+
+        CertManager {
+            acme_client: OnceLock::new(),
+            http01: Arc::new(Http01Registry::default()),
+            cert_store: Arc::new(store),
+            order_store: Arc::new(StubOrderStore),
+            renewal_policy: RenewalPolicy::new(30),
+            config: Arc::new(ArcSwap::from_pointee(validated.config)),
+            tls_sni_map: ArcSwapOption::from(None),
+        }
+    }
+
+    fn generate_stored_cert(domains: &[&str]) -> (StoredCertificate, Vec<u8>) {
+        let names: Vec<String> = domains.iter().map(|d| d.to_string()).collect();
+        let cert =
+            rcgen::generate_simple_self_signed(names.clone()).expect("failed to generate cert");
+        let der = cert.cert.der().to_vec();
+        let stored = StoredCertificate::new(
+            cert.signing_key.serialize_pem().into_bytes(),
+            cert.cert.pem().into_bytes(),
+            CertificateMeta {
+                domains: names,
+                not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
+                issued_at: SystemTime::now(),
+            },
+        );
+        (stored, der)
+    }
+
+    #[test]
+    fn load_certified_key_valid_cert() {
+        // Arrange
+        let store = MemoryCertStore::default();
+        let (stored, der) = generate_stored_cert(&["test.example"]);
+        store.put("test-cert".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("test-cert");
+
+        // Assert
+        let certified = result
+            .expect("a valid stored certificate must load")
+            .expect("the stored certificate must be found");
+        assert_eq!(certified.cert.len(), 1);
+        assert_eq!(certified.cert[0].as_ref(), der.as_slice());
+    }
+
+    #[test]
+    fn build_sni_map_maps_every_domain_to_one_shared_key() {
+        // Arrange
+        let store = MemoryCertStore::default();
+        let (stored, der) = generate_stored_cert(&["a.example", "b.example"]);
+        store.put("multi-domain".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.build_sni_map();
+
+        // Assert
+        let map = result.expect("the SNI map must build");
+        assert_eq!(map.len(), 2);
+        let first = map
+            .get("a.example")
+            .expect("the first domain must be mapped");
+        let second = map
+            .get("b.example")
+            .expect("the second domain must be mapped");
+        assert!(Arc::ptr_eq(first, second));
+        assert_eq!(first.cert.len(), 1);
+        assert_eq!(first.cert[0].as_ref(), der.as_slice());
+    }
+
+    #[test]
+    fn load_certified_key_missing_cert() {
+        // Arrange
+        let store = MemoryCertStore::default();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("nonexistent");
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn load_certified_key_empty_chain() {
+        // Arrange
+        let store = MemoryCertStore::default();
+        let cert = rcgen::generate_simple_self_signed(vec!["test.example".into()])
+            .expect("failed to generate cert");
+        let stored = StoredCertificate::new(
+            cert.signing_key.serialize_pem().into_bytes(),
+            Vec::new(),
+            CertificateMeta {
+                domains: vec!["test.example".to_string()],
+                not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
+                issued_at: SystemTime::now(),
+            },
+        );
+        store.put("empty-chain".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("empty-chain");
+
+        // Assert
+        assert!(
+            matches!(result, Err(CertManagerError::InvalidChain(ref msg)) if msg.contains("no certificates")),
+            "expected InvalidChain with 'no certificates', got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn load_certified_key_mismatched_key() {
+        // Arrange
+        let store = MemoryCertStore::default();
+        let cert1 = rcgen::generate_simple_self_signed(vec!["first.example".into()])
+            .expect("failed to generate first cert");
+        let cert2 = rcgen::generate_simple_self_signed(vec!["second.example".into()])
+            .expect("failed to generate second cert");
+        let stored = StoredCertificate::new(
+            cert2.signing_key.serialize_pem().into_bytes(),
+            cert1.cert.pem().into_bytes(),
+            CertificateMeta {
+                domains: vec!["first.example".to_string()],
+                not_after: SystemTime::now() + std::time::Duration::from_secs(86400),
+                issued_at: SystemTime::now(),
+            },
+        );
+        store.put("mismatched".to_string(), stored).unwrap();
+        let manager = make_cert_manager(store);
+
+        // Act
+        let result = manager.load_certified_key("mismatched");
+
+        // Assert
+        assert!(matches!(result, Err(CertManagerError::KeyMismatch)));
     }
 }

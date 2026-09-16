@@ -56,7 +56,8 @@ bind = {
 | `connection_filter`               | `object`  | (optional) | Connection filtering rules. See [Connection Filter](connection-filter.md).                                                                                                                            |
 | `connection_rate_limiting_filter` | `object`  | (optional) | Connection rate limiting rules. See [Connection Rate Limiter](connection-rate-limiter.md).                                                                                                            |
 
-For details on TLS configuration, see the TLS section of the documentation.
+For details on TLS configuration and supported key formats,
+see [TLS Cert Management](../../administration/tls-cert-management.md).
 
 ### HTTP/2 settings
 

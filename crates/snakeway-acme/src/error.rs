@@ -11,9 +11,6 @@ pub enum CertManagerError {
     #[error("failed to parse certificate chain: {0}")]
     InvalidChain(String),
 
-    #[error("certificate chain is empty")]
-    EmptyChain,
-
     #[error("failed to parse private key: {0}")]
     InvalidPrivateKey(String),
 

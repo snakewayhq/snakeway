@@ -4,7 +4,7 @@
 //! the protocol boundary, so the negotiation model is documented.
 
 use snakeway_tests::conf::{minimal_h2_to_h1_runtime_config, minimal_http_runtime_config};
-use snakeway_tests::constants::{ROUTE_PATH_API, ROUTE_PATH_WS, TEST_HOST};
+use snakeway_tests::constants::{ROUTE_PATH_API, ROUTE_PATH_WS};
 use snakeway_tests::h2_over_tls::send_h2_request;
 use snakeway_tests::harness::TestServer;
 use std::time::Duration;
@@ -48,7 +48,6 @@ fn h2_over_tls_harness_proxies_a_normal_get() {
     let req = http::Request::builder()
         .method(http::Method::GET)
         .uri(format!("https://{addr}{ROUTE_PATH_API}"))
-        .header("host", TEST_HOST)
         .body(())
         .expect("request");
 
@@ -76,7 +75,6 @@ fn classic_upgrade_header_on_http2_is_not_proxied() {
     let req = http::Request::builder()
         .method(http::Method::GET)
         .uri(format!("https://{addr}{ROUTE_PATH_API}"))
-        .header("host", TEST_HOST)
         .header("upgrade", "websocket")
         .header("connection", "upgrade")
         .body(())
@@ -86,16 +84,18 @@ fn classic_upgrade_header_on_http2_is_not_proxied() {
     let outcome = send_h2_request(&addr, req, true);
 
     // Assert
-    assert!(
-        !matches!(outcome, Ok(http::StatusCode::OK)),
-        "an HTTP/2 request carrying a connection-specific Upgrade header must not be proxied, got {outcome:?}"
+    assert_eq!(
+        outcome,
+        Err(String::from("user error: malformed headers")),
+        "an HTTP/2 request carrying a connection-specific Upgrade header should produce an error"
     );
 }
 
 /// WebSocket over HTTP/2 uses Extended CONNECT (RFC 8441), which requires the
 /// server to advertise `SETTINGS_ENABLE_CONNECT_PROTOCOL`.
-/// Snakeway is not expected to support this, so the tunnel must not be
-/// established, no success status is expected or returned.
+///
+/// Snakeway is not expected to support this (though this may change in the future),
+/// so the tunnel must not be established. No success status is expected or returned.
 ///
 /// Should this test ever fail, it may mean Pingora started supporting
 /// Extend CONNECT, in which case Snakeway can then support websockets
@@ -109,7 +109,6 @@ fn extended_connect_websocket_over_http2_is_not_supported() {
     let mut req = http::Request::builder()
         .method(http::Method::CONNECT)
         .uri(format!("https://{addr}{ROUTE_PATH_WS}"))
-        .header("host", TEST_HOST)
         .body(())
         .expect("request");
     req.extensions_mut()
@@ -119,8 +118,11 @@ fn extended_connect_websocket_over_http2_is_not_supported() {
     let outcome = send_h2_request(&addr, req, false);
 
     // Assert
-    assert!(
-        !matches!(outcome, Ok(s) if s.is_success()),
+    assert_eq!(
+        outcome,
+        Err(String::from(
+            "stream error received: unspecific protocol error detected"
+        )),
         "WebSocket-over-HTTP/2 (Extended CONNECT) is not expected to be supported, got {outcome:?}"
     );
 }

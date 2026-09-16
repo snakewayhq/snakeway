@@ -229,6 +229,7 @@ fn admin_reload_with_invalid_config_preserves_old_config() {
 
 services = [
   {{
+    name = "api"
     routes = [
       {{
         hosts = ["{TEST_HOST}"]

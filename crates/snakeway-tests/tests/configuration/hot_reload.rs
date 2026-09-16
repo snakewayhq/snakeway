@@ -31,6 +31,7 @@ fn make_ingress_hcl(listener_port: u16, upstream_port: u16, paths: &[&str]) -> S
 
 services = [
   {{
+    name = "api"
     routes = [
 {routes}
     ]

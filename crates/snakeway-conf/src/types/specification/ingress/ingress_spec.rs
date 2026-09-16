@@ -99,6 +99,40 @@ mod tests {
     }
 
     #[test]
+    fn service_native_label_fills_name() {
+        // Arrange
+        let input = r#"bind {
+  interface = "loopback"
+  port = 8080
+  enable_http2 = false
+}
+
+services "api" {
+  routes {
+    hosts = ["api.example.com"]
+    path = "/api"
+    enable_websocket = false
+  }
+
+  upstreams {
+    weight = 1
+    endpoint {
+      host = "127.0.0.1"
+      port = 3000
+    }
+  }
+}
+"#;
+
+        // Act
+        let (report, spec) = parse(input);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        assert_eq!(spec.unwrap().services[0].value.name.value, "api");
+    }
+
+    #[test]
     fn parse_services_as_array_of_objects_with_spans() {
         // Arrange
         let input = r#"bind = {
@@ -108,6 +142,7 @@ mod tests {
 
 services = [
   {
+    name = "api"
     routes = [
       {
         hosts = ["api.example.com"]
@@ -152,6 +187,57 @@ services = [
     }
 
     #[test]
+    fn parse_sock_upstream_with_tls_block() {
+        // Arrange
+        let input = r#"bind = {
+  interface = "loopback"
+  port = 8080
+}
+
+services = [
+  {
+    name = "api"
+    routes = [{ hosts = ["api.example.com"], path = "/api" }]
+    upstreams = [
+      {
+        sock = {
+          path = "/run/app.sock"
+          tls = { sni = "app.internal", verify = true }
+        }
+      }
+    ]
+  }
+]
+"#;
+
+        // Act
+        let (report, spec) = parse(input);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let spec = spec.expect("the ingress must parse");
+        let sock = spec.services[0].value.upstreams[0]
+            .value
+            .sock
+            .as_ref()
+            .expect("the upstream must have a sock");
+        assert_eq!(sock.value.path.value, "/run/app.sock");
+        let path = &sock.value.path;
+        assert_eq!(
+            &input[path.span.start as usize..path.span.end as usize],
+            "\"/run/app.sock\""
+        );
+        let tls = sock
+            .value
+            .tls
+            .as_ref()
+            .expect("the sock must have a tls block");
+        assert_eq!(tls.value.sni.value, "app.internal");
+        assert!(tls.value.verify.value);
+        assert!(tls.value.ca_file.is_none());
+    }
+
+    #[test]
     fn parse_repeated_service_blocks() {
         // Arrange
         let input = r#"bind {
@@ -161,7 +247,7 @@ services = [
 
 service {
   routes = [{ hosts = ["a.example.com"], path = "/a" }]
-  upstreams = [{ sock = "/tmp/a.sock" }]
+  upstreams = [{ sock = { path = "/tmp/a.sock" } }]
 }
 "#;
 
