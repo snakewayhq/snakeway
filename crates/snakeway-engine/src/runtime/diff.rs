@@ -104,6 +104,7 @@ fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
         || old.performance != new.performance
         || old.shutdown != new.shutdown
         || old.upstream != new.upstream
+        || old.upgrade.max_retries != new.upgrade.max_retries
         || old.ca_file != new.ca_file
         || old.dns_refresh_interval_seconds != new.dns_refresh_interval_seconds
         || old.observability != new.observability
@@ -522,7 +523,7 @@ mod tests {
     }
 
     #[test]
-    fn upgrade_max_retries_change_is_runtime_only() {
+    fn upgrade_max_retries_changed() {
         // Arrange
         let (old, new) = configs_with_server_change(|s| {
             s.upgrade.max_retries = Some(5);
@@ -532,7 +533,7 @@ mod tests {
         let kind = classify_config_change(&old, &new);
 
         // Assert
-        assert_eq!(kind, ConfigChangeKind::RuntimeOnly);
+        assert_eq!(kind, ConfigChangeKind::UpgradeRequired);
     }
 
     #[test]
