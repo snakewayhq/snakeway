@@ -3,7 +3,7 @@ title: Upstream TLS
 ---
 
 By default, upstream connections use plain HTTP.
-To connect to an upstream over TLS, add a `tls` block inside the `endpoint`.
+To connect to an upstream over TLS, add a `tls` block inside the `endpoint`, or inside the `sock` of a Unix domain socket upstream.
 See [Upstreams](upstreams.md) for the parent structure.
 
 ```hcl
@@ -18,6 +18,20 @@ endpoint = {
     verify  = true
 
     # CA certificate for verification.
+    ca_file = "/path/to/certs/ca.pem"
+  }
+}
+```
+
+A Unix domain socket upstream uses the same `tls` block inside `sock`.
+A socket has no host name, so Snakeway checks the certificate against the `sni` value.
+
+```hcl
+sock = {
+  path = "/run/app.sock"
+  tls = {
+    sni     = "app.internal"
+    verify  = true
     ca_file = "/path/to/certs/ca.pem"
   }
 }
@@ -44,7 +58,7 @@ None of these rules apply when `verify` is `false`, because Snakeway does not ch
 
 Snakeway compares the `sni` value with the subject alternative name (SAN) entries of the upstream certificate.
 A certificate that names the host only in its common name (CN) fails, because the CN is not compared.
-If `sni` is an IP address, the certificate needs an IP address SAN entry with the same address.
+An IP address is not accepted as `sni` when `verify` is `true`.
 
 For example, this command prints the SAN entries of a certificate:
 

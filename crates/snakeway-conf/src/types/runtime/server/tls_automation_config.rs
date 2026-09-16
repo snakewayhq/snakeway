@@ -3,7 +3,7 @@ use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = TlsAutomationSpec)]
 pub struct TlsAutomationConfig {
     #[confval(nested)]
@@ -14,7 +14,7 @@ pub struct TlsAutomationConfig {
     pub renew_within_days: u64,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = AcmeServerSpec)]
 pub struct AcmeServerConfig {
     pub directory_url: String,
@@ -23,7 +23,7 @@ pub struct AcmeServerConfig {
     pub ca_file: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum CertStoreConfig {
     Filesystem { cert_dir: PathBuf },
     Memory,

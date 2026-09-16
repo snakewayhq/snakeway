@@ -68,12 +68,8 @@ mod tests {
             host: host.to_string(),
             port,
             resolved_addr: ResolvedAddr::new(resolved),
-            use_tls: false,
-            sni: String::new(),
+            tls: None,
             weight: 1,
-            verify: false,
-            ca: None,
-            group_key: 0,
         }
     }
 

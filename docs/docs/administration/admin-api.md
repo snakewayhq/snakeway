@@ -195,33 +195,24 @@ curl http://localhost:8081/admin/stats
 
 ### `POST /admin/reload`
 
-Triggers a hot reload of the Snakeway configuration.
-Snakeway validates the new configuration before applying it.
-If validation fails, the existing configuration remains active.
+Asks Snakeway to reload its configuration from disk.
+The response returns at once, before the reload runs.
 
 ```shell
 curl -X POST http://localhost:8081/admin/reload
 ```
 
-**Example response (success):**
+**Example response:**
 
 ```json
 {
-  "status": "ok",
+  "message": "reload requested",
   "epoch": 3
 }
 ```
 
-The `epoch` field is a version counter that increments with each successful reload.
-
-**Example response (validation failure):**
-
-```json
-{
-  "status": "error",
-  "message": "invalid configuration: unknown field `cidr_alow` in network_policy_device"
-}
-```
+The `epoch` number identifies this reload request.
+To learn how the reload finished, use `GET /admin/reload`.
 
 **Error responses:**
 
@@ -229,6 +220,50 @@ The `epoch` field is a version counter that increments with each successful relo
 |-------------------|--------------------------------------------------------------------------------|
 | `200 OK`          | Reload was successfully initiated.                                             |
 | `400 Bad Request` | Configuration validation failed. The response body contains the error message. |
+
+### `GET /admin/reload`
+
+Shows how the last reload finished.
+If you reload from a deploy script, poll this endpoint until `epoch` is equal to or greater than the epoch that `POST /admin/reload` returned.
+Do not wait for an exact match, because a newer reload can finish before you poll.
+
+```shell
+curl http://localhost:8081/admin/reload
+```
+
+**Example response (applied):**
+
+```json
+{
+  "epoch": 3,
+  "result": "applied"
+}
+```
+
+**Example response (rejected):**
+
+```json
+{
+  "epoch": 4,
+  "result": "rejected",
+  "reason": "restart_required",
+  "settings": ["server.pid_file"]
+}
+```
+
+| `result`          | Meaning                                                                                                                             |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `none`            | No reload has finished since Snakeway started. `epoch` is `0`.                                                                      |
+| `applied`         | The new configuration is in use.                                                                                                    |
+| `upgrade_started` | The change needs a new process, and Snakeway started a zero-drop upgrade.                                                           |
+| `upgrade_failed`  | Snakeway could not start the new process. `error` has the cause, and the running process keeps its configuration.                  |
+| `rejected`        | Snakeway did not apply the reload. See `reason` and `settings`, then restart Snakeway to apply the change.                          |
+| `load_failed`     | The configuration files could not be loaded or did not pass validation. `error` has the cause.                                     |
+| `build_failed`    | The configuration loaded, but Snakeway could not build the new runtime state. `error` has the cause.                               |
+
+A rejected reload has one of two reasons.
+`restart_required` means that `settings` lists `pid_file` or `upgrade.sock`, which only a restart can change.
+`upgrade_unsupported` means that the change needs a zero-drop upgrade and Snakeway is not running on Linux.
 
 ### `GET /admin/certs`
 

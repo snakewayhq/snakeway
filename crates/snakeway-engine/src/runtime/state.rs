@@ -6,17 +6,16 @@ use crate::runtime::manual_tls::load_manual_certs;
 use crate::runtime::types::{
     ResolvedAddr, TlsRuntime, UpstreamAddr, UpstreamTcpRuntime, UpstreamUnixRuntime,
 };
+use crate::runtime::upstream_tls::resolve_upstream_tls;
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
 use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
-use pingora::utils::tls::WrappedX509;
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
 use snakeway_conf::{load_config, types::RuntimeConfig};
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -129,7 +128,7 @@ fn build_runtime_services(
             svc.unix_upstreams
                 .iter()
                 .map(|u| {
-                    let rt = make_upstream_runtime_for_unix(u)?;
+                    let rt = make_upstream_runtime_for_unix(u, global_ca_file)?;
                     Ok(rt)
                 })
                 .collect::<Result<Vec<_>>>()?,
@@ -220,24 +219,6 @@ fn make_upstream_runtime_from_tcp(
         port,
     };
 
-    // Handle per-endpoint TLS settings.
-    let use_tls = cfg.tls.is_some();
-    let (verify, ca, group_key) = if let Some(tls_cfg) = &cfg.tls
-        && tls_cfg.verify
-    {
-        // Prefer the per-endpoint ca_file; fall back to the global server.ca_file.
-        let effective_ca = tls_cfg.ca_file.as_deref().or(global_ca_file);
-        if let Some(ca_file) = effective_ca {
-            let ca = load_ca_from_path(ca_file)?;
-            let group_key = calculate_group_key(ca_file);
-            (true, Some(Arc::from(ca)), group_key)
-        } else {
-            (false, None, 0)
-        }
-    } else {
-        (false, None, 0)
-    };
-
     // Determine SNI.
     let sni = if let Some(tls_cfg) = &cfg.tls {
         // Explicit SNI overrides everything
@@ -262,73 +243,28 @@ fn make_upstream_runtime_from_tcp(
         host,
         port,
         resolved_addr: ResolvedAddr::new(resolved_addr),
-        use_tls,
-        sni,
         weight: cfg.weight,
-        verify,
-        ca,
-        group_key,
+        tls: resolve_upstream_tls(cfg.tls.as_ref(), sni, global_ca_file)?,
     }))
 }
 
-/// Load a per-upstream CA file.
-/// This happens when the runtime state is recomputed,
-/// keeping it out of the data plane.
-pub(crate) fn load_ca_from_path(path: &Path) -> Result<Vec<WrappedX509>> {
-    if !path.exists() {
-        anyhow::bail!("CA file does not exist: {}", path.display());
-    }
-    if !path.is_file() {
-        anyhow::bail!("CA path is not a file: {}", path.display());
-    }
-
-    let pem =
-        fs::read(path).with_context(|| format!("failed to read CA file: {}", path.display()))?;
-    if pem.is_empty() {
-        anyhow::bail!("CA file is empty: {}", path.display());
-    }
-
-    let parsed = snakeway_conf::tls::parse_ca_certificates(&pem)
-        .map_err(|e| anyhow!("CA file {}: {e}", path.display()))?;
-
-    parsed
-        .into_iter()
-        .map(|cert_der| wrap_ca_certificate(cert_der.to_vec()))
-        .collect()
-}
-
-/// The closure must return Pingora's `X509Certificate` type, so this only compiles while
-/// Snakeway and Pingora resolve the same x509-parser version. If a dependency update splits
-/// them, align the versions again rather than working around the type error.
-fn wrap_ca_certificate(der: Vec<u8>) -> Result<WrappedX509> {
-    WrappedX509::try_new(der, |raw| {
-        x509_parser::parse_x509_certificate(raw)
-            .map(|(_, cert)| cert)
-            .map_err(|e| anyhow!("invalid X.509 certificate: {e}"))
-    })
-}
-
-/// Hash a path to a u64.
-/// This is used to group per-upstream CAs,
-/// keeping them out of the data plane.
-fn calculate_group_key(path: &Path) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = ahash::AHasher::default();
-    path.as_os_str().hash(&mut h);
-    h.finish()
-}
-
 /// Factory function to make a unix upstream runtime.
-fn make_upstream_runtime_for_unix(cfg: &UpstreamUnixConfig) -> Result<UpstreamRuntime> {
+fn make_upstream_runtime_for_unix(
+    cfg: &UpstreamUnixConfig,
+    global_ca_file: Option<&Path>,
+) -> Result<UpstreamRuntime> {
     let addr = UpstreamAddr::Unix {
         path: cfg.sock.clone(),
     };
     Ok(UpstreamRuntime::Unix(UpstreamUnixRuntime {
         id: make_upstream_id(&addr),
         path: cfg.sock.clone(),
-        use_tls: cfg.use_tls,
-        sni: cfg.sni.clone(),
         weight: cfg.weight,
+        tls: resolve_upstream_tls(
+            cfg.tls.as_ref(),
+            cfg.tls.as_ref().map(|t| t.sni.clone()).unwrap_or_default(),
+            global_ca_file,
+        )?,
     }))
 }
 
@@ -353,164 +289,99 @@ fn canonicalize_dir(dir: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use snakeway_conf::types::UpstreamTlsConfig;
 
-    #[test]
-    fn load_ca_from_path_valid_single_cert() {
-        // Arrange
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let ca_path = dir.path().join("ca.pem");
-        let cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
-            .expect("failed to generate CA cert");
-        std::fs::write(&ca_path, cert.cert.pem()).expect("failed to write CA");
-
-        // Act
-        let result = load_ca_from_path(&ca_path);
-
-        // Assert
-        let certs = result.expect("a single CA certificate must load");
-        assert_eq!(certs.len(), 1);
-        assert_eq!(
-            certs[0].borrow_raw_cert().as_slice(),
-            cert.cert.der().as_ref()
-        );
+    fn unix_upstream_config(tls: Option<UpstreamTlsConfig>) -> UpstreamUnixConfig {
+        UpstreamUnixConfig {
+            sock: "/tmp/app.sock".to_string(),
+            weight: 1,
+            tls,
+        }
     }
 
     #[test]
-    fn load_ca_from_path_valid_multi_cert_bundle() {
+    fn unix_upstream_without_tls_block_uses_plain_http() {
         // Arrange
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let ca_path = dir.path().join("ca-bundle.pem");
-        let cert1 = rcgen::generate_simple_self_signed(vec!["ca1.test".into()])
-            .expect("failed to generate first CA cert");
-        let cert2 = rcgen::generate_simple_self_signed(vec!["ca2.test".into()])
-            .expect("failed to generate second CA cert");
-        let mut f = std::fs::File::create(&ca_path).expect("failed to create file");
-        f.write_all(cert1.cert.pem().as_bytes())
-            .expect("failed to write first cert");
-        f.write_all(cert2.cert.pem().as_bytes())
-            .expect("failed to write second cert");
+        let cfg = unix_upstream_config(None);
 
         // Act
-        let result = load_ca_from_path(&ca_path);
+        let result = make_upstream_runtime_for_unix(&cfg, None);
 
         // Assert
-        let certs = result.expect("a CA bundle must load");
-        assert_eq!(certs.len(), 2);
-        assert_eq!(
-            certs[0].borrow_raw_cert().as_slice(),
-            cert1.cert.der().as_ref()
-        );
-        assert_eq!(
-            certs[1].borrow_raw_cert().as_slice(),
-            cert2.cert.der().as_ref()
-        );
+        let UpstreamRuntime::Unix(unix) = result.expect("the upstream runtime must build") else {
+            panic!("expected a Unix upstream runtime");
+        };
+        assert!(unix.tls.is_none());
     }
 
     #[test]
-    fn load_ca_from_path_nonexistent_file() {
+    fn unix_upstream_with_verify_and_no_ca_file_keeps_verification_on() {
         // Arrange
-        let path = Path::new("/nonexistent/ca.pem");
+        let cfg = unix_upstream_config(Some(UpstreamTlsConfig {
+            sni: "app.internal".to_string(),
+            verify: true,
+            ca_file: None,
+        }));
 
         // Act
-        let result = load_ca_from_path(path);
+        let result = make_upstream_runtime_for_unix(&cfg, None);
 
         // Assert
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("does not exist"), "got: {msg}");
+        let UpstreamRuntime::Unix(unix) = result.expect("the upstream runtime must build") else {
+            panic!("expected a Unix upstream runtime");
+        };
+        let tls = unix.tls.expect("the upstream must use TLS");
+        assert!(tls.verify);
+        assert_eq!(tls.sni, "app.internal");
+        assert!(tls.ca.is_none());
+        assert_eq!(tls.group_key, 0);
+    }
+
+    fn tcp_upstream_config(verify: bool) -> UpstreamTcpConfig {
+        UpstreamTcpConfig {
+            url: "https://127.0.0.1:8443".to_string(),
+            weight: 1,
+            tls: Some(snakeway_conf::types::UpstreamTlsConfig {
+                sni: "backend.test".to_string(),
+                verify,
+                ca_file: None,
+            }),
+        }
     }
 
     #[test]
-    fn load_ca_from_path_empty_file() {
+    fn tcp_upstream_with_verify_and_no_ca_file_keeps_verification_on() {
         // Arrange
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let ca_path = dir.path().join("empty.pem");
-        std::fs::File::create(&ca_path).expect("failed to create empty file");
+        let cfg = tcp_upstream_config(true);
 
         // Act
-        let result = load_ca_from_path(&ca_path);
+        let result = make_upstream_runtime_from_tcp(&cfg, None);
 
         // Assert
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("empty"), "got: {msg}");
+        let UpstreamRuntime::Tcp(tcp) = result.expect("the upstream runtime must build") else {
+            panic!("expected a TCP upstream runtime");
+        };
+        let tls = tcp.tls.expect("the upstream must use TLS");
+        assert!(tls.verify);
+        assert_eq!(tls.sni, "backend.test");
+        assert!(tls.ca.is_none());
+        assert_eq!(tls.group_key, 0);
     }
 
     #[test]
-    fn load_ca_from_path_no_pem_certs() {
+    fn tcp_upstream_with_verify_false_skips_verification() {
         // Arrange
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let ca_path = dir.path().join("no-certs.pem");
-        std::fs::write(&ca_path, "not a PEM file").expect("failed to write");
+        let cfg = tcp_upstream_config(false);
 
         // Act
-        let result = load_ca_from_path(&ca_path);
+        let result = make_upstream_runtime_from_tcp(&cfg, None);
 
         // Assert
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("no certificates"), "got: {msg}");
-    }
-
-    #[test]
-    fn load_ca_from_path_invalid_der_in_pem() {
-        // Arrange
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let ca_path = dir.path().join("bad-der.pem");
-        std::fs::write(
-            &ca_path,
-            "-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n",
-        )
-        .expect("failed to write");
-
-        // Act
-        let result = load_ca_from_path(&ca_path);
-
-        // Assert
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
-        assert!(
-            msg.contains("invalid X.509 certificate at index 0"),
-            "got: {msg}"
-        );
-    }
-
-    #[test]
-    fn load_ca_from_path_rejects_private_key_section() {
-        // Arrange
-        let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let ca_path = dir.path().join("ca-with-key.pem");
-        let cert = rcgen::generate_simple_self_signed(vec!["ca.test".into()])
-            .expect("failed to generate CA cert");
-        std::fs::write(
-            &ca_path,
-            format!("{}{}", cert.cert.pem(), cert.signing_key.serialize_pem()),
-        )
-        .expect("failed to write CA file");
-
-        // Act
-        let result = load_ca_from_path(&ca_path);
-
-        // Assert
-        let msg = result
-            .expect_err("a CA file with a private key section must fail to load")
-            .to_string();
-        assert!(msg.contains("PRIVATE KEY"), "got: {msg}");
-    }
-
-    #[test]
-    fn wrap_ca_certificate_invalid_der_returns_error() {
-        // Arrange
-        let der = b"invalid".to_vec();
-
-        // Act
-        let result = wrap_ca_certificate(der);
-
-        // Assert
-        let msg = result
-            .expect_err("invalid DER must return an error")
-            .to_string();
-        assert!(msg.starts_with("invalid X.509 certificate"), "got: {msg}");
+        let UpstreamRuntime::Tcp(tcp) = result.expect("the upstream runtime must build") else {
+            panic!("expected a TCP upstream runtime");
+        };
+        let tls = tcp.tls.expect("the upstream must use TLS");
+        assert!(!tls.verify);
+        assert!(tls.ca.is_none());
     }
 }

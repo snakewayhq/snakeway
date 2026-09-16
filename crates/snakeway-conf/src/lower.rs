@@ -57,7 +57,6 @@ where
         //--------------------------------------------------------------------
         if let Some(bind) = &ingress.bind {
             let bind = &bind.value;
-            let use_tls = bind.tls.is_some();
             // The address names the services below, so nothing else in this
             // bind can lower without it.
             let bind_addr = match bind.resolve() {
@@ -87,11 +86,7 @@ where
                         continue;
                     };
                     if let Some(sock) = &u.value.sock {
-                        unix_upstreams.push(UpstreamUnixConfig::new(
-                            sock.value.clone(),
-                            use_tls,
-                            weight,
-                        ));
+                        unix_upstreams.push(UpstreamUnixConfig::new(weight, &sock.value));
                     }
                     if let Some(endpoint) = &u.value.endpoint {
                         tcp_upstreams.push(UpstreamTcpConfig::new(weight, &endpoint.value));

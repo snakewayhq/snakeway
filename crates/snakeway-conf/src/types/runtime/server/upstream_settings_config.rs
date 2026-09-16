@@ -3,7 +3,7 @@ use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = UpstreamSettingsSpec)]
 pub struct UpstreamSettingsConfig {
     /// Idle upstream keepalive connections kept per worker thread.
@@ -20,7 +20,7 @@ pub struct UpstreamSettingsConfig {
     pub source_addresses: Option<UpstreamSourceAddressesConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = UpstreamSourceAddressesSpec)]
 pub struct UpstreamSourceAddressesConfig {
     pub ipv4: Vec<String>,
