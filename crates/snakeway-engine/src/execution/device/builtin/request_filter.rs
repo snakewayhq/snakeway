@@ -39,7 +39,7 @@ impl RequestFilterDevice {
         };
 
         DeviceResult::Respond(ResponseCtx::new(
-            ctx.request_id(),
+            ctx.request_id().map(str::to_owned),
             status,
             Default::default(),
             reason.as_bytes().to_vec(),

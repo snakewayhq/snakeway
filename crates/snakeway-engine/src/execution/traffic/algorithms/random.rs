@@ -12,7 +12,7 @@ impl TrafficStrategy for Random {
         &self,
         _req: &RequestCtx,
         _service_id: &ServiceId,
-        healthy: &[UpstreamSnapshot],
+        healthy: &[&UpstreamSnapshot],
         _traffic_manager: &TrafficManager,
     ) -> Option<TrafficDecision> {
         if healthy.is_empty() {

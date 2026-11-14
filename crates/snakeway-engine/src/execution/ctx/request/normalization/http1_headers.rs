@@ -1,7 +1,7 @@
 use crate::execution::ctx::request::NormalizedHeaders;
 use crate::execution::ctx::request::normalization::{NormalizationOutcome, RewriteReason};
 use http::{HeaderMap, HeaderValue};
-use std::collections::HashSet;
+use smallvec::SmallVec;
 
 /// Normalizes HTTP headers according to RFC 9110 and RFC 9112.
 ///
@@ -17,6 +17,22 @@ use std::collections::HashSet;
 /// - Validates all header names and values are properly encoded
 /// - Strips hop-by-hop headers to prevent protocol confusion
 #[hotpath::measure]
+/// Splits the Connection header into its tokens.
+/// Returns `None` when the value is not visible ASCII.
+fn connection_tokens(raw: &HeaderMap) -> Option<SmallVec<[&str; 4]>> {
+    let mut tokens = SmallVec::new();
+    if let Some(connection) = raw.get("connection") {
+        // RFC 9110 §7.6.1: Connection header value is a comma-separated list of tokens
+        for token in connection.to_str().ok()?.split(',') {
+            let token = token.trim();
+            if !token.is_empty() {
+                tokens.push(token);
+            }
+        }
+    }
+    Some(tokens)
+}
+
 pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
@@ -24,24 +40,10 @@ pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<N
     // RFC 9110 §7.6.1: Extract Connection header tokens to identify additional hop-by-hop headers.
     // The Connection header field allows the sender to list header field names that are only
     // intended for the immediate recipient (hop-by-hop) and should not be forwarded.
-    let mut connection_tokens = HashSet::new();
-    if let Some(conn) = raw.get("connection") {
-        let value = match conn.to_str() {
-            Ok(v) => v,
-            Err(_) => {
-                // RFC 9110 §5.5: Header field values must be valid US-ASCII or encoded properly
-                return NormalizationOutcome::reject_for_header_encoding_violation();
-            }
-        };
-
-        // RFC 9110 §7.6.1: Connection header value is a comma-separated list of tokens
-        for token in value.split(',') {
-            let token = token.trim().to_ascii_lowercase();
-            if !token.is_empty() {
-                connection_tokens.insert(token);
-            }
-        }
-    }
+    let Some(connection_tokens) = connection_tokens(raw) else {
+        // RFC 9110 §5.5: Header field values must be valid US-ASCII or encoded properly
+        return NormalizationOutcome::reject_for_header_encoding_violation();
+    };
 
     // RFC 9112 §6.3: Reject requests that carry both Transfer-Encoding and Content-Length.
     // When both are present the message framing is ambiguous: different intermediaries may
@@ -76,9 +78,13 @@ pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<N
         // RFC 9110 §7.6.1: Strip standard hop-by-hop headers and Connection-listed headers.
         // These headers are specific to a single transport-level connection and must not
         // be forwarded by proxies or stored by caches.
-        // SECURITY: Lowercased comparison is critical - check against lowercased name_str
-        // let name_lower = name_str.to_ascii_lowercase();
-        if is_standard_hop_by_hop(name_str) || connection_tokens.contains(name_str) {
+        // SECURITY: the token compare must ignore case, because a client may list a header
+        // name in any case and the header must still be stripped.
+        if is_standard_hop_by_hop(name_str)
+            || connection_tokens
+                .iter()
+                .any(|token| token.eq_ignore_ascii_case(name_str))
+        {
             rewritten = true;
             continue;
         }
@@ -183,6 +189,7 @@ fn is_standard_hop_by_hop(name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use super::connection_tokens;
     use crate::execution::ctx::request::normalization::{
         NormalizationOutcome, ProtocolNormalizationMode, RejectReason, RewriteReason,
         normalize_headers,
@@ -345,6 +352,63 @@ mod tests {
     }
 
     #[test]
+    fn parsing_connection_tokens_does_not_allocate() {
+        // Arrange
+        let raw = input_to_header_map(&[("connection", "keep-alive, X-A ,, x-b")]);
+
+        // Act
+        let (tokens, allocations) =
+            crate::alloc_count::count_allocations(|| connection_tokens(&raw));
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(tokens.as_deref(), Some(&["keep-alive", "X-A", "x-b"][..]));
+    }
+
+    #[test]
+    fn connection_tokens_reject_a_value_that_is_not_visible_ascii() {
+        // Arrange
+        let mut raw = HeaderMap::new();
+        raw.insert("connection", HeaderValue::from_bytes(&[0x80]).unwrap());
+
+        // Act
+        let tokens = connection_tokens(&raw);
+
+        // Assert
+        assert!(tokens.is_none());
+    }
+
+    #[test]
+    fn strip_header_named_in_connection_with_mixed_case() {
+        // In HTTP/1, a header that the Connection header names is hop-by-hop, whatever the case of the token.
+        assert_rewrite_http1_headers(
+            &[
+                ("host", "example.com"),
+                ("connection", "X-Trace-Id"),
+                ("x-trace-id", "abc"),
+            ],
+            &[("host", "example.com")],
+            RewriteReason::HeaderCanonicalization,
+        );
+    }
+
+    #[test]
+    fn strip_only_the_headers_named_in_connection() {
+        // In HTTP/1, every listed token is stripped, padding and empty items are ignored, and unlisted headers stay.
+        assert_rewrite_http1_headers(
+            &[
+                ("host", "example.com"),
+                ("connection", "keep-alive, X-A ,, x-b"),
+                ("x-a", "1"),
+                ("x-b", "2"),
+                ("x-c", "3"),
+            ],
+            &[("host", "example.com"), ("x-c", "3")],
+            RewriteReason::HeaderCanonicalization,
+        );
+    }
+
+    #[test]
     fn strip_hop_by_hop_header() {
         // In HTTP/1, hop-by-hop headers are stripped (not rejected); the result is a rewrite.
         assert_rewrite_http1_headers(
@@ -413,4 +477,5 @@ mod tests {
             RewriteReason::HeaderCanonicalization,
         );
     }
+
 }

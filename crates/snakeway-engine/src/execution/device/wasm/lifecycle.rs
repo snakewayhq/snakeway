@@ -1,4 +1,4 @@
-use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
+use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::DeviceResult;
 use crate::execution::device::wasm::bindings::exports::snakeway::device::policy;
 use crate::execution::device::wasm::bindings::snakeway::device::types::{
@@ -9,7 +9,7 @@ use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 
 #[hotpath::measure]
 pub(crate) fn apply_body_result(
-    request_id: Option<String>,
+    request_id: Option<&str>,
     maybe_chunk: &mut Option<Bytes>,
     result: policy::BodyResult,
 ) -> anyhow::Result<DeviceResult> {
@@ -63,7 +63,7 @@ pub(crate) fn build_response_snapshot(ctx: &ResponseCtx) -> Response {
     }
 }
 
-fn handle_action(action: Action, request_id: Option<String>) -> anyhow::Result<DeviceResult> {
+fn handle_action(action: Action, request_id: Option<&str>) -> anyhow::Result<DeviceResult> {
     match action {
         Action::Continue => Ok(DeviceResult::Continue),
         Action::Block => Ok(DeviceResult::Respond(block_403(request_id))),
@@ -77,7 +77,7 @@ fn handle_action(action: Action, request_id: Option<String>) -> anyhow::Result<D
                 }
             }
             Ok(DeviceResult::Respond(ResponseCtx::new(
-                request_id,
+                request_id.map(str::to_owned),
                 status,
                 headers,
                 synthetic.body,
@@ -154,10 +154,8 @@ pub(crate) fn apply_request_result(
     ctx: &mut RequestCtx,
     result: policy::RequestResult,
 ) -> anyhow::Result<DeviceResult> {
-    let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
-
     if !matches!(result.action, Action::Continue) {
-        return handle_action(result.action, request_id);
+        return handle_action(result.action, ctx.request_id());
     }
 
     if let Some(RequestPatch {
@@ -183,10 +181,8 @@ pub(crate) fn apply_response_result(
     ctx: &mut ResponseCtx,
     result: policy::ResponseResult,
 ) -> anyhow::Result<DeviceResult> {
-    let request_id = ctx.request_id.clone();
-
     if !matches!(result.action, Action::Continue) {
-        return handle_action(result.action, request_id);
+        return handle_action(result.action, ctx.request_id.as_deref());
     }
 
     if let Some(ResponsePatch { set_status, ops }) = result.patch {
@@ -199,20 +195,152 @@ pub(crate) fn apply_response_result(
     Ok(DeviceResult::Continue)
 }
 
-pub(crate) fn block_403(request_id: Option<String>) -> ResponseCtx {
+pub(crate) fn block_403(request_id: Option<&str>) -> ResponseCtx {
     ResponseCtx::new(
-        request_id,
+        request_id.map(str::to_owned),
         StatusCode::FORBIDDEN,
         HeaderMap::new(),
         b"Blocked by device".to_vec(),
     )
 }
 
-pub(crate) fn block_503(request_id: Option<String>) -> ResponseCtx {
+pub(crate) fn block_503(request_id: Option<&str>) -> ResponseCtx {
     ResponseCtx::new(
-        request_id,
+        request_id.map(str::to_owned),
         StatusCode::SERVICE_UNAVAILABLE,
         HeaderMap::new(),
         b"Service unavailable".to_vec(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::execution::ctx::RequestId;
+    use crate::execution::device::wasm::bindings::snakeway::device::types::SyntheticResponse;
+
+    fn ctx_with_id(id: &str) -> RequestCtx {
+        let mut ctx = RequestCtx::empty();
+        ctx.extensions.insert(RequestId::from(id));
+        ctx
+    }
+
+    fn response_of(result: anyhow::Result<DeviceResult>) -> ResponseCtx {
+        match result {
+            Ok(DeviceResult::Respond(response)) => response,
+            _ => panic!("expected the device to respond"),
+        }
+    }
+
+    #[test]
+    fn a_blocked_request_carries_the_request_id_into_the_response() {
+        // Arrange
+        let mut ctx = ctx_with_id("req-1");
+        let result = policy::RequestResult {
+            action: Action::Block,
+            patch: None,
+        };
+
+        // Act
+        let response = response_of(apply_request_result(&mut ctx, result));
+
+        // Assert
+        assert_eq!(response.request_id.as_deref(), Some("req-1"));
+        assert_eq!(response.status, StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn a_synthetic_response_carries_the_request_id_and_its_status() {
+        // Arrange
+        let mut ctx = ctx_with_id("req-1");
+        let result = policy::RequestResult {
+            action: Action::Respond(SyntheticResponse {
+                status: 418,
+                headers: vec![],
+                body: b"teapot".to_vec(),
+            }),
+            patch: None,
+        };
+
+        // Act
+        let response = response_of(apply_request_result(&mut ctx, result));
+
+        // Assert
+        assert_eq!(response.request_id.as_deref(), Some("req-1"));
+        assert_eq!(response.status, StatusCode::IM_A_TEAPOT);
+    }
+
+    #[test]
+    fn a_blocked_response_keeps_its_request_id() {
+        // Arrange
+        let mut ctx = ResponseCtx::new(
+            Some("req-2".to_string()),
+            StatusCode::OK,
+            HeaderMap::new(),
+            Vec::new(),
+        );
+        let result = policy::ResponseResult {
+            action: Action::Block,
+            patch: None,
+        };
+
+        // Act
+        let response = response_of(apply_response_result(&mut ctx, result));
+
+        // Assert
+        assert_eq!(response.request_id.as_deref(), Some("req-2"));
+        assert_eq!(response.status, StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn a_blocked_body_carries_the_request_id_into_the_response() {
+        // Arrange
+        let mut chunk = Some(Bytes::from_static(b"payload"));
+        let result = policy::BodyResult {
+            action: BodyAction::Block,
+        };
+
+        // Act
+        let response = response_of(apply_body_result(Some("req-3"), &mut chunk, result));
+
+        // Assert
+        assert_eq!(response.request_id.as_deref(), Some("req-3"));
+        assert_eq!(response.status, StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn a_passed_through_body_does_not_allocate() {
+        // Arrange
+        let mut chunk = Some(Bytes::from_static(b"payload"));
+        let result = policy::BodyResult {
+            action: BodyAction::Passthrough,
+        };
+
+        // Act
+        let (outcome, allocations) = crate::alloc_count::count_allocations(|| {
+            apply_body_result(Some("req-3"), &mut chunk, result)
+        });
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert!(matches!(outcome, Ok(DeviceResult::Continue)));
+    }
+
+    #[test]
+    fn a_request_that_continues_does_not_allocate() {
+        // Arrange
+        let mut ctx = ctx_with_id("req-1");
+        let result = policy::RequestResult {
+            action: Action::Continue,
+            patch: None,
+        };
+
+        // Act
+        let (outcome, allocations) =
+            crate::alloc_count::count_allocations(|| apply_request_result(&mut ctx, result));
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert!(matches!(outcome, Ok(DeviceResult::Continue)));
+    }
 }

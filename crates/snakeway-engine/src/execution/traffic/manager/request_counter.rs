@@ -42,13 +42,9 @@ impl TrafficManager {
     pub(crate) fn next_wrr_index(
         &self,
         service_id: &ServiceId,
-        healthy: &[UpstreamSnapshot],
+        healthy: &[&UpstreamSnapshot],
     ) -> usize {
         debug_assert!(!healthy.is_empty());
-
-        // One allocation per call. Hashing the ids in place would remove it if this
-        // shows up in a profile.
-        let upstream_ids: Vec<UpstreamId> = healthy.iter().map(|u| u.endpoint.id()).collect();
 
         let total_weight: i64 = healthy
             .iter()
@@ -58,22 +54,34 @@ impl TrafficManager {
         // Safety net: weight is enforced in config validation.
         debug_assert!(total_weight > 0);
 
-        let mut entry = self
-            .wrr_state
-            .entry(service_id.clone())
-            .or_insert_with(|| WrrState {
-                current_weights: vec![0; healthy.len()],
-                upstream_ids: upstream_ids.clone(),
-                total_weight,
-            });
+        let mut entry = match self.wrr_state.get_mut(service_id) {
+            Some(entry) => entry,
+            None => self
+                .wrr_state
+                .entry(service_id.clone())
+                .or_insert_with(|| WrrState {
+                    current_weights: Vec::new(),
+                    upstream_ids: Vec::new(),
+                    total_weight: 0,
+                }),
+        };
 
-        // Reset if upstream set/order or weights changed
-        if entry.current_weights.len() != healthy.len()
+        // Reset if upstream set/order or weights changed. The buffers are refilled in place.
+        let stale = entry.current_weights.len() != healthy.len()
             || entry.total_weight != total_weight
-            || entry.upstream_ids != upstream_ids
-        {
-            entry.current_weights = vec![0; healthy.len()];
-            entry.upstream_ids = upstream_ids;
+            || !entry
+                .upstream_ids
+                .iter()
+                .copied()
+                .eq(healthy.iter().map(|u| u.endpoint.id()));
+
+        if stale {
+            entry.current_weights.clear();
+            entry.current_weights.resize(healthy.len(), 0);
+            entry.upstream_ids.clear();
+            entry
+                .upstream_ids
+                .extend(healthy.iter().map(|u| u.endpoint.id()));
             entry.total_weight = total_weight;
         }
 
@@ -94,5 +102,110 @@ impl TrafficManager {
         entry.current_weights[best_idx] -= entry.total_weight;
 
         best_idx
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::execution::traffic::TrafficSnapshot;
+    use crate::runtime::{ResolvedAddr, UpstreamRuntime, UpstreamTcpRuntime};
+
+    fn weighted(id: u16, weight: u32) -> UpstreamSnapshot {
+        UpstreamSnapshot {
+            endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
+                id: UpstreamId(id as u32),
+                host: "127.0.0.1".to_string(),
+                port: id,
+                resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], id).into()),
+                tls: None,
+                weight,
+            }),
+            latency: None,
+            weight,
+            metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
+                &std::sync::Arc::from("test"),
+                crate::runtime::UpstreamId(id as u32),
+            ),
+        }
+    }
+
+    fn picks(
+        manager: &TrafficManager,
+        service: &ServiceId,
+        healthy: &[&UpstreamSnapshot],
+        n: usize,
+    ) -> Vec<usize> {
+        (0..n)
+            .map(|_| manager.next_wrr_index(service, healthy))
+            .collect()
+    }
+
+    #[test]
+    fn weighted_round_robin_follows_the_smooth_order_over_one_cycle() {
+        // Arrange
+        let manager = TrafficManager::new(TrafficSnapshot::default());
+        let service = ServiceId("api".into());
+        let owned = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
+
+        // Act
+        let order = picks(&manager, &service, &healthy, 7);
+
+        // Assert
+        assert_eq!(order, vec![0, 0, 1, 0, 2, 0, 0]);
+    }
+
+    #[test]
+    fn repeating_the_cycle_with_the_same_set_gives_the_same_order() {
+        // Arrange
+        let manager = TrafficManager::new(TrafficSnapshot::default());
+        let service = ServiceId("api".into());
+        let owned = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
+
+        // Act
+        let order = picks(&manager, &service, &healthy, 14);
+
+        // Assert
+        assert_eq!(order, vec![0, 0, 1, 0, 2, 0, 0, 0, 0, 1, 0, 2, 0, 0]);
+    }
+
+    #[test]
+    fn a_changed_upstream_set_restarts_from_a_fresh_state() {
+        // Arrange
+        let manager = TrafficManager::new(TrafficSnapshot::default());
+        let fresh = TrafficManager::new(TrafficSnapshot::default());
+        let service = ServiceId("api".into());
+        let owned_before = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let owned_after = [weighted(1, 5), weighted(4, 1)];
+        let before: Vec<&UpstreamSnapshot> = owned_before.iter().collect();
+        let after: Vec<&UpstreamSnapshot> = owned_after.iter().collect();
+        picks(&manager, &service, &before, 3);
+
+        // Act
+        let order = picks(&manager, &service, &after, 6);
+
+        // Assert
+        assert_eq!(order, picks(&fresh, &service, &after, 6));
+        assert_eq!(order, vec![0, 0, 0, 1, 0, 0]);
+    }
+
+    #[test]
+    fn a_steady_state_pick_does_not_allocate() {
+        // Arrange
+        let manager = TrafficManager::new(TrafficSnapshot::default());
+        let service = ServiceId("api".into());
+        let owned = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
+        manager.next_wrr_index(&service, &healthy);
+
+        // Act
+        let (index, allocations) =
+            crate::alloc_count::count_allocations(|| manager.next_wrr_index(&service, &healthy));
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(index, 0);
     }
 }

@@ -2,6 +2,7 @@ use crate::execution::traffic::{
     TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
 use once_cell::sync::Lazy;
+use smallvec::SmallVec;
 use snakeway_conf::types::LoadBalancingStrategy;
 
 static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
@@ -27,7 +28,7 @@ impl TrafficDirector {
             .ok_or(TrafficError::UnknownService)?;
 
         // Purely filter on health status.
-        let mut healthy_candidates: Vec<_> = service
+        let mut healthy_candidates: SmallVec<[&UpstreamSnapshot; 8]> = service
             .upstreams
             .iter()
             .filter(|u| {
@@ -35,7 +36,6 @@ impl TrafficDirector {
                     .health_status(service_id, &u.endpoint.id())
                     .healthy
             })
-            .cloned()
             .collect();
 
         if healthy_candidates.is_empty() {
@@ -123,6 +123,10 @@ mod tests {
                 ewma: Duration::from_millis(10),
             }),
             weight: 1,
+            metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
+                &std::sync::Arc::from("test"),
+                crate::runtime::UpstreamId(id as u32),
+            ),
         }
     }
 
@@ -147,6 +151,9 @@ mod tests {
                     count_http_5xx_as_failure: true,
                 },
                 health_check_cfg: snakeway_conf::types::HealthCheckConfig::default(),
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &std::sync::Arc::from("test"),
+                ),
             },
         );
 
@@ -156,6 +163,56 @@ mod tests {
     /// ---------------------------
     /// Tests
     /// ---------------------------
+
+    #[test]
+    fn a_steady_state_decision_does_not_allocate() {
+        // Arrange
+        let director = TrafficDirector;
+        let service_id = ServiceId("api".into());
+        let snapshot = snapshot_with_service(
+            service_id.clone(),
+            vec![upstream(1), upstream(2), upstream(3)],
+            LoadBalancingStrategy::Failover,
+        );
+        let manager = TrafficManager::new(snapshot.clone());
+        let request = dummy_request();
+        let _ = director.decide(&request, &snapshot, &service_id, &manager);
+
+        // Act
+        let (decision, allocations) = crate::alloc_count::count_allocations(|| {
+            director.decide(&request, &snapshot, &service_id, &manager)
+        });
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(decision.unwrap().upstream_id, UpstreamId(1));
+    }
+
+    #[test]
+    fn a_steady_state_round_robin_decision_does_not_allocate() {
+        // Arrange
+        let director = TrafficDirector;
+        let service_id = ServiceId("api".into());
+        let snapshot = snapshot_with_service(
+            service_id.clone(),
+            vec![upstream(1), upstream(2), upstream(3)],
+            LoadBalancingStrategy::RoundRobin,
+        );
+        let manager = TrafficManager::new(snapshot.clone());
+        let request = dummy_request();
+        for _ in 0..3 {
+            let _ = director.decide(&request, &snapshot, &service_id, &manager);
+        }
+
+        // Act
+        let (decision, allocations) = crate::alloc_count::count_allocations(|| {
+            director.decide(&request, &snapshot, &service_id, &manager)
+        });
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(decision.unwrap().upstream_id, UpstreamId(1));
+    }
 
     #[test]
     fn unknown_service_returns_error() {
@@ -310,7 +367,7 @@ mod tests {
                 &self,
                 _: &RequestCtx,
                 _: &ServiceId,
-                _: &[UpstreamSnapshot],
+                _: &[&UpstreamSnapshot],
                 _: &TrafficManager,
             ) -> Option<TrafficDecision> {
                 None
@@ -318,12 +375,12 @@ mod tests {
         }
 
         let service = snapshot.services.get(&service_id).unwrap();
-        let healthy = &service.upstreams;
+        let healthy: Vec<&UpstreamSnapshot> = service.upstreams.iter().collect();
         let strategy = NullStrategy;
 
         // Act
         let decision = strategy
-            .decide(&req, &service_id, healthy, &manager)
+            .decide(&req, &service_id, &healthy, &manager)
             .unwrap_or_else(|| TrafficDecision {
                 upstream_id: healthy[0].endpoint.id(),
                 reason: DecisionReason::NoStrategyDecision,

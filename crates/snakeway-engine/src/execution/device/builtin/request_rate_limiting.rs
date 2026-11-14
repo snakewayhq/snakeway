@@ -43,7 +43,9 @@ impl RequestRateLimitingDevice {
             reason, "request rate limit exceeded"
         );
 
-        DeviceResult::Respond(ResponseCtx::too_many_requests(ctx.request_id()))
+        DeviceResult::Respond(ResponseCtx::too_many_requests(
+            ctx.request_id().map(str::to_owned),
+        ))
     }
 }
 

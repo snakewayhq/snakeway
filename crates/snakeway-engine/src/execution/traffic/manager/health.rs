@@ -91,9 +91,22 @@ impl TrafficManager {
     ) {
         let key = (service_id.clone(), *upstream_id);
 
-        // Mark upstream healthy
-        self.upstream_health
-            .insert(key.clone(), HealthState::Healthy);
+        // Mark upstream healthy. Nothing reads the state while health checks are off, and an
+        // upstream that is already healthy needs no write, so most successes take only a read.
+        let health_enabled = self
+            .health_params
+            .get(service_id)
+            .is_some_and(|params| params.enable);
+        if health_enabled {
+            let already_healthy = self
+                .upstream_health
+                .get(&key)
+                .is_some_and(|state| matches!(*state, HealthState::Healthy));
+            if !already_healthy {
+                self.upstream_health
+                    .insert(key.clone(), HealthState::Healthy);
+            }
+        }
 
         // Increment success counter
         let total = self
@@ -155,5 +168,97 @@ impl TrafficManager {
         };
 
         HealthStatus { healthy }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::execution::traffic::{ServiceSnapshot, TrafficSnapshot};
+    use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
+    use std::collections::HashMap;
+
+    fn manager(health_enabled: bool) -> (TrafficManager, ServiceId, UpstreamId) {
+        let service_id = ServiceId("api".into());
+        let mut services = HashMap::new();
+        services.insert(
+            service_id.clone(),
+            ServiceSnapshot {
+                service_id: service_id.clone(),
+                strategy: LoadBalancingStrategy::Failover,
+                upstreams: vec![],
+                circuit_breaker_cfg: CircuitBreakerConfig::default(),
+                health_check_cfg: HealthCheckConfig {
+                    enable: health_enabled,
+                    failure_threshold: 3,
+                    unhealthy_cooldown_seconds: 10,
+                },
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &std::sync::Arc::from("test"),
+                ),
+            },
+        );
+        let manager = TrafficManager::new(TrafficSnapshot { services });
+        (manager, service_id, UpstreamId(1))
+    }
+
+    #[test]
+    fn with_health_checks_off_a_success_records_no_health_state() {
+        // Arrange
+        let (manager, service, upstream) = manager(false);
+
+        // Act
+        manager.report_success(&service, &upstream, Duration::from_millis(5));
+
+        // Assert
+        assert!(
+            manager
+                .upstream_health
+                .get(&(service.clone(), upstream))
+                .is_none()
+        );
+        assert_eq!(manager.total_successes(&service, &upstream), 1);
+        assert!(manager.health_status(&service, &upstream).healthy);
+    }
+
+    #[test]
+    fn with_health_checks_on_a_success_restores_an_unhealthy_upstream() {
+        // Arrange
+        let (manager, service, upstream) = manager(true);
+        manager.report_failure(&service, &upstream);
+        assert!(!manager.health_status(&service, &upstream).healthy);
+
+        // Act
+        manager.report_success(&service, &upstream, Duration::from_millis(5));
+
+        // Assert
+        assert!(manager.health_status(&service, &upstream).healthy);
+        assert!(matches!(
+            *manager
+                .upstream_health
+                .get(&(service.clone(), upstream))
+                .unwrap(),
+            HealthState::Healthy
+        ));
+        assert_eq!(manager.total_successes(&service, &upstream), 1);
+    }
+
+    #[test]
+    fn with_health_checks_on_a_first_success_records_a_healthy_state() {
+        // Arrange
+        let (manager, service, upstream) = manager(true);
+
+        // Act
+        manager.report_success(&service, &upstream, Duration::from_millis(5));
+
+        // Assert
+        assert!(matches!(
+            *manager
+                .upstream_health
+                .get(&(service.clone(), upstream))
+                .unwrap(),
+            HealthState::Healthy
+        ));
+        assert!(manager.health_status(&service, &upstream).healthy);
     }
 }

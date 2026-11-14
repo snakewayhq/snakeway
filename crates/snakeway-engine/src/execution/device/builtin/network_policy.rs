@@ -34,7 +34,7 @@ impl NetworkPolicyDevice {
             request_id = ctx.request_id(),
             reason, "network policy denied request"
         );
-        DeviceResult::Respond(ResponseCtx::forbidden(ctx.request_id()))
+        DeviceResult::Respond(ResponseCtx::forbidden(ctx.request_id().map(str::to_owned)))
     }
 }
 
