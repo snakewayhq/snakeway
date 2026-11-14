@@ -20,12 +20,12 @@ request_rate_limiting_device = {
 
 ## Field Reference
 
-| Field                     | Type            | Default | Description                                                                                     |
-|---------------------------|-----------------|---------|-------------------------------------------------------------------------------------------------|
-| `enable`                  | bool            | `false` | Enables the device.                                                                             |
-| `max_requests_per_second` | integer (u16)   | `20`    | The maximum average request rate allowed per client, expressed as requests per second.          |
-| `window_seconds`          | integer (u16)   | `5`     | The duration of the sliding window in seconds over which the average rate is calculated.        |
-| `paths`                   | list of strings | `[]`    | Path prefixes this device applies to. Empty means all paths. See [Path Scoping](#path-scoping). |
+| Field                     | Type            | Default    | Description                                                                                     |
+|---------------------------|-----------------|------------|-------------------------------------------------------------------------------------------------|
+| `enable`                  | bool            | (required) | Enables the device.                                                                             |
+| `max_requests_per_second` | integer (u16)   | (required) | The maximum average request rate allowed per client, expressed as requests per second.          |
+| `window_seconds`          | integer (u16)   | (required) | The duration of the sliding window in seconds over which the average rate is calculated.        |
+| `paths`                   | list of strings | `[]`       | Path prefixes this device applies to. Empty means all paths. See [Path Scoping](#path-scoping). |
 
 ## How the Sliding Window Works
 

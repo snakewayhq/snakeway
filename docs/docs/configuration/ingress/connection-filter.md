@@ -46,8 +46,8 @@ The `deny` list takes precedence over the `allow` list.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `ip_family.ipv4` | `boolean` | `false` | If `true`, IPv4 connections are allowed. |
-| `ip_family.ipv6` | `boolean` | `false` | If `true`, IPv6 connections are allowed. |
+| `ip_family.ipv4` | `boolean` | (required) | If `true`, IPv4 connections are allowed. |
+| `ip_family.ipv6` | `boolean` | (required) | If `true`, IPv6 connections are allowed. |
 
 :::note
 At least one of `ipv4` or `ipv6` must be `true`.
@@ -58,4 +58,4 @@ A config error will be reported if both are `false`.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `on_no_peer_addr` | `string` | `"allow"` | Controls the behavior when a connection arrives without a peer address. Accepts `"allow"` or `"deny"`. The default is permissive. Any connection is allowed. |
+| `on_no_peer_addr` | `string` | (required) | Controls the behavior when a connection arrives without a peer address. Accepts `"allow"` or `"deny"`. With `"allow"`, a connection without a peer address is accepted. |
