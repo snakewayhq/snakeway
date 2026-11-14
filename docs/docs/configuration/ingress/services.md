@@ -31,14 +31,18 @@ services = [
 ]
 ```
 
+The `health_check` block is optional.
+When you omit it, health checking stays off.
+When you write it, you must set `enable`, and the other fields fall back to the defaults in the field table below.
+
 ## Fields
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `name` | `string` | (required) | The service's unique name across all ingress files. HCL also accepts it as a block label: `services "api" { ... }`. |
 | `load_balancing_strategy` | `string` | `"failover"` | The load balancing strategy. See supported strategies below. |
-| `health_check.enable` | `boolean` | `true` | Enable health checking for upstreams. |
-| `health_check.failure_threshold` | `integer` | `5` | Number of consecutive failures before marking an upstream as unhealthy. |
+| `health_check.enable` | `boolean` | (required) | Enable health checking for upstreams. Required whenever you write the `health_check` block. |
+| `health_check.failure_threshold` | `integer` | `3` | Number of consecutive failures before marking an upstream as unhealthy. |
 | `health_check.unhealthy_cooldown_seconds` | `integer` | `10` | Seconds to wait before re-checking an unhealthy upstream. |
 | `circuit_breaker` | `object` | (optional) | Circuit breaker configuration. See [Circuit Breaker](circuit-breaker.md). |
 | `routes` | `list(object)` | (required) | Route matching rules. See [Routes](routes.md). |
