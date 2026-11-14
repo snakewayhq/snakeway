@@ -43,6 +43,19 @@ impl TrafficManager {
                 .unwrap_or(false)
         });
 
+        // Cleanup latency measurements
+        self.latency_stats.retain(|(service_id, upstream_id), _| {
+            new_snapshot
+                .services
+                .get(service_id)
+                .map(|svc| {
+                    svc.upstreams
+                        .iter()
+                        .any(|u| u.endpoint.id() == *upstream_id)
+                })
+                .unwrap_or(false)
+        });
+
         // Cleanup total counters
         self.total_requests.retain(|(service_id, upstream_id), _| {
             new_snapshot

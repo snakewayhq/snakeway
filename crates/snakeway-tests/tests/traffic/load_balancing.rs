@@ -92,6 +92,60 @@ fn failover_sends_all_to_first_upstream() {
     );
 }
 
+/// The admin view reports a measured latency for the upstream that served traffic, and none for the idle one.
+#[test]
+fn admin_upstreams_reports_latency_only_for_an_upstream_that_served_traffic() {
+    // Arrange
+    let mut cfg = build_lb_config("failover");
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+    let admin = admin_client();
+    for _ in 0..5 {
+        let res = srv.get("/api").send().unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    // Act
+    let body = admin
+        .get(format!("{}/admin/upstreams", srv.admin_url()))
+        .send()
+        .unwrap()
+        .text()
+        .unwrap();
+
+    // Assert
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let upstreams = json["services"]["api"]
+        .as_object()
+        .expect("the api service should be listed");
+    assert_eq!(upstreams.len(), 2, "should have 2 upstreams; body: {body}");
+    let busy: Vec<_> = upstreams
+        .values()
+        .filter(|v| v["total_requests"].as_u64() == Some(5))
+        .collect();
+    let idle: Vec<_> = upstreams
+        .values()
+        .filter(|v| v["total_requests"].as_u64() == Some(0))
+        .collect();
+    assert_eq!(
+        busy.len(),
+        1,
+        "failover should send every request to one upstream; body: {body}"
+    );
+    assert_eq!(
+        idle.len(),
+        1,
+        "failover should leave one upstream idle; body: {body}"
+    );
+    assert!(
+        busy[0]["latency_ms"].is_u64(),
+        "the upstream that served traffic should report a latency; body: {body}"
+    );
+    assert!(
+        idle[0]["latency_ms"].is_null(),
+        "the idle upstream should report no latency; body: {body}"
+    );
+}
+
 /// Round-robin distributes requests across upstreams.
 #[test]
 fn round_robin_distributes_across_upstreams() {

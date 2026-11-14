@@ -69,7 +69,6 @@ mod tests {
                 tls: None,
                 weight: 1,
             }),
-            latency: None,
             weight: 1,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &service_id.0,
@@ -121,6 +120,34 @@ mod tests {
     }
 
     #[test]
+    fn a_reload_that_removes_the_upstream_drops_its_latency() {
+        // Arrange
+        let (manager, service_id, upstream_id, _) = one_upstream();
+        manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
+
+        // Act
+        manager.update(TrafficSnapshot::default());
+
+        // Assert
+        assert!(manager.latency_stats.is_empty());
+    }
+
+    #[test]
+    fn a_reload_that_keeps_the_upstream_keeps_its_latency() {
+        // Arrange
+        let (manager, service_id, upstream_id, upstream_snapshot) = one_upstream();
+        manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
+        let unchanged = manager.snapshot().as_ref().clone();
+
+        // Act
+        manager.update(unchanged);
+
+        // Assert
+        let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
+        assert_eq!(view.latency_ms, Some(100));
+    }
+
+    #[test]
     fn test_admin_view_counters() {
         let service_id = ServiceId("test_svc".into());
         let upstream_port: u16 = 8080;
@@ -136,7 +163,6 @@ mod tests {
                 tls: None,
                 weight: 1,
             }),
-            latency: None,
             weight: 1,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &service_id.0,
@@ -197,7 +223,6 @@ mod tests {
                 tls: None,
                 weight: 1,
             }),
-            latency: None,
             weight: 1,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &service_id.0,
@@ -268,7 +293,6 @@ mod tests {
                         tls: None,
                         weight: 1,
                     }),
-                    latency: None,
                     weight: 1,
                     metric_attributes:
                         crate::execution::traffic::snapshot::upstream_metric_attributes(
@@ -319,7 +343,6 @@ mod tests {
                         tls: None,
                         weight: 1,
                     }),
-                    latency: None,
                     weight: 1,
                     metric_attributes:
                         crate::execution::traffic::snapshot::upstream_metric_attributes(

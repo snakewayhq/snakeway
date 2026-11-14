@@ -8,7 +8,6 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct UpstreamSnapshot {
     pub endpoint: UpstreamRuntime,
-    pub(crate) latency: Option<LatencyStats>,
     pub(crate) weight: u32,
     pub(crate) metric_attributes: [KeyValue; 2],
 }
@@ -74,7 +73,6 @@ impl TrafficSnapshot {
                 .iter()
                 .map(|u| UpstreamSnapshot {
                     endpoint: u.clone(),
-                    latency: None,
                     weight: u.weight(),
                     metric_attributes: upstream_metric_attributes(&service_name, u.id()),
                 })

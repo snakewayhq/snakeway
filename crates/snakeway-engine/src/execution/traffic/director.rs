@@ -119,9 +119,6 @@ mod tests {
                 tls: None,
                 weight: 1,
             }),
-            latency: Some(LatencyStats {
-                ewma: Duration::from_millis(10),
-            }),
             weight: 1,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &std::sync::Arc::from("test"),

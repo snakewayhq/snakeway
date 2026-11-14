@@ -121,7 +121,6 @@ mod tests {
                 tls: None,
                 weight,
             }),
-            latency: None,
             weight,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &std::sync::Arc::from("test"),

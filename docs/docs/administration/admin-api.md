@@ -127,6 +127,9 @@ curl http://localhost:8081/admin/upstreams
   "services": {
     "api": {
       "127.0.0.1:8080": {
+        "endpoint": "127.0.0.1:8080",
+        "weight": 1,
+        "latency_ms": 12,
         "health": {
           "healthy": true
         },
@@ -138,7 +141,7 @@ curl http://localhost:8081/admin/upstreams
         "circuit_params": {
           "enabled": true,
           "failure_threshold": 5,
-          "open_duration_ms": 10000,
+          "open_duration_milliseconds": 10000,
           "half_open_max_requests": 1,
           "success_threshold": 2,
           "count_http_5xx_as_failure": true
@@ -156,6 +159,10 @@ curl http://localhost:8081/admin/upstreams
 ```
 
 The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
+
+The `latency_ms` field is a moving average of the time each successful request to that upstream took, in milliseconds.
+Recent requests count more than older ones.
+It is `null` until the upstream has served a successful request.
 
 ### `GET /admin/stats`
 

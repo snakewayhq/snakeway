@@ -312,6 +312,10 @@ mod tests {
     fn a_passed_through_body_does_not_allocate() {
         // Arrange
         let mut chunk = Some(Bytes::from_static(b"payload"));
+        let warm_up = policy::BodyResult {
+            action: BodyAction::Passthrough,
+        };
+        let _ = apply_body_result(Some("req-3"), &mut chunk, warm_up);
         let result = policy::BodyResult {
             action: BodyAction::Passthrough,
         };
@@ -330,6 +334,11 @@ mod tests {
     fn a_request_that_continues_does_not_allocate() {
         // Arrange
         let mut ctx = ctx_with_id("req-1");
+        let warm_up = policy::RequestResult {
+            action: Action::Continue,
+            patch: None,
+        };
+        let _ = apply_request_result(&mut ctx, warm_up);
         let result = policy::RequestResult {
             action: Action::Continue,
             patch: None,

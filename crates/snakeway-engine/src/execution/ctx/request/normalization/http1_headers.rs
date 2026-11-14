@@ -3,20 +3,6 @@ use crate::execution::ctx::request::normalization::{NormalizationOutcome, Rewrit
 use http::{HeaderMap, HeaderValue};
 use smallvec::SmallVec;
 
-/// Normalizes HTTP headers according to RFC 9110 and RFC 9112.
-///
-/// This function performs the following operations:
-/// 1. Extracts and processes Connection header tokens (RFC 9110 §7.6.1)
-/// 2. Rejects hop-by-hop headers that must not be forwarded
-/// 3. Canonicalizes header names to lowercase (RFC 9110 §5.1)
-/// 4. Validates header values for proper encoding (RFC 9110 §5.5)
-/// 5. Folds duplicate headers with comma-separation (RFC 9110 §5.3)
-///
-/// # Security Considerations
-/// - Rejects headers containing NUL bytes to prevent header injection attacks
-/// - Validates all header names and values are properly encoded
-/// - Strips hop-by-hop headers to prevent protocol confusion
-#[hotpath::measure]
 /// Splits the Connection header into its tokens.
 /// Returns `None` when the value is not visible ASCII.
 fn connection_tokens(raw: &HeaderMap) -> Option<SmallVec<[&str; 4]>> {
@@ -33,6 +19,20 @@ fn connection_tokens(raw: &HeaderMap) -> Option<SmallVec<[&str; 4]>> {
     Some(tokens)
 }
 
+/// Normalizes HTTP headers according to RFC 9110 and RFC 9112.
+///
+/// This function performs the following operations:
+/// 1. Extracts and processes Connection header tokens (RFC 9110 §7.6.1)
+/// 2. Rejects hop-by-hop headers that must not be forwarded
+/// 3. Canonicalizes header names to lowercase (RFC 9110 §5.1)
+/// 4. Validates header values for proper encoding (RFC 9110 §5.5)
+/// 5. Folds duplicate headers with comma-separation (RFC 9110 §5.3)
+///
+/// # Security Considerations
+/// - Rejects headers containing NUL bytes to prevent header injection attacks
+/// - Validates all header names and values are properly encoded
+/// - Strips hop-by-hop headers to prevent protocol confusion
+#[hotpath::measure]
 pub(crate) fn normalize_http1_headers(raw: &HeaderMap) -> NormalizationOutcome<NormalizedHeaders> {
     let mut rewritten = false;
     let mut out = HeaderMap::new();
@@ -477,5 +477,4 @@ mod tests {
             RewriteReason::HeaderCanonicalization,
         );
     }
-
 }
