@@ -69,11 +69,11 @@ snakeway config check /etc/snakeway
 If the configuration is valid, the command reports a summary:
 
 ```shell
-✔ Config loaded successfully
-✔ 3 routes
-✔ 1 services
-✔ 1 upstreams
-✔ 2 devices enabled
+Config loaded successfully
+3 routes
+1 services
+2 upstreams
+2 devices enabled
 ```
 
 If validation fails, the command lists each error:
