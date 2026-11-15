@@ -42,7 +42,7 @@ ahash = { workspace = true }
 dashmap = { workspace = true }
 chrono = { workspace = true }
 pretty_assertions = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
+uuid = { workspace = true, features = ["v4", "fast-rng"] }
 smallvec = { workspace = true }
 opentelemetry = { workspace = true }
 hotpath = { workspace = true }
