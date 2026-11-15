@@ -143,6 +143,11 @@ impl TrafficManager {
             match &*entry {
                 HealthState::Healthy => true,
 
+                HealthState::Unhealthy {
+                    consecutive_failures,
+                    ..
+                } if *consecutive_failures < health_params.failure_threshold => true,
+
                 HealthState::Unhealthy { last_failure, .. }
                     if last_failure.elapsed() > health_params.unhealthy_cooldown =>
                 {
@@ -226,7 +231,9 @@ mod tests {
     fn with_health_checks_on_a_success_restores_an_unhealthy_upstream() {
         // Arrange
         let (manager, service, upstream) = manager(true);
-        manager.report_failure(&service, &upstream);
+        for _ in 0..3 {
+            manager.report_failure(&service, &upstream);
+        }
         assert!(!manager.health_status(&service, &upstream).healthy);
 
         // Act
@@ -313,5 +320,31 @@ mod tests {
             Some(CircuitState::Open)
         );
         assert!(manager.circuit_allows(&service, &upstream));
+    }
+
+    #[test]
+    fn an_upstream_stays_healthy_until_its_failures_reach_the_threshold() {
+        // Arrange
+        let (manager, service, upstream) = manager(true);
+        manager.report_failure(&service, &upstream);
+        manager.report_failure(&service, &upstream);
+        let below_threshold = manager.health_status(&service, &upstream).healthy;
+
+        // Act
+        manager.report_failure(&service, &upstream);
+
+        // Assert
+        assert!(below_threshold);
+        assert!(!manager.health_status(&service, &upstream).healthy);
+        assert!(matches!(
+            *manager
+                .upstream_health
+                .get(&(service.clone(), upstream))
+                .unwrap(),
+            HealthState::Unhealthy {
+                consecutive_failures: 3,
+                ..
+            }
+        ));
     }
 }
