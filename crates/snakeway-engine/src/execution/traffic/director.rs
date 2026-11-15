@@ -140,7 +140,7 @@ mod tests {
                 strategy,
                 upstreams,
                 circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig {
-                    enable_auto_recovery: true,
+                    enable: true,
                     failure_threshold: 3,
                     open_duration_milliseconds: 10000,
                     half_open_max_requests: 1,
@@ -404,7 +404,7 @@ mod tests {
         // Update manager with circuit params (simulating TrafficManager::update)
         let svc_snapshot = snapshot.services.get(&service_id).unwrap();
         let params = CircuitBreakerParams {
-            enable_auto_recovery: svc_snapshot.circuit_breaker_cfg.enable_auto_recovery,
+            enable: svc_snapshot.circuit_breaker_cfg.enable,
             failure_threshold: svc_snapshot.circuit_breaker_cfg.failure_threshold,
             open_duration: Duration::from_millis(
                 svc_snapshot.circuit_breaker_cfg.open_duration_milliseconds,

@@ -51,7 +51,7 @@ fn circuit_breaker_starts_closed() {
         .with_custom_ingress(vec![ServiceSpec {
             name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
-                enable_auto_recovery: Located::detached(true),
+                enable: Located::detached(true),
                 failure_threshold: Located::detached(3),
                 open_duration_milliseconds: Located::detached(5000),
                 half_open_max_requests: Located::detached(1),
@@ -114,7 +114,7 @@ fn circuit_breaker_trips_open_after_connection_failures() {
         .with_custom_ingress(vec![ServiceSpec {
             name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
-                enable_auto_recovery: Located::detached(true),
+                enable: Located::detached(true),
                 failure_threshold: Located::detached(2),
                 open_duration_milliseconds: Located::detached(30000),
                 half_open_max_requests: Located::detached(1),
@@ -179,7 +179,7 @@ fn circuit_breaker_recovers_through_half_open_to_closed() {
         .with_custom_ingress(vec![ServiceSpec {
             name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
-                enable_auto_recovery: Located::detached(true),
+                enable: Located::detached(true),
                 failure_threshold: Located::detached(2),
                 open_duration_milliseconds: Located::detached(500),
                 half_open_max_requests: Located::detached(2),
@@ -270,7 +270,7 @@ fn circuit_breaker_stays_closed_under_concurrent_successful_load() {
         .with_custom_ingress(vec![ServiceSpec {
             name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
-                enable_auto_recovery: Located::detached(true),
+                enable: Located::detached(true),
                 failure_threshold: Located::detached(10),
                 open_duration_milliseconds: Located::detached(5000),
                 half_open_max_requests: Located::detached(1),
@@ -337,7 +337,7 @@ fn circuit_breaker_trips_open_on_5xx_responses() {
         .with_custom_ingress(vec![ServiceSpec {
             name: Located::detached("api".to_string()),
             circuit_breaker: Some(Located::detached(CircuitBreakerSpec {
-                enable_auto_recovery: Located::detached(true),
+                enable: Located::detached(true),
                 failure_threshold: Located::detached(2),
                 open_duration_milliseconds: Located::detached(30000),
                 half_open_max_requests: Located::detached(1),

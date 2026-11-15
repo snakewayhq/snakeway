@@ -5,7 +5,7 @@ use tracing::info;
 
 #[derive(Debug, Clone)]
 pub(crate) struct CircuitBreakerParams {
-    pub(crate) enable_auto_recovery: bool,
+    pub(crate) enable: bool,
     pub(crate) failure_threshold: u32,
     pub(crate) open_duration: Duration,
     pub(crate) half_open_max_requests: u32,
@@ -60,6 +60,12 @@ impl CircuitBreaker {
         ids: (&ServiceId, &UpstreamId),
         p: &CircuitBreakerParams,
     ) -> bool {
+        // Nothing trips the circuit while the circuit breaker is off, so any state left from an
+        // earlier config has no meaning.
+        if !p.enable {
+            return true;
+        }
+
         match self.state {
             CircuitState::Closed => true,
 
@@ -73,12 +79,6 @@ impl CircuitBreaker {
                 };
 
                 if opened_at.elapsed() >= p.open_duration {
-                    // Circuit disabled = no auto recovery
-                    if !p.enable_auto_recovery {
-                        // remain open until external reset (health)
-                        return false;
-                    }
-
                     // Promote to half-open and allow probes.
                     let old_state = self.state;
                     self.state = CircuitState::HalfOpen;
@@ -123,7 +123,7 @@ impl CircuitBreaker {
         started: bool,
         success: bool,
     ) {
-        if !p.enable_auto_recovery {
+        if !p.enable {
             return;
         }
 
@@ -222,7 +222,7 @@ mod tests {
 
     fn params() -> CircuitBreakerParams {
         CircuitBreakerParams {
-            enable_auto_recovery: true,
+            enable: true,
             failure_threshold: 3,
             open_duration: Duration::from_millis(100),
             half_open_max_requests: 1,
@@ -334,7 +334,7 @@ mod tests {
     fn test_cb_disabled() {
         let mut cb = CircuitBreaker::new();
         let mut p = params();
-        p.enable_auto_recovery = false;
+        p.enable = false;
         let ids = ids();
         let ids_ref = (&ids.0, &ids.1);
 
@@ -345,5 +345,26 @@ mod tests {
         cb.on_request_end(ids_ref, &p, true, false);
         assert_eq!(cb.state(), CircuitState::Closed);
         assert!(cb.allow_request(ids_ref, &p));
+    }
+
+    #[test]
+    fn an_open_circuit_admits_requests_when_the_circuit_breaker_is_off() {
+        // Arrange
+        let mut cb = CircuitBreaker::new();
+        let mut p = params();
+        let ids = ids();
+        let ids_ref = (&ids.0, &ids.1);
+        for _ in 0..3 {
+            cb.on_request_end(ids_ref, &p, true, false);
+        }
+        assert_eq!(cb.state(), CircuitState::Open);
+        p.enable = false;
+
+        // Act
+        let allowed = cb.allow_request(ids_ref, &p);
+
+        // Assert
+        assert!(allowed);
+        assert_eq!(cb.half_open_in_flight, 0);
     }
 }

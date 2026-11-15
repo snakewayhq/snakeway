@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize, Default, confval::Config)]
 #[confval(lower_from = CircuitBreakerSpec)]
 pub struct CircuitBreakerConfig {
-    pub enable_auto_recovery: bool,
+    pub enable: bool,
     #[confval(lower(from = failure_threshold, with = narrow::i64_to_u32))]
     pub failure_threshold: u32,
     #[confval(lower(from = open_duration_milliseconds, with = narrow::i64_to_u64))]
@@ -26,7 +26,7 @@ mod tests {
     fn lower_maps_all_fields() {
         // Arrange
         let spec = CircuitBreakerSpec {
-            enable_auto_recovery: Located::detached(true),
+            enable: Located::detached(true),
             failure_threshold: Located::detached(10),
             open_duration_milliseconds: Located::detached(5000),
             half_open_max_requests: Located::detached(3),
@@ -38,7 +38,7 @@ mod tests {
         let config = CircuitBreakerConfig::lower(&spec, &mut Report::new()).unwrap();
 
         // Assert
-        assert!(config.enable_auto_recovery);
+        assert!(config.enable);
         assert_eq!(config.failure_threshold, 10);
         assert_eq!(config.open_duration_milliseconds, 5000);
         assert_eq!(config.half_open_max_requests, 3);

@@ -65,6 +65,7 @@ impl TrafficManager {
         } = *entry
             && consecutive_failures >= health_params.failure_threshold
             && let Some(params) = self.circuit_params.get(service_id)
+            && params.enable
         {
             let mut cb = self
                 .circuit
@@ -72,9 +73,6 @@ impl TrafficManager {
                 .or_default();
 
             if cb.state() != CircuitState::Open {
-                // Health failures are allowed to force the circuit open,
-                // even when auto-recovery is disabled. In that case, only
-                // health recovery can close it again.
                 cb.trip_open((service_id, upstream_id), &params, "health_failed");
             }
         }
@@ -175,6 +173,13 @@ mod tests {
     use std::collections::HashMap;
 
     fn manager(health_enabled: bool) -> (TrafficManager, ServiceId, UpstreamId) {
+        manager_with_cooldown(health_enabled, 10)
+    }
+
+    fn manager_with_cooldown(
+        health_enabled: bool,
+        unhealthy_cooldown_seconds: u64,
+    ) -> (TrafficManager, ServiceId, UpstreamId) {
         let service_id = ServiceId("api".into());
         let mut services = HashMap::new();
         services.insert(
@@ -187,7 +192,7 @@ mod tests {
                 health_check_cfg: HealthCheckConfig {
                     enable: health_enabled,
                     failure_threshold: 3,
-                    unhealthy_cooldown_seconds: 10,
+                    unhealthy_cooldown_seconds,
                 },
                 metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
                     &std::sync::Arc::from("test"),
@@ -286,5 +291,27 @@ mod tests {
         // Assert
         assert!(status.healthy);
         assert!(manager.upstream_health.is_empty());
+    }
+
+    #[test]
+    fn with_the_circuit_breaker_off_an_upstream_that_health_checks_remove_returns_after_the_cooldown()
+     {
+        // Arrange
+        let (manager, service, upstream) = manager_with_cooldown(true, 0);
+        for _ in 0..3 {
+            manager.report_failure(&service, &upstream);
+        }
+        std::thread::sleep(Duration::from_millis(5));
+
+        // Act
+        let healthy = manager.health_status(&service, &upstream).healthy;
+
+        // Assert
+        assert!(healthy);
+        assert_ne!(
+            manager.circuit_state(&service, &upstream),
+            Some(CircuitState::Open)
+        );
+        assert!(manager.circuit_allows(&service, &upstream));
     }
 }

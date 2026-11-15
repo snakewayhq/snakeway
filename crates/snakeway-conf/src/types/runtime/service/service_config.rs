@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(config.circuit_breaker.open_duration_milliseconds, 10_000);
         assert_eq!(config.circuit_breaker.half_open_max_requests, 1);
         assert_eq!(config.circuit_breaker.success_threshold, 2);
-        assert!(!config.circuit_breaker.enable_auto_recovery);
+        assert!(!config.circuit_breaker.enable);
     }
 
     #[test]
@@ -171,8 +171,8 @@ mod tests {
 
         // Assert
         assert_eq!(
-            from_absent.circuit_breaker.enable_auto_recovery,
-            from_explicit.circuit_breaker.enable_auto_recovery
+            from_absent.circuit_breaker.enable,
+            from_explicit.circuit_breaker.enable
         );
         assert_eq!(
             from_absent.circuit_breaker.failure_threshold,

@@ -30,7 +30,7 @@ pub(crate) struct CircuitBreakerParamsView {
 impl From<&CircuitBreakerParams> for CircuitBreakerParamsView {
     fn from(p: &CircuitBreakerParams) -> Self {
         Self {
-            enabled: p.enable_auto_recovery,
+            enabled: p.enable,
             failure_threshold: p.failure_threshold,
             open_duration_milliseconds: p.open_duration.as_millis() as u64,
             half_open_max_requests: p.half_open_max_requests,
@@ -238,7 +238,7 @@ mod tests {
                 strategy: LoadBalancingStrategy::RoundRobin,
                 upstreams: vec![upstream_snapshot.clone()],
                 circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig {
-                    enable_auto_recovery: true,
+                    enable: true,
                     failure_threshold: 2,
                     ..Default::default()
                 },
