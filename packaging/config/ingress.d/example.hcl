@@ -10,6 +10,7 @@ bind = {
 
 services = [
   {
+    name                    = "example"
     load_balancing_strategy = "failover"
 
     health_check = {
