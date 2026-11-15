@@ -9,12 +9,10 @@ use std::time::{Duration, Instant};
 /// Health API
 impl TrafficManager {
     pub(crate) fn report_failure(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
-        let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
-            unreachable!(
-                "health params missing for service {} — invariant violated",
-                service_id
-            )
-        });
+        // A reload can remove the service while one of its requests is still in flight.
+        let Some(health_params) = self.health_params.get(service_id) else {
+            return;
+        };
 
         let key = (service_id.clone(), *upstream_id);
 
@@ -131,12 +129,10 @@ impl TrafficManager {
 
     /// Determines whether an upstream may receive a request
     pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
-        let health_params = self.health_params.get(service_id).unwrap_or_else(|| {
-            unreachable!(
-                "health params missing for service {} — invariant violated",
-                service_id
-            )
-        });
+        // A reload can remove the service while one of its requests is still in flight.
+        let Some(health_params) = self.health_params.get(service_id) else {
+            return HealthStatus { healthy: true };
+        };
 
         if !health_params.enable {
             // Assume always healthy if health checks are disabled for this service.
@@ -260,5 +256,35 @@ mod tests {
             HealthState::Healthy
         ));
         assert!(manager.health_status(&service, &upstream).healthy);
+    }
+
+    #[test]
+    fn a_failure_reported_after_a_reload_removes_the_service_records_nothing() {
+        // Arrange
+        let (manager, service, upstream) = manager(true);
+        manager.update(TrafficSnapshot::default());
+
+        // Act
+        manager.report_failure(&service, &upstream);
+
+        // Assert
+        assert_eq!(manager.total_failures(&service, &upstream), 0);
+        assert!(manager.total_failures.is_empty());
+        assert!(manager.upstream_health.is_empty());
+        assert!(manager.circuit.is_empty());
+    }
+
+    #[test]
+    fn a_service_that_a_reload_removes_reports_healthy() {
+        // Arrange
+        let (manager, service, upstream) = manager(true);
+        manager.update(TrafficSnapshot::default());
+
+        // Act
+        let status = manager.health_status(&service, &upstream);
+
+        // Assert
+        assert!(status.healthy);
+        assert!(manager.upstream_health.is_empty());
     }
 }
