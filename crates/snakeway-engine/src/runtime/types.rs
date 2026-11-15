@@ -88,15 +88,17 @@ impl UpstreamRuntime {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct UpstreamId(pub(crate) u32);
+pub struct UpstreamId(u64);
 
 impl UpstreamId {
-    pub fn new(id: u32) -> Self {
+    pub fn new(id: u64) -> Self {
         Self(id)
     }
+}
 
-    pub fn as_u32(&self) -> u32 {
-        self.0
+impl std::fmt::Display for UpstreamId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -219,7 +221,7 @@ mod tests {
     fn unix_upstream_without_tls_uses_localhost_authority() {
         // Arrange
         let upstream = UpstreamRuntime::Unix(UpstreamUnixRuntime {
-            id: UpstreamId(0),
+            id: UpstreamId::new(0),
             path: "/run/app.sock".to_string(),
             weight: 1,
             tls: None,
@@ -237,7 +239,7 @@ mod tests {
         // Arrange
         let addr: SocketAddr = "192.168.1.1:3000".parse().unwrap();
         let tcp = UpstreamTcpRuntime {
-            id: UpstreamId(0),
+            id: UpstreamId::new(0),
             host: "my-service".to_string(),
             port: 3000,
             resolved_addr: ResolvedAddr::new(addr),

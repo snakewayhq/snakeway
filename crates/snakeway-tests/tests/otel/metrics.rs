@@ -162,7 +162,7 @@ fn request_duration_histogram_records_after_proxied_request() {
                 assert!(
                     attrs
                         .get("upstream")
-                        .is_some_and(|id| id.parse::<u32>().is_ok()),
+                        .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit())),
                     "upstream attribute should be the numeric upstream id; attrs: {attrs:?}"
                 );
             }

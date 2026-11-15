@@ -68,7 +68,7 @@ impl TrafficProxy {
                 None => {
                     built = [
                         KeyValue::new("service", service_id.as_str().to_string()),
-                        KeyValue::new("upstream", upstream_id.as_u32().to_string()),
+                        KeyValue::new("upstream", upstream_id.to_string()),
                     ];
                     &built
                 }

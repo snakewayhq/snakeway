@@ -272,7 +272,7 @@ fn make_upstream_runtime_for_unix(
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
     static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
 
-    UpstreamId(HASHER.hash_one(addr) as u32)
+    UpstreamId::new(HASHER.hash_one(addr))
 }
 
 /// Converts a directory path to its full absolute path as a string.
@@ -383,5 +383,27 @@ mod tests {
         let tls = tcp.tls.expect("the upstream must use TLS");
         assert!(!tls.verify);
         assert!(tls.ca.is_none());
+    }
+
+    #[test]
+    fn upstream_ids_stay_unique_across_many_addresses() {
+        // Arrange
+        let addresses: Vec<UpstreamAddr> = (0..=255u16)
+            .flat_map(|a| (0..=255u16).map(move |b| (a, b)))
+            .flat_map(|(a, b)| {
+                (8001..=8004u16).map(move |port| UpstreamAddr::Tcp {
+                    host: format!("10.0.{a}.{b}"),
+                    port,
+                })
+            })
+            .collect();
+
+        // Act
+        let ids: std::collections::HashSet<UpstreamId> =
+            addresses.iter().map(make_upstream_id).collect();
+
+        // Assert
+        assert_eq!(addresses.len(), 262_144);
+        assert_eq!(ids.len(), addresses.len());
     }
 }

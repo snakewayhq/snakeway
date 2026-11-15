@@ -114,7 +114,7 @@ mod tests {
     fn weighted(id: u16, weight: u32) -> UpstreamSnapshot {
         UpstreamSnapshot {
             endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
-                id: UpstreamId(id as u32),
+                id: UpstreamId::new(id.into()),
                 host: "127.0.0.1".to_string(),
                 port: id,
                 resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], id).into()),
@@ -124,7 +124,7 @@ mod tests {
             weight,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &std::sync::Arc::from("test"),
-                crate::runtime::UpstreamId(id as u32),
+                crate::runtime::UpstreamId::new(id.into()),
             ),
         }
     }

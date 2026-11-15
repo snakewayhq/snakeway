@@ -199,7 +199,7 @@ mod tests {
             },
         );
         let manager = TrafficManager::new(TrafficSnapshot { services });
-        (manager, service_id, UpstreamId(1))
+        (manager, service_id, UpstreamId::new(1))
     }
 
     #[test]

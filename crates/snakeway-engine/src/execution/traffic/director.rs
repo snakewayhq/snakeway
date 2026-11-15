@@ -112,7 +112,7 @@ mod tests {
     fn upstream(id: u16) -> UpstreamSnapshot {
         UpstreamSnapshot {
             endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
-                id: UpstreamId(id as u32),
+                id: UpstreamId::new(id.into()),
                 host: "127.0.0.1".to_string(),
                 port: id,
                 resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], id).into()),
@@ -122,7 +122,7 @@ mod tests {
             weight: 1,
             metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
                 &std::sync::Arc::from("test"),
-                crate::runtime::UpstreamId(id as u32),
+                crate::runtime::UpstreamId::new(id.into()),
             ),
         }
     }
@@ -182,7 +182,7 @@ mod tests {
 
         // Assert
         assert_eq!(allocations, 0);
-        assert_eq!(decision.unwrap().upstream_id, UpstreamId(1));
+        assert_eq!(decision.unwrap().upstream_id, UpstreamId::new(1));
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
 
         // Assert
         assert_eq!(allocations, 0);
-        assert_eq!(decision.unwrap().upstream_id, UpstreamId(1));
+        assert_eq!(decision.unwrap().upstream_id, UpstreamId::new(1));
     }
 
     #[test]
@@ -251,13 +251,13 @@ mod tests {
         let director = TrafficDirector;
 
         // Mark all upstreams unhealthy
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
 
-        manager.report_failure(&service_id, &UpstreamId(2));
-        manager.report_failure(&service_id, &UpstreamId(2));
-        manager.report_failure(&service_id, &UpstreamId(2));
+        manager.report_failure(&service_id, &UpstreamId::new(2));
+        manager.report_failure(&service_id, &UpstreamId::new(2));
+        manager.report_failure(&service_id, &UpstreamId::new(2));
 
         // Act
         let result = director.decide(&dummy_request(), &snapshot, &service_id, &manager);
@@ -287,9 +287,9 @@ mod tests {
         let director = TrafficDirector;
 
         // Mark upstream 1 unhealthy
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
 
         // Act
         let decision = director
@@ -297,7 +297,7 @@ mod tests {
             .expect("decision");
 
         // Assert
-        assert_eq!(decision.upstream_id, UpstreamId(2));
+        assert_eq!(decision.upstream_id, UpstreamId::new(2));
     }
 
     #[test]
@@ -339,7 +339,7 @@ mod tests {
             .expect("decision");
 
         // Assert
-        assert_eq!(decision.upstream_id, UpstreamId(10));
+        assert_eq!(decision.upstream_id, UpstreamId::new(10));
         assert_eq!(decision.reason, DecisionReason::Failover);
     }
 
@@ -385,7 +385,7 @@ mod tests {
             });
 
         // Assert
-        assert_eq!(decision.upstream_id, UpstreamId(10));
+        assert_eq!(decision.upstream_id, UpstreamId::new(10));
         assert_eq!(decision.reason, DecisionReason::NoStrategyDecision);
     }
 
@@ -418,9 +418,9 @@ mod tests {
             .insert(service_id.clone(), std::sync::Arc::new(params));
 
         // Trip circuit for upstream 1
-        manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
-        manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
-        manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
+        manager.circuit_on_end(&service_id, &UpstreamId::new(1), true, false);
+        manager.circuit_on_end(&service_id, &UpstreamId::new(1), true, false);
+        manager.circuit_on_end(&service_id, &UpstreamId::new(1), true, false);
 
         // Act
         let decision = director
@@ -429,6 +429,6 @@ mod tests {
 
         // Assert
         // Should pick upstream 2 because 1's circuit is open
-        assert_eq!(decision.upstream_id, UpstreamId(2));
+        assert_eq!(decision.upstream_id, UpstreamId::new(2));
     }
 }

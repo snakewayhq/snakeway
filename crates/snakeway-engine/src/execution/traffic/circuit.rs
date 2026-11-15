@@ -232,7 +232,7 @@ mod tests {
     }
 
     fn ids() -> (ServiceId, UpstreamId) {
-        (ServiceId("test".into()), UpstreamId(1))
+        (ServiceId("test".into()), UpstreamId::new(1))
     }
 
     #[test]

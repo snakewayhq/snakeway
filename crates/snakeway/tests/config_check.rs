@@ -199,3 +199,34 @@ fn check_json_counts_upstreams_separately_from_services() {
         })
     );
 }
+
+#[test]
+fn check_rejects_a_duplicate_upstream_endpoint_in_one_service() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cfg = tmp.path().join("cfg");
+    init_one_service_with_two_upstreams(&cfg);
+    let ingress = cfg.join("ingress.d").join("httpbin.hcl");
+    let text = std::fs::read_to_string(&ingress).expect("read ingress file");
+    std::fs::write(&ingress, text.replace("port = 4001", "port = 4000"))
+        .expect("write ingress file");
+
+    // Act
+    let out = snakeway()
+        .args(["config", "check", "--format", "plain"])
+        .arg(&cfg)
+        .output()
+        .expect("run config check");
+
+    // Assert
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("httpbin.hcl:27:5: error: duplicate upstream endpoint: 127.0.0.1:4000"),
+        "the error must point at the second endpoint: {stderr}"
+    );
+    assert!(
+        stderr.contains("httpbin.hcl:19:5") && stderr.contains("first declared here"),
+        "the error must point at the first endpoint: {stderr}"
+    );
+}

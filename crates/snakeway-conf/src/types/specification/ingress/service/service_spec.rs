@@ -3,7 +3,7 @@ use crate::types::{
 };
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServiceSpec {
@@ -48,6 +48,7 @@ impl Validate for ServiceSpec {
         }
 
         let mut seen_sock_values = HashSet::new();
+        let mut seen_endpoints = HashMap::new();
 
         for upstream in &self.upstreams {
             if let (Some(sock), Some(endpoint)) = (&upstream.value.sock, &upstream.value.endpoint) {
@@ -83,6 +84,25 @@ impl Validate for ServiceSpec {
                     ))
                     .at(sock.value.path.span)
                     .emit();
+            }
+
+            if let Some(endpoint) = &upstream.value.endpoint {
+                let key = (
+                    endpoint.value.host.value.to_ascii_lowercase(),
+                    endpoint.value.port.value,
+                );
+                if let Some(first) = seen_endpoints.get(&key) {
+                    report
+                        .error(format!(
+                            "duplicate upstream endpoint: {}:{}",
+                            endpoint.value.host.value, endpoint.value.port.value
+                        ))
+                        .at(endpoint.span)
+                        .related(*first, "first declared here")
+                        .emit();
+                } else {
+                    seen_endpoints.insert(key, endpoint.span);
+                }
             }
         }
     }
@@ -238,6 +258,81 @@ mod tests {
         // Assert
         let error = report.issues().first().expect("expected an error");
         assert!(error.message.contains("duplicate upstream sock"));
+    }
+
+    fn endpoint_upstream(host: &str, port: i64) -> Located<UpstreamSpec> {
+        Located::detached(UpstreamSpec {
+            endpoint: Some(Located::detached(EndpointSpec {
+                host: Located::detached(host.to_string()),
+                port: Located::detached(port),
+                tls: None,
+            })),
+            sock: None,
+            weight: Located::detached(1),
+        })
+    }
+
+    #[test]
+    fn duplicate_upstream_endpoints_within_service() {
+        // Arrange
+        let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
+            upstreams: vec![
+                endpoint_upstream("10.0.0.1", 3000),
+                endpoint_upstream("10.0.0.2", 3000),
+                endpoint_upstream("10.0.0.1", 3000),
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        let messages: Vec<&str> = report.issues().iter().map(|e| e.message.as_str()).collect();
+        assert_eq!(messages, ["duplicate upstream endpoint: 10.0.0.1:3000"]);
+    }
+
+    #[test]
+    fn upstream_endpoint_hosts_that_differ_only_in_case_are_duplicates() {
+        // Arrange
+        let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
+            upstreams: vec![
+                endpoint_upstream("app.example.com", 3000),
+                endpoint_upstream("App.Example.com", 3000),
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        let messages: Vec<&str> = report.issues().iter().map(|e| e.message.as_str()).collect();
+        assert_eq!(
+            messages,
+            ["duplicate upstream endpoint: App.Example.com:3000"]
+        );
+    }
+
+    #[test]
+    fn upstream_endpoints_on_the_same_host_with_different_ports_are_accepted() {
+        // Arrange
+        let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
+            upstreams: vec![
+                endpoint_upstream("10.0.0.1", 3000),
+                endpoint_upstream("10.0.0.1", 3001),
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 
     fn sock_service(sock: SockSpec) -> ServiceSpec {

@@ -48,7 +48,7 @@ pub(crate) fn upstream_metric_attributes(
 ) -> [KeyValue; 2] {
     [
         service_metric_attribute(service),
-        KeyValue::new("upstream", Arc::<str>::from(upstream.as_u32().to_string())),
+        KeyValue::new("upstream", Arc::<str>::from(upstream.to_string())),
     ]
 }
 
@@ -105,7 +105,7 @@ mod tests {
         let service: Arc<str> = Arc::from("api");
 
         // Act
-        let attributes = upstream_metric_attributes(&service, UpstreamId(4_000_000_001));
+        let attributes = upstream_metric_attributes(&service, UpstreamId::new(4_000_000_001));
 
         // Assert
         assert_eq!(attributes[0].key.as_str(), "service");
@@ -118,7 +118,7 @@ mod tests {
     fn cloning_cached_metric_attributes_does_not_allocate() {
         // Arrange
         let service: Arc<str> = Arc::from("api");
-        let attributes = upstream_metric_attributes(&service, UpstreamId(7));
+        let attributes = upstream_metric_attributes(&service, UpstreamId::new(7));
         let service_attribute = service_metric_attribute(&service);
 
         // Act

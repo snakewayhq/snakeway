@@ -59,7 +59,7 @@ mod tests {
 
     fn one_upstream() -> (TrafficManager, ServiceId, UpstreamId, UpstreamSnapshot) {
         let service_id = ServiceId("test_svc".into());
-        let upstream_id = UpstreamId(8080);
+        let upstream_id = UpstreamId::new(8080);
         let upstream_snapshot = UpstreamSnapshot {
             endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
                 id: upstream_id,
@@ -151,7 +151,7 @@ mod tests {
     fn test_admin_view_counters() {
         let service_id = ServiceId("test_svc".into());
         let upstream_port: u16 = 8080;
-        let upstream_id = UpstreamId(upstream_port.into());
+        let upstream_id = UpstreamId::new(upstream_port.into());
         let upstream_host = "127.0.0.1".to_string();
         let upstream_label = format!("{}:{}", upstream_host, upstream_port);
         let upstream_snapshot = UpstreamSnapshot {
@@ -211,7 +211,7 @@ mod tests {
     fn test_admin_view_circuit_details() {
         let service_id = ServiceId("test_svc".into());
         let upstream_port: u16 = 8080;
-        let upstream_id = UpstreamId(upstream_port.into());
+        let upstream_id = UpstreamId::new(upstream_port.into());
         let upstream_host = "127.0.0.1".to_string();
         let upstream_label = format!("{}:{}", upstream_host, upstream_port);
         let upstream_snapshot = UpstreamSnapshot {
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn test_metrics_persistence_on_reload() {
         let service_id = ServiceId("test_svc".into());
-        let upstream_id = UpstreamId(8080);
+        let upstream_id = UpstreamId::new(8080);
 
         let mut services = HashMap::new();
         services.insert(
@@ -328,7 +328,7 @@ mod tests {
 
         // Reload with different upstream
         let mut services2 = HashMap::new();
-        let upstream_id2 = UpstreamId(8081);
+        let upstream_id2 = UpstreamId::new(8081);
         services2.insert(
             service_id.clone(),
             ServiceSnapshot {
