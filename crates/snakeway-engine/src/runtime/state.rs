@@ -13,27 +13,19 @@ use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
 use snakeway_acme::{CertManager, SniRegistry};
-use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
-use snakeway_conf::{load_config, types::RuntimeConfig};
+use snakeway_conf::types::{
+    RouteConfig, RuntimeConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
 pub async fn reload_runtime_state(
-    config_path: &Path,
+    config: &RuntimeConfig,
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,
-) -> Result<RuntimeConfig, ReloadError> {
-    let validated = load_config(config_path)?;
-
-    if validated.has_warnings() {
-        let mut out = String::new();
-        validated.render_plain(&mut out);
-        tracing::warn!("{out}");
-    }
-
-    let config = validated.config;
-    let new_state = build_runtime_state(&config, cert_manager)?;
+) -> Result<(), ReloadError> {
+    let new_state = build_runtime_state(config, cert_manager)?;
 
     // Log comparison against current state.
     let old = state.load();
@@ -57,7 +49,7 @@ pub async fn reload_runtime_state(
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
-    Ok(config)
+    Ok(())
 }
 
 /// Constructs the complete runtime state from configuration.
@@ -85,7 +77,7 @@ pub fn build_runtime_state(
     tracing::debug!("Loaded device count = {}", devices.all().len());
 
     // Services
-    let global_ca_file = cfg.server.ca_file.as_deref().map(Path::new);
+    let global_ca_file: Option<&Path> = cfg.server.ca_file.as_ref().map(Path::new);
     let services = build_runtime_services(&cfg.services, global_ca_file)?;
 
     Ok(RuntimeState {

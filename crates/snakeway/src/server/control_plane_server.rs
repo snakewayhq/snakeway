@@ -225,7 +225,7 @@ impl ControlPlaneServer {
                 let config_path = config_path.clone();
                 let traffic = Arc::clone(&self.traffic_manager);
                 let cert_manager_for_reload = self.cert_manager.clone();
-                let mut current_config = self.config.clone();
+                let current_config = self.config.clone();
 
                 async move {
                     info!("Reload loop started");
@@ -303,16 +303,14 @@ impl ControlPlaneServer {
                         }
 
                         // Runtime-only change: apply in-process via ArcSwap.
-                        match reload_runtime_state(&config_path, &state, &cert_manager_for_reload)
+                        match reload_runtime_state(&new_config, &state, &cert_manager_for_reload)
                             .await
                         {
-                            Ok(reloaded_runtime_cfg) => {
+                            Ok(_) => {
                                 info!("reload successful");
 
-                                current_config = reloaded_runtime_cfg.clone();
-
                                 if let Some(manager) = &cert_manager_for_reload {
-                                    manager.reload(Arc::new(reloaded_runtime_cfg));
+                                    manager.reload(Arc::new(new_config));
                                 }
 
                                 let new_snapshot =
