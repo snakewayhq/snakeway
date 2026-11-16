@@ -41,13 +41,14 @@ rand = { workspace = true }
 ahash = { workspace = true }
 dashmap = { workspace = true }
 chrono = { workspace = true }
-pretty_assertions = { workspace = true }
 uuid = { workspace = true, features = ["v4", "fast-rng"] }
 smallvec = { workspace = true }
 opentelemetry = { workspace = true }
 hotpath = { workspace = true }
+
 [dev-dependencies]
 criterion = { workspace = true }
+pretty_assertions = { workspace = true }
 rcgen = { workspace = true }
 tempfile = { workspace = true }
 

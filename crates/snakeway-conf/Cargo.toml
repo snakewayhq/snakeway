@@ -21,8 +21,6 @@ x509-parser = { workspace = true }
 http = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
-hcl-rs = { workspace = true }
-tempfile = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 smallvec = { workspace = true }
@@ -32,7 +30,5 @@ sha2 = { workspace = true }
 subtle = { workspace = true }
 
 [dev-dependencies]
+tempfile = { workspace = true }
 rcgen = { workspace = true }
-
-[package.metadata.cargo-machete]
-ignored = ["hcl-rs"]
