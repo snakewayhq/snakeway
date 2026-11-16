@@ -6,7 +6,7 @@ use serde::Serialize;
 pub struct AdminUpstreamView {
     pub(crate) endpoint: String,
     pub(crate) weight: u32,
-    pub(crate) latency_ms: Option<u64>,
+    pub(crate) latency_milliseconds: Option<u64>,
     pub(crate) health: HealthStatus,
     pub(crate) circuit: CircuitState,
     pub(crate) active_requests: u64,
@@ -104,7 +104,7 @@ mod tests {
         let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
 
         // Assert
-        assert_eq!(view.latency_ms, Some(200));
+        assert_eq!(view.latency_milliseconds, Some(200));
     }
 
     #[test]
@@ -116,7 +116,7 @@ mod tests {
         let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
 
         // Assert
-        assert_eq!(view.latency_ms, None);
+        assert_eq!(view.latency_milliseconds, None);
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod tests {
 
         // Assert
         let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
-        assert_eq!(view.latency_ms, Some(100));
+        assert_eq!(view.latency_milliseconds, Some(100));
     }
 
     #[test]

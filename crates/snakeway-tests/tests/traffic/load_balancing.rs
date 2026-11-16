@@ -137,11 +137,11 @@ fn admin_upstreams_reports_latency_only_for_an_upstream_that_served_traffic() {
         "failover should leave one upstream idle; body: {body}"
     );
     assert!(
-        busy[0]["latency_ms"].is_u64(),
+        busy[0]["latency_milliseconds"].is_u64(),
         "the upstream that served traffic should report a latency; body: {body}"
     );
     assert!(
-        idle[0]["latency_ms"].is_null(),
+        idle[0]["latency_milliseconds"].is_null(),
         "the idle upstream should report no latency; body: {body}"
     );
 }
