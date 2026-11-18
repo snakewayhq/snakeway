@@ -131,6 +131,10 @@ Maximum number of retries when connecting to or accepting on the upgrade socket 
 Each retry waits one second.
 Valid range: `1` to `60`.
 
+:::danger
+`upgrade.max_retries` currently has no effect when set. This is due to a bug in Pingora. See [pingora#1012](https://github.com/cloudflare/pingora/pull/1012).
+::: 
+
 See the [Hot Reload internals](../../internals/hot-reload) page for details on how the upgrade mechanism works.
 
 ## Performance
