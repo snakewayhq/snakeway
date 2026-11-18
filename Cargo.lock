@@ -4484,6 +4484,7 @@ dependencies = [
  "http",
  "httpdate",
  "mime_guess",
+ "nix 0.32.0",
  "opentelemetry",
  "percent-encoding",
  "pingora",
