@@ -92,7 +92,7 @@ pub(crate) fn run(args: RouteSolveArgs) {
     let state = match build_runtime_state(&config, &None) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("error: failed to build runtime state: {}", e);
+            eprintln!("error: failed to build runtime state: {e:#}");
             process::exit(EXIT_CONFIG_FAILURE);
         }
     };
