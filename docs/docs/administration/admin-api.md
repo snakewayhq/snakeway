@@ -91,7 +91,7 @@ This mirrors the guidance published by the [Envoy project](https://www.envoyprox
 
 ### `GET /admin/health`
 
-Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream health checks and circuit breaker state.
+Reports process liveness.
 
 ```shell
 curl http://localhost:8081/admin/health
@@ -101,16 +101,13 @@ curl http://localhost:8081/admin/health
 
 ```json
 {
-  "status": "healthy"
+  "status": "ok"
 }
 ```
 
-**Error responses:**
-
-| Status                    | Meaning                                       |
-|---------------------------|-----------------------------------------------|
-| `200 OK`                  | Instance is healthy.                          |
-| `503 Service Unavailable` | One or more critical upstreams are unhealthy. |
+The endpoint returns `200 OK` while the process is running.
+It does not inspect upstream health or circuit breaker state.
+For per-upstream health, use `GET /admin/upstreams`.
 
 ### `GET /admin/upstreams`
 
@@ -176,27 +173,44 @@ curl http://localhost:8081/admin/stats
 
 ```json
 {
-  "api": {
-    "active_requests": 5,
-    "total_failures": 12,
-    "total_requests": 1500,
-    "total_successes": 1488
+  "traffic": {
+    "api": {
+      "active_requests": 5,
+      "total_failures": 12,
+      "total_requests": 1500,
+      "total_successes": 1488
+    },
+    "static": {
+      "active_requests": 0,
+      "total_failures": 0,
+      "total_requests": 450,
+      "total_successes": 450
+    }
   },
-  "static": {
-    "active_requests": 0,
-    "total_failures": 0,
-    "total_requests": 450,
-    "total_successes": 450
-  }
+  "websocket": [
+    {
+      "route_id": {
+        "kind": "Service",
+        "path": "/chat",
+        "target": "chat"
+      },
+      "active": 3,
+      "max": 100
+    }
+  ]
 }
 ```
+
+`traffic` holds the counters for each service.
+`websocket` holds the connection count for each WebSocket route that has served a connection.
+`active` is the number of open connections, and `max` is the configured limit, or `null` when there is no limit.
 
 **Metrics per service:**
 
 | Metric            | Description                                                              |
 |-------------------|--------------------------------------------------------------------------|
 | `active_requests` | Number of requests currently in flight.                                  |
-| `total_requests`  | Cumulative requests handled since last restart or reload.                |
+| `total_requests`  | Cumulative requests handled for this service. A reload keeps the count when the service and its upstreams stay in the configuration. |
 | `total_successes` | Requests that resulted in a successful response (typically 2xx and 3xx). |
 | `total_failures`  | Requests that resulted in an error (4xx, 5xx, or connection failures).   |
 
@@ -221,12 +235,10 @@ curl -X POST http://localhost:8081/admin/reload
 The `epoch` number identifies this reload request.
 To learn how the reload finished, use `GET /admin/reload`.
 
-**Error responses:**
-
-| Status            | Meaning                                                                        |
-|-------------------|--------------------------------------------------------------------------------|
-| `200 OK`          | Reload was successfully initiated.                                             |
-| `400 Bad Request` | Configuration validation failed. The response body contains the error message. |
+This endpoint always returns `200 OK` for a valid request.
+A reload that fails after the request returns is reported by `GET /admin/reload` as `load_failed` or `build_failed`.
+A change that needs a new process is reported as `rejected` or `upgrade_started`.
+Apart from the `401 Unauthorized` described in [Authentication](#authentication), the only other response is `405 Method Not Allowed` for a method other than `GET` or `POST`.
 
 ### `GET /admin/reload`
 
@@ -344,11 +356,11 @@ When an upstream's circuit state changes, Snakeway emits a structured log event:
 ## Using the Admin API for monitoring
 
 The `/admin/stats` and `/admin/upstreams` endpoints are designed to be polled by monitoring systems.
-A simple health check script might look like this:
+A simple monitoring script might look like this:
 
 ```shell
-# Check overall health
-curl -sf http://localhost:8081/admin/health || echo "Snakeway is unhealthy"
+# Check that the process is running
+curl -sf http://localhost:8081/admin/health || echo "Snakeway is not running"
 
 # Fetch stats for a Prometheus exporter or custom dashboard
 curl -s http://localhost:8081/admin/stats | jq .
@@ -357,5 +369,6 @@ curl -s http://localhost:8081/admin/stats | jq .
 curl -s http://localhost:8081/admin/upstreams | jq '.services.api'
 ```
 
-Stats counters reset on process restart or successful configuration reload.
+Stats counters are kept across a reload for every upstream that stays in the configuration.
+A counter resets when its upstream or service leaves the configuration, or when the process restarts.
 For long-term trend analysis, export the counters to an external time-series database at a regular polling interval.
