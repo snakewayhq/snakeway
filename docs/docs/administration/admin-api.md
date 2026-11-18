@@ -270,7 +270,8 @@ curl http://localhost:8081/admin/reload
 
 A rejected reload has one of two reasons.
 `restart_required` means that `settings` lists `pid_file` or `upgrade.sock`, which only a restart can change.
-`upgrade_unsupported` means that the change needs a zero-drop upgrade and Snakeway is not running on Linux.
+`upgrade_unsupported` means that the change needs a zero-drop upgrade, and Snakeway cannot start one.
+That happens when Snakeway does not run on Linux, or when `server.pid_file` is not set.
 
 ### `GET /admin/certs`
 

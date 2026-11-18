@@ -53,7 +53,7 @@ This path handles changes to:
 - `upgrade.max_retries`
 
 A zero-drop upgrade needs Linux, a `pid_file`, and the same `upgrade.sock` in the old and the new process.
-On other platforms, a reload that needs an upgrade is rejected, and the running process keeps its configuration.
+On other platforms, or without a `pid_file`, a reload that needs an upgrade is rejected, and the running process keeps its configuration.
 
 ### 3. Restart
 

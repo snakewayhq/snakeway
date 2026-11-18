@@ -1,5 +1,6 @@
 use pingora::server::configuration::ServerConf;
 use snakeway_conf::types::{ListenerConfig, RuntimeConfig};
+use std::path::Path;
 
 #[derive(Debug, PartialEq)]
 pub enum ConfigChangeKind {
@@ -70,6 +71,14 @@ pub fn plan_reload(change: ConfigChangeKind, upgrade_supported: bool) -> ReloadP
             settings,
         },
     }
+}
+
+/// Whether this platform and configuration can start a zero-drop upgrade.
+///
+/// The new process reads the old process id from `pid_file`. Without that file, the child fails
+/// during the handover, so the reload must be rejected before a new process starts.
+pub fn upgrade_is_supported(is_linux: bool, pid_file: &Path) -> bool {
+    is_linux && !pid_file.as_os_str().is_empty()
 }
 
 /// The running process uses these settings to hand its listeners to a new process, so an
@@ -668,6 +677,42 @@ mod tests {
                 settings: vec![]
             }
         );
+    }
+
+    #[test]
+    fn upgrade_is_supported_on_linux_with_a_pid_file() {
+        // Arrange
+        let pid_file = PathBuf::from("/run/snakeway.pid");
+
+        // Act
+        let supported = upgrade_is_supported(true, &pid_file);
+
+        // Assert
+        assert!(supported);
+    }
+
+    #[test]
+    fn upgrade_is_unsupported_off_linux() {
+        // Arrange
+        let pid_file = PathBuf::from("/run/snakeway.pid");
+
+        // Act
+        let supported = upgrade_is_supported(false, &pid_file);
+
+        // Assert
+        assert!(!supported);
+    }
+
+    #[test]
+    fn upgrade_is_unsupported_without_a_pid_file() {
+        // Arrange
+        let pid_file = PathBuf::new();
+
+        // Act
+        let supported = upgrade_is_supported(true, &pid_file);
+
+        // Assert
+        assert!(!supported);
     }
 
     #[test]

@@ -264,15 +264,28 @@ impl ControlPlaneServer {
                         let new_config = validated.config;
 
                         use snakeway_engine::runtime::diff::{
-                            ReloadPlan, classify_config_change, plan_reload,
+                            ReloadPlan, RejectReason, classify_config_change, plan_reload,
+                            upgrade_is_supported,
                         };
                         let change = classify_config_change(&current_config, &new_config);
-                        match plan_reload(change, cfg!(target_os = "linux")) {
+                        let upgrade_supported = upgrade_is_supported(
+                            cfg!(target_os = "linux"),
+                            &new_config.server.pid_file,
+                        );
+                        match plan_reload(change, upgrade_supported) {
                             ReloadPlan::Reject { reason, settings } => {
+                                let message = match reason {
+                                    RejectReason::RestartRequired => {
+                                        "reload rejected, restart Snakeway to apply this change"
+                                    }
+                                    RejectReason::UpgradeUnsupported => {
+                                        "reload rejected, a zero-drop upgrade needs Linux and server.pid_file"
+                                    }
+                                };
                                 error!(
                                     reason = reason.as_str(),
                                     settings = ?settings,
-                                    "reload rejected, restart Snakeway to apply this change"
+                                    "{message}"
                                 );
                                 reload.record_outcome(
                                     epoch,
