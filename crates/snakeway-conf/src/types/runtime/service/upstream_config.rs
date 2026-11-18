@@ -41,6 +41,17 @@ pub struct UpstreamUnixConfig {
     pub tls: Option<UpstreamTlsConfig>,
 }
 
+/// One upstream in the order the operator declared it.
+///
+/// Failover and the other strategies read this list in order, so a service that mixes socket and
+/// endpoint upstreams keeps the order from its configuration.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum UpstreamConfig {
+    Tcp(UpstreamTcpConfig),
+    Unix(UpstreamUnixConfig),
+}
+
 /// Build an upstream config without performing DNS resolution.
 ///
 /// Hostnames are preserved in the URL so that Pingora resolves them lazily

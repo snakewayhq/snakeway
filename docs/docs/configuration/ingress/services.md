@@ -50,7 +50,7 @@ When you write it, you must set `enable`, and the other fields fall back to the 
 
 ## Load Balancing Strategies
 
-- `failover`: Always picks the first healthy upstream in the list.
+- `failover`: Always picks the first healthy upstream in the list. The list follows the order in your configuration, across socket and endpoint upstreams.
 - `round_robin`: Distributes requests evenly across upstreams.
   Respects the `weight` field on each upstream.
 - `request_pressure`: Picks the upstream with the lowest recent request pressure (heuristic-based, not transport-level).

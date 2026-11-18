@@ -14,7 +14,8 @@ use arc_swap::ArcSwap;
 use http::Uri;
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{
-    RouteConfig, RuntimeConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    RouteConfig, RuntimeConfig, ServiceConfig, UpstreamConfig, UpstreamTcpConfig,
+    UpstreamUnixConfig,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -107,24 +108,14 @@ fn build_runtime_services(
     let mut out = HashMap::new();
 
     for (name, svc) in services {
-        let mut upstreams = svc
-            .tcp_upstreams
+        let upstreams = svc
+            .upstreams
             .iter()
-            .map(|u| {
-                let rt = make_upstream_runtime_from_tcp(u, global_ca_file)?;
-                Ok(rt)
+            .map(|upstream| match upstream {
+                UpstreamConfig::Tcp(tcp) => make_upstream_runtime_from_tcp(tcp, global_ca_file),
+                UpstreamConfig::Unix(unix) => make_upstream_runtime_for_unix(unix, global_ca_file),
             })
             .collect::<Result<Vec<_>>>()?;
-
-        upstreams.extend(
-            svc.unix_upstreams
-                .iter()
-                .map(|u| {
-                    let rt = make_upstream_runtime_for_unix(u, global_ca_file)?;
-                    Ok(rt)
-                })
-                .collect::<Result<Vec<_>>>()?,
-        );
 
         out.insert(
             name.clone(),

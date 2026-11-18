@@ -1,7 +1,7 @@
-use crate::types::runtime::service::upstream_config::UpstreamTcpConfig;
+use crate::types::runtime::service::upstream_config::{UpstreamConfig, UpstreamTcpConfig};
 use crate::types::{
     CircuitBreakerConfig, CircuitBreakerSpec, HealthCheckConfig, HealthCheckSpec,
-    LoadBalancingStrategy, ServiceSpec, UpstreamUnixConfig,
+    LoadBalancingStrategy, ServiceSpec,
 };
 use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
@@ -13,8 +13,8 @@ pub struct ServiceConfig {
     pub listener: String,
     /// Load balancing strategy
     pub load_balancing_strategy: LoadBalancingStrategy,
-    pub tcp_upstreams: Vec<UpstreamTcpConfig>,
-    pub unix_upstreams: Vec<UpstreamUnixConfig>,
+    /// Upstreams in declaration order, across every upstream kind.
+    pub upstreams: Vec<UpstreamConfig>,
     pub circuit_breaker: CircuitBreakerConfig,
     pub health_check: HealthCheckConfig,
 }
@@ -23,8 +23,7 @@ impl ServiceConfig {
     pub fn new(
         name: &str,
         listener: &str,
-        tcp_upstreams: Vec<UpstreamTcpConfig>,
-        unix_upstreams: Vec<UpstreamUnixConfig>,
+        upstreams: Vec<UpstreamConfig>,
         spec: &ServiceSpec,
         report: &mut Report,
     ) -> Option<Self> {
@@ -51,11 +50,26 @@ impl ServiceConfig {
             name: name.to_string(),
             listener: listener.to_string(),
             load_balancing_strategy: strategy,
-            tcp_upstreams,
-            unix_upstreams,
+            upstreams,
             circuit_breaker,
             health_check,
         })
+    }
+
+    pub fn tcp_upstreams(&self) -> impl Iterator<Item = &UpstreamTcpConfig> + '_ {
+        self.upstreams.iter().filter_map(|upstream| match upstream {
+            UpstreamConfig::Tcp(tcp) => Some(tcp),
+            UpstreamConfig::Unix(_) => None,
+        })
+    }
+
+    pub fn tcp_upstreams_mut(&mut self) -> impl Iterator<Item = &mut UpstreamTcpConfig> + '_ {
+        self.upstreams
+            .iter_mut()
+            .filter_map(|upstream| match upstream {
+                UpstreamConfig::Tcp(tcp) => Some(tcp),
+                UpstreamConfig::Unix(_) => None,
+            })
     }
 }
 
@@ -76,15 +90,8 @@ mod tests {
         };
 
         // Act
-        let config = ServiceConfig::new(
-            "my-svc",
-            "my-listener",
-            vec![],
-            vec![],
-            &spec,
-            &mut Report::new(),
-        )
-        .unwrap();
+        let config =
+            ServiceConfig::new("my-svc", "my-listener", vec![], &spec, &mut Report::new()).unwrap();
 
         // Assert
         assert_eq!(config.name, "my-svc");
@@ -93,8 +100,7 @@ mod tests {
             config.load_balancing_strategy,
             LoadBalancingStrategy::RoundRobin
         ));
-        assert!(config.tcp_upstreams.is_empty());
-        assert!(config.unix_upstreams.is_empty());
+        assert!(config.upstreams.is_empty());
     }
 
     fn service_spec_with(
@@ -112,15 +118,7 @@ mod tests {
     }
 
     fn lower(spec: &ServiceSpec) -> ServiceConfig {
-        ServiceConfig::new(
-            "my-svc",
-            "my-listener",
-            vec![],
-            vec![],
-            spec,
-            &mut Report::new(),
-        )
-        .unwrap()
+        ServiceConfig::new("my-svc", "my-listener", vec![], spec, &mut Report::new()).unwrap()
     }
 
     #[test]

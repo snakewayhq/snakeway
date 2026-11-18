@@ -13,7 +13,10 @@ use std::time::Duration;
 
 fn extract_upstream_port(cfg: &RuntimeConfig) -> u16 {
     let svc = cfg.services.values().next().expect("no services in config");
-    let url: url::Url = svc.tcp_upstreams[0]
+    let url: url::Url = svc
+        .tcp_upstreams()
+        .next()
+        .expect("no tcp upstream in config")
         .url
         .parse()
         .expect("invalid upstream URL");

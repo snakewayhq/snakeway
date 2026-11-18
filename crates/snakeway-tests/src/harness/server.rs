@@ -124,7 +124,7 @@ impl TestServer {
         let upstream_ports = cfg
             .services
             .values()
-            .flat_map(|c| c.tcp_upstreams.iter())
+            .flat_map(|c| c.tcp_upstreams())
             .map(|_| start_upstream())
             .collect::<Vec<_>>();
 

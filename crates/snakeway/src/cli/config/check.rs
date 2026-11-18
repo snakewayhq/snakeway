@@ -21,11 +21,7 @@ pub(crate) fn check(
             }
 
             let cfg = &validated.config;
-            let upstreams: usize = cfg
-                .services
-                .values()
-                .map(|s| s.tcp_upstreams.len() + s.unix_upstreams.len())
-                .sum();
+            let upstreams: usize = cfg.services.values().map(|s| s.upstreams.len()).sum();
             if matches!(format, ConfigCheckOutputFormat::Json) {
                 let success_info = serde_json::json!({
                     "status": "success",
