@@ -8,14 +8,14 @@ use std::cell::Cell;
 struct CountingAllocator;
 
 thread_local! {
-    static TRACKING: Cell<bool> = const { Cell::new(false) };
-    static COUNT: Cell<usize> = const { Cell::new(0) };
+    static IS_COUNTING_ALLOCATIONS: Cell<bool> = const { Cell::new(false) };
+    static ALLOCATION_COUNT: Cell<usize> = const { Cell::new(0) };
 }
 
-fn record() {
-    let _ = TRACKING.try_with(|tracking| {
+fn count_allocation_if_tracking() {
+    let _ = IS_COUNTING_ALLOCATIONS.try_with(|tracking| {
         if tracking.get() {
-            let _ = COUNT.try_with(|count| count.set(count.get() + 1));
+            let _ = ALLOCATION_COUNT.try_with(|count| count.set(count.get() + 1));
         }
     });
 }
@@ -23,17 +23,17 @@ fn record() {
 // SAFETY: every method delegates to the system allocator with the same arguments.
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        record();
+        count_allocation_if_tracking();
         unsafe { System.alloc(layout) }
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        record();
+        count_allocation_if_tracking();
         unsafe { System.alloc_zeroed(layout) }
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        record();
+        count_allocation_if_tracking();
         unsafe { System.realloc(ptr, layout, new_size) }
     }
 
@@ -47,11 +47,11 @@ static GLOBAL: CountingAllocator = CountingAllocator;
 
 /// Runs `f` and returns its result with the number of allocations and reallocations it made.
 pub(crate) fn count_allocations<R>(f: impl FnOnce() -> R) -> (R, usize) {
-    COUNT.with(|count| count.set(0));
-    TRACKING.with(|tracking| tracking.set(true));
+    ALLOCATION_COUNT.with(|count| count.set(0));
+    IS_COUNTING_ALLOCATIONS.with(|tracking| tracking.set(true));
     let result = f();
-    TRACKING.with(|tracking| tracking.set(false));
-    (result, COUNT.with(Cell::get))
+    IS_COUNTING_ALLOCATIONS.with(|tracking| tracking.set(false));
+    (result, ALLOCATION_COUNT.with(Cell::get))
 }
 
 #[cfg(test)]

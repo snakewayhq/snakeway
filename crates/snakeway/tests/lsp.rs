@@ -9,7 +9,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::time::Duration;
 
-fn frame(payload: &serde_json::Value) -> Vec<u8> {
+fn encode_lsp_frame(payload: &serde_json::Value) -> Vec<u8> {
     let body = payload.to_string();
     format!("Content-Length: {}\r\n\r\n{body}", body.len()).into_bytes()
 }
@@ -28,7 +28,7 @@ fn spawn_reader(child: &mut Child) -> mpsc::Receiver<serde_json::Value> {
                 break;
             }
             data.extend_from_slice(&buffer[..count]);
-            while let Some((message, rest)) = next_frame(&data) {
+            while let Some((message, rest)) = decode_next_lsp_frame(&data) {
                 let _ = sender.send(message);
                 data = rest;
             }
@@ -37,7 +37,7 @@ fn spawn_reader(child: &mut Child) -> mpsc::Receiver<serde_json::Value> {
     receiver
 }
 
-fn next_frame(data: &[u8]) -> Option<(serde_json::Value, Vec<u8>)> {
+fn decode_next_lsp_frame(data: &[u8]) -> Option<(serde_json::Value, Vec<u8>)> {
     let header_end = data.windows(4).position(|w| w == b"\r\n\r\n")?;
     let header = std::str::from_utf8(&data[..header_end]).ok()?;
     let length: usize = header
@@ -76,18 +76,18 @@ fn lsp_diagnostics_match_config_check_for_a_device_document() {
 
     // Act
     stdin
-        .write_all(&frame(&serde_json::json!({
+        .write_all(&encode_lsp_frame(&serde_json::json!({
             "jsonrpc": "2.0", "id": 1, "method": "initialize",
             "params": { "capabilities": {} }
         })))
         .unwrap();
     stdin
-        .write_all(&frame(&serde_json::json!({
+        .write_all(&encode_lsp_frame(&serde_json::json!({
             "jsonrpc": "2.0", "method": "initialized", "params": {}
         })))
         .unwrap();
     stdin
-        .write_all(&frame(&serde_json::json!({
+        .write_all(&encode_lsp_frame(&serde_json::json!({
             "jsonrpc": "2.0", "method": "textDocument/didOpen",
             "params": { "textDocument": {
                 "uri": "file:///cfg/device.d/rate_limit.hcl",

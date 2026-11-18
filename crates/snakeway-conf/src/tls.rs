@@ -147,7 +147,7 @@ mod tests {
     const BAD_CERT_BLOCK: &str =
         "-----BEGIN CERTIFICATE-----\naW52YWxpZA==\n-----END CERTIFICATE-----\n";
 
-    fn der_of(pem: &str) -> Vec<u8> {
+    fn pem_to_der(pem: &str) -> Vec<u8> {
         let (_, parsed) =
             x509_parser::pem::parse_x509_pem(pem.as_bytes()).expect("fixture must be PEM");
         parsed.contents
@@ -260,7 +260,7 @@ mod tests {
         // Assert
         let certs = result.expect("the certificate must parse");
         assert_eq!(certs.len(), 1);
-        assert_eq!(certs[0].as_ref(), der_of(EC_CERT).as_slice());
+        assert_eq!(certs[0].as_ref(), pem_to_der(EC_CERT).as_slice());
     }
 
     #[test]
@@ -274,8 +274,8 @@ mod tests {
         // Assert
         let certs = result.expect("both certificates must parse");
         assert_eq!(certs.len(), 2);
-        assert_eq!(certs[0].as_ref(), der_of(RSA_CERT).as_slice());
-        assert_eq!(certs[1].as_ref(), der_of(EC_CERT).as_slice());
+        assert_eq!(certs[0].as_ref(), pem_to_der(RSA_CERT).as_slice());
+        assert_eq!(certs[1].as_ref(), pem_to_der(EC_CERT).as_slice());
     }
 
     #[test]
@@ -314,8 +314,8 @@ mod tests {
         // Assert
         let certs = result.expect("a bundle of certificates must parse");
         assert_eq!(certs.len(), 2);
-        assert_eq!(certs[0].as_ref(), der_of(RSA_CERT).as_slice());
-        assert_eq!(certs[1].as_ref(), der_of(EC_CERT).as_slice());
+        assert_eq!(certs[0].as_ref(), pem_to_der(RSA_CERT).as_slice());
+        assert_eq!(certs[1].as_ref(), pem_to_der(EC_CERT).as_slice());
     }
 
     #[test]
@@ -329,7 +329,7 @@ mod tests {
         // Assert
         let certs = result.expect("a section with another label must be skipped");
         assert_eq!(certs.len(), 1);
-        assert_eq!(certs[0].as_ref(), der_of(EC_CERT).as_slice());
+        assert_eq!(certs[0].as_ref(), pem_to_der(EC_CERT).as_slice());
     }
 
     #[test]
@@ -462,7 +462,7 @@ mod tests {
         // Assert
         let certified = result.expect("a PKCS#1 RSA pair must build");
         assert_eq!(certified.cert.len(), 1);
-        assert_eq!(certified.cert[0].as_ref(), der_of(RSA_CERT).as_slice());
+        assert_eq!(certified.cert[0].as_ref(), pem_to_der(RSA_CERT).as_slice());
     }
 
     #[test]
@@ -477,7 +477,7 @@ mod tests {
         // Assert
         let certified = result.expect("a SEC1 EC pair must build");
         assert_eq!(certified.cert.len(), 1);
-        assert_eq!(certified.cert[0].as_ref(), der_of(EC_CERT).as_slice());
+        assert_eq!(certified.cert[0].as_ref(), pem_to_der(EC_CERT).as_slice());
     }
 
     #[test]

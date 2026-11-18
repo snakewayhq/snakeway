@@ -177,7 +177,7 @@ mod tests {
     use snakeway_conf::types::{CircuitBreakerConfig, HealthCheckConfig, LoadBalancingStrategy};
     use std::collections::HashMap;
 
-    fn manager(health_enabled: bool) -> (TrafficManager, ServiceId, UpstreamId) {
+    fn manager_with_one_upstream(health_enabled: bool) -> (TrafficManager, ServiceId, UpstreamId) {
         manager_with_cooldown(health_enabled, 10)
     }
 
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn with_health_checks_off_a_success_records_no_health_state() {
         // Arrange
-        let (manager, service, upstream) = manager(false);
+        let (manager, service, upstream) = manager_with_one_upstream(false);
 
         // Act
         manager.report_success(&service, &upstream, Duration::from_millis(5));
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn with_health_checks_on_a_success_restores_an_unhealthy_upstream() {
         // Arrange
-        let (manager, service, upstream) = manager(true);
+        let (manager, service, upstream) = manager_with_one_upstream(true);
         for _ in 0..3 {
             manager.report_failure(&service, &upstream);
         }
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn with_health_checks_on_a_first_success_records_a_healthy_state() {
         // Arrange
-        let (manager, service, upstream) = manager(true);
+        let (manager, service, upstream) = manager_with_one_upstream(true);
 
         // Act
         manager.report_success(&service, &upstream, Duration::from_millis(5));
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn a_failure_reported_after_a_reload_removes_the_service_records_nothing() {
         // Arrange
-        let (manager, service, upstream) = manager(true);
+        let (manager, service, upstream) = manager_with_one_upstream(true);
         manager.update(TrafficSnapshot::default());
 
         // Act
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn a_service_that_a_reload_removes_reports_healthy() {
         // Arrange
-        let (manager, service, upstream) = manager(true);
+        let (manager, service, upstream) = manager_with_one_upstream(true);
         manager.update(TrafficSnapshot::default());
 
         // Act
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn an_upstream_stays_healthy_until_its_failures_reach_the_threshold() {
         // Arrange
-        let (manager, service, upstream) = manager(true);
+        let (manager, service, upstream) = manager_with_one_upstream(true);
         manager.report_failure(&service, &upstream);
         manager.report_failure(&service, &upstream);
         let below_threshold = manager.health_status(&service, &upstream).healthy;

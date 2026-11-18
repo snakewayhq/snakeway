@@ -111,7 +111,7 @@ mod tests {
     use crate::execution::traffic::TrafficSnapshot;
     use crate::runtime::{ResolvedAddr, UpstreamRuntime, UpstreamTcpRuntime};
 
-    fn weighted(id: u16, weight: u32) -> UpstreamSnapshot {
+    fn upstream_snapshot_with_weight(id: u16, weight: u32) -> UpstreamSnapshot {
         UpstreamSnapshot {
             endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
                 id: UpstreamId::new(id.into()),
@@ -129,7 +129,7 @@ mod tests {
         }
     }
 
-    fn picks(
+    fn collect_wrr_indices(
         manager: &TrafficManager,
         service: &ServiceId,
         healthy: &[&UpstreamSnapshot],
@@ -145,11 +145,11 @@ mod tests {
         // Arrange
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let owned = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
         let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
 
         // Act
-        let order = picks(&manager, &service, &healthy, 7);
+        let order = collect_wrr_indices(&manager, &service, &healthy, 7);
 
         // Assert
         assert_eq!(order, vec![0, 0, 1, 0, 2, 0, 0]);
@@ -160,11 +160,11 @@ mod tests {
         // Arrange
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let owned = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
         let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
 
         // Act
-        let order = picks(&manager, &service, &healthy, 14);
+        let order = collect_wrr_indices(&manager, &service, &healthy, 14);
 
         // Assert
         assert_eq!(order, vec![0, 0, 1, 0, 2, 0, 0, 0, 0, 1, 0, 2, 0, 0]);
@@ -176,17 +176,17 @@ mod tests {
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let fresh = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned_before = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
-        let owned_after = [weighted(1, 5), weighted(4, 1)];
+        let owned_before = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
+        let owned_after = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(4, 1)];
         let before: Vec<&UpstreamSnapshot> = owned_before.iter().collect();
         let after: Vec<&UpstreamSnapshot> = owned_after.iter().collect();
-        picks(&manager, &service, &before, 3);
+        collect_wrr_indices(&manager, &service, &before, 3);
 
         // Act
-        let order = picks(&manager, &service, &after, 6);
+        let order = collect_wrr_indices(&manager, &service, &after, 6);
 
         // Assert
-        assert_eq!(order, picks(&fresh, &service, &after, 6));
+        assert_eq!(order, collect_wrr_indices(&fresh, &service, &after, 6));
         assert_eq!(order, vec![0, 0, 0, 1, 0, 0]);
     }
 
@@ -195,7 +195,7 @@ mod tests {
         // Arrange
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned = [weighted(1, 5), weighted(2, 1), weighted(3, 1)];
+        let owned = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
         let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
         manager.next_wrr_index(&service, &healthy);
 

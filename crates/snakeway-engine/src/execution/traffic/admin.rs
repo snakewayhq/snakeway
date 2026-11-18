@@ -57,7 +57,7 @@ mod tests {
     use std::collections::HashMap;
     use std::time::Duration;
 
-    fn one_upstream() -> (TrafficManager, ServiceId, UpstreamId, UpstreamSnapshot) {
+    fn manager_with_one_upstream() -> (TrafficManager, ServiceId, UpstreamId, UpstreamSnapshot) {
         let service_id = ServiceId("test_svc".into());
         let upstream_id = UpstreamId::new(8080);
         let upstream_snapshot = UpstreamSnapshot {
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn the_admin_view_reports_the_measured_latency() {
         // Arrange
-        let (manager, service_id, upstream_id, upstream_snapshot) = one_upstream();
+        let (manager, service_id, upstream_id, upstream_snapshot) = manager_with_one_upstream();
         manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
         manager.report_success(&service_id, &upstream_id, Duration::from_millis(600));
 
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn the_admin_view_reports_no_latency_before_any_success() {
         // Arrange
-        let (manager, service_id, _, upstream_snapshot) = one_upstream();
+        let (manager, service_id, _, upstream_snapshot) = manager_with_one_upstream();
 
         // Act
         let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn a_reload_that_removes_the_upstream_drops_its_latency() {
         // Arrange
-        let (manager, service_id, upstream_id, _) = one_upstream();
+        let (manager, service_id, upstream_id, _) = manager_with_one_upstream();
         manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
 
         // Act
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn a_reload_that_keeps_the_upstream_keeps_its_latency() {
         // Arrange
-        let (manager, service_id, upstream_id, upstream_snapshot) = one_upstream();
+        let (manager, service_id, upstream_id, upstream_snapshot) = manager_with_one_upstream();
         manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
         let unchanged = manager.snapshot().as_ref().clone();
 

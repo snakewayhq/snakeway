@@ -93,7 +93,7 @@ impl ReloadableServer {
         }
     }
 
-    fn status_of(&self, path: &str) -> StatusCode {
+    fn get_status_for_path(&self, path: &str) -> StatusCode {
         Client::builder()
             .timeout(Duration::from_secs(2))
             .build()
@@ -214,7 +214,7 @@ fn reload_status_reports_none_before_any_reload() {
 fn reload_applies_route_change() {
     // Arrange
     let srv = ReloadableServer::start();
-    assert_eq!(srv.status_of("/api"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
     write_api_ingress(srv.dir.path(), srv.listener_port, srv.upstream_port, "/v2");
 
     // Act
@@ -227,8 +227,8 @@ fn reload_applies_route_change() {
         body,
         serde_json::json!({ "epoch": epoch, "result": "applied" })
     );
-    assert_eq!(srv.status_of("/v2"), StatusCode::OK);
-    assert_eq!(srv.status_of("/api"), StatusCode::NOT_FOUND);
+    assert_eq!(srv.get_status_for_path("/v2"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::NOT_FOUND);
 }
 
 /// A reload that also changes `pid_file` is rejected as a whole, so the route change in the same
@@ -237,7 +237,7 @@ fn reload_applies_route_change() {
 fn reload_with_pid_file_change_is_rejected() {
     // Arrange
     let srv = ReloadableServer::start();
-    assert_eq!(srv.status_of("/api"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
     write_api_ingress(srv.dir.path(), srv.listener_port, srv.upstream_port, "/v2");
     write_snakeway_hcl(srv.dir.path(), &srv.dir.path().join("second.pid"));
 
@@ -256,6 +256,6 @@ fn reload_with_pid_file_change_is_rejected() {
             "settings": ["server.pid_file"],
         })
     );
-    assert_eq!(srv.status_of("/api"), StatusCode::OK);
-    assert_eq!(srv.status_of("/v2"), StatusCode::NOT_FOUND);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/v2"), StatusCode::NOT_FOUND);
 }
