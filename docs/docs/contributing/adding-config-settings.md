@@ -7,47 +7,11 @@ The subsystem is built on the **confval** crate (span-first parsing, validation,
 For the generic primitives see the [confval docs](https://ethanhann.com/confval).
 This page is the applied, Snakeway-specific recipe.
 
-Follow every step.
-Skipping one produces a compile error (the derives enforce spec and config parity at compile time) or a silent no-op.
-
 ## How the subsystem works
 
-Config loading is a strict, span-first pipeline:
+For background, read the [confval pipeline]( https://ethanhann.com/confval/docs/pipeline) doc page to become familiar with the overall configuration subsystem architecture.
 
-```mermaid
-%%{ init: { "flowchart": { "curve": "basis" } } }%%
-flowchart TD
-    files(["HCL files on disk"])
-    spec["<b>Spec types</b><br/>what the operator wrote · fields wrapped in Located&lt;T&gt;"]
-    report[("<b>Report</b><br/>errors and warnings, each with a source Span")]
-    gate{"Report has<br/>errors?"}
-    fail(["SemanticValidationFailed"])
-    config["<b>Config types</b><br/>what the proxy runs · fully typed"]
-
-    files -- "parse_hcl()" --> spec
-    spec -- "validate_spec()" --> report
-    report --> gate
-    gate -- "yes" --> fail
-    gate -- "no · Lower::lower()" --> config
-
-    classDef io stroke:#64748b,stroke-width:1.5px;
-    classDef data stroke:#6366f1,stroke-width:1.5px;
-    classDef diag stroke:#f59e0b,stroke-width:1.5px;
-    classDef bad stroke:#ef4444,stroke-width:1.5px;
-
-    class files io;
-    class spec,config data;
-    class report,gate diag;
-    class fail bad;
-```
-
-The error gate is strict: lowering never runs on a report with errors.
-
-Parsing is **structural only** (does the field exist, is it the right shape).
-Every semantic rule (ranges, closed sets, cross-field invariants) runs in the validate phase, so the operator sees every problem in one pass instead of one at a time.
-Each value has the byte `Span` it came from, so diagnostics point at the exact line and column.
-
-The orchestrating code:
+In Snakeway, this is the orchestration code that implements the confval pipeline:
 
 | File                                              | Role                                                           |
 |---------------------------------------------------|----------------------------------------------------------------|
@@ -55,12 +19,6 @@ The orchestrating code:
 | `crates/snakeway-conf/src/validation/validate.rs` | `validate_spec`: runs every validator, appending to the Report |
 | `crates/snakeway-conf/src/lower.rs`               | `lower_configs`: assembles the final `RuntimeConfig`           |
 | `crates/snakeway-conf/src/validation/error.rs`    | `ConfigError`, including `SemanticValidationFailed`            |
-
-:::note
-There is no `ValidationReport`, no `Origin`, and no `ValidateSpec` trait anymore.
-Diagnostics use `confval::diagnostic::Report`, spans live in `Located<T>`, and field-local validation uses the `confval::pipeline::Validate` trait.
-If you see those old names anywhere, they are stale.
-:::
 
 ## The two-type system: spec vs config
 
