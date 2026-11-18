@@ -244,12 +244,11 @@ impl ControlPlaneServer {
                         let validated = match snakeway_conf::load_config(&config_path) {
                             Ok(v) => v,
                             Err(e) => {
-                                error!(error = %e, "failed to reload config");
+                                let cause = format!("{e:#}");
+                                error!(error = %cause, "failed to reload config");
                                 reload.record_outcome(
                                     epoch,
-                                    ReloadOutcome::LoadFailed {
-                                        error: e.to_string(),
-                                    },
+                                    ReloadOutcome::LoadFailed { error: cause },
                                 );
                                 continue;
                             }
@@ -301,12 +300,11 @@ impl ControlPlaneServer {
                                         reload.record_outcome(epoch, ReloadOutcome::UpgradeStarted);
                                     }
                                     Err(e) => {
-                                        error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                                        let cause = format!("{e:#}");
+                                        error!(error = %cause, "zero-drop upgrade failed; old process continues serving");
                                         reload.record_outcome(
                                             epoch,
-                                            ReloadOutcome::UpgradeFailed {
-                                                error: e.to_string(),
-                                            },
+                                            ReloadOutcome::UpgradeFailed { error: cause },
                                         );
                                     }
                                 }
@@ -333,21 +331,19 @@ impl ControlPlaneServer {
                             }
                             Err(reload_err) => match reload_err {
                                 ReloadError::Load(e) => {
-                                    error!(error = %e, "failed to reload config");
+                                    let cause = format!("{e:#}");
+                                    error!(error = %cause, "failed to reload config");
                                     reload.record_outcome(
                                         epoch,
-                                        ReloadOutcome::LoadFailed {
-                                            error: e.to_string(),
-                                        },
+                                        ReloadOutcome::LoadFailed { error: cause },
                                     );
                                 }
                                 ReloadError::Build(e) => {
-                                    error!(error = %e, "failed to build runtime state");
+                                    let cause = format!("{e:#}");
+                                    error!(error = %cause, "failed to build runtime state");
                                     reload.record_outcome(
                                         epoch,
-                                        ReloadOutcome::BuildFailed {
-                                            error: e.to_string(),
-                                        },
+                                        ReloadOutcome::BuildFailed { error: cause },
                                     );
                                 }
                             },
