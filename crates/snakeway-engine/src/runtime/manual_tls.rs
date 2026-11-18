@@ -68,7 +68,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    fn listener(
+    fn manual_tls_listener(
         name: &str,
         addr: &str,
         tls_termination: Option<TlsTerminationConfig>,
@@ -87,7 +87,7 @@ mod tests {
         }
     }
 
-    fn write_pair(dir: &Path, name: &str) -> (PathBuf, PathBuf, Vec<u8>) {
+    fn write_cert_and_key_files(dir: &Path, name: &str) -> (PathBuf, PathBuf, Vec<u8>) {
         let generated = rcgen::generate_simple_self_signed(vec!["localhost".into()])
             .expect("failed to generate self-signed cert");
         let cert_path = dir.join(format!("{name}.pem"));
@@ -102,8 +102,8 @@ mod tests {
     fn load_manual_certs_keys_certificate_by_bind_address() {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let (cert, key, der) = write_pair(dir.path(), "traffic");
-        let listeners = vec![listener(
+        let (cert, key, der) = write_cert_and_key_files(dir.path(), "traffic");
+        let listeners = vec![manual_tls_listener(
             "traffic",
             "127.0.0.1:8443",
             Some(TlsTerminationConfig::Manual { cert, key }),
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn load_manual_certs_skips_listeners_without_manual_tls() {
         // Arrange
-        let listeners = vec![listener("plain", "127.0.0.1:8080", None)];
+        let listeners = vec![manual_tls_listener("plain", "127.0.0.1:8080", None)];
 
         // Act
         let result = load_manual_certs(&listeners);
@@ -142,9 +142,9 @@ mod tests {
     fn load_manual_certs_rejects_mismatched_key() {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let (cert, _, _) = write_pair(dir.path(), "first");
-        let (_, key, _) = write_pair(dir.path(), "second");
-        let listeners = vec![listener(
+        let (cert, _, _) = write_cert_and_key_files(dir.path(), "first");
+        let (_, key, _) = write_cert_and_key_files(dir.path(), "second");
+        let listeners = vec![manual_tls_listener(
             "traffic",
             "127.0.0.1:8443",
             Some(TlsTerminationConfig::Manual {
@@ -174,9 +174,9 @@ mod tests {
     fn load_manual_certs_reports_missing_certificate_file() {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let (_, key, _) = write_pair(dir.path(), "traffic");
+        let (_, key, _) = write_cert_and_key_files(dir.path(), "traffic");
         let missing = dir.path().join("missing.pem");
-        let listeners = vec![listener(
+        let listeners = vec![manual_tls_listener(
             "traffic",
             "127.0.0.1:8443",
             Some(TlsTerminationConfig::Manual {

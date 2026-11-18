@@ -336,7 +336,7 @@ mod tests {
     use crate::execution::enrichment::user_agent::{DeviceType, GeoInfo, UserAgentInfo};
     use http::{HeaderName, HeaderValue};
 
-    fn device(
+    fn structured_logging_device_with(
         allowed: &[&str],
         redacted: &[&str],
         fields: Vec<IdentityField>,
@@ -353,7 +353,7 @@ mod tests {
         }
     }
 
-    fn headers(pairs: &[(&str, &str)]) -> HeaderMap {
+    fn header_map_from_pairs(pairs: &[(&str, &str)]) -> HeaderMap {
         let mut map = HeaderMap::new();
         for (name, value) in pairs {
             map.append(
@@ -367,8 +367,8 @@ mod tests {
     #[test]
     fn an_allowlisted_header_matches_whatever_case_the_client_sent() {
         // Arrange
-        let device = device(&["x-foo"], &[], vec![]);
-        let headers = headers(&[("X-Foo", "bar"), ("x-other", "baz")]);
+        let device = structured_logging_device_with(&["x-foo"], &[], vec![]);
+        let headers = header_map_from_pairs(&[("X-Foo", "bar"), ("x-other", "baz")]);
 
         // Act
         let json = device.headers_json(&headers);
@@ -380,8 +380,9 @@ mod tests {
     #[test]
     fn a_redacted_header_is_logged_as_redacted() {
         // Arrange
-        let device = device(&[], &["authorization"], vec![]);
-        let headers = headers(&[("Authorization", "Bearer secret"), ("host", "a.test")]);
+        let device = structured_logging_device_with(&[], &["authorization"], vec![]);
+        let headers =
+            header_map_from_pairs(&[("Authorization", "Bearer secret"), ("host", "a.test")]);
 
         // Act
         let json = device.headers_json(&headers);
@@ -396,7 +397,7 @@ mod tests {
     #[test]
     fn a_header_value_that_is_not_text_is_logged_as_binary() {
         // Arrange
-        let device = device(&[], &[], vec![]);
+        let device = structured_logging_device_with(&[], &[], vec![]);
         let mut headers = HeaderMap::new();
         headers.insert("x-raw", HeaderValue::from_bytes(&[0x80]).unwrap());
 
@@ -410,8 +411,8 @@ mod tests {
     #[test]
     fn building_the_header_map_allocates_only_the_map() {
         // Arrange
-        let device = device(&[], &[], vec![]);
-        let headers = headers(&[("x-a", "1"), ("x-b", "2"), ("x-c", "3")]);
+        let device = structured_logging_device_with(&[], &[], vec![]);
+        let headers = header_map_from_pairs(&[("x-a", "1"), ("x-b", "2"), ("x-c", "3")]);
 
         // Act
         let (map, allocations) =
@@ -428,7 +429,7 @@ mod tests {
     #[test]
     fn identity_json_carries_every_selected_field() {
         // Arrange
-        let device = device(
+        let device = structured_logging_device_with(
             &[],
             &[],
             vec![
@@ -481,7 +482,7 @@ mod tests {
     #[test]
     fn identity_json_skips_fields_that_have_no_value() {
         // Arrange
-        let device = device(
+        let device = structured_logging_device_with(
             &[],
             &[],
             vec![
@@ -509,7 +510,7 @@ mod tests {
     #[test]
     fn identity_fields_that_already_hold_text_allocate_only_the_map() {
         // Arrange
-        let device = device(
+        let device = structured_logging_device_with(
             &[],
             &[],
             vec![

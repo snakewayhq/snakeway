@@ -335,7 +335,7 @@ mod tests {
         assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 
-    fn sock_service(sock: SockSpec) -> ServiceSpec {
+    fn service_with_sock_upstream(sock: SockSpec) -> ServiceSpec {
         ServiceSpec {
             name: Located::detached("api".to_string()),
             load_balancing_strategy: Located::detached("failover".to_string()),
@@ -348,7 +348,7 @@ mod tests {
         }
     }
 
-    fn sock_tls(sni: &str) -> Option<Located<EndpointTlsSpec>> {
+    fn sock_tls_with_sni(sni: &str) -> Option<Located<EndpointTlsSpec>> {
         Some(Located::detached(EndpointTlsSpec {
             sni: Located::detached(sni.to_string()),
             verify: Located::detached(true),
@@ -359,7 +359,7 @@ mod tests {
     #[test]
     fn empty_sock_path_is_rejected() {
         // Arrange
-        let service = sock_service(SockSpec {
+        let service = service_with_sock_upstream(SockSpec {
             path: Located::detached(String::new()),
             tls: None,
         });
@@ -381,9 +381,9 @@ mod tests {
     #[test]
     fn empty_sni_in_sock_tls_is_rejected() {
         // Arrange
-        let service = sock_service(SockSpec {
+        let service = service_with_sock_upstream(SockSpec {
             path: Located::detached("/run/app.sock".to_string()),
-            tls: sock_tls(""),
+            tls: sock_tls_with_sni(""),
         });
 
         // Act
@@ -403,9 +403,9 @@ mod tests {
     #[test]
     fn ip_sni_in_sock_tls_is_rejected_when_verify_is_true() {
         // Arrange
-        let service = sock_service(SockSpec {
+        let service = service_with_sock_upstream(SockSpec {
             path: Located::detached("/run/app.sock".to_string()),
-            tls: sock_tls("10.0.0.1"),
+            tls: sock_tls_with_sni("10.0.0.1"),
         });
 
         // Act

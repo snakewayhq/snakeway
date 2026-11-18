@@ -86,7 +86,7 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    fn tls_config(verify: bool, ca_file: Option<&Path>) -> UpstreamTlsConfig {
+    fn upstream_tls_config(verify: bool, ca_file: Option<&Path>) -> UpstreamTlsConfig {
         UpstreamTlsConfig {
             sni: "backend.test".to_string(),
             verify,
@@ -119,7 +119,7 @@ mod tests {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let (ca_file, _) = write_ca_file(dir.path(), "upstream");
-        let cfg = tls_config(false, Some(&ca_file));
+        let cfg = upstream_tls_config(false, Some(&ca_file));
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), None);
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn verify_without_any_ca_file_keeps_verification_on() {
         // Arrange
-        let cfg = tls_config(true, None);
+        let cfg = upstream_tls_config(true, None);
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), None);
@@ -156,7 +156,7 @@ mod tests {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let (global, global_der) = write_ca_file(dir.path(), "global");
-        let cfg = tls_config(true, None);
+        let cfg = upstream_tls_config(true, None);
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), Some(&global));
@@ -177,7 +177,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let (global, _) = write_ca_file(dir.path(), "global");
         let (upstream, upstream_der) = write_ca_file(dir.path(), "upstream");
-        let cfg = tls_config(true, Some(&upstream));
+        let cfg = upstream_tls_config(true, Some(&upstream));
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), Some(&global));

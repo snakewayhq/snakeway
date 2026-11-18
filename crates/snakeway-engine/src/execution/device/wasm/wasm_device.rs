@@ -2,7 +2,8 @@ use super::bindings::{Device as DeviceBindings, DevicePre};
 use super::lifecycle::apply_body_result;
 use super::lifecycle::build_request_snapshot;
 use super::lifecycle::{
-    apply_request_result, apply_response_result, block_503, build_response_snapshot,
+    apply_request_result, apply_response_result, build_response_snapshot,
+    device_unavailable_response,
 };
 use super::state::HostState;
 use crate::execution::ctx::{RequestCtx, ResponseCtx};
@@ -217,7 +218,7 @@ impl WasmDevice {
                     error = %error,
                     "wasm device failure (fail-closed: blocking)"
                 );
-                DeviceResult::Respond(block_503(None))
+                DeviceResult::Respond(device_unavailable_response(None))
             }
         }
     }

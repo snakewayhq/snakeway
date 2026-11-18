@@ -145,7 +145,11 @@ mod tests {
         // Arrange
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
+        let owned = [
+            upstream_snapshot_with_weight(1, 5),
+            upstream_snapshot_with_weight(2, 1),
+            upstream_snapshot_with_weight(3, 1),
+        ];
         let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
 
         // Act
@@ -160,7 +164,11 @@ mod tests {
         // Arrange
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
+        let owned = [
+            upstream_snapshot_with_weight(1, 5),
+            upstream_snapshot_with_weight(2, 1),
+            upstream_snapshot_with_weight(3, 1),
+        ];
         let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
 
         // Act
@@ -176,8 +184,15 @@ mod tests {
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let fresh = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned_before = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
-        let owned_after = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(4, 1)];
+        let owned_before = [
+            upstream_snapshot_with_weight(1, 5),
+            upstream_snapshot_with_weight(2, 1),
+            upstream_snapshot_with_weight(3, 1),
+        ];
+        let owned_after = [
+            upstream_snapshot_with_weight(1, 5),
+            upstream_snapshot_with_weight(4, 1),
+        ];
         let before: Vec<&UpstreamSnapshot> = owned_before.iter().collect();
         let after: Vec<&UpstreamSnapshot> = owned_after.iter().collect();
         collect_wrr_indices(&manager, &service, &before, 3);
@@ -195,7 +210,11 @@ mod tests {
         // Arrange
         let manager = TrafficManager::new(TrafficSnapshot::default());
         let service = ServiceId("api".into());
-        let owned = [upstream_snapshot_with_weight(1, 5), upstream_snapshot_with_weight(2, 1), upstream_snapshot_with_weight(3, 1)];
+        let owned = [
+            upstream_snapshot_with_weight(1, 5),
+            upstream_snapshot_with_weight(2, 1),
+            upstream_snapshot_with_weight(3, 1),
+        ];
         let healthy: Vec<&UpstreamSnapshot> = owned.iter().collect();
         manager.next_wrr_index(&service, &healthy);
 

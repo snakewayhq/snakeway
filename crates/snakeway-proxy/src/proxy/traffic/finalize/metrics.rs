@@ -40,7 +40,7 @@ impl TrafficProxy {
         };
 
         let request_attrs = &[
-            KeyValue::new("method", method_value(method)),
+            KeyValue::new("method", method_metric_value(method)),
             KeyValue::new("status", status),
             service_attr,
             KeyValue::new("route", route),
@@ -138,11 +138,14 @@ impl TrafficProxy {
 }
 
 /// A standard method maps to a static string, so the common case does not allocate.
-fn method_value(method: &str) -> Value {
-    const STANDARD: [&str; 9] = [
+fn method_metric_value(method: &str) -> Value {
+    const STANDARD_HTTP_METHODS: [&str; 9] = [
         "GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "CONNECT", "TRACE",
     ];
-    match STANDARD.iter().find(|standard| **standard == method) {
+    match STANDARD_HTTP_METHODS
+        .iter()
+        .find(|standard| **standard == method)
+    {
         Some(standard) => Value::from(*standard),
         None => Value::from(method.to_string()),
     }

@@ -23,7 +23,7 @@ pub(crate) fn apply_body_result(
             *maybe_chunk = None;
             Ok(DeviceResult::Continue)
         }
-        BodyAction::Block => Ok(DeviceResult::Respond(block_403(request_id))),
+        BodyAction::Block => Ok(DeviceResult::Respond(device_blocked_response(request_id))),
     }
 }
 
@@ -63,10 +63,13 @@ pub(crate) fn build_response_snapshot(ctx: &ResponseCtx) -> Response {
     }
 }
 
-fn handle_action(action: Action, request_id: Option<&str>) -> anyhow::Result<DeviceResult> {
+fn device_result_for_action(
+    action: Action,
+    request_id: Option<&str>,
+) -> anyhow::Result<DeviceResult> {
     match action {
         Action::Continue => Ok(DeviceResult::Continue),
-        Action::Block => Ok(DeviceResult::Respond(block_403(request_id))),
+        Action::Block => Ok(DeviceResult::Respond(device_blocked_response(request_id))),
         Action::Respond(synthetic) => {
             let status =
                 StatusCode::from_u16(synthetic.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
@@ -155,7 +158,7 @@ pub(crate) fn apply_request_result(
     result: policy::RequestResult,
 ) -> anyhow::Result<DeviceResult> {
     if !matches!(result.action, Action::Continue) {
-        return handle_action(result.action, ctx.request_id());
+        return device_result_for_action(result.action, ctx.request_id());
     }
 
     if let Some(RequestPatch {
@@ -182,7 +185,7 @@ pub(crate) fn apply_response_result(
     result: policy::ResponseResult,
 ) -> anyhow::Result<DeviceResult> {
     if !matches!(result.action, Action::Continue) {
-        return handle_action(result.action, ctx.request_id.as_deref());
+        return device_result_for_action(result.action, ctx.request_id.as_deref());
     }
 
     if let Some(ResponsePatch { set_status, ops }) = result.patch {
@@ -195,7 +198,7 @@ pub(crate) fn apply_response_result(
     Ok(DeviceResult::Continue)
 }
 
-pub(crate) fn block_403(request_id: Option<&str>) -> ResponseCtx {
+pub(crate) fn device_blocked_response(request_id: Option<&str>) -> ResponseCtx {
     ResponseCtx::new(
         request_id.map(str::to_owned),
         StatusCode::FORBIDDEN,
@@ -204,7 +207,7 @@ pub(crate) fn block_403(request_id: Option<&str>) -> ResponseCtx {
     )
 }
 
-pub(crate) fn block_503(request_id: Option<&str>) -> ResponseCtx {
+pub(crate) fn device_unavailable_response(request_id: Option<&str>) -> ResponseCtx {
     ResponseCtx::new(
         request_id.map(str::to_owned),
         StatusCode::SERVICE_UNAVAILABLE,
@@ -219,13 +222,13 @@ mod tests {
     use crate::execution::ctx::RequestId;
     use crate::execution::device::wasm::bindings::snakeway::device::types::SyntheticResponse;
 
-    fn ctx_with_id(id: &str) -> RequestCtx {
+    fn request_ctx_with_request_id(id: &str) -> RequestCtx {
         let mut ctx = RequestCtx::empty();
         ctx.extensions.insert(RequestId::from(id));
         ctx
     }
 
-    fn response_of(result: anyhow::Result<DeviceResult>) -> ResponseCtx {
+    fn expect_device_response(result: anyhow::Result<DeviceResult>) -> ResponseCtx {
         match result {
             Ok(DeviceResult::Respond(response)) => response,
             _ => panic!("expected the device to respond"),
@@ -235,14 +238,14 @@ mod tests {
     #[test]
     fn a_blocked_request_carries_the_request_id_into_the_response() {
         // Arrange
-        let mut ctx = ctx_with_id("req-1");
+        let mut ctx = request_ctx_with_request_id("req-1");
         let result = policy::RequestResult {
             action: Action::Block,
             patch: None,
         };
 
         // Act
-        let response = response_of(apply_request_result(&mut ctx, result));
+        let response = expect_device_response(apply_request_result(&mut ctx, result));
 
         // Assert
         assert_eq!(response.request_id.as_deref(), Some("req-1"));
@@ -252,7 +255,7 @@ mod tests {
     #[test]
     fn a_synthetic_response_carries_the_request_id_and_its_status() {
         // Arrange
-        let mut ctx = ctx_with_id("req-1");
+        let mut ctx = request_ctx_with_request_id("req-1");
         let result = policy::RequestResult {
             action: Action::Respond(SyntheticResponse {
                 status: 418,
@@ -263,7 +266,7 @@ mod tests {
         };
 
         // Act
-        let response = response_of(apply_request_result(&mut ctx, result));
+        let response = expect_device_response(apply_request_result(&mut ctx, result));
 
         // Assert
         assert_eq!(response.request_id.as_deref(), Some("req-1"));
@@ -285,7 +288,7 @@ mod tests {
         };
 
         // Act
-        let response = response_of(apply_response_result(&mut ctx, result));
+        let response = expect_device_response(apply_response_result(&mut ctx, result));
 
         // Assert
         assert_eq!(response.request_id.as_deref(), Some("req-2"));
@@ -301,7 +304,7 @@ mod tests {
         };
 
         // Act
-        let response = response_of(apply_body_result(Some("req-3"), &mut chunk, result));
+        let response = expect_device_response(apply_body_result(Some("req-3"), &mut chunk, result));
 
         // Assert
         assert_eq!(response.request_id.as_deref(), Some("req-3"));
@@ -333,7 +336,7 @@ mod tests {
     #[test]
     fn a_request_that_continues_does_not_allocate() {
         // Arrange
-        let mut ctx = ctx_with_id("req-1");
+        let mut ctx = request_ctx_with_request_id("req-1");
         let warm_up = policy::RequestResult {
             action: Action::Continue,
             patch: None,

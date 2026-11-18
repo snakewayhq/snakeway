@@ -75,8 +75,8 @@ fn write_config_dir(
     let cert_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("certs");
     let token_file = Path::new(env!("CARGO_MANIFEST_DIR")).join(ADMIN_TOKEN_FILE);
     let upstream_port = snakeway_tests::harness::upstream::start_http_upstream();
-    let (listener_host, listener_port) = split_addr(listener_addr);
-    let (admin_host, admin_port) = split_addr(admin_addr);
+    let (listener_host, listener_port) = split_host_and_port(listener_addr);
+    let (admin_host, admin_port) = split_host_and_port(admin_addr);
 
     std::fs::copy(fixture_dir.join("snakeway.hcl"), dir.join("snakeway.hcl")).unwrap();
 
@@ -149,7 +149,7 @@ services = [
     std::fs::write(ingress_dst.join("admin.hcl"), admin_hcl).unwrap();
 }
 
-fn split_addr(addr: &str) -> (&str, &str) {
+fn split_host_and_port(addr: &str) -> (&str, &str) {
     addr.rsplit_once(':').expect("address must be host:port")
 }
 
