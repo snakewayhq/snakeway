@@ -15,7 +15,7 @@ The available commands:
 | reload      | Reload a running Snakeway instance (SIGHUP) |
 | upgrade     | Trigger a zero-drop upgrade (SIGQUIT)       |
 | logs        | Format logs from standard out               |
-| lsp         | Serve the configuration language server over standard input and output |
+| lsp         | Serve the config language server over stdio |
 | wasm-device | Debug a WASM device in isolation            |
 
 ## config init
@@ -459,6 +459,17 @@ Wikimedia Foundation Inc.=2
 YANDEX LLC=3
 
 ```
+
+## lsp
+
+Serves the configuration language server over standard input and output.
+
+```shell
+snakeway lsp
+```
+
+The server picks the right schema for each file from its path, and reports diagnostics as you type.
+See [Editor Support](/docs/administration/editor-support) for registration instructions.
 
 ## wasm-device exec
 
