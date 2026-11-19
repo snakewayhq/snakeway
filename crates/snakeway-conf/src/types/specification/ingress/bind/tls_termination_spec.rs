@@ -12,12 +12,18 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum TlsTerminationSpec {
+    /// Manual TLS: the operator supplies a certificate and key file.
     Manual {
+        /// Path to the PEM-encoded certificate file.
         cert: Located<PathBuf>,
+        /// Path to the PEM-encoded private key file.
         key: Located<PathBuf>,
     },
+    /// ACME TLS: certificates are issued and renewed automatically.
     Acme {
+        /// Domain names the certificate covers.
         domains: Vec<Located<String>>,
+        /// ACME challenge type. Defaults to HTTP-01.
         challenge: Located<String>,
     },
 }
@@ -145,6 +151,8 @@ impl ToSchema for TlsTerminationSpec {
                     None,
                     SchemaType::scalar(
                         ScalarType::String,
+                        // The mode is a tagged-enum discriminator parsed by hand,
+                        // so the keyword set is a const slice rather than a keyword_enum.
                         Some(Constraint::keywords(&["manual", "acme"])),
                     ),
                 )

@@ -11,7 +11,7 @@ pub struct StructuredLoggingDeviceSpec {
     #[confval(keywords = LogLevel, derive_default = "error".to_string())]
     pub level: Located<String>,
 
-    /// Headers are excluded by default.
+    /// Whether request headers are included in the log output.
     #[confval(derive_default = false)]
     pub include_headers: Located<bool>,
 
