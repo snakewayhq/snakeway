@@ -8,6 +8,12 @@ use std::sync::Arc;
 
 /// Load the certificate and private key of every listener that uses manual TLS.
 ///
+/// Certificates are keyed by the listener's bind address string. This relies on
+/// two invariants: `validate_listener_uniqueness` rejects two listeners with the
+/// same address, and the same address string flows from the config through the
+/// runtime state into `ManualCertResolver`. A listener therefore always finds
+/// the certificate that was loaded for it.
+///
 /// The files are read each time the runtime state is built. A reload therefore serves
 /// files that were replaced at the same paths, and a reload that fails to load them
 /// leaves the previous runtime state and its certificates in place.
