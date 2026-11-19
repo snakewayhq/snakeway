@@ -80,6 +80,8 @@ Run `snakeway config check` before a deployment.
 
 - Rules that read the whole configuration: a duplicate device across files, a device that requires the identity device,
   a duplicate service name across ingress files, and a listener that is not unique.
+- Rules that need the enclosing entity: a service with no upstream backends, and a bind or bind_admin that is
+  missing from an ingress. These checks point at the entity span, which the editor's per-file view cannot reach.
 - Rules that read the host, such as a certificate file that must exist or a data directory that must be present.
   These paths resolve against your editor's working directory, so the editor can accept a path that the CLI rejects.
 
