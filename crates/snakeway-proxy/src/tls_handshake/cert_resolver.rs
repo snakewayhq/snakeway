@@ -28,7 +28,8 @@ impl SnakewayCertResolver {
 
         let sni_map = tls_runtime.sni_map.load();
 
-        let Some(cert) = sni_map.get(hostname) else {
+        let hostname = hostname.to_ascii_lowercase();
+        let Some(cert) = sni_map.get(&hostname) else {
             tracing::warn!("No certificate found for SNI {}", hostname);
             return None;
         };

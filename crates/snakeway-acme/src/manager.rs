@@ -104,7 +104,7 @@ impl CertManager {
         for (cert_id, meta) in self.cert_store.list() {
             if let Some(key) = self.load_certified_key(&cert_id)? {
                 for domain in meta.domains {
-                    map.insert(domain, key.clone());
+                    map.insert(domain.to_ascii_lowercase(), key.clone());
                 }
             }
         }
