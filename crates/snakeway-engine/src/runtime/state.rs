@@ -8,10 +8,10 @@ use crate::runtime::types::{
 };
 use crate::runtime::upstream_tls::resolve_upstream_tls;
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
-use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
+use sha2::{Digest, Sha256};
 use snakeway_acme::{CertManager, SniRegistry};
 use snakeway_conf::types::{
     RouteConfig, RuntimeConfig, ServiceConfig, UpstreamConfig, UpstreamTcpConfig,
@@ -251,11 +251,28 @@ fn make_upstream_runtime_for_unix(
     }))
 }
 
-/// Fixed-seed ahash, so an upstream keeps the same id across restarts.
+/// Stable hash of an upstream address. SHA-256 is used so the id is the same
+/// across process restarts, dependency versions, and CPU features. The id is a
+/// metric label, so stability across a mixed fleet matters more than speed; the
+/// hash runs once per reload, not per request.
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
-    static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
-
-    UpstreamId::new(HASHER.hash_one(addr))
+    let mut hasher = Sha256::new();
+    match addr {
+        UpstreamAddr::Tcp { host, port } => {
+            hasher.update(b"tcp");
+            hasher.update(host.as_bytes());
+            hasher.update(port.to_le_bytes());
+        }
+        UpstreamAddr::Unix { path } => {
+            hasher.update(b"unix");
+            hasher.update(path.as_bytes());
+        }
+    }
+    let digest = hasher.finalize();
+    let id = u64::from_le_bytes([
+        digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+    ]);
+    UpstreamId::new(id)
 }
 
 /// Converts a directory path to its full absolute path as a string.

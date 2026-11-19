@@ -39,6 +39,7 @@ thiserror = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }
 ahash = { workspace = true }
+sha2 = { workspace = true }
 dashmap = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v4", "fast-rng"] }
