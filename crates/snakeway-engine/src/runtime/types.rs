@@ -110,11 +110,11 @@ pub(crate) enum UpstreamAddr {
 
 /// A DNS-resolved socket address that can be atomically refreshed
 /// by the background DNS re-resolver without rebuilding RuntimeState.
-pub struct ResolvedAddr(ArcSwap<SocketAddr>);
+pub struct ResolvedAddr(Arc<ArcSwap<SocketAddr>>);
 
 impl ResolvedAddr {
     pub fn new(addr: SocketAddr) -> Self {
-        Self(ArcSwap::from_pointee(addr))
+        Self(Arc::new(ArcSwap::from_pointee(addr)))
     }
 
     pub(crate) fn load(&self) -> SocketAddr {
@@ -128,7 +128,7 @@ impl ResolvedAddr {
 
 impl Clone for ResolvedAddr {
     fn clone(&self) -> Self {
-        Self(ArcSwap::from_pointee(self.load()))
+        Self(Arc::clone(&self.0))
     }
 }
 
@@ -204,7 +204,7 @@ mod tests {
     }
 
     #[test]
-    fn resolved_addr_clone_is_independent() {
+    fn resolved_addr_clone_shares_state() {
         // Arrange
         let addr: SocketAddr = "10.0.0.1:8080".parse().unwrap();
         let resolved = ResolvedAddr::new(addr);
@@ -214,7 +214,10 @@ mod tests {
         resolved.store("10.0.0.2:8080".parse().unwrap());
 
         // Assert
-        assert_eq!(cloned.load(), addr);
+        assert_eq!(
+            cloned.load(),
+            "10.0.0.2:8080".parse::<SocketAddr>().unwrap()
+        );
     }
 
     #[test]
