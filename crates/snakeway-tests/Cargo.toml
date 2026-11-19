@@ -27,10 +27,10 @@ tokio-rustls = "0.26"
 tokio-stream = { version = "0.1", features = ["net"] }
 h2 = "0.4"
 bytes = { workspace = true }
+rcgen = { workspace = true }
 
 [dev-dependencies]
 hmac = "0.13"
-rcgen = { workspace = true }
 sha2 = "0.11"
 pretty_assertions = { workspace = true }
 base64 = "0.23"
