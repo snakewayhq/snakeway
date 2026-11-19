@@ -21,13 +21,25 @@ struct ReloadableServer {
 
 impl ReloadableServer {
     fn start() -> Self {
+        Self::start_with_pid_file(true)
+    }
+
+    fn start_without_pid_file() -> Self {
+        Self::start_with_pid_file(false)
+    }
+
+    fn start_with_pid_file(with_pid_file: bool) -> Self {
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let listener_port = free_port();
         let admin_port = free_port();
         let upstream_port = snakeway_tests::harness::upstream::start_http_upstream();
 
         copy_fixture_devices(dir.path());
-        write_snakeway_hcl(dir.path(), &dir.path().join("first.pid"));
+        if with_pid_file {
+            write_snakeway_hcl(dir.path(), &dir.path().join("first.pid"));
+        } else {
+            write_snakeway_hcl_without_pid_file(dir.path());
+        }
         write_api_ingress(dir.path(), listener_port, upstream_port, "/api");
         write_admin_ingress(dir.path(), admin_port);
 
@@ -136,6 +148,19 @@ include {{
     std::fs::write(dir.join("snakeway.hcl"), hcl).unwrap();
 }
 
+fn write_snakeway_hcl_without_pid_file(dir: &Path) {
+    let hcl = r#"server {
+  version  = 1
+}
+
+include {
+  devices   = "device.d/*.hcl"
+  ingresses = "ingress.d/*.hcl"
+}
+"#;
+    std::fs::write(dir.join("snakeway.hcl"), hcl).unwrap();
+}
+
 fn write_api_ingress(dir: &Path, listener_port: u16, upstream_port: u16, route_path: &str) {
     let ingress_dir = dir.join("ingress.d");
     std::fs::create_dir_all(&ingress_dir).unwrap();
@@ -221,25 +246,21 @@ fn reload_with_invalid_config_reports_load_failed() {
 #[test]
 fn reload_with_upgrade_required_change_is_rejected_as_upgrade_unsupported() {
     // Arrange
-    let srv = ReloadableServer::start();
+    let srv = ReloadableServer::start_without_pid_file();
     assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
-    let hcl = format!(
-        r#"server {{
+    let hcl = r#"server {
   version  = 1
-  pid_file = "{}"
 
-  upgrade {{
+  upgrade {
     max_retries = 5
-  }}
-}}
+  }
+}
 
-include {{
+include {
   devices   = "device.d/*.hcl"
   ingresses = "ingress.d/*.hcl"
-}}
-"#,
-        srv.dir.path().join("first.pid").display(),
-    );
+}
+"#;
     std::fs::write(srv.dir.path().join("snakeway.hcl"), hcl).unwrap();
 
     // Act
