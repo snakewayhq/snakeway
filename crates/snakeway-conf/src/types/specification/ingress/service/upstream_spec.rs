@@ -52,7 +52,7 @@ pub struct EndpointTlsSpec {
 
 /// Classification of an endpoint host string, used by validation and
 /// lowering. The spec stores the raw string, and this type is the parsed view.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum HostSpec {
     Ip(IpAddr),
     Hostname(String),
@@ -62,7 +62,7 @@ impl HostSpec {
     pub fn parse(host: &str) -> HostSpec {
         match host.parse::<IpAddr>() {
             Ok(ip) => HostSpec::Ip(ip),
-            Err(_) => HostSpec::Hostname(host.to_string()),
+            Err(_) => HostSpec::Hostname(host.to_ascii_lowercase()),
         }
     }
 }

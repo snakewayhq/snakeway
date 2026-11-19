@@ -1,5 +1,6 @@
 use crate::types::{
-    CircuitBreakerSpec, HealthCheckSpec, LoadBalancingStrategy, ServiceRouteSpec, UpstreamSpec,
+    CircuitBreakerSpec, HealthCheckSpec, HostSpec, LoadBalancingStrategy, ServiceRouteSpec,
+    UpstreamSpec,
 };
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
@@ -76,7 +77,7 @@ impl Validate for ServiceSpec {
 
             if let Some(endpoint) = &upstream.value.endpoint {
                 let key = (
-                    endpoint.value.host.value.to_ascii_lowercase(),
+                    HostSpec::parse(&endpoint.value.host.value),
                     endpoint.value.port.value,
                 );
                 if let Some(first) = seen_endpoints.get(&key) {
