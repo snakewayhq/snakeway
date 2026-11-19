@@ -195,7 +195,66 @@ fn write_admin_ingress(dir: &Path, admin_port: u16) {
     std::fs::write(dir.join("ingress.d").join("admin.hcl"), hcl).unwrap();
 }
 
-/// Before any reload, the reload status reports that no reload has finished.
+/// A reload against an invalid config reports `load_failed` instead of applying.
+#[test]
+fn reload_with_invalid_config_reports_load_failed() {
+    // Arrange
+    let srv = ReloadableServer::start();
+    std::fs::write(srv.dir.path().join("ingress.d").join("api.hcl"), "this is not hcl {{{").unwrap();
+
+    // Act
+    let epoch = srv.reload();
+
+    // Assert
+    let (status, body) = srv.wait_for_reload_status(epoch);
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["epoch"], epoch);
+    assert_eq!(body["result"], "load_failed");
+    assert!(body["error"].as_str().is_some_and(|e| !e.is_empty()));
+}
+
+/// A change that needs a zero-drop upgrade is rejected on a platform that cannot perform one.
+#[test]
+fn reload_with_upgrade_required_change_is_rejected_as_upgrade_unsupported() {
+    // Arrange
+    let srv = ReloadableServer::start();
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
+    let hcl = format!(
+        r#"server {{
+  version  = 1
+  pid_file = "{}"
+
+  upgrade {{
+    max_retries = 5
+  }}
+}}
+
+include {{
+  devices   = "device.d/*.hcl"
+  ingresses = "ingress.d/*.hcl"
+}}
+"#,
+        srv.dir.path().join("first.pid").display(),
+    );
+    std::fs::write(srv.dir.path().join("snakeway.hcl"), hcl).unwrap();
+
+    // Act
+    let epoch = srv.reload();
+
+    // Assert
+    let (status, body) = srv.wait_for_reload_status(epoch);
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "epoch": epoch,
+            "result": "rejected",
+            "reason": "upgrade_unsupported",
+            "settings": [],
+        })
+    );
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
+}
 #[test]
 fn reload_status_reports_none_before_any_reload() {
     // Arrange
