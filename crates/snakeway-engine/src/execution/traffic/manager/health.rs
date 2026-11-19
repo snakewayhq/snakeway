@@ -130,11 +130,7 @@ impl TrafficManager {
     /// Use this for read-only consumers such as the admin API. The mutating
     /// `health_status` method promotes an upstream from cooldown to a trial
     /// request, so calling it from a poller would consume that trial.
-    pub fn health_status(
-        &self,
-        service_id: &ServiceId,
-        upstream_id: &UpstreamId,
-    ) -> HealthStatus {
+    pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
         let Some(health_params) = self.health_params.get(service_id) else {
             return HealthStatus { healthy: true };
         };
@@ -173,7 +169,11 @@ impl TrafficManager {
     ///
     /// This may mutate health state: when a cooldown has ended, it promotes the
     /// upstream to a trial request. Use `health_status` for a read-only check.
-    pub fn health_admission(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
+    pub fn health_admission(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+    ) -> HealthStatus {
         let read_only = self.health_status(service_id, upstream_id);
 
         // Promote an upstream whose cooldown has ended to a trial request.
