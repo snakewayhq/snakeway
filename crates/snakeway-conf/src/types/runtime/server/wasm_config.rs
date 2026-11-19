@@ -2,7 +2,7 @@ use crate::types::WasmSpec;
 use confval::prelude::narrow;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize, confval::Config)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, confval::Config)]
 #[confval(lower_from = WasmSpec)]
 pub struct WasmConfig {
     /// Maximum concurrent WASM device hook executions (sizes the wasmtime pool).

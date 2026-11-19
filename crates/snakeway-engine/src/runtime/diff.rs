@@ -108,16 +108,76 @@ fn effective_upgrade_sock(config: &RuntimeConfig) -> String {
 /// Settings that Pingora, the traffic proxy, or the control plane read only when the process
 /// starts, so a change needs a new process.
 fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
-    let (old, new) = (&old.server, &new.server);
-    old.threads != new.threads
-        || old.performance != new.performance
-        || old.shutdown != new.shutdown
-        || old.upstream != new.upstream
-        || old.upgrade.max_retries != new.upgrade.max_retries
-        || old.ca_file != new.ca_file
-        || old.dns_refresh_interval_seconds != new.dns_refresh_interval_seconds
-        || old.observability != new.observability
-        || old.tls_automation != new.tls_automation
+    let old = &old.server;
+    let new = &new.server;
+
+    let (
+        old_version,
+        old_threads,
+        _old_pid_file,
+        old_ca_file,
+        old_tls_automation,
+        old_observability,
+        old_dns_refresh_interval_seconds,
+        old_shutdown,
+        old_upgrade,
+        old_performance,
+        old_upstream,
+        old_wasm,
+    ) = (
+        old.version,
+        old.threads,
+        old.pid_file.clone(),
+        old.ca_file.clone(),
+        old.tls_automation.clone(),
+        old.observability.clone(),
+        old.dns_refresh_interval_seconds,
+        old.shutdown.clone(),
+        old.upgrade.clone(),
+        old.performance.clone(),
+        old.upstream.clone(),
+        old.wasm.clone(),
+    );
+
+    let (
+        new_version,
+        new_threads,
+        _new_pid_file,
+        new_ca_file,
+        new_tls_automation,
+        new_observability,
+        new_dns_refresh_interval_seconds,
+        new_shutdown,
+        new_upgrade,
+        new_performance,
+        new_upstream,
+        new_wasm,
+    ) = (
+        new.version,
+        new.threads,
+        new.pid_file.clone(),
+        new.ca_file.clone(),
+        new.tls_automation.clone(),
+        new.observability.clone(),
+        new.dns_refresh_interval_seconds,
+        new.shutdown.clone(),
+        new.upgrade.clone(),
+        new.performance.clone(),
+        new.upstream.clone(),
+        new.wasm.clone(),
+    );
+
+    old_version != new_version
+        || old_threads != new_threads
+        || old_ca_file != new_ca_file
+        || old_tls_automation != new_tls_automation
+        || old_observability != new_observability
+        || old_dns_refresh_interval_seconds != new_dns_refresh_interval_seconds
+        || old_shutdown != new_shutdown
+        || old_upgrade.max_retries != new_upgrade.max_retries
+        || old_performance != new_performance
+        || old_upstream != new_upstream
+        || old_wasm != new_wasm
 }
 
 fn listeners_changed(old: &[ListenerConfig], new: &[ListenerConfig]) -> bool {
