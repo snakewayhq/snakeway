@@ -48,3 +48,11 @@ upstreams = [
 Only specify `endpoint` or `sock` on a given upstream, not both.
 They are mutually exclusive on a single upstream, but a single service may contain a mix of TCP and socket upstreams.
 :::
+
+:::note
+An upstream must be unique within its service, and some values must be unique across the whole configuration.
+
+- Duplicate endpoints: two upstreams in the same service with the same host and port are rejected. The host comparison is case-insensitive, so `app.example.com` and `App.Example.com` are the same endpoint.
+- Duplicate sockets: two upstreams, in the same service or across services, with the same `sock.path` are rejected.
+- Duplicate upstreams across services: an `endpoint` or `sock` that repeats across services is reported, with a related span pointing at the first declaration.
+:::
