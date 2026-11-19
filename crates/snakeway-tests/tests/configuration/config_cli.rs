@@ -163,13 +163,6 @@ fn nonexistent_ca_file_produces_validation_error() {
     }
 }
 
-
-/// A WASM device using `timeout_ms` must be rejected. The current name is
-/// `timeout_milliseconds`.
-
-/// A WASM device using `body_buffer_max` must be rejected. The current name is
-/// `body_buffer_max_bytes`.
-
 /// A service block with no name must be rejected.
 #[test]
 fn service_without_name_is_rejected() {
