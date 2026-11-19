@@ -120,6 +120,8 @@ To rotate a manual certificate, replace the files at the same paths and trigger 
 The next TLS handshake on that listener presents the new certificate.
 If the new files cannot be loaded, the reload fails and the listener keeps serving the previous certificate.
 If you change the `cert` or `key` path instead, Snakeway applies the new listener configuration with a zero-drop upgrade.
+A zero-drop upgrade works only on Linux with a `pid_file` set.
+On other platforms, or without a `pid_file`, the reload is rejected and you must restart Snakeway.
 
 ## Monitoring and Failure Recovery
 

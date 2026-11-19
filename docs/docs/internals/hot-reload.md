@@ -53,6 +53,7 @@ This path handles changes to:
 - `upgrade.max_retries`
 
 A zero-drop upgrade needs Linux, a `pid_file`, and the same `upgrade.sock` in the old and the new process.
+See [TLS Cert Management](/docs/administration/tls-cert-management) for the operator-facing summary of these limits.
 On other platforms, or without a `pid_file`, a reload that needs an upgrade is rejected, and the running process keeps its configuration.
 
 ### Reload epoch continuity across an upgrade
