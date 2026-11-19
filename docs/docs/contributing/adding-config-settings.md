@@ -38,7 +38,7 @@ The `with` conversion functions live **in the runtime file alongside the Config 
 ### Type selection principle
 
 **Spec types use the rawest type that parses infallibly from HCL**, wrapped in `Located`.
-That means `Located<String>`, `Located<HclInt>` (`HclInt` is the crate alias for `i64`, HCL's native integer), `Located<bool>`, `Located<PathBuf>`, `Vec<Located<String>>`, and the `Option<...>` forms.
+That means `Located<String>`, `Located<i64>`, `Located<bool>`, `Located<PathBuf>`, `Vec<Located<String>>`, and the `Option<...>` forms.
 The structural parsers never reject a value for a semantic reason, so a port of `99999` or a strategy of `"failovr"` parses fine and is caught by validation with a span, alongside every other problem.
 
 **Keyword fields are `Located<String>` in specs.**

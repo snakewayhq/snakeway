@@ -97,14 +97,14 @@ Spec fields are wrapped in `Located<T>`:
 ```rust
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
-    pub version: Located<HclInt>,
-    pub threads: Option<Located<HclInt>>,
+    pub version: Located<i64>,
+    pub threads: Option<Located<i64>>,
 
     #[confval(nested)]
     pub tls_automation: Option<Located<TlsAutomationSpec>>,
 
     #[confval(default = 30)]
-    pub dns_refresh_interval_seconds: Located<HclInt>,
+    pub dns_refresh_interval_seconds: Located<i64>,
 }
 ```
 
@@ -130,7 +130,7 @@ The `with` functions live in the runtime module next to the config struct they s
 ### Type selection principle
 
 **Spec types use the rawest type that parses infallibly from HCL.**
-Strings, `HclInt` (an alias for `i64`, HCL's native integer type), bools, paths.
+Strings, `i64` (HCL's native integer type), bools, paths.
 The structural parsers never reject a value for semantic reasons, so a port of `99999` or a strategy of `"failovr"` parses fine and is caught by validation with a span, alongside every other problem.
 
 **Keyword fields are `Located<String>` in specs.**
