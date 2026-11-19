@@ -225,7 +225,7 @@ impl ControlPlaneServer {
                 let config_path = config_path.clone();
                 let traffic = Arc::clone(&self.traffic_manager);
                 let cert_manager_for_reload = self.cert_manager.clone();
-                let current_config = self.config.clone();
+                let mut current_config = self.config.clone();
 
                 async move {
                     info!("Reload loop started");
@@ -319,6 +319,10 @@ impl ControlPlaneServer {
                         {
                             Ok(_) => {
                                 info!("reload successful");
+
+                                // Keep the baseline in sync with the running config so later reloads
+                                // classify against what is actually running, not the startup config.
+                                current_config = new_config.clone();
 
                                 if let Some(manager) = &cert_manager_for_reload {
                                     manager.reload(Arc::new(new_config));
