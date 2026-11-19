@@ -200,7 +200,11 @@ fn write_admin_ingress(dir: &Path, admin_port: u16) {
 fn reload_with_invalid_config_reports_load_failed() {
     // Arrange
     let srv = ReloadableServer::start();
-    std::fs::write(srv.dir.path().join("ingress.d").join("api.hcl"), "this is not hcl {{{").unwrap();
+    std::fs::write(
+        srv.dir.path().join("ingress.d").join("api.hcl"),
+        "this is not hcl {{{",
+    )
+    .unwrap();
 
     // Act
     let epoch = srv.reload();
