@@ -9,16 +9,19 @@ range_constraint!(TIMEOUT_MS, i64, min: 1, max: 60000);
 range_constraint!(BODY_BUFFER_MAX, i64, min: 0, max: 104857600);
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct WasmDeviceSpec {
-    #[confval(label)]
+    #[confval(label, derive_default = String::new())]
     pub name: Located<String>,
 
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
 
+    #[confval(derive_default = PathBuf::new())]
     pub path: Located<PathBuf>,
 
     /// Behavior on guest trap, timeout, or load error: "open" or "closed".
-    #[confval(keywords = WasmDeviceFailPolicy)]
+    #[confval(keywords = WasmDeviceFailPolicy, derive_default = "open".to_string())]
     pub fail_policy: Located<String>,
 
     /// Per-hook epoch deadline in milliseconds.
@@ -37,21 +40,6 @@ pub struct WasmDeviceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(non_empty(help = "omit `hooks` to run all hooks, or list at least one hook"), keywords = WasmHook)]
     pub hooks: Option<Located<Vec<Located<String>>>>,
-}
-
-impl Default for WasmDeviceSpec {
-    fn default() -> Self {
-        Self {
-            name: Located::detached(String::new()),
-            enable: Located::detached(false),
-            path: Located::detached(PathBuf::new()),
-            fail_policy: Located::detached("open".to_string()),
-            timeout_milliseconds: Located::detached(5),
-            body_buffer_max_bytes: Located::detached(0),
-            config: BTreeMap::new(),
-            hooks: None,
-        }
-    }
 }
 
 impl Validate for WasmDeviceSpec {

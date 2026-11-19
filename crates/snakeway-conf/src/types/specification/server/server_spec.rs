@@ -11,8 +11,10 @@ range_constraint!(THREADS, i64, min: 1, max: 1024);
 range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct ServerSpec {
     /// Configuration schema version
+    #[confval(derive_default = 1)]
     pub version: Located<i64>,
 
     /// Number of worker threads. When unset, Pingora chooses the value.
@@ -57,25 +59,6 @@ pub struct ServerSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub wasm: Option<Located<WasmSpec>>,
-}
-
-impl Default for ServerSpec {
-    fn default() -> Self {
-        Self {
-            version: Located::detached(1),
-            threads: None,
-            pid_file: None,
-            ca_file: None,
-            tls_automation: None,
-            observability: None,
-            dns_refresh_interval_seconds: Located::detached(30),
-            shutdown: None,
-            upgrade: None,
-            performance: None,
-            upstream: None,
-            wasm: None,
-        }
-    }
 }
 
 impl ServerSpec {

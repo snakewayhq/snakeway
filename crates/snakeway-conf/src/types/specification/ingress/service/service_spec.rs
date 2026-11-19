@@ -6,9 +6,10 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct ServiceSpec {
     /// The service's unique name across all ingress files.
-    #[confval(label)]
+    #[confval(label, derive_default = String::new())]
     pub name: Located<String>,
     #[confval(default = "failover".to_string(), keywords = LoadBalancingStrategy)]
     pub load_balancing_strategy: Located<String>,
@@ -22,19 +23,6 @@ pub struct ServiceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
     pub circuit_breaker: Option<Located<CircuitBreakerSpec>>,
-}
-
-impl Default for ServiceSpec {
-    fn default() -> Self {
-        Self {
-            name: Located::detached(String::new()),
-            load_balancing_strategy: Located::detached("failover".to_string()),
-            routes: Vec::new(),
-            upstreams: Vec::new(),
-            health_check: None,
-            circuit_breaker: None,
-        }
-    }
 }
 
 impl Validate for ServiceSpec {

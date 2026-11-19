@@ -3,27 +3,33 @@ use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct StructuredLoggingDeviceSpec {
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
 
-    #[confval(keywords = LogLevel)]
+    #[confval(keywords = LogLevel, derive_default = "error".to_string())]
     pub level: Located<String>,
 
     /// Headers are excluded by default.
+    #[confval(derive_default = false)]
     pub include_headers: Located<bool>,
 
     /// Allowlist of headers to include.
     /// If empty, all headers are eligible (subject to redaction).
+    #[confval(derive_default = Vec::new())]
     pub allowed_headers: Vec<Located<String>>,
 
     /// Headers to redact (case-insensitive).
+    #[confval(derive_default = Vec::new())]
     pub redacted_headers: Vec<Located<String>>,
 
     /// Identity logging.
+    #[confval(derive_default = false)]
     pub include_identity: Located<bool>,
 
     /// Identity fields to include in the request context (and possibly log).
-    #[confval(keywords = IdentityField)]
+    #[confval(keywords = IdentityField, derive_default = Vec::new())]
     pub identity_fields: Vec<Located<String>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -33,22 +39,6 @@ pub struct StructuredLoggingDeviceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(keywords = LogPhase)]
     pub phases: Option<Located<Vec<Located<String>>>>,
-}
-
-impl Default for StructuredLoggingDeviceSpec {
-    fn default() -> Self {
-        Self {
-            enable: Located::detached(false),
-            level: Located::detached("error".to_string()),
-            include_headers: Located::detached(false),
-            allowed_headers: vec![],
-            redacted_headers: vec![],
-            include_identity: Located::detached(false),
-            identity_fields: vec![],
-            events: None,
-            phases: None,
-        }
-    }
 }
 
 impl Validate for StructuredLoggingDeviceSpec {

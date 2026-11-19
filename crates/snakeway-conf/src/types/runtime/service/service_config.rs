@@ -76,6 +76,9 @@ impl ServiceConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::IngressSpec;
+    use confval::format::hcl::parse_hcl;
+    use confval::prelude::SourceMap;
 
     #[test]
     fn service_config_new_sets_fields() {
@@ -158,14 +161,43 @@ mod tests {
     #[test]
     fn absent_and_explicit_default_blocks_lower_identically() {
         // Arrange
-        let absent = service_spec_with(None, None);
-        let explicit = service_spec_with(
-            Some(CircuitBreakerSpec::default()),
-            Some(HealthCheckSpec::default()),
+        let mut sources = SourceMap::new();
+        let mut report = Report::new();
+        let id = sources.add(
+            "services.hcl",
+            r#"services = [
+  {
+    name = "without-blocks"
+    load_balancing_strategy = "round_robin"
+  },
+  {
+    name = "with-default-blocks"
+    load_balancing_strategy = "round_robin"
+    health_check = {
+      enable                     = false
+      failure_threshold          = 3
+      unhealthy_cooldown_seconds = 10
+    }
+    circuit_breaker = {
+      enable                    = false
+      failure_threshold         = 5
+      open_duration_milliseconds = 10000
+      half_open_max_requests    = 1
+      success_threshold         = 2
+      count_http_5xx_as_failure = true
+    }
+  }
+]
+"#,
         );
+        let ingress =
+            parse_hcl::<IngressSpec>(&sources, id, &mut report).expect("the file must parse");
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+        let absent = &ingress.services[0].value;
+        let explicit = &ingress.services[1].value;
 
         // Act
-        let (from_absent, from_explicit) = (lower(&absent), lower(&explicit));
+        let (from_absent, from_explicit) = (lower(absent), lower(explicit));
 
         // Assert
         assert_eq!(

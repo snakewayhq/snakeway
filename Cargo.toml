@@ -77,8 +77,8 @@ arc-swap = "1.7"
 brotli = "9"
 bytes = "1.11"
 clap = "4.5"
-confval = { version = "0.12.0", features = ["serde", "color", "hcl", "derive"] }
-confval-lsp = { version = "0.12.0", default-features = false, features = ["hcl"] }
+confval = { version = "0.13.0", features = ["serde", "color", "hcl", "derive"] }
+confval-lsp = { version = "0.13.0", default-features = false, features = ["hcl"] }
 console-subscriber = "0.5"
 ctrlc = "3"
 flate2 = "1.0"
