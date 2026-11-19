@@ -295,7 +295,7 @@ impl ControlPlaneServer {
                             ReloadPlan::Upgrade => {
                                 info!("change needs a new process, starting a zero-drop upgrade");
                                 use snakeway_proxy::spawn_upgrade;
-                                match spawn_upgrade(&config_path) {
+                                match spawn_upgrade(&config_path, epoch) {
                                     Ok(()) => {
                                         reload.record_outcome(epoch, ReloadOutcome::UpgradeStarted);
                                     }

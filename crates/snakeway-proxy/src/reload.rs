@@ -90,9 +90,19 @@ impl ReloadHandle {
         self.tx.subscribe()
     }
 
+    /// Publish the new epoch to the reload loop.
+    ///
+    /// `fetch_add` and `send` are two separate steps, so two concurrent reloads
+    /// could publish epochs out of order and leave the loop observing a lower
+    /// epoch than the one it already processed. Publishing with `max` prevents
+    /// the epoch from moving backwards.
     pub fn notify_reload(&self) -> u64 {
         let epoch = RELOAD_EPOCH.fetch_add(1, Ordering::Relaxed) + 1;
-        let _ = self.tx.send(ReloadEvent { epoch });
+        self.tx.send_modify(|event| {
+            if epoch > event.epoch {
+                event.epoch = epoch;
+            }
+        });
         tracing::info!(epoch, "reload signaled");
         epoch
     }
@@ -117,6 +127,13 @@ impl ReloadHandle {
         }
         Ok(())
     }
+}
+
+/// Initialize the reload epoch from a carried value, used by a process started
+/// in upgrade mode so its reload status reports the epoch of the reload that
+/// started it rather than starting at zero.
+pub fn set_reload_epoch(epoch: u64) {
+    RELOAD_EPOCH.store(epoch, Ordering::Relaxed);
 }
 
 #[cfg(test)]

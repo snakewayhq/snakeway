@@ -34,6 +34,12 @@ pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
 
     let config = validated.config;
 
+    if let Ok(value) = std::env::var("SNAKEWAY_RELOAD_EPOCH")
+        && let Ok(epoch) = value.parse::<u64>()
+    {
+        snakeway_proxy::set_reload_epoch(epoch);
+    }
+
     if test {
         println!("Configuration is valid.");
         return;

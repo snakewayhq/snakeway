@@ -12,7 +12,7 @@ use tracing::{error, info};
 ///
 /// Returns `Ok(())` if the new process was spawned successfully. The old process
 /// should continue serving until it receives SIGQUIT from the new process.
-pub fn spawn_upgrade(config_path: &Path) -> anyhow::Result<()> {
+pub fn spawn_upgrade(config_path: &Path, epoch: u64) -> anyhow::Result<()> {
     let exe = std::env::current_exe().map_err(|e| {
         anyhow::anyhow!("cannot determine current executable path for upgrade: {e}")
     })?;
@@ -28,6 +28,7 @@ pub fn spawn_upgrade(config_path: &Path) -> anyhow::Result<()> {
         .arg("--config")
         .arg(config_path)
         .arg("--upgrade")
+        .env("SNAKEWAY_RELOAD_EPOCH", epoch.to_string())
         .spawn();
 
     match child {

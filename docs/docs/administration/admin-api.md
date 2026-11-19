@@ -246,6 +246,10 @@ Shows how the last reload finished.
 If you reload from a deploy script, poll this endpoint until `epoch` is equal to or greater than the epoch that `POST /admin/reload` returned.
 Do not wait for an exact match, because a newer reload can finish before you poll.
 
+After a zero-drop upgrade, `POST /admin/reload` returns `upgrade_started` with the epoch of that request.
+The new process starts its own reload sequence, so its `GET /admin/reload` reports `epoch: 0` and `result: none` until its first reload.
+In that case, poll the new process's `/admin/health` or wait for it to begin serving instead of waiting for the epoch.
+
 ```shell
 curl http://localhost:8081/admin/reload
 ```

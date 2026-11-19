@@ -55,7 +55,14 @@ This path handles changes to:
 A zero-drop upgrade needs Linux, a `pid_file`, and the same `upgrade.sock` in the old and the new process.
 On other platforms, or without a `pid_file`, a reload that needs an upgrade is rejected, and the running process keeps its configuration.
 
-### 3. Restart
+### Reload epoch continuity across an upgrade
+
+During a zero-drop upgrade, the running process passes the epoch of the reload that triggered the upgrade to the new process through the `SNAKEWAY_RELOAD_EPOCH` environment variable.
+The new process reads it at startup and continues the reload epoch sequence, so reload epochs do not restart at zero after an upgrade.
+This variable is set automatically. You do not set it yourself.
+
+After an upgrade, `GET /admin/reload` reports `epoch: 0` and `result: none` until the new process finishes its first reload, because the upgrade itself is not a reload the new process runs.
+Poll `/admin/health` or wait for the new process to begin serving instead of waiting for the epoch.
 
 Some settings cannot change through either path.
 An upgrade cannot apply a change to `pid_file` or `upgrade.sock`, because the running process uses both settings to hand its listeners to the new process.
