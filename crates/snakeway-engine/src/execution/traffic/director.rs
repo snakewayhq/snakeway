@@ -33,7 +33,7 @@ impl TrafficDirector {
             .iter()
             .filter(|u| {
                 traffic_manager
-                    .health_status(service_id, &u.endpoint.id())
+                    .health_admission(service_id, &u.endpoint.id())
                     .healthy
             })
             .collect();
