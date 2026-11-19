@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Serialize, Default, confval::Spec)]
 pub struct BindAdminSpec {
     pub interface: Located<String>,
-    #[confval[range = PORT]]
+    #[confval(range = PORT)]
     pub port: Located<i64>,
     #[confval(nested)]
     pub tls: Located<TlsTerminationSpec>,

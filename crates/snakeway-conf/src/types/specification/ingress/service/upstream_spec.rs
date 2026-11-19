@@ -25,7 +25,7 @@ pub struct UpstreamSpec {
 #[derive(Debug, Serialize, Clone, Default, confval::Spec)]
 pub struct EndpointSpec {
     pub host: Located<String>,
-    #[confval[range = PORT]]
+    #[confval(range = PORT)]
     pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]
