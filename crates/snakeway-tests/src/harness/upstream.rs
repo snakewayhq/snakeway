@@ -6,7 +6,7 @@
 //! exception is [`start_http_upstream_on`], which exists for tests where the
 //! proxy already carries a port and the upstream comes up later.
 
-use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, HTTP_UPSTREAM_RESPONSE};
+use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, HTTP_UPSTREAM_RESPONSE, TEST_HOST};
 use std::net::TcpListener;
 use std::thread;
 
@@ -404,6 +404,13 @@ pub fn start_unix_http_upstream(path: &std::path::Path) {
     });
 }
 
+/// A self-signed certificate for an upstream, so no system trust store holds it.
+/// Returns the cert and key PEM strings.
+pub fn generate_upstream_identity() -> (String, String) {
+    let generated = rcgen::generate_simple_self_signed(vec![TEST_HOST.into()])
+        .expect("failed to generate upstream certificate");
+    (generated.cert.pem(), generated.signing_key.serialize_pem())
+}
 pub fn start_ws_upstream() -> u16 {
     use futures_util::{SinkExt, StreamExt};
     use tokio_tungstenite::accept_async;
