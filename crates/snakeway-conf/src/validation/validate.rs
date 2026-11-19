@@ -76,6 +76,7 @@ mod tests {
         // this ever reports two errors, the gate at the top of
         // `validate_spec` was moved or removed; that is a deliberate design
         // choice, not a bug to "fix".
+        // Arrange
         let mut report = Report::new();
         let server = ServerSpec {
             version: Located::detached(2),
@@ -83,8 +84,10 @@ mod tests {
             ..Default::default()
         };
 
+        // Act
         validate_spec(&server, &[], &[], &mut report);
 
+        // Assert
         assert_eq!(
             report.issues().len(),
             1,
