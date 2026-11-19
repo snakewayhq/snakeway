@@ -5,8 +5,8 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-range_constraint!(TIMEOUT_MS, i64, min: 1, max: 60000);
-range_constraint!(BODY_BUFFER_MAX, i64, min: 0, max: 104857600);
+range_constraint!(TIMEOUT_MS, i64, min: 1, max: 60000, units: "ms");
+range_constraint!(BODY_BUFFER_MAX_BYTES, i64, min: 0, max: 104857600, units: "bytes");
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 #[confval(derive_default)]
@@ -29,7 +29,7 @@ pub struct WasmDeviceSpec {
     pub timeout_milliseconds: Located<i64>,
 
     /// Max body buffer bytes. 0 = streaming.
-    #[confval(default = 0, range = BODY_BUFFER_MAX)]
+    #[confval(default = 0, range = BODY_BUFFER_MAX_BYTES)]
     pub body_buffer_max_bytes: Located<i64>,
 
     /// Arbitrary key-value config passed to the guest via host.config-get.
