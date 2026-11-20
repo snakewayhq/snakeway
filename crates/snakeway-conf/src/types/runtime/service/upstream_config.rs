@@ -54,9 +54,9 @@ pub enum UpstreamConfig {
 
 /// Build an upstream config without performing DNS resolution.
 ///
-/// Hostnames are preserved in the URL so that Pingora resolves them lazily
-/// at connection time. This avoids blocking startup when upstream DNS
-/// entries are not yet available (e.g., container orchestration scenarios).
+/// Hostnames are preserved in the URL. DNS resolution happens later, when the
+/// runtime state is built, so an unresolvable hostname does not block config
+/// loading.
 impl UpstreamTcpConfig {
     pub fn new(weight: u32, spec: &EndpointSpec) -> Self {
         let protocol = if spec.tls.is_some() { "https" } else { "http" };
