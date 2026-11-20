@@ -185,7 +185,10 @@ fn make_upstream_runtime_from_tcp(
 
     let host = authority.host().to_string();
 
-    let port = authority.port_u16().unwrap_or(80);
+    let protocol = uri.scheme_str().unwrap_or("http");
+    let port = authority
+        .port_u16()
+        .unwrap_or(if protocol == "https" { 443 } else { 80 });
 
     // Resolve DNS eagerly so the data-plane hot path never calls getaddrinfo.
     // IP literals are parsed directly; hostnames are resolved via the OS resolver.
