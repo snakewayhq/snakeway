@@ -71,13 +71,17 @@ fn wrap_ca_certificate(der: Vec<u8>) -> Result<WrappedX509> {
     })
 }
 
-/// Hash a path to a u64.
-/// This is used to group per-upstream CAs,
-/// keeping them out of the data plane.
+/// Hash a path and its contents to a u64.
+/// This is used to group per-upstream CAs, keeping them out of the data plane.
+/// The contents are included so that replacing a CA file invalidates the
+/// connection pool entry instead of reusing a connection built with the old CA.
 fn calculate_group_key(path: &Path) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = ahash::AHasher::default();
     path.as_os_str().hash(&mut h);
+    if let Ok(bytes) = fs::read(path) {
+        bytes.hash(&mut h);
+    }
     h.finish()
 }
 
