@@ -134,6 +134,7 @@ impl TrafficManager {
 
         AdminUpstreamView {
             endpoint: endpoint_label.to_owned(),
+            upstream_id: upstream_id.as_u64(),
             weight,
             latency_milliseconds,
             health,

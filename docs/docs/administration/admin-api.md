@@ -125,6 +125,7 @@ curl http://localhost:8081/admin/upstreams
     "api": {
       "127.0.0.1:8080": {
         "endpoint": "127.0.0.1:8080",
+        "upstream_id": 12345,
         "weight": 1,
         "latency_milliseconds": 12,
         "health": {
@@ -156,6 +157,8 @@ curl http://localhost:8081/admin/upstreams
 ```
 
 The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
+
+The `upstream_id` field is the value used as the `upstream` label on metrics and in structured logs, such as `circuit_transition` events. Use it to map a metric series or log line back to the endpoint shown here. It is derived from the upstream's address and stays stable across reloads.
 
 The `latency_milliseconds` field is a moving average of the time each successful request to that upstream took, in milliseconds.
 Recent requests count more than older ones.
