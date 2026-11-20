@@ -4,7 +4,7 @@ use crate::types::{
 };
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, confval::Spec)]
 #[confval(derive_default)]
@@ -36,7 +36,6 @@ impl Validate for ServiceSpec {
             }
         }
 
-        let mut seen_sock_values = HashSet::new();
         let mut seen_endpoints = HashMap::new();
 
         for upstream in &self.upstreams {
@@ -61,18 +60,6 @@ impl Validate for ServiceSpec {
                     .help("Only one can be set.")
                     .emit();
                 continue;
-            }
-
-            if let Some(sock) = &upstream.value.sock
-                && !seen_sock_values.insert(sock.value.path.value.clone())
-            {
-                report
-                    .error(format!(
-                        "duplicate upstream sock: {}",
-                        sock.value.path.value
-                    ))
-                    .at(sock.value.path.span)
-                    .emit();
             }
 
             if let Some(endpoint) = &upstream.value.endpoint {
@@ -100,7 +87,7 @@ impl Validate for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{EndpointSpec, EndpointTlsSpec, SockSpec};
+    use crate::types::{BindSpec, EndpointSpec, EndpointTlsSpec, IngressSpec, SockSpec};
 
     fn minimal_upstream() -> UpstreamSpec {
         UpstreamSpec {
@@ -240,9 +227,19 @@ mod tests {
             upstreams: vec![sock_upstream(), sock_upstream()],
             ..Default::default()
         };
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(8080),
+                ..Default::default()
+            })),
+            services: vec![Located::detached(service)],
+            ..Default::default()
+        });
+        let mut report = Report::new();
 
         // Act
-        let report = validate(&service);
+        crate::validation::validate_ingresses(&[ingress], &mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
