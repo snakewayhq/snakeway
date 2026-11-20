@@ -4,8 +4,7 @@ title: Editor Support
 
 When you write Snakeway configuration by hand, a mistake normally surfaces when the proxy refuses to start.
 The language server moves that feedback into your editor.
-It underlines most of the errors `snakeway config check` reports, completes field names and keyword values, shows
-documentation and constraints on hover, and navigates between labeled blocks and their references.
+It underlines most of the errors `snakeway config check` reports, completes field names and keyword values, shows documentation and constraints on hover, and navigates between labeled blocks and their references.
 
 ## Starting the server
 
@@ -15,8 +14,7 @@ The server ships inside the `snakeway` binary.
 snakeway lsp
 ```
 
-The command speaks the Language Server Protocol over standard input and output, so you register it in your editor rather
-than run it yourself.
+The command speaks the Language Server Protocol over standard input and output, so you register it in your editor rather than run it yourself.
 One registration covers every Snakeway config file.
 The server picks the right schema for each file from its path.
 
@@ -24,8 +22,7 @@ The server picks the right schema for each file from its path.
 - Files matching your `include.devices` glob are served as device documents.
 - Files matching your `include.ingresses` glob are served as ingress documents.
 
-The server reads the globs from the `snakeway.hcl` nearest to the file you open, so a customized include pattern routes
-correctly without any editor configuration.
+The server reads the globs from the `snakeway.hcl` nearest to the file you open, so a customized include pattern routes correctly without any editor configuration.
 Without a `snakeway.hcl`, the conventional `device.d/*.hcl` and `ingress.d/*.hcl` layout is served, so a new project
 gets feedback before its entry point exists.
 
@@ -78,8 +75,7 @@ The command is `snakeway lsp`, and the file pattern is `*.hcl` under your config
 The server checks each file on its own, so a few `snakeway config check` rules stay outside the editor.
 Run `snakeway config check` before a deployment.
 
-- Rules that read the whole configuration: a duplicate device across files, a device that requires the identity device,
-  a duplicate service name across ingress files, and a listener that is not unique.
+- Rules that read the whole configuration: a duplicate device across files, a device that requires the identity device, a duplicate service name across ingress files, and a listener that is not unique.
 - Rules that need the enclosing entity: a service with no upstream backends, and a bind or bind_admin that is
   missing from an ingress. These checks point at the entity span, which the editor's per-file view cannot reach.
 - Rules that read the host, such as a certificate file that must exist or a data directory that must be present.

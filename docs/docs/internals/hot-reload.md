@@ -67,7 +67,7 @@ Poll `/admin/health` or wait for the new process to begin serving instead of wai
 
 Some settings cannot change through either path.
 An upgrade cannot apply a change to `pid_file` or `upgrade.sock`, because the running process uses both settings to hand its listeners to the new process.
-When a reload finds a change to either setting, it rejects the whole reload, logs an error that names the settings, and keeps the running configuration.
+When a reload finds a change to either setting, it rejects the whole reload, logs an error that lists the settings, and keeps the running configuration.
 Restart Snakeway to apply these changes.
 `GET /admin/reload` reports only the most recent reload outcome.
 

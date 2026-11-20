@@ -385,9 +385,9 @@ This works only on Linux with a `pid_file`.
 | Change type                                          | Command   | Mechanism               |
 |------------------------------------------------------|-----------|-------------------------|
 | Routes, services, devices, TLS certs                 | `reload`  | In-process ArcSwap      |
-| Listener address, port, TLS mode                     | `upgrade` | Fork/exec + FD transfer |
-| Worker threads, work stealing                        | `upgrade` | Fork/exec + FD transfer |
-| Other server settings that are read at startup       | `upgrade` | Fork/exec + FD transfer |
+| Listener address, port, TLS mode                     | `upgrade` | Fork/exec and FD transfer |
+| Worker threads, work stealing                        | `upgrade` | Fork/exec and FD transfer |
+| Other server settings that are read at startup       | `upgrade` | Fork/exec and FD transfer |
 | `pid_file`, `upgrade.sock`                           | Restart   | Stop and start Snakeway |
 
 ## logs
