@@ -246,13 +246,13 @@ The `Validate` trait is a compile-time bound on lowering.
 A spec that can be lowered into a runtime config but has no validator fails to compile.
 The bound lives where each family lowers:
 
-- **Server** and the **device** configs declare it on their `Lower` impls (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on the hand-written device impls).
+- **Server** and the **device** configs declare it on their `Lower` impls (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on the handwritten device impls).
 - **Ingresses** lower by flattening in `lower_configs` rather than through a per-entity `Lower` impl, so the bound is a `where IngressSpec: Validate + ValidateNested` clause on that function.
 
 The generated `ValidateNested` impl calls `validate_all` on every nested child.
 A child without a `Validate` impl fails to compile at its parent.
 Adding a nested block to a spec cannot leave it unchecked.
-The earlier hand-written delegation could omit the child, and nothing caught the omission.
+The earlier handwritten delegation could omit the child, and nothing caught the omission.
 
 You cannot produce a `RuntimeConfig` from a spec family whose entities are not all validatable.
 The compiler guarantees that a validator exists and that every nested child is reached.
