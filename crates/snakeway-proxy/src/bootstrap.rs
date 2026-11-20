@@ -51,7 +51,6 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
     let mut pingora_server_conf = ServerConf::new()
         .ok_or_else(|| anyhow!("Could not construct pingora server configuration"))?;
 
-    pingora_server_conf.ca_file = config.server.ca_file.clone();
     pingora_server_conf.work_stealing = config.server.performance.work_stealing;
     pingora_server_conf.grace_period_seconds = config.server.shutdown.drain_seconds;
     pingora_server_conf.graceful_shutdown_timeout_seconds =

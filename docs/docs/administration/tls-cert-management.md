@@ -123,9 +123,14 @@ If you change the `cert` or `key` path instead, Snakeway applies the new listene
 A zero-drop upgrade works only on Linux with a `pid_file` set.
 On other platforms, or without a `pid_file`, the reload is rejected and you must restart Snakeway.
 
-## Monitoring and Failure Recovery
+## CA Files
 
-**Monitor certificate expiry.**
+The global `server.ca_file` is read on every reload, so changes to its path or contents apply in place.
+It is the fallback for an upstream that sets `verify = true` without its own `ca_file`.
+
+See [Hot Reload](/docs/internals/hot-reload) for the platform and `pid_file` requirements of zero-drop upgrades.
+
+## Monitoring and Failure Recovery
 Even with automated renewal, operators should monitor certificate expiration dates.
 If ACME renewal fails (network issues, DNS misconfiguration, rate limits), the existing certificate continues to serve traffic until it expires.
 

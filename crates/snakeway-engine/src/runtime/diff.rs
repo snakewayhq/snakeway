@@ -115,7 +115,7 @@ fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
         old_version,
         old_threads,
         _old_pid_file,
-        old_ca_file,
+        _old_ca_file,
         old_tls_automation,
         old_observability,
         old_dns_refresh_interval_seconds,
@@ -143,7 +143,7 @@ fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
         new_version,
         new_threads,
         _new_pid_file,
-        new_ca_file,
+        _new_ca_file,
         new_tls_automation,
         new_observability,
         new_dns_refresh_interval_seconds,
@@ -169,7 +169,6 @@ fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
 
     old_version != new_version
         || old_threads != new_threads
-        || old_ca_file != new_ca_file
         || old_tls_automation != new_tls_automation
         || old_observability != new_observability
         || old_dns_refresh_interval_seconds != new_dns_refresh_interval_seconds
@@ -527,7 +526,7 @@ mod tests {
     }
 
     #[test]
-    fn ca_file_changed() {
+    fn ca_file_changed_applies_in_place() {
         // Arrange
         let (old, new) = configs_with_server_change(|s| {
             s.ca_file = Some("/etc/ssl/ca.pem".to_string());
@@ -537,7 +536,7 @@ mod tests {
         let kind = classify_config_change(&old, &new);
 
         // Assert
-        assert_eq!(kind, ConfigChangeKind::UpgradeRequired);
+        assert_eq!(kind, ConfigChangeKind::RuntimeOnly);
     }
 
     #[test]

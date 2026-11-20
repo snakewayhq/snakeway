@@ -46,7 +46,6 @@ This path handles changes to:
 - Shutdown timeouts
 - Upstream connection pool size, source addresses, connect timeout, and read timeout
 - Parallel accepts per listener
-- The global `ca_file`
 - DNS refresh interval
 - Observability
 - TLS automation
