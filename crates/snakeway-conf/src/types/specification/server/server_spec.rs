@@ -70,7 +70,7 @@ impl ServerSpec {
     /// left untouched.
     ///
     /// `config dump --repr=spec` serializes the spec as written, so an absent
-    /// block stays absent; `--repr=populated_spec` serializes `populated()` so
+    /// block stays absent. `--repr=populated_spec` serializes `populated()` so
     /// an operator can see the defaults the runtime will apply.
     pub fn populated(mut self) -> Self {
         self.shutdown

@@ -304,7 +304,7 @@ pub fn start_grpc_upstream() -> u16 {
 
 /// Build a TLS acceptor for a test upstream from PEM text.
 ///
-/// The TLS config names the ring provider directly, because a test upstream starts before
+/// The TLS config uses the ring provider directly, because a test upstream starts before
 /// the proxy installs a process-level rustls provider.
 fn test_upstream_tls_acceptor(cert_pem: &str, key_pem: &str) -> tokio_rustls::TlsAcceptor {
     use rustls::pki_types::pem::PemObject;

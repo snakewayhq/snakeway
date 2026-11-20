@@ -43,7 +43,7 @@ impl Validate for ServiceSpec {
             if let (Some(sock), Some(endpoint)) = (&upstream.value.sock, &upstream.value.endpoint) {
                 report
                     .error(format!(
-                        "upstream cannot have both sock {} and endpoint: {}:{}",
+                        "upstream cannot have both sock: {} and endpoint: {}:{}",
                         sock.value.path.value, endpoint.value.host.value, endpoint.value.port.value
                     ))
                     .at(upstream.span)
@@ -194,7 +194,7 @@ mod tests {
         // Assert
         assert_eq!(
             report.issues()[0].message,
-            "upstream cannot have both sock /tmp/test.sock and endpoint: 127.0.0.1:3000"
+            "upstream cannot have both sock: /tmp/test.sock and endpoint: 127.0.0.1:3000"
         );
     }
 

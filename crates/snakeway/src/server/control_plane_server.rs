@@ -158,7 +158,7 @@ impl ControlPlaneServer {
         if !self.config.server.pid_file.is_empty() {
             let pid_file = self.config.server.pid_file.clone();
             if let Err(e) = write_pid(&pid_file) {
-                warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file; continuing");
+                warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file, continuing");
             } else {
                 info!(pid_file = %pid_file.display(), "pid file written");
             }

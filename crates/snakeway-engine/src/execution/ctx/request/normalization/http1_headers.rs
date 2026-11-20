@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn strip_header_named_in_connection_with_mixed_case() {
-        // In HTTP/1, a header that the Connection header names is hop-by-hop, whatever the case of the token.
+        // In HTTP/1, a header that the Connection header lists is hop-by-hop, whatever the case of the token.
         assert_rewrite_http1_headers(
             &[
                 ("host", "example.com"),

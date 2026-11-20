@@ -74,7 +74,7 @@ mod tests {
         // field constraints that `validate_all` would run first, even when a
         // field is otherwise invalid (here, threads far out of range). If
         // this ever reports two errors, the gate at the top of
-        // `validate_spec` was moved or removed; that is a deliberate design
+        // `validate_spec` was moved or removed. That is a deliberate design
         // choice, not a bug to "fix".
         // Arrange
         let mut report = Report::new();
