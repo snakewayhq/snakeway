@@ -1,7 +1,7 @@
 use crate::runtime::types::ManualCertMap;
 use anyhow::{Result, anyhow};
 use pingora::tls::sign::CertifiedKey;
-use snakeway_conf::tls::{TlsError, build_certified_key, parse_cert_chain, parse_private_key};
+use snakeway_conf::tls::TlsError;
 use snakeway_conf::types::{ListenerConfig, TlsTerminationConfig};
 use std::path::Path;
 use std::sync::Arc;
@@ -34,24 +34,12 @@ pub(crate) fn load_manual_certs(listeners: &[ListenerConfig]) -> Result<ManualCe
 }
 
 fn load_certified_key(cert_path: &Path, key_path: &Path) -> Result<CertifiedKey> {
-    let cert_bytes = std::fs::read(cert_path).map_err(|e| {
-        anyhow!(
-            "failed to read certificate file {}: {e}",
-            cert_path.display()
-        )
-    })?;
-    let key_bytes = std::fs::read(key_path).map_err(|e| {
-        anyhow!(
-            "failed to read private key file {}: {e}",
+    snakeway_conf::tls::load_certified_key(cert_path, key_path).map_err(|e| match e {
+        TlsError::Io(e) => anyhow!(
+            "failed to read certificate or key file: cert={}, key={}: {e}",
+            cert_path.display(),
             key_path.display()
-        )
-    })?;
-
-    let certs =
-        parse_cert_chain(&cert_bytes).map_err(|e| anyhow!("{}: {e}", cert_path.display()))?;
-    let key = parse_private_key(&key_bytes).map_err(|e| anyhow!("{}: {e}", key_path.display()))?;
-
-    build_certified_key(certs, key).map_err(|e| match e {
+        ),
         TlsError::KeyMismatch => anyhow!(
             "private key does not match certificate: cert={}, key={}",
             cert_path.display(),
@@ -201,10 +189,7 @@ mod tests {
             "got: {msg}"
         );
         assert!(
-            msg.contains(&format!(
-                "failed to read certificate file {}",
-                missing.display()
-            )),
+            msg.contains(&format!("{}", missing.display())),
             "got: {msg}"
         );
     }

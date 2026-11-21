@@ -1,6 +1,7 @@
 use pingora_rustls::RusTlsError;
 use rustls_pki_types::pem::{PemObject, SectionKind};
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+use std::path::Path;
 
 /// Parse PEM-encoded certificates from raw bytes.
 ///
@@ -107,6 +108,9 @@ pub enum TlsError {
     #[error("invalid PEM: {0}")]
     InvalidPem(#[source] rustls_pki_types::pem::Error),
 
+    #[error("could not read file: {0}")]
+    Io(#[source] std::io::Error),
+
     #[error("no certificates found in PEM")]
     NoCertificates,
 
@@ -130,6 +134,36 @@ pub enum TlsError {
 
     #[error("TLS crypto provider is not available")]
     ProviderUnavailable,
+}
+
+/// Load a certified key from in-memory certificate and key bytes.
+///
+/// Parses the certificate chain and the private key, then builds the certified
+/// key. Use this when the bytes are already in memory, such as a cert store
+/// entry. For file-based loading, read the files first and call this, or use
+/// `load_certified_key`.
+pub fn load_certified_key_from_bytes(
+    cert_bytes: &[u8],
+    key_bytes: &[u8],
+) -> Result<pingora_rustls::sign::CertifiedKey, TlsError> {
+    let certs = parse_cert_chain(cert_bytes)?;
+    let key = parse_private_key(key_bytes)?;
+    build_certified_key(certs, key)
+}
+
+/// Load a certified key from a certificate file and a private key file.
+///
+/// Reads both files, parses the certificate chain and the private key, and
+/// builds the certified key. This consolidates the file reading and parsing
+/// that the manual TLS loader and the ACME manager otherwise duplicate.
+pub fn load_certified_key(
+    cert_path: &Path,
+    key_path: &Path,
+) -> Result<pingora_rustls::sign::CertifiedKey, TlsError> {
+    let cert_bytes = std::fs::read(cert_path).map_err(TlsError::Io)?;
+    let key_bytes = std::fs::read(key_path).map_err(TlsError::Io)?;
+
+    load_certified_key_from_bytes(&cert_bytes, &key_bytes)
 }
 
 #[cfg(test)]
