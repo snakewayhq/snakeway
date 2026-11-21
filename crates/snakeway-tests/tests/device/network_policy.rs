@@ -79,9 +79,9 @@ fn network_policy_requires_identity_device() {
 
 #[test]
 fn network_policy_enforces_even_when_identity_loads_last() {
-    // Arrange: reverse the config order so the identity device loads after the
-    // network policy, the same position a file named 99-identity.hcl would
-    // produce on disk.
+    // Arrange
+    // Reverse the config order so the identity device loads after the network
+    // policy, the same position a file named 99-identity.hcl produces on disk.
     let mut cfg = ConfigBuilder::default()
         .with_http_ingress()
         .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
