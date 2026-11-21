@@ -259,8 +259,8 @@ fn make_upstream_runtime_for_unix(
 
 /// Stable hash of an upstream address. SHA-256 is used so the id is the same
 /// across process restarts, dependency versions, and CPU features. The id is a
-/// metric label, so stability across a mixed fleet matters more than speed; the
-/// hash runs once per reload, not per request.
+/// metric label, so stability across a mixed fleet matters more than speed.
+/// The hash runs once per reload, not per request.
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
     let mut hasher = Sha256::new();
     match addr {
@@ -285,7 +285,7 @@ fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
 ///
 /// Takes a path that might be relative (like `./files` or `../data`) and converts
 /// it to a complete path (like `/home/user/app/files`). If the path doesn't exist
-/// or can't be resolved, it just uses the path as-is.
+/// or can't be resolved, it uses the path as-is.
 fn canonicalize_dir(dir: &Path) -> Result<String, std::io::Error> {
     let path_buf = dir.canonicalize()?;
     Ok(path_buf.to_string_lossy().to_string())

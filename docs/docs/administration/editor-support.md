@@ -23,8 +23,7 @@ The server picks the right schema for each file from its path.
 - Files matching your `include.ingresses` glob are served as ingress documents.
 
 The server reads the globs from the `snakeway.hcl` nearest to the file you open, so a customized include pattern routes correctly without any editor configuration.
-Without a `snakeway.hcl`, the conventional `device.d/*.hcl` and `ingress.d/*.hcl` layout is served, so a new project
-gets feedback before its entry point exists.
+Without a `snakeway.hcl`, the conventional `device.d/*.hcl` and `ingress.d/*.hcl` layout is served, so a new project gets feedback before its entry point exists.
 
 ## Registering in a JetBrains IDE
 

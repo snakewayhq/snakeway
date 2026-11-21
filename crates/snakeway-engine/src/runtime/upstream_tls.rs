@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// Resolve the TLS settings of one upstream.
 ///
 /// An upstream without a `tls` block has no TLS settings. The per-upstream `ca_file` is used
-/// before the global `server.ca_file`. Without either, the peer carries no CA and Pingora
+/// before the global `server.ca_file`. Without either, the peer has no CA and Pingora
 /// verifies against the trust store of its connector.
 pub(crate) fn resolve_upstream_tls(
     tls: Option<&UpstreamTlsConfig>,

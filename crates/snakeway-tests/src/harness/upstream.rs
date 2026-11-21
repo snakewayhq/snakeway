@@ -156,7 +156,7 @@ pub fn start_http_upstream_that_reads_request() -> u16 {
             let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
             let mut buf = [0u8; 4096];
             // Read until EOF or error — we don't care about the content,
-            // we just need to not respond until the proxy is done sending.
+            // we need to not respond until the proxy is done sending.
             loop {
                 match stream.read(&mut buf) {
                     Ok(0) | Err(_) => break,

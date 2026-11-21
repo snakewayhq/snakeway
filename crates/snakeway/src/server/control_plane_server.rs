@@ -321,7 +321,7 @@ impl ControlPlaneServer {
                                 info!("reload successful");
 
                                 // Keep the baseline in sync with the running config so later reloads
-                                // classify against what is actually running, not the startup config.
+                                // classify against what is running, not the startup config.
                                 current_config = new_config.clone();
 
                                 if let Some(manager) = &cert_manager_for_reload {

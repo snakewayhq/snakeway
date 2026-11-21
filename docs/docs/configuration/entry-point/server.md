@@ -250,7 +250,7 @@ Valid range: `1048576` (1 MiB) to `268435456` (256 MiB).
 
 :::caution
 Both limits size a memory pool that the runtime reserves up front, and their effect multiplies.
-A very high `max_concurrent_executions` combined with a very high `max_memory_bytes` reserves a large amount of address space at startup, so raise them deliberately.
+A high `max_concurrent_executions` combined with a high `max_memory_bytes` reserves a large amount of address space at startup, so raise them deliberately.
 :::
 
 ## Observability

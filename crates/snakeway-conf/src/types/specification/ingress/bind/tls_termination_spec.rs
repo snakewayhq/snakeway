@@ -21,7 +21,7 @@ pub enum TlsTerminationSpec {
     },
     /// ACME TLS: certificates are issued and renewed automatically.
     Acme {
-        /// Domain names the certificate covers.
+        /// Domains the certificate covers.
         domains: Vec<Located<String>>,
         /// ACME challenge type. Defaults to HTTP-01.
         challenge: Located<String>,

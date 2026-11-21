@@ -58,7 +58,7 @@ impl TrafficManager {
             },
         };
 
-        // If we just crossed into unhealthy, check if we need to force the circuit open...
+        // If we crossed into unhealthy, check if we need to force the circuit open...
         if let HealthState::Unhealthy {
             consecutive_failures,
             ..

@@ -87,7 +87,7 @@ impl ServerSpec {
 
 /// Entity-level validation for the server section. Runs after parsing (or
 /// after programmatic construction), so it must not assume a source file
-/// exists; spans come from the `Located` values themselves.
+/// exists. Spans come from the `Located` values themselves.
 impl Validate for ServerSpec {
     fn validate(&self, report: &mut Report) {
         if let Some(pid_file) = &self.pid_file

@@ -248,7 +248,8 @@ pub fn build_pingora_server(params: DataPlaneServerParams) -> Result<Server, Err
                 TlsTerminationConfig::Manual { .. } => {
                     let resolver = Arc::new(ManualCertResolver::new(
                         state.clone(),
-                        // Keyed by bind address; see load_manual_certs for the invariant.
+                        // Keyed by bind address.
+                        // See load_manual_certs for the invariant.
                         listener_cfg.addr.clone(),
                     ));
                     let tls_settings = tls_settings_with_resolver(resolver)?;
