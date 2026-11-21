@@ -3,7 +3,7 @@ use pingora::prelude::HttpPeer;
 use pingora::{BError, Custom, Error};
 use snakeway_engine::ctx::RequestCtx;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime, UpstreamTlsRuntime};
-use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId};
+use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId, TrafficDecision};
 
 impl TrafficProxy {
     /// Select an upstream for the given request.
@@ -28,6 +28,24 @@ impl TrafficProxy {
 
         tracing::debug!("decision reason: {}", decision.reason);
 
+        // A successful decision may have consumed a half-open circuit slot.
+        // When selection fails, no guard will exist to return the slot, so
+        // this function releases it before propagating the error.
+        let selected = Self::resolve_selected_upstream(state, service_name, &decision);
+        if selected.is_err() {
+            self.proxy_ctx
+                .traffic_manager
+                .circuit_rollback(service_id, &decision.upstream_id);
+        }
+        selected
+    }
+
+    /// Resolve the decision to an upstream in the running runtime state.
+    fn resolve_selected_upstream<'a>(
+        state: &'a RuntimeState,
+        service_name: &str,
+        decision: &TrafficDecision,
+    ) -> Result<SelectedUpstream<'a>, BError> {
         // Grab the service by name.
         let service = state
             .services

@@ -164,10 +164,9 @@ impl ProxyHttp for TrafficProxy {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
         let service_id = ServiceId::new(service_name.as_str());
 
-        // Pingora re-enters this hook once per retry attempt. Re-entry means
-        // the previous attempt failed, so settle its guard as a failure now
-        // instead of letting it finalize later against this attempt's
-        // outcome, which could record a phantom success on a dead upstream.
+        // Pingora re-enters this hook once per retry attempt. The guard in
+        // the context belongs to the previous attempt, which failed. Settle
+        // it here so it is not finalized against the new attempt's outcome.
         if let Some(mut stale) = ctx.admission_guard.take() {
             stale.failure();
         }
@@ -175,8 +174,8 @@ impl ProxyHttp for TrafficProxy {
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        // A half-open slot is already spent on this request. A failed peer
-        // build means no guard will exist to return it, so roll it back.
+        // A failed peer build leaves no guard to return the half-open slot
+        // spent on selection, so it is released here.
         let peer = match self.build_peer(ctx, upstream) {
             Ok(peer) => peer,
             Err(e) => {
