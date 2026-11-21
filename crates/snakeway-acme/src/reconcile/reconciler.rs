@@ -1,3 +1,4 @@
+use super::errors::ReconcilerError;
 use crate::cert_store::{CertificateMeta, StoredCertificate};
 use crate::order_store::OrderState;
 use crate::state::{CertState, compute_state};
@@ -6,37 +7,12 @@ use sha2::{Digest, Sha256};
 use snakeway_conf::types::{AcmeChallenge, RuntimeConfig, TlsTerminationConfig};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use thiserror::Error;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use x509_parser::prelude::*;
 
-#[derive(Debug, Error)]
-pub(crate) enum ReconcilerError {
-    #[error("acme client not available: {0}")]
-    CannotGetAcmeClient(String),
-
-    #[error("acme error: {0}")]
-    Acme(String),
-
-    #[error("order store error: {0}")]
-    OrderStore(String),
-
-    #[error("cert store error: {0}")]
-    CertStore(String),
-
-    #[error("no pending authorization found")]
-    NoPendingAuthorization,
-
-    #[error("no http-01 challenge found")]
-    NoHttp01Challenge,
-
-    #[error("unexpected order status: {0:?}")]
-    UnexpectedOrderStatus(instant_acme::OrderStatus),
-}
-
 pub(crate) struct Reconciler {
-    cert_manager: Arc<CertManager>,
+    pub(super) cert_manager: Arc<CertManager>,
 }
 
 impl Reconciler {
@@ -129,25 +105,7 @@ impl Reconciler {
                 // the same broken state forever (e.g., expired authorization).
                 // The backoff logic in compute_state will eventually return
                 // Absent, which creates a fresh order.
-                if let Some(mut failed_state) = order_state {
-                    failed_state.status = OrderStatus::Failed;
-                    failed_state.failure_count += 1;
-                    failed_state.last_error = Some(e.to_string());
-                    failed_state.updated_at = std::time::SystemTime::now();
-
-                    let store = self.cert_manager.order_store();
-                    if let Err(persist_err) =
-                        tokio::task::spawn_blocking(move || store.put(&failed_state))
-                            .await
-                            .map_err(|e| e.to_string())
-                            .and_then(|r| r.map_err(|e| e.to_string()))
-                    {
-                        error!(
-                            error = %persist_err,
-                            "cert_manager: failed to persist Failed state"
-                        );
-                    }
-                }
+                self.mark_order_failed(order_state, &e).await;
             }
         }
 
@@ -276,7 +234,7 @@ impl Reconciler {
         let mut authzs = order.authorizations();
 
         // Collect a (token, keyAuthorization) pair for every pending authorization.
-        // For single-domain orders this produces one entry; for SAN orders covering
+        // For single-domain orders this produces one entry. For SAN orders covering
         // N domains it produces N entries, one per domain that still needs validation.
         let mut challenge_tokens: Vec<(String, String)> = Vec::new();
 
@@ -293,10 +251,7 @@ impl Reconciler {
 
             let token = challenge.token.to_string();
             let key_auth = challenge.key_authorization().as_str().to_string();
-
-            self.cert_manager
-                .http01()
-                .put(token.clone(), key_auth.clone());
+            self.register_challenge_token(&token, &key_auth);
 
             challenge_tokens.push((token, key_auth));
         }
@@ -335,9 +290,7 @@ impl Reconciler {
         // Re-register all challenge tokens so the CA can reach them even if the
         // process restarted between step_select_http01 and this step.
         for (token, key_auth) in &order_state.challenge_tokens {
-            self.cert_manager
-                .http01()
-                .put(token.clone(), key_auth.clone());
+            self.register_challenge_token(token, key_auth);
         }
 
         let client = self
@@ -355,7 +308,7 @@ impl Reconciler {
 
         // Notify the CA that every pending HTTP-01 challenge is ready.
         // For SAN orders with N domains all N pending authorizations must be
-        // signalled; skipping any of them causes the CA to time-out on those
+        // signalled. Skipping any of them causes the CA to time-out on those
         // domains and eventually fail the entire order.
         let mut ready_count = 0usize;
 
@@ -494,27 +447,13 @@ impl Reconciler {
             meta,
         );
 
-        let cert_store = self.cert_manager.cert_store();
-        let id = cert_id.clone();
-        tokio::task::spawn_blocking(move || cert_store.put(id, stored))
-            .await
-            .map_err(|e| ReconcilerError::CertStore(format!("join error: {e}")))?
-            .map_err(|e| ReconcilerError::CertStore(format!("io error: {e}")))?;
-
-        info!(%cert_id, "acme: certificate stored successfully");
+        self.store_certificate(cert_id.clone(), stored).await?;
 
         for (token, _) in &order_state.challenge_tokens {
             self.cert_manager.http01().remove(token);
         }
 
-        let order_store = self.cert_manager.order_store();
-        let id = cert_id.clone();
-        tokio::task::spawn_blocking(move || order_store.delete(&id))
-            .await
-            .map_err(|e| ReconcilerError::OrderStore(format!("join error: {e}")))?
-            .map_err(|e| ReconcilerError::OrderStore(format!("io error: {e}")))?;
-
-        debug!(%cert_id, "acme: order state cleaned up");
+        self.delete_order_state(&cert_id).await?;
 
         // Rebuild and publish SNI map so new handshakes see the cert immediately.
         let cm = self.cert_manager.clone();
