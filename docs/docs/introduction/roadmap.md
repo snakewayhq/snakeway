@@ -236,14 +236,40 @@ This is bumped up ahead of the v1.0 release because it does not make sense to re
 - [x] Replace the implicit HTTP version and upgrade negotiation logic in `HttpProxy` and `RequestCtx` with explicit state machines (`ProtocolMode` and `UpgradeState`).
   See [Protocol negotiation](../internals/protocol-negotiation.md) for the states, transitions, and rejection points.
 
+## Milestone 12: LSP editor support (v0.17.0)
+
+**Goals**
+
+- [x] Upgrade to the latest version of confval and add LSP editor support.
+  See [Editor Support](../administration/editor-support.md) for the states, transitions, and rejection points.
+
+## Milestone 13: Harden the proxy (v0.17.1)
+
+**Goals**
+
+- [ ] Defect hunt and remediation.
+  The pre-release review of v0.17.0 uncovered a number of subtle bugs - this is an explicit effort to uncover reliability unknowns.
+
+## Milestone 14: Proxy-Wasm support (v0.18.0)
+
+**Goals**
+
+- [ ] Complement (or replace) the device pipeline with the unreleased pingora-wasm (that implements Proxy-Wasm) crate. 
+
+## Milestone 15: Acme replication (v0.19.0)
+
+**Goals**
+
+- [ ] Enhance ACME with replication (using yet-to-be released embeddable Raft replication crate).
+
 ## Milestone N: Snakeway 1.0
 
 **Goals**
 
-- [ ] Comprehensive documentation site
-- [ ] Full operator manual
-- [ ] Benchmark suite with published results
+- [x] Comprehensive documentation site
+- [x] Full operator manual
 - [x] Stabilized device API
+- [ ] Benchmark suite with published results
 
 ## Post-1.0
 
