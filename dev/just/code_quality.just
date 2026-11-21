@@ -1,3 +1,21 @@
+# Check hygiene beyond the lint recipe: duplication, unused dependencies, formatting, and file size
+check-code-quality:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Duplication thresholds are a ratchet: they sit just above the state at
+    # adoption and tighten as duplicate groups are paid down.
+    cargo dupes --exclude tests --exclude benches --exclude examples --exclude-tests check --max-exact 80 --max-near 8 --max-exact-percent 16.0 --max-near-percent 1.2
+    cargo machete
+    cargo fmt --check
+    fail=0
+    while IFS= read -r f; do
+      line=$(grep -n '#\[cfg(test)\]\|#\[cfg(all(test' "$f" | head -1 | cut -d: -f1 || true)
+      if [ -n "$line" ]; then app=$((line - 1)); else app=$(wc -l < "$f"); fi
+      if [ "$app" -gt 600 ]; then echo "file over the 600 application-line hard limit: $f ($app lines)" >&2; fail=1; fi
+    done < <(find crates -path '*/src/*' -name '*.rs' ! -path 'crates/snakeway-wit/src/*')
+    [ "$fail" -eq 0 ] || exit 1
+    echo "check-code-quality passed"
+
 fmt:
     cargo fmt
 
