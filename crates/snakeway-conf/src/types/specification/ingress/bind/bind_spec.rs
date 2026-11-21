@@ -1,7 +1,7 @@
 use crate::resolution::ResolveError;
 use crate::types::{
-    BindInterfaceSpec, ConnectionRateLimitingFilterSpec, Http2Spec, NetworkConnectionFilterSpec,
-    RedirectSpec, TlsTerminationSpec,
+    AcmeChallenge, BindInterfaceSpec, ConnectionRateLimitingFilterSpec, Http2Spec,
+    NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
 };
 use crate::validation::{ConfigError, PORT};
 use confval::prelude::{Located, Report, Validate};
@@ -73,6 +73,21 @@ impl Validate for BindSpec {
                 .emit();
         }
 
+        // HTTP-01 needs a plain HTTP listener that answers the CA challenge,
+        // and only the redirect listener serves it. Without this pairing the
+        // order can never validate and the ACME loop retries forever.
+        if let Some(tls) = &self.tls
+            && let TlsTerminationSpec::Acme { challenge, .. } = &tls.value
+            && challenge.value == AcmeChallenge::Http01.as_str()
+            && self.redirect_http_to_https.is_none()
+        {
+            report
+                .error("HTTP-01 challenge requires a redirect_http_to_https block, which serves the ACME challenge")
+                .at(tls.span)
+                .help("Add a redirect_http_to_https block to this bind.")
+                .emit();
+        }
+
         // Interface validation.
         let interface: Result<BindInterfaceSpec, _> = self.interface.value.as_str().try_into();
         match interface {
@@ -105,6 +120,52 @@ mod tests {
             port: Located::detached(8080),
             ..Default::default()
         }
+    }
+
+    fn bind_with_http01() -> BindSpec {
+        let mut bind = minimal_bind();
+        bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
+            domains: vec![Located::detached("example.com".to_string())],
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
+        }));
+        bind
+    }
+
+    #[test]
+    fn http01_challenge_without_a_redirect_block_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let bind = bind_with_http01();
+
+        // Act
+        bind.validate_all(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("HTTP-01 challenge requires a redirect")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn http01_challenge_with_a_redirect_block_is_accepted() {
+        // Arrange
+        let mut report = Report::new();
+        let mut bind = bind_with_http01();
+        bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
+            port: Located::detached(9090),
+            status: Located::detached(308),
+        }));
+
+        // Act
+        bind.validate_all(&mut report);
+
+        // Assert: the redirect needs the same TLS, so no issue of any kind.
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
     }
 
     #[test]
