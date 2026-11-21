@@ -103,59 +103,61 @@ fn percent_decode_unreserved_with_outcome(input: &str) -> Result<(String, bool),
 /// Percent-encoded sequences representing reserved or other characters are preserved as-is,
 /// ensuring that the semantic meaning of the URI is not altered during normalization.
 ///
+/// The function scans bytes and never slices the input by byte arithmetic into a `&str`,
+/// because a `%` followed by fewer than two ASCII hex digits can otherwise split a
+/// multibyte character.
+///
 /// # Security
 /// - Rejects malformed percent-encoding sequences (e.g. incomplete or non-hex triplets)
 /// - Restricts decoding to ASCII-range percent-encoded bytes (0 to 127)
+/// - Copies raw non-ASCII bytes through verbatim instead of recoding them
 /// - Normalizes preserved percent-encoded sequences to uppercase per RFC 3986 Section 2.1
 fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
+    fn hex_val(b: u8) -> Option<u8> {
+        match b {
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(b - b'a' + 10),
+            b'A'..=b'F' => Some(b - b'A' + 10),
+            _ => None,
+        }
+    }
+
+    fn push_hex(out: &mut Vec<u8>, val: u8) {
+        const HEX: &[u8; 16] = b"0123456789ABCDEF";
+        out.push(b'%');
+        out.push(HEX[(val / 16) as usize]);
+        out.push(HEX[(val % 16) as usize]);
+    }
+
     let bytes = input.as_bytes();
-    let mut out = String::with_capacity(input.len());
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
     let mut i = 0;
 
     while i < bytes.len() {
         match bytes[i] {
             b'%' => {
-                if i + 2 >= bytes.len() {
-                    return Err(());
-                }
+                let h1 = hex_val(*bytes.get(i + 1).ok_or(())?).ok_or(())?;
+                let h2 = hex_val(*bytes.get(i + 2).ok_or(())?).ok_or(())?;
+                let val = h1 * 16 + h2;
 
-                let hex = &input[i + 1..i + 3];
-                let val = u8::from_str_radix(hex, 16).map_err(|_| ())?;
-
-                // Security: Only process valid ASCII bytes (0-127).
-                // Casting non-ASCII bytes (128-255) to char is unsafe and can create invalid Unicode.
-                // Non-ASCII bytes must remain percent-encoded per RFC 3986.
-                if val > 127 {
-                    // Preserve as percent-encoded, normalized to uppercase per RFC 3986 Section 2.1
-                    out.push('%');
-                    out.push_str(&format!("{:02X}", val));
-                    i += 3;
-                    continue;
-                }
-
-                let ch = val as char;
-
-                // Decode unreserved characters only (RFC 3986 Section 2.3)
-                // Unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
-                if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '.' | '_' | '~') {
-                    out.push(ch);
+                let unreserved =
+                    val.is_ascii_alphanumeric() || matches!(val, b'-' | b'.' | b'_' | b'~');
+                if unreserved {
+                    out.push(val);
                 } else {
-                    // Preserve reserved and other characters as percent-encoded,
-                    // normalized to uppercase per RFC 3986 Section 2.1
-                    out.push('%');
-                    out.push_str(&format!("{:02X}", val));
+                    push_hex(&mut out, val);
                 }
 
                 i += 3;
             }
-            c => {
-                out.push(c as char);
+            b => {
+                out.push(b);
                 i += 1;
             }
         }
     }
 
-    Ok(out)
+    String::from_utf8(out).map_err(|_| ())
 }
 
 #[cfg(test)]
@@ -343,6 +345,40 @@ mod tests {
     #[test]
     fn reject_truncated_percent_encoding() {
         assert_reject_query("a=%", RejectReason::InvalidPercentEncoding);
+    }
+
+    #[test]
+    fn reject_percent_sign_before_a_multibyte_character() {
+        assert_reject_query("a=%%é", RejectReason::InvalidPercentEncoding);
+    }
+
+    #[test]
+    fn reject_partial_hex_before_a_multibyte_character() {
+        assert_reject_query("a=%aé", RejectReason::InvalidPercentEncoding);
+    }
+
+    #[test]
+    fn reject_percent_sign_after_a_multibyte_character() {
+        assert_reject_query("a=é%", RejectReason::InvalidPercentEncoding);
+    }
+
+    #[test]
+    fn raw_utf8_value_round_trips_unchanged() {
+        assert_accept_query("q=café", &[("q", "café")]);
+    }
+
+    #[test]
+    fn raw_utf8_key_round_trips_unchanged() {
+        assert_accept_query("clé=1", &[("clé", "1")]);
+    }
+
+    #[test]
+    fn rewrite_percent_encoded_del_is_normalized() {
+        assert_rewrite_query(
+            "q=%7f",
+            &[("q", "%7F")],
+            RewriteReason::PercentDecodeUnreserved,
+        );
     }
 
     #[test]
