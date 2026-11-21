@@ -202,6 +202,22 @@ mod tests {
     }
 
     #[test]
+    fn trailing_components_match_handles_exact_depth() {
+        // Arrange
+        let path = PathBuf::from("device.d/rate_limit.hcl");
+        let glob = "device.d/*.hcl";
+
+        // Act
+        let matches = trailing_components_match(&path, glob);
+
+        // Assert
+        assert!(
+            matches,
+            "a path with exactly depth components must still match"
+        );
+    }
+
+    #[test]
     fn an_unrelated_document_matches_nothing() {
         // Arrange
         let dir = tempfile::tempdir().unwrap();
