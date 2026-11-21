@@ -7,7 +7,7 @@ pub(crate) trait TrafficStrategy: Send + Sync {
         &self,
         req: &RequestCtx,
         service_id: &ServiceId,
-        healthy: &[UpstreamSnapshot],
+        healthy: &[&UpstreamSnapshot],
         traffic_manager: &TrafficManager,
     ) -> Option<TrafficDecision>;
 }

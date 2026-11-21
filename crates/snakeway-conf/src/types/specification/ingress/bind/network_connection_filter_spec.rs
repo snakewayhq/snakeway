@@ -4,16 +4,18 @@ use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone, confval::Spec)]
+#[confval(derive_default)]
 pub struct NetworkConnectionFilterSpec {
-    #[confval(nested)]
+    #[confval(nested, derive_default = CidrSpec::default())]
     pub cidr: Located<CidrSpec>,
-    #[confval(nested)]
+    #[confval(nested, derive_default = IpFamilySpec::default())]
     pub ip_family: Located<IpFamilySpec>,
-    #[confval(keywords = OnNoPeerAddr)]
+    #[confval(keywords = OnNoPeerAddr, derive_default = OnNoPeerAddr::Allow.as_str().to_string())]
     pub on_no_peer_addr: Located<String>,
 }
 
-#[derive(Debug, Serialize, Default, Clone, confval::Spec)]
+#[derive(Debug, Serialize, Clone, confval::Spec)]
+#[confval(derive_default)]
 pub struct CidrSpec {
     #[confval(default)]
     pub allow: Vec<Located<String>>,
@@ -21,20 +23,13 @@ pub struct CidrSpec {
     pub deny: Vec<Located<String>>,
 }
 
-#[derive(Debug, Serialize, Default, Clone, confval::Spec)]
+#[derive(Debug, Serialize, Clone, confval::Spec)]
+#[confval(derive_default)]
 pub struct IpFamilySpec {
+    #[confval(derive_default = false)]
     pub ipv4: Located<bool>,
+    #[confval(derive_default = false)]
     pub ipv6: Located<bool>,
-}
-
-impl Default for NetworkConnectionFilterSpec {
-    fn default() -> Self {
-        Self {
-            cidr: Located::detached(CidrSpec::default()),
-            ip_family: Located::detached(IpFamilySpec::default()),
-            on_no_peer_addr: Located::detached(OnNoPeerAddr::Allow.as_str().to_string()),
-        }
-    }
 }
 
 /// The CIDR lists are checked by their own entries' spans, so the rule lives

@@ -16,7 +16,7 @@ services = [
     }
 
     circuit_breaker = {
-      enable_auto_recovery       = false
+      enable                     = false
       failure_threshold          = 3
       open_duration_milliseconds = 10000
       half_open_max_requests     = 1

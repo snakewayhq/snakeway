@@ -54,11 +54,27 @@ wasm_devices = [
 | `path`            | string                 | yes      |         | Path to the compiled `.wasm` component                                                                                         |
 | `fail_policy`     | `"open"` or `"closed"` | yes      |         | Behavior on device error (see below)                                                                                           |
 | `timeout_milliseconds`      | integer                | no       | `5`     | Per-hook execution deadline in milliseconds (1 to 60000)                                                                       |
-| `body_buffer_max_bytes` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode                                            |
+| `body_buffer_max_bytes` | integer                | no       | `0`     | Max request body bytes to buffer before calling the body hook. `0` = streaming mode. Range 0 to 104857600. |
 | `config`          | map of strings         | no       | `{}`    | Key-value pairs accessible to the device via `host.config-get`                                                                 |
 | `hooks`           | list of strings        | no       | all     | Lifecycle hooks this device implements. When set, the host skips every hook not listed. See [Hook Selection](#hook-selection). |
 
-### Fail policy
+### Block labels
+
+A WASM device can be named with a block label, the same form `services` uses:
+
+```hcl
+wasm_devices "auth" {
+  enable = true
+  path   = "./auth.wasm"
+  fail_policy = "open"
+}
+```
+
+The label fills the `name` field.
+You may also set `name` as an attribute inside the block, but not both: a label and a `name` attribute together are reported as a duplicate.
+
+A repeated key inside the `config` block is an error.
+Each key must appear once.
 
 When a WASM device encounters an error (load failure, timeout, trap, body buffer overflow):
 

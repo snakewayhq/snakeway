@@ -1,12 +1,18 @@
 use crate::runtime::types::ManualCertMap;
 use anyhow::{Result, anyhow};
 use pingora::tls::sign::CertifiedKey;
-use snakeway_conf::tls::{TlsError, build_certified_key, parse_cert_chain, parse_private_key};
+use snakeway_conf::tls::TlsError;
 use snakeway_conf::types::{ListenerConfig, TlsTerminationConfig};
 use std::path::Path;
 use std::sync::Arc;
 
 /// Load the certificate and private key of every listener that uses manual TLS.
+///
+/// Certificates are keyed by the listener's bind address string. This relies on
+/// two invariants: `validate_listener_uniqueness` rejects two listeners with the
+/// same address, and the same address string flows from the config through the
+/// runtime state into `ManualCertResolver`. A listener therefore always finds
+/// the certificate that was loaded for it.
 ///
 /// The files are read each time the runtime state is built. A reload therefore serves
 /// files that were replaced at the same paths, and a reload that fails to load them
@@ -28,24 +34,12 @@ pub(crate) fn load_manual_certs(listeners: &[ListenerConfig]) -> Result<ManualCe
 }
 
 fn load_certified_key(cert_path: &Path, key_path: &Path) -> Result<CertifiedKey> {
-    let cert_bytes = std::fs::read(cert_path).map_err(|e| {
-        anyhow!(
-            "failed to read certificate file {}: {e}",
-            cert_path.display()
-        )
-    })?;
-    let key_bytes = std::fs::read(key_path).map_err(|e| {
-        anyhow!(
-            "failed to read private key file {}: {e}",
+    snakeway_conf::tls::load_certified_key(cert_path, key_path).map_err(|e| match e {
+        TlsError::Io(e) => anyhow!(
+            "failed to read certificate or key file: cert={}, key={}: {e}",
+            cert_path.display(),
             key_path.display()
-        )
-    })?;
-
-    let certs =
-        parse_cert_chain(&cert_bytes).map_err(|e| anyhow!("{}: {e}", cert_path.display()))?;
-    let key = parse_private_key(&key_bytes).map_err(|e| anyhow!("{}: {e}", key_path.display()))?;
-
-    build_certified_key(certs, key).map_err(|e| match e {
+        ),
         TlsError::KeyMismatch => anyhow!(
             "private key does not match certificate: cert={}, key={}",
             cert_path.display(),
@@ -68,7 +62,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    fn listener(
+    fn manual_tls_listener(
         name: &str,
         addr: &str,
         tls_termination: Option<TlsTerminationConfig>,
@@ -87,7 +81,7 @@ mod tests {
         }
     }
 
-    fn write_pair(dir: &Path, name: &str) -> (PathBuf, PathBuf, Vec<u8>) {
+    fn write_cert_and_key_files(dir: &Path, name: &str) -> (PathBuf, PathBuf, Vec<u8>) {
         let generated = rcgen::generate_simple_self_signed(vec!["localhost".into()])
             .expect("failed to generate self-signed cert");
         let cert_path = dir.join(format!("{name}.pem"));
@@ -102,8 +96,8 @@ mod tests {
     fn load_manual_certs_keys_certificate_by_bind_address() {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let (cert, key, der) = write_pair(dir.path(), "traffic");
-        let listeners = vec![listener(
+        let (cert, key, der) = write_cert_and_key_files(dir.path(), "traffic");
+        let listeners = vec![manual_tls_listener(
             "traffic",
             "127.0.0.1:8443",
             Some(TlsTerminationConfig::Manual { cert, key }),
@@ -125,7 +119,7 @@ mod tests {
     #[test]
     fn load_manual_certs_skips_listeners_without_manual_tls() {
         // Arrange
-        let listeners = vec![listener("plain", "127.0.0.1:8080", None)];
+        let listeners = vec![manual_tls_listener("plain", "127.0.0.1:8080", None)];
 
         // Act
         let result = load_manual_certs(&listeners);
@@ -142,9 +136,9 @@ mod tests {
     fn load_manual_certs_rejects_mismatched_key() {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let (cert, _, _) = write_pair(dir.path(), "first");
-        let (_, key, _) = write_pair(dir.path(), "second");
-        let listeners = vec![listener(
+        let (cert, _, _) = write_cert_and_key_files(dir.path(), "first");
+        let (_, key, _) = write_cert_and_key_files(dir.path(), "second");
+        let listeners = vec![manual_tls_listener(
             "traffic",
             "127.0.0.1:8443",
             Some(TlsTerminationConfig::Manual {
@@ -174,9 +168,9 @@ mod tests {
     fn load_manual_certs_reports_missing_certificate_file() {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
-        let (_, key, _) = write_pair(dir.path(), "traffic");
+        let (_, key, _) = write_cert_and_key_files(dir.path(), "traffic");
         let missing = dir.path().join("missing.pem");
-        let listeners = vec![listener(
+        let listeners = vec![manual_tls_listener(
             "traffic",
             "127.0.0.1:8443",
             Some(TlsTerminationConfig::Manual {
@@ -195,10 +189,7 @@ mod tests {
             "got: {msg}"
         );
         assert!(
-            msg.contains(&format!(
-                "failed to read certificate file {}",
-                missing.display()
-            )),
+            msg.contains(&format!("{}", missing.display())),
             "got: {msg}"
         );
     }

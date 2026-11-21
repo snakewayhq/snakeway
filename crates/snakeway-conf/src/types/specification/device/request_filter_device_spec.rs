@@ -5,8 +5,10 @@ use serde::Serialize;
 range_constraint!(DENY_STATUS, i64, min: 400, max: 599);
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct RequestFilterDeviceSpec {
     /// Whether this request filter device is enabled.
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
 
     #[confval(default, format = HttpMethod)]
@@ -49,25 +51,6 @@ pub struct RequestFilterDeviceSpec {
     /// Optional path prefixes this device applies to. Empty means all paths.
     #[confval(default, format = AbsolutePath)]
     pub paths: Vec<Located<String>>,
-}
-
-impl Default for RequestFilterDeviceSpec {
-    fn default() -> Self {
-        Self {
-            enable: Located::detached(false),
-            allow_methods: vec![],
-            deny_methods: vec![],
-            deny_headers: vec![],
-            allow_headers: vec![],
-            required_headers: vec![],
-            max_header_bytes: Located::detached(16 * 1024),
-            max_body_bytes: Located::detached(1024 * 1024),
-            max_suspicious_body_bytes: Located::detached(8 * 1024),
-            client_body_timeout_seconds: None,
-            deny_status: None,
-            paths: vec![],
-        }
-    }
 }
 
 impl Validate for RequestFilterDeviceSpec {

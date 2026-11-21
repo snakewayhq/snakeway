@@ -7,20 +7,12 @@ use serde::Serialize;
 
 /// Represents the top-level configuration file.
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct EntrypointSpec {
-    #[confval(nested)]
+    #[confval(nested, derive_default = ServerSpec::default())]
     pub server: Located<ServerSpec>,
-    #[confval(nested)]
+    #[confval(nested, derive_default = IncludeSpec::default())]
     pub include: Located<IncludeSpec>,
-}
-
-impl Default for EntrypointSpec {
-    fn default() -> Self {
-        Self {
-            server: Located::detached(ServerSpec::default()),
-            include: Located::detached(IncludeSpec::default()),
-        }
-    }
 }
 
 impl Validate for EntrypointSpec {
@@ -30,18 +22,12 @@ impl Validate for EntrypointSpec {
 /// The include section of the top-level config file.
 /// The members are directory paths where sub-configuration files are located.
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct IncludeSpec {
+    #[confval(derive_default = "device.d/*.hcl".to_string())]
     pub devices: Located<String>,
+    #[confval(derive_default = "ingress.d/*.hcl".to_string())]
     pub ingresses: Located<String>,
-}
-
-impl Default for IncludeSpec {
-    fn default() -> Self {
-        Self {
-            devices: Located::detached("device.d/*.hcl".to_string()),
-            ingresses: Located::detached("ingress.d/*.hcl".to_string()),
-        }
-    }
 }
 
 impl Validate for IncludeSpec {

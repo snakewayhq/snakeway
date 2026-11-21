@@ -63,11 +63,7 @@ pub(crate) fn is_compressible_mime(mime: &mime_guess::Mime) -> bool {
     }
 
     // SVG images
-    if type_ == "image" && subtype == "svg+xml" {
-        return true;
-    }
-
-    false
+    type_ == "image" && subtype == "svg+xml"
 }
 
 /// Parse quality value from Accept-Encoding part (e.g., "gzip;q=0.5" -> 0.5)

@@ -97,14 +97,14 @@ Spec fields are wrapped in `Located<T>`:
 ```rust
 #[derive(Debug, Serialize, confval::Spec)]
 pub struct ServerSpec {
-    pub version: Located<HclInt>,
-    pub threads: Option<Located<HclInt>>,
+    pub version: Located<i64>,
+    pub threads: Option<Located<i64>>,
 
     #[confval(nested)]
     pub tls_automation: Option<Located<TlsAutomationSpec>>,
 
     #[confval(default = 30)]
-    pub dns_refresh_interval_seconds: Located<HclInt>,
+    pub dns_refresh_interval_seconds: Located<i64>,
 }
 ```
 
@@ -130,7 +130,7 @@ The `with` functions live in the runtime module next to the config struct they s
 ### Type selection principle
 
 **Spec types use the rawest type that parses infallibly from HCL.**
-Strings, `HclInt` (an alias for `i64`, HCL's native integer type), bools, paths.
+Strings, `i64` (HCL's native integer type), bools, paths.
 The structural parsers never reject a value for semantic reasons, so a port of `99999` or a strategy of `"failovr"` parses fine and is caught by validation with a span, alongside every other problem.
 
 **Keyword fields are `Located<String>` in specs.**
@@ -246,13 +246,13 @@ The `Validate` trait is a compile-time bound on lowering.
 A spec that can be lowered into a runtime config but has no validator fails to compile.
 The bound lives where each family lowers:
 
-- **Server** and the **device** configs declare it on their `Lower` impls (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on the hand-written device impls).
+- **Server** and the **device** configs declare it on their `Lower` impls (`impl Lower<ServerSpec> for ServerConfig where ServerSpec: Validate + ValidateNested`, written as `#[confval(lower_from = ServerSpec, validate)]` on the derive, and as an explicit `where` clause on the handwritten device impls).
 - **Ingresses** lower by flattening in `lower_configs` rather than through a per-entity `Lower` impl, so the bound is a `where IngressSpec: Validate + ValidateNested` clause on that function.
 
 The generated `ValidateNested` impl calls `validate_all` on every nested child.
 A child without a `Validate` impl fails to compile at its parent.
 Adding a nested block to a spec cannot leave it unchecked.
-The earlier hand-written delegation could omit the child, and nothing caught the omission.
+The earlier handwritten delegation could omit the child, and nothing caught the omission.
 
 You cannot produce a `RuntimeConfig` from a spec family whose entities are not all validatable.
 The compiler guarantees that a validator exists and that every nested child is reached.

@@ -26,8 +26,8 @@ impl ManualCertResolver {
 
         let Some(cert) = runtime.manual_certs.get(&self.listener_addr) else {
             tracing::error!(
-                "No manual TLS certificate loaded for listener {}",
-                self.listener_addr
+                listener = %self.listener_addr,
+                "no manual tls certificate loaded for listener"
             );
             return None;
         };

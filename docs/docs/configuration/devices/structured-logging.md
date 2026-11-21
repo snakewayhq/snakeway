@@ -20,17 +20,17 @@ structured_logging_device = {
 
 ## Field Reference
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enable` | boolean | `false` | Enable or disable the device. |
-| `level` | string | `"info"` | Log level: `"trace"`, `"debug"`, `"info"`, `"warn"`, `"error"`. |
-| `include_identity` | boolean | `false` | Include resolved identity fields in log events. |
-| `identity_fields` | list of strings | `[]` | Which identity fields to include (see below). |
-| `include_headers` | boolean | `false` | Include request headers in log events. |
-| `allowed_headers` | list of strings | `[]` | Headers to include when `include_headers` is true. |
-| `redacted_headers` | list of strings | `[]` | Headers to redact (value replaced, key preserved). |
-| `events` | list of strings | all | Which lifecycle events to log. |
-| `phases` | list of strings | all | Which phases to log. |
+| Field              | Type            | Default    | Description                                                     |
+|--------------------|-----------------|------------|-----------------------------------------------------------------|
+| `enable`           | boolean         | (required) | Enable or disable the device.                                   |
+| `level`            | string          | (required) | Log level: `"trace"`, `"debug"`, `"info"`, `"warn"`, `"error"`. |
+| `include_identity` | boolean         | (required) | Include resolved identity fields in log events.                 |
+| `identity_fields`  | list of strings | (required) | Which identity fields to include (see below).                   |
+| `include_headers`  | boolean         | (required) | Include request headers in log events.                          |
+| `allowed_headers`  | list of strings | (required) | Headers to include when `include_headers` is true.              |
+| `redacted_headers` | list of strings | (required) | Headers to redact (value replaced, key preserved).              |
+| `events`           | list of strings | all        | Which lifecycle events to log.                                  |
+| `phases`           | list of strings | all        | Which phases to log.                                            |
 
 ## What Gets Logged
 
@@ -92,7 +92,7 @@ identity_fields = [
 
 Identity logging is:
 
-* Disabled by default
+* Off unless you set `include_identity = true`
 * Field-selectable
 * Derived from `ClientIdentity` stored in `ctx.extensions`
 
@@ -105,7 +105,7 @@ Headers often contain personal or sensitive data.
 Enable this only when necessary.
 :::
 
-HTTP headers are **not logged by default**.
+HTTP headers are logged only when you set `include_headers = true`.
 
 If enabled, you can:
 

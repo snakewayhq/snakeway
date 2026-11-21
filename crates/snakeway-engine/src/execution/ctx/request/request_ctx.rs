@@ -190,8 +190,8 @@ impl RequestCtx {
         }
 
         // Enforce SNI/Host matching - they must match if SNI is present.
-        if let Some(sni) = sni_host.clone()
-            && sni.as_str() != host
+        if let Some(sni) = sni_host.as_deref()
+            && sni != host
         {
             return Err(RequestRejectError::HostSniMismatch);
         }
@@ -483,8 +483,8 @@ impl RequestCtx {
 
 /// Request Extensions API
 impl RequestCtx {
-    pub fn request_id(&self) -> Option<String> {
-        self.extensions.get::<RequestId>().map(|id| id.0.clone())
+    pub fn request_id(&self) -> Option<&str> {
+        self.extensions.get::<RequestId>().map(RequestId::as_str)
     }
 
     pub(crate) fn identity(&self) -> Option<&ClientIdentity> {
@@ -954,5 +954,31 @@ mod tests {
 
         // Assert
         assert_eq!(result, expected_path);
+    }
+
+    #[test]
+    fn reading_the_request_id_does_not_allocate() {
+        // Arrange
+        let mut ctx = RequestCtx::empty();
+        ctx.extensions.insert(RequestId::from("req-123"));
+
+        // Act
+        let (id, allocations) = crate::alloc_count::count_allocations(|| ctx.request_id());
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(id, Some("req-123"));
+    }
+
+    #[test]
+    fn a_request_without_an_id_reports_none() {
+        // Arrange
+        let ctx = RequestCtx::empty();
+
+        // Act
+        let id = ctx.request_id();
+
+        // Assert
+        assert_eq!(id, None);
     }
 }

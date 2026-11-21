@@ -2,6 +2,7 @@ use crate::execution::traffic::{
     TrafficManager, algorithms::*, decision::*, snapshot::*, strategy::TrafficStrategy,
 };
 use once_cell::sync::Lazy;
+use smallvec::SmallVec;
 use snakeway_conf::types::LoadBalancingStrategy;
 
 static FAILOVER: Lazy<Failover> = Lazy::new(Failover::default);
@@ -27,15 +28,14 @@ impl TrafficDirector {
             .ok_or(TrafficError::UnknownService)?;
 
         // Purely filter on health status.
-        let mut healthy_candidates: Vec<_> = service
+        let mut healthy_candidates: SmallVec<[&UpstreamSnapshot; 8]> = service
             .upstreams
             .iter()
             .filter(|u| {
                 traffic_manager
-                    .health_status(service_id, &u.endpoint.id())
+                    .health_admission(service_id, &u.endpoint.id())
                     .healthy
             })
-            .cloned()
             .collect();
 
         if healthy_candidates.is_empty() {
@@ -112,17 +112,18 @@ mod tests {
     fn upstream(id: u16) -> UpstreamSnapshot {
         UpstreamSnapshot {
             endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
-                id: UpstreamId(id as u32),
+                id: UpstreamId::new(id.into()),
                 host: "127.0.0.1".to_string(),
                 port: id,
                 resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], id).into()),
                 tls: None,
                 weight: 1,
             }),
-            latency: Some(LatencyStats {
-                ewma: Duration::from_millis(10),
-            }),
             weight: 1,
+            metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
+                &std::sync::Arc::from("test"),
+                crate::runtime::UpstreamId::new(id.into()),
+            ),
         }
     }
 
@@ -139,7 +140,7 @@ mod tests {
                 strategy,
                 upstreams,
                 circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig {
-                    enable_auto_recovery: true,
+                    enable: true,
                     failure_threshold: 3,
                     open_duration_milliseconds: 10000,
                     half_open_max_requests: 1,
@@ -147,6 +148,9 @@ mod tests {
                     count_http_5xx_as_failure: true,
                 },
                 health_check_cfg: snakeway_conf::types::HealthCheckConfig::default(),
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &std::sync::Arc::from("test"),
+                ),
             },
         );
 
@@ -156,6 +160,56 @@ mod tests {
     /// ---------------------------
     /// Tests
     /// ---------------------------
+
+    #[test]
+    fn a_steady_state_decision_does_not_allocate() {
+        // Arrange
+        let director = TrafficDirector;
+        let service_id = ServiceId("api".into());
+        let snapshot = snapshot_with_service(
+            service_id.clone(),
+            vec![upstream(1), upstream(2), upstream(3)],
+            LoadBalancingStrategy::Failover,
+        );
+        let manager = TrafficManager::new(snapshot.clone());
+        let request = dummy_request();
+        let _ = director.decide(&request, &snapshot, &service_id, &manager);
+
+        // Act
+        let (decision, allocations) = crate::alloc_count::count_allocations(|| {
+            director.decide(&request, &snapshot, &service_id, &manager)
+        });
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(decision.unwrap().upstream_id, UpstreamId::new(1));
+    }
+
+    #[test]
+    fn a_steady_state_round_robin_decision_does_not_allocate() {
+        // Arrange
+        let director = TrafficDirector;
+        let service_id = ServiceId("api".into());
+        let snapshot = snapshot_with_service(
+            service_id.clone(),
+            vec![upstream(1), upstream(2), upstream(3)],
+            LoadBalancingStrategy::RoundRobin,
+        );
+        let manager = TrafficManager::new(snapshot.clone());
+        let request = dummy_request();
+        for _ in 0..3 {
+            let _ = director.decide(&request, &snapshot, &service_id, &manager);
+        }
+
+        // Act
+        let (decision, allocations) = crate::alloc_count::count_allocations(|| {
+            director.decide(&request, &snapshot, &service_id, &manager)
+        });
+
+        // Assert
+        assert_eq!(allocations, 0);
+        assert_eq!(decision.unwrap().upstream_id, UpstreamId::new(1));
+    }
 
     #[test]
     fn unknown_service_returns_error() {
@@ -197,13 +251,13 @@ mod tests {
         let director = TrafficDirector;
 
         // Mark all upstreams unhealthy
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
 
-        manager.report_failure(&service_id, &UpstreamId(2));
-        manager.report_failure(&service_id, &UpstreamId(2));
-        manager.report_failure(&service_id, &UpstreamId(2));
+        manager.report_failure(&service_id, &UpstreamId::new(2));
+        manager.report_failure(&service_id, &UpstreamId::new(2));
+        manager.report_failure(&service_id, &UpstreamId::new(2));
 
         // Act
         let result = director.decide(&dummy_request(), &snapshot, &service_id, &manager);
@@ -233,9 +287,9 @@ mod tests {
         let director = TrafficDirector;
 
         // Mark upstream 1 unhealthy
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
-        manager.report_failure(&service_id, &UpstreamId(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
+        manager.report_failure(&service_id, &UpstreamId::new(1));
 
         // Act
         let decision = director
@@ -243,7 +297,7 @@ mod tests {
             .expect("decision");
 
         // Assert
-        assert_eq!(decision.upstream_id, UpstreamId(2));
+        assert_eq!(decision.upstream_id, UpstreamId::new(2));
     }
 
     #[test]
@@ -285,7 +339,7 @@ mod tests {
             .expect("decision");
 
         // Assert
-        assert_eq!(decision.upstream_id, UpstreamId(10));
+        assert_eq!(decision.upstream_id, UpstreamId::new(10));
         assert_eq!(decision.reason, DecisionReason::Failover);
     }
 
@@ -310,7 +364,7 @@ mod tests {
                 &self,
                 _: &RequestCtx,
                 _: &ServiceId,
-                _: &[UpstreamSnapshot],
+                _: &[&UpstreamSnapshot],
                 _: &TrafficManager,
             ) -> Option<TrafficDecision> {
                 None
@@ -318,12 +372,12 @@ mod tests {
         }
 
         let service = snapshot.services.get(&service_id).unwrap();
-        let healthy = &service.upstreams;
+        let healthy: Vec<&UpstreamSnapshot> = service.upstreams.iter().collect();
         let strategy = NullStrategy;
 
         // Act
         let decision = strategy
-            .decide(&req, &service_id, healthy, &manager)
+            .decide(&req, &service_id, &healthy, &manager)
             .unwrap_or_else(|| TrafficDecision {
                 upstream_id: healthy[0].endpoint.id(),
                 reason: DecisionReason::NoStrategyDecision,
@@ -331,7 +385,7 @@ mod tests {
             });
 
         // Assert
-        assert_eq!(decision.upstream_id, UpstreamId(10));
+        assert_eq!(decision.upstream_id, UpstreamId::new(10));
         assert_eq!(decision.reason, DecisionReason::NoStrategyDecision);
     }
 
@@ -350,7 +404,7 @@ mod tests {
         // Update manager with circuit params (simulating TrafficManager::update)
         let svc_snapshot = snapshot.services.get(&service_id).unwrap();
         let params = CircuitBreakerParams {
-            enable_auto_recovery: svc_snapshot.circuit_breaker_cfg.enable_auto_recovery,
+            enable: svc_snapshot.circuit_breaker_cfg.enable,
             failure_threshold: svc_snapshot.circuit_breaker_cfg.failure_threshold,
             open_duration: Duration::from_millis(
                 svc_snapshot.circuit_breaker_cfg.open_duration_milliseconds,
@@ -364,9 +418,9 @@ mod tests {
             .insert(service_id.clone(), std::sync::Arc::new(params));
 
         // Trip circuit for upstream 1
-        manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
-        manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
-        manager.circuit_on_end(&service_id, &UpstreamId(1), true, false);
+        manager.circuit_on_end(&service_id, &UpstreamId::new(1), true, false);
+        manager.circuit_on_end(&service_id, &UpstreamId::new(1), true, false);
+        manager.circuit_on_end(&service_id, &UpstreamId::new(1), true, false);
 
         // Act
         let decision = director
@@ -375,6 +429,6 @@ mod tests {
 
         // Assert
         // Should pick upstream 2 because 1's circuit is open
-        assert_eq!(decision.upstream_id, UpstreamId(2));
+        assert_eq!(decision.upstream_id, UpstreamId::new(2));
     }
 }

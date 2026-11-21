@@ -30,9 +30,9 @@ network_policy_device {
 
 | Field                   | Type            | Default    | Description                                                                                                                                        |
 |-------------------------|-----------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `enable`                | bool            | `false`    | Enables the Network Policy device.                                                                                                                 |
-| `cidr_allow`            | list of strings | `[]`       | CIDR ranges from which clients are permitted. An empty list causes a configuration error.                                                          |
-| `forwarding.allow`      | bool            | `false`    | Whether requests arriving via a forwarded header (such as `X-Forwarded-For`) are permitted.                                                        |
+| `enable`                | bool            | (required) | Enables the Network Policy device.                                                                                                                 |
+| `cidr_allow`            | list of strings | (required) | CIDR ranges from which clients are permitted. An empty list causes a configuration error.                                                          |
+| `forwarding.allow`      | bool            | (required) | Whether requests arriving via a forwarded header (such as `X-Forwarded-For`) are permitted.                                                        |
 | `forwarding.on_invalid` | string          | `"ignore"` | How to handle forwarded requests with untrusted or malformed identity. `"deny"` rejects them. `"ignore"` allows them using the resolved client IP. |
 | `paths`                 | list of strings | `[]`       | Path prefixes this device applies to. Empty means all paths. See [Path Scoping](#path-scoping).                                                    |
 

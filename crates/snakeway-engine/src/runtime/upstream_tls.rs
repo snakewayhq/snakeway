@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// Resolve the TLS settings of one upstream.
 ///
 /// An upstream without a `tls` block has no TLS settings. The per-upstream `ca_file` is used
-/// before the global `server.ca_file`. Without either, the peer carries no CA and Pingora
+/// before the global `server.ca_file`. Without either, the peer has no CA and Pingora
 /// verifies against the trust store of its connector.
 pub(crate) fn resolve_upstream_tls(
     tls: Option<&UpstreamTlsConfig>,
@@ -71,13 +71,17 @@ fn wrap_ca_certificate(der: Vec<u8>) -> Result<WrappedX509> {
     })
 }
 
-/// Hash a path to a u64.
-/// This is used to group per-upstream CAs,
-/// keeping them out of the data plane.
+/// Hash a path and its contents to a u64.
+/// This is used to group per-upstream CAs, keeping them out of the data plane.
+/// The contents are included so that replacing a CA file invalidates the
+/// connection pool entry instead of reusing a connection built with the old CA.
 fn calculate_group_key(path: &Path) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = ahash::AHasher::default();
     path.as_os_str().hash(&mut h);
+    if let Ok(bytes) = fs::read(path) {
+        bytes.hash(&mut h);
+    }
     h.finish()
 }
 
@@ -86,7 +90,7 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    fn tls_config(verify: bool, ca_file: Option<&Path>) -> UpstreamTlsConfig {
+    fn upstream_tls_config(verify: bool, ca_file: Option<&Path>) -> UpstreamTlsConfig {
         UpstreamTlsConfig {
             sni: "backend.test".to_string(),
             verify,
@@ -119,7 +123,7 @@ mod tests {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let (ca_file, _) = write_ca_file(dir.path(), "upstream");
-        let cfg = tls_config(false, Some(&ca_file));
+        let cfg = upstream_tls_config(false, Some(&ca_file));
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), None);
@@ -136,7 +140,7 @@ mod tests {
     #[test]
     fn verify_without_any_ca_file_keeps_verification_on() {
         // Arrange
-        let cfg = tls_config(true, None);
+        let cfg = upstream_tls_config(true, None);
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), None);
@@ -156,7 +160,7 @@ mod tests {
         // Arrange
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let (global, global_der) = write_ca_file(dir.path(), "global");
-        let cfg = tls_config(true, None);
+        let cfg = upstream_tls_config(true, None);
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), Some(&global));
@@ -177,7 +181,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let (global, _) = write_ca_file(dir.path(), "global");
         let (upstream, upstream_der) = write_ca_file(dir.path(), "upstream");
-        let cfg = tls_config(true, Some(&upstream));
+        let cfg = upstream_tls_config(true, Some(&upstream));
 
         // Act
         let result = resolve_upstream_tls(Some(&cfg), "backend.test".to_string(), Some(&global));

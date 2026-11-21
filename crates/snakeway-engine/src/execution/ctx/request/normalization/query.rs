@@ -90,7 +90,8 @@ fn percent_decode_unreserved_with_outcome(input: &str) -> Result<(String, bool),
     let decoded =
         percent_decode_unreserved(input).map_err(|_| RejectReason::InvalidPercentEncoding)?;
 
-    Ok((decoded.clone(), decoded != input))
+    let changed = decoded != input;
+    Ok((decoded, changed))
 }
 
 /// Decodes percent-encoded sequences that represent unreserved characters per RFC 3986 Section 2.3.
@@ -161,6 +162,34 @@ fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn reporting_whether_a_value_changed_adds_no_allocation() {
+        // Arrange
+        let raw = "caf%7E%2Fbar";
+        let (_, decode_only) =
+            crate::alloc_count::count_allocations(|| percent_decode_unreserved(raw));
+
+        // Act
+        let (outcome, with_outcome) =
+            crate::alloc_count::count_allocations(|| percent_decode_unreserved_with_outcome(raw));
+
+        // Assert
+        assert_eq!(with_outcome, decode_only);
+        assert_eq!(outcome, Ok(("caf~%2Fbar".to_string(), true)));
+    }
+
+    #[test]
+    fn an_unchanged_value_is_reported_as_unchanged() {
+        // Arrange
+        let raw = "plain-value";
+
+        // Act
+        let outcome = percent_decode_unreserved_with_outcome(raw);
+
+        // Assert
+        assert_eq!(outcome, Ok(("plain-value".to_string(), false)));
+    }
 
     fn assert_accept_query(raw: &str, expected: &[(&str, &str)]) {
         // Arrange

@@ -22,14 +22,15 @@ impl SnakewayCertResolver {
         let runtime = self.state.load();
 
         let Some(tls_runtime) = &runtime.tls else {
-            tracing::warn!("TLS requested but runtime has no TLS state");
+            tracing::warn!("tls requested but runtime has no tls state");
             return None;
         };
 
         let sni_map = tls_runtime.sni_map.load();
 
-        let Some(cert) = sni_map.get(hostname) else {
-            tracing::warn!("No certificate found for SNI {}", hostname);
+        let hostname = hostname.to_ascii_lowercase();
+        let Some(cert) = sni_map.get(&hostname) else {
+            tracing::warn!(sni = %hostname, "no certificate found for sni");
             return None;
         };
 
@@ -46,7 +47,7 @@ impl fmt::Debug for SnakewayCertResolver {
 impl ResolvesServerCert for SnakewayCertResolver {
     fn resolve(&self, client_hello: ClientHello<'_>) -> Option<Arc<sign::CertifiedKey>> {
         let hostname = client_hello.server_name()?;
-        tracing::debug!("TLS handshake: SNI = {}", hostname);
+        tracing::debug!(sni = %hostname, "tls handshake");
         self.lookup(hostname)
     }
 }

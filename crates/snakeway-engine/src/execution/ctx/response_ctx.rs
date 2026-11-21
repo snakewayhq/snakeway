@@ -28,7 +28,12 @@ impl ResponseCtx {
 
     /// Builds a bodyless response context for the request, carrying its request id.
     pub fn from_request(request: &RequestCtx, status: StatusCode, headers: HeaderMap) -> Self {
-        Self::new(request.request_id(), status, headers, Vec::new())
+        Self::new(
+            request.request_id().map(str::to_owned),
+            status,
+            headers,
+            Vec::new(),
+        )
     }
 
     pub(crate) fn forbidden(request_id: Option<String>) -> Self {

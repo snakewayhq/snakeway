@@ -21,13 +21,25 @@ struct ReloadableServer {
 
 impl ReloadableServer {
     fn start() -> Self {
+        Self::start_with_pid_file(true)
+    }
+
+    fn start_without_pid_file() -> Self {
+        Self::start_with_pid_file(false)
+    }
+
+    fn start_with_pid_file(with_pid_file: bool) -> Self {
         let dir = tempfile::tempdir().expect("failed to create temp dir");
         let listener_port = free_port();
         let admin_port = free_port();
         let upstream_port = snakeway_tests::harness::upstream::start_http_upstream();
 
         copy_fixture_devices(dir.path());
-        write_snakeway_hcl(dir.path(), &dir.path().join("first.pid"));
+        if with_pid_file {
+            write_snakeway_hcl(dir.path(), &dir.path().join("first.pid"));
+        } else {
+            write_snakeway_hcl_without_pid_file(dir.path());
+        }
         write_api_ingress(dir.path(), listener_port, upstream_port, "/api");
         write_admin_ingress(dir.path(), admin_port);
 
@@ -93,7 +105,7 @@ impl ReloadableServer {
         }
     }
 
-    fn status_of(&self, path: &str) -> StatusCode {
+    fn get_status_for_path(&self, path: &str) -> StatusCode {
         Client::builder()
             .timeout(Duration::from_secs(2))
             .build()
@@ -133,6 +145,19 @@ include {{
 "#,
         pid_file = pid_file.display(),
     );
+    std::fs::write(dir.join("snakeway.hcl"), hcl).unwrap();
+}
+
+fn write_snakeway_hcl_without_pid_file(dir: &Path) {
+    let hcl = r#"server {
+  version  = 1
+}
+
+include {
+  devices   = "device.d/*.hcl"
+  ingresses = "ingress.d/*.hcl"
+}
+"#;
     std::fs::write(dir.join("snakeway.hcl"), hcl).unwrap();
 }
 
@@ -195,7 +220,66 @@ fn write_admin_ingress(dir: &Path, admin_port: u16) {
     std::fs::write(dir.join("ingress.d").join("admin.hcl"), hcl).unwrap();
 }
 
-/// Before any reload, the reload status reports that no reload has finished.
+/// A reload against an invalid config reports `load_failed` instead of applying.
+#[test]
+fn reload_with_invalid_config_reports_load_failed() {
+    // Arrange
+    let srv = ReloadableServer::start();
+    std::fs::write(
+        srv.dir.path().join("ingress.d").join("api.hcl"),
+        "this is not hcl {{{",
+    )
+    .unwrap();
+
+    // Act
+    let epoch = srv.reload();
+
+    // Assert
+    let (status, body) = srv.wait_for_reload_status(epoch);
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["epoch"], epoch);
+    assert_eq!(body["result"], "load_failed");
+    assert!(body["error"].as_str().is_some_and(|e| !e.is_empty()));
+}
+
+/// A change that needs a zero-drop upgrade is rejected on a platform that cannot perform one.
+#[test]
+fn reload_with_upgrade_required_change_is_rejected_as_upgrade_unsupported() {
+    // Arrange
+    let srv = ReloadableServer::start_without_pid_file();
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
+    let hcl = r#"server {
+  version  = 1
+
+  upgrade {
+    max_retries = 5
+  }
+}
+
+include {
+  devices   = "device.d/*.hcl"
+  ingresses = "ingress.d/*.hcl"
+}
+"#;
+    std::fs::write(srv.dir.path().join("snakeway.hcl"), hcl).unwrap();
+
+    // Act
+    let epoch = srv.reload();
+
+    // Assert
+    let (status, body) = srv.wait_for_reload_status(epoch);
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "epoch": epoch,
+            "result": "rejected",
+            "reason": "upgrade_unsupported",
+            "settings": [],
+        })
+    );
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
+}
 #[test]
 fn reload_status_reports_none_before_any_reload() {
     // Arrange
@@ -214,7 +298,7 @@ fn reload_status_reports_none_before_any_reload() {
 fn reload_applies_route_change() {
     // Arrange
     let srv = ReloadableServer::start();
-    assert_eq!(srv.status_of("/api"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
     write_api_ingress(srv.dir.path(), srv.listener_port, srv.upstream_port, "/v2");
 
     // Act
@@ -227,8 +311,8 @@ fn reload_applies_route_change() {
         body,
         serde_json::json!({ "epoch": epoch, "result": "applied" })
     );
-    assert_eq!(srv.status_of("/v2"), StatusCode::OK);
-    assert_eq!(srv.status_of("/api"), StatusCode::NOT_FOUND);
+    assert_eq!(srv.get_status_for_path("/v2"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::NOT_FOUND);
 }
 
 /// A reload that also changes `pid_file` is rejected as a whole, so the route change in the same
@@ -237,7 +321,7 @@ fn reload_applies_route_change() {
 fn reload_with_pid_file_change_is_rejected() {
     // Arrange
     let srv = ReloadableServer::start();
-    assert_eq!(srv.status_of("/api"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
     write_api_ingress(srv.dir.path(), srv.listener_port, srv.upstream_port, "/v2");
     write_snakeway_hcl(srv.dir.path(), &srv.dir.path().join("second.pid"));
 
@@ -256,6 +340,6 @@ fn reload_with_pid_file_change_is_rejected() {
             "settings": ["server.pid_file"],
         })
     );
-    assert_eq!(srv.status_of("/api"), StatusCode::OK);
-    assert_eq!(srv.status_of("/v2"), StatusCode::NOT_FOUND);
+    assert_eq!(srv.get_status_for_path("/api"), StatusCode::OK);
+    assert_eq!(srv.get_status_for_path("/v2"), StatusCode::NOT_FOUND);
 }

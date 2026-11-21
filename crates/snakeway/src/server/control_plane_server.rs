@@ -158,7 +158,7 @@ impl ControlPlaneServer {
         if !self.config.server.pid_file.is_empty() {
             let pid_file = self.config.server.pid_file.clone();
             if let Err(e) = write_pid(&pid_file) {
-                warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file; continuing");
+                warn!(error = %e, pid_file = %pid_file.display(), "failed to write pid file, continuing");
             } else {
                 info!(pid_file = %pid_file.display(), "pid file written");
             }
@@ -244,12 +244,11 @@ impl ControlPlaneServer {
                         let validated = match snakeway_conf::load_config(&config_path) {
                             Ok(v) => v,
                             Err(e) => {
-                                error!(error = %e, "failed to reload config");
+                                let cause = format!("{e:#}");
+                                error!(error = %cause, "failed to reload config");
                                 reload.record_outcome(
                                     epoch,
-                                    ReloadOutcome::LoadFailed {
-                                        error: e.to_string(),
-                                    },
+                                    ReloadOutcome::LoadFailed { error: cause },
                                 );
                                 continue;
                             }
@@ -264,15 +263,28 @@ impl ControlPlaneServer {
                         let new_config = validated.config;
 
                         use snakeway_engine::runtime::diff::{
-                            ReloadPlan, classify_config_change, plan_reload,
+                            ReloadPlan, RejectReason, classify_config_change, plan_reload,
+                            upgrade_is_supported,
                         };
                         let change = classify_config_change(&current_config, &new_config);
-                        match plan_reload(change, cfg!(target_os = "linux")) {
+                        let upgrade_supported = upgrade_is_supported(
+                            cfg!(target_os = "linux"),
+                            &new_config.server.pid_file,
+                        );
+                        match plan_reload(change, upgrade_supported) {
                             ReloadPlan::Reject { reason, settings } => {
+                                let message = match reason {
+                                    RejectReason::RestartRequired => {
+                                        "reload rejected, restart Snakeway to apply this change"
+                                    }
+                                    RejectReason::UpgradeUnsupported => {
+                                        "reload rejected, a zero-drop upgrade needs Linux and server.pid_file"
+                                    }
+                                };
                                 error!(
                                     reason = reason.as_str(),
                                     settings = ?settings,
-                                    "reload rejected, restart Snakeway to apply this change"
+                                    "{message}"
                                 );
                                 reload.record_outcome(
                                     epoch,
@@ -283,17 +295,16 @@ impl ControlPlaneServer {
                             ReloadPlan::Upgrade => {
                                 info!("change needs a new process, starting a zero-drop upgrade");
                                 use snakeway_proxy::spawn_upgrade;
-                                match spawn_upgrade(&config_path) {
+                                match spawn_upgrade(&config_path, epoch) {
                                     Ok(()) => {
                                         reload.record_outcome(epoch, ReloadOutcome::UpgradeStarted);
                                     }
                                     Err(e) => {
-                                        error!(error = %e, "zero-drop upgrade failed; old process continues serving");
+                                        let cause = format!("{e:#}");
+                                        error!(error = %cause, "zero-drop upgrade failed; old process continues serving");
                                         reload.record_outcome(
                                             epoch,
-                                            ReloadOutcome::UpgradeFailed {
-                                                error: e.to_string(),
-                                            },
+                                            ReloadOutcome::UpgradeFailed { error: cause },
                                         );
                                     }
                                 }
@@ -303,16 +314,18 @@ impl ControlPlaneServer {
                         }
 
                         // Runtime-only change: apply in-process via ArcSwap.
-                        match reload_runtime_state(&config_path, &state, &cert_manager_for_reload)
+                        match reload_runtime_state(&new_config, &state, &cert_manager_for_reload)
                             .await
                         {
-                            Ok(reloaded_runtime_cfg) => {
+                            Ok(_) => {
                                 info!("reload successful");
 
-                                current_config = reloaded_runtime_cfg.clone();
+                                // Keep the baseline in sync with the running config so later reloads
+                                // classify against what is running, not the startup config.
+                                current_config = new_config.clone();
 
                                 if let Some(manager) = &cert_manager_for_reload {
-                                    manager.reload(Arc::new(reloaded_runtime_cfg));
+                                    manager.reload(Arc::new(new_config));
                                 }
 
                                 let new_snapshot =
@@ -322,21 +335,19 @@ impl ControlPlaneServer {
                             }
                             Err(reload_err) => match reload_err {
                                 ReloadError::Load(e) => {
-                                    error!(error = %e, "failed to reload config");
+                                    let cause = format!("{e:#}");
+                                    error!(error = %cause, "failed to reload config");
                                     reload.record_outcome(
                                         epoch,
-                                        ReloadOutcome::LoadFailed {
-                                            error: e.to_string(),
-                                        },
+                                        ReloadOutcome::LoadFailed { error: cause },
                                     );
                                 }
                                 ReloadError::Build(e) => {
-                                    error!(error = %e, "failed to build runtime state");
+                                    let cause = format!("{e:#}");
+                                    error!(error = %cause, "failed to build runtime state");
                                     reload.record_outcome(
                                         epoch,
-                                        ReloadOutcome::BuildFailed {
-                                            error: e.to_string(),
-                                        },
+                                        ReloadOutcome::BuildFailed { error: cause },
                                     );
                                 }
                             },

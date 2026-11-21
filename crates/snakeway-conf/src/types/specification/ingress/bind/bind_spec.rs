@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 #[derive(Debug, Serialize, Default, Clone, confval::Spec)]
 pub struct BindSpec {
     pub interface: Located<String>,
-    #[confval[range = PORT]]
+    #[confval(range = PORT)]
     pub port: Located<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[confval(nested)]

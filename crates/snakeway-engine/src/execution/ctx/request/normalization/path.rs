@@ -2,6 +2,7 @@ use crate::execution::ctx::request::NormalizedPath;
 use crate::execution::ctx::request::normalization::{
     NormalizationOutcome, RejectReason, RewriteReason,
 };
+use smallvec::SmallVec;
 
 /// Normalizes an HTTP request path according to RFC 3986 (URI Generic Syntax) and RFC 9110 (HTTP Semantics).
 ///
@@ -39,7 +40,7 @@ pub(crate) fn normalize_path(path: &str) -> NormalizationOutcome<NormalizedPath>
     }
 
     let mut rewritten = false;
-    let mut stack: Vec<&str> = Vec::new();
+    let mut stack: SmallVec<[&str; 16]> = SmallVec::new();
 
     // Detect missing leading slash (meaning the raw path is relative).
     if !path.starts_with('/') {
@@ -84,8 +85,16 @@ pub(crate) fn normalize_path(path: &str) -> NormalizationOutcome<NormalizedPath>
     }
 
     // Rebuild a normalized path.
-    let mut normalized = String::from("/");
-    normalized.push_str(&stack.join("/"));
+    let separators = stack.len().saturating_sub(1);
+    let capacity = 1 + separators + stack.iter().map(|segment| segment.len()).sum::<usize>();
+    let mut normalized = String::with_capacity(capacity);
+    normalized.push('/');
+    for (index, segment) in stack.iter().enumerate() {
+        if index > 0 {
+            normalized.push('/');
+        }
+        normalized.push_str(segment);
+    }
 
     // Remove trailing slash except root.
     if normalized.len() > 1 && normalized.ends_with('/') {
@@ -109,6 +118,44 @@ pub(crate) fn normalize_path(path: &str) -> NormalizationOutcome<NormalizedPath>
 mod tests {
     use super::*;
     use crate::execution::ctx::request::NormalizedPath;
+
+    #[test]
+    fn an_already_normal_path_allocates_only_its_output() {
+        // Arrange
+        let raw = "/api/v1/users/42/profile";
+
+        // Act
+        let (outcome, allocations) = crate::alloc_count::count_allocations(|| normalize_path(raw));
+
+        // Assert
+        assert_eq!(allocations, 1);
+        match outcome {
+            NormalizationOutcome::Accept(NormalizedPath(p)) => assert_eq!(p, raw),
+            other => panic!("Expected Accept, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn a_path_with_dot_segments_allocates_only_its_output() {
+        // Arrange
+        let raw = "/api/./v1/../v2//users/";
+
+        // Act
+        let (outcome, allocations) = crate::alloc_count::count_allocations(|| normalize_path(raw));
+
+        // Assert
+        assert_eq!(allocations, 1);
+        match outcome {
+            NormalizationOutcome::Rewrite {
+                value: NormalizedPath(p),
+                reason,
+            } => {
+                assert_eq!(p, "/api/v2/users");
+                assert_eq!(reason, RewriteReason::PathCanonicalization);
+            }
+            other => panic!("Expected Rewrite, got {:?}", other),
+        }
+    }
 
     fn assert_accept(path: &str, expected: &str) {
         // Arrange

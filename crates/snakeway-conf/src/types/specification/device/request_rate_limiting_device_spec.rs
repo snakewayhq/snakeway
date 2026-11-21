@@ -5,29 +5,18 @@ range_constraint!(MAX_REQUESTS_PER_SECOND, i64, min: 1, max: 30_000);
 range_constraint!(WINDOW_SECONDS, i64, min: 1, max: 60, units: "seconds");
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct RequestRateLimitingDeviceSpec {
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
-    #[confval(range = MAX_REQUESTS_PER_SECOND)]
+    #[confval(range = MAX_REQUESTS_PER_SECOND, derive_default = 20)]
     pub max_requests_per_second: Located<i64>,
-    #[confval(range = WINDOW_SECONDS)]
+    #[confval(range = WINDOW_SECONDS, derive_default = 5)]
     pub window_seconds: Located<i64>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
     #[confval(default, format = AbsolutePath)]
     pub paths: Vec<Located<String>>,
-}
-
-/// The default doubles as the `config init` template, so its values must pass
-/// this spec's own validation. They match the documented example.
-impl Default for RequestRateLimitingDeviceSpec {
-    fn default() -> Self {
-        Self {
-            enable: Located::detached(false),
-            max_requests_per_second: Located::detached(20),
-            window_seconds: Located::detached(5),
-            paths: Vec::new(),
-        }
-    }
 }
 
 impl Validate for RequestRateLimitingDeviceSpec {

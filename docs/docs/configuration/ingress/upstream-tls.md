@@ -57,7 +57,7 @@ None of these rules apply when `verify` is `false`, because Snakeway does not ch
 ### The hostname must be in a subject alternative name
 
 Snakeway compares the `sni` value with the subject alternative name (SAN) entries of the upstream certificate.
-A certificate that names the host only in its common name (CN) fails, because the CN is not compared.
+A certificate that lists the host only in its common name (CN) fails, because the CN is not compared.
 An IP address is not accepted as `sni` when `verify` is `true`.
 
 For example, this command prints the SAN entries of a certificate:
@@ -105,10 +105,9 @@ A P-521 key also fails.
 
 ### CA files
 
-A per-upstream `ca_file` and the global `server.ca_file` must contain only PEM-encoded X.509 certificates.
-Snakeway checks each certificate when it loads the configuration.
-A file that holds a placeholder or a damaged certificate stops the configuration from loading.
-A `PRIVATE KEY`, `RSA PRIVATE KEY`, `EC PRIVATE KEY`, `PUBLIC KEY`, `X509 CRL`, or `CERTIFICATE REQUEST` section in the file also stops it.
+A per-upstream `ca_file` and the global `server.ca_file` must contain PEM-encoded X.509 certificates.
+Unknown PEM sections are ignored.
+A `PRIVATE KEY`, `RSA PRIVATE KEY`, `EC PRIVATE KEY`, `PUBLIC KEY`, `X509 CRL`, or `CERTIFICATE REQUEST` section stops the configuration from loading.
 
 When a CA file applies to an upstream, Snakeway trusts only the certificates in that file for the connection.
 The trusted roots of the operating system are not used for that upstream.

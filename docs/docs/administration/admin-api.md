@@ -91,7 +91,7 @@ This mirrors the guidance published by the [Envoy project](https://www.envoyprox
 
 ### `GET /admin/health`
 
-Returns the overall health status of the Snakeway instance and its registered upstream services, including per-upstream health checks and circuit breaker state.
+Reports process liveness.
 
 ```shell
 curl http://localhost:8081/admin/health
@@ -101,16 +101,13 @@ curl http://localhost:8081/admin/health
 
 ```json
 {
-  "status": "healthy"
+  "status": "ok"
 }
 ```
 
-**Error responses:**
-
-| Status                    | Meaning                                       |
-|---------------------------|-----------------------------------------------|
-| `200 OK`                  | Instance is healthy.                          |
-| `503 Service Unavailable` | One or more critical upstreams are unhealthy. |
+The endpoint returns `200 OK` while the process is running.
+It does not inspect upstream health or circuit breaker state.
+For per-upstream health, use `GET /admin/upstreams`.
 
 ### `GET /admin/upstreams`
 
@@ -127,6 +124,10 @@ curl http://localhost:8081/admin/upstreams
   "services": {
     "api": {
       "127.0.0.1:8080": {
+        "endpoint": "127.0.0.1:8080",
+        "upstream_id": 12345,
+        "weight": 1,
+        "latency_milliseconds": 12,
         "health": {
           "healthy": true
         },
@@ -138,7 +139,7 @@ curl http://localhost:8081/admin/upstreams
         "circuit_params": {
           "enabled": true,
           "failure_threshold": 5,
-          "open_duration_ms": 10000,
+          "open_duration_milliseconds": 10000,
           "half_open_max_requests": 1,
           "success_threshold": 2,
           "count_http_5xx_as_failure": true
@@ -157,6 +158,12 @@ curl http://localhost:8081/admin/upstreams
 
 The `circuit` field reflects the current circuit breaker state: `"closed"` (normal operation), `"open"` (upstream is failing, requests are rejected), or `"half_open"` (probe requests are being sent to test recovery).
 
+The `upstream_id` field is the value used as the `upstream` label on metrics and in structured logs, such as `circuit_transition` events. Use it to map a metric series or log line back to the endpoint shown here. It is derived from the upstream's address and stays stable across reloads.
+
+The `latency_milliseconds` field is a moving average of the time each successful request to that upstream took, in milliseconds.
+Recent requests count more than older ones.
+It is `null` until the upstream has served a successful request.
+
 ### `GET /admin/stats`
 
 Returns aggregated traffic statistics per service, including active connections and cumulative counters.
@@ -169,27 +176,44 @@ curl http://localhost:8081/admin/stats
 
 ```json
 {
-  "api": {
-    "active_requests": 5,
-    "total_failures": 12,
-    "total_requests": 1500,
-    "total_successes": 1488
+  "traffic": {
+    "api": {
+      "active_requests": 5,
+      "total_failures": 12,
+      "total_requests": 1500,
+      "total_successes": 1488
+    },
+    "static": {
+      "active_requests": 0,
+      "total_failures": 0,
+      "total_requests": 450,
+      "total_successes": 450
+    }
   },
-  "static": {
-    "active_requests": 0,
-    "total_failures": 0,
-    "total_requests": 450,
-    "total_successes": 450
-  }
+  "websocket": [
+    {
+      "route_id": {
+        "kind": "Service",
+        "path": "/chat",
+        "target": "chat"
+      },
+      "active": 3,
+      "max": 100
+    }
+  ]
 }
 ```
+
+`traffic` holds the counters for each service.
+`websocket` holds the connection count for each WebSocket route that has served a connection.
+`active` is the number of open connections, and `max` is the configured limit, or `null` when there is no limit.
 
 **Metrics per service:**
 
 | Metric            | Description                                                              |
 |-------------------|--------------------------------------------------------------------------|
 | `active_requests` | Number of requests currently in flight.                                  |
-| `total_requests`  | Cumulative requests handled since last restart or reload.                |
+| `total_requests`  | Cumulative requests handled for this service. A reload keeps the count when the service and its upstreams stay in the configuration. |
 | `total_successes` | Requests that resulted in a successful response (typically 2xx and 3xx). |
 | `total_failures`  | Requests that resulted in an error (4xx, 5xx, or connection failures).   |
 
@@ -214,18 +238,20 @@ curl -X POST http://localhost:8081/admin/reload
 The `epoch` number identifies this reload request.
 To learn how the reload finished, use `GET /admin/reload`.
 
-**Error responses:**
-
-| Status            | Meaning                                                                        |
-|-------------------|--------------------------------------------------------------------------------|
-| `200 OK`          | Reload was successfully initiated.                                             |
-| `400 Bad Request` | Configuration validation failed. The response body contains the error message. |
+This endpoint always returns `200 OK` for a valid request.
+A reload that fails after the request returns is reported by `GET /admin/reload` as `load_failed` or `build_failed`.
+A change that needs a new process is reported as `rejected` or `upgrade_started`.
+Apart from the `401 Unauthorized` described in [Authentication](#authentication), the only other response is `405 Method Not Allowed` for a method other than `GET` or `POST`.
 
 ### `GET /admin/reload`
 
 Shows how the last reload finished.
 If you reload from a deploy script, poll this endpoint until `epoch` is equal to or greater than the epoch that `POST /admin/reload` returned.
 Do not wait for an exact match, because a newer reload can finish before you poll.
+
+After a zero-drop upgrade, `POST /admin/reload` returns `upgrade_started` with the epoch of that request.
+The new process starts its own reload sequence, so its `GET /admin/reload` reports `epoch: 0` and `result: none` until its first reload.
+In that case, poll the new process's `/admin/health` or wait for it to begin serving instead of waiting for the epoch.
 
 ```shell
 curl http://localhost:8081/admin/reload
@@ -262,8 +288,9 @@ curl http://localhost:8081/admin/reload
 | `build_failed`    | The configuration loaded, but Snakeway could not build the new runtime state. `error` has the cause.                               |
 
 A rejected reload has one of two reasons.
-`restart_required` means that `settings` lists `pid_file` or `upgrade.sock`, which only a restart can change.
-`upgrade_unsupported` means that the change needs a zero-drop upgrade and Snakeway is not running on Linux.
+`restart_required` means that `settings` lists `server.pid_file` or `server.upgrade.sock`, which only a restart can change.
+`upgrade_unsupported` means that the change needs a zero-drop upgrade, and Snakeway cannot start one.
+That happens when Snakeway does not run on Linux, or when `server.pid_file` is not set.
 
 ### `GET /admin/certs`
 
@@ -336,11 +363,11 @@ When an upstream's circuit state changes, Snakeway emits a structured log event:
 ## Using the Admin API for monitoring
 
 The `/admin/stats` and `/admin/upstreams` endpoints are designed to be polled by monitoring systems.
-A simple health check script might look like this:
+A simple monitoring script might look like this:
 
 ```shell
-# Check overall health
-curl -sf http://localhost:8081/admin/health || echo "Snakeway is unhealthy"
+# Check that the process is running
+curl -sf http://localhost:8081/admin/health || echo "Snakeway is not running"
 
 # Fetch stats for a Prometheus exporter or custom dashboard
 curl -s http://localhost:8081/admin/stats | jq .
@@ -349,5 +376,6 @@ curl -s http://localhost:8081/admin/stats | jq .
 curl -s http://localhost:8081/admin/upstreams | jq '.services.api'
 ```
 
-Stats counters reset on process restart or successful configuration reload.
+Stats counters are kept across a reload for every upstream that stays in the configuration.
+A counter resets when its upstream or service leaves the configuration, or when the process restarts.
 For long-term trend analysis, export the counters to an external time-series database at a regular polling interval.

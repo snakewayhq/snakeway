@@ -24,7 +24,7 @@ impl TrafficProxy {
             prop.extract(&HeaderExtractor(&session.req_header().headers))
         });
 
-        let request_id = ctx.request_id().unwrap_or_else(|| "unknown".into());
+        let request_id = ctx.request_id().unwrap_or("unknown");
 
         let span = tracing::info_span!(
             "request",

@@ -14,7 +14,7 @@ impl TrafficStrategy for RoundRobin {
         &self,
         _req: &RequestCtx,
         service_id: &ServiceId,
-        healthy: &[UpstreamSnapshot],
+        healthy: &[&UpstreamSnapshot],
         traffic_manager: &TrafficManager,
     ) -> Option<TrafficDecision> {
         if healthy.is_empty() {

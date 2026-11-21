@@ -86,8 +86,11 @@ impl TrafficManager {
         include_details: bool,
     ) -> AdminUpstreamView {
         let weight = upstream.weight;
-        let latency_ms = upstream.latency.as_ref().map(|l| l.ewma.as_millis() as u64);
         let upstream_id = &upstream.endpoint.id();
+        let latency_milliseconds = self
+            .latency_stats
+            .get(&(service_id.clone(), *upstream_id))
+            .map(|stats| stats.ewma.as_millis() as u64);
         let health = self.health_status(service_id, upstream_id);
         let active_requests = self.active_requests(service_id, upstream_id);
 
@@ -131,8 +134,9 @@ impl TrafficManager {
 
         AdminUpstreamView {
             endpoint: endpoint_label.to_owned(),
+            upstream_id: upstream_id.as_u64(),
             weight,
-            latency_ms,
+            latency_milliseconds,
             health,
             circuit: circuit_state,
             active_requests,

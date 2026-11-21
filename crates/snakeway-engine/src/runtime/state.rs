@@ -8,32 +8,25 @@ use crate::runtime::types::{
 };
 use crate::runtime::upstream_tls::resolve_upstream_tls;
 use crate::runtime::{RuntimeState, ServiceRuntime, UpstreamId, UpstreamRuntime};
-use ahash::RandomState;
 use anyhow::{Context, Result, anyhow};
 use arc_swap::ArcSwap;
 use http::Uri;
+use sha2::{Digest, Sha256};
 use snakeway_acme::{CertManager, SniRegistry};
-use snakeway_conf::types::{RouteConfig, ServiceConfig, UpstreamTcpConfig, UpstreamUnixConfig};
-use snakeway_conf::{load_config, types::RuntimeConfig};
+use snakeway_conf::types::{
+    RouteConfig, RuntimeConfig, ServiceConfig, UpstreamConfig, UpstreamTcpConfig,
+    UpstreamUnixConfig,
+};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
 pub async fn reload_runtime_state(
-    config_path: &Path,
+    config: &RuntimeConfig,
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,
-) -> Result<RuntimeConfig, ReloadError> {
-    let validated = load_config(config_path)?;
-
-    if validated.has_warnings() {
-        let mut out = String::new();
-        validated.render_plain(&mut out);
-        tracing::warn!("{out}");
-    }
-
-    let config = validated.config;
-    let new_state = build_runtime_state(&config, cert_manager)?;
+) -> Result<(), ReloadError> {
+    let new_state = build_runtime_state(config, cert_manager)?;
 
     // Log comparison against current state.
     let old = state.load();
@@ -57,7 +50,7 @@ pub async fn reload_runtime_state(
     // Atomic swap (point of no return).
     state.store(Arc::new(new_state));
 
-    Ok(config)
+    Ok(())
 }
 
 /// Constructs the complete runtime state from configuration.
@@ -85,7 +78,7 @@ pub fn build_runtime_state(
     tracing::debug!("Loaded device count = {}", devices.all().len());
 
     // Services
-    let global_ca_file = cfg.server.ca_file.as_deref().map(Path::new);
+    let global_ca_file: Option<&Path> = cfg.server.ca_file.as_ref().map(Path::new);
     let services = build_runtime_services(&cfg.services, global_ca_file)?;
 
     Ok(RuntimeState {
@@ -115,24 +108,14 @@ fn build_runtime_services(
     let mut out = HashMap::new();
 
     for (name, svc) in services {
-        let mut upstreams = svc
-            .tcp_upstreams
+        let upstreams = svc
+            .upstreams
             .iter()
-            .map(|u| {
-                let rt = make_upstream_runtime_from_tcp(u, global_ca_file)?;
-                Ok(rt)
+            .map(|upstream| match upstream {
+                UpstreamConfig::Tcp(tcp) => make_upstream_runtime_from_tcp(tcp, global_ca_file),
+                UpstreamConfig::Unix(unix) => make_upstream_runtime_for_unix(unix, global_ca_file),
             })
             .collect::<Result<Vec<_>>>()?;
-
-        upstreams.extend(
-            svc.unix_upstreams
-                .iter()
-                .map(|u| {
-                    let rt = make_upstream_runtime_for_unix(u, global_ca_file)?;
-                    Ok(rt)
-                })
-                .collect::<Result<Vec<_>>>()?,
-        );
 
         out.insert(
             name.clone(),
@@ -165,16 +148,19 @@ pub(crate) fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Ar
                 allow_websocket: cfg.allow_websocket,
                 ws_max_connections: cfg.ws_max_connections,
             },
-            RouteConfig::Static(cfg) => RouteRuntime::Static {
-                id: RouteId::static_route(&cfg.path, &canonicalize_dir(&cfg.file_dir)),
-                path: cfg.path.clone(),
-                file_dir: cfg.file_dir.clone(),
-                index: cfg.index.is_some(),
-                directory_listing: cfg.directory_listing,
-                max_file_size: cfg.max_file_size,
-                static_config: cfg.static_config.clone(),
-                cache_policy: cfg.cache_policy.clone(),
-            },
+            RouteConfig::Static(cfg) => {
+                let canonical = canonicalize_dir(&cfg.file_dir)?;
+                RouteRuntime::Static {
+                    id: RouteId::static_route(&cfg.path, &canonical),
+                    path: cfg.path.clone(),
+                    file_dir: cfg.file_dir.clone(),
+                    index: cfg.index.is_some(),
+                    directory_listing: cfg.directory_listing,
+                    max_file_size: cfg.max_file_size,
+                    static_config: cfg.static_config.clone(),
+                    cache_policy: cfg.cache_policy.clone(),
+                }
+            }
         };
 
         router.add_route(route.hosts(), route.path(), route_runtime)?;
@@ -199,7 +185,10 @@ fn make_upstream_runtime_from_tcp(
 
     let host = authority.host().to_string();
 
-    let port = authority.port_u16().unwrap_or(80);
+    let protocol = uri.scheme_str().unwrap_or("http");
+    let port = authority
+        .port_u16()
+        .unwrap_or(if protocol == "https" { 443 } else { 80 });
 
     // Resolve DNS eagerly so the data-plane hot path never calls getaddrinfo.
     // IP literals are parsed directly; hostnames are resolved via the OS resolver.
@@ -268,22 +257,38 @@ fn make_upstream_runtime_for_unix(
     }))
 }
 
-/// Fixed-seed ahash, so an upstream keeps the same id across restarts.
+/// Stable hash of an upstream address. SHA-256 is used so the id is the same
+/// across process restarts, dependency versions, and CPU features. The id is a
+/// metric label, so stability across a mixed fleet matters more than speed.
+/// The hash runs once per reload, not per request.
 fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
-    static HASHER: RandomState = RandomState::with_seeds(1, 2, 3, 4);
-
-    UpstreamId(HASHER.hash_one(addr) as u32)
+    let mut hasher = Sha256::new();
+    match addr {
+        UpstreamAddr::Tcp { host, port } => {
+            hasher.update(b"tcp");
+            hasher.update(host.as_bytes());
+            hasher.update(port.to_le_bytes());
+        }
+        UpstreamAddr::Unix { path } => {
+            hasher.update(b"unix");
+            hasher.update(path.as_bytes());
+        }
+    }
+    let digest = hasher.finalize();
+    let id = u64::from_le_bytes([
+        digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+    ]);
+    UpstreamId::new(id)
 }
 
 /// Converts a directory path to its full absolute path as a string.
 ///
 /// Takes a path that might be relative (like `./files` or `../data`) and converts
 /// it to a complete path (like `/home/user/app/files`). If the path doesn't exist
-/// or can't be resolved, it just uses the path as-is.
-fn canonicalize_dir(dir: &Path) -> String {
-    let path_buf = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
-    let result = path_buf.to_string_lossy();
-    result.to_string()
+/// or can't be resolved, it uses the path as-is.
+fn canonicalize_dir(dir: &Path) -> Result<String, std::io::Error> {
+    let path_buf = dir.canonicalize()?;
+    Ok(path_buf.to_string_lossy().to_string())
 }
 
 #[cfg(test)]
@@ -383,5 +388,27 @@ mod tests {
         let tls = tcp.tls.expect("the upstream must use TLS");
         assert!(!tls.verify);
         assert!(tls.ca.is_none());
+    }
+
+    #[test]
+    fn upstream_ids_stay_unique_across_many_addresses() {
+        // Arrange
+        let addresses: Vec<UpstreamAddr> = (0..=255u16)
+            .flat_map(|a| (0..=255u16).map(move |b| (a, b)))
+            .flat_map(|(a, b)| {
+                (8001..=8004u16).map(move |port| UpstreamAddr::Tcp {
+                    host: format!("10.0.{a}.{b}"),
+                    port,
+                })
+            })
+            .collect();
+
+        // Act
+        let ids: std::collections::HashSet<UpstreamId> =
+            addresses.iter().map(make_upstream_id).collect();
+
+        // Assert
+        assert_eq!(addresses.len(), 262_144);
+        assert_eq!(ids.len(), addresses.len());
     }
 }

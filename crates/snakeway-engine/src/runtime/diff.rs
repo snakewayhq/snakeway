@@ -1,5 +1,6 @@
 use pingora::server::configuration::ServerConf;
 use snakeway_conf::types::{ListenerConfig, RuntimeConfig};
+use std::path::Path;
 
 #[derive(Debug, PartialEq)]
 pub enum ConfigChangeKind {
@@ -72,6 +73,14 @@ pub fn plan_reload(change: ConfigChangeKind, upgrade_supported: bool) -> ReloadP
     }
 }
 
+/// Whether this platform and configuration can start a zero-drop upgrade.
+///
+/// The new process reads the old process id from `pid_file`. Without that file, the child fails
+/// during the handover, so the reload must be rejected before a new process starts.
+pub fn upgrade_is_supported(is_linux: bool, pid_file: &Path) -> bool {
+    is_linux && !pid_file.as_os_str().is_empty()
+}
+
 /// The running process uses these settings to hand its listeners to a new process, so an
 /// upgrade cannot apply a change to them.
 fn restart_settings_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> Vec<&'static str> {
@@ -99,16 +108,75 @@ fn effective_upgrade_sock(config: &RuntimeConfig) -> String {
 /// Settings that Pingora, the traffic proxy, or the control plane read only when the process
 /// starts, so a change needs a new process.
 fn server_fields_changed(old: &RuntimeConfig, new: &RuntimeConfig) -> bool {
-    let (old, new) = (&old.server, &new.server);
-    old.threads != new.threads
-        || old.performance != new.performance
-        || old.shutdown != new.shutdown
-        || old.upstream != new.upstream
-        || old.upgrade.max_retries != new.upgrade.max_retries
-        || old.ca_file != new.ca_file
-        || old.dns_refresh_interval_seconds != new.dns_refresh_interval_seconds
-        || old.observability != new.observability
-        || old.tls_automation != new.tls_automation
+    let old = &old.server;
+    let new = &new.server;
+
+    let (
+        old_version,
+        old_threads,
+        _old_pid_file,
+        _old_ca_file,
+        old_tls_automation,
+        old_observability,
+        old_dns_refresh_interval_seconds,
+        old_shutdown,
+        old_upgrade,
+        old_performance,
+        old_upstream,
+        old_wasm,
+    ) = (
+        old.version,
+        old.threads,
+        old.pid_file.clone(),
+        old.ca_file.clone(),
+        old.tls_automation.clone(),
+        old.observability.clone(),
+        old.dns_refresh_interval_seconds,
+        old.shutdown.clone(),
+        old.upgrade.clone(),
+        old.performance.clone(),
+        old.upstream.clone(),
+        old.wasm.clone(),
+    );
+
+    let (
+        new_version,
+        new_threads,
+        _new_pid_file,
+        _new_ca_file,
+        new_tls_automation,
+        new_observability,
+        new_dns_refresh_interval_seconds,
+        new_shutdown,
+        new_upgrade,
+        new_performance,
+        new_upstream,
+        new_wasm,
+    ) = (
+        new.version,
+        new.threads,
+        new.pid_file.clone(),
+        new.ca_file.clone(),
+        new.tls_automation.clone(),
+        new.observability.clone(),
+        new.dns_refresh_interval_seconds,
+        new.shutdown.clone(),
+        new.upgrade.clone(),
+        new.performance.clone(),
+        new.upstream.clone(),
+        new.wasm.clone(),
+    );
+
+    old_version != new_version
+        || old_threads != new_threads
+        || old_tls_automation != new_tls_automation
+        || old_observability != new_observability
+        || old_dns_refresh_interval_seconds != new_dns_refresh_interval_seconds
+        || old_shutdown != new_shutdown
+        || old_upgrade.max_retries != new_upgrade.max_retries
+        || old_performance != new_performance
+        || old_upstream != new_upstream
+        || old_wasm != new_wasm
 }
 
 fn listeners_changed(old: &[ListenerConfig], new: &[ListenerConfig]) -> bool {
@@ -126,8 +194,7 @@ fn listeners_changed(old: &[ListenerConfig], new: &[ListenerConfig]) -> bool {
 }
 
 fn listener_equivalent(a: &ListenerConfig, b: &ListenerConfig) -> bool {
-    a.name == b.name
-        && a.addr == b.addr
+    a.addr == b.addr
         && a.tls_termination == b.tls_termination
         && a.enable_http2 == b.enable_http2
         && a.http2 == b.http2
@@ -458,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn ca_file_changed() {
+    fn ca_file_changed_applies_in_place() {
         // Arrange
         let (old, new) = configs_with_server_change(|s| {
             s.ca_file = Some("/etc/ssl/ca.pem".to_string());
@@ -468,7 +535,7 @@ mod tests {
         let kind = classify_config_change(&old, &new);
 
         // Assert
-        assert_eq!(kind, ConfigChangeKind::UpgradeRequired);
+        assert_eq!(kind, ConfigChangeKind::RuntimeOnly);
     }
 
     #[test]
@@ -671,6 +738,42 @@ mod tests {
     }
 
     #[test]
+    fn upgrade_is_supported_on_linux_with_a_pid_file() {
+        // Arrange
+        let pid_file = PathBuf::from("/run/snakeway.pid");
+
+        // Act
+        let supported = upgrade_is_supported(true, &pid_file);
+
+        // Assert
+        assert!(supported);
+    }
+
+    #[test]
+    fn upgrade_is_unsupported_off_linux() {
+        // Arrange
+        let pid_file = PathBuf::from("/run/snakeway.pid");
+
+        // Act
+        let supported = upgrade_is_supported(false, &pid_file);
+
+        // Assert
+        assert!(!supported);
+    }
+
+    #[test]
+    fn upgrade_is_unsupported_without_a_pid_file() {
+        // Arrange
+        let pid_file = PathBuf::new();
+
+        // Act
+        let supported = upgrade_is_supported(true, &pid_file);
+
+        // Assert
+        assert!(!supported);
+    }
+
+    #[test]
     fn restart_required_change_is_rejected_on_every_platform() {
         // Arrange
         let change = ConfigChangeKind::RestartRequired {
@@ -701,8 +804,7 @@ mod tests {
                 name: "new-svc".to_string(),
                 listener: "l0".to_string(),
                 load_balancing_strategy: snakeway_conf::types::LoadBalancingStrategy::RoundRobin,
-                tcp_upstreams: vec![],
-                unix_upstreams: vec![],
+                upstreams: vec![],
                 circuit_breaker: Default::default(),
                 health_check: Default::default(),
             },

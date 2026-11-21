@@ -2,7 +2,8 @@ use crate::types::{
     DeviceConfig, DeviceSpec, IdentityDeviceConfig, IngressSpec, ListenerConfig,
     NetworkPolicyDeviceConfig, RequestFilterDeviceConfig, RequestRateLimitingDeviceConfig,
     RouteConfig, RuntimeConfig, ServerConfig, ServiceConfig, ServiceRouteConfig, StaticRouteConfig,
-    StructuredLoggingDeviceConfig, UpstreamTcpConfig, UpstreamUnixConfig, WasmDeviceConfig,
+    StructuredLoggingDeviceConfig, UpstreamConfig, UpstreamTcpConfig, UpstreamUnixConfig,
+    WasmDeviceConfig,
 };
 use confval::prelude::{Located, Lower, Report, Validate, ValidateNested, narrow};
 use std::collections::HashMap;
@@ -78,18 +79,23 @@ where
                 let service_spec = &service_spec.value;
                 // Weight narrows through `narrow::` so a negative or oversized
                 // value is reported and rejected rather than wrapping to u32.
-                let mut unix_upstreams = Vec::new();
-                let mut tcp_upstreams = Vec::new();
+                let mut upstreams = Vec::new();
                 for u in &service_spec.upstreams {
                     let Some(weight) = narrow::i64_to_u32(&u.value.weight, report) else {
                         failed = true;
                         continue;
                     };
                     if let Some(sock) = &u.value.sock {
-                        unix_upstreams.push(UpstreamUnixConfig::new(weight, &sock.value));
+                        upstreams.push(UpstreamConfig::Unix(UpstreamUnixConfig::new(
+                            weight,
+                            &sock.value,
+                        )));
                     }
                     if let Some(endpoint) = &u.value.endpoint {
-                        tcp_upstreams.push(UpstreamTcpConfig::new(weight, &endpoint.value));
+                        upstreams.push(UpstreamConfig::Tcp(UpstreamTcpConfig::new(
+                            weight,
+                            &endpoint.value,
+                        )));
                     }
                 }
 
@@ -98,8 +104,7 @@ where
                 let service = ServiceConfig::new(
                     &service_name,
                     &listener_name,
-                    tcp_upstreams,
-                    unix_upstreams,
+                    upstreams,
                     service_spec,
                     report,
                 );
@@ -223,7 +228,7 @@ mod tests {
     use super::*;
     use crate::types::{
         AdminAuthSpec, BearerAuthSpec, BindAdminSpec, BindSpec, EndpointSpec, IngressSpec,
-        ServerSpec, ServiceRouteSpec, ServiceSpec, UpstreamSpec,
+        ServerSpec, ServiceRouteSpec, ServiceSpec, SockSpec, UpstreamConfig, UpstreamSpec,
     };
     use confval::prelude::{Lower, Report};
 
@@ -306,6 +311,65 @@ mod tests {
         // Assert
         assert!(result.is_none());
         assert!(report.has_errors());
+    }
+
+    #[test]
+    fn upstream_order_is_preserved_when_sock_comes_first() {
+        // Arrange
+        let server = lowered_server();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(8080),
+                ..Default::default()
+            })),
+            services: vec![Located::detached(ServiceSpec {
+                name: Located::detached("api".to_string()),
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    path: Located::detached("/".to_string()),
+                    hosts: vec![Located::detached("example.com".to_string())],
+                    ..Default::default()
+                })],
+                upstreams: vec![
+                    Located::detached(UpstreamSpec {
+                        sock: Some(Located::detached(SockSpec {
+                            path: Located::detached("/run/api.sock".to_string()),
+                            tls: None,
+                        })),
+                        endpoint: None,
+                        weight: Located::detached(1),
+                    }),
+                    Located::detached(UpstreamSpec {
+                        sock: None,
+                        endpoint: Some(Located::detached(EndpointSpec {
+                            host: Located::detached("127.0.0.1".to_string()),
+                            port: Located::detached(3000),
+                            tls: None,
+                        })),
+                        weight: Located::detached(1),
+                    }),
+                ],
+                ..Default::default()
+            })],
+            ..Default::default()
+        });
+
+        // Act
+        let result = lower_configs(server, vec![ingress], vec![], &mut Report::new());
+
+        // Assert
+        let config = result.expect("lowering should succeed");
+        let service = config.services.get("api").expect("service must lower");
+        assert_eq!(service.upstreams.len(), 2);
+        assert!(
+            matches!(service.upstreams[0], UpstreamConfig::Unix(_)),
+            "the first configured upstream must stay first"
+        );
+        assert!(
+            matches!(service.upstreams[1], UpstreamConfig::Tcp(_)),
+            "the second configured upstream must stay second"
+        );
     }
 
     #[test]
