@@ -194,8 +194,7 @@ fn listeners_changed(old: &[ListenerConfig], new: &[ListenerConfig]) -> bool {
 }
 
 fn listener_equivalent(a: &ListenerConfig, b: &ListenerConfig) -> bool {
-    a.name == b.name
-        && a.addr == b.addr
+    a.addr == b.addr
         && a.tls_termination == b.tls_termination
         && a.enable_http2 == b.enable_http2
         && a.http2 == b.http2
