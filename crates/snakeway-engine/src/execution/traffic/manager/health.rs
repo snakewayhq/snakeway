@@ -127,9 +127,10 @@ impl TrafficManager {
 
     /// Reports whether an upstream is healthy without changing health state.
     ///
-    /// Use this for read-only consumers such as the admin API. The mutating
-    /// `health_status` method promotes an upstream from cooldown to a trial
-    /// request, so calling it from a poller would consume that trial.
+    /// Decides whether an upstream may receive a request. Read-only: an
+    /// upstream whose cooldown has expired stays admissible on every decision
+    /// until an outcome lands, so polling a non-selected backup does not push
+    /// its recovery point later. It never mutates state.
     pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
         let Some(health_params) = self.health_params.get(service_id) else {
             return HealthStatus { healthy: true };
@@ -163,39 +164,6 @@ impl TrafficManager {
         };
 
         HealthStatus { healthy }
-    }
-
-    /// Decides whether an upstream may receive a request.
-    ///
-    /// This may mutate health state: when a cooldown has ended, it promotes the
-    /// upstream to a trial request. Use `health_status` for a read-only check.
-    pub fn health_admission(
-        &self,
-        service_id: &ServiceId,
-        upstream_id: &UpstreamId,
-    ) -> HealthStatus {
-        let read_only = self.health_status(service_id, upstream_id);
-
-        // Promote an upstream whose cooldown has ended to a trial request.
-        // This is the only side effect of the check, so it lives here and the
-        // read-only variant above stays free of writes.
-        if read_only.healthy
-            && let Some(health_params) = self.health_params.get(service_id)
-            && health_params.enable
-        {
-            let key = (service_id.clone(), *upstream_id);
-            if let Some(mut entry) = self.upstream_health.get_mut(&key)
-                && let HealthState::Unhealthy { last_failure, .. } = &*entry
-                && last_failure.elapsed() > health_params.unhealthy_cooldown
-            {
-                *entry = HealthState::Unhealthy {
-                    consecutive_failures: health_params.failure_threshold,
-                    last_failure: Instant::now(),
-                };
-            }
-        }
-
-        read_only
     }
 }
 
@@ -253,7 +221,7 @@ mod tests {
                 .is_none()
         );
         assert_eq!(manager.total_successes(&service, &upstream), 1);
-        assert!(manager.health_admission(&service, &upstream).healthy);
+        assert!(manager.health_status(&service, &upstream).healthy);
     }
 
     #[test]
@@ -263,13 +231,13 @@ mod tests {
         for _ in 0..3 {
             manager.report_failure(&service, &upstream);
         }
-        assert!(!manager.health_admission(&service, &upstream).healthy);
+        assert!(!manager.health_status(&service, &upstream).healthy);
 
         // Act
         manager.report_success(&service, &upstream, Duration::from_millis(5));
 
         // Assert
-        assert!(manager.health_admission(&service, &upstream).healthy);
+        assert!(manager.health_status(&service, &upstream).healthy);
         assert!(matches!(
             *manager
                 .upstream_health
@@ -296,7 +264,7 @@ mod tests {
                 .unwrap(),
             HealthState::Healthy
         ));
-        assert!(manager.health_admission(&service, &upstream).healthy);
+        assert!(manager.health_status(&service, &upstream).healthy);
     }
 
     #[test]
@@ -322,7 +290,7 @@ mod tests {
         manager.update(TrafficSnapshot::default());
 
         // Act
-        let status = manager.health_admission(&service, &upstream);
+        let status = manager.health_status(&service, &upstream);
 
         // Assert
         assert!(status.healthy);
@@ -340,7 +308,7 @@ mod tests {
         std::thread::sleep(Duration::from_millis(5));
 
         // Act
-        let healthy = manager.health_admission(&service, &upstream).healthy;
+        let healthy = manager.health_status(&service, &upstream).healthy;
 
         // Assert
         assert!(healthy);
@@ -352,19 +320,40 @@ mod tests {
     }
 
     #[test]
+    fn decisions_without_a_probe_do_not_requarantine_a_cooled_upstream() {
+        // Arrange: the upstream is unhealthy and its one second cooldown has
+        // expired.
+        let (manager, service, upstream) = manager_with_cooldown(true, 1);
+        for _ in 0..3 {
+            manager.report_failure(&service, &upstream);
+        }
+        std::thread::sleep(Duration::from_millis(1100));
+
+        // Act: two decisions in a row that select a different upstream, so
+        // neither probes this one.
+        let first = manager.health_status(&service, &upstream).healthy;
+        let second = manager.health_status(&service, &upstream).healthy;
+
+        // Assert: the cooldown stays expired until an outcome lands, instead
+        // of each decision restarting it.
+        assert!(first);
+        assert!(second);
+    }
+
+    #[test]
     fn an_upstream_stays_healthy_until_its_failures_reach_the_threshold() {
         // Arrange
         let (manager, service, upstream) = manager_with_one_upstream(true);
         manager.report_failure(&service, &upstream);
         manager.report_failure(&service, &upstream);
-        let below_threshold = manager.health_admission(&service, &upstream).healthy;
+        let below_threshold = manager.health_status(&service, &upstream).healthy;
 
         // Act
         manager.report_failure(&service, &upstream);
 
         // Assert
         assert!(below_threshold);
-        assert!(!manager.health_admission(&service, &upstream).healthy);
+        assert!(!manager.health_status(&service, &upstream).healthy);
         assert!(matches!(
             *manager
                 .upstream_health

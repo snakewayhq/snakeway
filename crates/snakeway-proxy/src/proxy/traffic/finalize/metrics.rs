@@ -117,7 +117,7 @@ impl TrafficProxy {
                 .record(tm.active_requests(service_id, upstream_id), upstream_attrs);
 
             // Gauge: health status.
-            let healthy = tm.health_admission(service_id, upstream_id).healthy;
+            let healthy = tm.health_status(service_id, upstream_id).healthy;
             metrics
                 .upstream_health
                 .record(u64::from(healthy), upstream_attrs);
