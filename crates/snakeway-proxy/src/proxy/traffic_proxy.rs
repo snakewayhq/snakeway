@@ -164,10 +164,30 @@ impl ProxyHttp for TrafficProxy {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
         let service_id = ServiceId::new(service_name.as_str());
 
+        // Pingora re-enters this hook once per retry attempt. Re-entry means
+        // the previous attempt failed, so settle its guard as a failure now
+        // instead of letting it finalize later against this attempt's
+        // outcome, which could record a phantom success on a dead upstream.
+        if let Some(mut stale) = ctx.admission_guard.take() {
+            stale.failure();
+        }
+
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        let peer = self.build_peer(ctx, upstream)?;
+        // A half-open slot is already spent on this request. A failed peer
+        // build means no guard will exist to return it, so roll it back.
+        let peer = match self.build_peer(ctx, upstream) {
+            Ok(peer) => peer,
+            Err(e) => {
+                if selected_upstream.cb_started {
+                    self.proxy_ctx
+                        .traffic_manager
+                        .circuit_rollback(&service_id, &upstream.id());
+                }
+                return Err(e);
+            }
+        };
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
@@ -413,7 +433,10 @@ impl ProxyHttp for TrafficProxy {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("response").entered();
         if ctx.ws_switched() {
-            // WebSocket upgrade is a protocol switch, not a response.
+            // WebSocket upgrade is a protocol switch, not a response. Record
+            // the success explicitly so the guard finalizes on the switched
+            // tunnel rather than on the default outcome rule.
+            ctx.upstream_outcome = Some(UpstreamOutcome::Success);
             return Ok(());
         }
 

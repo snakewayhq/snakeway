@@ -48,7 +48,11 @@ impl TrafficProxy {
 
             Some(UpstreamOutcome::Success) => true,
 
-            None => true,
+            // An unset outcome means the attempt never reached a response,
+            // for example a selection or peer build failure. The switched
+            // tunnel path records an explicit success, so nothing legitimate
+            // lands here.
+            None => false,
         };
 
         if success {
