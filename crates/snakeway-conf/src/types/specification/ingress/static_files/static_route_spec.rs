@@ -1,3 +1,4 @@
+use crate::validation::validator::RoutePath;
 use confval::prelude::{AbsolutePath, Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -22,7 +23,7 @@ range_constraint!(MAX_AGE_SECONDS, i64, min: 0, max: ONE_YEAR_IN_SECONDS, units:
 pub struct StaticRouteSpec {
     #[confval(derive_default = Vec::new())]
     pub hosts: Vec<Located<String>>,
-    #[confval(derive_default = String::new())]
+    #[confval(format = RoutePath, derive_default = String::new())]
     pub path: Located<String>,
     #[confval(format = AbsolutePath, derive_default = PathBuf::new())]
     pub file_dir: Located<PathBuf>,
@@ -97,6 +98,7 @@ mod tests {
         let expected_error = format!("invalid static directory: {}", file_dir);
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(PathBuf::from(file_dir)),
             ..Default::default()
         };
@@ -116,6 +118,7 @@ mod tests {
         let expected_error1 = format!("file_dir is not a valid absolute path: \"{}\"", file_dir);
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(PathBuf::from(file_dir)),
             ..Default::default()
         };
@@ -134,6 +137,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(dir.path().to_path_buf()),
             max_file_size: Located::detached(0),
             ..Default::default()
@@ -160,6 +164,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(dir.path().to_path_buf()),
             max_file_size: Located::detached(64 * 1024 * 1024 * 1024 + 1),
             ..Default::default()
