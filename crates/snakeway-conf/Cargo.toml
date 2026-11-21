@@ -15,6 +15,7 @@ hotpath-alloc = ["hotpath/hotpath-alloc"]
 confval = { workspace = true }
 glob = { workspace = true }
 ipnet = { workspace = true, features = ["serde"] }
+libc = { workspace = true }
 pingora-rustls = { workspace = true }
 rustls-pki-types = { workspace = true }
 x509-parser = { workspace = true }

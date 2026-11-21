@@ -102,8 +102,29 @@ impl Validate for UpstreamSpec {
     fn validate(&self, _report: &mut Report) {}
 }
 
+/// The platform/kernel defines this limit. sun_path is a fixed array in sockaddr_un,
+/// and the longest bindable path is the field minus its null terminator.
+const SOCK_PATH_MAX: usize = std::mem::size_of::<libc::sockaddr_un>()
+    - std::mem::offset_of!(libc::sockaddr_un, sun_path)
+    - 1;
+
 impl Validate for SockSpec {
-    fn validate(&self, _report: &mut Report) {}
+    fn validate(&self, report: &mut Report) {
+        // The unix socket path limit is a byte count, and #[confval(length)]
+        // bounds the character count, so a multibyte path could pass a length
+        // attribute and still fail at bind time. confval's docs route byte
+        // count limits to the Validate body.
+        if self.path.value.len() > SOCK_PATH_MAX {
+            report
+                .error(format!(
+                    "sock path is {} bytes, which exceeds the unix socket path limit of {} bytes",
+                    self.path.value.len(),
+                    SOCK_PATH_MAX
+                ))
+                .at(self.path.span)
+                .emit();
+        }
+    }
 }
 
 impl Validate for EndpointSpec {
@@ -177,6 +198,81 @@ mod tests {
             sock: None,
             weight: Located::detached(1),
         }
+    }
+
+    fn sock_spec(path_len: usize) -> SockSpec {
+        SockSpec {
+            path: Located::detached("x".repeat(path_len)),
+            tls: None,
+        }
+    }
+
+    #[test]
+    fn sock_path_over_the_unix_limit_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = sock_spec(SOCK_PATH_MAX + 1);
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains("exceeds the unix socket path limit"));
+    }
+
+    #[test]
+    fn sock_path_at_the_unix_limit_is_accepted() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = sock_spec(SOCK_PATH_MAX);
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        assert!(report.issues().is_empty());
+    }
+
+    #[test]
+    fn sock_path_error_names_both_lengths() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = sock_spec(SOCK_PATH_MAX + 5);
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert!(error.message.contains(&format!("{}", SOCK_PATH_MAX + 5)));
+        assert!(error.message.contains(&format!("{}", SOCK_PATH_MAX)));
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn the_derived_limit_matches_the_platform_struct() {
+        // Arrange
+        // sun_path is 104 bytes on macOS, including the terminator.
+
+        // Act
+        let limit = SOCK_PATH_MAX;
+
+        // Assert
+        assert_eq!(limit, 103);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn the_derived_limit_matches_the_platform_struct() {
+        // Arrange
+        // sun_path is 108 bytes on Linux, including the terminator.
+
+        // Act
+        let limit = SOCK_PATH_MAX;
+
+        // Assert
+        assert_eq!(limit, 107);
     }
 
     #[test]
