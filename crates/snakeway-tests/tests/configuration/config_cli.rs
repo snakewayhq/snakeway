@@ -162,3 +162,70 @@ fn nonexistent_ca_file_produces_validation_error() {
         other => panic!("expected SemanticValidationFailed, got: {other:?}"),
     }
 }
+
+/// A service block with no name must be rejected.
+#[test]
+fn service_without_name_is_rejected() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("temp dir");
+    std::fs::write(
+        tmp.path().join("snakeway.hcl"),
+        "server { version = 1 }\ninclude { ingresses = \"ingress.d/*.hcl\" }\n",
+    )
+    .unwrap();
+    let ingress_dir = tmp.path().join("ingress.d");
+    std::fs::create_dir_all(&ingress_dir).unwrap();
+    std::fs::write(
+        ingress_dir.join("api.hcl"),
+        r#"bind = { interface = "127.0.0.1", port = 8080 }
+services = [
+  {
+    routes = [ { hosts = ["example.com"], path = "/" } ]
+    upstreams = [ { weight = 1, endpoint = { host = "127.0.0.1", port = 8080 } } ]
+  }
+]
+"#,
+    )
+    .unwrap();
+
+    // Act
+    let result = load_config(tmp.path());
+
+    // Assert
+    assert!(result.is_err(), "a service without a name must be rejected");
+}
+
+/// A service with an empty name must be rejected.
+#[test]
+fn service_with_empty_name_is_rejected() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("temp dir");
+    std::fs::write(
+        tmp.path().join("snakeway.hcl"),
+        "server { version = 1 }\ninclude { ingresses = \"ingress.d/*.hcl\" }\n",
+    )
+    .unwrap();
+    let ingress_dir = tmp.path().join("ingress.d");
+    std::fs::create_dir_all(&ingress_dir).unwrap();
+    std::fs::write(
+        ingress_dir.join("api.hcl"),
+        r#"bind = { interface = "127.0.0.1", port = 8080 }
+services " " = [
+  {
+    routes = [ { hosts = ["example.com"], path = "/" } ]
+    upstreams = [ { weight = 1, endpoint = { host = "127.0.0.1", port = 8080 } } ]
+  }
+]
+"#,
+    )
+    .unwrap();
+
+    // Act
+    let result = load_config(tmp.path());
+
+    // Assert
+    assert!(
+        result.is_err(),
+        "a service with an empty name must be rejected"
+    );
+}

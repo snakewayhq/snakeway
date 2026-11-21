@@ -51,12 +51,15 @@ impl StickyHash {
     fn rendezvous<'a>(
         &self,
         key: &str,
-        upstreams: &'a [UpstreamSnapshot],
+        upstreams: &[&'a UpstreamSnapshot],
     ) -> Option<&'a UpstreamSnapshot> {
-        upstreams.iter().max_by_key(|u| {
-            // Combine sticky key and upstream identity
-            self.hash_to_u64(&(key, u.endpoint.id()))
-        })
+        upstreams
+            .iter()
+            .max_by_key(|u| {
+                // Combine sticky key and upstream identity
+                self.hash_to_u64(&(key, u.endpoint.id()))
+            })
+            .copied()
     }
 }
 
@@ -65,7 +68,7 @@ impl TrafficStrategy for StickyHash {
         &self,
         req: &RequestCtx,
         _service_id: &ServiceId,
-        healthy: &[UpstreamSnapshot],
+        healthy: &[&UpstreamSnapshot],
         _traffic_manager: &TrafficManager,
     ) -> Option<TrafficDecision> {
         if healthy.is_empty() {

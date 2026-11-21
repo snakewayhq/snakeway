@@ -5,22 +5,14 @@ range_constraint!(FAILURE_THRESHOLD, i64, min: 1, max: 10_000);
 range_constraint!(UNHEALTHY_COOLDOWN_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct HealthCheckSpec {
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
     #[confval(default = 3, range = FAILURE_THRESHOLD)]
     pub failure_threshold: Located<i64>,
     #[confval(default = 10, range = UNHEALTHY_COOLDOWN_SECONDS)]
     pub unhealthy_cooldown_seconds: Located<i64>,
-}
-
-impl Default for HealthCheckSpec {
-    fn default() -> Self {
-        Self {
-            enable: Located::detached(false),
-            failure_threshold: Located::detached(3),
-            unhealthy_cooldown_seconds: Located::detached(10),
-        }
-    }
 }
 
 impl Validate for HealthCheckSpec {

@@ -1,5 +1,5 @@
 use crate::proxy::TrafficProxy;
-use opentelemetry::KeyValue;
+use opentelemetry::{KeyValue, Value};
 use snakeway_engine::ctx::RequestCtx;
 use snakeway_engine::traffic::{TransportFailure, UpstreamOutcome};
 
@@ -10,6 +10,12 @@ impl TrafficProxy {
         let Some(metrics) = &self.proxy_ctx.metrics else {
             return;
         };
+
+        let snapshot = self.proxy_ctx.traffic_manager.snapshot();
+        let selected_service = ctx
+            .selected_upstream
+            .as_ref()
+            .and_then(|(service_id, _)| snapshot.services.get(service_id));
 
         let service = ctx.service.as_deref().unwrap_or("unknown");
         let route = ctx
@@ -28,10 +34,15 @@ impl TrafficProxy {
             None => "no_upstream",
         };
 
+        let service_attr = match selected_service {
+            Some(selected) => selected.metric_service().clone(),
+            None => KeyValue::new("service", service.to_string()),
+        };
+
         let request_attrs = &[
-            KeyValue::new("method", method.to_string()),
+            KeyValue::new("method", method_metric_value(method)),
             KeyValue::new("status", status),
-            KeyValue::new("service", service.to_string()),
+            service_attr,
             KeyValue::new("route", route),
         ];
 
@@ -40,11 +51,28 @@ impl TrafficProxy {
         // Duration and upstream-scoped metrics.
         if let Some((service_id, upstream_id)) = &ctx.selected_upstream {
             let duration_ms = ctx.request_start.elapsed().as_secs_f64() * 1000.0;
-            let upstream_str = upstream_id.as_u32().to_string();
-            let upstream_attrs = &[
-                KeyValue::new("service", service_id.as_str().to_string()),
-                KeyValue::new("upstream", upstream_str.clone()),
-            ];
+            let cached = selected_service
+                .and_then(|selected| {
+                    selected
+                        .upstreams
+                        .iter()
+                        .find(|upstream| upstream.endpoint.id() == *upstream_id)
+                })
+                .map(|upstream| upstream.metric_attributes());
+
+            // A reload can replace the snapshot between selection and here, so the upstream
+            // may be gone from it. Build the attributes for that one request instead.
+            let built;
+            let upstream_attrs: &[KeyValue] = match cached {
+                Some(attributes) => attributes,
+                None => {
+                    built = [
+                        KeyValue::new("service", service_id.as_str().to_string()),
+                        KeyValue::new("upstream", upstream_id.to_string()),
+                    ];
+                    &built
+                }
+            };
 
             metrics
                 .http_request_duration
@@ -56,8 +84,8 @@ impl TrafficProxy {
                     metrics.http_errors.add(
                         1,
                         &[
-                            KeyValue::new("service", service_id.as_str().to_string()),
-                            KeyValue::new("upstream", upstream_str.clone()),
+                            upstream_attrs[0].clone(),
+                            upstream_attrs[1].clone(),
                             KeyValue::new("error.type", "http_5xx"),
                         ],
                     );
@@ -73,8 +101,8 @@ impl TrafficProxy {
                     metrics.http_errors.add(
                         1,
                         &[
-                            KeyValue::new("service", service_id.as_str().to_string()),
-                            KeyValue::new("upstream", upstream_str.clone()),
+                            upstream_attrs[0].clone(),
+                            upstream_attrs[1].clone(),
                             KeyValue::new("error.type", error_type),
                         ],
                     );
@@ -89,7 +117,7 @@ impl TrafficProxy {
                 .record(tm.active_requests(service_id, upstream_id), upstream_attrs);
 
             // Gauge: health status.
-            let healthy = tm.health_status(service_id, upstream_id).healthy;
+            let healthy = tm.health_admission(service_id, upstream_id).healthy;
             metrics
                 .upstream_health
                 .record(u64::from(healthy), upstream_attrs);
@@ -106,5 +134,19 @@ impl TrafficProxy {
                     .record(state_value, upstream_attrs);
             }
         }
+    }
+}
+
+/// A standard method maps to a static string, so the common case does not allocate.
+fn method_metric_value(method: &str) -> Value {
+    const STANDARD_HTTP_METHODS: [&str; 9] = [
+        "GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "CONNECT", "TRACE",
+    ];
+    match STANDARD_HTTP_METHODS
+        .iter()
+        .find(|standard| **standard == method)
+    {
+        Some(standard) => Value::from(*standard),
+        None => Value::from(method.to_string()),
     }
 }

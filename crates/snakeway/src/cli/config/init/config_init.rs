@@ -253,6 +253,14 @@ mod tests {
                 "template {template:?} should not bake in a pid_file, got {:?}",
                 validated.config.server.pid_file
             );
+            if matches!(template, ConfigInitTemplate::Httpbin) {
+                // The httpbin template must declare a service.
+                // Otherwise the generated config would serve nothing.
+                assert!(
+                    !validated.config.services.is_empty(),
+                    "httpbin template must declare a service"
+                );
+            }
         }
     }
 }

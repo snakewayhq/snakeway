@@ -5,8 +5,9 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct AdminUpstreamView {
     pub(crate) endpoint: String,
+    pub(crate) upstream_id: u64,
     pub(crate) weight: u32,
-    pub(crate) latency_ms: Option<u64>,
+    pub(crate) latency_milliseconds: Option<u64>,
     pub(crate) health: HealthStatus,
     pub(crate) circuit: CircuitState,
     pub(crate) active_requests: u64,
@@ -30,7 +31,7 @@ pub(crate) struct CircuitBreakerParamsView {
 impl From<&CircuitBreakerParams> for CircuitBreakerParamsView {
     fn from(p: &CircuitBreakerParams) -> Self {
         Self {
-            enabled: p.enable_auto_recovery,
+            enabled: p.enable,
             failure_threshold: p.failure_threshold,
             open_duration_milliseconds: p.open_duration.as_millis() as u64,
             half_open_max_requests: p.half_open_max_requests,
@@ -57,11 +58,101 @@ mod tests {
     use std::collections::HashMap;
     use std::time::Duration;
 
+    fn manager_with_one_upstream() -> (TrafficManager, ServiceId, UpstreamId, UpstreamSnapshot) {
+        let service_id = ServiceId("test_svc".into());
+        let upstream_id = UpstreamId::new(8080);
+        let upstream_snapshot = UpstreamSnapshot {
+            endpoint: UpstreamRuntime::Tcp(UpstreamTcpRuntime {
+                id: upstream_id,
+                host: "127.0.0.1".to_string(),
+                port: 8080,
+                resolved_addr: ResolvedAddr::new(([127, 0, 0, 1], 8080).into()),
+                tls: None,
+                weight: 1,
+            }),
+            weight: 1,
+            metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
+                &service_id.0,
+                upstream_id,
+            ),
+        };
+        let mut services = HashMap::new();
+        services.insert(
+            service_id.clone(),
+            ServiceSnapshot {
+                service_id: service_id.clone(),
+                strategy: LoadBalancingStrategy::RoundRobin,
+                upstreams: vec![upstream_snapshot.clone()],
+                circuit_breaker_cfg: Default::default(),
+                health_check_cfg: HealthCheckConfig::default(),
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &service_id.0,
+                ),
+            },
+        );
+        let manager = TrafficManager::new(TrafficSnapshot { services });
+        (manager, service_id, upstream_id, upstream_snapshot)
+    }
+
+    #[test]
+    fn the_admin_view_reports_the_measured_latency() {
+        // Arrange
+        let (manager, service_id, upstream_id, upstream_snapshot) = manager_with_one_upstream();
+        manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
+        manager.report_success(&service_id, &upstream_id, Duration::from_millis(600));
+
+        // Act
+        let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
+
+        // Assert
+        assert_eq!(view.latency_milliseconds, Some(200));
+    }
+
+    #[test]
+    fn the_admin_view_reports_no_latency_before_any_success() {
+        // Arrange
+        let (manager, service_id, _, upstream_snapshot) = manager_with_one_upstream();
+
+        // Act
+        let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
+
+        // Assert
+        assert_eq!(view.latency_milliseconds, None);
+    }
+
+    #[test]
+    fn a_reload_that_removes_the_upstream_drops_its_latency() {
+        // Arrange
+        let (manager, service_id, upstream_id, _) = manager_with_one_upstream();
+        manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
+
+        // Act
+        manager.update(TrafficSnapshot::default());
+
+        // Assert
+        assert!(manager.latency_stats.is_empty());
+    }
+
+    #[test]
+    fn a_reload_that_keeps_the_upstream_keeps_its_latency() {
+        // Arrange
+        let (manager, service_id, upstream_id, upstream_snapshot) = manager_with_one_upstream();
+        manager.report_success(&service_id, &upstream_id, Duration::from_millis(100));
+        let unchanged = manager.snapshot().as_ref().clone();
+
+        // Act
+        manager.update(unchanged);
+
+        // Assert
+        let view = manager.get_upstream_view(&service_id, &upstream_snapshot, "label", false);
+        assert_eq!(view.latency_milliseconds, Some(100));
+    }
+
     #[test]
     fn test_admin_view_counters() {
         let service_id = ServiceId("test_svc".into());
         let upstream_port: u16 = 8080;
-        let upstream_id = UpstreamId(upstream_port.into());
+        let upstream_id = UpstreamId::new(upstream_port.into());
         let upstream_host = "127.0.0.1".to_string();
         let upstream_label = format!("{}:{}", upstream_host, upstream_port);
         let upstream_snapshot = UpstreamSnapshot {
@@ -73,8 +164,11 @@ mod tests {
                 tls: None,
                 weight: 1,
             }),
-            latency: None,
             weight: 1,
+            metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
+                &service_id.0,
+                upstream_id,
+            ),
         };
         let mut services = HashMap::new();
         services.insert(
@@ -88,6 +182,9 @@ mod tests {
                     enable: true,
                     ..Default::default()
                 },
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &service_id.0,
+                ),
             },
         );
 
@@ -115,7 +212,7 @@ mod tests {
     fn test_admin_view_circuit_details() {
         let service_id = ServiceId("test_svc".into());
         let upstream_port: u16 = 8080;
-        let upstream_id = UpstreamId(upstream_port.into());
+        let upstream_id = UpstreamId::new(upstream_port.into());
         let upstream_host = "127.0.0.1".to_string();
         let upstream_label = format!("{}:{}", upstream_host, upstream_port);
         let upstream_snapshot = UpstreamSnapshot {
@@ -127,8 +224,11 @@ mod tests {
                 tls: None,
                 weight: 1,
             }),
-            latency: None,
             weight: 1,
+            metric_attributes: crate::execution::traffic::snapshot::upstream_metric_attributes(
+                &service_id.0,
+                upstream_id,
+            ),
         };
 
         let mut services = HashMap::new();
@@ -139,11 +239,14 @@ mod tests {
                 strategy: LoadBalancingStrategy::RoundRobin,
                 upstreams: vec![upstream_snapshot.clone()],
                 circuit_breaker_cfg: snakeway_conf::types::CircuitBreakerConfig {
-                    enable_auto_recovery: true,
+                    enable: true,
                     failure_threshold: 2,
                     ..Default::default()
                 },
                 health_check_cfg: Default::default(),
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &service_id.0,
+                ),
             },
         );
 
@@ -174,7 +277,7 @@ mod tests {
     #[test]
     fn test_metrics_persistence_on_reload() {
         let service_id = ServiceId("test_svc".into());
-        let upstream_id = UpstreamId(8080);
+        let upstream_id = UpstreamId::new(8080);
 
         let mut services = HashMap::new();
         services.insert(
@@ -191,11 +294,18 @@ mod tests {
                         tls: None,
                         weight: 1,
                     }),
-                    latency: None,
                     weight: 1,
+                    metric_attributes:
+                        crate::execution::traffic::snapshot::upstream_metric_attributes(
+                            &service_id.0,
+                            upstream_id,
+                        ),
                 }],
                 circuit_breaker_cfg: Default::default(),
                 health_check_cfg: Default::default(),
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &service_id.0,
+                ),
             },
         );
 
@@ -219,7 +329,7 @@ mod tests {
 
         // Reload with different upstream
         let mut services2 = HashMap::new();
-        let upstream_id2 = UpstreamId(8081);
+        let upstream_id2 = UpstreamId::new(8081);
         services2.insert(
             service_id.clone(),
             ServiceSnapshot {
@@ -234,11 +344,18 @@ mod tests {
                         tls: None,
                         weight: 1,
                     }),
-                    latency: None,
                     weight: 1,
+                    metric_attributes:
+                        crate::execution::traffic::snapshot::upstream_metric_attributes(
+                            &service_id.0,
+                            upstream_id,
+                        ),
                 }],
                 circuit_breaker_cfg: Default::default(),
                 health_check_cfg: Default::default(),
+                metric_service: crate::execution::traffic::snapshot::service_metric_attribute(
+                    &service_id.0,
+                ),
             },
         );
         manager.update(TrafficSnapshot {

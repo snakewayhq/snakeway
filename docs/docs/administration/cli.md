@@ -15,7 +15,7 @@ The available commands:
 | reload      | Reload a running Snakeway instance (SIGHUP) |
 | upgrade     | Trigger a zero-drop upgrade (SIGQUIT)       |
 | logs        | Format logs from standard out               |
-| lsp         | Serve the configuration language server over standard input and output |
+| lsp         | Serve the config language server over stdio |
 | wasm-device | Debug a WASM device in isolation            |
 
 ## config init
@@ -69,11 +69,11 @@ snakeway config check /etc/snakeway
 If the configuration is valid, the command reports a summary:
 
 ```shell
-✔ Config loaded successfully
-✔ 3 routes
-✔ 1 services
-✔ 1 upstreams
-✔ 2 devices enabled
+Config loaded successfully
+3 routes
+1 services
+2 upstreams
+2 devices enabled
 ```
 
 If validation fails, the command lists each error:
@@ -385,9 +385,9 @@ This works only on Linux with a `pid_file`.
 | Change type                                          | Command   | Mechanism               |
 |------------------------------------------------------|-----------|-------------------------|
 | Routes, services, devices, TLS certs                 | `reload`  | In-process ArcSwap      |
-| Listener address, port, TLS mode                     | `upgrade` | Fork/exec + FD transfer |
-| Worker threads, work stealing                        | `upgrade` | Fork/exec + FD transfer |
-| Other server settings that are read at startup       | `upgrade` | Fork/exec + FD transfer |
+| Listener address, port, TLS mode                     | `upgrade` | Fork/exec and FD transfer |
+| Worker threads, work stealing                        | `upgrade` | Fork/exec and FD transfer |
+| Other server settings that are read at startup       | `upgrade` | Fork/exec and FD transfer |
 | `pid_file`, `upgrade.sock`                           | Restart   | Stop and start Snakeway |
 
 ## logs
@@ -459,6 +459,17 @@ Wikimedia Foundation Inc.=2
 YANDEX LLC=3
 
 ```
+
+## lsp
+
+Serves the configuration language server over standard input and output.
+
+```shell
+snakeway lsp
+```
+
+The server picks the right schema for each file from its path, and reports diagnostics as you type.
+See [Editor Support](/docs/administration/editor-support) for registration instructions.
 
 ## wasm-device exec
 

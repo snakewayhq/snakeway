@@ -266,10 +266,10 @@ mod tests {
 
         let upstream_rts: Vec<UpstreamRuntime> = upstreams
             .iter()
-            .enumerate()
-            .map(|(i, (host, port))| {
+            .zip(0u32..)
+            .map(|((host, port), index)| {
                 UpstreamRuntime::Tcp(UpstreamTcpRuntime {
-                    id: UpstreamId::new(i as u32),
+                    id: UpstreamId::new(index.into()),
                     host: host.to_string(),
                     port: *port,
                     resolved_addr: ResolvedAddr::new(

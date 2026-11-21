@@ -149,7 +149,7 @@ pub fn run() {
         }
 
         Some(Command::Lsp) => {
-            // No logging setup: stdout carries the LSP transport, and a log
+            // No logging setup: stdout is the LSP transport, and a log
             // line on it would corrupt the session.
             if let Err(e) = lsp::run() {
                 eprintln!("lsp failed: {e}");

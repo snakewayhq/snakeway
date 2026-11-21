@@ -9,23 +9,8 @@ use snakeway_tests::constants::{
     HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST, UPSTREAM_PORT_PRIMARY,
 };
 use snakeway_tests::harness::TestServer;
-use snakeway_tests::harness::upstream::start_https_upstream;
+use snakeway_tests::harness::upstream::{generate_upstream_identity, start_https_upstream};
 use std::path::PathBuf;
-
-struct UpstreamIdentity {
-    cert_pem: String,
-    key_pem: String,
-}
-
-/// A certificate made during the test, so no system trust store can hold it.
-fn generate_upstream_identity() -> UpstreamIdentity {
-    let generated = rcgen::generate_simple_self_signed(vec![TEST_HOST.into()])
-        .expect("failed to generate upstream certificate");
-    UpstreamIdentity {
-        cert_pem: generated.cert.pem(),
-        key_pem: generated.signing_key.serialize_pem(),
-    }
-}
 
 fn verifying_service(ca_file: Option<PathBuf>) -> ServiceSpec {
     ServiceSpec {
@@ -58,13 +43,11 @@ fn verifying_service(ca_file: Option<PathBuf>) -> ServiceSpec {
 #[test]
 fn upstream_certificate_is_verified_when_no_ca_file_is_set() {
     // Arrange
-    let identity = generate_upstream_identity();
+    let (cert_pem, key_pem) = generate_upstream_identity();
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![verifying_service(None)])
         .build();
-    let srv = TestServer::start_with_config(&mut cfg, || {
-        start_https_upstream(&identity.cert_pem, &identity.key_pem)
-    });
+    let srv = TestServer::start_with_config(&mut cfg, || start_https_upstream(&cert_pem, &key_pem));
 
     // Act
     let res = srv.get(ROUTE_PATH_API).send().expect("request failed");
@@ -77,16 +60,14 @@ fn upstream_certificate_is_verified_when_no_ca_file_is_set() {
 #[test]
 fn upstream_certificate_is_trusted_through_its_ca_file() {
     // Arrange
-    let identity = generate_upstream_identity();
+    let (cert_pem, key_pem) = generate_upstream_identity();
     let dir = tempfile::tempdir().expect("failed to create temp dir");
     let ca_file = dir.path().join("upstream.pem");
-    std::fs::write(&ca_file, &identity.cert_pem).expect("failed to write CA file");
+    std::fs::write(&ca_file, &cert_pem).expect("failed to write CA file");
     let mut cfg = ConfigBuilder::default()
         .with_custom_ingress(vec![verifying_service(Some(ca_file))])
         .build();
-    let srv = TestServer::start_with_config(&mut cfg, || {
-        start_https_upstream(&identity.cert_pem, &identity.key_pem)
-    });
+    let srv = TestServer::start_with_config(&mut cfg, || start_https_upstream(&cert_pem, &key_pem));
 
     // Act
     let res = srv.get(ROUTE_PATH_API).send().expect("request failed");

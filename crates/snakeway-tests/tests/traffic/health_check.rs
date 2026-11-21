@@ -8,18 +8,79 @@ use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{TEST_HOST, UPSTREAM_PORT_PRIMARY, UPSTREAM_PORT_SECONDARY};
 use snakeway_tests::harness::TestServer;
 use snakeway_tests::harness::server::{admin_client, free_port};
-use snakeway_tests::harness::upstream::{start_http_upstream, start_http_upstream_on};
+use snakeway_tests::harness::upstream::{
+    start_http_upstream, start_http_upstream_on, start_http_upstream_that_returns_5xx,
+};
 use std::time::Duration;
 
 fn extract_upstream_port(cfg: &RuntimeConfig) -> u16 {
     let svc = cfg.services.values().next().expect("no services in config");
-    let url: url::Url = svc.tcp_upstreams[0]
+    let url: url::Url = svc
+        .tcp_upstreams()
+        .next()
+        .expect("no tcp upstream in config")
         .url
         .parse()
         .expect("invalid upstream URL");
     url.port().expect("no port in upstream URL")
 }
 
+/// With health checks on and no `circuit_breaker` block, an upstream that
+/// returns 5xx is removed from rotation after `failure_threshold` failures and
+/// returns once the cooldown ends.
+#[test]
+fn health_check_removes_upstream_on_5xx_without_circuit_breaker() {
+    // Arrange
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
+            // No circuit_breaker block: the omitted block must use the documented
+            // defaults rather than zero values.
+            health_check: Some(Located::detached(HealthCheckSpec {
+                enable: Located::detached(true),
+                failure_threshold: Located::detached(2),
+                unhealthy_cooldown_seconds: Located::detached(1),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
+                ..Default::default()
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            ))],
+            ..Default::default()
+        }])
+        .with_admin_ingress()
+        .build();
+    let srv = TestServer::start_with_config(&mut cfg, start_http_upstream_that_returns_5xx);
+    let admin = admin_client();
+
+    // Act: drive enough 5xx responses to trip the health check.
+    for _ in 0..5 {
+        let _ = srv.get("/api").send();
+    }
+
+    // Assert: the upstream becomes unhealthy.
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let resp = admin
+            .get(format!("{}/admin/upstreams", srv.admin_url()))
+            .send()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_str(&resp.text().unwrap()).unwrap();
+        let health = parse_upstream_health(&json);
+        if health.iter().any(|(_, healthy)| !*healthy) {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "upstream did not become unhealthy; health: {health:?}"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
 fn parse_upstream_health(json: &serde_json::Value) -> Vec<(String, bool)> {
     let mut result = Vec::new();
     if let Some(services) = json.get("services").and_then(|s| s.as_object()) {

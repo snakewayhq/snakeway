@@ -64,7 +64,7 @@ mod tests {
         resolved: std::net::SocketAddr,
     ) -> UpstreamTcpRuntime {
         UpstreamTcpRuntime {
-            id: UpstreamId(0),
+            id: UpstreamId::new(0),
             host: host.to_string(),
             port,
             resolved_addr: ResolvedAddr::new(resolved),

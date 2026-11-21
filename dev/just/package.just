@@ -45,3 +45,11 @@ run-gh-validate:
       -v $(pwd)/data/sccache:/root/.cache/sccache \
       --env SCCACHE_DIR=/root/.cache/sccache \
       --artifact-server-path $(pwd)/data/artifacts
+
+# Check that the config the packages and Docker image install loads.
+check-packaged-config:
+    @rm -rf target/packaged-config
+    @mkdir -p target/packaged-config
+    @cp -R packaging/config/. target/packaged-config/
+    @sed 's#/run/snakeway/snakeway.pid#'"$(pwd)"'/target/packaged-config/snakeway.pid#' packaging/config/snakeway.hcl > target/packaged-config/snakeway.hcl
+    @cargo run -q --all-features -- config check target/packaged-config

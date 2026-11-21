@@ -6,7 +6,7 @@
 //! exception is [`start_http_upstream_on`], which exists for tests where the
 //! proxy already carries a port and the upstream comes up later.
 
-use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, HTTP_UPSTREAM_RESPONSE};
+use crate::constants::{CERT_SERVER_KEY, CERT_SERVER_PEM, HTTP_UPSTREAM_RESPONSE, TEST_HOST};
 use std::net::TcpListener;
 use std::thread;
 
@@ -156,7 +156,7 @@ pub fn start_http_upstream_that_reads_request() -> u16 {
             let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
             let mut buf = [0u8; 4096];
             // Read until EOF or error — we don't care about the content,
-            // we just need to not respond until the proxy is done sending.
+            // we need to not respond until the proxy is done sending.
             loop {
                 match stream.read(&mut buf) {
                     Ok(0) | Err(_) => break,
@@ -304,7 +304,7 @@ pub fn start_grpc_upstream() -> u16 {
 
 /// Build a TLS acceptor for a test upstream from PEM text.
 ///
-/// The TLS config names the ring provider directly, because a test upstream starts before
+/// The TLS config uses the ring provider directly, because a test upstream starts before
 /// the proxy installs a process-level rustls provider.
 fn test_upstream_tls_acceptor(cert_pem: &str, key_pem: &str) -> tokio_rustls::TlsAcceptor {
     use rustls::pki_types::pem::PemObject;
@@ -404,6 +404,13 @@ pub fn start_unix_http_upstream(path: &std::path::Path) {
     });
 }
 
+/// A self-signed certificate for an upstream, so no system trust store holds it.
+/// Returns the cert and key PEM strings.
+pub fn generate_upstream_identity() -> (String, String) {
+    let generated = rcgen::generate_simple_self_signed(vec![TEST_HOST.into()])
+        .expect("failed to generate upstream certificate");
+    (generated.cert.pem(), generated.signing_key.serialize_pem())
+}
 pub fn start_ws_upstream() -> u16 {
     use futures_util::{SinkExt, StreamExt};
     use tokio_tungstenite::accept_async;

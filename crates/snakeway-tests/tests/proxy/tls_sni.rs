@@ -8,7 +8,7 @@ use snakeway_tests::harness::TestServer;
 
 /// When a TLS client sends an SNI, the Host header must name the same host.
 /// The client sends `snakeway.test` as the SNI because the listener address uses that name.
-/// The request carries a different Host header.
+/// The request has a different Host header.
 #[test]
 fn host_header_that_differs_from_sni_is_rejected() {
     // Arrange

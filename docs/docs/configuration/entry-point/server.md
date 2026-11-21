@@ -58,8 +58,9 @@ For most deployments, set this to the number of CPU cores on your server.
 
 `ca_file` string, default: none.
 Path to a CA certificate file used to verify upstream TLS connections when no per-upstream `ca_file` is configured.
-The file must contain only PEM-encoded X.509 certificates.
-A file that holds a placeholder, a damaged certificate, or a section of another kind, such as a private key, stops Snakeway from loading the configuration.
+The file must contain PEM-encoded X.509 certificates.
+A `PRIVATE KEY`, `RSA PRIVATE KEY`, `EC PRIVATE KEY`, `PUBLIC KEY`, `X509 CRL`, or `CERTIFICATE REQUEST` section stops Snakeway from loading the configuration.
+Unknown PEM sections are ignored.
 When this file is set, upstream certificates are verified against the certificates in it and not against the trusted roots of the operating system.
 Without a `ca_file`, Snakeway uses the trusted roots of the operating system.
 To use a different bundle, set the `SSL_CERT_FILE` or `SSL_CERT_DIR` environment variable.
@@ -130,6 +131,10 @@ Set a unique value when running multiple Snakeway instances on the same host.
 Maximum number of retries when connecting to or accepting on the upgrade socket during FD transfer.
 Each retry waits one second.
 Valid range: `1` to `60`.
+
+:::danger
+`upgrade.max_retries` currently has no effect when set. This is due to a bug in Pingora. See [pingora#1012](https://github.com/cloudflare/pingora/pull/1012).
+::: 
 
 See the [Hot Reload internals](../../internals/hot-reload) page for details on how the upgrade mechanism works.
 
@@ -245,7 +250,7 @@ Valid range: `1048576` (1 MiB) to `268435456` (256 MiB).
 
 :::caution
 Both limits size a memory pool that the runtime reserves up front, and their effect multiplies.
-A very high `max_concurrent_executions` combined with a very high `max_memory_bytes` reserves a large amount of address space at startup, so raise them deliberately.
+A high `max_concurrent_executions` combined with a high `max_memory_bytes` reserves a large amount of address space at startup, so raise them deliberately.
 :::
 
 ## Observability

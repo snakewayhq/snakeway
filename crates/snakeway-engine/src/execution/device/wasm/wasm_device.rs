@@ -2,10 +2,11 @@ use super::bindings::{Device as DeviceBindings, DevicePre};
 use super::lifecycle::apply_body_result;
 use super::lifecycle::build_request_snapshot;
 use super::lifecycle::{
-    apply_request_result, apply_response_result, block_503, build_response_snapshot,
+    apply_request_result, apply_response_result, build_response_snapshot,
+    device_unavailable_response,
 };
 use super::state::HostState;
-use crate::execution::ctx::{RequestCtx, RequestId, ResponseCtx};
+use crate::execution::ctx::{RequestCtx, ResponseCtx};
 use crate::execution::device::core::{Device, DeviceResult};
 use crate::execution::device::wasm::bindings::snakeway::device::types::BodyChunk;
 use anyhow::Result;
@@ -150,7 +151,7 @@ impl WasmDevice {
         &self,
         buffer: Vec<u8>,
         maybe_chunk: &mut Option<Bytes>,
-        request_id: Option<String>,
+        request_id: Option<&str>,
     ) -> DeviceResult {
         self.failures.add(
             1,
@@ -179,7 +180,7 @@ impl WasmDevice {
                     "body buffer overflow (fail-closed: blocking)"
                 );
                 DeviceResult::Respond(ResponseCtx::new(
-                    request_id,
+                    request_id.map(str::to_owned),
                     StatusCode::PAYLOAD_TOO_LARGE,
                     HeaderMap::new(),
                     b"Payload too large".to_vec(),
@@ -217,7 +218,7 @@ impl WasmDevice {
                     error = %error,
                     "wasm device failure (fail-closed: blocking)"
                 );
-                DeviceResult::Respond(block_503(None))
+                DeviceResult::Respond(device_unavailable_response(None))
             }
         }
     }
@@ -270,8 +271,7 @@ impl Device for WasmDevice {
                     .request
                     .remove(&self.device_name)
                     .unwrap_or_default();
-                let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
-                return self.handle_buffer_overflow(overflow_buf, maybe_chunk, request_id);
+                return self.handle_buffer_overflow(overflow_buf, maybe_chunk, ctx.request_id());
             }
 
             if !end_of_stream {
@@ -297,8 +297,7 @@ impl Device for WasmDevice {
                         .call_on_stream_request_body(store, &req, Some(&assembled))
                 )?;
 
-                let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
-                apply_body_result(request_id, maybe_chunk, result)
+                apply_body_result(ctx.request_id(), maybe_chunk, result)
             });
         }
 
@@ -316,8 +315,7 @@ impl Device for WasmDevice {
                     .call_on_stream_request_body(store, &req, chunk.as_ref())
             )?;
 
-            let request_id = ctx.extensions.get::<RequestId>().map(|id| id.0.clone());
-            apply_body_result(request_id, maybe_chunk, result)
+            apply_body_result(ctx.request_id(), maybe_chunk, result)
         })
     }
 
@@ -376,8 +374,7 @@ impl Device for WasmDevice {
                     .call_on_stream_response_body(store, &resp, chunk.as_ref())
             )?;
 
-            let request_id = ctx.request_id.clone();
-            apply_body_result(request_id, maybe_chunk, result)
+            apply_body_result(ctx.request_id.as_deref(), maybe_chunk, result)
         })
     }
 

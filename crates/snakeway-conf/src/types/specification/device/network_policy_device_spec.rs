@@ -3,11 +3,14 @@ use crate::validation::validator::parse_cidr_list;
 use confval::prelude::{AbsolutePath, Located, Report, Validate};
 use serde::Serialize;
 
-#[derive(Debug, Clone, Default, Serialize, confval::Spec)]
+#[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct NetworkPolicyDeviceSpec {
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
+    #[confval(derive_default = Vec::new())]
     pub cidr_allow: Vec<Located<String>>,
-    #[confval(nested)]
+    #[confval(nested, derive_default = ForwardingSpec::default())]
     pub forwarding: Located<ForwardingSpec>,
 
     /// Optional path prefixes this device applies to. Empty means all paths.
@@ -16,19 +19,12 @@ pub struct NetworkPolicyDeviceSpec {
 }
 
 #[derive(Debug, Clone, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct ForwardingSpec {
+    #[confval(derive_default = false)]
     pub allow: Located<bool>,
     #[confval(default = "ignore".to_string(), keywords = OnInvalidForwarded)]
     pub on_invalid: Located<String>,
-}
-
-impl Default for ForwardingSpec {
-    fn default() -> Self {
-        Self {
-            allow: Located::detached(false),
-            on_invalid: Located::detached("ignore".to_string()),
-        }
-    }
 }
 
 impl Validate for ForwardingSpec {

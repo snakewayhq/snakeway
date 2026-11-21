@@ -9,7 +9,9 @@ use snakeway_tests::conf::ConfigBuilder;
 use snakeway_tests::constants::{HTTP_RESPONSE_BODY, ROUTE_PATH_API, TEST_HOST};
 use snakeway_tests::harness::TestServer;
 use snakeway_tests::harness::server::free_port;
-use snakeway_tests::harness::upstream::{start_unix_http_upstream, start_unix_https_upstream};
+use snakeway_tests::harness::upstream::{
+    generate_upstream_identity, start_unix_http_upstream, start_unix_https_upstream,
+};
 use std::path::{Path, PathBuf};
 
 fn socket_service(path: &Path, tls: Option<EndpointTlsSpec>) -> ServiceSpec {
@@ -38,13 +40,6 @@ fn verifying_tls(ca_file: Option<PathBuf>) -> EndpointTlsSpec {
         verify: Located::detached(true),
         ca_file: ca_file.map(Located::detached),
     }
-}
-
-/// A certificate made during the test, so no system trust store can hold it.
-fn generate_upstream_identity() -> (String, String) {
-    let generated = rcgen::generate_simple_self_signed(vec![TEST_HOST.into()])
-        .expect("failed to generate upstream certificate");
-    (generated.cert.pem(), generated.signing_key.serialize_pem())
 }
 
 /// A plain HTTP listener proxies to a Unix socket upstream that serves plain HTTP.

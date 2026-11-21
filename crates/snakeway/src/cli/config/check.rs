@@ -21,12 +21,13 @@ pub(crate) fn check(
             }
 
             let cfg = &validated.config;
+            let upstreams: usize = cfg.services.values().map(|s| s.upstreams.len()).sum();
             if matches!(format, ConfigCheckOutputFormat::Json) {
                 let success_info = serde_json::json!({
                     "status": "success",
                     "routes": cfg.routes.len(),
                     "services": cfg.services.len(),
-                    "upstreams": cfg.services.len(),
+                    "upstreams": upstreams,
                     "devices_enabled": cfg.devices.iter().filter(|d| d.is_enabled()).count()
                 });
                 let json = serde_json::to_string_pretty(&success_info)?;
@@ -35,7 +36,7 @@ pub(crate) fn check(
                 println!("Config loaded successfully");
                 println!("{} routes", cfg.routes.len());
                 println!("{} services", cfg.services.len());
-                println!("{} upstreams", cfg.services.len());
+                println!("{upstreams} upstreams");
                 println!(
                     "{} devices enabled",
                     cfg.devices.iter().filter(|d| d.is_enabled()).count()

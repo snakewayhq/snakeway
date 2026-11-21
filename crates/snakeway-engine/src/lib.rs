@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod alloc_count;
 mod execution;
 pub mod runtime;
 

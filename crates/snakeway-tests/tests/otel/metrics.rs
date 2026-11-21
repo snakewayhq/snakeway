@@ -144,6 +144,27 @@ fn request_duration_histogram_records_after_proxied_request() {
                     total_count >= 1,
                     "expected snakeway.http.request.duration histogram count >= 1, got {total_count}"
                 );
+
+                let dp = hist
+                    .data_points()
+                    .next()
+                    .expect("expected at least one data point");
+                let attrs: std::collections::BTreeMap<&str, String> = dp
+                    .attributes()
+                    .map(|kv| (kv.key.as_str(), format!("{}", kv.value)))
+                    .collect();
+                assert_eq!(
+                    attrs.keys().copied().collect::<Vec<_>>(),
+                    vec!["service", "upstream"],
+                    "duration should carry exactly the upstream attributes; attrs: {attrs:?}"
+                );
+                assert_eq!(attrs.get("service").map(|s| s.as_str()), Some("api"));
+                assert!(
+                    attrs
+                        .get("upstream")
+                        .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit())),
+                    "upstream attribute should be the numeric upstream id; attrs: {attrs:?}"
+                );
             }
             other => {
                 panic!("expected F64 Histogram for snakeway.http.request.duration, got: {other:?}")
@@ -222,9 +243,10 @@ fn request_counter_records_method_and_status_attributes() {
                     Some("2xx"),
                     "status attribute should be 2xx; attrs: {attrs:?}"
                 );
-                assert!(
-                    attrs.contains_key("service"),
-                    "service attribute must be present; attrs: {attrs:?}"
+                assert_eq!(
+                    attrs.get("service").map(|s| s.as_str()),
+                    Some("api"),
+                    "service attribute should name the service; attrs: {attrs:?}"
                 );
                 assert!(
                     attrs.contains_key("route"),

@@ -81,3 +81,152 @@ fn check_succeeds_on_a_generated_template() {
     );
     assert!(String::from_utf8_lossy(&out.stdout).contains("Config loaded successfully"));
 }
+
+fn init_one_service_with_two_upstreams(dir: &Path) {
+    let out = snakeway()
+        .args(["config", "init"])
+        .arg(dir)
+        .arg("--template=httpbin")
+        .output()
+        .expect("run config init");
+    assert!(
+        out.status.success(),
+        "config init failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    std::fs::write(
+        dir.join("ingress.d").join("httpbin.hcl"),
+        r#"bind {
+  interface = "loopback"
+  port = 8080
+  enable_http2 = false
+}
+
+services {
+  name = "httpbin"
+  load_balancing_strategy = "failover"
+
+  routes {
+    hosts = ["*"]
+    path = "/get"
+    enable_websocket = false
+  }
+
+  upstreams {
+    weight = 1
+    endpoint {
+      host = "127.0.0.1"
+      port = 4000
+    }
+  }
+
+  upstreams {
+    weight = 1
+    endpoint {
+      host = "127.0.0.1"
+      port = 4001
+    }
+  }
+}
+"#,
+    )
+    .expect("write ingress file");
+}
+
+#[test]
+fn check_counts_upstreams_separately_from_services() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cfg = tmp.path().join("cfg");
+    init_one_service_with_two_upstreams(&cfg);
+
+    // Act
+    let out = snakeway()
+        .args(["config", "check"])
+        .arg(&cfg)
+        .output()
+        .expect("run config check");
+
+    // Assert
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(
+        lines,
+        [
+            "Config loaded successfully",
+            "1 routes",
+            "1 services",
+            "2 upstreams",
+            "1 devices enabled",
+        ]
+    );
+}
+
+#[test]
+fn check_json_counts_upstreams_separately_from_services() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cfg = tmp.path().join("cfg");
+    init_one_service_with_two_upstreams(&cfg);
+
+    // Act
+    let out = snakeway()
+        .args(["config", "check", "--format", "json"])
+        .arg(&cfg)
+        .output()
+        .expect("run config check");
+
+    // Assert
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).expect("stdout is JSON");
+    assert_eq!(
+        report,
+        serde_json::json!({
+            "status": "success",
+            "routes": 1,
+            "services": 1,
+            "upstreams": 2,
+            "devices_enabled": 1,
+        })
+    );
+}
+
+#[test]
+fn check_rejects_a_duplicate_upstream_endpoint_in_one_service() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cfg = tmp.path().join("cfg");
+    init_one_service_with_two_upstreams(&cfg);
+    let ingress = cfg.join("ingress.d").join("httpbin.hcl");
+    let text = std::fs::read_to_string(&ingress).expect("read ingress file");
+    std::fs::write(&ingress, text.replace("port = 4001", "port = 4000"))
+        .expect("write ingress file");
+
+    // Act
+    let out = snakeway()
+        .args(["config", "check", "--format", "plain"])
+        .arg(&cfg)
+        .output()
+        .expect("run config check");
+
+    // Assert
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("error: duplicate upstream endpoint: 127.0.0.1:4000"),
+        "the error must report the duplicate endpoint: {stderr}"
+    );
+    assert!(
+        stderr.contains("first declared here"),
+        "the error must point at the first endpoint: {stderr}"
+    );
+}

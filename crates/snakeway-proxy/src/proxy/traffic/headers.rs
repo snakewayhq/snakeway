@@ -9,38 +9,81 @@ use http::HeaderMap;
 use http::header::HeaderName;
 use pingora::http::{RequestHeader, ResponseHeader};
 
+/// A Pingora header container that can be cleared and repopulated.
+trait HeaderTarget {
+    fn header_names(&self) -> Vec<HeaderName>;
+    fn remove_header(&mut self, name: &HeaderName);
+    fn append_header(
+        &mut self,
+        name: HeaderName,
+        value: http::HeaderValue,
+    ) -> pingora::Result<bool>;
+}
+
+impl HeaderTarget for RequestHeader {
+    fn header_names(&self) -> Vec<HeaderName> {
+        self.headers.keys().cloned().collect()
+    }
+    fn remove_header(&mut self, name: &HeaderName) {
+        RequestHeader::remove_header(self, name);
+    }
+    fn append_header(
+        &mut self,
+        name: HeaderName,
+        value: http::HeaderValue,
+    ) -> pingora::Result<bool> {
+        self.append_header(name, value)
+    }
+}
+
+impl HeaderTarget for ResponseHeader {
+    fn header_names(&self) -> Vec<HeaderName> {
+        self.headers.keys().cloned().collect()
+    }
+    fn remove_header(&mut self, name: &HeaderName) {
+        ResponseHeader::remove_header(self, name);
+    }
+    fn append_header(
+        &mut self,
+        name: HeaderName,
+        value: http::HeaderValue,
+    ) -> pingora::Result<bool> {
+        self.append_header(name, value)
+    }
+}
+
+/// Rebuild `target` from `headers`, i.e., remove every existing header,
+/// then append the headers from `headers` in order. Shared by the request
+/// and response write-back paths.
+fn write_back<T: HeaderTarget>(target: &mut T, headers: &HeaderMap) -> pingora::Result<()> {
+    for name in target.header_names() {
+        target.remove_header(&name);
+    }
+    for (name, value) in headers {
+        target.append_header(name.clone(), value.clone())?;
+    }
+    Ok(())
+}
+
 pub(in crate::proxy) fn write_back_request_headers(
     target: &mut RequestHeader,
     headers: &HeaderMap,
 ) -> pingora::Result<()> {
-    let existing: Vec<HeaderName> = target.headers.keys().cloned().collect();
-    for name in existing {
-        target.remove_header(&name);
-    }
-    for (name, value) in headers {
-        target.append_header(name.clone(), value)?;
-    }
-    Ok(())
+    write_back(target, headers)
 }
 
 pub(in crate::proxy) fn write_back_response_headers(
     target: &mut ResponseHeader,
     headers: &HeaderMap,
 ) -> pingora::Result<()> {
-    let existing: Vec<HeaderName> = target.headers.keys().cloned().collect();
-    for name in existing {
-        target.remove_header(&name);
-    }
-    for (name, value) in headers {
-        target.append_header(name.clone(), value)?;
-    }
-    Ok(())
+    write_back(target, headers)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::{HeaderValue, Method, StatusCode};
+    use http::HeaderValue;
+    use http::{Method, StatusCode};
 
     fn device_headers() -> HeaderMap {
         let mut headers = HeaderMap::new();

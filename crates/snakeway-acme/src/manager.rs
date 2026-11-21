@@ -78,20 +78,17 @@ impl CertManager {
             return Ok(None);
         };
 
-        let certs = snakeway_conf::tls::parse_cert_chain(&stored.cert_chain_pem)
-            .map_err(|e| CertManagerError::InvalidChain(e.to_string()))?;
-
-        let key = snakeway_conf::tls::parse_private_key(stored.expose_private_key_pem())
-            .map_err(|e| CertManagerError::InvalidPrivateKey(e.to_string()))?;
-
-        let certified_key =
-            snakeway_conf::tls::build_certified_key(certs, key).map_err(|e| match e {
-                TlsError::KeyMismatch => CertManagerError::KeyMismatch,
-                TlsError::NoCertificates | TlsError::CertificateRejected(_) => {
-                    CertManagerError::InvalidChain(e.to_string())
-                }
-                other => CertManagerError::InvalidPrivateKey(other.to_string()),
-            })?;
+        let certified_key = snakeway_conf::tls::load_certified_key_from_bytes(
+            &stored.cert_chain_pem,
+            stored.expose_private_key_pem(),
+        )
+        .map_err(|e| match e {
+            TlsError::KeyMismatch => CertManagerError::KeyMismatch,
+            TlsError::NoCertificates | TlsError::CertificateRejected(_) => {
+                CertManagerError::InvalidChain(e.to_string())
+            }
+            other => CertManagerError::InvalidPrivateKey(other.to_string()),
+        })?;
 
         Ok(Some(Arc::new(certified_key)))
     }
@@ -104,7 +101,7 @@ impl CertManager {
         for (cert_id, meta) in self.cert_store.list() {
             if let Some(key) = self.load_certified_key(&cert_id)? {
                 for domain in meta.domains {
-                    map.insert(domain, key.clone());
+                    map.insert(domain.to_ascii_lowercase(), key.clone());
                 }
             }
         }

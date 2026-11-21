@@ -26,7 +26,7 @@ impl TrafficProxy {
                 Error::new(Custom("traffic decision failed"))
             })?;
 
-        tracing::info!("decision reason: {}", decision.reason);
+        tracing::debug!("decision reason: {}", decision.reason);
 
         // Grab the service by name.
         let service = state

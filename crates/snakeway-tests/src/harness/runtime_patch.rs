@@ -77,14 +77,15 @@ fn patch_upstream_ports(cfg: &mut RuntimeConfig, upstream_ports: &[u16]) {
     // Patch upstream URLs (preserve scheme). Every service maps its upstreams
     // onto the same allocated ports, in declaration order.
     for svc in cfg.services.values_mut() {
+        let tcp_upstreams: Vec<_> = svc.tcp_upstreams_mut().collect();
         assert!(
-            svc.tcp_upstreams.len() <= upstream_ports.len(),
+            tcp_upstreams.len() <= upstream_ports.len(),
             "fixture defines {} upstreams but only {} ports allocated",
-            svc.tcp_upstreams.len(),
+            tcp_upstreams.len(),
             upstream_ports.len()
         );
 
-        for (i, up) in svc.tcp_upstreams.iter_mut().enumerate() {
+        for (i, up) in tcp_upstreams.into_iter().enumerate() {
             let mut url = Url::parse(&up.url).expect("invalid upstream URL in fixture");
 
             url.set_port(Some(upstream_ports[i]))

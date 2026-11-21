@@ -21,13 +21,13 @@ pub(crate) fn run() -> Result<(), LspError> {
         bind::<EntrypointSpec, Hcl>(Matcher::FileName("snakeway.hcl".to_string()), Hcl),
         bind::<DevicesFile, Hcl>(
             Matcher::Fn(Box::new(|path| {
-                document_matches(path, IncludeKind::Devices)
+                document_matches_include_glob(path, IncludeKind::Devices)
             })),
             Hcl,
         ),
         bind::<IngressSpec, Hcl>(
             Matcher::Fn(Box::new(|path| {
-                document_matches(path, IncludeKind::Ingresses)
+                document_matches_include_glob(path, IncludeKind::Ingresses)
             })),
             Hcl,
         ),
@@ -44,7 +44,7 @@ pub(crate) fn run() -> Result<(), LspError> {
 /// components, so a file in a conventional layout is served before its
 /// entrypoint exists. This runs as a `Matcher::Fn` and must not panic, so
 /// every failure answers no match.
-fn document_matches(path: &Path, kind: IncludeKind) -> bool {
+fn document_matches_include_glob(path: &Path, kind: IncludeKind) -> bool {
     match config_root(path) {
         Some(root) => {
             let glob = include_glob(&root.join("snakeway.hcl"), kind);
@@ -133,9 +133,13 @@ mod tests {
         write_entrypoint(dir.path(), "device.d/*.hcl", "ingress.d/*.hcl");
         let document = dir.path().join("device.d/identity.hcl");
 
-        // Act, Assert
-        assert!(document_matches(&document, IncludeKind::Devices));
-        assert!(!document_matches(&document, IncludeKind::Ingresses));
+        // Act
+        let devices_match = document_matches_include_glob(&document, IncludeKind::Devices);
+        let ingresses_match = document_matches_include_glob(&document, IncludeKind::Ingresses);
+
+        // Assert
+        assert!(devices_match);
+        assert!(!ingresses_match);
     }
 
     #[test]
@@ -144,16 +148,20 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write_entrypoint(dir.path(), "my-devices/*.hcl", "ingress.d/*.hcl");
 
-        // Act, Assert
-        assert!(document_matches(
+        // Act
+        let rerouted = document_matches_include_glob(
             &dir.path().join("my-devices/identity.hcl"),
-            IncludeKind::Devices
-        ));
+            IncludeKind::Devices,
+        );
+        let conventional = document_matches_include_glob(
+            &dir.path().join("device.d/identity.hcl"),
+            IncludeKind::Devices,
+        );
+
+        // Assert
+        assert!(rerouted);
         assert!(
-            !document_matches(
-                &dir.path().join("device.d/identity.hcl"),
-                IncludeKind::Devices
-            ),
+            !conventional,
             "the conventional directory no longer matches once the operator moved it"
         );
     }
@@ -164,11 +172,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("snakeway.hcl"), "not hcl {{{{").unwrap();
 
-        // Act, Assert
-        assert!(document_matches(
+        // Act
+        let matches = document_matches_include_glob(
             &dir.path().join("device.d/identity.hcl"),
-            IncludeKind::Devices
-        ));
+            IncludeKind::Devices,
+        );
+
+        // Assert
+        assert!(matches);
     }
 
     #[test]
@@ -176,13 +187,34 @@ mod tests {
         // Arrange
         let document = PathBuf::from("/nonexistent/project/device.d/rate_limit.hcl");
 
-        // Act, Assert
-        assert!(document_matches(&document, IncludeKind::Devices));
-        assert!(!document_matches(&document, IncludeKind::Ingresses));
-        assert!(document_matches(
+        // Act
+        let devices_match = document_matches_include_glob(&document, IncludeKind::Devices);
+        let ingresses_match = document_matches_include_glob(&document, IncludeKind::Ingresses);
+        let ingress_path_match = document_matches_include_glob(
             &PathBuf::from("/nonexistent/project/ingress.d/api.hcl"),
-            IncludeKind::Ingresses
-        ));
+            IncludeKind::Ingresses,
+        );
+
+        // Assert
+        assert!(devices_match);
+        assert!(!ingresses_match);
+        assert!(ingress_path_match);
+    }
+
+    #[test]
+    fn trailing_components_match_handles_exact_depth() {
+        // Arrange
+        let path = PathBuf::from("device.d/rate_limit.hcl");
+        let glob = "device.d/*.hcl";
+
+        // Act
+        let matches = trailing_components_match(&path, glob);
+
+        // Assert
+        assert!(
+            matches,
+            "a path with exactly depth components must still match"
+        );
     }
 
     #[test]
@@ -191,14 +223,18 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write_entrypoint(dir.path(), "device.d/*.hcl", "ingress.d/*.hcl");
 
-        // Act, Assert
-        assert!(!document_matches(
+        // Act
+        let devices_match = document_matches_include_glob(
             &dir.path().join("notes/readme.hcl"),
-            IncludeKind::Devices
-        ));
-        assert!(!document_matches(
+            IncludeKind::Devices,
+        );
+        let ingresses_match = document_matches_include_glob(
             &dir.path().join("notes/readme.hcl"),
-            IncludeKind::Ingresses
-        ));
+            IncludeKind::Ingresses,
+        );
+
+        // Assert
+        assert!(!devices_match);
+        assert!(!ingresses_match);
     }
 }

@@ -11,7 +11,7 @@ impl TrafficStrategy for RequestPressure {
         &self,
         _req: &RequestCtx,
         service_id: &ServiceId,
-        healthy: &[UpstreamSnapshot],
+        healthy: &[&UpstreamSnapshot],
         traffic_manager: &TrafficManager,
     ) -> Option<TrafficDecision> {
         let upstream = healthy.iter().min_by_key(|u| {

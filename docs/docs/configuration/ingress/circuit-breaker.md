@@ -25,8 +25,8 @@ When it is omitted, the circuit breaker runs with the defaults listed in the fie
 
 ```hcl
 circuit_breaker = {
-  # Allow automatic recovery after the open duration.
-  enable_auto_recovery       = false
+  # Turn on the circuit breaker.
+  enable                     = false
 
   # Failures before tripping to Open.
   failure_threshold          = 3
@@ -49,7 +49,7 @@ circuit_breaker = {
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `enable_auto_recovery` | `boolean` | `false` | Allow the circuit breaker to automatically recover after the open duration. |
+| `enable` | `boolean` | `false` | Turn on the circuit breaker. When `false`, the circuit never opens, and a [health check](services.md) removes an unhealthy upstream only until `unhealthy_cooldown_seconds` ends. |
 | `failure_threshold` | `integer` | `5` | Number of consecutive failures (transport errors or 5xx) in the Closed state before tripping the circuit to Open. |
 | `open_duration_milliseconds` | `integer` | `10000` | How long, in milliseconds, the circuit remains Open before transitioning to HalfOpen. |
 | `half_open_max_requests` | `integer` | `1` | How many simultaneous probe requests are allowed while in the HalfOpen state. |

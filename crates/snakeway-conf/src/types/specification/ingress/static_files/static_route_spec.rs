@@ -18,36 +18,24 @@ range_constraint!(MIN_BROTLI_SIZE, i64, min: 0, max: SIXTY_FOUR_MIB, units: "byt
 range_constraint!(MAX_AGE_SECONDS, i64, min: 0, max: ONE_YEAR_IN_SECONDS, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct StaticRouteSpec {
+    #[confval(derive_default = Vec::new())]
     pub hosts: Vec<Located<String>>,
+    #[confval(derive_default = String::new())]
     pub path: Located<String>,
-    #[confval(format = AbsolutePath)]
+    #[confval(format = AbsolutePath, derive_default = PathBuf::new())]
     pub file_dir: Located<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<Located<String>>,
+    #[confval(derive_default = false)]
     pub directory_listing: Located<bool>,
-    #[confval(range = MAX_FILE_SIZE)]
+    #[confval(range = MAX_FILE_SIZE, derive_default = 10 * 1024 * 1024)]
     pub max_file_size: Located<i64>,
-    #[confval(nested)]
+    #[confval(nested, derive_default = CompressionOptsSpec::default())]
     pub compression: Located<CompressionOptsSpec>,
-    #[confval(nested)]
+    #[confval(nested, derive_default = CachePolicySpec::default())]
     pub cache_policy: Located<CachePolicySpec>,
-}
-
-/// Every field is required in HCL, so these values apply only to specs built in Rust.
-impl Default for StaticRouteSpec {
-    fn default() -> Self {
-        Self {
-            hosts: Vec::new(),
-            path: Located::detached(String::new()),
-            file_dir: Located::detached(PathBuf::new()),
-            index: None,
-            directory_listing: Located::detached(false),
-            max_file_size: Located::detached(10 * 1024 * 1024),
-            compression: Located::detached(CompressionOptsSpec::default()),
-            cache_policy: Located::detached(CachePolicySpec::default()),
-        }
-    }
 }
 
 impl Validate for StaticRouteSpec {

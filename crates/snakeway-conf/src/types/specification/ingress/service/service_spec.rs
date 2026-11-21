@@ -1,14 +1,16 @@
 use crate::types::{
-    CircuitBreakerSpec, HealthCheckSpec, LoadBalancingStrategy, ServiceRouteSpec, UpstreamSpec,
+    CircuitBreakerSpec, HealthCheckSpec, HostSpec, LoadBalancingStrategy, ServiceRouteSpec,
+    UpstreamSpec,
 };
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct ServiceSpec {
     /// The service's unique name across all ingress files.
-    #[confval(label)]
+    #[confval(label, derive_default = String::new())]
     pub name: Located<String>,
     #[confval(default = "failover".to_string(), keywords = LoadBalancingStrategy)]
     pub load_balancing_strategy: Located<String>,
@@ -24,19 +26,6 @@ pub struct ServiceSpec {
     pub circuit_breaker: Option<Located<CircuitBreakerSpec>>,
 }
 
-impl Default for ServiceSpec {
-    fn default() -> Self {
-        Self {
-            name: Located::detached(String::new()),
-            load_balancing_strategy: Located::detached("failover".to_string()),
-            routes: Vec::new(),
-            upstreams: Vec::new(),
-            health_check: None,
-            circuit_breaker: None,
-        }
-    }
-}
-
 impl Validate for ServiceSpec {
     fn validate(&self, report: &mut Report) {
         // A route with no hosts is reported at the route's enclosing span,
@@ -47,13 +36,13 @@ impl Validate for ServiceSpec {
             }
         }
 
-        let mut seen_sock_values = HashSet::new();
+        let mut seen_endpoints = HashMap::new();
 
         for upstream in &self.upstreams {
             if let (Some(sock), Some(endpoint)) = (&upstream.value.sock, &upstream.value.endpoint) {
                 report
                     .error(format!(
-                        "upstream cannot have both sock {} and endpoint: {}:{}",
+                        "upstream cannot have both sock: {} and endpoint: {}:{}",
                         sock.value.path.value, endpoint.value.host.value, endpoint.value.port.value
                     ))
                     .at(upstream.span)
@@ -73,16 +62,23 @@ impl Validate for ServiceSpec {
                 continue;
             }
 
-            if let Some(sock) = &upstream.value.sock
-                && !seen_sock_values.insert(sock.value.path.value.clone())
-            {
-                report
-                    .error(format!(
-                        "duplicate upstream sock: {}",
-                        sock.value.path.value
-                    ))
-                    .at(sock.value.path.span)
-                    .emit();
+            if let Some(endpoint) = &upstream.value.endpoint {
+                let key = (
+                    HostSpec::parse(&endpoint.value.host.value),
+                    endpoint.value.port.value,
+                );
+                if let Some(first) = seen_endpoints.get(&key) {
+                    report
+                        .error(format!(
+                            "duplicate upstream endpoint: {}:{}",
+                            endpoint.value.host.value, endpoint.value.port.value
+                        ))
+                        .at(endpoint.span)
+                        .related(*first, "first declared here")
+                        .emit();
+                } else {
+                    seen_endpoints.insert(key, endpoint.span);
+                }
             }
         }
     }
@@ -91,7 +87,7 @@ impl Validate for ServiceSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{EndpointSpec, EndpointTlsSpec, SockSpec};
+    use crate::types::{BindSpec, EndpointSpec, EndpointTlsSpec, IngressSpec, SockSpec};
 
     fn minimal_upstream() -> UpstreamSpec {
         UpstreamSpec {
@@ -185,7 +181,7 @@ mod tests {
         // Assert
         assert_eq!(
             report.issues()[0].message,
-            "upstream cannot have both sock /tmp/test.sock and endpoint: 127.0.0.1:3000"
+            "upstream cannot have both sock: /tmp/test.sock and endpoint: 127.0.0.1:3000"
         );
     }
 
@@ -231,16 +227,101 @@ mod tests {
             upstreams: vec![sock_upstream(), sock_upstream()],
             ..Default::default()
         };
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(BindSpec {
+                interface: Located::detached("loopback".to_string()),
+                port: Located::detached(8080),
+                ..Default::default()
+            })),
+            services: vec![Located::detached(service)],
+            ..Default::default()
+        });
+        let mut report = Report::new();
 
         // Act
-        let report = validate(&service);
+        crate::validation::validate_ingresses(&[ingress], &mut report);
 
         // Assert
         let error = report.issues().first().expect("expected an error");
         assert!(error.message.contains("duplicate upstream sock"));
     }
 
-    fn sock_service(sock: SockSpec) -> ServiceSpec {
+    fn endpoint_upstream(host: &str, port: i64) -> Located<UpstreamSpec> {
+        Located::detached(UpstreamSpec {
+            endpoint: Some(Located::detached(EndpointSpec {
+                host: Located::detached(host.to_string()),
+                port: Located::detached(port),
+                tls: None,
+            })),
+            sock: None,
+            weight: Located::detached(1),
+        })
+    }
+
+    #[test]
+    fn duplicate_upstream_endpoints_within_service() {
+        // Arrange
+        let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
+            upstreams: vec![
+                endpoint_upstream("10.0.0.1", 3000),
+                endpoint_upstream("10.0.0.2", 3000),
+                endpoint_upstream("10.0.0.1", 3000),
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        let messages: Vec<&str> = report.issues().iter().map(|e| e.message.as_str()).collect();
+        assert_eq!(messages, ["duplicate upstream endpoint: 10.0.0.1:3000"]);
+    }
+
+    #[test]
+    fn upstream_endpoint_hosts_that_differ_only_in_case_are_duplicates() {
+        // Arrange
+        let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
+            upstreams: vec![
+                endpoint_upstream("app.example.com", 3000),
+                endpoint_upstream("App.Example.com", 3000),
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        let messages: Vec<&str> = report.issues().iter().map(|e| e.message.as_str()).collect();
+        assert_eq!(
+            messages,
+            ["duplicate upstream endpoint: App.Example.com:3000"]
+        );
+    }
+
+    #[test]
+    fn upstream_endpoints_on_the_same_host_with_different_ports_are_accepted() {
+        // Arrange
+        let service = ServiceSpec {
+            name: Located::detached("api".to_string()),
+            upstreams: vec![
+                endpoint_upstream("10.0.0.1", 3000),
+                endpoint_upstream("10.0.0.1", 3001),
+            ],
+            ..Default::default()
+        };
+
+        // Act
+        let report = validate(&service);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    fn service_with_sock_upstream(sock: SockSpec) -> ServiceSpec {
         ServiceSpec {
             name: Located::detached("api".to_string()),
             load_balancing_strategy: Located::detached("failover".to_string()),
@@ -253,7 +334,7 @@ mod tests {
         }
     }
 
-    fn sock_tls(sni: &str) -> Option<Located<EndpointTlsSpec>> {
+    fn sock_tls_with_sni(sni: &str) -> Option<Located<EndpointTlsSpec>> {
         Some(Located::detached(EndpointTlsSpec {
             sni: Located::detached(sni.to_string()),
             verify: Located::detached(true),
@@ -264,7 +345,7 @@ mod tests {
     #[test]
     fn empty_sock_path_is_rejected() {
         // Arrange
-        let service = sock_service(SockSpec {
+        let service = service_with_sock_upstream(SockSpec {
             path: Located::detached(String::new()),
             tls: None,
         });
@@ -286,9 +367,9 @@ mod tests {
     #[test]
     fn empty_sni_in_sock_tls_is_rejected() {
         // Arrange
-        let service = sock_service(SockSpec {
+        let service = service_with_sock_upstream(SockSpec {
             path: Located::detached("/run/app.sock".to_string()),
-            tls: sock_tls(""),
+            tls: sock_tls_with_sni(""),
         });
 
         // Act
@@ -308,9 +389,9 @@ mod tests {
     #[test]
     fn ip_sni_in_sock_tls_is_rejected_when_verify_is_true() {
         // Arrange
-        let service = sock_service(SockSpec {
+        let service = service_with_sock_upstream(SockSpec {
             path: Located::detached("/run/app.sock".to_string()),
-            tls: sock_tls("10.0.0.1"),
+            tls: sock_tls_with_sni("10.0.0.1"),
         });
 
         // Act

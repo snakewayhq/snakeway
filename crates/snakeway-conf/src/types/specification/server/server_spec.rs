@@ -11,8 +11,10 @@ range_constraint!(THREADS, i64, min: 1, max: 1024);
 range_constraint!(DNS_REFRESH_INTERVAL_SECONDS, i64, min: 1, max: 3600, units: "seconds");
 
 #[derive(Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct ServerSpec {
     /// Configuration schema version
+    #[confval(derive_default = 1)]
     pub version: Located<i64>,
 
     /// Number of worker threads. When unset, Pingora chooses the value.
@@ -59,25 +61,6 @@ pub struct ServerSpec {
     pub wasm: Option<Located<WasmSpec>>,
 }
 
-impl Default for ServerSpec {
-    fn default() -> Self {
-        Self {
-            version: Located::detached(1),
-            threads: None,
-            pid_file: None,
-            ca_file: None,
-            tls_automation: None,
-            observability: None,
-            dns_refresh_interval_seconds: Located::detached(30),
-            shutdown: None,
-            upgrade: None,
-            performance: None,
-            upstream: None,
-            wasm: None,
-        }
-    }
-}
-
 impl ServerSpec {
     /// Returns the spec with every defaultable nested block the source omitted
     /// filled in with its `Default`. `shutdown`, `upgrade`, `performance`, and
@@ -87,7 +70,7 @@ impl ServerSpec {
     /// left untouched.
     ///
     /// `config dump --repr=spec` serializes the spec as written, so an absent
-    /// block stays absent; `--repr=populated_spec` serializes `populated()` so
+    /// block stays absent. `--repr=populated_spec` serializes `populated()` so
     /// an operator can see the defaults the runtime will apply.
     pub fn populated(mut self) -> Self {
         self.shutdown
@@ -104,7 +87,7 @@ impl ServerSpec {
 
 /// Entity-level validation for the server section. Runs after parsing (or
 /// after programmatic construction), so it must not assume a source file
-/// exists; spans come from the `Located` values themselves.
+/// exists. Spans come from the `Located` values themselves.
 impl Validate for ServerSpec {
     fn validate(&self, report: &mut Report) {
         if let Some(pid_file) = &self.pid_file

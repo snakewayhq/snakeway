@@ -88,15 +88,21 @@ impl UpstreamRuntime {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct UpstreamId(pub(crate) u32);
+pub struct UpstreamId(u64);
 
 impl UpstreamId {
-    pub fn new(id: u32) -> Self {
+    pub fn new(id: u64) -> Self {
         Self(id)
     }
 
-    pub fn as_u32(&self) -> u32 {
+    pub fn as_u64(self) -> u64 {
         self.0
+    }
+}
+
+impl std::fmt::Display for UpstreamId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -108,11 +114,11 @@ pub(crate) enum UpstreamAddr {
 
 /// A DNS-resolved socket address that can be atomically refreshed
 /// by the background DNS re-resolver without rebuilding RuntimeState.
-pub struct ResolvedAddr(ArcSwap<SocketAddr>);
+pub struct ResolvedAddr(Arc<ArcSwap<SocketAddr>>);
 
 impl ResolvedAddr {
     pub fn new(addr: SocketAddr) -> Self {
-        Self(ArcSwap::from_pointee(addr))
+        Self(Arc::new(ArcSwap::from_pointee(addr)))
     }
 
     pub(crate) fn load(&self) -> SocketAddr {
@@ -126,7 +132,7 @@ impl ResolvedAddr {
 
 impl Clone for ResolvedAddr {
     fn clone(&self) -> Self {
-        Self(ArcSwap::from_pointee(self.load()))
+        Self(Arc::clone(&self.0))
     }
 }
 
@@ -202,7 +208,7 @@ mod tests {
     }
 
     #[test]
-    fn resolved_addr_clone_is_independent() {
+    fn resolved_addr_clone_shares_state() {
         // Arrange
         let addr: SocketAddr = "10.0.0.1:8080".parse().unwrap();
         let resolved = ResolvedAddr::new(addr);
@@ -212,14 +218,17 @@ mod tests {
         resolved.store("10.0.0.2:8080".parse().unwrap());
 
         // Assert
-        assert_eq!(cloned.load(), addr);
+        assert_eq!(
+            cloned.load(),
+            "10.0.0.2:8080".parse::<SocketAddr>().unwrap()
+        );
     }
 
     #[test]
     fn unix_upstream_without_tls_uses_localhost_authority() {
         // Arrange
         let upstream = UpstreamRuntime::Unix(UpstreamUnixRuntime {
-            id: UpstreamId(0),
+            id: UpstreamId::new(0),
             path: "/run/app.sock".to_string(),
             weight: 1,
             tls: None,
@@ -237,7 +246,7 @@ mod tests {
         // Arrange
         let addr: SocketAddr = "192.168.1.1:3000".parse().unwrap();
         let tcp = UpstreamTcpRuntime {
-            id: UpstreamId(0),
+            id: UpstreamId::new(0),
             host: "my-service".to_string(),
             port: 3000,
             resolved_addr: ResolvedAddr::new(addr),

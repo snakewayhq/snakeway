@@ -9,9 +9,9 @@ range_constraint!(SUCCESS_THRESHOLD, i64, min: 1, max: 10_000);
 #[derive(Debug, Clone, Serialize, confval::Spec)]
 #[confval(derive_default)]
 pub struct CircuitBreakerSpec {
-    /// Enable circuit breaking auto recovery for this service.
+    /// Turn on the circuit breaker for this service.
     #[confval(default)]
-    pub enable_auto_recovery: Located<bool>,
+    pub enable: Located<bool>,
 
     /// Failures in the "closed" state before opening the circuit.
     #[confval(default = 5, range = FAILURE_THRESHOLD)]
@@ -47,7 +47,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let spec = CircuitBreakerSpec {
-            enable_auto_recovery: Located::detached(true),
+            enable: Located::detached(true),
             ..Default::default()
         };
 
@@ -59,11 +59,11 @@ mod tests {
     }
 
     #[test]
-    fn auto_recovery_disabled_still_checks_ranges() {
+    fn a_disabled_circuit_breaker_still_checks_ranges() {
         // Arrange
         let mut report = Report::new();
         let spec = CircuitBreakerSpec {
-            enable_auto_recovery: Located::detached(false),
+            enable: Located::detached(false),
             failure_threshold: Located::detached(0),
             ..Default::default()
         };
@@ -77,7 +77,7 @@ mod tests {
                 .issues()
                 .iter()
                 .any(|e| e.message.contains("failure_threshold")),
-            "auto recovery off must not skip range checks; issues: {:?}",
+            "a disabled circuit breaker must not skip range checks; issues: {:?}",
             report.issues()
         );
     }
@@ -87,7 +87,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let spec = CircuitBreakerSpec {
-            enable_auto_recovery: Located::detached(true),
+            enable: Located::detached(true),
             failure_threshold: Located::detached(0),
             ..Default::default()
         };
@@ -109,7 +109,7 @@ mod tests {
         // Arrange
         let mut report = Report::new();
         let spec = CircuitBreakerSpec {
-            enable_auto_recovery: Located::detached(true),
+            enable: Located::detached(true),
             open_duration_milliseconds: Located::detached(0),
             ..Default::default()
         };

@@ -6,5 +6,5 @@ pub(crate) mod tls_handshake;
 pub(crate) mod upgrade;
 
 pub use bootstrap::{DataPlaneServerParams, build_pingora_server};
-pub use reload::{ReloadEvent, ReloadHandle, ReloadOutcome, ReloadStatus};
+pub use reload::{ReloadEvent, ReloadHandle, ReloadOutcome, ReloadStatus, set_reload_epoch};
 pub use upgrade::spawn_upgrade;

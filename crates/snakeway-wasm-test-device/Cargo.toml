@@ -9,7 +9,7 @@ description = "WASM device fixture for integration tests"
 workspace = true
 
 [dependencies]
-wit-bindgen = "0.57"
+wit-bindgen = "0.63"
 
 [lib]
 crate-type = ["cdylib"]

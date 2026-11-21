@@ -24,7 +24,9 @@ use http::HeaderMap;
 use snakeway_conf::types::{
     IdentityField, LogEvent, LogLevel, LogPhase, StructuredLoggingDeviceConfig,
 };
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
+use std::fmt::Write as _;
 use tracing::{debug, error, info, trace, warn};
 
 // ----------------------------------------------------------------------------
@@ -87,27 +89,25 @@ impl StructuredLoggingDevice {
         serde_json::to_string(&map).ok()
     }
 
-    fn build_headers(&self, headers: &HeaderMap) -> BTreeMap<String, String> {
+    fn build_headers<'a>(&self, headers: &'a HeaderMap) -> BTreeMap<&'a str, &'a str> {
         let mut out = BTreeMap::new();
 
         for (name, value) in headers.iter() {
-            let name_lc = name.as_str().to_lowercase();
+            // A header name is always lowercase, so it compares directly against the sets.
+            let name = name.as_str();
 
             // Allowlist check (if configured)
-            if !self.allowed_headers.is_empty() && !self.allowed_headers.contains(&name_lc) {
+            if !self.allowed_headers.is_empty() && !self.allowed_headers.contains(name) {
                 continue;
             }
 
-            let val = if self.redacted_headers.contains(&name_lc) {
-                "<redacted>".to_string()
+            let val = if self.redacted_headers.contains(name) {
+                "<redacted>"
             } else {
-                value
-                    .to_str()
-                    .map(str::to_string)
-                    .unwrap_or("<binary>".into())
+                value.to_str().unwrap_or("<binary>")
             };
 
-            out.insert(name_lc, val);
+            out.insert(name, val);
         }
 
         out
@@ -122,75 +122,87 @@ impl StructuredLoggingDevice {
             return None;
         }
 
+        serde_json::to_string(&self.identity_map(identity)).ok()
+    }
+
+    fn identity_map<'a>(
+        &self,
+        identity: &'a ClientIdentity,
+    ) -> BTreeMap<&'static str, Cow<'a, str>> {
         let geo = identity.geo.as_ref();
         let ua = identity.ua.as_ref();
 
-        let mut out: BTreeMap<String, _> = BTreeMap::new();
+        let mut out = BTreeMap::new();
 
         for field in &self.identity_fields {
             match field {
                 IdentityField::ClientIp => {
-                    out.insert("client_ip".into(), identity.ip.to_string());
+                    out.insert("client_ip", Cow::Owned(identity.ip.to_string()));
                 }
 
                 IdentityField::ProxyChain => {
                     if !identity.proxy_chain.is_empty() {
-                        let chain: Vec<String> = identity
-                            .proxy_chain
-                            .iter()
-                            .map(|ip| ip.to_string())
-                            .collect();
-                        out.insert("proxy_chain".into(), chain.join(","));
+                        let mut chain = String::with_capacity(identity.proxy_chain.len() * 16);
+                        for (index, ip) in identity.proxy_chain.iter().enumerate() {
+                            if index > 0 {
+                                chain.push(',');
+                            }
+                            let _ = write!(chain, "{ip}");
+                        }
+                        out.insert("proxy_chain", Cow::Owned(chain));
                     }
                 }
 
                 IdentityField::Forwarded => {
-                    out.insert("is_forwarded".into(), identity.is_forwarded.to_string());
+                    out.insert(
+                        "is_forwarded",
+                        Cow::Borrowed(bool_str(identity.is_forwarded)),
+                    );
                 }
 
                 IdentityField::Trusted => {
-                    out.insert("is_trusted".into(), identity.is_trusted.to_string());
+                    out.insert("is_trusted", Cow::Borrowed(bool_str(identity.is_trusted)));
                 }
 
                 IdentityField::Country => {
-                    if let Some(cc) = geo.and_then(|g| g.country_code.as_ref()) {
-                        out.insert("country".into(), cc.clone());
+                    if let Some(cc) = geo.and_then(|g| g.country_code.as_deref()) {
+                        out.insert("country", Cow::Borrowed(cc));
                     }
                 }
                 IdentityField::Region => {
-                    if let Some(r) = geo.and_then(|g| g.region.as_ref()) {
-                        out.insert("region".into(), r.clone());
+                    if let Some(r) = geo.and_then(|g| g.region.as_deref()) {
+                        out.insert("region", Cow::Borrowed(r));
                     }
                 }
                 IdentityField::Asn => {
                     if let Some(asn) = geo.and_then(|g| g.asn) {
-                        out.insert("asn".into(), asn.to_string());
+                        out.insert("asn", Cow::Owned(asn.to_string()));
                     }
                 }
                 IdentityField::Aso => {
-                    if let Some(aso) = geo.and_then(|g| g.aso.as_ref()) {
-                        out.insert("aso".into(), aso.to_string());
+                    if let Some(aso) = geo.and_then(|g| g.aso.as_deref()) {
+                        out.insert("aso", Cow::Borrowed(aso));
                     }
                 }
                 IdentityField::ConnectionType => {
-                    if let Some(connection_type) = geo.and_then(|g| g.connection_type.as_ref()) {
-                        out.insert("connection_type".into(), connection_type.to_string());
+                    if let Some(connection_type) = geo.and_then(|g| g.connection_type.as_deref()) {
+                        out.insert("connection_type", Cow::Borrowed(connection_type));
                     }
                 }
                 IdentityField::Device => {
                     if let Some(ua) = ua {
-                        out.insert("device".into(), ua.device_type.as_str().to_string());
+                        out.insert("device", Cow::Borrowed(ua.device_type.as_str()));
                     }
                 }
                 IdentityField::Bot => {
                     if let Some(ua) = ua {
-                        out.insert("bot".into(), ua.is_bot.to_string());
+                        out.insert("bot", Cow::Borrowed(bool_str(ua.is_bot)));
                     }
                 }
             }
         }
 
-        serde_json::to_string(&out).ok()
+        out
     }
 
     // ------------------------------------------------------------------------
@@ -311,5 +323,232 @@ impl Device for StructuredLoggingDevice {
             fatal = err.fatal,
             message = %err.message,
         );
+    }
+}
+
+fn bool_str(value: bool) -> &'static str {
+    if value { "true" } else { "false" }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::execution::enrichment::user_agent::{DeviceType, GeoInfo, UserAgentInfo};
+    use http::{HeaderName, HeaderValue};
+
+    fn structured_logging_device_with(
+        allowed: &[&str],
+        redacted: &[&str],
+        fields: Vec<IdentityField>,
+    ) -> StructuredLoggingDevice {
+        StructuredLoggingDevice {
+            level: LogLevel::Info,
+            include_headers: true,
+            allowed_headers: allowed.iter().map(|s| s.to_string()).collect(),
+            redacted_headers: redacted.iter().map(|s| s.to_string()).collect(),
+            include_identity: true,
+            identity_fields: fields,
+            events: None,
+            phases: None,
+        }
+    }
+
+    fn header_map_from_pairs(pairs: &[(&str, &str)]) -> HeaderMap {
+        let mut map = HeaderMap::new();
+        for (name, value) in pairs {
+            map.append(
+                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                HeaderValue::from_str(value).unwrap(),
+            );
+        }
+        map
+    }
+
+    #[test]
+    fn an_allowlisted_header_matches_whatever_case_the_client_sent() {
+        // Arrange
+        let device = structured_logging_device_with(&["x-foo"], &[], vec![]);
+        let headers = header_map_from_pairs(&[("X-Foo", "bar"), ("x-other", "baz")]);
+
+        // Act
+        let json = device.headers_json(&headers);
+
+        // Assert
+        assert_eq!(json.as_deref(), Some(r#"{"x-foo":"bar"}"#));
+    }
+
+    #[test]
+    fn a_redacted_header_is_logged_as_redacted() {
+        // Arrange
+        let device = structured_logging_device_with(&[], &["authorization"], vec![]);
+        let headers =
+            header_map_from_pairs(&[("Authorization", "Bearer secret"), ("host", "a.test")]);
+
+        // Act
+        let json = device.headers_json(&headers);
+
+        // Assert
+        assert_eq!(
+            json.as_deref(),
+            Some(r#"{"authorization":"<redacted>","host":"a.test"}"#)
+        );
+    }
+
+    #[test]
+    fn a_header_value_that_is_not_text_is_logged_as_binary() {
+        // Arrange
+        let device = structured_logging_device_with(&[], &[], vec![]);
+        let mut headers = HeaderMap::new();
+        headers.insert("x-raw", HeaderValue::from_bytes(&[0x80]).unwrap());
+
+        // Act
+        let json = device.headers_json(&headers);
+
+        // Assert
+        assert_eq!(json.as_deref(), Some(r#"{"x-raw":"<binary>"}"#));
+    }
+
+    #[test]
+    fn building_the_header_map_allocates_only_the_map() {
+        // Arrange
+        let device = structured_logging_device_with(&[], &[], vec![]);
+        let headers = header_map_from_pairs(&[("x-a", "1"), ("x-b", "2"), ("x-c", "3")]);
+
+        // Act
+        let (map, allocations) =
+            crate::alloc_count::count_allocations(|| device.build_headers(&headers));
+
+        // Assert
+        assert_eq!(allocations, 1);
+        assert_eq!(
+            serde_json::to_string(&map).unwrap(),
+            r#"{"x-a":"1","x-b":"2","x-c":"3"}"#
+        );
+    }
+
+    #[test]
+    fn identity_json_carries_every_selected_field() {
+        // Arrange
+        let device = structured_logging_device_with(
+            &[],
+            &[],
+            vec![
+                IdentityField::ClientIp,
+                IdentityField::ProxyChain,
+                IdentityField::Forwarded,
+                IdentityField::Trusted,
+                IdentityField::Country,
+                IdentityField::Region,
+                IdentityField::Asn,
+                IdentityField::Aso,
+                IdentityField::ConnectionType,
+                IdentityField::Device,
+                IdentityField::Bot,
+            ],
+        );
+        let identity = ClientIdentity {
+            ip: "203.0.113.7".parse().unwrap(),
+            proxy_chain: vec!["10.0.0.1".parse().unwrap(), "10.0.0.2".parse().unwrap()],
+            is_forwarded: true,
+            is_trusted: false,
+            geo: Some(GeoInfo {
+                country_code: Some("US".into()),
+                region: Some("CA".into()),
+                asn: Some(64500),
+                aso: Some("Example".into()),
+                connection_type: Some("Cable".into()),
+            }),
+            ua: Some(UserAgentInfo {
+                device_type: DeviceType::Mobile,
+                is_bot: false,
+            }),
+        };
+
+        // Act
+        let json = device.identity_json(&identity);
+
+        // Assert
+        assert_eq!(
+            json.as_deref(),
+            Some(concat!(
+                r#"{"asn":"64500","aso":"Example","bot":"false","client_ip":"203.0.113.7","#,
+                r#""connection_type":"Cable","country":"US","device":"mobile","#,
+                r#""is_forwarded":"true","is_trusted":"false","#,
+                r#""proxy_chain":"10.0.0.1,10.0.0.2","region":"CA"}"#
+            ))
+        );
+    }
+
+    #[test]
+    fn identity_json_skips_fields_that_have_no_value() {
+        // Arrange
+        let device = structured_logging_device_with(
+            &[],
+            &[],
+            vec![
+                IdentityField::Country,
+                IdentityField::Device,
+                IdentityField::ClientIp,
+            ],
+        );
+        let identity = ClientIdentity {
+            ip: "203.0.113.7".parse().unwrap(),
+            proxy_chain: vec![],
+            is_forwarded: false,
+            is_trusted: false,
+            geo: None,
+            ua: None,
+        };
+
+        // Act
+        let json = device.identity_json(&identity);
+
+        // Assert
+        assert_eq!(json.as_deref(), Some(r#"{"client_ip":"203.0.113.7"}"#));
+    }
+
+    #[test]
+    fn identity_fields_that_already_hold_text_allocate_only_the_map() {
+        // Arrange
+        let device = structured_logging_device_with(
+            &[],
+            &[],
+            vec![
+                IdentityField::Country,
+                IdentityField::Region,
+                IdentityField::Aso,
+                IdentityField::ConnectionType,
+                IdentityField::Device,
+                IdentityField::Bot,
+                IdentityField::Forwarded,
+                IdentityField::Trusted,
+            ],
+        );
+        let identity = ClientIdentity {
+            ip: "203.0.113.7".parse().unwrap(),
+            proxy_chain: vec![],
+            is_forwarded: true,
+            is_trusted: false,
+            geo: Some(GeoInfo {
+                country_code: Some("US".into()),
+                region: Some("CA".into()),
+                asn: None,
+                aso: Some("Example".into()),
+                connection_type: Some("Cable".into()),
+            }),
+            ua: Some(UserAgentInfo {
+                device_type: DeviceType::Mobile,
+                is_bot: false,
+            }),
+        };
+
+        // Act
+        let (map, allocations) =
+            crate::alloc_count::count_allocations(|| device.identity_map(&identity));
+
+        // Assert
+        assert_eq!(allocations, 1);
+        assert_eq!(map.len(), 8);
+        assert!(map.values().all(|value| matches!(value, Cow::Borrowed(_))));
     }
 }

@@ -9,14 +9,18 @@ range_constraint!(MAX_X_FORWARDED_FOR_LENGTH, i64, min: 1, max: 2048);
 range_constraint!(MAX_USER_AGENT_LENGTH, i64, min: 1, max: 4096);
 
 #[derive(Clone, Debug, Serialize, confval::Spec)]
+#[confval(derive_default)]
 pub struct IdentityDeviceSpec {
+    #[confval(derive_default = false)]
     pub enable: Located<bool>,
 
     /// CIDR strings
+    #[confval(derive_default = Vec::new())]
     pub trusted_proxies: Vec<Located<String>>,
     #[confval(default = 1024, range = MAX_X_FORWARDED_FOR_LENGTH)]
     pub max_x_forwarded_for_length: Located<i64>,
 
+    #[confval(derive_default = false)]
     pub enable_geoip: Located<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -28,31 +32,14 @@ pub struct IdentityDeviceSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub geoip_connection_type_db: Option<Located<PathBuf>>,
 
+    #[confval(derive_default = false)]
     pub enable_user_agent: Located<bool>,
-    #[confval(keywords = UaEngineKind)]
+    #[confval(keywords = UaEngineKind, derive_default = "woothee".to_string())]
     pub ua_engine: Located<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ua_parser_regexes: Option<Located<PathBuf>>,
     #[confval(default = 2048, range = MAX_USER_AGENT_LENGTH)]
     pub max_user_agent_length: Located<i64>,
-}
-
-impl Default for IdentityDeviceSpec {
-    fn default() -> Self {
-        Self {
-            enable: Located::detached(false),
-            trusted_proxies: vec![],
-            max_x_forwarded_for_length: Located::detached(1024),
-            enable_geoip: Located::detached(false),
-            geoip_city_db: None,
-            geoip_isp_db: None,
-            geoip_connection_type_db: None,
-            enable_user_agent: Located::detached(false),
-            ua_engine: Located::detached("woothee".to_string()),
-            ua_parser_regexes: None,
-            max_user_agent_length: Located::detached(2048),
-        }
-    }
 }
 
 impl Validate for IdentityDeviceSpec {
