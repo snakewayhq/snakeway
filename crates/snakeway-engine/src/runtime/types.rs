@@ -1,5 +1,6 @@
 use crate::execution::device::core::DeviceRegistry;
 use crate::execution::route::Router;
+use crate::execution::route::types::RouteId;
 use arc_swap::ArcSwap;
 use pingora::protocols::tls::CaType;
 use pingora::tls::sign::CertifiedKey;
@@ -16,6 +17,17 @@ pub struct RuntimeState {
     pub routers: HashMap<Arc<str>, Router>,
     pub devices: DeviceRegistry,
     pub services: HashMap<String, ServiceRuntime>,
+}
+
+impl RuntimeState {
+    /// The ids of the routes the running configuration would admit a
+    /// websocket upgrade on.
+    pub fn websocket_route_ids(&self) -> std::collections::HashSet<RouteId> {
+        self.routers
+            .values()
+            .flat_map(|router| router.websocket_route_ids())
+            .collect()
+    }
 }
 
 /// The certificate and private key of each listener that uses manual TLS, keyed by the

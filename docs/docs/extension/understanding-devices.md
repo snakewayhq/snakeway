@@ -68,10 +68,20 @@ For a detailed description of each phase, including capability constraints and s
 
 Some devices depend on data produced by others.
 The Identity device must run before Network Policy and Rate Limiting, because both consume the `ClientIdentity` extension that Identity creates.
-Snakeway enforces this ordering automatically based on declared dependencies.
+Snakeway enforces this ordering automatically.
+The pipeline always runs in a fixed canonical order, regardless of which configuration files declare the devices or in what order they appear.
+
+The canonical order is:
+
+1. Request Filter, so it can short-circuit a request before any allocation-heavy device runs.
+2. Identity, which establishes the request context.
+3. Network Policy.
+4. Request Rate Limiting.
+5. WASM devices, in their configuration order within the slot.
+6. Structured Logging last, so it observes every other device's output.
 
 When configuring devices, you do not need to specify execution order manually.
-Snakeway resolves the dependency graph at startup and arranges the pipeline accordingly.
+Renaming a device file cannot change the pipeline order.
 
 ## The Extension Mechanism
 

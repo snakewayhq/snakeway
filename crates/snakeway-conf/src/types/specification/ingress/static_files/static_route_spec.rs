@@ -1,3 +1,4 @@
+use crate::validation::validator::RoutePath;
 use confval::prelude::{AbsolutePath, Located, Report, Validate, range_constraint};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -22,7 +23,7 @@ range_constraint!(MAX_AGE_SECONDS, i64, min: 0, max: ONE_YEAR_IN_SECONDS, units:
 pub struct StaticRouteSpec {
     #[confval(derive_default = Vec::new())]
     pub hosts: Vec<Located<String>>,
-    #[confval(derive_default = String::new())]
+    #[confval(format = RoutePath, derive_default = String::new())]
     pub path: Located<String>,
     #[confval(format = AbsolutePath, derive_default = PathBuf::new())]
     pub file_dir: Located<PathBuf>,
@@ -40,7 +41,14 @@ pub struct StaticRouteSpec {
 
 impl Validate for StaticRouteSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.file_dir.value.exists() {
+        if self.file_dir.value.as_os_str() == "/" {
+            report
+                .error("file_dir cannot be the filesystem root")
+                .at(self.file_dir.span)
+                .emit();
+            return;
+        }
+        if !self.file_dir.value.is_dir() {
             report
                 .error(format!(
                     "invalid static directory: {}",
@@ -89,6 +97,47 @@ impl Validate for CachePolicySpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn static_file_dir_is_the_filesystem_root() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
+            file_dir: Located::detached(PathBuf::from("/")),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert_eq!(error.message, "file_dir cannot be the filesystem root");
+    }
+
+    #[test]
+    fn static_file_dir_is_a_regular_file() {
+        // Arrange
+        let file = NamedTempFile::new().unwrap();
+        let mut report = Report::new();
+        let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
+            file_dir: Located::detached(file.path().to_path_buf()),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert_eq!(
+            error.message,
+            format!("invalid static directory: {}", file.path().display())
+        );
+    }
 
     #[test]
     fn static_file_dir_does_not_exist() {
@@ -97,6 +146,7 @@ mod tests {
         let expected_error = format!("invalid static directory: {}", file_dir);
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(PathBuf::from(file_dir)),
             ..Default::default()
         };
@@ -116,6 +166,7 @@ mod tests {
         let expected_error1 = format!("file_dir is not a valid absolute path: \"{}\"", file_dir);
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(PathBuf::from(file_dir)),
             ..Default::default()
         };
@@ -134,6 +185,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(dir.path().to_path_buf()),
             max_file_size: Located::detached(0),
             ..Default::default()
@@ -160,6 +212,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut report = Report::new();
         let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
             file_dir: Located::detached(dir.path().to_path_buf()),
             max_file_size: Located::detached(64 * 1024 * 1024 * 1024 + 1),
             ..Default::default()

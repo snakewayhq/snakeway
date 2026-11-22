@@ -2348,9 +2348,9 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "libc"
-version = "0.2.189"
+version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libm"
@@ -4307,7 +4307,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4340,7 +4340,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-acme"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4362,13 +4362,14 @@ dependencies = [
 
 [[package]]
 name = "snakeway-conf"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "confval",
  "glob",
  "hotpath",
  "http",
  "ipnet",
+ "libc",
  "pingora-rustls",
  "rcgen",
  "rustls-pki-types",
@@ -4380,19 +4381,19 @@ dependencies = [
  "subtle",
  "tempfile",
  "thiserror 2.0.20",
- "tracing",
  "x509-parser 0.16.0",
 ]
 
 [[package]]
 name = "snakeway-engine"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "ahash",
  "anyhow",
  "arc-swap",
  "bytes",
  "chrono",
+ "confval",
  "criterion",
  "dashmap 7.0.0-rc2",
  "hotpath",
@@ -4426,7 +4427,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-jwt-auth-device"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "base64 0.23.1",
  "hmac",
@@ -4438,7 +4439,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-net"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "async-trait",
  "http",
@@ -4453,7 +4454,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-observability"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "console-subscriber",
  "hostname",
@@ -4473,7 +4474,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-proxy"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4497,6 +4498,7 @@ dependencies = [
  "snakeway-engine",
  "snakeway-net",
  "snakeway-observability",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-opentelemetry",
@@ -4504,7 +4506,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-tests"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -4538,7 +4540,7 @@ dependencies = [
 
 [[package]]
 name = "snakeway-wasm-test-device"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "wit-bindgen 0.63.0",
 ]

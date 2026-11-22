@@ -6,14 +6,18 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
 
+/// Bounds how long the refresh waits for one blocking getaddrinfo call.
+/// The spawned thread itself stays busy until the resolver returns.
+const RESOLVE_TIMEOUT: Duration = Duration::from_secs(10);
+
 pub async fn run_dns_refresh(state: Arc<ArcSwap<RuntimeState>>, interval: Duration) {
     loop {
         tokio::time::sleep(interval).await;
-        refresh_all(&state);
+        refresh_all(&state).await;
     }
 }
 
-fn refresh_all(state: &ArcSwap<RuntimeState>) {
+async fn refresh_all(state: &ArcSwap<RuntimeState>) {
     let snapshot = state.load();
     for service in snapshot.services.values() {
         for upstream in &service.upstreams {
@@ -21,36 +25,54 @@ fn refresh_all(state: &ArcSwap<RuntimeState>) {
                 if tcp.host.parse::<std::net::IpAddr>().is_ok() {
                     continue;
                 }
-                refresh_one(tcp);
+                refresh_one(tcp).await;
             }
         }
     }
 }
 
-fn refresh_one(tcp: &UpstreamTcpRuntime) {
-    match (tcp.host.as_str(), tcp.port).to_socket_addrs() {
-        Ok(mut addrs) => {
-            if let Some(new_addr) = addrs.next() {
-                let old = tcp.resolved_addr.load();
-                if old != new_addr {
-                    debug!(
-                        host = %tcp.host,
-                        old = %old,
-                        new = %new_addr,
-                        "dns refresh: upstream address changed"
-                    );
-                }
-                tcp.resolved_addr.store(new_addr);
-            }
+async fn refresh_one(tcp: &UpstreamTcpRuntime) {
+    // getaddrinfo blocks its calling thread for the resolver timeout, which
+    // would otherwise hold the single worker control runtime and stall every
+    // other control plane task with it.
+    let host = tcp.host.clone();
+    let port = tcp.port;
+    let resolved = tokio::time::timeout(
+        RESOLVE_TIMEOUT,
+        tokio::task::spawn_blocking(move || (host, port).to_socket_addrs().map(|mut a| a.next())),
+    )
+    .await;
+
+    let new_addr = match resolved {
+        Ok(Ok(Ok(Some(new_addr)))) => new_addr,
+        Ok(Ok(Ok(None))) => {
+            warn!(host = %tcp.host, "dns refresh: resolver returned no addresses, keeping previous address");
+            return;
         }
-        Err(e) => {
-            warn!(
-                host = %tcp.host,
-                error = %e,
-                "dns refresh: resolution failed, keeping previous address"
-            );
+        Ok(Ok(Err(e))) => {
+            warn!(host = %tcp.host, error = %e, "dns refresh: resolution failed, keeping previous address");
+            return;
         }
+        Ok(Err(e)) => {
+            warn!(host = %tcp.host, error = %e, "dns refresh: resolve task failed, keeping previous address");
+            return;
+        }
+        Err(_) => {
+            warn!(host = %tcp.host, timeout = ?RESOLVE_TIMEOUT, "dns refresh: resolution timed out, keeping previous address");
+            return;
+        }
+    };
+
+    let old = tcp.resolved_addr.load();
+    if old != new_addr {
+        debug!(
+            host = %tcp.host,
+            old = %old,
+            new = %new_addr,
+            "dns refresh: upstream address changed"
+        );
     }
+    tcp.resolved_addr.store(new_addr);
 }
 
 #[cfg(test)]
@@ -78,9 +100,10 @@ mod tests {
         // Arrange
         let original: std::net::SocketAddr = "1.2.3.4:8080".parse().unwrap();
         let tcp = make_tcp_runtime("this-hostname-should-not-resolve.invalid", 8080, original);
+        let rt = tokio::runtime::Runtime::new().unwrap();
 
         // Act
-        refresh_one(&tcp);
+        rt.block_on(refresh_one(&tcp));
 
         // Assert
         assert_eq!(tcp.resolved_addr.load(), original);
@@ -91,9 +114,10 @@ mod tests {
         // Arrange
         let placeholder: std::net::SocketAddr = "0.0.0.0:80".parse().unwrap();
         let tcp = make_tcp_runtime("localhost", 80, placeholder);
+        let rt = tokio::runtime::Runtime::new().unwrap();
 
         // Act
-        refresh_one(&tcp);
+        rt.block_on(refresh_one(&tcp));
 
         // Assert
         let refreshed = tcp.resolved_addr.load();

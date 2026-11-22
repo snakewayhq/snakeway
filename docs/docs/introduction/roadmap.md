@@ -243,20 +243,20 @@ This is bumped up ahead of the v1.0 release because it does not make sense to re
 - [x] Upgrade to the latest version of confval and add LSP editor support.
   See [Editor Support](../administration/editor-support.md) for the states, transitions, and rejection points.
 
-## Milestone 13: Harden the proxy (v0.17.1)
+## Milestone 13: Harden the proxy (v0.18.0)
 
 **Goals**
 
-- [ ] Defect hunt and remediation.
+- [x] Defect hunt and remediation.
   The pre-release review of v0.17.0 uncovered a number of subtle bugs - this is an explicit effort to uncover reliability unknowns.
 
-## Milestone 14: Proxy-Wasm support (v0.18.0)
+## Milestone 14: Proxy-Wasm support (v0.19.0)
 
 **Goals**
 
 - [ ] Complement (or replace) the device pipeline with the unreleased pingora-wasm (that implements Proxy-Wasm) crate. 
 
-## Milestone 15: Acme replication (v0.19.0)
+## Milestone 15: Acme replication (v0.20.0)
 
 **Goals**
 

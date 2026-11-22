@@ -26,7 +26,18 @@ pub async fn reload_runtime_state(
     state: &ArcSwap<RuntimeState>,
     cert_manager: &Option<Arc<CertManager>>,
 ) -> Result<(), ReloadError> {
-    let new_state = build_runtime_state(config, cert_manager)?;
+    // build_runtime_state does its work on the blocking thread pool: it
+    // compiles WASM devices, resolves every hostname upstream with
+    // getaddrinfo, canonicalizes paths, and reads files. The control runtime
+    // it would otherwise occupy has one worker shared with the reload loop,
+    // the signal handler, and cert reconciliation.
+    let config = config.clone();
+    let cert_manager_for_build = cert_manager.clone();
+    let build =
+        tokio::task::spawn_blocking(move || build_runtime_state(&config, &cert_manager_for_build));
+    let new_state = build
+        .await
+        .map_err(|e| ReloadError::Build(anyhow::anyhow!("state build task failed: {e}")))??;
 
     // Log comparison against current state.
     let old = state.load();
@@ -154,7 +165,7 @@ pub(crate) fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Ar
                     id: RouteId::static_route(&cfg.path, &canonical),
                     path: cfg.path.clone(),
                     file_dir: cfg.file_dir.clone(),
-                    index: cfg.index.is_some(),
+                    index: cfg.index.clone(),
                     directory_listing: cfg.directory_listing,
                     max_file_size: cfg.max_file_size,
                     static_config: cfg.static_config.clone(),
@@ -284,8 +295,8 @@ fn make_upstream_id(addr: &UpstreamAddr) -> UpstreamId {
 /// Converts a directory path to its full absolute path as a string.
 ///
 /// Takes a path that might be relative (like `./files` or `../data`) and converts
-/// it to a complete path (like `/home/user/app/files`). If the path doesn't exist
-/// or can't be resolved, it uses the path as-is.
+/// it to a complete path (like `/home/user/app/files`). A path that cannot be
+/// resolved fails the runtime state build with the underlying error.
 fn canonicalize_dir(dir: &Path) -> Result<String, std::io::Error> {
     let path_buf = dir.canonicalize()?;
     Ok(path_buf.to_string_lossy().to_string())

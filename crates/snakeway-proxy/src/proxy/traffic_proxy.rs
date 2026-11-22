@@ -164,10 +164,29 @@ impl ProxyHttp for TrafficProxy {
             .ok_or_else(|| Error::new(Custom("no service selected")))?;
         let service_id = ServiceId::new(service_name.as_str());
 
+        // Pingora re-enters this hook once per retry attempt. The guard in
+        // the context belongs to the previous attempt, which failed. Settle
+        // it here so it is not finalized against the new attempt's outcome.
+        if let Some(mut stale) = ctx.admission_guard.take() {
+            stale.failure();
+        }
+
         let selected_upstream = self.select_upstream(ctx, &state, &service_id, service_name)?;
         let upstream = selected_upstream.upstream;
 
-        let peer = self.build_peer(ctx, upstream)?;
+        // A failed peer build leaves no guard to return the half-open slot
+        // spent on selection, so it is released here.
+        let peer = match self.build_peer(ctx, upstream) {
+            Ok(peer) => peer,
+            Err(e) => {
+                if selected_upstream.cb_started {
+                    self.proxy_ctx
+                        .traffic_manager
+                        .circuit_rollback(&service_id, &upstream.id());
+                }
+                return Err(e);
+            }
+        };
 
         // Record that this request was admitted by the circuit breaker.
         // The TrafficDirector already called `circuit_allows` for selection.
@@ -413,7 +432,10 @@ impl ProxyHttp for TrafficProxy {
         let _root = ctx.request_span.as_ref().map(|s| s.enter());
         let _resp_span = tracing::info_span!("response").entered();
         if ctx.ws_switched() {
-            // WebSocket upgrade is a protocol switch, not a response.
+            // WebSocket upgrade is a protocol switch, not a response. Record
+            // the success explicitly so the guard finalizes on the switched
+            // tunnel rather than on the default outcome rule.
+            ctx.upstream_outcome = Some(UpstreamOutcome::Success);
             return Ok(());
         }
 

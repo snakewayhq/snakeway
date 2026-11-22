@@ -25,9 +25,27 @@ impl TrafficManager {
         let key = (service_id.clone(), *upstream_id);
 
         if let Some(counter) = self.active_requests.get(&key) {
-            let prev = counter.fetch_sub(1, Ordering::Relaxed);
-            if prev <= 1 {
-                counter.store(0, Ordering::Relaxed);
+            // Lower the count of in-flight requests by one and never below
+            // zero. The count is shared by concurrent requests, so the
+            // decrement must be a single atomic update. A subtract followed
+            // by a separate zeroing store would erase the increment of a
+            // request that starts between the two steps. A subtract on an
+            // already zero count would wrap the counter to an enormous
+            // value. The compare-and-swap loop applies the decrement to the
+            // value it observed, retrying when another request changes the
+            // count first.
+            let mut current = counter.load(Ordering::Relaxed);
+            loop {
+                let next = current.saturating_sub(1);
+                match counter.compare_exchange_weak(
+                    current,
+                    next,
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                ) {
+                    Ok(_) => break,
+                    Err(actual) => current = actual,
+                }
             }
         }
     }

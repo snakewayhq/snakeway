@@ -162,6 +162,17 @@ impl CircuitBreaker {
         }
     }
 
+    /// Release a half-open probe slot that a decision consumed but whose
+    /// request never started, for example when selection or peer build failed
+    /// after admission. Without this the circuit stays in HalfOpen forever,
+    /// because HalfOpen has no timer and only a guard's report returns the
+    /// slot.
+    pub(crate) fn rollback_half_open(&mut self) {
+        if self.state == CircuitState::HalfOpen && self.half_open_in_flight > 0 {
+            self.half_open_in_flight -= 1;
+        }
+    }
+
     pub(crate) fn trip_open(
         &mut self,
         ids: (&ServiceId, &UpstreamId),
@@ -365,6 +376,47 @@ mod tests {
 
         // Assert
         assert!(allowed);
+        assert_eq!(cb.half_open_in_flight, 0);
+    }
+
+    #[test]
+    fn a_rolled_back_half_open_slot_is_admittable_again() {
+        // Arrange: trip the circuit, wait out the cooldown, and admit the one
+        // half-open probe the params allow.
+        let mut cb = CircuitBreaker::new();
+        let mut p = params();
+        p.open_duration = Duration::from_millis(0);
+        let ids = ids();
+        let ids_ref = (&ids.0, &ids.1);
+        for _ in 0..3 {
+            cb.on_request_end(ids_ref, &p, true, false);
+        }
+        assert!(cb.allow_request(ids_ref, &p));
+        assert_eq!(cb.half_open_in_flight, 1);
+        assert!(!cb.allow_request(ids_ref, &p), "the slot budget is spent");
+
+        // Act: the request that consumed the slot never started.
+        cb.rollback_half_open();
+
+        // Assert
+        assert_eq!(cb.half_open_in_flight, 0);
+        assert!(cb.allow_request(ids_ref, &p));
+    }
+
+    #[test]
+    fn a_rollback_outside_half_open_does_nothing() {
+        // Arrange: the circuit is closed and never admitted a probe.
+        let mut cb = CircuitBreaker::new();
+        let p = params();
+        let ids = ids();
+        let ids_ref = (&ids.0, &ids.1);
+        assert!(cb.allow_request(ids_ref, &p));
+
+        // Act
+        cb.rollback_half_open();
+
+        // Assert
+        assert_eq!(cb.state(), CircuitState::Closed);
         assert_eq!(cb.half_open_in_flight, 0);
     }
 }
