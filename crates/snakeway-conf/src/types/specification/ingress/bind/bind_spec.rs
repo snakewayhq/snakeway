@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn bind_unspecified_ip_and_the_all_keyword_are_equivalent() {
         // Arrange: the keyword and the literal resolve to the same socket, so
-        // both spellings are accepted on the public bind.
+        // both are accepted on the public bind.
         let mut report = Report::new();
         let literal = BindSpec {
             interface: Located::detached("0.0.0.0".to_string()),
