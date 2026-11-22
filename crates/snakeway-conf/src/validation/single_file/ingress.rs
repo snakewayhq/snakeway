@@ -2,6 +2,37 @@ use crate::types::{BindInterfaceSpec, IngressSpec, report_admin_auth_missing};
 use confval::prelude::{Located, Report, Span, Validate};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use std::path::{Path, PathBuf};
+
+/// Reduces a socket path to the form used for duplicate detection.
+///
+/// For example, `canonical_sock_path("/tmp/./app.sock")` returns
+/// `/tmp/app.sock`.
+/// `//tmp//app.sock` and `/tmp/app.sock/` also reduce to that same form.
+///
+/// Pushing each component onto a fresh `PathBuf` produces the reduced form
+/// without touching the filesystem.
+///
+/// `..` components are not reduced.
+/// For example, `canonical_sock_path("/tmp/../app.sock")` returns
+/// `/tmp/../app.sock`.
+/// Lexical `..` resolution can disagree with the kernel when a path
+/// component is a symlink.
+/// If `/var/www` is a symlink to `/srv/www`, the kernel resolves
+/// `/var/www/../app.sock` to `/srv/app.sock`, while lexical resolution
+/// reads it as `/var/app.sock`.
+/// Those are two different sockets, so treating them as one would reject a
+/// valid configuration.
+pub(crate) fn canonical_sock_path(path: &str) -> String {
+    Path::new(path)
+        .components()
+        .fold(PathBuf::new(), |mut acc, component| {
+            acc.push(component);
+            acc
+        })
+        .display()
+        .to_string()
+}
 
 /// The socket address literal for a declared interface and port, or `None`
 /// when either is not representable. The literal is the shared key that keeps
@@ -149,11 +180,7 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 
             for upstream in &service.value.upstreams {
                 if let Some(sock) = &upstream.value.sock {
-                    let canonical = std::path::Path::new(&sock.value.path.value)
-                        .components()
-                        .as_path()
-                        .display()
-                        .to_string();
+                    let canonical = canonical_sock_path(&sock.value.path.value);
 
                     report_duplicate(
                         &mut seen_upstream_socks,
@@ -444,8 +471,9 @@ mod tests {
     }
 
     #[test]
-    fn equivalent_sock_path_spellings_are_one_socket() {
-        // Arrange: the second service points at the same socket through a
+    fn equivalent_sock_paths_are_considered_one_socket() {
+        // Arrange
+        // The second service points at the same socket through a
         // redundant path component.
         let mut report = Report::new();
         let make_service = |name: &str, path: &str| {
@@ -935,5 +963,78 @@ mod tests {
             "issues: {:?}",
             report.issues()
         );
+    }
+}
+
+#[cfg(test)]
+mod canonical_sock_path_tests {
+    use super::canonical_sock_path;
+
+    #[test]
+    fn an_interior_dot_component_is_removed() {
+        // Arrange
+        let path = "/tmp/./app.sock";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "/tmp/app.sock");
+    }
+
+    #[test]
+    fn a_parent_dir_component_stays() {
+        // Arrange
+        let path = "/tmp/../app.sock";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "/tmp/../app.sock");
+    }
+
+    #[test]
+    fn a_leading_dot_component_stays() {
+        // Arrange
+        let path = "./app.sock";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "./app.sock");
+    }
+
+    #[test]
+    fn a_trailing_slash_is_removed() {
+        // Arrange
+        let path = "/tmp/app.sock/";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "/tmp/app.sock");
+    }
+
+    #[test]
+    fn declared_forms_of_one_socket_match_and_distinct_declarations_do_not() {
+        // The property the duplicate check relies on: two declared paths that
+        // the kernel resolves to the same socket match after normalization,
+        // unless the difference is a `..` component, which stays unreduced.
+        let cases = [
+            ("/tmp/./app.sock", "/tmp/app.sock", true),
+            ("//tmp//app.sock", "/tmp/app.sock", true),
+            ("/./tmp/app.sock", "/tmp/app.sock", true),
+            ("/tmp/app.sock/", "/tmp/app.sock", true),
+            ("/tmp/../app.sock", "/app.sock", false),
+            ("./app.sock", "app.sock", false),
+        ];
+
+        for (first, second, expected) in cases {
+            let equal = canonical_sock_path(first) == canonical_sock_path(second);
+            assert_eq!(equal, expected, "{first} compared with {second}");
+        }
     }
 }
