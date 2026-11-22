@@ -41,7 +41,14 @@ pub struct StaticRouteSpec {
 
 impl Validate for StaticRouteSpec {
     fn validate(&self, report: &mut Report) {
-        if !self.file_dir.value.exists() {
+        if self.file_dir.value.as_os_str() == "/" {
+            report
+                .error("file_dir cannot be the filesystem root")
+                .at(self.file_dir.span)
+                .emit();
+            return;
+        }
+        if !self.file_dir.value.is_dir() {
             report
                 .error(format!(
                     "invalid static directory: {}",
@@ -90,6 +97,47 @@ impl Validate for CachePolicySpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn static_file_dir_is_the_filesystem_root() {
+        // Arrange
+        let mut report = Report::new();
+        let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
+            file_dir: Located::detached(PathBuf::from("/")),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert_eq!(error.message, "file_dir cannot be the filesystem root");
+    }
+
+    #[test]
+    fn static_file_dir_is_a_regular_file() {
+        // Arrange
+        let file = NamedTempFile::new().unwrap();
+        let mut report = Report::new();
+        let spec = StaticRouteSpec {
+            path: Located::detached("/assets".to_string()),
+            file_dir: Located::detached(file.path().to_path_buf()),
+            ..Default::default()
+        };
+
+        // Act
+        spec.validate_all(&mut report);
+
+        // Assert
+        let error = report.issues().first().expect("expected an error");
+        assert_eq!(
+            error.message,
+            format!("invalid static directory: {}", file.path().display())
+        );
+    }
 
     #[test]
     fn static_file_dir_does_not_exist() {

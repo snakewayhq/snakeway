@@ -1,4 +1,5 @@
 use crate::resolution::ResolveError;
+use crate::types::is_link_local;
 use crate::types::{
     AcmeChallenge, BindInterfaceSpec, ConnectionRateLimitingFilterSpec, Http2Spec,
     NetworkConnectionFilterSpec, RedirectSpec, TlsTerminationSpec,
@@ -91,9 +92,13 @@ impl Validate for BindSpec {
         // Interface validation.
         let interface: Result<BindInterfaceSpec, _> = self.interface.value.as_str().try_into();
         match interface {
-            Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+            Ok(BindInterfaceSpec::Ip(ip)) if ip.is_multicast() || is_link_local(&ip) => {
                 report
-                    .error("invalid bind address: 0.0.0.0")
+                    .error(format!(
+                        "invalid bind address: {} (multicast and link-local addresses \
+                         cannot serve traffic)",
+                        self.interface.value
+                    ))
                     .at(self.interface.span)
                     .emit();
             }
@@ -191,11 +196,33 @@ mod tests {
     }
 
     #[test]
-    fn bind_unspecified_ip_rejected() {
+    fn bind_unspecified_ip_and_the_all_keyword_are_equivalent() {
+        // Arrange: the keyword and the literal resolve to the same socket, so
+        // both spellings are accepted on the public bind.
+        let mut report = Report::new();
+        let literal = BindSpec {
+            interface: Located::detached("0.0.0.0".to_string()),
+            ..minimal_bind()
+        };
+        let keyword = BindSpec {
+            interface: Located::detached("all".to_string()),
+            ..minimal_bind()
+        };
+
+        // Act
+        literal.validate(&mut report);
+        keyword.validate(&mut report);
+
+        // Assert
+        assert!(!report.has_issues(), "issues: {:?}", report.issues());
+    }
+
+    #[test]
+    fn bind_multicast_address_rejected() {
         // Arrange
         let mut report = Report::new();
         let bind = BindSpec {
-            interface: Located::detached("0.0.0.0".to_string()),
+            interface: Located::detached("224.0.0.1".to_string()),
             ..minimal_bind()
         };
 
@@ -208,7 +235,28 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|e| e.message.contains("invalid bind address: 0.0.0.0"))
+                .any(|e| e.message.contains("multicast and link-local"))
+        );
+    }
+
+    #[test]
+    fn bind_link_local_address_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let bind = BindSpec {
+            interface: Located::detached("169.254.1.1".to_string()),
+            ..minimal_bind()
+        };
+
+        // Act
+        bind.validate(&mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("multicast and link-local"))
         );
     }
 

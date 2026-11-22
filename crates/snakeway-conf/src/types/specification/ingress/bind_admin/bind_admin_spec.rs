@@ -1,6 +1,6 @@
 use super::admin_auth_spec::{AdminAuthSpec, report_admin_auth_missing};
 use crate::resolution::ResolveError;
-use crate::types::{BindInterfaceSpec, TlsTerminationSpec};
+use crate::types::{BindInterfaceSpec, TlsTerminationSpec, is_link_local};
 use crate::validation::{ConfigError, PORT};
 use confval::prelude::{Located, Report, Validate};
 use serde::Serialize;
@@ -59,9 +59,15 @@ impl Validate for BindAdminSpec {
             self.interface.value.as_str().try_into();
 
         match maybe_interface {
-            Ok(BindInterfaceSpec::Ip(ip)) if ip.is_unspecified() => {
+            Ok(BindInterfaceSpec::Ip(ip))
+                if ip.is_unspecified() || ip.is_multicast() || is_link_local(&ip) =>
+            {
                 report
-                    .error("invalid bind address: 0.0.0.0 or ::")
+                    .error(format!(
+                        "invalid admin bind address: {} (the admin API binds one interface, \
+                         and unspecified, multicast, and link-local addresses cannot serve it)",
+                        self.interface.value
+                    ))
                     .at(self.interface.span)
                     .emit();
             }

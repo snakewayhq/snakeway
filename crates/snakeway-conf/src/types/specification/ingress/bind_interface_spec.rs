@@ -15,6 +15,15 @@ pub enum BindInterfaceSpec {
     Ip(std::net::IpAddr),
 }
 
+/// Whether `ip` is a link-local address: `169.254.0.0/16` for IPv4 and
+/// `fe80::/10` for IPv6.
+pub(crate) fn is_link_local(ip: &IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => v4.is_link_local(),
+        IpAddr::V6(v6) => v6.is_unicast_link_local(),
+    }
+}
+
 impl BindInterfaceSpec {
     pub fn as_ip(&self) -> IpAddr {
         match self {
