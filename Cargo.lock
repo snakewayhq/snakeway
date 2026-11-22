@@ -4381,7 +4381,6 @@ dependencies = [
  "subtle",
  "tempfile",
  "thiserror 2.0.20",
- "tracing",
  "x509-parser 0.16.0",
 ]
 
@@ -4499,6 +4498,7 @@ dependencies = [
  "snakeway-engine",
  "snakeway-net",
  "snakeway-observability",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-opentelemetry",

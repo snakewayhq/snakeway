@@ -23,7 +23,6 @@ http = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
 smallvec = { workspace = true }
 hotpath = { workspace = true }
 secrecy = { workspace = true }
