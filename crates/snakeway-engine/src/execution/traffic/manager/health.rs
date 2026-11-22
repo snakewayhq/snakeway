@@ -85,6 +85,12 @@ impl TrafficManager {
         upstream_id: &UpstreamId,
         latency: Duration,
     ) {
+        let Some(_) = self.health_params.get(service_id) else {
+            // If the service no longer exists (was removed by a reload),
+            // then disregard a success report about it.
+            return;
+        };
+
         let key = (service_id.clone(), *upstream_id);
 
         // Mark upstream healthy. Nothing reads the state while health checks are off, and an
@@ -281,6 +287,21 @@ mod tests {
         assert!(manager.total_failures.is_empty());
         assert!(manager.upstream_health.is_empty());
         assert!(manager.circuit.is_empty());
+    }
+
+    #[test]
+    fn a_success_reported_after_a_reload_removes_the_service_records_nothing() {
+        // Arrange
+        let (manager, service, upstream) = manager_with_one_upstream(true);
+        manager.update(TrafficSnapshot::default());
+
+        // Act
+        manager.report_success(&service, &upstream, Duration::from_millis(5));
+
+        // Assert
+        assert_eq!(manager.total_successes(&service, &upstream), 0);
+        assert!(manager.total_successes.is_empty());
+        assert!(manager.upstream_health.is_empty());
     }
 
     #[test]
