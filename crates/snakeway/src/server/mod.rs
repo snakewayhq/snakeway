@@ -8,6 +8,7 @@ pub use runtime_server::RuntimeServer;
 
 use crate::server::bootstrap::start_control_plane;
 use snakeway_conf::load_config;
+use snakeway_engine::runtime::build_runtime_state;
 use std::path::Path;
 use std::process::exit;
 
@@ -41,6 +42,14 @@ pub fn start_server(config_path: &str, upgrade: bool, test: bool) {
     }
 
     if test {
+        // "run --test" is used to pre-check a configuration before a zero-drop
+        // upgrade. Run the same runtime state build the server start would,
+        // since that is where route and upstream construction errors surface.
+        let cert_manager = None;
+        if let Err(e) = build_runtime_state(&config, &cert_manager) {
+            eprintln!("Runtime state build failed: {e:#}");
+            exit(1);
+        }
         println!("Configuration is valid.");
         return;
     }

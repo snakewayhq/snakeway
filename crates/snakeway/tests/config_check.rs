@@ -230,3 +230,56 @@ fn check_rejects_a_duplicate_upstream_endpoint_in_one_service() {
         "the error must point at the first endpoint: {stderr}"
     );
 }
+
+#[test]
+fn run_test_fails_when_the_runtime_state_build_fails() {
+    // Arrange
+    // An upstream hostname that cannot resolve passes `config check`
+    // and fails the runtime state build.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cfg = tmp.path().join("cfg");
+    init_one_service_with_two_upstreams(&cfg);
+    let ingress = cfg.join("ingress.d").join("httpbin.hcl");
+    let text = std::fs::read_to_string(&ingress).expect("read ingress file");
+    let with_dead_upstream = text.replace(
+        "endpoint {\n      host = \"127.0.0.1\"\n      port = 4000\n    }",
+        "endpoint {\n      host = \"unresolvable.invalid\"\n      port = 4000\n    }",
+    );
+    std::fs::write(&ingress, with_dead_upstream).expect("write ingress file");
+
+    // Act
+    let out = snakeway()
+        .args(["run", "--test", "--config"])
+        .arg(&cfg)
+        .output()
+        .expect("run --test");
+
+    // Assert
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("Runtime state build failed")
+            && stderr.contains("failed to resolve upstream hostname"),
+        "the error must name the runtime build failure: {stderr}"
+    );
+}
+
+#[test]
+fn run_test_passes_a_valid_config() {
+    // Arrange
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cfg = tmp.path().join("cfg");
+    init_minimal(&cfg);
+
+    // Act
+    let out = snakeway()
+        .args(["run", "--test", "--config"])
+        .arg(&cfg)
+        .output()
+        .expect("run --test");
+
+    // Assert
+    assert_eq!(out.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("Configuration is valid."));
+}
