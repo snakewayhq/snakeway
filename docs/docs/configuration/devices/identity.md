@@ -87,3 +87,15 @@ Downstream devices read this struct directly rather than re-parsing headers.
 This ensures that every device in the pipeline sees the same client IP, geolocation, and user-agent classification, regardless of ordering or configuration differences.
 
 For example, the [Network Policy device](/docs/configuration/devices/network-policy) checks `ClientIdentity.client_ip` against its CIDR allowlist, and the [Structured Logging device](/docs/configuration/devices/structured-logging/) selects fields from `ClientIdentity` based on its `identity_fields` configuration.
+
+## Updating GeoIP Databases
+
+The proxy keeps the GeoIP MMDB files memory mapped for the lifetime of the process.
+To update a database, write the new file to a temporary name and replace the old one with a rename, for example `mv city.mmdb.new city.mmdb`.
+
+:::danger
+Never truncate or rewrite an MMDB file in place while Snakeway is running.
+An in-place update faults every GeoIP lookup and terminates the process.
+Removing the file is harmless, but Snakeway keeps serving the removed copy until it restarts.
+The proxy reads the file once at startup, so a replaced database takes effect after a restart.
+:::
