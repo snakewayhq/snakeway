@@ -7,9 +7,8 @@ use std::path::{Path, PathBuf};
 ///
 /// Searches the filesystem for all files that match the given glob pattern
 /// and returns their paths in sorted order. Entries that cannot be read are
-/// skipped with a warning on the report, and a pattern that matches nothing
-/// warns too, so an operator learns at check time that an include loads no
-/// files.
+/// skipped with a warning on the report. A pattern that matches nothing
+/// warns too, so you learn at check time that an include loads no files.
 ///
 /// # Arguments
 ///
@@ -51,7 +50,7 @@ pub(crate) fn discover(
     if paths.is_empty() {
         report
             .warning(format!(
-                "include pattern {} matched no files; nothing is loaded from it",
+                "include pattern {} matched no files. Nothing is loaded from it",
                 glob_pattern
             ))
             .emit();

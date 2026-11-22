@@ -17,7 +17,9 @@ use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId, Traffi
 /// The transport failure classifier matches no transport failure for
 /// `Custom` errors, so an attempt that fails with this error is recorded as
 /// a failure for health and circuit accounting.
-/// Errors with this source are not retried.
+/// Pingora retries only when the error's retry flag allows it.
+/// `Error::create` leaves the flag false here, so these errors are not
+/// retried.
 pub(crate) fn no_upstream_error(context: &'static str) -> BError {
     Error::create(
         Custom(context),

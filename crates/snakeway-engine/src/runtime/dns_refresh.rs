@@ -6,8 +6,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
 
-/// Bounds a single blocking getaddrinfo call, so a resolver that stops
-/// responding cannot hold a spawn_blocking thread forever.
+/// Bounds how long the refresh waits for one blocking getaddrinfo call.
+/// The spawned thread itself stays busy until the resolver returns.
 const RESOLVE_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub async fn run_dns_refresh(state: Arc<ArcSwap<RuntimeState>>, interval: Duration) {

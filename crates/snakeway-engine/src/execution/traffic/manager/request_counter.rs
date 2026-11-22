@@ -27,10 +27,10 @@ impl TrafficManager {
         if let Some(counter) = self.active_requests.get(&key) {
             // Lower the count of in-flight requests by one and never below
             // zero. The count is shared by concurrent requests, so the
-            // decrement must be a single atomic update: a subtract followed
+            // decrement must be a single atomic update. A subtract followed
             // by a separate zeroing store would erase the increment of a
-            // request that starts between the two steps, and a subtract on
-            // an already zero count would wrap the counter to an enormous
+            // request that starts between the two steps. A subtract on an
+            // already zero count would wrap the counter to an enormous
             // value. The compare-and-swap loop applies the decrement to the
             // value it observed, retrying when another request changes the
             // count first.

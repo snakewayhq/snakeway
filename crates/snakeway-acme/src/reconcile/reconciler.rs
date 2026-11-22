@@ -308,7 +308,7 @@ impl Reconciler {
 
         // Notify the CA that every pending HTTP-01 challenge is ready.
         // For SAN orders with N domains all N pending authorizations must be
-        // signalled. Skipping any of them causes the CA to time-out on those
+        // signaled. Skipping any of them causes the CA to time out on those
         // domains and eventually fail the entire order.
         let mut ready_count = 0usize;
 

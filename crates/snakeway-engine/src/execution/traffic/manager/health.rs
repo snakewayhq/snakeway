@@ -86,8 +86,8 @@ impl TrafficManager {
         latency: Duration,
     ) {
         let Some(_) = self.health_params.get(service_id) else {
-            // If the service no longer exists (was removed by a reload),
-            // then disregard a success report about it.
+            // A reload can remove the service while one of its requests is
+            // still in flight. Disregard a success report about it.
             return;
         };
 
@@ -133,10 +133,11 @@ impl TrafficManager {
 
     /// Reports whether an upstream is healthy without changing health state.
     ///
-    /// Decides whether an upstream may receive a request. Read-only: an
-    /// upstream whose cooldown has expired stays admissible on every decision
-    /// until an outcome lands, so polling a non-selected backup does not push
-    /// its recovery point later. It never mutates state.
+    /// Decides whether an upstream may receive a request.
+    /// This check never mutates health state.
+    /// An upstream whose cooldown has expired stays admissible on every
+    /// decision until an outcome lands, so polling a non-selected backup
+    /// does not push its recovery point later.
     pub fn health_status(&self, service_id: &ServiceId, upstream_id: &UpstreamId) -> HealthStatus {
         let Some(health_params) = self.health_params.get(service_id) else {
             return HealthStatus { healthy: true };

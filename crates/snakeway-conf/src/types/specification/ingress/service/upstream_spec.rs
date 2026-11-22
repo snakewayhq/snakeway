@@ -102,18 +102,18 @@ impl Validate for UpstreamSpec {
     fn validate(&self, _report: &mut Report) {}
 }
 
-/// The platform/kernel defines this limit. sun_path is a fixed array in sockaddr_un,
-/// and the longest bindable path is the field minus its null terminator.
+/// The platform/kernel defines this limit. sun_path is a fixed array in sockaddr_un.
+/// The longest bindable path is the field minus its null terminator.
 const SOCK_PATH_MAX: usize = std::mem::size_of::<libc::sockaddr_un>()
     - std::mem::offset_of!(libc::sockaddr_un, sun_path)
     - 1;
 
 impl Validate for SockSpec {
     fn validate(&self, report: &mut Report) {
-        // The unix socket path limit is a byte count, and #[confval(length)]
-        // bounds the character count, so a multibyte path could pass a length
-        // attribute and still fail at bind time. confval's docs route byte
-        // count limits to the Validate body.
+        // The unix socket path limit is a byte count. The #[confval(length)]
+        // attribute bounds the character count, so a multibyte path could
+        // pass the length check and still fail at bind time. That is why the
+        // check lives in the Validate body.
         if self.path.value.len() > SOCK_PATH_MAX {
             report
                 .error(format!(

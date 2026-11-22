@@ -2,8 +2,8 @@
 check-code-quality:
     #!/usr/bin/env bash
     set -euo pipefail
-    # Duplication thresholds are a ratchet: they sit just above the state at
-    # adoption and tighten as duplicate groups are paid down.
+    # The duplication thresholds are a ratchet. They sit slightly above the state
+    # at adoption and tighten as duplicate groups are removed.
     cargo dupes --exclude tests --exclude benches --exclude examples --exclude-tests check --max-exact 80 --max-near 8 --max-exact-percent 16.0 --max-near-percent 1.2
     cargo machete
     cargo fmt --check

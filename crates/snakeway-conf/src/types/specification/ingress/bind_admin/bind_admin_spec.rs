@@ -64,8 +64,8 @@ impl Validate for BindAdminSpec {
             {
                 report
                     .error(format!(
-                        "invalid admin bind address: {} (the admin API binds one interface, \
-                         and unspecified, multicast, and link-local addresses cannot serve it)",
+                        "invalid admin bind address: {} (the admin API binds one interface. \
+                         Unspecified, multicast, and link-local addresses cannot serve it)",
                         self.interface.value
                     ))
                     .at(self.interface.span)

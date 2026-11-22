@@ -74,9 +74,9 @@ impl Validate for BindSpec {
                 .emit();
         }
 
-        // HTTP-01 needs a plain HTTP listener that answers the CA challenge,
-        // and only the redirect listener serves it. Without this pairing the
-        // order can never validate and the ACME loop retries forever.
+        // HTTP-01 needs a plain HTTP listener that answers the CA challenge.
+        // Only the redirect listener serves it. Without this pairing the
+        // order can never validate, and the ACME loop retries forever.
         if let Some(tls) = &self.tls
             && let TlsTerminationSpec::Acme { challenge, .. } = &tls.value
             && challenge.value == AcmeChallenge::Http01.as_str()

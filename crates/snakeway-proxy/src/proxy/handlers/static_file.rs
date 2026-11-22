@@ -51,10 +51,8 @@ impl StaticFileHandler {
         )
         .await;
 
-        // Run on_response devices before writing anything.
-        // The devices change headers and status, so they must run first to
-        // have any effect. If the pipeline is run after the response was
-        // written, then static responses would not run the devices.
+        // The devices change headers and status, so they must run before the
+        // response is written to have any effect.
         let request_id = ctx
             .extensions
             .get::<RequestId>()

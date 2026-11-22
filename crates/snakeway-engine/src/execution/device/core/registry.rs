@@ -235,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn devices_of_one_kind_keep_their_config_order() {
+    fn devices_of_one_kind_are_both_loaded() {
         // Arrange
         let cfg = config_with_devices(vec![
             DeviceConfig::NetworkPolicy(NetworkPolicyDeviceConfig {
@@ -254,5 +254,6 @@ mod tests {
 
         // Assert
         assert_eq!(registry.all().len(), 2);
+        assert!(registry.all().iter().all(|d| d.name() == "Network Policy"));
     }
 }

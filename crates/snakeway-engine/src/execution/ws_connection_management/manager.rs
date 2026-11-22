@@ -21,8 +21,8 @@ impl WsConnectionManager {
         }
     }
 
-    /// Get (or lazily create) the connection state for a route, and store the
-    /// limit in force now, so a reload that changed it applies to
+    /// Get (or lazily create) the connection state for a route.
+    /// Store the limit in force now, so a reload that changed it applies to
     /// acquisitions from this call onward.
     pub(crate) fn route_state(
         &self,
