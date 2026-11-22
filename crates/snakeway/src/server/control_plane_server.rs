@@ -33,6 +33,7 @@ pub struct ControlPlaneServer {
     config_path: Option<PathBuf>,
     state: Arc<ArcSwap<RuntimeState>>,
     traffic_manager: Arc<TrafficManager>,
+    connection_manager: Arc<WsConnectionManager>,
     reload: Arc<ReloadHandle>,
     cert_manager: Option<Arc<CertManager>>,
     control_rt: tokio::runtime::Runtime,
@@ -141,6 +142,7 @@ impl ControlPlaneServer {
             config_path,
             state,
             traffic_manager,
+            connection_manager,
             reload,
             cert_manager,
             control_rt,
@@ -224,6 +226,7 @@ impl ControlPlaneServer {
                 let state = self.state.clone();
                 let config_path = config_path.clone();
                 let traffic = Arc::clone(&self.traffic_manager);
+                let connection_manager = Arc::clone(&self.connection_manager);
                 let cert_manager_for_reload = self.cert_manager.clone();
                 let mut current_config = self.config.clone();
 
@@ -331,6 +334,15 @@ impl ControlPlaneServer {
                                 let new_snapshot =
                                     TrafficSnapshot::from_runtime(state.load().as_ref());
                                 traffic.update(new_snapshot);
+
+                                // Drop websocket state for routes the new
+                                // configuration removed, keeping any that
+                                // still hold connections until they drain.
+                                let live_ws_routes = state.load().websocket_route_ids();
+                                connection_manager.retain(|route_id| {
+                                    live_ws_routes.contains(route_id)
+                                });
+
                                 reload.record_outcome(epoch, ReloadOutcome::Applied);
                             }
                             Err(reload_err) => match reload_err {

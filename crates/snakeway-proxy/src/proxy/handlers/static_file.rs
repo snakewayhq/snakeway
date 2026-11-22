@@ -51,11 +51,32 @@ impl StaticFileHandler {
         )
         .await;
 
+        // The devices change headers and status, so they must run before the
+        // response is written to have any effect.
+        let request_id = ctx
+            .extensions
+            .get::<RequestId>()
+            .map(|id| id.as_str().to_owned());
+        let mut resp_ctx = ResponseCtx::new(
+            request_id,
+            static_resp.status,
+            static_resp.headers,
+            Vec::new(),
+        );
+
+        match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
+            DeviceResult::Continue => {}
+            DeviceResult::Respond(_) => {}
+            DeviceResult::Error(err) => {
+                tracing::warn!("device error on_response (static): {err}");
+            }
+        }
+
         // Build response header
-        let mut resp = ResponseHeader::build(static_resp.status, None)?;
+        let mut resp = ResponseHeader::build(resp_ctx.status, None)?;
 
         // Copy headers
-        for (name, value) in static_resp.headers.iter() {
+        for (name, value) in resp_ctx.headers.iter() {
             resp.insert_header(name, value)?;
         }
 
@@ -142,26 +163,6 @@ impl StaticFileHandler {
 
                     session.write_response_body(None, true).await?;
                 }
-            }
-        }
-
-        // Run on_response devices
-        let request_id = ctx
-            .extensions
-            .get::<RequestId>()
-            .map(|id| id.as_str().to_owned());
-        let mut resp_ctx = ResponseCtx::new(
-            request_id,
-            static_resp.status,
-            static_resp.headers,
-            Vec::new(),
-        );
-
-        match DevicePipeline::run_on_response(devices.all(), &mut resp_ctx) {
-            DeviceResult::Continue => {}
-            DeviceResult::Respond(_) => {}
-            DeviceResult::Error(err) => {
-                tracing::warn!("device error on_response (static): {err}");
             }
         }
 

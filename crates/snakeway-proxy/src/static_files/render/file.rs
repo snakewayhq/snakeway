@@ -140,6 +140,11 @@ pub(crate) async fn render_file(
             .await
             .map_err(|_| ServeError::Io)?;
 
+        // The file may have changed size since the range was validated against
+        // the metadata. Fit the range to the bytes actually read so the slice
+        // below cannot exceed the buffer.
+        let range = range.and_then(|r| r.fit_to_len(buf.len() as u64));
+
         // Apply compression if appropriate (prefer brotli, fallback to gzip).
         if let Some(encoding) = preferred_enc {
             let (compressed, use_compressed) = apply_compression(&encoding, &buf);
@@ -161,7 +166,7 @@ pub(crate) async fn render_file(
         if let Some(range) = range {
             let slice = &buf[range.start as usize..=range.end as usize];
 
-            headers.content_range(range, metadata.len());
+            headers.content_range(range, buf.len() as u64);
             headers.content_length(&slice.len().to_string());
 
             return Ok(StaticResponse {

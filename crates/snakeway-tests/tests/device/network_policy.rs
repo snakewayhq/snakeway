@@ -78,6 +78,29 @@ fn network_policy_requires_identity_device() {
 }
 
 #[test]
+fn network_policy_enforces_even_when_identity_loads_last() {
+    // Arrange
+    // Reverse the config order so the identity device loads after the network
+    // policy, the same position a file named 99-identity.hcl produces on disk.
+    let mut cfg = ConfigBuilder::default()
+        .with_http_ingress()
+        .with_identity_device(ConfigBuilder::make_identity_device_with_trusted_proxy())
+        .with_network_policy(ConfigBuilder::make_network_policy_device_spec(vec![
+            "10.0.0.0/8",
+        ]))
+        .build();
+    cfg.devices.reverse();
+
+    let srv = TestServer::start_http_upstream_with_config(&mut cfg);
+
+    // Act
+    let res = srv.get("/api").send().unwrap();
+
+    // Assert
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
 fn network_policy_denies_forwarded_request_when_forwarding_not_allowed() {
     // Arrange
     let mut np = ConfigBuilder::make_network_policy_device_spec(vec!["0.0.0.0/0"]);

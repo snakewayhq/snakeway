@@ -1,4 +1,4 @@
-use crate::execution::route::types::RouteRuntime;
+use crate::execution::route::types::{RouteId, RouteRuntime};
 use anyhow::{Result, anyhow};
 
 #[derive(Debug)]
@@ -44,6 +44,21 @@ impl Default for Router {
 impl Router {
     pub fn new() -> Self {
         Self { routes: Vec::new() }
+    }
+
+    /// The ids of the routes this router would admit a websocket upgrade on.
+    pub fn websocket_route_ids(&self) -> Vec<RouteId> {
+        self.routes
+            .iter()
+            .filter_map(|entry| match &entry.kind {
+                RouteRuntime::Service {
+                    id,
+                    allow_websocket: true,
+                    ..
+                } => Some(id.clone()),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn add_route(&mut self, hosts: Vec<String>, path: &str, kind: RouteRuntime) -> Result<()> {

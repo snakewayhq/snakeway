@@ -2,6 +2,46 @@ use crate::types::{BindInterfaceSpec, IngressSpec, report_admin_auth_missing};
 use confval::prelude::{Located, Report, Span, Validate};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use std::path::{Path, PathBuf};
+
+/// Reduces a socket path to the form used for duplicate detection.
+///
+/// For example, `canonical_sock_path("/tmp/./app.sock")` returns
+/// `/tmp/app.sock`.
+/// `//tmp//app.sock` and `/tmp/app.sock/` also reduce to that same form.
+///
+/// Pushing each component onto a fresh `PathBuf` produces the reduced form
+/// without touching the filesystem.
+///
+/// `..` components are not reduced.
+/// For example, `canonical_sock_path("/tmp/../app.sock")` returns
+/// `/tmp/../app.sock`.
+/// Lexical `..` resolution can disagree with the kernel when a path
+/// component is a symlink.
+/// If `/var/www` is a symlink to `/srv/www`, the kernel resolves
+/// `/var/www/../app.sock` to `/srv/app.sock`, while lexical resolution
+/// reads it as `/var/app.sock`.
+/// Those are two different sockets, so treating them as one would reject a
+/// valid configuration.
+pub(crate) fn canonical_sock_path(path: &str) -> String {
+    Path::new(path)
+        .components()
+        .fold(PathBuf::new(), |mut acc, component| {
+            acc.push(component);
+            acc
+        })
+        .display()
+        .to_string()
+}
+
+/// The socket address literal for a declared interface and port, or `None`
+/// when either is not representable. The literal is the shared key that keeps
+/// bind, bind_admin, and redirect listeners unique against each other.
+fn listener_key(interface: &str, port: i64) -> Option<String> {
+    let interface: Result<BindInterfaceSpec, _> = interface.try_into();
+    let port = u16::try_from(port).ok()?;
+    interface.ok()?.socket_address_literal(port).into()
+}
 
 /// Record `key` as seen at `span`, or report a duplicate against the first
 /// occurrence. The message is built lazily, only when a duplicate is found.
@@ -28,7 +68,6 @@ fn report_duplicate<K, F>(
 
 pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mut Report) {
     let mut seen_listener_keys: HashMap<String, Span> = HashMap::new();
-    let mut seen_redirect_ports: HashMap<i64, Span> = HashMap::new();
     let mut seen_upstream_socks: HashMap<String, Span> = HashMap::new();
     let mut seen_service_names: HashMap<String, Span> = HashMap::new();
 
@@ -45,6 +84,25 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                 .emit();
         }
 
+        // An ingress with only bind_admin has no listener to attach its
+        // services and static files to, so lowering drops them. This is a
+        // warning rather than an error, so an existing config never starts
+        // failing.
+        if maybe_bind.is_none() && maybe_bind_admin.is_some() {
+            let service_count = ingress.value.services.len();
+            let static_file_count = ingress.value.static_files.len();
+            if service_count > 0 || static_file_count > 0 {
+                report
+                    .warning(format!(
+                        "this ingress has no bind, so its {} service(s) and {} static file \
+                         block(s) are ignored",
+                        service_count, static_file_count
+                    ))
+                    .at(ingress.span)
+                    .emit();
+            }
+        }
+
         if let Some(bind) = maybe_bind {
             validate_listener_uniqueness(
                 &bind.value.interface.value,
@@ -54,14 +112,19 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
                 &mut seen_listener_keys,
             );
 
-            if let Some(redirect) = &bind.value.redirect_http_to_https {
-                let port = redirect.value.port.value;
+            // The redirect listener binds its own socket, so it must be unique
+            // against every other listener socket, including the bind it hangs
+            // off.
+            if let Some(redirect) = &bind.value.redirect_http_to_https
+                && let Some(key) =
+                    listener_key(&bind.value.interface.value, redirect.value.port.value)
+            {
                 report_duplicate(
-                    &mut seen_redirect_ports,
-                    port,
+                    &mut seen_listener_keys,
+                    key.clone(),
                     redirect.value.port.span,
                     report,
-                    || format!("duplicate redirect_http_to_https port: {port}"),
+                    || format!("duplicate redirect listener address: {key}"),
                 );
             }
         }
@@ -117,13 +180,33 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 
             for upstream in &service.value.upstreams {
                 if let Some(sock) = &upstream.value.sock {
+                    let canonical = canonical_sock_path(&sock.value.path.value);
+
                     report_duplicate(
                         &mut seen_upstream_socks,
-                        sock.value.path.value.clone(),
+                        canonical,
                         sock.value.path.span,
                         report,
                         || format!("duplicate upstream sock: {}", sock.value.path.value),
                     );
+                }
+            }
+        }
+
+        for static_files in &ingress.value.static_files {
+            for route in &static_files.value.routes {
+                if !seen_route_paths.insert(route.value.path.value.clone()) {
+                    report
+                        .error(format!(
+                            "duplicate route path within the same listener: {}",
+                            route.value.path.value
+                        ))
+                        .at(route.value.path.span)
+                        .help(
+                            "Each route path must be unique per listener. Use different path \
+                             prefixes or move the route to a separate ingress file.",
+                        )
+                        .emit();
                 }
             }
         }
@@ -173,6 +256,7 @@ mod tests {
     use super::validate_ingresses;
     use crate::types::*;
     use confval::prelude::{Located, Report};
+    use tempfile::NamedTempFile;
 
     fn minimal_service() -> Located<ServiceSpec> {
         Located::detached(ServiceSpec {
@@ -387,6 +471,48 @@ mod tests {
     }
 
     #[test]
+    fn equivalent_sock_paths_are_considered_one_socket() {
+        // Arrange
+        // The second service points at the same socket through a
+        // redundant path component.
+        let mut report = Report::new();
+        let make_service = |name: &str, path: &str| {
+            Located::detached(ServiceSpec {
+                name: Located::detached(name.to_string()),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    path: Located::detached("/".to_string()),
+                    hosts: vec![Located::detached("example.com".to_string())],
+                    ..Default::default()
+                })],
+                upstreams: vec![sock_upstream(path)],
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                ..Default::default()
+            })
+        };
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![
+                make_service("svc-a", "/tmp/app.sock"),
+                make_service("svc-b", "/tmp/./app.sock"),
+            ],
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate upstream sock")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
     fn ingress_missing_bind_produces_error() {
         // Arrange
         let mut report = Report::new();
@@ -478,7 +604,7 @@ mod tests {
             report
                 .issues()
                 .iter()
-                .any(|e| e.message == "duplicate redirect_http_to_https port: 9090")
+                .any(|e| e.message.contains("duplicate redirect listener address"))
         );
     }
 
@@ -573,5 +699,342 @@ mod tests {
             "issues: {:?}",
             report.issues()
         );
+    }
+
+    fn static_files_with_paths(paths: &[&str]) -> Vec<Located<StaticFilesSpec>> {
+        vec![Located::detached(StaticFilesSpec {
+            routes: paths
+                .iter()
+                .map(|p| {
+                    Located::detached(StaticRouteSpec {
+                        path: Located::detached(p.to_string()),
+                        file_dir: Located::detached(std::env::temp_dir()),
+                        ..Default::default()
+                    })
+                })
+                .collect(),
+        })]
+    }
+
+    #[test]
+    fn static_route_path_requires_a_leading_slash() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            static_files: static_files_with_paths(&["assets"]),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message == "path is not a valid route path: \"assets\""),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn duplicate_static_and_service_route_path_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![minimal_service()],
+            static_files: static_files_with_paths(&["/"]),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate route path")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn duplicate_static_route_paths_are_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            static_files: static_files_with_paths(&["/dup", "/dup"]),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate route path")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn redirect_port_on_a_different_interface_is_allowed() {
+        // Arrange
+        let mut report = Report::new();
+        let make_ingress = |interface: &str, bind_port: i64| {
+            let mut bind = minimal_bind();
+            bind.interface = Located::detached(interface.to_string());
+            bind.port = Located::detached(bind_port);
+            bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
+                domains: vec![Located::detached("example.com".to_string())],
+                challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
+            }));
+            bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
+                port: Located::detached(9090),
+                status: Located::detached(308),
+            }));
+            Located::detached(IngressSpec {
+                bind: Some(Located::detached(bind)),
+                ..Default::default()
+            })
+        };
+
+        // Act
+        validate_ingresses(
+            &[
+                make_ingress("127.0.0.1", 8080),
+                make_ingress("127.0.0.2", 8081),
+            ],
+            &mut report,
+        );
+
+        // Assert
+        assert!(
+            !report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("redirect")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn redirect_port_colliding_with_a_bind_admin_port_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let mut bind = minimal_bind();
+        bind.tls = Some(Located::detached(TlsTerminationSpec::Acme {
+            domains: vec![Located::detached("example.com".to_string())],
+            challenge: Located::detached(AcmeChallenge::Http01.as_str().to_string()),
+        }));
+        bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
+            port: Located::detached(9000),
+            status: Located::detached(308),
+        }));
+        let cert = NamedTempFile::new().unwrap();
+        let key = NamedTempFile::new().unwrap();
+        let token = NamedTempFile::new().unwrap();
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(bind)),
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("127.0.0.1".to_string()),
+                port: Located::detached(9000),
+                tls: Located::detached(TlsTerminationSpec::Manual {
+                    cert: Located::detached(cert.path().to_path_buf()),
+                    key: Located::detached(key.path().to_path_buf()),
+                }),
+                auth: Some(Located::detached(AdminAuthSpec {
+                    bearer: Some(Located::detached(BearerAuthSpec {
+                        token_file: Located::detached(token.path().to_path_buf()),
+                    })),
+                })),
+            })),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert: the shared listener key set catches the collision whichever
+        // party registered the address first, so accept either wording.
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate") && e.message.contains("127.0.0.1:9000")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn redirect_port_equal_to_its_own_bind_port_is_rejected() {
+        // Arrange
+        let mut report = Report::new();
+        let mut bind = minimal_bind();
+        bind.redirect_http_to_https = Some(Located::detached(RedirectSpec {
+            port: Located::detached(8080),
+            status: Located::detached(308),
+        }));
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(bind)),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate redirect listener address")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn services_on_an_admin_only_ingress_warn() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("127.0.0.1".to_string()),
+                port: Located::detached(9000),
+                auth: Some(Located::detached(AdminAuthSpec::default())),
+                ..Default::default()
+            })),
+            services: vec![minimal_service()],
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("are ignored")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn an_admin_only_ingress_without_services_warns_nothing() {
+        // Arrange
+        let mut report = Report::new();
+        let ingress = Located::detached(IngressSpec {
+            bind_admin: Some(Located::detached(BindAdminSpec {
+                interface: Located::detached("127.0.0.1".to_string()),
+                port: Located::detached(9000),
+                auth: Some(Located::detached(AdminAuthSpec::default())),
+                ..Default::default()
+            })),
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            !report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("are ignored")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+}
+
+#[cfg(test)]
+mod canonical_sock_path_tests {
+    use super::canonical_sock_path;
+
+    #[test]
+    fn an_interior_dot_component_is_removed() {
+        // Arrange
+        let path = "/tmp/./app.sock";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "/tmp/app.sock");
+    }
+
+    #[test]
+    fn a_parent_dir_component_stays() {
+        // Arrange
+        let path = "/tmp/../app.sock";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "/tmp/../app.sock");
+    }
+
+    #[test]
+    fn a_leading_dot_component_stays() {
+        // Arrange
+        let path = "./app.sock";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "./app.sock");
+    }
+
+    #[test]
+    fn a_trailing_slash_is_removed() {
+        // Arrange
+        let path = "/tmp/app.sock/";
+
+        // Act
+        let canonical = canonical_sock_path(path);
+
+        // Assert
+        assert_eq!(canonical, "/tmp/app.sock");
+    }
+
+    #[test]
+    fn declared_forms_of_one_socket_match_and_distinct_declarations_do_not() {
+        // The property the duplicate check relies on: two declared paths that
+        // the kernel resolves to the same socket match after normalization,
+        // unless the difference is a `..` component, which stays unreduced.
+        let cases = [
+            ("/tmp/./app.sock", "/tmp/app.sock", true),
+            ("//tmp//app.sock", "/tmp/app.sock", true),
+            ("/./tmp/app.sock", "/tmp/app.sock", true),
+            ("/tmp/app.sock/", "/tmp/app.sock", true),
+            ("/tmp/../app.sock", "/app.sock", false),
+            ("./app.sock", "app.sock", false),
+        ];
+
+        for (first, second, expected) in cases {
+            let equal = canonical_sock_path(first) == canonical_sock_path(second);
+            assert_eq!(equal, expected, "{first} compared with {second}");
+        }
     }
 }

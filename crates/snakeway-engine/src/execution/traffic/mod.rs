@@ -13,7 +13,7 @@ mod upgrade_state;
 mod admission_guard;
 
 pub use admission_guard::*;
-pub use decision::SelectedUpstream;
+pub use decision::{SelectedUpstream, TrafficDecision};
 pub use director::*;
 pub use manager::*;
 pub use protocol_mode::{ProtocolFacts, ProtocolMode};

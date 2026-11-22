@@ -29,10 +29,21 @@ impl ServiceRouteConfig {
             service: service.to_string(),
             listener: listener.to_string(),
             hosts: spec.hosts.iter().map(|h| h.value.clone()).collect(),
-            path: spec.path.value.clone(),
+            path: canonical_route_path(&spec.path.value),
             allow_websocket: spec.enable_websocket.value,
             ws_max_connections: narrow::opt_i64_to_usize(&spec.ws_max_connections, report)?,
         })
+    }
+}
+
+// Requests are normalized to strip trailing slashes, so a route declared with
+// one would never match. The config keeps the operator's intent by storing the
+// same form the proxy matches on.
+pub(crate) fn canonical_route_path(path: &str) -> String {
+    if path.len() > 1 && path.ends_with('/') {
+        path.trim_end_matches('/').to_string()
+    } else {
+        path.to_string()
     }
 }
 
@@ -40,6 +51,40 @@ impl ServiceRouteConfig {
 mod tests {
     use super::*;
     use confval::prelude::Located;
+
+    #[test]
+    fn a_trailing_slash_route_path_is_normalized() {
+        // Arrange
+        let spec = ServiceRouteSpec {
+            hosts: vec![Located::detached("example.com".to_string())],
+            path: Located::detached("/api/".to_string()),
+            ..Default::default()
+        };
+        let mut report = Report::new();
+
+        // Act
+        let config = ServiceRouteConfig::new("api", "listener", &spec, &mut report).unwrap();
+
+        // Assert
+        assert_eq!(config.path, "/api");
+    }
+
+    #[test]
+    fn the_root_path_keeps_its_slash() {
+        // Arrange
+        let spec = ServiceRouteSpec {
+            hosts: vec![Located::detached("example.com".to_string())],
+            path: Located::detached("/".to_string()),
+            ..Default::default()
+        };
+        let mut report = Report::new();
+
+        // Act
+        let config = ServiceRouteConfig::new("api", "listener", &spec, &mut report).unwrap();
+
+        // Assert
+        assert_eq!(config.path, "/");
+    }
 
     #[test]
     fn new_maps_fields_correctly() {

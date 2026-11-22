@@ -20,6 +20,24 @@ impl TrafficManager {
         entry.allow_request((service_id, upstream_id), &params)
     }
 
+    /// Release a half-open probe slot whose request never started, for
+    /// example when selection or peer build failed after `circuit_allows`
+    /// admitted the probe. No-op when the breaker is off or the circuit is
+    /// not half-open.
+    pub fn circuit_rollback(&self, service_id: &ServiceId, upstream_id: &UpstreamId) {
+        if !self
+            .circuit_params
+            .get(service_id)
+            .is_some_and(|p| p.enable)
+        {
+            return;
+        }
+
+        let key = (service_id.clone(), *upstream_id);
+        let mut entry = self.circuit.entry(key).or_default();
+        entry.rollback_half_open();
+    }
+
     /// Called once per request, after we know whether it succeeded.
     /// `started` must be true only if `circuit_allows()` returned true for this request.
     pub(crate) fn circuit_on_end(

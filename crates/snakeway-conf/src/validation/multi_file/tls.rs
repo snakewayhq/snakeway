@@ -33,12 +33,11 @@ pub(crate) fn validate_tls(
 
         match &tls_automation_cfg.value.cert_store.value {
             CertStoreSpec::Memory => {
-                // Nothing to validate, but should drop a warning directly here.
-                // Adding a warning to the report will fail validation.
-                // This is kind of a gray area.
-                tracing::warn!(
-                    "ACME configured with memory store. Certs will be discarded on restart."
-                );
+                report
+                    .warning(
+                        "ACME configured with memory store. Certs will be discarded on restart.",
+                    )
+                    .emit();
             }
             CertStoreSpec::Filesystem { .. } => {
                 // cert_dir validation (empty check, create-or-verify) is handled
@@ -137,6 +136,30 @@ mod tests {
     }
 
     #[test]
+    fn acme_with_memory_store_warns_on_the_report() {
+        // Arrange
+        let mut report = Report::new();
+
+        // Act
+        validate_tls(
+            &ServerSpec {
+                tls_automation: Some(Located::detached(minimal_tls_automation())),
+                ..Default::default()
+            },
+            &[ingress(minimal_bind_with_acme())],
+            &mut report,
+        );
+
+        // Assert
+        assert!(
+            report.issues().iter().any(|i| i.message
+                == "ACME configured with memory store. Certs will be discarded on restart."),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
     fn tls_automation_without_tls_listeners_produces_warning() {
         // Arrange
         let mut report = Report::new();
@@ -178,6 +201,11 @@ mod tests {
         validate_tls(&server, &[ingress(minimal_bind_with_acme())], &mut report);
 
         // Assert
-        assert!(!report.has_issues(), "got: {:?}", report.issues());
+        assert_eq!(report.issues().len(), 1, "got: {:?}", report.issues());
+        assert!(
+            report.issues()[0].message.contains("memory store"),
+            "got: {:?}",
+            report.issues()
+        );
     }
 }
