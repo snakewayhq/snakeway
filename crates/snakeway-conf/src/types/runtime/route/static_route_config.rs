@@ -1,3 +1,4 @@
+use crate::types::runtime::route::service_route_config::canonical_route_path;
 use crate::types::{CachePolicySpec, CompressionOptsSpec, StaticRouteSpec};
 use confval::prelude::{Lower, Report, narrow};
 use serde::{Deserialize, Serialize};
@@ -53,7 +54,7 @@ impl StaticRouteConfig {
         Some(Self {
             listener: listener.to_string(),
             hosts: spec.hosts.iter().map(|h| h.value.clone()).collect(),
-            path: spec.path.value.clone(),
+            path: canonical_route_path(&spec.path.value),
             file_dir: spec.file_dir.value.clone(),
             index: spec.index.as_ref().map(|i| i.value.clone()),
             directory_listing: spec.directory_listing.value,
