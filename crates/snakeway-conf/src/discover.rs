@@ -1,11 +1,15 @@
 use crate::validation::ConfigError;
+use confval::prelude::Report;
 use glob::glob;
 use std::path::{Path, PathBuf};
 
 /// Discovers files matching a glob pattern.
 ///
 /// Searches the filesystem for all files that match the given glob pattern
-/// and returns their paths in sorted order. Invalid paths are silently filtered out.
+/// and returns their paths in sorted order. Entries that cannot be read are
+/// skipped with a warning on the report, and a pattern that matches nothing
+/// warns too, so an operator learns at check time that an include loads no
+/// files.
 ///
 /// # Arguments
 ///
@@ -18,16 +22,40 @@ use std::path::{Path, PathBuf};
 /// # Errors
 ///
 /// Returns `ConfigError::Glob` if the pattern is malformed or cannot be parsed.
-pub(crate) fn discover(root: &Path, glob_pattern: &str) -> Result<Vec<PathBuf>, ConfigError> {
+pub(crate) fn discover(
+    root: &Path,
+    glob_pattern: &str,
+    report: &mut Report,
+) -> Result<Vec<PathBuf>, ConfigError> {
     let pattern = &resolve_glob(root, glob_pattern)?;
     let mut paths: Vec<_> = glob(pattern)
         .map_err(|e| ConfigError::Glob {
             pattern: pattern.to_string(),
             source: e,
         })?
-        .filter_map(Result::ok)
+        .filter_map(|entry| match entry {
+            Ok(path) => Some(path),
+            Err(e) => {
+                report
+                    .warning(format!(
+                        "include pattern {} skipped an unreadable path: {e}",
+                        glob_pattern
+                    ))
+                    .emit();
+                None
+            }
+        })
         .filter(|p| p.is_file())
         .collect();
+
+    if paths.is_empty() {
+        report
+            .warning(format!(
+                "include pattern {} matched no files; nothing is loaded from it",
+                glob_pattern
+            ))
+            .emit();
+    }
 
     paths.sort();
     Ok(paths)
@@ -79,7 +107,8 @@ mod tests {
         fs::write(root.join("c.txt"), "").unwrap();
 
         // Act
-        let result = discover(root, "*.hcl").unwrap();
+        let mut report = Report::new();
+        let result = discover(root, "*.hcl", &mut report).unwrap();
 
         // Assert
         assert_eq!(result, vec![root.join("a.hcl"), root.join("b.hcl"),]);
@@ -96,7 +125,8 @@ mod tests {
         fs::write(root.join("m.hcl"), "").unwrap();
 
         // Act
-        let result = discover(root, "*.hcl").unwrap();
+        let mut report = Report::new();
+        let result = discover(root, "*.hcl", &mut report).unwrap();
 
         // Assert
         assert_eq!(
@@ -117,7 +147,8 @@ mod tests {
         fs::write(root.join("nested/inner/b.hcl"), "").unwrap();
 
         // Act
-        let result = discover(root, "**/*.hcl").unwrap();
+        let mut report = Report::new();
+        let result = discover(root, "**/*.hcl", &mut report).unwrap();
 
         // Assert
         assert_eq!(
@@ -139,7 +170,8 @@ mod tests {
         fs::write(root.join("a.txt"), "").unwrap();
 
         // Act
-        let result = discover(root, "*.hcl").unwrap();
+        let mut report = Report::new();
+        let result = discover(root, "*.hcl", &mut report).unwrap();
 
         // Assert
         assert!(result.is_empty());
@@ -154,10 +186,63 @@ mod tests {
         fs::create_dir(root.join("config.hcl")).unwrap();
 
         // Act
-        let result = discover(root, "*.hcl").unwrap();
+        let mut report = Report::new();
+        let result = discover(root, "*.hcl", &mut report).unwrap();
 
         // Assert
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn discover_warns_when_a_path_is_unreadable() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let secret = dir.path().join("secret");
+        fs::create_dir(&secret).unwrap();
+        fs::write(secret.join("a.hcl"), "").unwrap();
+        let mut permissions = fs::metadata(&secret).unwrap().permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            permissions.set_mode(0o000);
+        }
+        fs::set_permissions(&secret, permissions).unwrap();
+        let mut report = Report::new();
+
+        // Act
+        let result = discover(dir.path(), "secret/*.hcl", &mut report).unwrap();
+
+        // Assert
+        assert!(result.is_empty());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message.contains("unreadable path")),
+            "issues: {:?}",
+            report.issues()
+        );
+    }
+
+    #[test]
+    fn discover_warns_when_the_pattern_matches_nothing() {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let mut report = Report::new();
+
+        // Act
+        let result = discover(dir.path(), "*.hcl", &mut report).unwrap();
+
+        // Assert
+        assert!(result.is_empty());
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|i| i.message.contains("matched no files")),
+            "issues: {:?}",
+            report.issues()
+        );
     }
 
     #[test]
@@ -167,7 +252,8 @@ mod tests {
         let root = dir.path();
 
         // Act
-        let err = discover(root, "[").unwrap_err();
+        let mut report = Report::new();
+        let err = discover(root, "[", &mut report).unwrap_err();
 
         // Assert
         match err {
