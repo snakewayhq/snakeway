@@ -81,6 +81,43 @@ fn health_check_removes_upstream_on_5xx_without_circuit_breaker() {
         std::thread::sleep(Duration::from_millis(50));
     }
 }
+
+#[test]
+fn a_request_with_no_healthy_upstream_returns_502() {
+    // Arrange
+    // One upstream with a health check that removes it after the
+    // first failure, so the next decision finds no healthy upstream.
+    let mut cfg = ConfigBuilder::default()
+        .with_custom_ingress(vec![ServiceSpec {
+            name: Located::detached("api".to_string()),
+            health_check: Some(Located::detached(HealthCheckSpec {
+                enable: Located::detached(true),
+                failure_threshold: Located::detached(1),
+                unhealthy_cooldown_seconds: Located::detached(60),
+            })),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached("/api".to_string()),
+                ..Default::default()
+            })],
+            upstreams: vec![Located::detached(ConfigBuilder::make_tcp_upstream(
+                UPSTREAM_PORT_PRIMARY,
+                false,
+            ))],
+            ..Default::default()
+        }])
+        .build();
+    let srv = TestServer::start_with_config(&mut cfg, start_http_upstream_that_returns_5xx);
+
+    // Act
+    // The first request fails the upstream, which leaves the rotation.
+    let _ = srv.get("/api").send().unwrap();
+    let second = srv.get("/api").send().unwrap();
+
+    // Assert
+    // With the only upstream out of rotation, the proxy answers 502.
+    assert_eq!(second.status(), StatusCode::BAD_GATEWAY);
+}
 fn parse_upstream_health(json: &serde_json::Value) -> Vec<(String, bool)> {
     let mut result = Vec::new();
     if let Some(services) = json.get("services").and_then(|s| s.as_object()) {

@@ -1,9 +1,31 @@
 use crate::proxy::TrafficProxy;
 use pingora::prelude::HttpPeer;
-use pingora::{BError, Custom, Error};
+use pingora::{BError, Custom, Error, ErrorSource};
 use snakeway_engine::ctx::RequestCtx;
 use snakeway_engine::runtime::{RuntimeState, UpstreamRuntime, UpstreamTlsRuntime};
 use snakeway_engine::traffic::{ProtocolMode, SelectedUpstream, ServiceId, TrafficDecision};
+
+/// An error for a request that cannot be sent upstream.
+///
+/// Use this when the decision finds no healthy upstream, when the selected
+/// upstream is missing from the running state, or when the peer cannot be
+/// built.
+/// The Upstream error source makes Pingora return 502 to the client.
+/// The Unset source would return 500, which reports a fault in the proxy
+/// itself.
+///
+/// The transport failure classifier matches no transport failure for
+/// `Custom` errors, so an attempt that fails with this error is recorded as
+/// a failure for health and circuit accounting.
+/// Errors with this source are not retried.
+pub(crate) fn no_upstream_error(context: &'static str) -> BError {
+    Error::create(
+        Custom(context),
+        ErrorSource::Upstream,
+        Some("no upstream available for this request".into()),
+        None,
+    )
+}
 
 impl TrafficProxy {
     /// Select an upstream for the given request.
@@ -23,14 +45,14 @@ impl TrafficProxy {
             .decide(ctx, &snapshot, service_id, &self.proxy_ctx.traffic_manager)
             .map_err(|e| {
                 tracing::error!(error = ?e, "traffic decision failed");
-                Error::new(Custom("traffic decision failed"))
+                no_upstream_error("traffic decision failed")
             })?;
 
         tracing::debug!("decision reason: {}", decision.reason);
 
-        // A successful decision may have consumed a half-open circuit slot.
-        // When selection fails, no guard will exist to return the slot, so
-        // this function releases it before propagating the error.
+        // Circuit admission in the decision may have consumed a half-open
+        // slot. If selection fails, no guard will exist to return the slot,
+        // so this function releases it before propagating the error.
         let selected = Self::resolve_selected_upstream(state, service_name, &decision);
         if selected.is_err() {
             self.proxy_ctx
@@ -50,14 +72,14 @@ impl TrafficProxy {
         let service = state
             .services
             .get(service_name)
-            .ok_or_else(|| Error::new(Custom("unknown service")))?;
+            .ok_or_else(|| no_upstream_error("unknown service"))?;
 
         // Get the upstream based on the decision from the Traffic Director.
         let upstream = service
             .upstreams
             .iter()
             .find(|u| u.id() == decision.upstream_id)
-            .ok_or_else(|| Error::new(Custom("selected upstream not found")))?;
+            .ok_or_else(|| no_upstream_error("selected upstream not found"))?;
 
         Ok(SelectedUpstream {
             upstream,
@@ -101,7 +123,7 @@ impl TrafficProxy {
                     })
             }
         }
-        .map_err(|_| Error::new(Custom("http peer creation failed")))?;
+        .map_err(|_| no_upstream_error("http peer creation failed"))?;
 
         // Apply upstream timeouts.
         // The read timeout is per-read (idle), so it bounds a stalled origin
