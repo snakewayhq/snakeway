@@ -1,0 +1,73 @@
+---
+title: Configuration Overview
+---
+
+Snakeway uses a flexible, directory-based configuration model designed for both simplicity and scale.
+
+## The entry point
+
+The heart of Snakeway's configuration is the `snakeway.hcl` file.
+This file defines the global server settings and modular configuration file locations.
+
+A typical `snakeway.hcl` looks like this:
+
+```hcl
+server {
+  version  = 1
+  pid_file = "/var/run/snakeway.pid"
+  ca_file  = "/path/to/certs/ca.pem"
+}
+
+include {
+  devices   = "device.d/*.hcl"
+  ingresses = "ingress.d/*.hcl"
+}
+```
+
+## Modular configuration
+
+The `include` section allows you to split your configuration into logical parts using glob patterns.
+
+- **`ingress.d/`**: Define your [Ingress](/docs/configuration/ingress) files.
+- **`device.d/`**: Define the [Devices](../extension/understanding-devices.md) that should be active in the request pipeline.
+
+When Snakeway starts (or reloads), it discovers all files matching these patterns, parses them, and merges them into a single unified runtime configuration.
+This is discussed in more detail in [Configuration Internals](/docs/internals/configuration).
+
+## Hot reloading
+
+Snakeway supports zero-downtime configuration reloads.
+This means you can update your routes, add new services, or change device settings without dropping active connections.
+
+Before a reload is applied, Snakeway performs a full semantic validation of the new configuration.
+If any errors are found (e.g., a route pointing to a non-existent service), the reload is aborted, the errors are logged, and the server continues running with the previous, stable configuration.
+
+Reloads can be triggered in two ways:
+
+### Reload command
+
+Send a `SIGHUP` signal to the Snakeway process.
+
+```shell
+snakeway reload
+```
+
+### Admin API
+
+If the admin API is enabled, you can send a `POST` request to the `/admin/reload` endpoint.
+
+For example:
+
+```shell
+curl -X POST https://127.0.0.1:8440/admin/reload 
+```
+
+## Configuration validation
+
+You can manually validate your configuration directory at any time using the `config check` command:
+
+```shell
+snakeway config check --path /etc/snakeway/
+```
+
+This will report any syntax errors or logical inconsistencies in your configuration files before you attempt to apply them to a running server.
