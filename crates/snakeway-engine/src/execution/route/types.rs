@@ -19,7 +19,9 @@ pub enum RouteRuntime {
         id: RouteId,
         path: String,
         file_dir: PathBuf,
-        index: bool,
+        /// The filename served when a directory is requested, or `None` for
+        /// the default `index.html`.
+        index: Option<String>,
         directory_listing: bool,
         max_file_size: u64,
         static_config: CompressionOptions,

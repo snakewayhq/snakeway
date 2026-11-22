@@ -24,7 +24,7 @@ pub(crate) async fn handle_static_request(
         unreachable!("handle_static_request called with non-static route");
     };
 
-    let resolved = match resolve_static_path(file_dir, path, request_path, *index) {
+    let resolved = match resolve_static_path(file_dir, path, request_path, index.as_deref()) {
         Ok(p) => p,
         Err(e) => return error_response(map_resolve_error(e)),
     };

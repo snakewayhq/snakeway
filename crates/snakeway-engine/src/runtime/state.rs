@@ -165,7 +165,7 @@ pub(crate) fn build_runtime_routers(routes: &[RouteConfig]) -> Result<HashMap<Ar
                     id: RouteId::static_route(&cfg.path, &canonical),
                     path: cfg.path.clone(),
                     file_dir: cfg.file_dir.clone(),
-                    index: cfg.index.is_some(),
+                    index: cfg.index.clone(),
                     directory_listing: cfg.directory_listing,
                     max_file_size: cfg.max_file_size,
                     static_config: cfg.static_config.clone(),

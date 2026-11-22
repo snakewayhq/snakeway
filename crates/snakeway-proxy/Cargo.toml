@@ -41,6 +41,7 @@ hotpath = { workspace = true }
 
 [dev-dependencies]
 rcgen = { workspace = true }
+tempfile = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = { workspace = true, features = ["signal"] }

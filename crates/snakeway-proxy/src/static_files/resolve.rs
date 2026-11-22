@@ -17,7 +17,7 @@ pub(crate) fn resolve_static_path(
     base_dir: &Path,
     route_prefix: &str,
     request_path: &str,
-    index: bool,
+    index: Option<&str>,
 ) -> Result<ResolvedStatic, ResolveError> {
     // Sanity checks
     if !request_path.starts_with('/') || !route_prefix.starts_with('/') {
@@ -45,10 +45,10 @@ pub(crate) fn resolve_static_path(
     // Strip leading slash after decoding
     let decoded = decoded.trim_start_matches('/');
 
-    // Reject empty path unless index is allowed
+    // Reject empty path unless an index filename is configured.
     let relative_path = if decoded.is_empty() {
-        if index {
-            PathBuf::from("index.html")
+        if let Some(name) = index {
+            PathBuf::from(name)
         } else {
             return Err(ResolveError::NotFound);
         }
@@ -86,10 +86,10 @@ pub(crate) fn resolve_static_path(
         return Err(ResolveError::Forbidden);
     }
 
-    // If directory, optionally append index.html
+    // If directory, optionally serve the configured index filename
     if target_canon.is_dir() {
-        if index {
-            let index_path = target_canon.join("index.html");
+        if let Some(name) = index {
+            let index_path = target_canon.join(name);
             if index_path.is_file() {
                 return Ok(ResolvedStatic::File(index_path));
             }
@@ -103,4 +103,70 @@ pub(crate) fn resolve_static_path(
     }
 
     Ok(ResolvedStatic::File(target_canon))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    fn seeded_dir(files: &[(&str, &str)]) -> (std::path::PathBuf, tempfile::TempDir) {
+        let dir = tempdir().unwrap();
+        for (name, contents) in files {
+            let path = dir.path().join(name);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).unwrap();
+            }
+            std::fs::write(path, contents).unwrap();
+        }
+        (dir.path().to_path_buf(), dir)
+    }
+
+    #[test]
+    fn a_directory_request_serves_the_configured_index_filename() {
+        // Arrange
+        let (base, _dir) = seeded_dir(&[("home.htm", "HOMEHTM")]);
+
+        // Act
+        let resolved = resolve_static_path(&base, "/", "/", Some("home.htm")).unwrap();
+
+        // Assert
+        assert!(matches!(resolved, ResolvedStatic::File(p) if p.ends_with("home.htm")));
+    }
+
+    #[test]
+    fn a_directory_request_without_an_index_is_not_found() {
+        // Arrange
+        let (base, _dir) = seeded_dir(&[("home.htm", "HOMEHTM")]);
+
+        // Act
+        let resolved = resolve_static_path(&base, "/", "/", None);
+
+        // Assert
+        assert!(matches!(resolved, Err(ResolveError::NotFound)));
+    }
+
+    #[test]
+    fn a_missing_configured_index_in_a_subdirectory_leaves_the_directory() {
+        // Arrange
+        let (base, _dir) = seeded_dir(&[("sub/home.htm", "HOMEHTM")]);
+
+        // Act
+        let resolved = resolve_static_path(&base, "/", "/sub/", Some("index.html")).unwrap();
+
+        // Assert
+        assert!(matches!(resolved, ResolvedStatic::Directory(_)));
+    }
+
+    #[test]
+    fn a_cur_dir_component_in_the_request_stays_inside_the_base() {
+        // Arrange
+        let (base, _dir) = seeded_dir(&[("a.txt", "A")]);
+
+        // Act
+        let resolved = resolve_static_path(&base, "/", "/./a.txt", None).unwrap();
+
+        // Assert
+        assert!(matches!(resolved, ResolvedStatic::File(p) if p.ends_with("a.txt")));
+    }
 }
