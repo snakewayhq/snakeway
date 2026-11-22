@@ -103,14 +103,14 @@ fn percent_decode_unreserved_with_outcome(input: &str) -> Result<(String, bool),
 /// Percent-encoded sequences representing reserved or other characters are preserved as-is,
 /// ensuring that the semantic meaning of the URI is not altered during normalization.
 ///
-/// The function scans bytes and never slices the input by byte arithmetic into a `&str`,
-/// because a `%` followed by fewer than two ASCII hex digits can otherwise split a
-/// multibyte character.
+/// The function scans bytes and never slices the input as a `&str`. A `%`
+/// followed by fewer than two ASCII hex digits would make a two byte slice
+/// land inside a multibyte character, which panics.
 ///
 /// # Security
 /// - Rejects malformed percent-encoding sequences (e.g. incomplete or non-hex triplets)
 /// - Restricts decoding to ASCII-range percent-encoded bytes (0 to 127)
-/// - Copies raw non-ASCII bytes through verbatim instead of recoding them
+/// - Passes raw non-ASCII bytes through unchanged instead of recoding them
 /// - Normalizes preserved percent-encoded sequences to uppercase per RFC 3986 Section 2.1
 fn percent_decode_unreserved(input: &str) -> Result<String, ()> {
     fn hex_val(b: u8) -> Option<u8> {
