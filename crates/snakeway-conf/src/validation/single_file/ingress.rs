@@ -149,9 +149,15 @@ pub(crate) fn validate_ingresses(ingresses: &[Located<IngressSpec>], report: &mu
 
             for upstream in &service.value.upstreams {
                 if let Some(sock) = &upstream.value.sock {
+                    let canonical = std::path::Path::new(&sock.value.path.value)
+                        .components()
+                        .as_path()
+                        .display()
+                        .to_string();
+
                     report_duplicate(
                         &mut seen_upstream_socks,
-                        sock.value.path.value.clone(),
+                        canonical,
                         sock.value.path.span,
                         report,
                         || format!("duplicate upstream sock: {}", sock.value.path.value),
@@ -435,6 +441,47 @@ mod tests {
 
         // Assert
         assert!(report.issues().iter().any(|e| e.message == expected_error));
+    }
+
+    #[test]
+    fn equivalent_sock_path_spellings_are_one_socket() {
+        // Arrange: the second service points at the same socket through a
+        // redundant path component.
+        let mut report = Report::new();
+        let make_service = |name: &str, path: &str| {
+            Located::detached(ServiceSpec {
+                name: Located::detached(name.to_string()),
+                routes: vec![Located::detached(ServiceRouteSpec {
+                    path: Located::detached("/".to_string()),
+                    hosts: vec![Located::detached("example.com".to_string())],
+                    ..Default::default()
+                })],
+                upstreams: vec![sock_upstream(path)],
+                load_balancing_strategy: Located::detached("failover".to_string()),
+                ..Default::default()
+            })
+        };
+        let ingress = Located::detached(IngressSpec {
+            bind: Some(Located::detached(minimal_bind())),
+            services: vec![
+                make_service("svc-a", "/tmp/app.sock"),
+                make_service("svc-b", "/tmp/./app.sock"),
+            ],
+            ..Default::default()
+        });
+
+        // Act
+        validate_ingresses(&[ingress], &mut report);
+
+        // Assert
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|e| e.message.contains("duplicate upstream sock")),
+            "issues: {:?}",
+            report.issues()
+        );
     }
 
     #[test]
