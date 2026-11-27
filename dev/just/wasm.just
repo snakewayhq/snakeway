@@ -25,8 +25,7 @@ build-wasm-jwt-device:
     cp target/wasm32-unknown-unknown/release/snakeway_jwt_auth_device.wasm \
        crates/snakeway-tests/fixtures/wasm/jwt_auth_device.wasm
 
-# Build the WASM fault device fixtures (trap, loop, memory growth) for integration tests.
-# One fixture crate yields one component per feature build.
+# Build the WASM fault device fixtures (trap, loop, memory growth) for integration tests. One fixture crate yields one component per feature build.
 build-wasm-fault-devices:
     mkdir -p crates/snakeway-tests/fixtures/wasm
     cargo component build --release --target wasm32-unknown-unknown -p snakeway-wasm-fault-devices --no-default-features --features trap
