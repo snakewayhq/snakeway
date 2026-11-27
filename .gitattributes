@@ -1,0 +1,3 @@
+# Raw HTTP fixtures are byte exact attack and edge case payloads.
+# Text conversion must stay off so CRLF and NUL bytes survive checkouts.
+crates/snakeway-tests/fixtures/http/raw/** -text
