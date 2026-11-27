@@ -253,4 +253,35 @@ impl ConfigBuilder {
             ..Default::default()
         }
     }
+
+    /// A service spec with exactly one upstream, so a forwarding assertion
+    /// observes the echo of the one upstream rather than an
+    /// arbitrary member of a load balancing pool.
+    pub fn make_single_upstream_service_spec(port: i64) -> ServiceSpec {
+        ServiceSpec {
+            name: Located::detached("api".to_string()),
+            routes: vec![Located::detached(ServiceRouteSpec {
+                hosts: vec![Located::detached(TEST_HOST.to_string())],
+                path: Located::detached(ROUTE_PATH_API.to_string()),
+                ..Default::default()
+            })],
+            upstreams: vec![Located::detached(Self::make_tcp_upstream(port, false))],
+            ..Default::default()
+        }
+    }
+
+    /// Adds a single upstream service behind the plain HTTP listener. The
+    /// upstream port is the caller's (typically a counting or echo upstream
+    /// that already bound the port).
+    pub fn with_single_upstream_ingress(mut self, port: i64) -> Self {
+        let bind = Self::make_bind(false);
+        let service = Self::make_single_upstream_service_spec(port);
+        let ingress_spec = IngressSpec {
+            bind: Some(Located::detached(bind)),
+            services: vec![Located::detached(service)],
+            ..Default::default()
+        };
+        self.ingress_specs.push(ingress_spec);
+        self
+    }
 }

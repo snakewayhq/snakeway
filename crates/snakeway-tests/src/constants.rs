@@ -17,6 +17,11 @@ pub const FIXTURES_CONFIG_DIR: &str = "fixtures/config";
 
 /// Path to the HTTP replay fixture directory.
 pub const FIXTURES_HTTP_DIR: &str = "fixtures/http";
+
+/// Path to the raw HTTP replay fixture directory. Raw fixtures are sent
+/// byte for byte, with no normalization pre pass.
+pub const FIXTURES_HTTP_RAW_DIR: &str = "fixtures/http/raw";
+
 pub const HTTP_REPLAY_OK_RESPONSE: &str = "200 OK";
 
 // ---------------------------------------------------------------------------
@@ -127,3 +132,12 @@ pub const HTTP_UPSTREAM_RESPONSE: &[u8] =
 // ---------------------------------------------------------------------------
 pub const TEST_DEVICE_PATH: &str = "fixtures/wasm/test_device.wasm";
 pub const TEST_JWT_DEVICE_PATH: &str = "fixtures/wasm/jwt_auth_device.wasm";
+
+/// A device whose request hook always traps.
+pub const TRAP_DEVICE_PATH: &str = "fixtures/wasm/trap_device.wasm";
+
+/// A device whose request hook loops forever, for timeout policies.
+pub const LOOP_DEVICE_PATH: &str = "fixtures/wasm/loop_device.wasm";
+
+/// A device whose request hook allocates without bound, for store limits.
+pub const GROW_DEVICE_PATH: &str = "fixtures/wasm/grow_device.wasm";
