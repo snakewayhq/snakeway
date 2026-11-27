@@ -1,31 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Once;
 
 use snakeway_tests::constants::FIXTURES_CONFIG_DIR;
-
-static BUILD_ONCE: Once = Once::new();
-
-fn snakeway_bin() -> PathBuf {
-    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let bin = workspace_root.join("target/debug/snakeway");
-
-    BUILD_ONCE.call_once(|| {
-        let status = Command::new("cargo")
-            .args(["build", "-p", "snakeway"])
-            .current_dir(&workspace_root)
-            .status()
-            .expect("failed to run cargo build");
-        assert!(status.success(), "cargo build -p snakeway failed");
-    });
-
-    assert!(
-        bin.exists(),
-        "snakeway binary not found at {}",
-        bin.display()
-    );
-    bin
-}
+use snakeway_tests::harness::process::snakeway_bin;
 
 fn fixture_dir(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

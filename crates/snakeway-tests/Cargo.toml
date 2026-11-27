@@ -15,7 +15,7 @@ reqwest = { workspace = true, features = ["blocking"] }
 tonic = { workspace = true, features = ["_tls-any"] }
 tokio-tungstenite = { workspace = true }
 futures-util = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync"] }
 prost = { workspace = true }
 tonic-prost = { workspace = true }
 url = { workspace = true }
@@ -28,6 +28,8 @@ tokio-stream = { version = "0.1", features = ["net"] }
 h2 = "0.4"
 bytes = { workspace = true }
 rcgen = { workspace = true }
+libc = { workspace = true }
+nix = { workspace = true, features = ["signal"] }
 
 [dev-dependencies]
 hmac = "0.13"

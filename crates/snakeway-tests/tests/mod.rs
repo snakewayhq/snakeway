@@ -8,6 +8,7 @@ mod acme;
 mod cli;
 mod configuration;
 mod device;
+mod harness;
 mod http_replay;
 mod net;
 mod otel;
