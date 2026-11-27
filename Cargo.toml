@@ -13,6 +13,7 @@ members = [
     # Devices
     "crates/snakeway-jwt-auth-device",
     "crates/snakeway-wasm-test-device",
+    "crates/snakeway-wasm-fault-devices",
 ]
 default-members = ["crates/snakeway"]
 exclude = [

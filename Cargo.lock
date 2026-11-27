@@ -4515,6 +4515,8 @@ dependencies = [
  "h2",
  "hmac",
  "http",
+ "libc",
+ "nix 0.32.0",
  "opentelemetry",
  "opentelemetry_sdk",
  "pretty_assertions",
@@ -4536,6 +4538,13 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "snakeway-wasm-fault-devices"
+version = "0.18.0"
+dependencies = [
+ "wit-bindgen 0.63.0",
 ]
 
 [[package]]

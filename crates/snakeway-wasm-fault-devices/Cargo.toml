@@ -1,0 +1,24 @@
+[package]
+name = "snakeway-wasm-fault-devices"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WASM fault device fixtures for integration tests: trap, infinite loop, and unbounded memory growth"
+
+[lints]
+workspace = true
+
+[dependencies]
+wit-bindgen = "0.63"
+
+[lib]
+crate-type = ["cdylib"]
+
+# Each build selects the one device the cdylib exports, so one fixture crate
+# produces three component targets. The default feature keeps plain cargo
+# builds (clippy, docs) compiling; the just recipes pass --no-default-features.
+[features]
+default = ["trap"]
+trap = []
+loop = []
+grow = []
