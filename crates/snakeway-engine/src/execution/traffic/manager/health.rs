@@ -78,6 +78,30 @@ impl TrafficManager {
         }
     }
 
+    /// Backdates the last failure timestamp of an unhealthy upstream so tests
+    /// can reach the boundary values of the cooldown comparison without real
+    /// time waits. The upstream must already be unhealthy. Test-only.
+    #[doc(hidden)]
+    pub fn set_last_failure(
+        &self,
+        service_id: &ServiceId,
+        upstream_id: &UpstreamId,
+        last_failure: Instant,
+    ) {
+        let key = (service_id.clone(), *upstream_id);
+        if let Some(mut entry) = self.upstream_health.get_mut(&key)
+            && let HealthState::Unhealthy {
+                consecutive_failures,
+                ..
+            } = *entry
+        {
+            *entry = HealthState::Unhealthy {
+                consecutive_failures,
+                last_failure,
+            };
+        }
+    }
+
     /// Any success will fully restore health
     pub(crate) fn report_success(
         &self,
